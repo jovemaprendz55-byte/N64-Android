@@ -156,8 +156,10 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
                     val dividend = a.toInt()
                     val divisor = b.toInt()
                     if (divisor != 0) {
-                        lo = Integer.divideUnsigned(dividend, divisor).toLong()
-                        hi = Integer.remainderUnsigned(dividend, divisor).toLong()
+                        val unsignedDividend = Integer.toUnsignedLong(dividend)
+                        val unsignedDivisor = Integer.toUnsignedLong(divisor)
+                        lo = (unsignedDividend / unsignedDivisor).toLong()
+                        hi = (unsignedDividend % unsignedDivisor).toLong()
                     }
                 } // DIVU
                 0x21 -> writeRegister(rd, (a.toInt() + b.toInt()).toLong()) // ADDU
