@@ -109,6 +109,40 @@ class R4300CpuTest {
         assertEquals(4L, cpu.register(3))
     }
 
+    @Test fun multiplyAndMoveHiLoInstructionsWork() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, -7),
+            iType(0x09, 0, 2, 3),
+            rType(1, 2, 0, 0, 0x18), // MULT: -7 * 3
+            rType(0, 0, 3, 0, 0x12), // MFLO
+            rType(0, 0, 4, 0, 0x10), // MFHI
+            rType(1, 2, 0, 0, 0x1A), // DIV: -7 / 3
+            rType(0, 0, 5, 0, 0x12), // MFLO
+            rType(0, 0, 6, 0, 0x10)  // MFHI
+        ))
+        repeat(8) { cpu.step() }
+        assertEquals(-21L, cpu.register(3))
+        assertEquals(-1L, cpu.register(4))
+        assertEquals(-2L, cpu.register(5))
+        assertEquals(-1L, cpu.register(6))
+    }
+
+    @Test fun unsignedDivideUsesUnsigned32BitOperands() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0xFFFF),
+            iType(0x0D, 1, 1, 0xFFFF),
+            iType(0x09, 0, 2, 2),
+            rType(1, 2, 0, 0, 0x1B),
+            rType(0, 0, 3, 0, 0x12),
+            rType(0, 0, 4, 0, 0x10)
+        ))
+        repeat(6) { cpu.step() }
+        assertEquals(2147483647L, cpu.register(3))
+        assertEquals(1L, cpu.register(4))
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 

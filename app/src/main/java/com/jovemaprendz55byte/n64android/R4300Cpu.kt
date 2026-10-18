@@ -125,6 +125,41 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
                     writeRegister(if (rd == 0) 31 else rd, instructionAddress + 8L)
                     pendingBranchTarget = a
                 } // JALR
+                0x10 -> writeRegister(rd, hi) // MFHI
+                0x11 -> hi = a // MTHI
+                0x12 -> writeRegister(rd, lo) // MFLO
+                0x13 -> lo = a // MTLO
+                0x18 -> {
+                    val product = a.toInt().toLong() * b.toInt().toLong()
+                    hi = (product shr 32).toInt().toLong()
+                    lo = product.toInt().toLong()
+                } // MULT
+                0x19 -> {
+                    val product = Integer.toUnsignedLong(a.toInt()) * Integer.toUnsignedLong(b.toInt())
+                    hi = (product ushr 32).toInt().toLong()
+                    lo = product.toInt().toLong()
+                } // MULTU
+                0x1A -> {
+                    val dividend = a.toInt()
+                    val divisor = b.toInt()
+                    if (divisor != 0) {
+                        if (dividend == Int.MIN_VALUE && divisor == -1) {
+                            lo = Int.MIN_VALUE.toLong()
+                            hi = 0L
+                        } else {
+                            lo = (dividend / divisor).toLong()
+                            hi = (dividend % divisor).toLong()
+                        }
+                    }
+                } // DIV; division by zero leaves HI/LO unchanged in this simplified core
+                0x1B -> {
+                    val dividend = a.toInt()
+                    val divisor = b.toInt()
+                    if (divisor != 0) {
+                        lo = Integer.divideUnsigned(dividend, divisor).toLong()
+                        hi = Integer.remainderUnsigned(dividend, divisor).toLong()
+                    }
+                } // DIVU
                 0x21 -> writeRegister(rd, (a.toInt() + b.toInt()).toLong()) // ADDU
                 0x24 -> writeRegister(rd, a and b) // AND
                 0x25 -> writeRegister(rd, a or b) // OR
