@@ -10,10 +10,14 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 
 class MainActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var romDetails: TextView
+    // Retain the normalized ROM in memory so the emulator core can use it later.
+    private var preparedRom: ByteArray? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,11 +41,11 @@ class MainActivity : Activity() {
             setPadding(0, dp(8), 0, dp(28))
         }, matchWrap())
         root.addView(Button(this).apply {
-            text = "Selecionar ROM"
+            text = "Selecionar e preparar ROM"
             setOnClickListener { openRomPicker() }
         }, matchWrap())
         status = TextView(this).apply {
-            text = "Escolha um arquivo de jogo N64 (.z64, .v64 ou .n64)."
+            text = "Escolha uma ROM N64 válida (.z64, .v64 ou .n64)."
             textSize = 16f
             setTextColor(Color.LTGRAY)
             setPadding(0, dp(24), 0, dp(12))
@@ -53,7 +57,7 @@ class MainActivity : Activity() {
         }
         root.addView(romDetails, matchWrap())
         root.addView(TextView(this).apply {
-            text = "Aviso: esta primeira versão apenas identifica o cabeçalho da ROM. CPU, áudio, gráficos e execução dos jogos ainda serão desenvolvidos."
+            text = "A ROM será validada e convertida para big-endian na memória. A execução dos jogos ainda não está implementada."
             textSize = 13f
             setTextColor(Color.rgb(180, 185, 198))
             setPadding(0, dp(32), 0, 0)
@@ -78,38 +82,88 @@ class MainActivity : Activity() {
     }
 
     private fun inspectRom(uri: Uri) {
+        preparedRom = null
         try {
-            val headerBytes = contentResolver.openInputStream(uri)?.use { input ->
-                val buffer = ByteArray(0x40)
-                var offset = 0
-                while (offset < buffer.size) {
-                    val count = input.read(buffer, offset, buffer.size - offset)
-                    if (count < 0) break
-                    offset += count
-                }
-                if (offset == buffer.size) buffer else buffer.copyOf(offset)
+            val rawRom = contentResolver.openInputStream(uri)?.use { input ->
+                readRomLimited(input)
             } ?: throw IllegalStateException("Não foi possível abrir o arquivo.")
-            val header = RomHeader.parse(headerBytes)
-            if (header == null) {
-                status.text = "O arquivo selecionado não tem um cabeçalho N64 reconhecido."
-                romDetails.text = ""
+
+            if (rawRom.size < MIN_ROM_SIZE) {
+                showError("Arquivo muito pequeno para uma ROM N64 válida (mínimo de 4 KiB).")
                 return
             }
-            status.text = "Cabeçalho N64 reconhecido."
+            if (rawRom.size % 4 != 0) {
+                showError("O tamanho da ROM não é múltiplo de 4 bytes.")
+                return
+            }
+
+            val originalHeader = RomHeader.parse(rawRom)
+            if (originalHeader == null) {
+                showError("O arquivo selecionado não tem um cabeçalho N64 reconhecido.")
+                return
+            }
+
+            val normalized = RomNormalizer.normalize(rawRom)
+            if (normalized == null) {
+                showError("Não foi possível normalizar esta ROM.")
+                return
+            }
+
+            val normalizedHeader = RomHeader.parse(normalized)
+            if (normalizedHeader == null) {
+                showError("O cabeçalho ficou inválido após a conversão.")
+                return
+            }
+
+            preparedRom = normalized
+            status.text = "ROM validada e preparada em memória."
             romDetails.text = buildString {
-                append("Título: ").append(header.title).append('\n')
-                append("Formato: ").append(when (header.format) {
+                append("Título: ").append(normalizedHeader.title).append('\n')
+                append("Formato original: ").append(when (originalHeader.format) {
                     RomHeader.Format.Z64_BIG_ENDIAN -> ".z64 (big-endian)"
                     RomHeader.Format.V64_BYTE_SWAPPED -> ".v64 (bytes trocados)"
                     RomHeader.Format.N64_LITTLE_ENDIAN -> ".n64 (little-endian)"
-                })
-                header.countryCode?.let { append('\n').append("Código de região: ").append(it) }
+                }).append('\n')
+                append("Formato preparado: Z64 (big-endian)").append('\n')
+                append("Tamanho: ").append(formatSize(normalized.size)).append('\n')
+                originalHeader.countryCode?.let {
+                    append("Código de região: ").append(it).append('\n')
+                }
+                append("Próxima etapa: conectar esta ROM ao núcleo de emulação.")
             }
         } catch (error: Exception) {
-            status.text = "Erro ao ler o arquivo: " + (error.message ?: "erro desconhecido")
-            romDetails.text = ""
+            showError("Erro ao ler a ROM: " + (error.message ?: "erro desconhecido"))
         }
     }
+
+    private fun readRomLimited(input: InputStream): ByteArray {
+        val output = ByteArrayOutputStream()
+        val buffer = ByteArray(8192)
+        var total = 0
+        while (true) {
+            val count = input.read(buffer)
+            if (count < 0) break
+            if (count == 0) continue
+            if (total > MAX_ROM_SIZE - count) {
+                throw IllegalArgumentException("A ROM excede o limite de 64 MiB.")
+            }
+            output.write(buffer, 0, count)
+            total += count
+        }
+        return output.toByteArray()
+    }
+
+    private fun showError(message: String) {
+        status.text = message
+        romDetails.text = ""
+    }
+
+    private fun formatSize(bytes: Int): String =
+        if (bytes >= 1024 * 1024) {
+            String.format(java.util.Locale.ROOT, "%.2f MiB", bytes / (1024.0 * 1024.0))
+        } else {
+            String.format(java.util.Locale.ROOT, "%.1f KiB", bytes / 1024.0)
+        }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
     private fun matchWrap() = LinearLayout.LayoutParams(
@@ -117,5 +171,9 @@ class MainActivity : Activity() {
         ViewGroup.LayoutParams.WRAP_CONTENT
     )
 
-    companion object { private const val REQUEST_ROM = 1001 }
+    companion object {
+        private const val REQUEST_ROM = 1001
+        private const val MIN_ROM_SIZE = 0x1000
+        private const val MAX_ROM_SIZE = 64 * 1024 * 1024
+    }
 }
