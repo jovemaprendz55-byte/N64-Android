@@ -179,6 +179,25 @@ class R4300CpuTest {
         assertEquals(-9L, cpu.register(1))
     }
 
+    @Test fun luiSignExtendsIts32BitResultOnR4300() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(iType(0x0F, 0, 1, 0xFFFF)))
+        cpu.step()
+        assertEquals(-65536L, cpu.register(1))
+    }
+
+    @Test fun sltiuComparesAgainstSignExtendedImmediateAsUnsigned() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 1),
+            iType(0x0B, 1, 2, -1),
+            iType(0x0B, 0, 3, -1)
+        ))
+        repeat(3) { cpu.step() }
+        assertEquals(1L, cpu.register(2))
+        assertEquals(1L, cpu.register(3))
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
