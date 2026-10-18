@@ -143,6 +143,42 @@ class R4300CpuTest {
         assertEquals(1L, cpu.register(4))
     }
 
+    @Test fun jalrWithZeroDestinationDoesNotOverwriteReturnRegister() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 16),
+            rType(1, 0, 0, 0, 0x09), // JALR rd=$zero, target in r1
+            iType(0x09, 0, 2, 7),    // delay slot
+            iType(0x09, 0, 3, 99),   // skipped
+            iType(0x09, 0, 4, 5)     // target
+        ))
+        repeat(5) { cpu.step() }
+        assertEquals(0L, cpu.register(31))
+        assertEquals(7L, cpu.register(2))
+        assertEquals(0L, cpu.register(3))
+        assertEquals(5L, cpu.register(4))
+    }
+
+    @Test fun addAndSubUseSigned32BitResults() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 12),
+            iType(0x09, 0, 2, -5),
+            rType(1, 2, 3, 0, 0x20),
+            rType(1, 2, 4, 0, 0x22)
+        ))
+        repeat(4) { cpu.step() }
+        assertEquals(7L, cpu.register(3))
+        assertEquals(17L, cpu.register(4))
+    }
+
+    @Test fun addi64PerformsSignedAddition() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(iType(0x18, 0, 1, -9)))
+        cpu.step()
+        assertEquals(-9L, cpu.register(1))
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 

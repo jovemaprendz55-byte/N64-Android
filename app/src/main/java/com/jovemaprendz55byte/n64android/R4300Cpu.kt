@@ -122,7 +122,7 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
                 } // JR
                 0x09 -> {
                     if (a % 4L != 0L) throw IllegalArgumentException("JALR target must be 4-byte aligned")
-                    writeRegister(if (rd == 0) 31 else rd, instructionAddress + 8L)
+                    writeRegister(rd, instructionAddress + 8L)
                     pendingBranchTarget = a
                 } // JALR
                 0x10 -> writeRegister(rd, hi) // MFHI
@@ -162,7 +162,9 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
                         hi = (unsignedDividend % unsignedDivisor).toLong()
                     }
                 } // DIVU
+                0x20 -> writeRegister(rd, Math.addExact(a.toInt(), b.toInt()).toLong()) // ADD
                 0x21 -> writeRegister(rd, (a.toInt() + b.toInt()).toLong()) // ADDU
+                0x22 -> writeRegister(rd, Math.subtractExact(a.toInt(), b.toInt()).toLong()) // SUB
                 0x24 -> writeRegister(rd, a and b) // AND
                 0x25 -> writeRegister(rd, a or b) // OR
                 0x26 -> writeRegister(rd, a xor b) // XOR
@@ -208,6 +210,7 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
             0x0F -> writeRegister(rt, (immediate shl 16).toInt().toLong()) // LUI
             0x04 -> if (a == b) pendingBranchTarget = pc + (signedImmediate shl 2) // BEQ
             0x05 -> if (a != b) pendingBranchTarget = pc + (signedImmediate shl 2) // BNE
+            0x18 -> writeRegister(rt, Math.addExact(a, signedImmediate)) // DADDI
             0x19 -> writeRegister(rt, a + signedImmediate) // DADDIU
             0x20 -> writeRegister(rt, readByte(address).toLong()) // LB
             0x21 -> writeRegister(rt, readHalf(address).toLong()) // LH
