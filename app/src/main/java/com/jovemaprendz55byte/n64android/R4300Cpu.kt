@@ -116,7 +116,15 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
                 0x00 -> writeRegister(rd, (b.toInt() shl shift).toLong()) // SLL
                 0x02 -> writeRegister(rd, (b.toInt() ushr shift).toLong()) // SRL
                 0x03 -> writeRegister(rd, (b.toInt() shr shift).toLong()) // SRA
-                0x08 -> pendingBranchTarget = a // JR
+                0x08 -> {
+                    if (a % 4L != 0L) throw IllegalArgumentException("JR target must be 4-byte aligned")
+                    pendingBranchTarget = a
+                } // JR
+                0x09 -> {
+                    if (a % 4L != 0L) throw IllegalArgumentException("JALR target must be 4-byte aligned")
+                    writeRegister(if (rd == 0) 31 else rd, instructionAddress + 8L)
+                    pendingBranchTarget = a
+                } // JALR
                 0x21 -> writeRegister(rd, (a.toInt() + b.toInt()).toLong()) // ADDU
                 0x24 -> writeRegister(rd, a and b) // AND
                 0x25 -> writeRegister(rd, a or b) // OR
@@ -125,6 +133,7 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
                 0x2A -> writeRegister(rd, if (a < b) 1L else 0L) // SLT
                 0x2B -> writeRegister(rd, if (java.lang.Long.compareUnsigned(a, b) < 0) 1L else 0L) // SLTU
                 0x2D -> writeRegister(rd, a + b) // DADDU
+                0x2F -> writeRegister(rd, a - b) // DSUBU
                 0x38 -> writeRegister(rd, b shl shift) // DSLL
                 0x3A -> writeRegister(rd, b ushr shift) // DSRL
                 0x3B -> writeRegister(rd, b shr shift) // DSRA
@@ -133,7 +142,29 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
                 0x3F -> writeRegister(rd, b shr (shift + 32)) // DSRA32
                 else -> unsupported(instruction, instructionAddress)
             }
+            0x01 -> when (rt) {
+                0x00 -> if (a < 0L) pendingBranchTarget = pc + (signedImmediate shl 2) // BLTZ
+                0x01 -> if (a >= 0L) pendingBranchTarget = pc + (signedImmediate shl 2) // BGEZ
+                0x10 -> if (a < 0L) {
+                    writeRegister(31, instructionAddress + 8L)
+                    pendingBranchTarget = pc + (signedImmediate shl 2)
+                } // BLTZAL
+                0x11 -> if (a >= 0L) {
+                    writeRegister(31, instructionAddress + 8L)
+                    pendingBranchTarget = pc + (signedImmediate shl 2)
+                } // BGEZAL
+                else -> unsupported(instruction, instructionAddress)
+            }
+            0x03 -> {
+                writeRegister(31, instructionAddress + 8L)
+                pendingBranchTarget = (pc and -0x10000000L) or
+                    ((instruction.toLong() and 0x03FFFFFFL) shl 2)
+            } // JAL
+            0x06 -> if (a <= 0L) pendingBranchTarget = pc + (signedImmediate shl 2) // BLEZ
+            0x07 -> if (a > 0L) pendingBranchTarget = pc + (signedImmediate shl 2) // BGTZ
             0x09 -> writeRegister(rt, (a.toInt() + signedImmediate.toInt()).toLong()) // ADDIU
+            0x0A -> writeRegister(rt, if (a < signedImmediate) 1L else 0L) // SLTI
+            0x0B -> writeRegister(rt, if (java.lang.Long.compareUnsigned(a, signedImmediate) < 0) 1L else 0L) // SLTIU
             0x0C -> writeRegister(rt, a and immediate.toLong()) // ANDI
             0x0D -> writeRegister(rt, a or immediate.toLong()) // ORI
             0x0E -> writeRegister(rt, a xor immediate.toLong()) // XORI

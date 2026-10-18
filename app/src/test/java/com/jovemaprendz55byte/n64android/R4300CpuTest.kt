@@ -6,11 +6,7 @@ import org.junit.Test
 class R4300CpuTest {
     @Test fun executesImmediateArithmeticAndKeepsZeroRegisterConstant() {
         val cpu = R4300Cpu()
-        cpu.loadBytes(0, words(
-            iType(0x09, 0, 1, 10),
-            iType(0x0D, 1, 2, 0x20),
-            iType(0x09, 0, 0, 99)
-        ))
+        cpu.loadBytes(0, words(iType(0x09, 0, 1, 10), iType(0x0D, 1, 2, 0x20), iType(0x09, 0, 0, 99)))
         repeat(3) { cpu.step() }
         assertEquals(10L, cpu.register(1))
         assertEquals(42L, cpu.register(2))
@@ -20,11 +16,7 @@ class R4300CpuTest {
 
     @Test fun executesLuiAndBigEndianLoadStore() {
         val cpu = R4300Cpu()
-        cpu.loadBytes(0, words(
-            iType(0x0F, 0, 1, 0x1234),
-            iType(0x2B, 0, 1, 0x100),
-            iType(0x23, 0, 2, 0x100)
-        ))
+        cpu.loadBytes(0, words(iType(0x0F, 0, 1, 0x1234), iType(0x2B, 0, 1, 0x100), iType(0x23, 0, 2, 0x100)))
         repeat(3) { cpu.step() }
         assertEquals(0x12340000L, cpu.register(1))
         assertEquals(0x12340000L, cpu.register(2))
@@ -33,15 +25,8 @@ class R4300CpuTest {
 
     @Test fun branchAppliesAfterOneDelaySlot() {
         val cpu = R4300Cpu()
-        cpu.loadBytes(0, words(
-            iType(0x09, 0, 1, 1),
-            iType(0x04, 1, 1, 2),
-            iType(0x09, 0, 2, 7),
-            iType(0x09, 0, 3, 99),
-            iType(0x09, 0, 4, 5)
-        ))
-        cpu.step()
-        cpu.step()
+        cpu.loadBytes(0, words(iType(0x09, 0, 1, 1), iType(0x04, 1, 1, 2), iType(0x09, 0, 2, 7), iType(0x09, 0, 3, 99), iType(0x09, 0, 4, 5)))
+        cpu.step(); cpu.step()
         assertEquals(8L, cpu.pc)
         cpu.step()
         assertEquals(0x10L, cpu.pc)
@@ -53,12 +38,7 @@ class R4300CpuTest {
 
     @Test fun supportsSignedAndUnsignedByteAndHalfwordLoads() {
         val cpu = R4300Cpu()
-        cpu.loadBytes(0, words(
-            iType(0x20, 0, 1, 0x100),
-            iType(0x24, 0, 2, 0x100),
-            iType(0x21, 0, 3, 0x102),
-            iType(0x25, 0, 4, 0x102)
-        ))
+        cpu.loadBytes(0, words(iType(0x20, 0, 1, 0x100), iType(0x24, 0, 2, 0x100), iType(0x21, 0, 3, 0x102), iType(0x25, 0, 4, 0x102)))
         cpu.loadBytes(0x100, byteArrayOf(0x80.toByte(), 0x00, 0xFF.toByte(), 0xFE.toByte()))
         repeat(4) { cpu.step() }
         assertEquals(-128L, cpu.register(1))
@@ -69,12 +49,7 @@ class R4300CpuTest {
 
     @Test fun supportsDoublewordArithmeticShiftsAndLoadStore() {
         val cpu = R4300Cpu()
-        cpu.loadBytes(0, words(
-            iType(0x19, 0, 1, 0x1234),
-            iType(0x3F, 0, 1, 0x108),
-            iType(0x37, 0, 2, 0x108),
-            rType(0, 2, 3, 1, 0x38)
-        ))
+        cpu.loadBytes(0, words(iType(0x19, 0, 1, 0x1234), iType(0x3F, 0, 1, 0x108), iType(0x37, 0, 2, 0x108), rType(0, 2, 3, 1, 0x38)))
         repeat(4) { cpu.step() }
         assertEquals(0x1234L, cpu.register(1))
         assertEquals(0x1234L, cpu.register(2))
@@ -89,8 +64,56 @@ class R4300CpuTest {
         assertEquals(0x0123456789ABCDEFL, cpu.readLong(0x80))
     }
 
+    @Test fun sltiAndDsubuProduceExpectedResults() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, -5),
+            iType(0x0A, 1, 2, -2),
+            rType(0, 1, 3, 0, 0x2F)
+        ))
+        repeat(3) { cpu.step() }
+        assertEquals(1L, cpu.register(2))
+        assertEquals(5L, cpu.register(3))
+    }
+
+    @Test fun jalWritesReturnAddressAndTakesEffectAfterDelaySlot() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            jType(0x03, 4),                 // JAL target 0x10
+            iType(0x09, 0, 1, 7),          // delay slot
+            iType(0x09, 0, 2, 99),         // skipped
+            iType(0x09, 0, 3, 99),         // skipped
+            iType(0x09, 0, 4, 5)           // target
+        ))
+        cpu.step()
+        assertEquals(8L, cpu.register(31))
+        assertEquals(4L, cpu.pc)
+        cpu.step()
+        assertEquals(0x10L, cpu.pc)
+        cpu.step()
+        assertEquals(7L, cpu.register(1))
+        assertEquals(0L, cpu.register(2))
+        assertEquals(5L, cpu.register(4))
+    }
+
+    @Test fun bgtzBranchesOnlyWhenRegisterIsPositive() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, -1),
+            iType(0x07, 1, 0, 2),
+            iType(0x09, 0, 2, 3),
+            iType(0x09, 0, 3, 4)
+        ))
+        repeat(4) { cpu.step() }
+        assertEquals(3L, cpu.register(2))
+        assertEquals(4L, cpu.register(3))
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
+
+    private fun jType(op: Int, targetWordAddress: Int): Int =
+        (op shl 26) or (targetWordAddress and 0x03FFFFFF)
 
     private fun rType(rs: Int, rt: Int, rd: Int, shamt: Int, funct: Int): Int =
         (rs shl 21) or (rt shl 16) or (rd shl 11) or (shamt shl 6) or funct
