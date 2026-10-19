@@ -23,17 +23,21 @@ class N64RspCpuTest {
         bus.writeWord(N64SpMemory.IMEM_BASE + 4, v(2, 1, 4, 0x11)) // VSUB
         bus.writeWord(N64SpMemory.IMEM_BASE + 8, v(2, 1, 5, 0x28)) // VAND
         bus.writeWord(N64SpMemory.IMEM_BASE + 12, v(2, 1, 6, 0x2C)) // VXOR
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, v(2, 1, 7, 0x29)) // VNAND
+        bus.writeWord(N64SpMemory.IMEM_BASE + 20, v(2, 1, 8, 0x2D)) // VNXOR
         val rsp = N64RspCpu(bus)
         for (lane in 0..7) {
             rsp.setVectorLane(1, lane, (lane * 100).toShort())
             rsp.setVectorLane(2, lane, (lane * 10).toShort())
         }
-        repeat(4) { rsp.step() }
+        repeat(6) { rsp.step() }
         for (lane in 0..7) {
             assertEquals((lane * 110).toShort(), rsp.vectorLane(3, lane))
             assertEquals((lane * 90).toShort(), rsp.vectorLane(4, lane))
             assertEquals(((lane * 100) and (lane * 10)).toShort(), rsp.vectorLane(5, lane))
             assertEquals(((lane * 100) xor (lane * 10)).toShort(), rsp.vectorLane(6, lane))
+            assertEquals(((lane * 100) and (lane * 10)).inv().toShort(), rsp.vectorLane(7, lane))
+            assertEquals(((lane * 100) xor (lane * 10)).inv().toShort(), rsp.vectorLane(8, lane))
         }
     }
 

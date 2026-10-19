@@ -192,9 +192,11 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                     else -> 0
                 } // VABS: sign comes from vs; magnitude comes from vt
                 0x28 -> a and b // VAND
+                0x29 -> (a and b).inv() // VNAND
                 0x2A -> a or b // VOR
                 0x2B -> (a or b).inv() // VNOR
                 0x2C -> a xor b // VXOR
+                0x2D -> (a xor b).inv() // VNXOR
                 else -> unsupported(instruction)
             }
             vector[vd][lane] = result.toShort()
