@@ -120,6 +120,33 @@ class N64RspCpuTest {
         assertEquals(2, rsp.vectorLane(12, 0).toInt()) // borrow flag cleared
     }
 
+    @Test fun vectorFractionalMultiplyProducesSignedAndUnsignedResults() {
+        val bus = N64MemoryBus()
+        fun v(vt: Int, vs: Int, vd: Int, funct: Int) =
+            (18 shl 26) or (16 shl 21) or (vt shl 16) or
+                (vs shl 11) or (vd shl 6) or funct
+        bus.writeWord(N64SpMemory.IMEM_BASE, v(2, 1, 3, 0x00)) // VMULF
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, v(2, 1, 4, 0x01)) // VMULU
+
+        val left = shortArrayOf(0x4000, 0x4000, (-0x4000).toShort(), Short.MIN_VALUE, 0, 1, 100, -100)
+        val right = shortArrayOf(0x4000, (-0x4000).toShort(), 0x4000, Short.MIN_VALUE, 123, 1, 200, 200)
+        val rsp = N64RspCpu(bus)
+        for (lane in 0..7) {
+            rsp.setVectorLane(1, lane, left[lane])
+            rsp.setVectorLane(2, lane, right[lane])
+        }
+
+        rsp.step()
+        rsp.step()
+
+        val signedExpected = shortArrayOf(0x2000, (-0x2000).toShort(), (-0x2000).toShort(), Short.MAX_VALUE, 0, 0, 1, (-1).toShort())
+        val unsignedExpected = shortArrayOf(0x2000, 0, 0, 0xFFFF.toShort(), 0, 0, 1, 0)
+        for (lane in 0..7) {
+            assertEquals(signedExpected[lane], rsp.vectorLane(3, lane))
+            assertEquals(unsignedExpected[lane], rsp.vectorLane(4, lane))
+        }
+    }
+
     @Test fun vectorComparisonsSelectExpectedSignedLanes() {
         val bus = N64MemoryBus()
         fun v(vt: Int, vs: Int, vd: Int, funct: Int) =
