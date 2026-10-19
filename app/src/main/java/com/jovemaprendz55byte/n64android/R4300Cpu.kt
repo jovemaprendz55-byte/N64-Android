@@ -177,6 +177,15 @@ class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
             0x10 -> when (rs) {
                 0x00 -> writeRegister(rt, cp0[rd].toInt().toLong()) // MFC0: sign-extend the 32-bit CP0 value
                 0x04 -> cp0[rd] = b.toInt().toLong() // MTC0: write the low 32 bits
+                0x10 -> when (funct) {
+                    0x18 -> {
+                        // ERET: return to EPC and clear Status.EXL. Exception
+                        // entry itself is not modeled by this simplified core.
+                        pc = cp0[14]
+                        cp0[12] = cp0[12] and 0xFFFF_FFFDL
+                    }
+                    else -> unsupported(instruction, instructionAddress)
+                }
                 else -> unsupported(instruction, instructionAddress)
             }
             0 -> when (funct) {
