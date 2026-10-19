@@ -4,7 +4,7 @@ package com.jovemaprendz55byte.n64android
  * Minimal scalar RSP interpreter foundation.
  *
  * Implements a deliberately small MIPS-I integer subset for smoke tests.
- * Implements a limited vector subset (VMULF, VMULU, VADD, VSUB, VABS, VADDC, VSUBC, VLT, VEQ, VNE, VGE, and logic operations) with
+ * Implements a limited vector subset (VMULF, VMULU, VMACF, VMACU, VADD, VSUB, VABS, VADDC, VSUBC, VLT, VEQ, VNE, VGE, and logic operations) with
  * element selector e=0. Other vector operations, DMA scheduling, interrupts,
  * and cycle timing are not implemented. COP0 access is limited to SP registers.
  * Branches use a one-instruction delay slot.
@@ -184,7 +184,7 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
         // RSP's lane-broadcast/element-routing table and are rejected explicitly.
         if (element != 0) unsupported(instruction)
         val function = instruction and 63
-        if (function !in setOf(0x00, 0x01, 0x10, 0x11, 0x13, 0x14, 0x15, 0x20, 0x21, 0x22, 0x23, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F)) {
+        if (function !in setOf(0x00, 0x01, 0x08, 0x09, 0x10, 0x11, 0x13, 0x14, 0x15, 0x20, 0x21, 0x22, 0x23, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F)) {
             unsupported(instruction)
         }
         var nextVco = 0
@@ -200,18 +200,22 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                     (acc shr 16).coerceIn(Short.MIN_VALUE.toLong(), Short.MAX_VALUE.toLong()).toInt()
                 }
                 0x01 -> {
-                    // VMULU uses the same fractional product but saturates the destination as unsigned.
+                    // VMULU: fractional product with rounding and unsigned destination saturation.
                     val acc = a.toLong() * b.toLong() * 2L + 0x8000L
                     accumulator[lane] = signExtend48(acc)
-                    run {
-                        val high = (signExtend48(acc) shr 32) and 0xFFFFL
-                        val middle = (acc shr 16) and 0xFFFFL
-                        when {
-                            high == 0L && (middle and 0x8000L) != 0L -> 0xFFFF
-                            high == 0xFFFFL && (middle and 0x8000L) == 0L -> 0
-                            else -> middle.toInt()
-                        }
-                    }
+                    saturateAccumulatorUnsigned(accumulator[lane])
+                }
+                0x08 -> {
+                    // VMACF: add a signed fractional product to the existing 48-bit accumulator.
+                    val acc = signExtend48(accumulator[lane] + a.toLong() * b.toLong() * 2L)
+                    accumulator[lane] = acc
+                    (acc shr 16).coerceIn(Short.MIN_VALUE.toLong(), Short.MAX_VALUE.toLong()).toInt()
+                }
+                0x09 -> {
+                    // VMACU: accumulate a fractional product and apply unsigned destination saturation.
+                    val acc = signExtend48(accumulator[lane] + a.toLong() * b.toLong() * 2L)
+                    accumulator[lane] = acc
+                    saturateAccumulatorUnsigned(acc)
                 }
                 0x10 -> (a + b + carryIn)
                     .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()) // VADD
@@ -255,6 +259,16 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
             0x10, 0x11 -> vco = 0 // VADD and VSUB consume and clear VCO
             0x14, 0x15 -> vco = nextVco
             0x20, 0x21, 0x22, 0x23 -> vco = 0 // Comparisons consume and clear VCO
+        }
+    }
+
+    private fun saturateAccumulatorUnsigned(value: Long): Int {
+        val high = (value shr 32) and 0xFFFFL
+        val middle = (value shr 16) and 0xFFFFL
+        return when {
+            high == 0L && (middle and 0x8000L) != 0L -> 0xFFFF
+            high == 0xFFFFL && (middle and 0x8000L) == 0L -> 0
+            else -> middle.toInt()
         }
     }
 
