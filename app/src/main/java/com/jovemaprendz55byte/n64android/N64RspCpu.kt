@@ -18,6 +18,8 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
     private val accumulator = LongArray(8)
     // VCO is stored as low-byte carry/borrow bits and high-byte nonzero bits.
     private var vco = 0
+    private var vcc = 0
+    private var vce = 0
     var pc: Int = 0
         private set
     private var pendingTarget: Int? = null
@@ -139,20 +141,37 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                 43 -> writeRegister(rd, if (a.toUInt() < b.toUInt()) 1 else 0) // SLTU
                 else -> unsupported(instruction)
             }
-            18 -> when {
-                rs == 0 -> { // MFC2: move a selected vector halfword to a GPR
+            18 -> when (rs) {
+                0 -> { // MFC2: byte element; the second byte wraps at element 15
                     val element = (instruction ushr 7) and 15
                     val value = (getVectorByte(rd, element) shl 8) or
                         getVectorByte(rd, element + 1)
                     writeRegister(rt, value.toShort().toInt())
                 }
-                rs == 4 -> { // MTC2: move the low halfword of a GPR into vector bytes
+                2 -> { // CFC2: read VCO, VCC, or VCE
+                    val value = when (rd) {
+                        0 -> vco
+                        1 -> vcc
+                        2 -> vce
+                        else -> unsupported(instruction)
+                    }
+                    writeRegister(rt, value.toShort().toInt())
+                }
+                4 -> { // MTC2: element 15 writes only the high source byte
                     val element = (instruction ushr 7) and 15
                     setVectorByte(rd, element, b ushr 8)
-                    setVectorByte(rd, element + 1, b)
+                    if (element != 15) setVectorByte(rd, element + 1, b)
                 }
-                rs >= 16 -> executeVector(instruction, rs and 15, rt, rd, shamt)
-                else -> unsupported(instruction)
+                6 -> { // CTC2: write VCO, VCC, or VCE
+                    when (rd) {
+                        0 -> vco = b and 0xFFFF
+                        1 -> vcc = b and 0xFFFF
+                        2 -> vce = b and 0xFF
+                        else -> unsupported(instruction)
+                    }
+                }
+                else -> if (rs >= 16) executeVector(instruction, rs and 15, rt, rd, shamt)
+                    else unsupported(instruction)
             }
             50 -> when (rd) {
                 0 -> { // LBV: load one byte into a vector register
