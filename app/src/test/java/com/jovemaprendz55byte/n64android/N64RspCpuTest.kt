@@ -180,9 +180,9 @@ class N64RspCpuTest {
             (18 shl 26) or (16 shl 21) or (vt shl 16) or
                 (vs shl 11) or (vd shl 6) or funct
         bus.writeWord(N64SpMemory.IMEM_BASE, v(2, 1, 3, 0x07)) // VMUDH
-        bus.writeWord(N64SpMemory.IMEM_BASE + 4, (18 shl 26) or (16 shl 21) or (10 shl 21) or (6 shl 6) or 0x1D) // VSAR high
-        bus.writeWord(N64SpMemory.IMEM_BASE + 8, (18 shl 26) or (16 shl 21) or (9 shl 21) or (7 shl 6) or 0x1D) // VSAR middle
-        bus.writeWord(N64SpMemory.IMEM_BASE + 12, (18 shl 26) or (16 shl 21) or (8 shl 21) or (8 shl 6) or 0x1D) // VSAR low
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, (18 shl 26) or ((16 or 8) shl 21) or (6 shl 6) or 0x1D) // VSAR high
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, (18 shl 26) or ((16 or 9) shl 21) or (7 shl 6) or 0x1D) // VSAR middle
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, (18 shl 26) or ((16 or 10) shl 21) or (8 shl 6) or 0x1D) // VSAR low
 
         val rsp = N64RspCpu(bus)
         rsp.setVectorLane(1, 0, 0x4000)
