@@ -139,8 +139,21 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                 43 -> writeRegister(rd, if (a.toUInt() < b.toUInt()) 1 else 0) // SLTU
                 else -> unsupported(instruction)
             }
-            18 -> if (rs >= 16) executeVector(instruction, rs and 15, rt, rd, shamt)
-                else unsupported(instruction)
+            18 -> when {
+                rs == 0 -> { // MFC2: move a selected vector halfword to a GPR
+                    val element = (instruction ushr 7) and 15
+                    val value = (getVectorByte(rd, element) shl 8) or
+                        getVectorByte(rd, element + 1)
+                    writeRegister(rt, value.toShort().toInt())
+                }
+                rs == 4 -> { // MTC2: move the low halfword of a GPR into vector bytes
+                    val element = (instruction ushr 7) and 15
+                    setVectorByte(rd, element, b ushr 8)
+                    setVectorByte(rd, element + 1, b)
+                }
+                rs >= 16 -> executeVector(instruction, rs and 15, rt, rd, shamt)
+                else -> unsupported(instruction)
+            }
             50 -> when (rd) {
                 0 -> { // LBV: load one byte into a vector register
                     val element = (instruction ushr 7) and 15
