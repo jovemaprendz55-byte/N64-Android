@@ -56,6 +56,30 @@ class R4300CpuTest {
         assertEquals(0x100L, cpu.register(3))
     }
 
+    @Test fun cpuCanStartSpDmaAndReadTransferredData() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x0404), // r1 = SP register base
+            iType(0x09, 0, 2, 0x100),  // r2 = RDRAM source address
+            iType(0x2B, 1, 0, 0),      // SP_MEM_ADDR = 0 (DMEM)
+            iType(0x2B, 1, 2, 4),      // SP_DRAM_ADDR = 0x100
+            iType(0x09, 0, 2, 7),      // DMA length 8 bytes (encoded length 7)
+            iType(0x2B, 1, 2, 8),      // start RDRAM-to-SP DMA
+            iType(0x0F, 0, 3, 0x0400), // r3 = SP DMEM base
+            iType(0x23, 3, 4, 0),       // read first transferred word
+            iType(0x23, 3, 5, 4)        // read second transferred word
+        ))
+        cpu.loadBytes(0x100, byteArrayOf(
+            0x12, 0x34, 0x56, 0x78, 0x21, 0x43, 0x65, 0x7F
+        ))
+
+        repeat(9) { cpu.step() }
+
+        assertEquals(0x12345678L, cpu.register(4))
+        assertEquals(0x2143657FL, cpu.register(5))
+        assertEquals(0L, cpu.readWord(N64MemoryBus.SP_DMA_BUSY).toLong())
+    }
+
     @Test fun executesImmediateArithmeticAndKeepsZeroRegisterConstant() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(iType(0x09, 0, 1, 10), iType(0x0D, 1, 2, 0x20), iType(0x09, 0, 0, 99)))
