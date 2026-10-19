@@ -24,6 +24,21 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
         pendingTarget = null
     }
 
+    /**
+     * Runs until the SP HALT flag is set again or the instruction budget is exhausted.
+     * Returns the number of instructions executed. SP status command bit 0 must clear
+     * HALT before this method starts executing.
+     */
+    fun run(maxInstructions: Int): Int {
+        require(maxInstructions > 0) { "Instruction budget must be positive" }
+        var executed = 0
+        while (executed < maxInstructions && !bus.isSpHalted()) {
+            step()
+            executed++
+        }
+        return executed
+    }
+
     /** Fetches and executes one instruction, then advances through delay-slot semantics. */
     fun step() {
         require(pc in 0 until N64SpMemory.MEMORY_SIZE && pc % 4 == 0) {
@@ -59,6 +74,7 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                 6 -> writeRegister(rd, b ushr (a and 31)) // SRLV
                 7 -> writeRegister(rd, b shr (a and 31)) // SRAV
                 8 -> pendingTarget = a // JR
+                13 -> bus.markSpBroke() // BREAK
                 33 -> writeRegister(rd, a + b) // ADDU
                 35 -> writeRegister(rd, a - b) // SUBU
                 36 -> writeRegister(rd, a and b) // AND

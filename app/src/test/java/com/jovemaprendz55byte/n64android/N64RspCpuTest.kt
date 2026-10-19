@@ -78,4 +78,36 @@ class N64RspCpuTest {
         val rsp = N64RspCpu(bus)
         org.junit.Assert.assertThrows(IllegalArgumentException::class.java) { rsp.step() }
     }
+    @Test fun runHonorsSpHaltAndBreakStatus() {
+        val bus = N64MemoryBus()
+        bus.writeWord(N64SpMemory.IMEM_BASE, i(9, 0, 1, 42)) // ADDIU r1,r0,42
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, 13) // BREAK
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, i(9, 0, 2, 99)) // Must not run
+
+        val rsp = N64RspCpu(bus)
+        assertEquals(0, rsp.run(10)) // SP starts halted
+        assertEquals(1, bus.readWord(N64MemoryBus.SP_STATUS) and 1)
+
+        bus.writeWord(N64MemoryBus.SP_STATUS, 1) // Clear HALT
+        assertEquals(2, rsp.run(10))
+        assertEquals(42, rsp.register(1))
+        assertEquals(0, rsp.register(2))
+        assertEquals(3, bus.readWord(N64MemoryBus.SP_STATUS) and 3) // HALT | BROKE
+        assertEquals(0, rsp.run(10)) // Remains halted after BREAK
+    }
+
+    @Test fun runStopsAtInstructionBudgetWithoutSettingBroke() {
+        val bus = N64MemoryBus()
+        bus.writeWord(N64SpMemory.IMEM_BASE, i(9, 0, 1, 1))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, i(9, 1, 1, 1))
+        val rsp = N64RspCpu(bus)
+        bus.writeWord(N64MemoryBus.SP_STATUS, 1)
+
+        assertEquals(1, rsp.run(1))
+        assertEquals(1, rsp.register(1))
+        assertEquals(0, bus.readWord(N64MemoryBus.SP_STATUS) and 3)
+        assertEquals(1, rsp.run(1))
+        assertEquals(2, rsp.register(1))
+    }
+
 }

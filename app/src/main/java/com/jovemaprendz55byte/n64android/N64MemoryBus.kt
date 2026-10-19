@@ -178,6 +178,13 @@ internal class N64MemoryBus(
         }
     }
 
+    internal fun isSpHalted(): Boolean = spStatus and SP_STATUS_HALT != 0
+
+    /** Marks the RSP's BREAK condition and halts execution. */
+    internal fun markSpBroke() {
+        spStatus = spStatus or SP_STATUS_BROKE or SP_STATUS_HALT
+    }
+
     private fun applySpStatusCommand(value: Int) {
         if (value and (1 shl 0) != 0) spStatus = spStatus and SP_STATUS_HALT.inv()
         if (value and (1 shl 1) != 0) spStatus = spStatus or SP_STATUS_HALT
