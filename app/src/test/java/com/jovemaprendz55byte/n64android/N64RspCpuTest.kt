@@ -853,8 +853,8 @@ class N64RspCpuTest {
         bus.writeWord(N64SpMemory.IMEM_BASE + 12, i(46, 1, 2, 6)) // SWR r2, 6(r1)
         val rsp = N64RspCpu(bus)
         repeat(4) { rsp.step() }
-        assertEquals(0x00AABBCC, bus.readWord(N64SpMemory.DMEM_BASE))
-        assertEquals(0xBBCCDD00.toInt(), bus.readWord(N64SpMemory.DMEM_BASE + 4))
+        assertEquals(0xAABB0000.toInt(), bus.readWord(N64SpMemory.DMEM_BASE))
+        assertEquals(0x0000CCDD, bus.readWord(N64SpMemory.DMEM_BASE + 4))
     }
 
 
@@ -903,7 +903,7 @@ class N64RspCpuTest {
                 val rsp = N64RspCpu(bus)
                 repeat(3) { rsp.step() }
                 val expectedBytes = byteArrayOf(0x11, 0x22, 0x33, 0x44)
-                for (index in offset..3) expectedBytes[index] = (value ushr (24 - (index - offset) * 8)).toByte()
+                for (index in 0..offset) expectedBytes[index] = (value ushr (24 - index * 8)).toByte()
                 val actual = bus.readWord(N64SpMemory.DMEM_BASE)
                 val expected = ((expectedBytes[0].toInt() and 0xFF) shl 24) or
                     ((expectedBytes[1].toInt() and 0xFF) shl 16) or
@@ -920,7 +920,7 @@ class N64RspCpuTest {
                 val rsp = N64RspCpu(bus)
                 repeat(3) { rsp.step() }
                 val expectedBytes = byteArrayOf(0x11, 0x22, 0x33, 0x44)
-                for (index in 0..offset) expectedBytes[index] = (value ushr ((offset - index) * 8)).toByte()
+                for (index in offset..3) expectedBytes[index] = (value ushr ((3 - index) * 8)).toByte()
                 val actual = bus.readWord(N64SpMemory.DMEM_BASE)
                 val expected = ((expectedBytes[0].toInt() and 0xFF) shl 24) or
                     ((expectedBytes[1].toInt() and 0xFF) shl 16) or
