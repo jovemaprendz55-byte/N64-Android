@@ -662,6 +662,21 @@ class R4300CpuTest {
         assertEquals(2147483647L, cpu.register(5))
     }
 
+    @Test fun daddiuWrapsAcrossSigned64BitBoundaries() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0xFFFF), // LUI sign-extends to -65536
+            iType(0x0D, 1, 1, 0xFFFF), // r1 = -1
+            rType(0, 1, 2, 1, 0x3A),   // DSRL r2, r1, 1 => Long.MAX_VALUE
+            iType(0x19, 2, 3, 1),      // DADDIU wraps Long.MAX_VALUE + 1
+            iType(0x19, 3, 4, -1)      // DADDIU wraps Long.MIN_VALUE - 1
+        ))
+        repeat(5) { cpu.step() }
+        assertEquals(Long.MAX_VALUE, cpu.register(2))
+        assertEquals(Long.MIN_VALUE, cpu.register(3))
+        assertEquals(Long.MAX_VALUE, cpu.register(4))
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
