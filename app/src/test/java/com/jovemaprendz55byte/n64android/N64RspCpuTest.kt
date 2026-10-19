@@ -63,8 +63,10 @@ class N64RspCpuTest {
 
         rsp.step()
 
-        val expected = shortArrayOf(Short.MAX_VALUE, -Short.MAX_VALUE, 0, Short.MIN_VALUE,
-            123, -123, 0, 0)
+        val expected = shortArrayOf(
+            Short.MAX_VALUE, (-Short.MAX_VALUE).toShort(), 0, Short.MIN_VALUE,
+            123.toShort(), (-123).toShort(), 0, 0
+        )
         for (lane in 0..7) {
             assertEquals("VABS lane $lane", expected[lane], rsp.vectorLane(3, lane))
         }
