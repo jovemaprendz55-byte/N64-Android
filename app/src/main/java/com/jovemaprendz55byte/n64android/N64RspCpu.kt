@@ -329,20 +329,32 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
             }
             40 -> bus.writeByte(dmemAddress(a + immediate), b.toByte()) // SB
             41 -> bus.writeHalf(dmemAddress(a + immediate), b.toShort()) // SH
-            42 -> { // SWL: store the register's left bytes through the addressed byte
+            42 -> { // SWL: store the most-significant bytes (big-endian)
                 val address = a + immediate
                 val aligned = dmemAddress(address and -4)
-                for (index in 0..(address and 3)) {
-                    bus.writeByte(aligned + index.toLong(), (b ushr (24 - index * 8)).toByte())
+                val offset = address and 3
+                val preserveMask = when (offset) {
+                    0 -> 0
+                    1 -> 0xFF00_0000.toInt()
+                    2 -> 0xFFFF_0000.toInt()
+                    else -> 0xFFFF_FF00.toInt()
                 }
+                val merged = (bus.readWord(aligned) and preserveMask) or (b ushr (offset * 8))
+                bus.writeWord(aligned, merged)
             }
             43 -> bus.writeWord(dmemAddress(a + immediate), b) // SW
-            46 -> { // SWR: store the register's right bytes from the addressed byte
+            46 -> { // SWR: store the least-significant bytes (big-endian)
                 val address = a + immediate
                 val aligned = dmemAddress(address and -4)
-                for (index in (address and 3)..3) {
-                    bus.writeByte(aligned + index.toLong(), (b ushr ((3 - index) * 8)).toByte())
+                val offset = address and 3
+                val preserveMask = when (offset) {
+                    0 -> 0x00FF_FFFF
+                    1 -> 0x0000_FFFF
+                    2 -> 0x0000_00FF
+                    else -> 0
                 }
+                val merged = (bus.readWord(aligned) and preserveMask) or (b shl ((3 - offset) * 8))
+                bus.writeWord(aligned, merged)
             }
             else -> unsupported(instruction)
         }
