@@ -148,6 +148,14 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                     val value = bus.readByte(dmemAddress(a + offset)).toInt() and 0xFF
                     setVectorByte(rt, element, value)
                 }
+                1 -> { // LSV: load two consecutive bytes; offset is scaled by two
+                    val element = (instruction ushr 7) and 15
+                    val offset = signExtend7(instruction and 0x7F) * 2
+                    repeat(2) { index ->
+                        val value = bus.readByte(dmemAddress(a + offset + index)).toInt() and 0xFF
+                        setVectorByte(rt, element + index, value)
+                    }
+                }
                 else -> unsupported(instruction)
             }
             58 -> when (rd) {
@@ -155,6 +163,16 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                     val element = (instruction ushr 7) and 15
                     val offset = signExtend7(instruction and 0x7F)
                     bus.writeByte(dmemAddress(a + offset), getVectorByte(rt, element).toByte())
+                }
+                1 -> { // SSV: store two consecutive bytes; offset is scaled by two
+                    val element = (instruction ushr 7) and 15
+                    val offset = signExtend7(instruction and 0x7F) * 2
+                    repeat(2) { index ->
+                        bus.writeByte(
+                            dmemAddress(a + offset + index),
+                            getVectorByte(rt, element + index).toByte()
+                        )
+                    }
                 }
                 else -> unsupported(instruction)
             }
