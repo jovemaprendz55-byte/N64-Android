@@ -529,6 +529,48 @@ class R4300CpuTest {
         return value
     }
 
+
+    @Test fun resetClearsCpuStatePreservesRamAndSetsEntryPoint() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x19, 0, 1, 12),
+            rType(1, 0, 0, 0, 0x11), // MTHI r1
+            rType(1, 0, 0, 0, 0x13)  // MTLO r1
+        ))
+        cpu.loadBytes(0x100, words(iType(0x19, 0, 2, 7)))
+        repeat(3) { cpu.step() }
+        assertEquals(12L, cpu.register(1))
+        assertEquals(12L, cpu.hi)
+        assertEquals(12L, cpu.lo)
+
+        cpu.reset(0x100L)
+        assertEquals(0x100L, cpu.pc)
+        assertEquals(0L, cpu.register(1))
+        assertEquals(0L, cpu.register(2))
+        assertEquals(0L, cpu.hi)
+        assertEquals(0L, cpu.lo)
+
+        cpu.step()
+        assertEquals(7L, cpu.register(2))
+        assertEquals(0x104L, cpu.pc)
+    }
+
+    @Test fun resetRejectsUnalignedOrOutOfRangeEntryPoints() {
+        val cpu = R4300Cpu(memorySize = 0x200)
+        try {
+            cpu.reset(2L)
+            throw AssertionError("Expected unaligned entry point to be rejected")
+        } catch (_: IllegalArgumentException) {
+            // Expected.
+        }
+        try {
+            cpu.reset(0x200L)
+            throw AssertionError("Expected out-of-range entry point to be rejected")
+        } catch (_: IllegalArgumentException) {
+            // Expected.
+        }
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 

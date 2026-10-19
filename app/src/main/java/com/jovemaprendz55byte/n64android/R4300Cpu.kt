@@ -92,6 +92,22 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
         }
     }
 
+    /**
+     * Resets CPU execution state while preserving RAM contents.
+     * The entry point must be an aligned address inside configured RAM.
+     */
+    fun reset(entryPoint: Long = 0L) {
+        require(entryPoint >= 0L && entryPoint % 4L == 0L &&
+            entryPoint <= memory.size.toLong() - 4L) {
+            "Entry point must be aligned and inside configured RAM"
+        }
+        gpr.fill(0L)
+        hi = 0L
+        lo = 0L
+        pc = entryPoint
+        pendingBranchTarget = null
+    }
+
     /** Executes one instruction; branches take effect after their delay slot. */
     fun step() {
         val instructionAddress = pc
