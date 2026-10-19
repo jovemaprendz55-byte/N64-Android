@@ -150,7 +150,7 @@ class R4300CpuTest {
             iType(0x09, 0, 3, 7)       // branch target
         ))
 
-        repeat(3) { cpu.step() }
+        repeat(4) { cpu.step() }
 
         assertEquals(99L, cpu.register(2))
         assertEquals(7L, cpu.register(3))
