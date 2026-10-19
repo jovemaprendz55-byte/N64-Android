@@ -664,6 +664,44 @@ class N64RspCpuTest {
         }
     }
 
+
+    @Test fun supportsQuadwordLoadAndStoreAcrossVectorElementWrap() {
+        val bus = N64MemoryBus()
+        fun vectorMemory(op: Int, base: Int, vt: Int, subop: Int, element: Int, offset: Int) =
+            (op shl 26) or (base shl 21) or (vt shl 16) or
+                (subop shl 11) or (element shl 7) or (offset and 0x7F)
+
+        // Give each vector byte a distinct value so SQV's element wrap is visible.
+        val rsp = N64RspCpu(bus)
+        for (lane in 0..7) {
+            rsp.setVectorLane(2, lane, (((0x10 + lane) shl 8) or (0x80 + lane)).toShort())
+        }
+        bus.writeByte(N64SpMemory.DMEM_BASE + 0x6C, 0xA1.toByte())
+        bus.writeByte(N64SpMemory.DMEM_BASE + 0x6D, 0xB2.toByte())
+        bus.writeByte(N64SpMemory.DMEM_BASE + 0x6E, 0xC3.toByte())
+        bus.writeByte(N64SpMemory.DMEM_BASE + 0x6F, 0xD4.toByte())
+        bus.writeWord(N64SpMemory.IMEM_BASE, i(9, 0, 1, 0x6C))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, vectorMemory(50, 1, 2, 4, 4, 0)) // LQV v2[e4],0(r1)
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, i(9, 0, 1, 0x68))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, vectorMemory(58, 1, 2, 4, 12, 0)) // SQV v2[e12],0(r1)
+
+        repeat(4) { rsp.step() }
+
+        // LQV stops at the aligned boundary and updates only bytes e4..e7.
+        assertEquals(0xA1B2, rsp.vectorLane(2, 2).toInt() and 0xFFFF)
+        assertEquals(0xC3D4, rsp.vectorLane(2, 3).toInt() and 0xFFFF)
+        assertEquals(0x1404, rsp.vectorLane(2, 4).toInt() and 0xFFFF)
+
+        // SQV writes bytes e12..e15, then wraps the vector element to e0..e3.
+        val expectedBytes = intArrayOf(0x14, 0x84, 0x15, 0x85, 0x16, 0x86, 0x17, 0x87)
+        for (index in expectedBytes.indices) {
+            assertEquals(
+                expectedBytes[index],
+                bus.readByte(N64SpMemory.DMEM_BASE + 0x68 + index).toInt() and 0xFF
+            )
+        }
+    }
+
     @Test fun dmemEffectiveAddressesWrapAtFourKilobytes() {
         val bus = N64MemoryBus()
         bus.writeWord(N64SpMemory.IMEM_BASE, i(9, 0, 1, 0x0FFF)) // r1 = 4095
