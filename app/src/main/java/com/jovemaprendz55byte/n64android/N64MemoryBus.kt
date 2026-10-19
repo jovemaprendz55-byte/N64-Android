@@ -201,7 +201,8 @@ internal class N64MemoryBus(
                     } else {
                         writeByte(dramAddress, spMemory.readByte(spAddress))
                     }
-                    spMemAddress = (spMemAddress + 1) and 0x1FFF
+                    // Wrap the 12-bit offset within the selected DMEM/IMEM bank.
+                    spMemAddress = (spMemAddress and 0x1000) or ((spMemAddress + 1) and 0x0FFF)
                     spDramAddress = (spDramAddress + 1) and 0x00FF_FFFF
                 }
                 spDramAddress = (spDramAddress + skip) and 0x00FF_FFFF
