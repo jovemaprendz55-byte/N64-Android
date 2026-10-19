@@ -6,8 +6,8 @@ import java.math.BigInteger
  * Small, testable MIPS III/R4300 interpreter foundation.
  *
  * This remains a partial CPU core: exceptions, TLB, CP0/FPU, caches, and N64
- * peripherals are not implemented. Memory is a simple big-endian byte array,
- * not the Nintendo 64 memory map.
+ * peripherals are not implemented. Implemented RDRAM and SP DMEM/IMEM accesses
+ * are routed through the physical memory bus.
  */
 class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
     private val rdramSize = memorySize.also { size ->
@@ -306,7 +306,7 @@ class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
     }
 
 
-    /** Fetches from physical RAM or a KSEG0/KSEG1 direct-mapped virtual address. */
+    /** Fetches through the physical bus after direct-mapped KSEG0/KSEG1 translation. */
     private fun fetchInstruction(address: Long): Int {
         require(address % 4L == 0L) {
             "Instruction fetch must be 4-byte aligned"
@@ -315,13 +315,11 @@ class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
     }
 
     /**
-     * Resolves an address into this interpreter's flat RAM.
+     * Resolves an address into a physical region supported by the bus.
      *
      * Low physical addresses remain available for tests. KSEG0/KSEG1 virtual
      * addresses are translated to physical addresses; TLB-mapped segments and
-     * addresses outside configured RAM are rejected. The physical region map
-     * prevents device/cart addresses from being mistaken for flat RDRAM, but
-     * device access itself is not implemented. RDRAM mirrors are not modeled.
+     * unsupported device/cart regions are rejected. RDRAM mirrors are not modeled.
      */
     private fun resolveRamAddress(address: Long): Int {
         val physicalAddress = N64Addressing.translateDirectMappedAddress(address)
@@ -330,7 +328,8 @@ class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
                 "Address requires TLB translation or is outside the simplified RAM address range"
             )
         val region = N64MemoryMap.regionOf(physicalAddress)
-        require(region == N64MemoryMap.Region.RDRAM) {
+        require(region == N64MemoryMap.Region.RDRAM ||
+            region == N64MemoryMap.Region.SP_DMEM || region == N64MemoryMap.Region.SP_IMEM) {
             if (region == null) {
                 "Physical address 0x${physicalAddress.toString(16)} is outside a mapped N64 region"
             } else {
@@ -338,7 +337,7 @@ class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
             }
         }
         require(physicalAddress <= Int.MAX_VALUE.toLong()) {
-            "Physical address cannot be represented by this simplified RAM"
+            "Physical address cannot be represented by this interpreter"
         }
         return physicalAddress.toInt()
     }

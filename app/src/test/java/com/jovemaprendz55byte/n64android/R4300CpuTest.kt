@@ -20,6 +20,28 @@ class R4300CpuTest {
         cpu.writeWord(0xFC, 0x12345678)
         assertEquals(0x12345678, cpu.readWord(0xFC))
     }
+    @Test fun cpuLoadsAndStoresRouteToSeparateSpDmemAndImemRegions() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x0400), // r1 = SP DMEM base
+            iType(0x0F, 0, 2, 0xAABB), // r2 = 0xAABB0000
+            iType(0x0D, 2, 2, 0xCCDD), // r2 = 0xAABBCCDD
+            iType(0x2B, 1, 2, 0),      // SW to DMEM
+            iType(0x23, 1, 3, 0),      // LW from DMEM
+            iType(0x09, 1, 1, 0x1000), // r1 = SP IMEM base
+            iType(0x2B, 1, 2, 0),      // SW to IMEM
+            iType(0x23, 1, 4, 0)       // LW from IMEM
+        ))
+
+        repeat(8) { cpu.step() }
+
+        assertEquals(0xAABBCCDD.toInt(), cpu.readWord(0x04000000))
+        assertEquals(0xAABBCCDD.toInt(), cpu.readWord(0x04001000))
+        assertEquals(0xAABBCCDD.toInt(), cpu.readWord(0))
+        assertEquals(0xAABBCCDD.toInt(), cpu.register(3).toInt())
+        assertEquals(0xAABBCCDD.toInt(), cpu.register(4).toInt())
+    }
+
     @Test fun executesImmediateArithmeticAndKeepsZeroRegisterConstant() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(iType(0x09, 0, 1, 10), iType(0x0D, 1, 2, 0x20), iType(0x09, 0, 0, 99)))
