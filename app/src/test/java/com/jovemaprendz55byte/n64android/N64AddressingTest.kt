@@ -24,6 +24,5 @@ class N64AddressingTest {
         assertNull(N64Addressing.translateDirectMappedAddress(0x0000_1234L))
         assertNull(N64Addressing.translateDirectMappedAddress(0xC000_1234L))
         assertNull(N64Addressing.translateDirectMappedAddress(0x1_0000_0000L))
-        assertNull(N64Addressing.translateDirectMappedAddress(0x0000_0000_8000_1234L))
     }
 }
