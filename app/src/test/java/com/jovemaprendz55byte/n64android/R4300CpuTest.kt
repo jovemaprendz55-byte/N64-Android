@@ -141,6 +141,35 @@ class R4300CpuTest {
         assertEquals(-1L, cpu.register(6))
     }
 
+    @Test fun signedDoublewordMultiplySplitsProductAcrossHiLo() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x19, 0, 1, -7),
+            iType(0x19, 0, 2, 3),
+            rType(1, 2, 0, 0, 0x1C), // DMULT: -7 * 3 = -21
+            rType(0, 0, 3, 0, 0x12), // MFLO
+            rType(0, 0, 4, 0, 0x10)  // MFHI
+        ))
+        repeat(5) { cpu.step() }
+        assertEquals(-21L, cpu.register(3))
+        assertEquals(-1L, cpu.register(4))
+    }
+
+    @Test fun unsignedDoublewordMultiplyUsesUnsignedOperands() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0xFFFF),
+            iType(0x0D, 1, 1, 0xFFFF), // r1 = 0xFFFFFFFFFFFFFFFF
+            iType(0x09, 0, 2, 2),
+            rType(1, 2, 0, 0, 0x1D), // DMULTU: (2^64 - 1) * 2
+            rType(0, 0, 3, 0, 0x12), // MFLO = ...FFFE
+            rType(0, 0, 4, 0, 0x10)  // MFHI = 1
+        ))
+        repeat(6) { cpu.step() }
+        assertEquals(-2L, cpu.register(3))
+        assertEquals(1L, cpu.register(4))
+    }
+
     @Test fun unsignedDivideUsesUnsigned32BitOperands() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(

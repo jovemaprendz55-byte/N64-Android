@@ -1,5 +1,7 @@
 package com.jovemaprendz55byte.n64android
 
+import java.math.BigInteger
+
 /**
  * Small, testable MIPS III/R4300 interpreter foundation.
  *
@@ -161,6 +163,16 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
                         }
                     }
                 } // DIV; division by zero leaves HI/LO unchanged in this simplified core
+                0x1C -> {
+                    val product = BigInteger.valueOf(a).multiply(BigInteger.valueOf(b))
+                    lo = product.and(unsignedWordMask).toLong()
+                    hi = product.shiftRight(64).toLong()
+                } // DMULT: signed 64-bit product split across HI/LO
+                0x1D -> {
+                    val product = unsignedLongToBigInteger(a).multiply(unsignedLongToBigInteger(b))
+                    lo = product.and(unsignedWordMask).toLong()
+                    hi = product.shiftRight(64).toLong()
+                } // DMULTU: unsigned 64-bit product split across HI/LO
                 0x1B -> {
                     val dividend = a.toInt()
                     val divisor = b.toInt()
@@ -296,6 +308,12 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
         val shift = (3 - offset) * 8
         writeWord(aligned, (readWord(aligned) and preservedMask) or (value shl shift))
     }
+
+    private val unsignedWordMask: BigInteger = BigInteger.ONE.shiftLeft(64).subtract(BigInteger.ONE)
+
+    private fun unsignedLongToBigInteger(value: Long): BigInteger =
+        if (value >= 0L) BigInteger.valueOf(value)
+        else BigInteger.valueOf(value and Long.MAX_VALUE).setBit(63)
 
     private fun writeRegister(index: Int, value: Long) {
         if (index != 0) gpr[index] = value
