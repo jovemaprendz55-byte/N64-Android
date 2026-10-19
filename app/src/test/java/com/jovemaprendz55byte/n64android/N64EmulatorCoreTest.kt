@@ -40,6 +40,16 @@ class N64EmulatorCoreTest {
         }
     }
 
+    @Test fun syntheticCpuSelfTestExecutesInstructionAndChecksRegisterResult() {
+        val result = N64CpuSelfTest.run()
+
+        assertEquals(true, result.success)
+        assertEquals(1, result.instructionsExecuted)
+        assertEquals(42L, result.expectedRegisterValue)
+        assertEquals(42L, result.actualRegisterValue)
+        assertEquals(4L, result.programCounter)
+    }
+
     private fun syntheticRomWithInstructions(vararg instructions: Int): ByteArray {
         val rom = ByteArray(0x1000)
         rom[0] = 0x80.toByte()

@@ -44,6 +44,10 @@ class MainActivity : Activity() {
             text = "Selecionar e preparar ROM"
             setOnClickListener { openRomPicker() }
         }, matchWrap())
+        root.addView(Button(this).apply {
+            text = "Executar autoteste da CPU"
+            setOnClickListener { runCpuSelfTest() }
+        }, matchWrap())
         status = TextView(this).apply {
             text = "Escolha uma ROM N64 válida (.z64, .v64 ou .n64)."
             textSize = 16f
@@ -57,12 +61,28 @@ class MainActivity : Activity() {
         }
         root.addView(romDetails, matchWrap())
         root.addView(TextView(this).apply {
-            text = "A ROM será validada e convertida para big-endian na memória. A execução dos jogos ainda não está implementada."
+            text = "O autoteste executa uma instrução sintética na CPU; ele não inicia a ROM nem comprova compatibilidade com jogos. O boot real, gráficos e áudio ainda não estão implementados."
             textSize = 13f
             setTextColor(Color.rgb(180, 185, 198))
             setPadding(0, dp(32), 0, 0)
         }, matchWrap())
         setContentView(root)
+    }
+
+    private fun runCpuSelfTest() {
+        val result = N64CpuSelfTest.run()
+        status.text = if (result.success) {
+            "Autoteste da CPU aprovado."
+        } else {
+            "Autoteste da CPU falhou."
+        }
+        romDetails.text = buildString {
+            append("Tipo: programa sintético (não é uma ROM de jogo)\n")
+            append("Instruções executadas: ").append(result.instructionsExecuted).append('\n')
+            append("Registrador r1 esperado: ").append(result.expectedRegisterValue).append('\n')
+            append("Registrador r1 obtido: ").append(result.actualRegisterValue).append('\n')
+            append("Contador de programa: 0x").append(result.programCounter.toString(16).uppercase(java.util.Locale.ROOT))
+        }
     }
 
     private fun openRomPicker() {
