@@ -45,7 +45,7 @@ class N64RspCpuTest {
         }
     }
 
-    @Test fun vectorAbsoluteSaturatesMinimumSignedValue() {
+    @Test fun vectorAbsoluteWrapsMinimumSignedValue() {
         val bus = N64MemoryBus()
         fun v(vt: Int, vs: Int, vd: Int, funct: Int) =
             (18 shl 26) or (16 shl 21) or (vt shl 16) or
@@ -64,7 +64,7 @@ class N64RspCpuTest {
         rsp.step()
 
         val expected = shortArrayOf(
-            Short.MAX_VALUE, (-Short.MAX_VALUE).toShort(), 0, Short.MIN_VALUE,
+            Short.MIN_VALUE, (-Short.MAX_VALUE).toShort(), 0, Short.MIN_VALUE,
             123.toShort(), (-123).toShort(), 0, 0
         )
         for (lane in 0..7) {
