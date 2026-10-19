@@ -387,52 +387,51 @@ class R4300CpuTest {
         assertEquals(42L, cpu.register(4))
     }
 
-    @Test fun doublewordUnalignedLoadsAndStoresPreserveUntouchedBytes() {
-        val memoryBytes = byteArrayOf(0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88.toByte())
+    @Test fun doublewordUnalignedLoadsMergeBigEndianBytesAtEveryOffset() {
+        val original = 0xAABBCCDDEEFF0011UL.toLong()
         for (offset in 0..7) {
-            val loadLeft = R4300Cpu()
-            loadLeft.loadBytes(0x100, memoryBytes)
-            loadLeft.writeLong(0x108, 0xAABBCCDDEEFF0011UL.toLong())
-            loadLeft.loadBytes(0, words(
+            val left = R4300Cpu()
+            left.loadBytes(0x100, byteArrayOf(0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88.toByte()))
+            left.writeLong(0x108, original)
+            left.loadBytes(0, words(
                 iType(0x09, 0, 1, 0x100),
-                iType(0x19, 0, 2, 0xAABB.toInt()),
-                iType(0x19, 0, 3, 0xCCDD.toInt()),
-                rType(2, 3, 2, 0, 0x25), // OR: r2 = 0xAABBCCDD
+                iType(0x37, 0, 2, 0x108),
                 iType(0x1A, 1, 2, offset)
             ))
-            repeat(5) { loadLeft.step() }
-            val expectedLeft = (loadLeft.readLong(0x100) shl (offset * 8)) or
-                (0xAABBCCDDEEFF0011UL.toLong() and
-                    (if (offset == 0) 0L else (-1L ushr (64 - offset * 8))))
-            assertEquals("LDL offset $offset", expectedLeft, loadLeft.register(2))
+            repeat(3) { left.step() }
+            val word = left.readLong(0x100)
+            val shift = offset * 8
+            val mask = if (shift == 0) 0L else (-1L ushr (64 - shift))
+            assertEquals("LDL offset $offset", (word shl shift) or (original and mask), left.register(2))
 
-            val loadRight = R4300Cpu()
-            loadRight.loadBytes(0x100, memoryBytes)
-            loadRight.writeLong(0x108, 0xAABBCCDDEEFF0011UL.toLong())
-            loadRight.loadBytes(0, words(
+            val right = R4300Cpu()
+            right.loadBytes(0x100, byteArrayOf(0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88.toByte()))
+            right.writeLong(0x108, original)
+            right.loadBytes(0, words(
                 iType(0x09, 0, 1, 0x100),
+                iType(0x37, 0, 2, 0x108),
                 iType(0x1B, 1, 2, offset)
             ))
-            loadRight.writeLong(0x80, 0xAABBCCDDEEFF0011UL.toLong())
-            loadRight.step(); loadRight.step()
-            val word = loadRight.readLong(0x100)
+            repeat(3) { right.step() }
             val preserved = if (offset == 7) 0L else (-1L shl ((offset + 1) * 8))
-            val expectedRight = (0xAABBCCDDEEFF0011UL.toLong() and preserved) or
-                (word ushr ((7 - offset) * 8))
-            assertEquals("LDR offset $offset", expectedRight, loadRight.register(2))
+            assertEquals("LDR offset $offset", (original and preserved) or
+                (right.readLong(0x100) ushr ((7 - offset) * 8)), right.register(2))
         }
     }
 
-    @Test fun doublewordUnalignedStoresMergeAtEveryOffset() {
+    @Test fun doublewordUnalignedStoresMergeBigEndianBytesAtEveryOffset() {
+        val original = 0xAABBCCDDEEFF0011UL.toLong()
+        val value = 0x1122334455667788L
         for (offset in 0..7) {
-            val original = 0xAABBCCDDEEFF0011UL.toLong()
-            val value = 0x1122334455667788L
             val left = R4300Cpu()
             left.writeLong(0x100, original)
             left.writeLong(0x108, value)
-            left.loadBytes(0, words(iType(0x09, 0, 1, 0x100), iType(0x2C, 1, 0, offset)))
-            left.writeLong(0x80, value)
-            left.step(); left.step()
+            left.loadBytes(0, words(
+                iType(0x09, 0, 1, 0x100),
+                iType(0x37, 0, 2, 0x108),
+                iType(0x2C, 1, 2, offset)
+            ))
+            repeat(3) { left.step() }
             val shift = offset * 8
             val mask = if (shift == 0) 0L else (-1L shl (64 - shift))
             assertEquals("SDL offset $offset", (original and mask) or (value ushr shift), left.readLong(0x100))
@@ -440,9 +439,12 @@ class R4300CpuTest {
             val right = R4300Cpu()
             right.writeLong(0x100, original)
             right.writeLong(0x108, value)
-            right.loadBytes(0, words(iType(0x09, 0, 1, 0x100), iType(0x2D, 1, 0, offset)))
-            right.writeLong(0x80, value)
-            right.step(); right.step()
+            right.loadBytes(0, words(
+                iType(0x09, 0, 1, 0x100),
+                iType(0x37, 0, 2, 0x108),
+                iType(0x2D, 1, 2, offset)
+            ))
+            repeat(3) { right.step() }
             val rightMask = if (offset == 7) 0L else (1L shl ((7 - offset) * 8)) - 1L
             assertEquals("SDR offset $offset", (original and rightMask) or (value shl ((7 - offset) * 8)), right.readLong(0x100))
         }
