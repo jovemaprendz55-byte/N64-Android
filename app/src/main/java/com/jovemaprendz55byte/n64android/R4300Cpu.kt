@@ -289,6 +289,8 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
             0x29 -> writeHalf(effectiveAddress(a, signedImmediate), b.toShort()) // SH
             0x2B -> writeWord(effectiveAddress(a, signedImmediate), b.toInt()) // SW
             0x2E -> storeWordRight(effectiveAddress(a, signedImmediate), b.toInt()) // SWR
+            0x2F -> Unit // CACHE: ignored because this interpreter has no modeled caches
+            0x33 -> Unit // PREF: prefetch hint has no effect in this interpreter
             0x37 -> writeRegister(rt, readLong(effectiveAddress(a, signedImmediate))) // LD
             0x3F -> writeLong(effectiveAddress(a, signedImmediate), b) // SD
             0x02 -> pendingBranchTarget =

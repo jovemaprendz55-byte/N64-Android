@@ -1115,6 +1115,20 @@ class R4300CpuTest {
         assertEquals(Long.MAX_VALUE, cpu.register(4))
     }
 
+    @Test fun cacheAndPrefetchHintsDoNotInterruptInterpretation() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 0x100), // base address
+            iType(0x2F, 1, 0, 0),     // CACHE hint
+            iType(0x33, 1, 0, 0),     // PREF hint
+            iType(0x09, 0, 2, 42)     // normal instruction after hints
+        ))
+        repeat(4) { cpu.step() }
+        assertEquals(0x100L, cpu.register(1))
+        assertEquals(42L, cpu.register(2))
+        assertEquals(16L, cpu.pc)
+    }
+
     @Test fun lwuZeroExtendsWordWhileLwSignExtendsIt() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
