@@ -254,7 +254,7 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                 4 -> { // SQV: store through the next 16-byte DMEM boundary
                     val element = (instruction ushr 7) and 15
                     val address = a + signExtend7(instruction and 0x7F) * 16
-                    val count = 16 - (address and 15)
+                    val count = minOf(16 - element, 16 - (address and 15))
                     repeat(count) { index ->
                         bus.writeByte(
                             dmemAddress(address + index),
