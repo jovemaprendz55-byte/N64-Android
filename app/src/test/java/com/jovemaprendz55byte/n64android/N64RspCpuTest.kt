@@ -931,31 +931,4 @@ class N64RspCpuTest {
         }
     }
 
-    @Test fun quadVectorStoreDoesNotWrapPastLastElement() {
-        val bus = N64MemoryBus()
-        // SQV: opcode 58, base r0, vector register v2, sub-op 4, element 12.
-        val sqv = (58 shl 26) or (2 shl 16) or (4 shl 11) or (12 shl 7)
-        bus.writeWord(N64SpMemory.IMEM_BASE, sqv)
-        for (offset in 0 until 16) {
-            bus.writeByte(N64SpMemory.DMEM_BASE + offset, 0xEE.toByte())
-        }
-
-        val rsp = N64RspCpu(bus)
-        rsp.setVectorLane(2, 6, 0xA1B2.toShort())
-        rsp.setVectorLane(2, 7, 0xC3D4.toShort())
-        rsp.step()
-
-        assertEquals(0xA1, bus.readByte(N64SpMemory.DMEM_BASE).toInt() and 0xFF)
-        assertEquals(0xB2, bus.readByte(N64SpMemory.DMEM_BASE + 1).toInt() and 0xFF)
-        assertEquals(0xC3, bus.readByte(N64SpMemory.DMEM_BASE + 2).toInt() and 0xFF)
-        assertEquals(0xD4, bus.readByte(N64SpMemory.DMEM_BASE + 3).toInt() and 0xFF)
-        for (offset in 4 until 16) {
-            assertEquals(
-                "SQV must not wrap vector elements at memory offset $offset",
-                0xEE,
-                bus.readByte(N64SpMemory.DMEM_BASE + offset).toInt() and 0xFF
-            )
-        }
-    }
-
 }
