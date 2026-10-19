@@ -867,8 +867,7 @@ class R4300CpuTest {
     @Test fun ddivAndDdivuProduceExpected64BitQuotientsAndRemainders() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
-            iType(0x0F, 0, 1, 0xFFFF), // r1 = sign-extended 0xFFFF0000
-            iType(0x0D, 1, 1, 0xFFF9), // r1 = -7
+            iType(0x09, 0, 1, -7),     // r1 = -7
             iType(0x19, 0, 2, 3),      // r2 = 3
             rType(1, 2, 0, 0, 0x1E),   // DDIV: -7 / 3 => quotient -2, remainder -1
             rType(0, 0, 3, 0, 0x10),  // MFHI r3
@@ -878,7 +877,7 @@ class R4300CpuTest {
             rType(0, 0, 6, 0, 0x12)   // MFLO r6
         ))
 
-        repeat(9) { cpu.step() }
+        repeat(8) { cpu.step() }
 
         assertEquals(-1L, cpu.register(3))
         assertEquals(-2L, cpu.register(4))
