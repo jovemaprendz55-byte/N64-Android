@@ -127,7 +127,6 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
         val signedImmediate = immediate.toShort().toLong()
         val a = register(rs)
         val b = register(rt)
-        val address = effectiveAddress(a, signedImmediate)
 
         when (opcode) {
             0 -> when (funct) {
@@ -271,24 +270,24 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
             0x05 -> if (a != b) pendingBranchTarget = pc + (signedImmediate shl 2) // BNE
             0x18 -> writeRegister(rt, Math.addExact(a, signedImmediate)) // DADDI
             0x19 -> writeRegister(rt, a + signedImmediate) // DADDIU
-            0x1A -> writeRegister(rt, loadDoublewordLeft(address, b)) // LDL
-            0x1B -> writeRegister(rt, loadDoublewordRight(address, b)) // LDR
-            0x22 -> writeRegister(rt, loadWordLeft(address, b.toInt()).toLong()) // LWL
-            0x20 -> writeRegister(rt, readByte(address).toLong()) // LB
-            0x21 -> writeRegister(rt, readHalf(address).toLong()) // LH
-            0x23 -> writeRegister(rt, readWord(address).toLong()) // LW
-            0x26 -> writeRegister(rt, loadWordRight(address, b.toInt()).toLong()) // LWR
-            0x24 -> writeRegister(rt, readByte(address).toLong() and 0xFFL) // LBU
-            0x25 -> writeRegister(rt, readHalf(address).toLong() and 0xFFFFL) // LHU
-            0x2C -> storeDoublewordLeft(address, b) // SDL
-            0x2D -> storeDoublewordRight(address, b) // SDR
-            0x2A -> storeWordLeft(address, b.toInt()) // SWL
-            0x28 -> writeByte(address, b.toByte()) // SB
-            0x29 -> writeHalf(address, b.toShort()) // SH
-            0x2B -> writeWord(address, b.toInt()) // SW
-            0x2E -> storeWordRight(address, b.toInt()) // SWR
-            0x37 -> writeRegister(rt, readLong(address)) // LD
-            0x3F -> writeLong(address, b) // SD
+            0x1A -> writeRegister(rt, loadDoublewordLeft(effectiveAddress(a, signedImmediate), b)) // LDL
+            0x1B -> writeRegister(rt, loadDoublewordRight(effectiveAddress(a, signedImmediate), b)) // LDR
+            0x22 -> writeRegister(rt, loadWordLeft(effectiveAddress(a, signedImmediate), b.toInt()).toLong()) // LWL
+            0x20 -> writeRegister(rt, readByte(effectiveAddress(a, signedImmediate)).toLong()) // LB
+            0x21 -> writeRegister(rt, readHalf(effectiveAddress(a, signedImmediate)).toLong()) // LH
+            0x23 -> writeRegister(rt, readWord(effectiveAddress(a, signedImmediate)).toLong()) // LW
+            0x26 -> writeRegister(rt, loadWordRight(effectiveAddress(a, signedImmediate), b.toInt()).toLong()) // LWR
+            0x24 -> writeRegister(rt, readByte(effectiveAddress(a, signedImmediate)).toLong() and 0xFFL) // LBU
+            0x25 -> writeRegister(rt, readHalf(effectiveAddress(a, signedImmediate)).toLong() and 0xFFFFL) // LHU
+            0x2C -> storeDoublewordLeft(effectiveAddress(a, signedImmediate), b) // SDL
+            0x2D -> storeDoublewordRight(effectiveAddress(a, signedImmediate), b) // SDR
+            0x2A -> storeWordLeft(effectiveAddress(a, signedImmediate), b.toInt()) // SWL
+            0x28 -> writeByte(effectiveAddress(a, signedImmediate), b.toByte()) // SB
+            0x29 -> writeHalf(effectiveAddress(a, signedImmediate), b.toShort()) // SH
+            0x2B -> writeWord(effectiveAddress(a, signedImmediate), b.toInt()) // SW
+            0x2E -> storeWordRight(effectiveAddress(a, signedImmediate), b.toInt()) // SWR
+            0x37 -> writeRegister(rt, readLong(effectiveAddress(a, signedImmediate))) // LD
+            0x3F -> writeLong(effectiveAddress(a, signedImmediate), b) // SD
             0x02 -> pendingBranchTarget =
                 (pc and -0x10000000L) or ((instruction.toLong() and 0x03FFFFFFL) shl 2) // J
             else -> unsupported(instruction, instructionAddress)
