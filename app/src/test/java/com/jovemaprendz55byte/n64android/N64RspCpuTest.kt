@@ -857,4 +857,78 @@ class N64RspCpuTest {
         assertEquals(0x0000CCDD, bus.readWord(N64SpMemory.DMEM_BASE + 4))
     }
 
+
+    @Test fun unalignedWordLoadsHandleEveryBigEndianOffset() {
+        val memoryWord = 0x11223344
+        val initial = 0xAABBCCDD
+        for (offset in 0..3) {
+            run {
+                val bus = N64MemoryBus()
+                bus.writeWord(N64SpMemory.DMEM_BASE, memoryWord)
+                bus.writeWord(N64SpMemory.IMEM_BASE, i(15, 0, 1, 0xAABB))
+                bus.writeWord(N64SpMemory.IMEM_BASE + 4, i(13, 1, 1, 0xCCDD))
+                bus.writeWord(N64SpMemory.IMEM_BASE + 8, i(34, 0, 1, offset)) // LWL
+                val rsp = N64RspCpu(bus)
+                repeat(3) { rsp.step() }
+                val shift = (3 - offset) * 8
+                val preserve = 0x00FF_FFFF ushr (offset * 8)
+                val expected = (initial and preserve) or (memoryWord and (-1 shl shift))
+                assertEquals("LWL offset $offset", expected, rsp.register(1))
+            }
+            run {
+                val bus = N64MemoryBus()
+                bus.writeWord(N64SpMemory.DMEM_BASE, memoryWord)
+                bus.writeWord(N64SpMemory.IMEM_BASE, i(15, 0, 1, 0xAABB))
+                bus.writeWord(N64SpMemory.IMEM_BASE + 4, i(13, 1, 1, 0xCCDD))
+                bus.writeWord(N64SpMemory.IMEM_BASE + 8, i(38, 0, 1, offset)) // LWR
+                val rsp = N64RspCpu(bus)
+                repeat(3) { rsp.step() }
+                val shift = offset * 8
+                val preserve = (0xFFFF_FF00L shl ((3 - offset) * 8)).toInt()
+                val expected = (initial and preserve) or (memoryWord ushr shift)
+                assertEquals("LWR offset $offset", expected, rsp.register(1))
+            }
+        }
+    }
+
+    @Test fun unalignedWordStoresHandleEveryBigEndianOffset() {
+        val value = 0xAABBCCDD.toInt()
+        for (offset in 0..3) {
+            run {
+                val bus = N64MemoryBus()
+                bus.writeWord(N64SpMemory.DMEM_BASE, 0x11223344)
+                bus.writeWord(N64SpMemory.IMEM_BASE, i(15, 0, 2, 0xAABB))
+                bus.writeWord(N64SpMemory.IMEM_BASE + 4, i(13, 2, 2, 0xCCDD))
+                bus.writeWord(N64SpMemory.IMEM_BASE + 8, i(42, 0, 2, offset)) // SWL
+                val rsp = N64RspCpu(bus)
+                repeat(3) { rsp.step() }
+                val expectedBytes = byteArrayOf(0x11, 0x22, 0x33, 0x44)
+                for (index in 0..offset) expectedBytes[index] = (value ushr (24 - index * 8)).toByte()
+                val actual = bus.readWord(N64SpMemory.DMEM_BASE)
+                val expected = ((expectedBytes[0].toInt() and 0xFF) shl 24) or
+                    ((expectedBytes[1].toInt() and 0xFF) shl 16) or
+                    ((expectedBytes[2].toInt() and 0xFF) shl 8) or
+                    (expectedBytes[3].toInt() and 0xFF)
+                assertEquals("SWL offset $offset", expected, actual)
+            }
+            run {
+                val bus = N64MemoryBus()
+                bus.writeWord(N64SpMemory.DMEM_BASE, 0x11223344)
+                bus.writeWord(N64SpMemory.IMEM_BASE, i(15, 0, 2, 0xAABB))
+                bus.writeWord(N64SpMemory.IMEM_BASE + 4, i(13, 2, 2, 0xCCDD))
+                bus.writeWord(N64SpMemory.IMEM_BASE + 8, i(46, 0, 2, offset)) // SWR
+                val rsp = N64RspCpu(bus)
+                repeat(3) { rsp.step() }
+                val expectedBytes = byteArrayOf(0x11, 0x22, 0x33, 0x44)
+                for (index in offset..3) expectedBytes[index] = (value ushr ((3 - index) * 8)).toByte()
+                val actual = bus.readWord(N64SpMemory.DMEM_BASE)
+                val expected = ((expectedBytes[0].toInt() and 0xFF) shl 24) or
+                    ((expectedBytes[1].toInt() and 0xFF) shl 16) or
+                    ((expectedBytes[2].toInt() and 0xFF) shl 8) or
+                    (expectedBytes[3].toInt() and 0xFF)
+                assertEquals("SWR offset $offset", expected, actual)
+            }
+        }
+    }
+
 }
