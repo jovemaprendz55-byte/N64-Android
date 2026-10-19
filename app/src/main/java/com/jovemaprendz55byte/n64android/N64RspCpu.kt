@@ -104,6 +104,8 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                 17 -> hi = a // MTHI
                 18 -> writeRegister(rd, lo) // MFLO
                 19 -> lo = a // MTLO
+                32 -> writeRegister(rd, a + b) // ADD (overflow exceptions are not modeled)
+                34 -> writeRegister(rd, a - b) // SUB (overflow exceptions are not modeled)
                 24 -> {
                     val product = a.toLong() * b.toLong()
                     lo = product.toInt()
@@ -168,6 +170,7 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
             5 -> if (a != b) pendingTarget = pcPlus4 + (immediate shl 2) // BNE
             6 -> if (a <= 0) pendingTarget = pcPlus4 + (immediate shl 2) // BLEZ
             7 -> if (a > 0) pendingTarget = pcPlus4 + (immediate shl 2) // BGTZ
+            8 -> writeRegister(rt, a + immediate) // ADDI (overflow exceptions are not modeled)
             9 -> writeRegister(rt, a + immediate) // ADDIU
             10 -> writeRegister(rt, if (a < immediate) 1 else 0) // SLTI
             11 -> writeRegister(rt, if (a.toUInt() < immediate.toUInt()) 1 else 0) // SLTIU
