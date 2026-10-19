@@ -147,6 +147,32 @@ class N64RspCpuTest {
         }
     }
 
+    @Test fun vectorMultiplyAccumulateUpdatesAccumulatorAndSaturatesResults() {
+        val bus = N64MemoryBus()
+        fun v(vt: Int, vs: Int, vd: Int, funct: Int) =
+            (18 shl 26) or (16 shl 21) or (vt shl 16) or
+                (vs shl 11) or (vd shl 6) or funct
+        bus.writeWord(N64SpMemory.IMEM_BASE, v(2, 1, 3, 0x00)) // VMULF initializes accumulator
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, v(2, 1, 4, 0x08)) // VMACF adds product
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, v(2, 1, 5, 0x09)) // VMACU adds product
+
+        val rsp = N64RspCpu(bus)
+        for (lane in 0..7) {
+            rsp.setVectorLane(1, lane, 0x4000)
+            rsp.setVectorLane(2, lane, 0x4000)
+        }
+        rsp.setVectorLane(1, 1, Short.MAX_VALUE)
+        rsp.setVectorLane(2, 1, Short.MAX_VALUE)
+
+        repeat(3) { rsp.step() }
+
+        assertEquals(0x2000.toShort(), rsp.vectorLane(3, 0))
+        assertEquals(0x4000.toShort(), rsp.vectorLane(4, 0))
+        assertEquals(0x6000.toShort(), rsp.vectorLane(5, 0))
+        assertEquals(Short.MAX_VALUE, rsp.vectorLane(4, 1))
+        assertEquals(0xFFFF.toShort(), rsp.vectorLane(5, 1))
+    }
+
     @Test fun vectorComparisonsSelectExpectedSignedLanes() {
         val bus = N64MemoryBus()
         fun v(vt: Int, vs: Int, vd: Int, funct: Int) =
