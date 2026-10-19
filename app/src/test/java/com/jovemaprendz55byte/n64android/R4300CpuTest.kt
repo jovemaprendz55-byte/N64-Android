@@ -1143,6 +1143,33 @@ class R4300CpuTest {
         assertEquals(0xFEDCBA98L, cpu.register(3))
     }
 
+    @Test fun kseg0VirtualDataAddressesAliasPhysicalRam() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x8000), // r1 = sign-extended KSEG0 base
+            iType(0x0D, 1, 1, 0x100),  // r1 = KSEG0 + 0x100
+            iType(0x0F, 0, 2, 0x1234), // r2 = 0x12340000
+            iType(0x2B, 1, 2, 0),      // SW through virtual address
+            iType(0x23, 1, 3, 0)       // LW through same virtual address
+        ))
+
+        repeat(5) { cpu.step() }
+
+        assertEquals(0x12340000L, cpu.register(3))
+        assertEquals(0x12340000, cpu.readWord(0x100))
+    }
+
+    @Test fun kseg0ProgramCounterFetchesFromTranslatedPhysicalRam() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(iType(0x09, 0, 1, 42)))
+        cpu.pc = 0xFFFF_FFFF_8000_0000UL.toLong()
+
+        cpu.step()
+
+        assertEquals(42L, cpu.register(1))
+        assertEquals(0xFFFF_FFFF_8000_0004UL.toLong(), cpu.pc)
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 

@@ -304,26 +304,42 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
     }
 
 
-    /** Fetches an instruction without truncating a 64-bit PC into a different RAM address. */
+    /** Fetches from physical RAM or a KSEG0/KSEG1 direct-mapped virtual address. */
     private fun fetchInstruction(address: Long): Int {
-        require(address >= 0L && address % 4L == 0L &&
-            address <= memory.size.toLong() - 4L) {
-            "Instruction fetch must be aligned and inside configured RAM"
+        require(address % 4L == 0L) {
+            "Instruction fetch must be 4-byte aligned"
         }
-        return readWord(address.toInt())
+        return readWord(resolveRamAddress(address))
     }
 
-    /** Converts a virtual effective address only when it is representable by this simplified RAM. */
+    /**
+     * Resolves an address into this interpreter's flat RAM.
+     *
+     * Low physical addresses remain available for tests. KSEG0/KSEG1 virtual
+     * addresses are translated to physical addresses; TLB-mapped segments and
+     * addresses outside configured RAM are rejected. This is not a full N64
+     * memory map and does not model RDRAM mirrors or memory-mapped devices.
+     */
+    private fun resolveRamAddress(address: Long): Int {
+        val physicalAddress = N64Addressing.translateDirectMappedAddress(address)
+            ?: if (address in 0L..Int.MAX_VALUE.toLong()) address
+            else throw IllegalArgumentException(
+                "Address requires TLB translation or is outside the simplified RAM address range"
+            )
+        require(physicalAddress <= Int.MAX_VALUE.toLong()) {
+            "Physical address cannot be represented by this simplified RAM"
+        }
+        return physicalAddress.toInt()
+    }
+
+    /** Computes an effective address and resolves supported direct-mapped segments. */
     private fun effectiveAddress(base: Long, offset: Long): Int {
         val address = try {
             Math.addExact(base, offset)
         } catch (error: ArithmeticException) {
             throw IllegalArgumentException("Effective address overflow", error)
         }
-        require(address in 0L..Int.MAX_VALUE.toLong()) {
-            "Effective address outside simplified RAM address range"
-        }
-        return address.toInt()
+        return resolveRamAddress(address)
     }
 
     /** Big-endian MIPS LDL: merge bytes from the effective address to the block's end. */
