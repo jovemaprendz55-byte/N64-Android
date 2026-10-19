@@ -120,6 +120,35 @@ class N64RspCpuTest {
         assertEquals(2, rsp.vectorLane(12, 0).toInt()) // borrow flag cleared
     }
 
+    @Test fun vectorComparisonsSelectExpectedSignedLanes() {
+        val bus = N64MemoryBus()
+        fun v(vt: Int, vs: Int, vd: Int, funct: Int) =
+            (18 shl 26) or (16 shl 21) or (vt shl 16) or
+                (vs shl 11) or (vd shl 6) or funct
+
+        bus.writeWord(N64SpMemory.IMEM_BASE, v(2, 1, 3, 0x20)) // VLT
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, v(2, 1, 4, 0x21)) // VEQ
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, v(2, 1, 5, 0x22)) // VNE
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, v(2, 1, 6, 0x23)) // VGE
+
+        val left = shortArrayOf(-5, 4, 7, -2, 3, 0, -1, 9)
+        val right = shortArrayOf(2, 4, 1, -3, 8, 0, -1, -9)
+        val rsp = N64RspCpu(bus)
+        for (lane in 0..7) {
+            rsp.setVectorLane(1, lane, left[lane])
+            rsp.setVectorLane(2, lane, right[lane])
+        }
+
+        repeat(4) { rsp.step() }
+
+        for (lane in 0..7) {
+            assertEquals(if (left[lane] < right[lane]) left[lane] else right[lane], rsp.vectorLane(3, lane))
+            assertEquals(if (left[lane] == right[lane]) left[lane] else right[lane], rsp.vectorLane(4, lane))
+            assertEquals(if (left[lane] != right[lane]) left[lane] else right[lane], rsp.vectorLane(5, lane))
+            assertEquals(if (left[lane] >= right[lane]) left[lane] else right[lane], rsp.vectorLane(6, lane))
+        }
+    }
+
     @Test fun executesScalarInstructionsAndLoadsStoresDmem() {
         val bus = N64MemoryBus()
         bus.writeWord(N64SpMemory.IMEM_BASE, i(15, 0, 1, 0x1234))
