@@ -647,6 +647,21 @@ class R4300CpuTest {
         assertEquals(0L, cpu.register(2))
     }
 
+    @Test fun addiuWrapsSigned32BitResultWithoutOverflowException() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x7FFF), // r1 = 0x7FFF0000
+            iType(0x0D, 1, 1, 0xFFFF), // r1 = 0x7FFFFFFF
+            iType(0x09, 0, 2, 1),      // r2 = 1
+            iType(0x09, 0, 3, -1),     // r3 = -1
+            iType(0x09, 1, 4, 1),      // ADDIU wraps to signed 32-bit minimum
+            iType(0x09, 4, 5, -1)      // ADDIU wraps back to signed 32-bit maximum
+        ))
+        repeat(6) { cpu.step() }
+        assertEquals(-2147483648L, cpu.register(4))
+        assertEquals(2147483647L, cpu.register(5))
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
