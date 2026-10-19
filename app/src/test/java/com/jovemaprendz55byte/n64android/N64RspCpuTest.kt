@@ -569,6 +569,27 @@ class N64RspCpuTest {
         assertEquals(32768, rsp.register(5))
     }
 
+    @Test fun supportsVectorByteLoadAndStoreWithSignedOffset() {
+        val bus = N64MemoryBus()
+        // LBV/SBV use opcode 50/58, sub-opcode 0, element in bits 10..7.
+        fun vectorMemory(op: Int, base: Int, vt: Int, element: Int, offset: Int) =
+            (op shl 26) or (base shl 21) or (vt shl 16) or
+                (element shl 7) or (offset and 0x7F)
+
+        bus.writeByte(N64SpMemory.DMEM_BASE + 0x20, 0xAB.toByte())
+        bus.writeByte(N64SpMemory.DMEM_BASE + 0x1F, 0xCD.toByte())
+        bus.writeWord(N64SpMemory.IMEM_BASE, i(9, 0, 1, 0x20)) // base = 0x20
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, vectorMemory(50, 1, 2, 0, 0)) // LBV v2[0]
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, vectorMemory(50, 1, 2, 1, -1)) // LBV v2[1], -1(base)
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, vectorMemory(58, 1, 2, 0, 2)) // SBV v2[0], 2(base)
+
+        val rsp = N64RspCpu(bus)
+        repeat(4) { rsp.step() }
+
+        assertEquals(0xABCD, rsp.vectorLane(2, 0).toInt() and 0xFFFF)
+        assertEquals(0xAB, bus.readByte(N64SpMemory.DMEM_BASE + 0x22).toInt() and 0xFF)
+    }
+
     @Test fun dmemEffectiveAddressesWrapAtFourKilobytes() {
         val bus = N64MemoryBus()
         bus.writeWord(N64SpMemory.IMEM_BASE, i(9, 0, 1, 0x0FFF)) // r1 = 4095
