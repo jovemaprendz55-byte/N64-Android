@@ -818,6 +818,31 @@ class R4300CpuTest {
         assertEquals(-2L, cpu.lo)
     }
 
+    @Test fun divAndDivuProduceExpectedQuotientsAndRemainders() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, -7),       // r1 = -7
+            iType(0x09, 0, 2, 3),        // r2 = 3
+            rType(1, 2, 0, 0, 0x1A),      // DIV: -7 / 3 => quotient -2, remainder -1
+            rType(0, 0, 3, 0, 0x10),      // MFHI r3
+            rType(0, 0, 4, 0, 0x12),      // MFLO r4
+            iType(0x09, 0, 1, -1),       // r1 = 0xFFFFFFFF as a 32-bit word
+            iType(0x09, 0, 2, 2),        // r2 = 2
+            rType(1, 2, 0, 0, 0x1B),      // DIVU: 0xFFFFFFFF / 2 => quotient 0x7FFFFFFF, remainder 1
+            rType(0, 0, 5, 0, 0x10),      // MFHI r5
+            rType(0, 0, 6, 0, 0x12)       // MFLO r6
+        ))
+
+        repeat(10) { cpu.step() }
+
+        assertEquals(-1L, cpu.register(3))
+        assertEquals(-2L, cpu.register(4))
+        assertEquals(1L, cpu.register(5))
+        assertEquals(0x7FFFFFFFL, cpu.register(6))
+        assertEquals(1L, cpu.hi)
+        assertEquals(0x7FFFFFFFL, cpu.lo)
+    }
+
     private fun longToBytes(value: Long): ByteArray =
         ByteArray(8) { index -> (value ushr (56 - index * 8)).toByte() }
 
