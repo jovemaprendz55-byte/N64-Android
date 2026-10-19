@@ -404,6 +404,7 @@ class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
         val region = N64MemoryMap.regionOf(physicalAddress)
         require(region == N64MemoryMap.Region.RDRAM ||
             region == N64MemoryMap.Region.SP_DMEM || region == N64MemoryMap.Region.SP_IMEM ||
+            region == N64MemoryMap.Region.SP_REGISTERS ||
             region == N64MemoryMap.Region.CARTRIDGE_DOMAIN) {
             if (region == null) {
                 "Physical address 0x${physicalAddress.toString(16)} is outside a mapped N64 region"
