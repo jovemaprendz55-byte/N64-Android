@@ -13,6 +13,47 @@ class N64RspCpuTest {
     private fun cop0(rs: Int, rt: Int, rd: Int) =
         (16 shl 26) or (rs shl 21) or (rt shl 16) or (rd shl 11)
 
+    @Test fun executesBasicVectorArithmeticAndLogic() {
+        val bus = N64MemoryBus()
+        // COP2 vector instruction: element selector 0, vt=2, vs=1, vd=3.
+        fun v(vt: Int, vs: Int, vd: Int, funct: Int) =
+            (18 shl 26) or (16 shl 21) or (vt shl 16) or
+                (vs shl 11) or (vd shl 6) or funct
+        bus.writeWord(N64SpMemory.IMEM_BASE, v(2, 1, 3, 0x10)) // VADD
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, v(2, 1, 4, 0x11)) // VSUB
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, v(2, 1, 5, 0x28)) // VAND
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, v(2, 1, 6, 0x2C)) // VXOR
+        val rsp = N64RspCpu(bus)
+        for (lane in 0..7) {
+            rsp.setVectorLane(1, lane, (lane * 100).toShort())
+            rsp.setVectorLane(2, lane, (lane * 10).toShort())
+        }
+        repeat(4) { rsp.step() }
+        for (lane in 0..7) {
+            assertEquals((lane * 110).toShort(), rsp.vectorLane(3, lane))
+            assertEquals((lane * 90).toShort(), rsp.vectorLane(4, lane))
+            assertEquals(((lane * 100) and (lane * 10)).toShort(), rsp.vectorLane(5, lane))
+            assertEquals(((lane * 100) xor (lane * 10)).toShort(), rsp.vectorLane(6, lane))
+        }
+    }
+
+    @Test fun vectorAddAndSubtractSaturateSignedLanes() {
+        val bus = N64MemoryBus()
+        fun v(vt: Int, vs: Int, vd: Int, funct: Int) =
+            (18 shl 26) or (16 shl 21) or (vt shl 16) or
+                (vs shl 11) or (vd shl 6) or funct
+        bus.writeWord(N64SpMemory.IMEM_BASE, v(2, 1, 3, 0x10))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, v(2, 1, 4, 0x11))
+        val rsp = N64RspCpu(bus)
+        rsp.setVectorLane(1, 0, Short.MAX_VALUE)
+        rsp.setVectorLane(2, 0, 1)
+        rsp.setVectorLane(1, 1, Short.MIN_VALUE)
+        rsp.setVectorLane(2, 1, 1)
+        repeat(2) { rsp.step() }
+        assertEquals(Short.MAX_VALUE, rsp.vectorLane(3, 0))
+        assertEquals(Short.MIN_VALUE, rsp.vectorLane(4, 1))
+    }
+
     @Test fun executesScalarInstructionsAndLoadsStoresDmem() {
         val bus = N64MemoryBus()
         bus.writeWord(N64SpMemory.IMEM_BASE, i(15, 0, 1, 0x1234))

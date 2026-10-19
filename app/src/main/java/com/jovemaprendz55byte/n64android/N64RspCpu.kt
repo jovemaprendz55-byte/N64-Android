@@ -4,12 +4,14 @@ package com.jovemaprendz55byte.n64android
  * Minimal scalar RSP interpreter foundation.
  *
  * Implements a deliberately small MIPS-I integer subset for smoke tests.
- * Vector instructions, DMA scheduling, interrupts, and cycle timing are not
- * implemented. COP0 access is limited to the eight SP interface registers.
+ * Implements a limited vector subset (VADD, VSUB, VAND, VOR, VXOR, VNOR) with
+ * element selector e=0. Other vector operations, DMA scheduling, interrupts,
+ * and cycle timing are not implemented. COP0 access is limited to SP registers.
  * Branches use a one-instruction delay slot.
  */
 internal class N64RspCpu(private val bus: N64MemoryBus) {
     private val gpr = IntArray(32)
+    private val vector = Array(32) { ShortArray(8) }
     var pc: Int = 0
         private set
     private var pendingTarget: Int? = null
@@ -17,6 +19,18 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
     fun register(index: Int): Int {
         require(index in 0..31)
         return if (index == 0) 0 else gpr[index]
+    }
+
+    /** Reads one signed 16-bit lane from a vector register (test/debug API). */
+    fun vectorLane(register: Int, lane: Int): Short {
+        require(register in 0..31 && lane in 0..7)
+        return vector[register][lane]
+    }
+
+    /** Sets one signed 16-bit lane in a vector register (test/debug API). */
+    fun setVectorLane(register: Int, lane: Int, value: Short) {
+        require(register in 0..31 && lane in 0..7)
+        vector[register][lane] = value
     }
 
     fun setPc(address: Int) {
@@ -86,6 +100,8 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                 43 -> writeRegister(rd, if (a.toUInt() < b.toUInt()) 1 else 0) // SLTU
                 else -> unsupported(instruction)
             }
+            18 -> if (rs >= 16) executeVector(instruction, rs and 15, rt, rd, shamt)
+                else unsupported(instruction)
             16 -> when (rs) {
                 0 -> writeRegister(rt, readSpCop0(rd)) // MFC0
                 4 -> writeSpCop0(rd, b) // MTC0
@@ -121,6 +137,27 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
             41 -> bus.writeHalf(dmemAddress(a + immediate), b.toShort()) // SH
             43 -> bus.writeWord(dmemAddress(a + immediate), b) // SW
             else -> unsupported(instruction)
+        }
+    }
+
+    private fun executeVector(instruction: Int, element: Int, vt: Int, vs: Int, vd: Int) {
+        // Start with the identity element mapping only. Other selectors need the
+        // RSP's lane-broadcast/element-routing table and are rejected explicitly.
+        if (element != 0) unsupported(instruction)
+        val function = instruction and 63
+        for (lane in 0..7) {
+            val a = vector[vs][lane].toInt()
+            val b = vector[vt][lane].toInt()
+            val result = when (function) {
+                0x10 -> (a + b).coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()) // VADD
+                0x11 -> (a - b).coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()) // VSUB
+                0x28 -> a and b // VAND
+                0x2A -> a or b // VOR
+                0x2B -> (a or b).inv() // VNOR
+                0x2C -> a xor b // VXOR
+                else -> unsupported(instruction)
+            }
+            vector[vd][lane] = result.toShort()
         }
     }
 
