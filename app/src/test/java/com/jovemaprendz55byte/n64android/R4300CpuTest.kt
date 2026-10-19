@@ -887,6 +887,25 @@ class R4300CpuTest {
         assertEquals(6148914691236517203L, cpu.lo)
     }
 
+    @Test fun ddivSignedOverflowUsesSimplifiedCoreBoundaryResult() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x8000), // r1 = sign-extended 0x80000000
+            rType(0, 1, 1, 0, 0x3C),   // DSLL32: r1 = Long.MIN_VALUE
+            iType(0x19, 0, 2, -1),     // r2 = -1
+            rType(1, 2, 0, 0, 0x1E),   // DDIV boundary case: Long.MIN_VALUE / -1
+            rType(0, 0, 3, 0, 0x10),   // MFHI r3
+            rType(0, 0, 4, 0, 0x12)    // MFLO r4
+        ))
+
+        repeat(6) { cpu.step() }
+
+        assertEquals(0L, cpu.register(3))
+        assertEquals(Long.MIN_VALUE, cpu.register(4))
+        assertEquals(0L, cpu.hi)
+        assertEquals(Long.MIN_VALUE, cpu.lo)
+    }
+
     private fun longToBytes(value: Long): ByteArray =
         ByteArray(8) { index -> (value ushr (56 - index * 8)).toByte() }
 
