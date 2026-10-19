@@ -484,6 +484,25 @@ class R4300CpuTest {
         }
     }
 
+    @Test fun immediateDoublewordShift32InstructionsHandleBoundaryAmounts() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0xFFFF),   // r1 = sign-extended 0xFFFF0000
+            iType(0x0D, 1, 1, 0xFFFF),   // r1 = -1
+            rType(0, 1, 2, 0, 0x3C),     // DSLL32: -1 << 32
+            rType(0, 1, 3, 31, 0x3E),    // DSRL32: unsigned -1 >>> 63
+            rType(0, 1, 4, 31, 0x3F),    // DSRA32: signed -1 >> 63
+            iType(0x19, 0, 6, 1),        // r6 = 1
+            rType(0, 6, 5, 31, 0x3C)     // DSLL32: 1 << 63
+        ))
+        repeat(7) { cpu.step() }
+
+        assertEquals(-0x1_0000_0000L, cpu.register(2))
+        assertEquals(1L, cpu.register(3))
+        assertEquals(-1L, cpu.register(4))
+        assertEquals(Long.MIN_VALUE, cpu.register(5))
+    }
+
     @Test fun variableWordAndDoublewordShiftsUseRegisterShiftAmounts() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
