@@ -214,6 +214,38 @@ class R4300CpuTest {
         assertEquals(17L, cpu.register(4))
     }
 
+    @Test fun addiPerformsSigned32BitAdditionAndSignExtendsResult() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x08, 0, 1, 32767),   // ADDI: 0 + 32767
+            iType(0x08, 1, 2, -1),      // ADDI: 32767 - 1
+            iType(0x0F, 0, 3, 0x8000),  // LUI result sign-extends to 64 bits
+            iType(0x08, 3, 4, 1)         // ADDI: -2147483648 + 1
+        ))
+        repeat(4) { cpu.step() }
+        assertEquals(32767L, cpu.register(1))
+        assertEquals(32766L, cpu.register(2))
+        assertEquals(-2147483647L, cpu.register(4))
+    }
+
+    @Test fun addiRejectsSigned32BitOverflow() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x7FFF),
+            iType(0x0D, 1, 1, 0xFFFF),
+            iType(0x08, 1, 2, 1)
+        ))
+        cpu.step()
+        cpu.step()
+        try {
+            cpu.step()
+            throw AssertionError("Expected ADDI signed overflow to be detected")
+        } catch (_: ArithmeticException) {
+            // The simplified CPU reports overflow instead of modeling a MIPS exception.
+        }
+        assertEquals(0L, cpu.register(2))
+    }
+
     @Test fun addi64PerformsSignedAddition() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(iType(0x18, 0, 1, -9)))
