@@ -56,6 +56,37 @@ class R4300CpuTest {
         assertEquals(110L, cpu.register(11))
     }
 
+    @Test fun beqAndBneHandleForwardAndBackwardOffsetsWithDelaySlots() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 5),       // 0x00: r1 = 5
+            iType(0x09, 0, 2, 5),       // 0x04: r2 = 5
+            iType(0x04, 1, 2, 2),       // 0x08: BEQ target 0x14
+            iType(0x09, 0, 3, 30),      // 0x0C: delay slot executes
+            iType(0x09, 0, 4, 40),      // 0x10: skipped
+            iType(0x05, 1, 2, -2),      // 0x14: BNE not taken
+            iType(0x09, 0, 5, 50),      // 0x18: sequential after not-taken branch
+            iType(0x04, 1, 2, -2),      // 0x1C: BEQ backwards to 0x18
+            iType(0x09, 0, 6, 60),      // 0x20: delay slot executes
+            iType(0x09, 0, 7, 70)       // 0x24: target 0x18 already passed
+        ))
+
+        repeat(4) { cpu.step() }
+        assertEquals(30L, cpu.register(3))
+        assertEquals(0L, cpu.register(4))
+        assertEquals(0x14L, cpu.pc)
+
+        cpu.step() // BNE is not taken
+        cpu.step() // sequential instruction
+        assertEquals(50L, cpu.register(5))
+        assertEquals(0x1CL, cpu.pc)
+
+        cpu.step() // backward BEQ
+        cpu.step() // delay slot, then target
+        assertEquals(60L, cpu.register(6))
+        assertEquals(0x18L, cpu.pc)
+    }
+
     @Test fun branchAppliesAfterOneDelaySlot() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(iType(0x09, 0, 1, 1), iType(0x04, 1, 1, 2), iType(0x09, 0, 2, 7), iType(0x09, 0, 3, 99), iType(0x09, 0, 4, 5)))
