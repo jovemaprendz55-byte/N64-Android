@@ -189,9 +189,12 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
         for (lane in 0..7) {
             val a = vector[vs][lane].toInt()
             val b = vector[vt][lane].toInt()
+            val carryIn = if ((vco and (1 shl lane)) != 0) 1 else 0
             val result = when (function) {
-                0x10 -> (a + b).coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()) // VADD
-                0x11 -> (a - b).coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()) // VSUB
+                0x10 -> (a + b + carryIn)
+                    .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()) // VADD
+                0x11 -> (a - b - carryIn)
+                    .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()) // VSUB
                 0x13 -> when {
                     a < 0 -> -b
                     a > 0 -> b
@@ -222,7 +225,10 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
             }
             vector[vd][lane] = result.toShort()
         }
-        if (function == 0x14 || function == 0x15) vco = nextVco
+        when (function) {
+            0x10, 0x11 -> vco = 0 // VADD and VSUB consume and clear VCO
+            0x14, 0x15 -> vco = nextVco
+        }
     }
 
     private fun readSpCop0(index: Int): Int {
