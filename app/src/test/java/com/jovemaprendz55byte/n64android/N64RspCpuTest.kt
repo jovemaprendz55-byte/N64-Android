@@ -838,8 +838,8 @@ class N64RspCpuTest {
         bus.writeWord(N64SpMemory.IMEM_BASE + 16, i(38, 1, 3, 3)) // LWR r3, 3(r1)
         val rsp = N64RspCpu(bus)
         repeat(5) { rsp.step() }
-        assertEquals(0x11BB0000.toInt(), rsp.register(2))
-        assertEquals(0xAABB0044.toInt(), rsp.register(3))
+        assertEquals(0x11223344, rsp.register(2))
+        assertEquals(0x11223344, rsp.register(3))
     }
 
     @Test fun unalignedWordStoresWriteOnlySelectedBigEndianBytes() {
@@ -870,9 +870,8 @@ class N64RspCpuTest {
                 bus.writeWord(N64SpMemory.IMEM_BASE + 8, i(34, 0, 1, offset)) // LWL
                 val rsp = N64RspCpu(bus)
                 repeat(3) { rsp.step() }
-                val shift = (3 - offset) * 8
-                val preserve: Int = 0x00FF_FFFF ushr (offset * 8)
-                val expected: Int = (initial and preserve) or (memoryWord and (-1 shl shift))
+                val preserve: Int = if (offset == 0) 0 else (1 shl (offset * 8)) - 1
+                val expected: Int = (initial and preserve) or (memoryWord shl (offset * 8))
                 assertEquals("LWL offset $offset", expected, rsp.register(1))
             }
             run {
@@ -883,9 +882,13 @@ class N64RspCpuTest {
                 bus.writeWord(N64SpMemory.IMEM_BASE + 8, i(38, 0, 1, offset)) // LWR
                 val rsp = N64RspCpu(bus)
                 repeat(3) { rsp.step() }
-                val shift = offset * 8
-                val preserve: Int = if (offset == 0) 0 else (-1 shl ((4 - offset) * 8))
-                val expected: Int = (initial and preserve) or (memoryWord and (-1 ushr shift))
+                val preserve: Int = when (offset) {
+                    0 -> 0xFFFF_FF00.toInt()
+                    1 -> 0xFFFF_0000.toInt()
+                    2 -> 0xFF00_0000.toInt()
+                    else -> 0
+                }
+                val expected: Int = (initial and preserve) or (memoryWord ushr ((3 - offset) * 8))
                 assertEquals("LWR offset $offset", expected, rsp.register(1))
             }
         }
