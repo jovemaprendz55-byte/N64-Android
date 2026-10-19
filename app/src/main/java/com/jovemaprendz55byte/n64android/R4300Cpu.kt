@@ -326,8 +326,9 @@ class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
      *
      * Low physical addresses remain available for tests. KSEG0/KSEG1 virtual
      * addresses are translated to physical addresses; TLB-mapped segments and
-     * addresses outside configured RAM are rejected. This is not a full N64
-     * memory map and does not model RDRAM mirrors or memory-mapped devices.
+     * addresses outside configured RAM are rejected. The physical region map
+     * prevents device/cart addresses from being mistaken for flat RDRAM, but
+     * device access itself is not implemented. RDRAM mirrors are not modeled.
      */
     private fun resolveRamAddress(address: Long): Int {
         val physicalAddress = N64Addressing.translateDirectMappedAddress(address)
@@ -335,6 +336,14 @@ class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
             else throw IllegalArgumentException(
                 "Address requires TLB translation or is outside the simplified RAM address range"
             )
+        val region = N64MemoryMap.regionOf(physicalAddress)
+        require(region == N64MemoryMap.Region.RDRAM) {
+            if (region == null) {
+                "Physical address 0x${physicalAddress.toString(16)} is outside a mapped N64 region"
+            } else {
+                "Physical region $region is not implemented by the simplified RAM bus"
+            }
+        }
         require(physicalAddress <= Int.MAX_VALUE.toLong()) {
             "Physical address cannot be represented by this simplified RAM"
         }
