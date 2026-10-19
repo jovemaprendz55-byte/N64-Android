@@ -116,6 +116,9 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
                 0x00 -> writeRegister(rd, (b.toInt() shl shift).toLong()) // SLL
                 0x02 -> writeRegister(rd, (b.toInt() ushr shift).toLong()) // SRL
                 0x03 -> writeRegister(rd, (b.toInt() shr shift).toLong()) // SRA
+                0x04 -> writeRegister(rd, (b.toInt() shl (a.toInt() and 0x1F)).toLong()) // SLLV
+                0x06 -> writeRegister(rd, (b.toInt() ushr (a.toInt() and 0x1F)).toLong()) // SRLV
+                0x07 -> writeRegister(rd, (b.toInt() shr (a.toInt() and 0x1F)).toLong()) // SRAV
                 0x08 -> {
                     if (a % 4L != 0L) throw IllegalArgumentException("JR target must be 4-byte aligned")
                     pendingBranchTarget = a
@@ -129,6 +132,9 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
                 0x11 -> hi = a // MTHI
                 0x12 -> writeRegister(rd, lo) // MFLO
                 0x13 -> lo = a // MTLO
+                0x14 -> writeRegister(rd, b shl (a.toInt() and 0x3F)) // DSLLV
+                0x16 -> writeRegister(rd, b ushr (a.toInt() and 0x3F)) // DSRLV
+                0x17 -> writeRegister(rd, b shr (a.toInt() and 0x3F)) // DSRAV
                 0x18 -> {
                     val product = a.toInt().toLong() * b.toInt().toLong()
                     hi = (product shr 32).toInt().toLong()

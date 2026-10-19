@@ -255,6 +255,32 @@ class R4300CpuTest {
         }
     }
 
+    @Test fun variableWordAndDoublewordShiftsUseRegisterShiftAmounts() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 3),      // r1 = 3
+            iType(0x09, 0, 2, 4),      // r2 = shift amount 4
+            rType(2, 1, 3, 0, 0x04),   // SLLV: 3 << 4 = 48
+            iType(0x09, 0, 4, -1),     // r4 = -1
+            iType(0x09, 0, 5, 1),      // r5 = shift amount 1
+            rType(5, 4, 6, 0, 0x06),   // SRLV: 0xFFFFFFFF >>> 1
+            iType(0x09, 0, 7, -8),     // r7 = -8
+            iType(0x09, 0, 8, 2),      // r8 = shift amount 2
+            rType(8, 7, 9, 0, 0x07),   // SRAV: -8 >> 2
+            iType(0x19, 0, 10, -16),   // r10 = -16 (64-bit)
+            rType(2, 1, 11, 0, 0x14),  // DSLLV: 3 << 4
+            rType(8, 10, 12, 0, 0x16), // DSRLV: logical 64-bit shift
+            rType(8, 10, 13, 0, 0x17)  // DSRAV: arithmetic 64-bit shift
+        ))
+        repeat(13) { cpu.step() }
+        assertEquals(48L, cpu.register(3))
+        assertEquals(0x7FFFFFFFL, cpu.register(6))
+        assertEquals(-2L, cpu.register(9))
+        assertEquals(48L, cpu.register(11))
+        assertEquals(0x3FFFFFFFFFFFFFFCL, cpu.register(12))
+        assertEquals(-4L, cpu.register(13))
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
