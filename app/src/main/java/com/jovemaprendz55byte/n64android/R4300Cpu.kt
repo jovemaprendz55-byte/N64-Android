@@ -128,6 +128,9 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
                     writeRegister(rd, instructionAddress + 8L)
                     pendingBranchTarget = a
                 } // JALR
+                0x0A -> if (a == 0L) writeRegister(rd, b) // MOVZ
+                0x0B -> if (a != 0L) writeRegister(rd, b) // MOVN
+                0x0F -> Unit // SYNC: no concurrent memory model in this simplified core
                 0x10 -> writeRegister(rd, hi) // MFHI
                 0x11 -> hi = a // MTHI
                 0x12 -> writeRegister(rd, lo) // MFLO

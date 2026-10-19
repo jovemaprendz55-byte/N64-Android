@@ -281,6 +281,25 @@ class R4300CpuTest {
         assertEquals(-4L, cpu.register(13))
     }
 
+    @Test fun movzMovnAndSyncRespectConditions() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 11),       // r1 = 11
+            iType(0x09, 0, 3, 22),       // r3 = 22
+            rType(2, 1, 4, 0, 0x0A),     // MOVZ: zero condition, copy r1 to r4
+            rType(3, 1, 5, 0, 0x0A),     // MOVZ: nonzero condition, leave r5
+            rType(3, 1, 6, 0, 0x0B),     // MOVN: nonzero condition, copy r1 to r6
+            rType(2, 3, 7, 0, 0x0B),     // MOVN: zero condition, leave r7
+            rType(0, 0, 0, 0, 0x0F)      // SYNC
+        ))
+        repeat(7) { cpu.step() }
+        assertEquals(11L, cpu.register(4))
+        assertEquals(0L, cpu.register(5))
+        assertEquals(11L, cpu.register(6))
+        assertEquals(0L, cpu.register(7))
+        assertEquals(28L, cpu.pc)
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
