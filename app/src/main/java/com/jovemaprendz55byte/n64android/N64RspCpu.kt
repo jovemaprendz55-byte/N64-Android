@@ -4,8 +4,9 @@ package com.jovemaprendz55byte.n64android
  * Minimal scalar RSP interpreter foundation.
  *
  * Implements a deliberately small MIPS-I integer subset for smoke tests.
- * Vector instructions, COP0, DMA scheduling, interrupts, and cycle timing are
- * not implemented. Branches use a one-instruction delay slot.
+ * Vector instructions, DMA scheduling, interrupts, and cycle timing are not
+ * implemented. COP0 access is limited to the eight SP interface registers.
+ * Branches use a one-instruction delay slot.
  */
 internal class N64RspCpu(private val bus: N64MemoryBus) {
     private val gpr = IntArray(32)
@@ -85,6 +86,11 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                 43 -> writeRegister(rd, if (a.toUInt() < b.toUInt()) 1 else 0) // SLTU
                 else -> unsupported(instruction)
             }
+            16 -> when (rs) {
+                0 -> writeRegister(rt, readSpCop0(rd)) // MFC0
+                4 -> writeSpCop0(rd, b) // MTC0
+                else -> unsupported(instruction)
+            }
             1 -> when (rt) {
                 0 -> if (a < 0) pendingTarget = pcPlus4 + (immediate shl 2) // BLTZ
                 1 -> if (a >= 0) pendingTarget = pcPlus4 + (immediate shl 2) // BGEZ
@@ -116,6 +122,16 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
             43 -> bus.writeWord(dmemAddress(a + immediate), b) // SW
             else -> unsupported(instruction)
         }
+    }
+
+    private fun readSpCop0(index: Int): Int {
+        require(index in 0..7) { "Unsupported RSP COP0 register: $index" }
+        return bus.readWord(N64MemoryBus.SP_MEM_ADDR + index * 4L)
+    }
+
+    private fun writeSpCop0(index: Int, value: Int) {
+        require(index in 0..7) { "Unsupported RSP COP0 register: $index" }
+        bus.writeWord(N64MemoryBus.SP_MEM_ADDR + index * 4L, value)
     }
 
     private fun dmemAddress(address: Int): Long {

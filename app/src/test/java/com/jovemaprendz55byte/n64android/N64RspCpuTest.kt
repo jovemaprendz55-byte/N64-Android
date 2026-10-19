@@ -10,6 +10,9 @@ class N64RspCpuTest {
     private fun r(rs: Int, rt: Int, rd: Int, shamt: Int, funct: Int) =
         (rs shl 21) or (rt shl 16) or (rd shl 11) or (shamt shl 6) or funct
 
+    private fun cop0(rs: Int, rt: Int, rd: Int) =
+        (16 shl 26) or (rs shl 21) or (rt shl 16) or (rd shl 11)
+
     @Test fun executesScalarInstructionsAndLoadsStoresDmem() {
         val bus = N64MemoryBus()
         bus.writeWord(N64SpMemory.IMEM_BASE, i(15, 0, 1, 0x1234))
@@ -108,6 +111,35 @@ class N64RspCpuTest {
         assertEquals(0, bus.readWord(N64MemoryBus.SP_STATUS) and 3)
         assertEquals(1, rsp.run(1))
         assertEquals(2, rsp.register(1))
+    }
+
+    @Test fun cop0TransfersReadAndWriteSpRegisters() {
+        val bus = N64MemoryBus()
+        val rsp = N64RspCpu(bus)
+        // Set SP_MEM_ADDR to 0x100, then read it back with MFC0.
+        bus.writeWord(N64SpMemory.IMEM_BASE, i(9, 0, 1, 0x100))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, cop0(4, 1, 0)) // MTC0 r1, SP_MEM_ADDR
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, cop0(0, 2, 0)) // MFC0 r2, SP_MEM_ADDR
+
+        rsp.step()
+        rsp.step()
+        rsp.step()
+
+        assertEquals(0x100, bus.readWord(N64MemoryBus.SP_MEM_ADDR))
+        assertEquals(0x100, rsp.register(2))
+    }
+
+    @Test fun cop0StatusWriteCanHaltRspRunLoop() {
+        val bus = N64MemoryBus()
+        val rsp = N64RspCpu(bus)
+        bus.writeWord(N64SpMemory.IMEM_BASE, i(9, 0, 1, 2)) // Set HALT command
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, cop0(4, 1, 4)) // MTC0 r1, SP_STATUS
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, i(9, 0, 2, 99)) // Must not execute
+        bus.writeWord(N64MemoryBus.SP_STATUS, 1) // Start RSP
+
+        assertEquals(2, rsp.run(10))
+        assertEquals(0, rsp.register(2))
+        assertEquals(1, bus.readWord(N64MemoryBus.SP_STATUS) and 1)
     }
 
 }
