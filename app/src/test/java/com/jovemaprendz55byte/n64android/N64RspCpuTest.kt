@@ -780,4 +780,49 @@ class N64RspCpuTest {
         assertEquals(0xCD, rsp.register(6))
     }
 
+
+    @Test fun vectorComparisonsUpdateVccAndVmrGConsumesIt() {
+        val bus = N64MemoryBus()
+        fun v(vt: Int, vs: Int, vd: Int, funct: Int) =
+            (18 shl 26) or (16 shl 21) or (vt shl 16) or
+                (vs shl 11) or (vd shl 6) or funct
+        fun cop2Move(rs: Int, rt: Int, control: Int) =
+            (18 shl 26) or (rs shl 21) or (rt shl 16) or (control shl 11)
+
+        // VCO has both halves set for lane 0, and neither half set for lane 1.
+        bus.writeWord(N64SpMemory.IMEM_BASE, i(13, 0, 1, 0x0101))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, cop2Move(6, 1, 0))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, v(2, 1, 10, 0x20)) // VLT
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, cop2Move(2, 2, 1)) // CFC2 VCC
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, cop2Move(6, 1, 0))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 20, v(2, 1, 11, 0x21)) // VEQ
+        bus.writeWord(N64SpMemory.IMEM_BASE + 24, cop2Move(2, 3, 1))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 28, cop2Move(6, 1, 0))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 32, v(2, 1, 12, 0x22)) // VNE
+        bus.writeWord(N64SpMemory.IMEM_BASE + 36, cop2Move(2, 4, 1))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 40, cop2Move(6, 1, 0))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 44, v(2, 1, 13, 0x23)) // VGE
+        bus.writeWord(N64SpMemory.IMEM_BASE + 48, cop2Move(2, 5, 1))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 52, v(2, 1, 14, 0x27)) // VMRG
+
+        val rsp = N64RspCpu(bus)
+        val left = shortArrayOf(5, 7, 1, 9, 4, 2, 0, -3)
+        val right = shortArrayOf(5, 7, 4, 2, 4, 8, 0, -3)
+        for (lane in 0..7) {
+            rsp.setVectorLane(1, lane, left[lane])
+            rsp.setVectorLane(2, lane, right[lane])
+        }
+
+        repeat(14) { rsp.step() }
+
+        assertEquals(0x0005, rsp.register(2)) // VLT: lane 0 equal with both flags; lane 2 less
+        assertEquals(0x00DA, rsp.register(3)) // VEQ: equal lanes without VCO_HI
+        assertEquals(0x0125, rsp.register(4)) // VNE: unequal lanes or VCO_HI
+        assertEquals(0x00DB, rsp.register(5)) // VGE: greater/equal, except equal with both flags
+        for (lane in 0..7) {
+            val selected = (rsp.register(5) and (1 shl lane)) != 0
+            assertEquals(if (selected) left[lane] else right[lane], rsp.vectorLane(14, lane))
+        }
+    }
+
 }
