@@ -872,11 +872,12 @@ class R4300CpuTest {
     @Test fun dsubRejectsSigned64BitOverflow() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
-            iType(0x19, 0, 2, 1),       // r2 = 1
-            iType(0x0F, 0, 3, 0x8000),  // r3 = Long.MIN_VALUE
-            rType(3, 2, 4, 0, 0x2E)     // DSUB: Long.MIN_VALUE - 1 underflows
+            iType(0x0F, 0, 3, 0x8000), // r3 = sign-extended 0x80000000
+            rType(0, 3, 3, 0, 0x3C),   // DSLL32: r3 = Long.MIN_VALUE
+            iType(0x19, 0, 2, 1),      // r2 = 1
+            rType(3, 2, 4, 0, 0x2E)    // DSUB: Long.MIN_VALUE - 1 underflows
         ))
-        repeat(2) { cpu.step() }
+        repeat(3) { cpu.step() }
         try {
             cpu.step()
             throw AssertionError("Expected DSUB signed overflow to be detected")
