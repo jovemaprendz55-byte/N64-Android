@@ -795,6 +795,29 @@ class R4300CpuTest {
         assertEquals(0L, cpu.register(2))
     }
 
+    @Test fun multAndMultuSplitProductsIntoHiAndLo() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, -1),       // r1 = -1 (32-bit signed -1)
+            iType(0x09, 0, 2, 2),        // r2 = 2
+            rType(1, 2, 0, 0, 0x18),      // MULT: signed -1 * 2 = -2
+            rType(0, 0, 3, 0, 0x10),      // MFHI r3
+            rType(0, 0, 4, 0, 0x12),      // MFLO r4
+            rType(1, 2, 0, 0, 0x19),      // MULTU: 0xFFFFFFFF * 2 = 0x1FFFFFFFE
+            rType(0, 0, 5, 0, 0x10),      // MFHI r5
+            rType(0, 0, 6, 0, 0x12)       // MFLO r6
+        ))
+
+        repeat(8) { cpu.step() }
+
+        assertEquals(-1L, cpu.register(3))
+        assertEquals(-2L, cpu.register(4))
+        assertEquals(1L, cpu.register(5))
+        assertEquals(-2L, cpu.register(6))
+        assertEquals(1L, cpu.hi)
+        assertEquals(-2L, cpu.lo)
+    }
+
     private fun longToBytes(value: Long): ByteArray =
         ByteArray(8) { index -> (value ushr (56 - index * 8)).toByte() }
 
