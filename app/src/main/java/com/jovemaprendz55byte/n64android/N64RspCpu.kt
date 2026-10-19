@@ -147,6 +147,14 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
             1 -> when (rt) {
                 0 -> if (a < 0) pendingTarget = pcPlus4 + (immediate shl 2) // BLTZ
                 1 -> if (a >= 0) pendingTarget = pcPlus4 + (immediate shl 2) // BGEZ
+                16 -> if (a < 0) { // BLTZAL
+                    writeRegister(31, (pcPlus4 + 4) and 0xFFC)
+                    pendingTarget = pcPlus4 + (immediate shl 2)
+                }
+                17 -> if (a >= 0) { // BGEZAL
+                    writeRegister(31, (pcPlus4 + 4) and 0xFFC)
+                    pendingTarget = pcPlus4 + (immediate shl 2)
+                }
                 else -> unsupported(instruction)
             }
             2 -> pendingTarget = (pcPlus4 and 0xF0000000.toInt()) or
