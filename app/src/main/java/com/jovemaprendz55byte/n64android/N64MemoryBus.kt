@@ -48,6 +48,7 @@ internal class N64MemoryBus(
         N64MemoryMap.Region.RDRAM -> rdram[rdramIndex(physicalAddress)]
         N64MemoryMap.Region.SP_DMEM, N64MemoryMap.Region.SP_IMEM ->
             spMemory.readByte(physicalAddress)
+        N64MemoryMap.Region.CARTRIDGE_DOMAIN -> readCartridgeByte(physicalAddress)
         else -> unsupported(physicalAddress)
     }
 
