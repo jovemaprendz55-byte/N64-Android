@@ -255,6 +255,60 @@ class R4300CpuTest {
         assertEquals(88L, cpu.register(8))
     }
 
+    @Test fun jrExecutesDelaySlotBeforeRegisterTarget() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 24),      // r1 = target address 0x18
+            rType(1, 0, 0, 0, 0x08),    // JR r1
+            iType(0x09, 0, 2, 22),      // delay slot must execute
+            iType(0x09, 0, 3, 99)       // must be skipped
+        ))
+        cpu.loadBytes(24, words(iType(0x09, 0, 4, 44)))
+
+        cpu.step()
+        cpu.step()
+        cpu.step()
+        assertEquals(22L, cpu.register(2))
+        assertEquals(24L, cpu.pc)
+        cpu.step()
+        assertEquals(0L, cpu.register(3))
+        assertEquals(44L, cpu.register(4))
+    }
+
+    @Test fun branchAndLinkInstructionsSetReturnAddressAndHonorDelaySlots() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, -1),      // r1 = -1
+            iType(0x01, 1, 0x10, 2),    // BLTZAL -> address 0x10
+            iType(0x09, 0, 2, 20),      // delay slot
+            iType(0x09, 0, 3, 99),      // skipped
+            iType(0x09, 0, 4, 40),      // first target
+            iType(0x09, 0, 1, 1),       // r1 = 1
+            iType(0x01, 1, 0x11, 2),    // BGEZAL -> address 0x24
+            iType(0x09, 0, 5, 50),      // delay slot
+            iType(0x09, 0, 6, 99),      // skipped
+            iType(0x09, 0, 7, 70)       // second target
+        ))
+
+        cpu.step() // r1 = -1
+        cpu.step() // BLTZAL
+        assertEquals(12L, cpu.register(31))
+        cpu.step() // delay slot, then target
+        cpu.step() // first target
+        cpu.step() // r1 = 1
+        cpu.step() // BGEZAL
+        assertEquals(32L, cpu.register(31))
+        cpu.step() // delay slot, then target
+        cpu.step() // second target
+
+        assertEquals(20L, cpu.register(2))
+        assertEquals(0L, cpu.register(3))
+        assertEquals(40L, cpu.register(4))
+        assertEquals(50L, cpu.register(5))
+        assertEquals(0L, cpu.register(6))
+        assertEquals(70L, cpu.register(7))
+    }
+
     @Test fun subuWrapsAt32BitsWithoutSignedOverflowException() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
