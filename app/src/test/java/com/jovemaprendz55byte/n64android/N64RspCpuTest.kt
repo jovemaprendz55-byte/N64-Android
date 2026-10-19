@@ -255,4 +255,30 @@ class N64RspCpuTest {
         assertEquals(0, rsp.register(3))
         assertEquals(44, rsp.register(4))
     }
+
+    @Test fun vectorAbsoluteUsesVsSignAndVtMagnitude() {
+        val bus = N64MemoryBus()
+        fun v(vt: Int, vs: Int, vd: Int, funct: Int) =
+            (18 shl 26) or (16 shl 21) or (vt shl 16) or
+                (vs shl 11) or (vd shl 6) or funct
+        bus.writeWord(N64SpMemory.IMEM_BASE, v(2, 1, 3, 0x13)) // VABS
+        val rsp = N64RspCpu(bus)
+        val signs = shortArrayOf((-1).toShort(), 1, 0, (-2).toShort(), 2, (-1).toShort(), 1, 0)
+        val values = shortArrayOf(7, 7, 7, (-9).toShort(), (-9).toShort(), Short.MIN_VALUE, Short.MIN_VALUE, 0)
+        for (lane in 0..7) {
+            rsp.setVectorLane(1, lane, signs[lane])
+            rsp.setVectorLane(2, lane, values[lane])
+        }
+
+        rsp.step()
+
+        assertEquals((-7).toShort(), rsp.vectorLane(3, 0))
+        assertEquals(7.toShort(), rsp.vectorLane(3, 1))
+        assertEquals(0.toShort(), rsp.vectorLane(3, 2))
+        assertEquals(9.toShort(), rsp.vectorLane(3, 3))
+        assertEquals((-9).toShort(), rsp.vectorLane(3, 4))
+        assertEquals(Short.MIN_VALUE, rsp.vectorLane(3, 5))
+        assertEquals(Short.MIN_VALUE, rsp.vectorLane(3, 6))
+        assertEquals(0.toShort(), rsp.vectorLane(3, 7))
+    }
 }

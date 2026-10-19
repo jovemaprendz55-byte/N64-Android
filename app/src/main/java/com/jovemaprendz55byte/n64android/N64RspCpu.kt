@@ -4,7 +4,7 @@ package com.jovemaprendz55byte.n64android
  * Minimal scalar RSP interpreter foundation.
  *
  * Implements a deliberately small MIPS-I integer subset for smoke tests.
- * Implements a limited vector subset (VADD, VSUB, VAND, VOR, VXOR, VNOR) with
+ * Implements a limited vector subset (VADD, VSUB, VABS, VAND, VOR, VXOR, VNOR) with
  * element selector e=0. Other vector operations, DMA scheduling, interrupts,
  * and cycle timing are not implemented. COP0 access is limited to SP registers.
  * Branches use a one-instruction delay slot.
@@ -186,6 +186,11 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
             val result = when (function) {
                 0x10 -> (a + b).coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()) // VADD
                 0x11 -> (a - b).coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()) // VSUB
+                0x13 -> when {
+                    a < 0 -> -b
+                    a > 0 -> b
+                    else -> 0
+                } // VABS: sign comes from vs; magnitude comes from vt
                 0x28 -> a and b // VAND
                 0x2A -> a or b // VOR
                 0x2B -> (a or b).inv() // VNOR
