@@ -4,7 +4,7 @@ package com.jovemaprendz55byte.n64android
  * Minimal scalar RSP interpreter foundation.
  *
  * Implements a deliberately small MIPS-I integer subset for smoke tests.
- * Implements a limited vector subset (VMULF, VMULU, VMACF, VMACU, VADD, VSUB, VABS, VADDC, VSUBC, VLT, VEQ, VNE, VGE, and logic operations) with
+ * Implements a limited vector subset (VMULF, VMULU, VMACF, VMACU, VSAR, VADD, VSUB, VABS, VADDC, VSUBC, VLT, VEQ, VNE, VGE, and logic operations) with
  * element selector e=0. Other vector operations, DMA scheduling, interrupts,
  * and cycle timing are not implemented. COP0 access is limited to SP registers.
  * Branches use a one-instruction delay slot.
@@ -180,10 +180,22 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
     }
 
     private fun executeVector(instruction: Int, element: Int, vt: Int, vs: Int, vd: Int) {
-        // Start with the identity element mapping only. Other selectors need the
-        // RSP's lane-broadcast/element-routing table and are rejected explicitly.
-        if (element != 0) unsupported(instruction)
         val function = instruction and 63
+        // VSAR uses the element field as a selector for accumulator slices.
+        if (function == 0x1D) {
+            val sliceShift = when (element) {
+                8 -> 32 // accumulator high slice
+                9 -> 16 // accumulator middle slice
+                10 -> 0 // accumulator low slice
+                else -> unsupported(instruction)
+            }
+            for (lane in 0..7) {
+                vector[vd][lane] = ((accumulator[lane] shr sliceShift) and 0xFFFFL).toShort()
+            }
+            return
+        }
+        // Other operations currently implement only element selector zero.
+        if (element != 0) unsupported(instruction)
         if (function !in setOf(0x00, 0x01, 0x08, 0x09, 0x10, 0x11, 0x13, 0x14, 0x15, 0x20, 0x21, 0x22, 0x23, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F)) {
             unsupported(instruction)
         }
