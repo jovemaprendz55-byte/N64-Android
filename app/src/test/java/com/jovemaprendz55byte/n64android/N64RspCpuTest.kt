@@ -290,6 +290,23 @@ class N64RspCpuTest {
         assertEquals(0.toShort(), rsp.vectorLane(3, 7))
     }
 
+    @Test fun rejectsUnsupportedVectorElementSelectorExplicitly() {
+        val bus = N64MemoryBus()
+        // COP2 with element selector 1; only selector 0 is implemented for now.
+        val instruction = (18 shl 26) or (17 shl 21) or (2 shl 16) or
+            (1 shl 11) or (3 shl 6) or 0x28
+        bus.writeWord(N64SpMemory.IMEM_BASE, instruction)
+        val rsp = N64RspCpu(bus)
+        rsp.setVectorLane(1, 0, 0x1234.toShort())
+
+        val error = org.junit.Assert.assertThrows(
+            IllegalArgumentException::class.java
+        ) { rsp.step() }
+
+        org.junit.Assert.assertTrue(error.message!!.contains("Unsupported scalar RSP instruction"))
+        assertEquals(0x1234.toShort(), rsp.vectorLane(1, 0))
+    }
+
     @Test fun dmemEffectiveAddressesWrapAtFourKilobytes() {
         val bus = N64MemoryBus()
         bus.writeWord(N64SpMemory.IMEM_BASE, i(9, 0, 1, 0x0FFF)) // r1 = 4095
