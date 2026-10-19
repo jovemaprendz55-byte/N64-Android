@@ -133,6 +133,16 @@ class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
             entryPoint <= rdramSize.toLong() - 4L) {
             "Entry point must be aligned and inside configured RAM"
         }
+        resetExecutionState(entryPoint)
+    }
+
+    /**
+     * Clears CPU registers and branch state while preserving memory.
+     * Unlike [reset], this accepts virtual entry points such as a cartridge
+     * address in KSEG1; the next instruction fetch validates address mapping.
+     */
+    fun resetExecutionState(entryPoint: Long) {
+        require(entryPoint % 4L == 0L) { "Entry point must be 4-byte aligned" }
         gpr.fill(0L)
         hi = 0L
         lo = 0L

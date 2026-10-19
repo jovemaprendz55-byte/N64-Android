@@ -41,7 +41,7 @@ class N64EmulatorCore {
         require(entryPoint % 4L == 0L) { "Entry point must be 4-byte aligned" }
         require(instructionBudget > 0) { "Instruction budget must be positive" }
 
-        cpu.pc = entryPoint
+        cpu.resetExecutionState(entryPoint)
         var executed = 0
         while (executed < instructionBudget) {
             try {
