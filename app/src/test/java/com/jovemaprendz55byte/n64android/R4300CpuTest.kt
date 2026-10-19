@@ -229,7 +229,7 @@ class R4300CpuTest {
 
     @Test fun unalignedWordStoresMergeBigEndianBytesCorrectly() {
         val expectedSwl = intArrayOf(0x11223344, 0xAA112233.toInt(), 0xAABB1122.toInt(), 0xAABBCC11.toInt())
-        val expectedSwr = intArrayOf(0x11BBCCDD, 0x3344CCDD, 0x223344DD, 0x11223344)
+        val expectedSwr = intArrayOf(0x44BBCCDD, 0x3344CCDD, 0x223344DD, 0x11223344)
         for (offset in 0..3) {
             val leftCpu = R4300Cpu()
             leftCpu.loadBytes(0, words(
