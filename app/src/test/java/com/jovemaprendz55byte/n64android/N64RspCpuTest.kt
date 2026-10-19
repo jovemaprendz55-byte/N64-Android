@@ -173,6 +173,26 @@ class N64RspCpuTest {
         assertEquals(0x7FFA.toShort(), rsp.vectorLane(5, 1))
     }
 
+    @Test fun vectorAccumulatorReadSelectsHighMiddleAndLowSlices() {
+        val bus = N64MemoryBus()
+        fun v(element: Int, vt: Int, vs: Int, vd: Int, funct: Int) =
+            (18 shl 26) or ((16 or element) shl 21) or (vt shl 16) or
+                (vs shl 11) or (vd shl 6) or funct
+        bus.writeWord(N64SpMemory.IMEM_BASE, v(8, 2, 1, 3, 0x00)) // VMULF
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, v(10, 0, 0, 4, 0x1D)) // VSAR low
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, v(9, 0, 0, 5, 0x1D)) // VSAR middle
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, v(8, 0, 0, 6, 0x1D)) // VSAR high
+
+        val rsp = N64RspCpu(bus)
+        rsp.setVectorLane(1, 0, 0x4000)
+        rsp.setVectorLane(2, 0, 0x4000)
+        repeat(4) { rsp.step() }
+
+        assertEquals(0x0000.toShort(), rsp.vectorLane(4, 0))
+        assertEquals(0x2000.toShort(), rsp.vectorLane(5, 0))
+        assertEquals(0x0000.toShort(), rsp.vectorLane(6, 0))
+    }
+
     @Test fun vectorComparisonsSelectExpectedSignedLanes() {
         val bus = N64MemoryBus()
         fun v(vt: Int, vs: Int, vd: Int, funct: Int) =
