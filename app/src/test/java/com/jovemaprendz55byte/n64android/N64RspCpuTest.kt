@@ -97,7 +97,7 @@ class N64RspCpuTest {
         bus.writeWord(N64SpMemory.IMEM_BASE, v(2, 1, 3, 0x14)) // VADDC
         bus.writeWord(N64SpMemory.IMEM_BASE + 4, v(5, 4, 6, 0x10)) // VADD consumes carry
         bus.writeWord(N64SpMemory.IMEM_BASE + 8, v(5, 4, 7, 0x10)) // VADD after clear
-        bus.writeWord(N64SpMemory.IMEM_BASE + 12, v(2, 1, 8, 0x15)) // VSUBC
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, v(2, 13, 8, 0x15)) // VSUBC
         bus.writeWord(N64SpMemory.IMEM_BASE + 16, v(10, 9, 11, 0x11)) // VSUB consumes borrow
         bus.writeWord(N64SpMemory.IMEM_BASE + 20, v(10, 9, 12, 0x11)) // VSUB after clear
 
@@ -106,6 +106,7 @@ class N64RspCpuTest {
         rsp.setVectorLane(2, 0, 1)
         rsp.setVectorLane(4, 0, 0)
         rsp.setVectorLane(5, 0, 0)
+        rsp.setVectorLane(13, 0, 0)
         rsp.setVectorLane(9, 0, 5)
         rsp.setVectorLane(10, 0, 3)
 
