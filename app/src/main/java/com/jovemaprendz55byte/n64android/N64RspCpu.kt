@@ -309,8 +309,8 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                 val address = a + immediate
                 val aligned = dmemAddress(address and -4)
                 val memoryWord = bus.readWord(aligned)
-                val shift = (3 - (address and 3)) * 8
-                val preserveMask = 0x00FF_FFFF ushr ((address and 3) * 8)
+                val shift = (3 - (address and 3).toInt()) * 8
+                val preserveMask = 0x00FF_FFFF ushr ((address and 3).toInt() * 8)
                 writeRegister(rt, (b and preserveMask) or (memoryWord and (-1 shl shift)))
             }
             37 -> writeRegister(rt, bus.readHalf(dmemAddress(a + immediate)).toInt() and 0xFFFF) // LHU
@@ -318,8 +318,8 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                 val address = a + immediate
                 val aligned = dmemAddress(address and -4)
                 val memoryWord = bus.readWord(aligned)
-                val shift = (address and 3) * 8
-                val preserveMask = 0xFFFF_FF00 shl ((3 - (address and 3)) * 8)
+                val shift = (address and 3).toInt() * 8
+                val preserveMask = 0xFFFF_FF00 shl ((3 - (address and 3).toInt()) * 8)
                 writeRegister(rt, (b and preserveMask) or (memoryWord and (-1 ushr shift)))
             }
             40 -> bus.writeByte(dmemAddress(a + immediate), b.toByte()) // SB
