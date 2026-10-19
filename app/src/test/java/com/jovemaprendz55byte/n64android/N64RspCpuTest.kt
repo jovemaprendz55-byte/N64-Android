@@ -665,6 +665,26 @@ class N64RspCpuTest {
     }
 
 
+    @Test fun supportsMfc2AndMtc2AtOddVectorElementOffsets() {
+        val bus = N64MemoryBus()
+        fun cop2Move(rs: Int, rt: Int, vd: Int, element: Int) =
+            (18 shl 26) or (rs shl 21) or (rt shl 16) or
+                (vd shl 11) or (element shl 7)
+
+        val rsp = N64RspCpu(bus)
+        rsp.setVectorLane(2, 1, 0x1122.toShort())
+        rsp.setVectorLane(2, 2, 0x3344.toShort())
+        bus.writeWord(N64SpMemory.IMEM_BASE, i(9, 0, 1, 0xFEDC))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, cop2Move(4, 1, 2, 3)) // MTC2 r1,v2[e3]
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, cop2Move(0, 3, 2, 3)) // MFC2 r3,v2[e3]
+
+        repeat(3) { rsp.step() }
+
+        assertEquals(0x11FE, rsp.vectorLane(2, 1).toInt() and 0xFFFF)
+        assertEquals(0xDC44, rsp.vectorLane(2, 2).toInt() and 0xFFFF)
+        assertEquals(-292, rsp.register(3)) // 0xFEDC sign-extends from 16 bits
+    }
+
     @Test fun supportsQuadwordLoadAndStoreAcrossVectorElementWrap() {
         val bus = N64MemoryBus()
         fun vectorMemory(op: Int, base: Int, vt: Int, subop: Int, element: Int, offset: Int) =
