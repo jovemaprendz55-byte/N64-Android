@@ -57,7 +57,7 @@ class N64EmulatorCoreTest {
     @Test fun eachExecutionStartsWithCleanCpuRegistersButPreservesRomMemory() {
         // First instruction leaves r1=42. The second instruction would perform
         // an unaligned load from address 42 if the next execution reused r1.
-        val rom = syntheticRomWithInstructions(0x2401002A, 0x8C220000)
+        val rom = syntheticRomWithInstructions(0x2401002A, 0x8C220000.toInt())
         val core = N64EmulatorCore()
         core.loadRom(rom)
 
