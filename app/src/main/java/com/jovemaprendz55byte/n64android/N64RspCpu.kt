@@ -334,18 +334,12 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                 val aligned = dmemAddress(address and -4)
                 val offset = address and 3
                 val preserveMask = when (offset) {
-                    0 -> 0x00FF_FFFF
-                    1 -> 0x0000_FFFF
-                    2 -> 0x0000_00FF
-                    else -> 0
+                    0 -> 0
+                    1 -> 0xFF00_0000.toInt()
+                    2 -> 0xFFFF_0000.toInt()
+                    else -> 0xFFFF_FF00.toInt()
                 }
-                val valueMask = when (offset) {
-                    0 -> 0xFF00_0000.toInt()
-                    1 -> 0xFFFF_0000.toInt()
-                    2 -> 0xFFFF_FF00.toInt()
-                    else -> -1
-                }
-                val merged = (bus.readWord(aligned) and preserveMask) or (b and valueMask)
+                val merged = (bus.readWord(aligned) and preserveMask) or (b ushr (offset * 8))
                 bus.writeWord(aligned, merged)
             }
             43 -> bus.writeWord(dmemAddress(a + immediate), b) // SW
@@ -354,18 +348,12 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                 val aligned = dmemAddress(address and -4)
                 val offset = address and 3
                 val preserveMask = when (offset) {
-                    0 -> 0
-                    1 -> 0xFF00_0000.toInt()
-                    2 -> 0xFFFF_0000.toInt()
-                    else -> 0xFFFF_FF00.toInt()
+                    0 -> 0x00FF_FFFF
+                    1 -> 0x0000_FFFF
+                    2 -> 0x0000_00FF
+                    else -> 0
                 }
-                val merged = (bus.readWord(aligned) and preserveMask) or
-                    (b and when (offset) {
-                        0 -> -1
-                        1 -> 0x00FF_FFFF
-                        2 -> 0x0000_FFFF
-                        else -> 0x0000_00FF
-                    })
+                val merged = (bus.readWord(aligned) and preserveMask) or (b shl ((3 - offset) * 8))
                 bus.writeWord(aligned, merged)
             }
             else -> unsupported(instruction)
