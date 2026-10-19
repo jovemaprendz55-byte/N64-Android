@@ -695,6 +695,23 @@ class R4300CpuTest {
         assertEquals(2147483647L, cpu.register(5))
     }
 
+    @Test fun sltiAndSltiuUseSignedExtendedImmediateWithDifferentComparisons() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x19, 0, 1, 1),       // r1 = 1
+            iType(0x0A, 1, 2, -1),      // SLTI: 1 < -1 is false
+            iType(0x0B, 1, 3, -1),      // SLTIU: 1 < unsigned 0xFFFFFFFFFFFFFFFF
+            iType(0x19, 0, 4, -1),      // r4 = unsigned 64-bit maximum
+            iType(0x0A, 4, 5, 1),       // SLTI: -1 < 1 is true
+            iType(0x0B, 4, 6, 1)        // SLTIU: unsigned max < 1 is false
+        ))
+        repeat(6) { cpu.step() }
+        assertEquals(0L, cpu.register(2))
+        assertEquals(1L, cpu.register(3))
+        assertEquals(1L, cpu.register(5))
+        assertEquals(0L, cpu.register(6))
+    }
+
     @Test fun daddAndDaddiRejectSigned64BitOverflow() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
