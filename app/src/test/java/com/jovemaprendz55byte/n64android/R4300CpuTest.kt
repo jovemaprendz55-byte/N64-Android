@@ -1297,6 +1297,25 @@ class R4300CpuTest {
         assertEquals(12L, cpu.pc)
     }
 
+    @Test fun eretJumpsToEpcAndClearsExceptionLevelForSimplifiedCore() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 0x40), // r1 = return address 0x40
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (14 shl 11), // MTC0 r1, EPC
+            iType(0x09, 0, 2, 2), // Status.EXL = 1
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (12 shl 11), // MTC0 r2, Status
+            0x42000018, // ERET
+        ))
+        cpu.loadBytes(0x40, words(iType(0x09, 0, 3, 99)))
+
+        repeat(5) { cpu.step() }
+        assertEquals(0x40L, cpu.pc)
+
+        cpu.step()
+        assertEquals(99L, cpu.register(3))
+        assertEquals(0x44L, cpu.pc)
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
