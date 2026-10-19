@@ -62,6 +62,32 @@ class N64RspCpuTest {
         assertEquals(Short.MIN_VALUE, rsp.vectorLane(4, 1))
     }
 
+    @Test fun vectorAddCarryAndSubtractCarryWrapUnsignedLanes() {
+        val bus = N64MemoryBus()
+        fun v(vt: Int, vs: Int, vd: Int, funct: Int) =
+            (18 shl 26) or (16 shl 21) or (vt shl 16) or
+                (vs shl 11) or (vd shl 6) or funct
+        bus.writeWord(N64SpMemory.IMEM_BASE, v(2, 1, 3, 0x14)) // VADDC
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, v(2, 1, 4, 0x15)) // VSUBC
+        val rsp = N64RspCpu(bus)
+        val left = shortArrayOf(0xFFFF.toShort(), 0x8000.toShort(), 10, 0, 0xFFFF.toShort(), 1, 7, 0x1234)
+        val right = shortArrayOf(1, 0x8000.toShort(), 20, 0, 2, 2, 7, 0x1234)
+        for (lane in 0..7) {
+            rsp.setVectorLane(1, lane, left[lane])
+            rsp.setVectorLane(2, lane, right[lane])
+        }
+
+        rsp.step()
+        rsp.step()
+
+        val addExpected = intArrayOf(0, 0, 30, 0, 1, 3, 14, 0x2468)
+        val subExpected = intArrayOf(0xFFFE, 0, 0xFFF6, 0, 0xFFFD, 0xFFFF, 0, 0)
+        for (lane in 0..7) {
+            assertEquals(addExpected[lane].toShort(), rsp.vectorLane(3, lane))
+            assertEquals(subExpected[lane].toShort(), rsp.vectorLane(4, lane))
+        }
+    }
+
     @Test fun executesScalarInstructionsAndLoadsStoresDmem() {
         val bus = N64MemoryBus()
         bus.writeWord(N64SpMemory.IMEM_BASE, i(15, 0, 1, 0x1234))

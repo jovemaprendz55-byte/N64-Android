@@ -4,7 +4,7 @@ package com.jovemaprendz55byte.n64android
  * Minimal scalar RSP interpreter foundation.
  *
  * Implements a deliberately small MIPS-I integer subset for smoke tests.
- * Implements a limited vector subset (VADD, VSUB, VABS, VAND, VNAND, VOR, VNOR, VXOR, VNXOR, VANDC, VORC) with
+ * Implements a limited vector subset (VADD, VSUB, VABS, VADDC, VSUBC, VAND, VNAND, VOR, VNOR, VXOR, VNXOR, VANDC, VORC) with
  * element selector e=0. Other vector operations, DMA scheduling, interrupts,
  * and cycle timing are not implemented. COP0 access is limited to SP registers.
  * Branches use a one-instruction delay slot.
@@ -14,6 +14,8 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
     private var hi = 0
     private var lo = 0
     private val vector = Array(32) { ShortArray(8) }
+    // VCO is stored as low-byte carry/borrow bits and high-byte nonzero bits.
+    private var vco = 0
     var pc: Int = 0
         private set
     private var pendingTarget: Int? = null
@@ -180,6 +182,10 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
         // RSP's lane-broadcast/element-routing table and are rejected explicitly.
         if (element != 0) unsupported(instruction)
         val function = instruction and 63
+        if (function !in setOf(0x10, 0x11, 0x13, 0x14, 0x15, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F)) {
+            unsupported(instruction)
+        }
+        var nextVco = 0
         for (lane in 0..7) {
             val a = vector[vs][lane].toInt()
             val b = vector[vt][lane].toInt()
@@ -191,6 +197,19 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                     a > 0 -> b
                     else -> 0
                 } // VABS: sign comes from vs; magnitude comes from vt
+                0x14 -> {
+                    val sum = (a and 0xFFFF) + (b and 0xFFFF)
+                    if (sum > 0xFFFF) nextVco = nextVco or (1 shl lane)
+                    sum and 0xFFFF // VADDC
+                }
+                0x15 -> {
+                    val ua = a and 0xFFFF
+                    val ub = b and 0xFFFF
+                    val difference = (ua - ub) and 0xFFFF
+                    if (ua < ub) nextVco = nextVco or (1 shl lane)
+                    if (difference != 0) nextVco = nextVco or (1 shl (lane + 8))
+                    difference // VSUBC
+                }
                 0x28 -> a and b // VAND
                 0x29 -> (a and b).inv() // VNAND
                 0x2A -> a or b // VOR
@@ -203,6 +222,7 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
             }
             vector[vd][lane] = result.toShort()
         }
+        if (function == 0x14 || function == 0x15) vco = nextVco
     }
 
     private fun readSpCop0(index: Int): Int {
