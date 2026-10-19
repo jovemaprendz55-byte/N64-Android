@@ -10,11 +10,15 @@ import java.math.BigInteger
  * not the Nintendo 64 memory map.
  */
 class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
-    private val memory = ByteArray(memorySize.also { size ->
+    private val rdramSize = memorySize.also { size ->
         require(size > 0 && size % 4 == 0) {
             "RAM size must be a positive multiple of four bytes"
         }
-    })
+        require(size <= DEFAULT_RDRAM_SIZE) {
+            "RAM size cannot exceed the standard 8 MiB RDRAM capacity"
+        }
+    }
+    private val memoryBus = N64MemoryBus(rdramSize)
 
     companion object {
         /** Maximum standard Nintendo 64 RDRAM capacity (8 MiB). */
@@ -35,69 +39,58 @@ class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
         return if (index == 0) 0L else gpr[index]
     }
 
+    /** Loads a program/data image into physical RDRAM through the memory bus. */
     fun loadBytes(address: Int, bytes: ByteArray) {
-        checkRange(address, bytes.size)
-        bytes.copyInto(memory, address)
+        require(address >= 0) { "Memory address must not be negative" }
+        memoryBus.loadRdram(address.toLong(), bytes)
     }
 
     fun readByte(address: Int): Byte {
-        checkRange(address, 1)
-        return memory[address]
+        require(address >= 0) { "Memory address must not be negative" }
+        return memoryBus.readByte(address.toLong())
     }
 
     fun writeByte(address: Int, value: Byte) {
-        checkRange(address, 1)
-        memory[address] = value
+        require(address >= 0) { "Memory address must not be negative" }
+        memoryBus.writeByte(address.toLong(), value)
     }
 
     /** Reads a signed, big-endian 16-bit value. */
     fun readHalf(address: Int): Short {
-        requireHalfAligned(address)
-        checkRange(address, 2)
-        return ((((memory[address].toInt() and 0xFF) shl 8) or
-            (memory[address + 1].toInt() and 0xFF))).toShort()
+        require(address >= 0) { "Memory address must not be negative" }
+        return memoryBus.readHalf(address.toLong())
     }
 
     fun writeHalf(address: Int, value: Short) {
-        requireHalfAligned(address)
-        checkRange(address, 2)
-        memory[address] = (value.toInt() ushr 8).toByte()
-        memory[address + 1] = value.toByte()
+        require(address >= 0) { "Memory address must not be negative" }
+        memoryBus.writeHalf(address.toLong(), value)
     }
 
     fun readWord(address: Int): Int {
-        requireAligned(address)
-        checkRange(address, 4)
-        return ((memory[address].toInt() and 0xFF) shl 24) or
-            ((memory[address + 1].toInt() and 0xFF) shl 16) or
-            ((memory[address + 2].toInt() and 0xFF) shl 8) or
-            (memory[address + 3].toInt() and 0xFF)
+        require(address >= 0) { "Memory address must not be negative" }
+        return memoryBus.readWord(address.toLong())
     }
 
     fun writeWord(address: Int, value: Int) {
-        requireAligned(address)
-        checkRange(address, 4)
-        memory[address] = (value ushr 24).toByte()
-        memory[address + 1] = (value ushr 16).toByte()
-        memory[address + 2] = (value ushr 8).toByte()
-        memory[address + 3] = value.toByte()
+        require(address >= 0) { "Memory address must not be negative" }
+        memoryBus.writeWord(address.toLong(), value)
     }
 
     fun readLong(address: Int): Long {
-        requireDoubleAligned(address)
-        checkRange(address, 8)
+        require(address >= 0) { "Memory address must not be negative" }
+        require(address % 8 == 0) { "Doubleword access must be 8-byte aligned" }
         var value = 0L
         for (i in 0 until 8) {
-            value = (value shl 8) or (memory[address + i].toLong() and 0xFFL)
+            value = (value shl 8) or (readByte(address + i).toLong() and 0xFFL)
         }
         return value
     }
 
     fun writeLong(address: Int, value: Long) {
-        requireDoubleAligned(address)
-        checkRange(address, 8)
+        require(address >= 0) { "Memory address must not be negative" }
+        require(address % 8 == 0) { "Doubleword access must be 8-byte aligned" }
         for (i in 0 until 8) {
-            memory[address + i] = (value ushr (56 - i * 8)).toByte()
+            writeByte(address + i, (value ushr (56 - i * 8)).toByte())
         }
     }
 
@@ -107,7 +100,7 @@ class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
      */
     fun reset(entryPoint: Long = 0L) {
         require(entryPoint >= 0L && entryPoint % 4L == 0L &&
-            entryPoint <= memory.size.toLong() - 4L) {
+            entryPoint <= rdramSize.toLong() - 4L) {
             "Entry point must be aligned and inside configured RAM"
         }
         gpr.fill(0L)
@@ -473,7 +466,7 @@ class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
     }
 
     private fun checkRange(address: Int, length: Int) {
-        require(address >= 0 && length >= 0 && address.toLong() + length <= memory.size) {
+        require(address >= 0 && length >= 0 && address.toLong() + length <= rdramSize) {
             "Memory access outside configured RAM"
         }
     }
