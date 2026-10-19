@@ -450,6 +450,85 @@ class R4300CpuTest {
         }
     }
 
+
+    @Test fun unalignedDoublewordLoadsMatchByteLevelBigEndianReference() {
+        val memoryBytes = byteArrayOf(0x10, 0x21, 0x32, 0x43, 0x54, 0x65, 0x76, 0x07)
+        val original = 0xA1B2C3D4E5F60718UL.toLong()
+        val originalBytes = longToBytes(original)
+
+        for (offset in 0..7) {
+            val left = R4300Cpu()
+            left.loadBytes(0x100, memoryBytes)
+            left.writeLong(0x108, original)
+            left.loadBytes(0, words(
+                iType(0x37, 0, 2, 0x108),
+                iType(0x1A, 0, 2, 0x100 + offset)
+            ))
+            repeat(2) { left.step() }
+            val expectedLeft = originalBytes.copyOf()
+            for (i in 0 until 8 - offset) expectedLeft[i] = memoryBytes[offset + i]
+            assertEquals("LDL byte reference offset $offset", bytesToLong(expectedLeft), left.register(2))
+
+            val right = R4300Cpu()
+            right.loadBytes(0x100, memoryBytes)
+            right.writeLong(0x108, original)
+            right.loadBytes(0, words(
+                iType(0x37, 0, 2, 0x108),
+                iType(0x1B, 0, 2, 0x100 + offset)
+            ))
+            repeat(2) { right.step() }
+            val expectedRight = originalBytes.copyOf()
+            for (i in 0..offset) expectedRight[7 - offset + i] = memoryBytes[i]
+            assertEquals("LDR byte reference offset $offset", bytesToLong(expectedRight), right.register(2))
+        }
+    }
+
+    @Test fun unalignedDoublewordStoresMatchByteLevelBigEndianReference() {
+        val initialBytes = byteArrayOf(0xA1.toByte(), 0xB2.toByte(), 0xC3.toByte(), 0xD4.toByte(),
+            0xE5.toByte(), 0xF6.toByte(), 0x07, 0x18)
+        val value = 0x1021324354657607L
+        val valueBytes = longToBytes(value)
+
+        for (offset in 0..7) {
+            val left = R4300Cpu()
+            left.loadBytes(0x100, initialBytes)
+            left.writeLong(0x108, value)
+            left.loadBytes(0, words(
+                iType(0x37, 0, 2, 0x108),
+                iType(0x2C, 0, 2, 0x100 + offset)
+            ))
+            repeat(2) { left.step() }
+            val expectedLeft = initialBytes.copyOf()
+            for (i in offset..7) expectedLeft[i] = valueBytes[i - offset]
+            for (i in 0..7) {
+                assertEquals("SDL offset $offset byte $i", expectedLeft[i], left.readByte(0x100 + i))
+            }
+
+            val right = R4300Cpu()
+            right.loadBytes(0x100, initialBytes)
+            right.writeLong(0x108, value)
+            right.loadBytes(0, words(
+                iType(0x37, 0, 2, 0x108),
+                iType(0x2D, 0, 2, 0x100 + offset)
+            ))
+            repeat(2) { right.step() }
+            val expectedRight = initialBytes.copyOf()
+            for (i in 0..offset) expectedRight[i] = valueBytes[7 - offset + i]
+            for (i in 0..7) {
+                assertEquals("SDR offset $offset byte $i", expectedRight[i], right.readByte(0x100 + i))
+            }
+        }
+    }
+
+    private fun longToBytes(value: Long): ByteArray =
+        ByteArray(8) { index -> (value ushr (56 - index * 8)).toByte() }
+
+    private fun bytesToLong(bytes: ByteArray): Long {
+        var value = 0L
+        for (byte in bytes) value = (value shl 8) or (byte.toLong() and 0xFFL)
+        return value
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
