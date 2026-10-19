@@ -182,7 +182,7 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
         // RSP's lane-broadcast/element-routing table and are rejected explicitly.
         if (element != 0) unsupported(instruction)
         val function = instruction and 63
-        if (function !in setOf(0x10, 0x11, 0x13, 0x14, 0x15, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F)) {
+        if (function !in setOf(0x10, 0x11, 0x13, 0x14, 0x15, 0x20, 0x21, 0x22, 0x23, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F)) {
             unsupported(instruction)
         }
         var nextVco = 0
@@ -213,6 +213,10 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                     if (difference != 0) nextVco = nextVco or (1 shl (lane + 8))
                     difference // VSUBC
                 }
+                0x20 -> if (a < b || (a == b && (vco and (1 shl lane)) != 0)) a else b // VLT
+                0x21 -> if (a == b && (vco and (1 shl lane)) == 0) a else b // VEQ
+                0x22 -> if (a != b || (vco and (1 shl lane)) != 0) a else b // VNE
+                0x23 -> if (a > b || (a == b && (vco and (1 shl lane)) == 0)) a else b // VGE
                 0x28 -> a and b // VAND
                 0x29 -> (a and b).inv() // VNAND
                 0x2A -> a or b // VOR
@@ -228,6 +232,7 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
         when (function) {
             0x10, 0x11 -> vco = 0 // VADD and VSUB consume and clear VCO
             0x14, 0x15 -> vco = nextVco
+            0x20, 0x21, 0x22, 0x23 -> vco = 0 // Comparisons consume and clear VCO
         }
     }
 
