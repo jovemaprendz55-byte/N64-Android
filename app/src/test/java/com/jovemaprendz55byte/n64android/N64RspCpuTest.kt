@@ -311,7 +311,7 @@ class N64RspCpuTest {
 
     @Test fun rejectsUnsupportedVectorInstructionInsteadOfSilentlyIgnoringIt() {
         val bus = N64MemoryBus()
-        bus.writeWord(N64SpMemory.IMEM_BASE, 0x4A000000)
+        bus.writeWord(N64SpMemory.IMEM_BASE, 0x4A00003F)
         val rsp = N64RspCpu(bus)
         org.junit.Assert.assertThrows(IllegalArgumentException::class.java) { rsp.step() }
     }
