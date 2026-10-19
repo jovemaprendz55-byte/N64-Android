@@ -201,6 +201,20 @@ class R4300CpuTest {
         assertEquals(5L, cpu.register(4))
     }
 
+    @Test fun subuWrapsAt32BitsWithoutSignedOverflowException() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x8000), // r1 = sign-extended 0x80000000
+            iType(0x09, 0, 2, 1),      // r2 = 1
+            rType(1, 2, 3, 0, 0x23),   // SUBU: 0x80000000 - 1 = 0x7FFFFFFF
+            iType(0x09, 0, 4, 0),      // r4 = 0
+            rType(4, 2, 5, 0, 0x23)    // SUBU: 0 - 1 = 0xFFFFFFFF, sign-extended
+        ))
+        repeat(5) { cpu.step() }
+        assertEquals(2147483647L, cpu.register(3))
+        assertEquals(-1L, cpu.register(5))
+    }
+
     @Test fun addAndSubUseSigned32BitResults() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(

@@ -221,6 +221,7 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
                 0x20 -> writeRegister(rd, Math.addExact(a.toInt(), b.toInt()).toLong()) // ADD
                 0x21 -> writeRegister(rd, (a.toInt() + b.toInt()).toLong()) // ADDU
                 0x22 -> writeRegister(rd, Math.subtractExact(a.toInt(), b.toInt()).toLong()) // SUB
+                0x23 -> writeRegister(rd, (a.toInt() - b.toInt()).toLong()) // SUBU: 32-bit wrapping subtraction
                 0x24 -> writeRegister(rd, a and b) // AND
                 0x25 -> writeRegister(rd, a or b) // OR
                 0x26 -> writeRegister(rd, a xor b) // XOR
