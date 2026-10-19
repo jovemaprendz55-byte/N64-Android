@@ -21,7 +21,7 @@ internal class N64MemoryBus(
     })
 
     fun readByte(physicalAddress: Long): Byte = when (region(physicalAddress)) {
-        N64MemoryMap.Region.RDRAM -> rdram[physicalAddress.toInt()]
+        N64MemoryMap.Region.RDRAM -> rdram[rdramIndex(physicalAddress)]
         N64MemoryMap.Region.SP_DMEM, N64MemoryMap.Region.SP_IMEM ->
             spMemory.readByte(physicalAddress)
         else -> unsupported(physicalAddress)
@@ -29,7 +29,7 @@ internal class N64MemoryBus(
 
     fun writeByte(physicalAddress: Long, value: Byte) {
         when (region(physicalAddress)) {
-            N64MemoryMap.Region.RDRAM -> rdram[physicalAddress.toInt()] = value
+            N64MemoryMap.Region.RDRAM -> rdram[rdramIndex(physicalAddress)] = value
             N64MemoryMap.Region.SP_DMEM, N64MemoryMap.Region.SP_IMEM ->
                 spMemory.writeByte(physicalAddress, value)
             else -> unsupported(physicalAddress)
@@ -92,6 +92,13 @@ internal class N64MemoryBus(
             "RDRAM load crosses its boundary"
         }
         bytes.copyInto(rdram, start)
+    }
+
+    private fun rdramIndex(address: Long): Int {
+        require(address >= 0L && address < rdram.size.toLong()) {
+            "RDRAM byte access crosses its boundary"
+        }
+        return address.toInt()
     }
 
     private fun region(address: Long): N64MemoryMap.Region? =
