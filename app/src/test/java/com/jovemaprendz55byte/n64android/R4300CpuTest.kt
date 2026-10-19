@@ -1115,6 +1115,20 @@ class R4300CpuTest {
         assertEquals(Long.MAX_VALUE, cpu.register(4))
     }
 
+    @Test fun lwuZeroExtendsWordWhileLwSignExtendsIt() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0xFEDC), // r1 = 0xFFFFFFFFFEDC0000
+            iType(0x0D, 1, 1, 0xBA98), // r1 = 0xFFFFFFFFFEDCBA98
+            iType(0x2B, 0, 1, 0x100), // store word at 0x100
+            iType(0x23, 0, 2, 0x100), // LW sign-extends 32-bit value
+            iType(0x27, 0, 3, 0x100)  // LWU zero-extends 32-bit value
+        ))
+        repeat(5) { cpu.step() }
+        assertEquals(-19088744L, cpu.register(2))
+        assertEquals(0xFEDCBA98L, cpu.register(3))
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 

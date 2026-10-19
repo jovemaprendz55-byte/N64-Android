@@ -279,6 +279,7 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
             0x21 -> writeRegister(rt, readHalf(effectiveAddress(a, signedImmediate)).toLong()) // LH
             0x23 -> writeRegister(rt, readWord(effectiveAddress(a, signedImmediate)).toLong()) // LW
             0x26 -> writeRegister(rt, loadWordRight(effectiveAddress(a, signedImmediate), b.toInt()).toLong()) // LWR
+            0x27 -> writeRegister(rt, Integer.toUnsignedLong(readWord(effectiveAddress(a, signedImmediate)))) // LWU
             0x24 -> writeRegister(rt, readByte(effectiveAddress(a, signedImmediate)).toLong() and 0xFFL) // LBU
             0x25 -> writeRegister(rt, readHalf(effectiveAddress(a, signedImmediate)).toLong() and 0xFFFFL) // LHU
             0x2C -> storeDoublewordLeft(effectiveAddress(a, signedImmediate), b) // SDL
