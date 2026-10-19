@@ -838,8 +838,8 @@ class N64RspCpuTest {
         bus.writeWord(N64SpMemory.IMEM_BASE + 16, i(38, 1, 3, 3)) // LWR r3, 3(r1)
         val rsp = N64RspCpu(bus)
         repeat(5) { rsp.step() }
-        assertEquals(0x11BB, rsp.register(2) and 0xFFFF)
-        assertEquals(0x11223344, rsp.register(3))
+        assertEquals(0x11BB0000.toInt(), rsp.register(2))
+        assertEquals(0xAABB0044.toInt(), rsp.register(3))
     }
 
     @Test fun unalignedWordStoresWriteOnlySelectedBigEndianBytes() {
@@ -853,8 +853,8 @@ class N64RspCpuTest {
         bus.writeWord(N64SpMemory.IMEM_BASE + 12, i(46, 1, 2, 6)) // SWR r2, 6(r1)
         val rsp = N64RspCpu(bus)
         repeat(4) { rsp.step() }
-        assertEquals(0x0000AABB, bus.readWord(N64SpMemory.DMEM_BASE))
-        assertEquals(0xCCDD0000, bus.readWord(N64SpMemory.DMEM_BASE + 4))
+        assertEquals(0xAABB0000.toInt(), bus.readWord(N64SpMemory.DMEM_BASE))
+        assertEquals(0x0000CCDD, bus.readWord(N64SpMemory.DMEM_BASE + 4))
     }
 
 }
