@@ -278,6 +278,21 @@ class R4300CpuTest {
         assertEquals(65535L, cpu.register(5))
     }
 
+    @Test fun sltAndSltuDistinguishSignedAndUnsigned64BitValues() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x19, 0, 1, -1),       // r1 = 0xFFFFFFFFFFFFFFFF
+            iType(0x19, 0, 2, 1),        // r2 = 1
+            rType(1, 2, 3, 0, 0x2A),     // SLT: -1 < 1
+            rType(1, 2, 4, 0, 0x2B),     // SLTU: unsigned max < 1 is false
+            rType(2, 1, 5, 0, 0x2B)      // SLTU: 1 < unsigned max
+        ))
+        repeat(5) { cpu.step() }
+        assertEquals(1L, cpu.register(3))
+        assertEquals(0L, cpu.register(4))
+        assertEquals(1L, cpu.register(5))
+    }
+
     @Test fun sltiuComparesAgainstSignExtendedImmediateAsUnsigned() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
