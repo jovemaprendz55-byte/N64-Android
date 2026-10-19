@@ -550,6 +550,25 @@ class N64RspCpuTest {
         assertEquals(0x1234.toShort(), rsp.vectorLane(1, 0))
     }
 
+    @Test fun supportsAddiAddAndSubInstructions() {
+        val bus = N64MemoryBus()
+        bus.writeWord(N64SpMemory.IMEM_BASE, i(8, 0, 1, 7)) // ADDI r1,r0,7
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, i(8, 0, 2, -10)) // ADDI r2,r0,-10
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, r(1, 2, 3, 0, 32)) // ADD r3,r1,r2
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, r(1, 2, 4, 0, 34)) // SUB r4,r1,r2
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, i(8, 0, 5, 0x7FFF)) // ADDI r5,r0,32767
+        bus.writeWord(N64SpMemory.IMEM_BASE + 20, i(8, 5, 5, 1)) // ADDI r5,r5,1
+
+        val rsp = N64RspCpu(bus)
+        repeat(6) { rsp.step() }
+
+        assertEquals(7, rsp.register(1))
+        assertEquals(-10, rsp.register(2))
+        assertEquals(-3, rsp.register(3))
+        assertEquals(17, rsp.register(4))
+        assertEquals(32768, rsp.register(5))
+    }
+
     @Test fun dmemEffectiveAddressesWrapAtFourKilobytes() {
         val bus = N64MemoryBus()
         bus.writeWord(N64SpMemory.IMEM_BASE, i(9, 0, 1, 0x0FFF)) // r1 = 4095
