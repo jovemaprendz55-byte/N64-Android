@@ -843,6 +843,27 @@ class R4300CpuTest {
         assertEquals(0x7FFFFFFFL, cpu.lo)
     }
 
+    @Test fun divisionByZeroLeavesHiLoUnchangedForDivAndDivu() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 12),       // r1 = 12
+            rType(1, 0, 0, 0, 0x11),      // MTHI r1
+            rType(1, 0, 0, 0, 0x13),      // MTLO r1
+            iType(0x09, 0, 2, 0),        // r2 = 0
+            rType(1, 2, 0, 0, 0x1A),      // DIV by zero: simplified core preserves HI/LO
+            rType(1, 2, 0, 0, 0x1B),      // DIVU by zero: preserves HI/LO
+            rType(0, 0, 3, 0, 0x10),      // MFHI r3
+            rType(0, 0, 4, 0, 0x12)       // MFLO r4
+        ))
+
+        repeat(8) { cpu.step() }
+
+        assertEquals(12L, cpu.register(3))
+        assertEquals(12L, cpu.register(4))
+        assertEquals(12L, cpu.hi)
+        assertEquals(12L, cpu.lo)
+    }
+
     private fun longToBytes(value: Long): ByteArray =
         ByteArray(8) { index -> (value ushr (56 - index * 8)).toByte() }
 
