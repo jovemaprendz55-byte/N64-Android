@@ -510,6 +510,26 @@ class R4300CpuTest {
         assertEquals(-4L, cpu.register(13))
     }
 
+    @Test fun registerLogicalInstructionsProduceExpected64BitResults() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x1234),    // r1 = 0x12340000
+            iType(0x0D, 1, 1, 0x5678),    // r1 = 0x12345678
+            iType(0x0F, 0, 2, 0xFFFF),    // r2 = sign-extended 0xFFFF0000
+            iType(0x0D, 2, 2, 0x00FF),    // r2 = 0xFFFFFFFFFFFF00FF
+            rType(1, 2, 3, 0, 0x24),     // AND
+            rType(1, 2, 4, 0, 0x25),     // OR
+            rType(1, 2, 5, 0, 0x26),     // XOR
+            rType(1, 2, 6, 0, 0x27)      // NOR
+        ))
+        repeat(8) { cpu.step() }
+
+        assertEquals(0x12340078L, cpu.register(3))
+        assertEquals(0xFFFF_FFFF_FFFF_56FFUL.toLong(), cpu.register(4))
+        assertEquals(0xFFFF_FFFF_EDCB_5687UL.toLong(), cpu.register(5))
+        assertEquals(0xA900L, cpu.register(6))
+    }
+
     @Test fun movzMovnAndSyncRespectConditions() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
