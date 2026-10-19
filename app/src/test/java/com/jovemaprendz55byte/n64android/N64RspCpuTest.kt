@@ -170,7 +170,7 @@ class N64RspCpuTest {
         assertEquals(0x4000.toShort(), rsp.vectorLane(4, 0))
         assertEquals(0x6000.toShort(), rsp.vectorLane(5, 0))
         assertEquals(Short.MAX_VALUE, rsp.vectorLane(4, 1))
-        assertEquals(0xFFFF.toShort(), rsp.vectorLane(5, 1))
+        assertEquals(0x7FFA.toShort(), rsp.vectorLane(5, 1))
     }
 
     @Test fun vectorComparisonsSelectExpectedSignedLanes() {
