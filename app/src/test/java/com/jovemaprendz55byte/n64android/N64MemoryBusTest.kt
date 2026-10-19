@@ -95,14 +95,17 @@ class N64MemoryBusTest {
     @Test fun spDmaWrapsWithinSelectedDmemBank() {
         val bus = N64MemoryBus()
         bus.loadRdram(0x100L, byteArrayOf(
-            0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x7F
+            0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x7F,
+            0x21, 0x32, 0x43, 0x54, 0x65, 0x76, 0x17, 0x28
         ))
         bus.writeWord(N64MemoryBus.SP_MEM_ADDR, 0x0FF8)
         bus.writeWord(N64MemoryBus.SP_DRAM_ADDR, 0x100)
-        bus.writeWord(N64MemoryBus.SP_RD_LEN, 7)
+        bus.writeWord(N64MemoryBus.SP_RD_LEN, 15)
 
         assertEquals(0x11223344, bus.readWord(N64SpMemory.DMEM_BASE + 0xFF8))
-        assertEquals(0x5566777F, bus.readWord(N64SpMemory.DMEM_BASE))
+        assertEquals(0x5566777F, bus.readWord(N64SpMemory.DMEM_BASE + 0xFFC))
+        assertEquals(0x21324354, bus.readWord(N64SpMemory.DMEM_BASE))
+        assertEquals(0x65761728, bus.readWord(N64SpMemory.DMEM_BASE + 4))
         assertEquals(0, bus.readWord(N64SpMemory.IMEM_BASE))
     }
 
