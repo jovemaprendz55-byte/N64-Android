@@ -140,7 +140,7 @@ class N64RspCpuTest {
         rsp.step()
 
         val signedExpected = shortArrayOf(0x2000, (-0x2000).toShort(), (-0x2000).toShort(), Short.MAX_VALUE, 0, 0, 1, (-1).toShort())
-        val unsignedExpected = shortArrayOf(0x2000, 0, 0, 0xFFFF.toShort(), 0, 0, 1, 0)
+        val unsignedExpected = shortArrayOf(0x2000, 0xE000.toShort(), 0xE000.toShort(), 0xFFFF.toShort(), 0, 0, 1, 0xFFFF.toShort())
         for (lane in 0..7) {
             assertEquals(signedExpected[lane], rsp.vectorLane(3, lane))
             assertEquals(unsignedExpected[lane], rsp.vectorLane(4, lane))
