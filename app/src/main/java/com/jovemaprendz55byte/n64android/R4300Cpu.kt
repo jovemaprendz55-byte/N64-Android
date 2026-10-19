@@ -9,8 +9,13 @@ import java.math.BigInteger
  * peripherals are not implemented. Memory is a simple big-endian byte array,
  * not the Nintendo 64 memory map.
  */
-class R4300Cpu(memorySize: Int = 1024 * 1024) {
+class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
     private val memory = ByteArray(memorySize)
+
+    companion object {
+        /** Maximum standard Nintendo 64 RDRAM capacity (8 MiB). */
+        const val DEFAULT_RDRAM_SIZE: Int = 8 * 1024 * 1024
+    }
     private val gpr = LongArray(32)
 
     var pc: Long = 0L

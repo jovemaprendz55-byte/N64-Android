@@ -1159,6 +1159,15 @@ class R4300CpuTest {
         assertEquals(0x12340000, cpu.readWord(0x100))
     }
 
+    @Test fun defaultRamCoversEightMibRdramRange() {
+        val cpu = R4300Cpu()
+        val lastWordAddress = R4300Cpu.DEFAULT_RDRAM_SIZE - 4
+
+        cpu.writeWord(lastWordAddress, 0x12345678)
+
+        assertEquals(0x12345678, cpu.readWord(lastWordAddress))
+    }
+
     @Test fun kseg0ProgramCounterFetchesFromTranslatedPhysicalRam() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(iType(0x09, 0, 1, 42)))
