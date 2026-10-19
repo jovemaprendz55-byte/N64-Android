@@ -281,4 +281,18 @@ class N64RspCpuTest {
         assertEquals(Short.MIN_VALUE, rsp.vectorLane(3, 6))
         assertEquals(0.toShort(), rsp.vectorLane(3, 7))
     }
+
+    @Test fun dmemEffectiveAddressesWrapAtFourKilobytes() {
+        val bus = N64MemoryBus()
+        bus.writeWord(N64SpMemory.IMEM_BASE, i(9, 0, 1, 0x0FFF)) // r1 = 4095
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, i(9, 0, 2, 0x005A)) // r2 = 0x5A
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, i(40, 1, 2, 1)) // SB r2,1(r1) wraps to DMEM[0]
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, i(36, 0, 3, 0)) // LBU r3,0(r0)
+        val rsp = N64RspCpu(bus)
+
+        repeat(4) { rsp.step() }
+
+        assertEquals(0x5A, rsp.register(3))
+        assertEquals(0x5A, bus.readByte(N64SpMemory.DMEM_BASE).toInt() and 0xFF)
+    }
 }

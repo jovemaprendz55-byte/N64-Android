@@ -212,10 +212,9 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
     }
 
     private fun dmemAddress(address: Int): Long {
-        require(address in 0 until N64SpMemory.MEMORY_SIZE) {
-            "RSP data address is outside DMEM: 0x${address.toString(16)}"
-        }
-        return N64SpMemory.DMEM_BASE + address
+        // SP DMEM is a 4 KiB local address space; effective addresses wrap
+        // through the low 12 bits rather than escaping into another region.
+        return N64SpMemory.DMEM_BASE + (address and (N64SpMemory.MEMORY_SIZE - 1))
     }
 
     private fun writeRegister(index: Int, value: Int) {
