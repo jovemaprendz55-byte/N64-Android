@@ -1284,6 +1284,19 @@ class R4300CpuTest {
         assertEquals(0xFFFF_FFFF_8000_0004UL.toLong(), cpu.pc)
     }
 
+
+    @Test fun mfc0AndMtc0TransferValuesThroughCop0Registers() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 42),       // ADDIU r1, r0, 42
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (13 shl 11), // MTC0 r1, Cause
+            (0x10 shl 26) or (2 shl 16) or (13 shl 11),                 // MFC0 r2, Cause
+        ))
+        repeat(3) { cpu.step() }
+        assertEquals(42L, cpu.register(2))
+        assertEquals(12L, cpu.pc)
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
