@@ -45,6 +45,31 @@ class N64RspCpuTest {
         }
     }
 
+    @Test fun vectorAbsoluteSaturatesMinimumSignedValue() {
+        val bus = N64MemoryBus()
+        fun v(vt: Int, vs: Int, vd: Int, funct: Int) =
+            (18 shl 26) or (16 shl 21) or (vt shl 16) or
+                (vs shl 11) or (vd shl 6) or funct
+        bus.writeWord(N64SpMemory.IMEM_BASE, v(2, 1, 3, 0x13)) // VABS
+
+        val rsp = N64RspCpu(bus)
+        val signs = shortArrayOf(-1, -1, 0, 1, -1, 1, 0, -1)
+        val values = shortArrayOf(Short.MIN_VALUE, Short.MAX_VALUE, Short.MIN_VALUE, Short.MIN_VALUE,
+            -123, -123, 456, 0)
+        for (lane in 0..7) {
+            rsp.setVectorLane(1, lane, signs[lane])
+            rsp.setVectorLane(2, lane, values[lane])
+        }
+
+        rsp.step()
+
+        val expected = shortArrayOf(Short.MAX_VALUE, -Short.MAX_VALUE, 0, Short.MIN_VALUE,
+            123, -123, 0, 0)
+        for (lane in 0..7) {
+            assertEquals("VABS lane $lane", expected[lane], rsp.vectorLane(3, lane))
+        }
+    }
+
     @Test fun vectorAddAndSubtractSaturateSignedLanes() {
         val bus = N64MemoryBus()
         fun v(vt: Int, vs: Int, vd: Int, funct: Int) =
