@@ -234,6 +234,27 @@ class R4300CpuTest {
         assertEquals(5L, cpu.register(4))
     }
 
+    @Test fun jalrWritesLinkRegisterAndExecutesDelaySlotBeforeTarget() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 40),      // r1 = target address 0x28
+            rType(1, 0, 5, 0, 0x09),    // JALR r5, r1
+            iType(0x09, 0, 6, 66),      // delay slot must execute
+            iType(0x09, 0, 7, 99)       // must be skipped
+        ))
+        cpu.loadBytes(40, words(iType(0x09, 0, 8, 88)))
+
+        cpu.step() // set target register
+        cpu.step() // JALR
+        assertEquals(12L, cpu.register(5))
+        cpu.step() // delay slot, then jump
+        assertEquals(66L, cpu.register(6))
+        assertEquals(40L, cpu.pc)
+        cpu.step() // target
+        assertEquals(0L, cpu.register(7))
+        assertEquals(88L, cpu.register(8))
+    }
+
     @Test fun subuWrapsAt32BitsWithoutSignedOverflowException() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
