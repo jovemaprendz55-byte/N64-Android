@@ -305,23 +305,27 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
             33 -> writeRegister(rt, bus.readHalf(dmemAddress(a + immediate)).toInt()) // LH
             35 -> writeRegister(rt, bus.readWord(dmemAddress(a + immediate))) // LW
             36 -> writeRegister(rt, bus.readByte(dmemAddress(a + immediate)).toInt() and 0xFF) // LBU
-            34 -> { // LWL: merge memory bytes from the aligned word's left side
+            34 -> { // LWL: merge the most-significant bytes (big-endian)
                 val address = a + immediate
                 val aligned = dmemAddress(address and -4)
                 val memoryWord = bus.readWord(aligned)
-                val shift = (3 - (address and 3).toInt()) * 8
-                val preserveMask = 0x00FF_FFFF ushr ((address and 3).toInt() * 8)
-                writeRegister(rt, (b and preserveMask) or (memoryWord and (-1 shl shift)))
+                val offset = address and 3
+                val preserveMask = if (offset == 0) 0 else (1 shl (offset * 8)) - 1
+                writeRegister(rt, (b and preserveMask) or (memoryWord shl (offset * 8)))
             }
             37 -> writeRegister(rt, bus.readHalf(dmemAddress(a + immediate)).toInt() and 0xFFFF) // LHU
-            38 -> { // LWR: merge memory bytes from the aligned word's right side
+            38 -> { // LWR: merge the least-significant bytes (big-endian)
                 val address = a + immediate
                 val aligned = dmemAddress(address and -4)
                 val memoryWord = bus.readWord(aligned)
-                val shift = (address and 3).toInt() * 8
-                val offset = (address and 3).toInt()
-                val preserveMask = if (offset == 0) 0 else (-1 shl ((4 - offset) * 8))
-                writeRegister(rt, (b and preserveMask) or (memoryWord and (-1 ushr shift)))
+                val offset = address and 3
+                val preserveMask = when (offset) {
+                    0 -> 0xFFFF_FF00.toInt()
+                    1 -> 0xFFFF_0000.toInt()
+                    2 -> 0xFF00_0000.toInt()
+                    else -> 0
+                }
+                writeRegister(rt, (b and preserveMask) or (memoryWord ushr ((3 - offset) * 8)))
             }
             40 -> bus.writeByte(dmemAddress(a + immediate), b.toByte()) // SB
             41 -> bus.writeHalf(dmemAddress(a + immediate), b.toShort()) // SH
