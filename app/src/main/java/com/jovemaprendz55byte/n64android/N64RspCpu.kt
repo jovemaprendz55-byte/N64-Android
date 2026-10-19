@@ -305,10 +305,40 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
             33 -> writeRegister(rt, bus.readHalf(dmemAddress(a + immediate)).toInt()) // LH
             35 -> writeRegister(rt, bus.readWord(dmemAddress(a + immediate))) // LW
             36 -> writeRegister(rt, bus.readByte(dmemAddress(a + immediate)).toInt() and 0xFF) // LBU
+            34 -> { // LWL: merge memory bytes from the aligned word's left side
+                val address = a + immediate
+                val aligned = dmemAddress(address and -4)
+                val memoryWord = bus.readWord(aligned)
+                val shift = (3 - (address and 3)) * 8
+                val preserveMask = 0x00FF_FFFF ushr ((address and 3) * 8)
+                writeRegister(rt, (b and preserveMask) or (memoryWord shl shift))
+            }
             37 -> writeRegister(rt, bus.readHalf(dmemAddress(a + immediate)).toInt() and 0xFFFF) // LHU
+            38 -> { // LWR: merge memory bytes from the aligned word's right side
+                val address = a + immediate
+                val aligned = dmemAddress(address and -4)
+                val memoryWord = bus.readWord(aligned)
+                val shift = (address and 3) * 8
+                val preserveMask = 0xFFFF_FF00 shl ((3 - (address and 3)) * 8)
+                writeRegister(rt, (b and preserveMask) or (memoryWord ushr shift))
+            }
             40 -> bus.writeByte(dmemAddress(a + immediate), b.toByte()) // SB
             41 -> bus.writeHalf(dmemAddress(a + immediate), b.toShort()) // SH
+            42 -> { // SWL: store register bytes into the aligned word's left side
+                val address = a + immediate
+                val aligned = dmemAddress(address and -4)
+                for (index in 0..(address and 3)) {
+                    bus.writeByte(aligned + index, (b ushr (24 - index * 8)).toByte())
+                }
+            }
             43 -> bus.writeWord(dmemAddress(a + immediate), b) // SW
+            46 -> { // SWR: store register bytes into the aligned word's right side
+                val address = a + immediate
+                val aligned = dmemAddress(address and -4)
+                for (index in (address and 3)..3) {
+                    bus.writeByte(aligned + index, (b ushr ((3 - index) * 8)).toByte())
+                }
+            }
             else -> unsupported(instruction)
         }
     }
