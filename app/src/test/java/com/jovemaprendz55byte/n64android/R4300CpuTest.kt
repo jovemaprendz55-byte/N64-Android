@@ -125,6 +125,38 @@ class R4300CpuTest {
         assertEquals(0x18L, cpu.pc)
     }
 
+    @Test fun branchLikelyAnnulsDelaySlotWhenNotTaken() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 1),      // r1 = 1
+            iType(0x14, 1, 0, 1),      // BEQL r1, r0, +1: not taken; annul next instruction
+            iType(0x09, 0, 2, 99),     // annulled delay slot
+            iType(0x09, 0, 3, 7)       // continue at branch+8
+        ))
+
+        repeat(3) { cpu.step() }
+
+        assertEquals(0L, cpu.register(2))
+        assertEquals(7L, cpu.register(3))
+        assertEquals(16L, cpu.pc)
+    }
+
+    @Test fun branchLikelyExecutesDelaySlotWhenTaken() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 0),      // r1 = 0
+            iType(0x14, 1, 0, 1),      // BEQL r1, r0, +1: taken
+            iType(0x09, 0, 2, 99),     // delay slot executes
+            iType(0x09, 0, 3, 7)       // branch target
+        ))
+
+        repeat(3) { cpu.step() }
+
+        assertEquals(99L, cpu.register(2))
+        assertEquals(7L, cpu.register(3))
+        assertEquals(16L, cpu.pc)
+    }
+
     @Test fun branchAppliesAfterOneDelaySlot() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(iType(0x09, 0, 1, 1), iType(0x04, 1, 1, 2), iType(0x09, 0, 2, 7), iType(0x09, 0, 3, 99), iType(0x09, 0, 4, 5)))

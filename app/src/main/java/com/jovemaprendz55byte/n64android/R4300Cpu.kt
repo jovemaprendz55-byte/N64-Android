@@ -282,18 +282,31 @@ class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
                 0x3F -> writeRegister(rd, b shr (shift + 32)) // DSRA32
                 else -> unsupported(instruction, instructionAddress)
             }
-            0x01 -> when (rt) {
-                0x00 -> if (a < 0L) pendingBranchTarget = pc + (signedImmediate shl 2) // BLTZ
-                0x01 -> if (a >= 0L) pendingBranchTarget = pc + (signedImmediate shl 2) // BGEZ
-                0x10 -> if (a < 0L) {
-                    writeRegister(31, instructionAddress + 8L)
-                    pendingBranchTarget = pc + (signedImmediate shl 2)
-                } // BLTZAL
-                0x11 -> if (a >= 0L) {
-                    writeRegister(31, instructionAddress + 8L)
-                    pendingBranchTarget = pc + (signedImmediate shl 2)
-                } // BGEZAL
-                else -> unsupported(instruction, instructionAddress)
+            0x01 -> {
+                val branchTarget = pc + (signedImmediate shl 2)
+                when (rt) {
+                    0x00 -> if (a < 0L) pendingBranchTarget = branchTarget // BLTZ
+                    0x01 -> if (a >= 0L) pendingBranchTarget = branchTarget // BGEZ
+                    0x02 -> if (a < 0L) pendingBranchTarget = branchTarget else pc += 4L // BLTZL
+                    0x03 -> if (a >= 0L) pendingBranchTarget = branchTarget else pc += 4L // BGEZL
+                    0x10 -> if (a < 0L) {
+                        writeRegister(31, instructionAddress + 8L)
+                        pendingBranchTarget = branchTarget
+                    } // BLTZAL
+                    0x11 -> if (a >= 0L) {
+                        writeRegister(31, instructionAddress + 8L)
+                        pendingBranchTarget = branchTarget
+                    } // BGEZAL
+                    0x12 -> if (a < 0L) {
+                        writeRegister(31, instructionAddress + 8L)
+                        pendingBranchTarget = branchTarget
+                    } else pc += 4L // BLTZALL
+                    0x13 -> if (a >= 0L) {
+                        writeRegister(31, instructionAddress + 8L)
+                        pendingBranchTarget = branchTarget
+                    } else pc += 4L // BGEZALL
+                    else -> unsupported(instruction, instructionAddress)
+                }
             }
             0x03 -> {
                 writeRegister(31, instructionAddress + 8L)
@@ -302,6 +315,10 @@ class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
             } // JAL
             0x06 -> if (a <= 0L) pendingBranchTarget = pc + (signedImmediate shl 2) // BLEZ
             0x07 -> if (a > 0L) pendingBranchTarget = pc + (signedImmediate shl 2) // BGTZ
+            0x14 -> if (a == b) pendingBranchTarget = pc + (signedImmediate shl 2) else pc += 4L // BEQL: annul delay slot if not taken
+            0x15 -> if (a != b) pendingBranchTarget = pc + (signedImmediate shl 2) else pc += 4L // BNEL
+            0x16 -> if (a <= 0L) pendingBranchTarget = pc + (signedImmediate shl 2) else pc += 4L // BLEZL
+            0x17 -> if (a > 0L) pendingBranchTarget = pc + (signedImmediate shl 2) else pc += 4L // BGTZL
             0x08 -> writeRegister(rt, Math.addExact(a.toInt(), signedImmediate.toInt()).toLong()) // ADDI
             0x09 -> writeRegister(rt, (a.toInt() + signedImmediate.toInt()).toLong()) // ADDIU
             0x0A -> writeRegister(rt, if (a < signedImmediate) 1L else 0L) // SLTI
