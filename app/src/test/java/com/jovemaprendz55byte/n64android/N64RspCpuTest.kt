@@ -459,6 +459,37 @@ class N64RspCpuTest {
         assertEquals(1, rsp.register(4))
     }
 
+    @Test fun conditionalBranchAndLinkWritesReturnAddressOnlyWhenTaken() {
+        val bus = N64MemoryBus()
+        bus.writeWord(N64SpMemory.IMEM_BASE, i(9, 0, 1, -1)) // r1 = -1
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, i(1, 1, 16, 2)) // BLTZAL r1, target
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, i(9, 0, 2, 22)) // delay slot
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, i(9, 0, 3, 33)) // skipped
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, i(9, 0, 4, 44)) // target
+
+        val rsp = N64RspCpu(bus)
+        repeat(4) { rsp.step() }
+
+        assertEquals(12, rsp.register(31))
+        assertEquals(22, rsp.register(2))
+        assertEquals(0, rsp.register(3))
+        assertEquals(44, rsp.register(4))
+    }
+
+    @Test fun conditionalBranchAndLinkDoesNotLinkWhenConditionIsFalse() {
+        val bus = N64MemoryBus()
+        bus.writeWord(N64SpMemory.IMEM_BASE, i(9, 0, 1, -1)) // r1 = -1
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, i(1, 1, 17, 2)) // BGEZAL r1, not taken
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, i(9, 0, 2, 22)) // delay slot
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, i(9, 0, 3, 33))
+        val rsp = N64RspCpu(bus)
+        repeat(3) { rsp.step() }
+
+        assertEquals(0, rsp.register(31))
+        assertEquals(22, rsp.register(2))
+        assertEquals(33, rsp.register(3))
+    }
+
     @Test fun jalrExecutesDelaySlotAndStoresReturnAddress() {
         val bus = N64MemoryBus()
         bus.writeWord(N64SpMemory.IMEM_BASE, i(9, 0, 1, 16)) // target address
