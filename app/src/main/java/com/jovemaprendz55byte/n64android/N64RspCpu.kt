@@ -141,6 +141,23 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
             }
             18 -> if (rs >= 16) executeVector(instruction, rs and 15, rt, rd, shamt)
                 else unsupported(instruction)
+            50 -> when (rd) {
+                0 -> { // LBV: load one byte into a vector register
+                    val element = (instruction ushr 7) and 15
+                    val offset = signExtend7(instruction and 0x7F)
+                    val value = bus.readByte(dmemAddress(a + offset)).toInt() and 0xFF
+                    setVectorByte(rt, element, value)
+                }
+                else -> unsupported(instruction)
+            }
+            58 -> when (rd) {
+                0 -> { // SBV: store one byte from a vector register
+                    val element = (instruction ushr 7) and 15
+                    val offset = signExtend7(instruction and 0x7F)
+                    bus.writeByte(dmemAddress(a + offset), getVectorByte(rt, element).toByte())
+                }
+                else -> unsupported(instruction)
+            }
             16 -> when (rs) {
                 0 -> writeRegister(rt, readSpCop0(rd)) // MFC0
                 4 -> writeSpCop0(rd, b) // MTC0
@@ -315,6 +332,26 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
     private fun writeSpCop0(index: Int, value: Int) {
         require(index in 0..7) { "Unsupported RSP COP0 register: $index" }
         bus.writeWord(N64MemoryBus.SP_MEM_ADDR + index * 4L, value)
+    }
+
+    private fun signExtend7(value: Int): Int =
+        if (value and 0x40 != 0) value or -0x80 else value
+
+    /** Vector byte element 0 is the high byte of lane 0, element 1 its low byte. */
+    private fun getVectorByte(register: Int, element: Int): Int {
+        val lane = (element and 15) ushr 1
+        val value = vector[register][lane].toInt() and 0xFFFF
+        return if (element and 1 == 0) value ushr 8 else value and 0xFF
+    }
+
+    private fun setVectorByte(register: Int, element: Int, value: Int) {
+        val lane = (element and 15) ushr 1
+        val old = vector[register][lane].toInt() and 0xFFFF
+        vector[register][lane] = (if (element and 1 == 0) {
+            ((value and 0xFF) shl 8) or (old and 0x00FF)
+        } else {
+            (old and 0xFF00) or (value and 0xFF)
+        }).toShort()
     }
 
     private fun dmemAddress(address: Int): Long {
