@@ -472,13 +472,18 @@ class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
         val offset = address and 3
         val aligned = address and -4
         val preservedMask = when (offset) {
-            0 -> 0
-            1 -> 0xFF000000.toInt()
-            2 -> 0xFFFF0000.toInt()
-            else -> 0xFFFFFF00.toInt()
+            0 -> 0x00FF_FFFF
+            1 -> 0x0000_FFFF
+            2 -> 0x0000_00FF
+            else -> 0
         }
-        val shift = offset * 8
-        writeWord(aligned, (readWord(aligned) and preservedMask) or (value ushr shift))
+        val valueMask = when (offset) {
+            0 -> 0xFF00_0000.toInt()
+            1 -> 0xFFFF_0000.toInt()
+            2 -> 0xFFFF_FF00.toInt()
+            else -> -1
+        }
+        writeWord(aligned, (readWord(aligned) and preservedMask) or (value and valueMask))
     }
 
     /** Big-endian MIPS SWR: store rt's right bytes from the start through the effective address. */
