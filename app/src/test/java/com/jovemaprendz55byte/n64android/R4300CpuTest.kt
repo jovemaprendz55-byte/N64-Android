@@ -198,6 +198,63 @@ class R4300CpuTest {
         assertEquals(1L, cpu.register(3))
     }
 
+
+    @Test fun unalignedWordLoadsMergeBigEndianBytesCorrectly() {
+        val expectedLwl = intArrayOf(0x11223344, 0x223344DD, 0x3344CCDD, 0x44BBCCDD)
+        val expectedLwr = intArrayOf(0xAABBCC11.toInt(), 0xAABB1122.toInt(), 0xAA112233.toInt(), 0x11223344)
+        for (offset in 0..3) {
+            val leftCpu = R4300Cpu()
+            leftCpu.loadBytes(0, words(
+                iType(0x09, 0, 1, 0x100),
+                iType(0x0F, 0, 2, 0xAABB),
+                iType(0x0D, 2, 2, 0xCCDD),
+                iType(0x22, 1, 2, offset)
+            ))
+            leftCpu.loadBytes(0x100, byteArrayOf(0x11, 0x22, 0x33, 0x44))
+            repeat(4) { leftCpu.step() }
+            assertEquals("LWL offset $offset", expectedLwl[offset].toLong(), leftCpu.register(2).toInt().toLong())
+
+            val rightCpu = R4300Cpu()
+            rightCpu.loadBytes(0, words(
+                iType(0x09, 0, 1, 0x100),
+                iType(0x0F, 0, 2, 0xAABB),
+                iType(0x0D, 2, 2, 0xCCDD),
+                iType(0x26, 1, 2, offset)
+            ))
+            rightCpu.loadBytes(0x100, byteArrayOf(0x11, 0x22, 0x33, 0x44))
+            repeat(4) { rightCpu.step() }
+            assertEquals("LWR offset $offset", expectedLwr[offset].toLong(), rightCpu.register(2).toInt().toLong())
+        }
+    }
+
+    @Test fun unalignedWordStoresMergeBigEndianBytesCorrectly() {
+        val expectedSwl = intArrayOf(0x11223344, 0xAA112233.toInt(), 0xAABB1122.toInt(), 0xAABBCC11.toInt())
+        val expectedSwr = intArrayOf(0x11BBCCDD, 0x3344CCDD, 0x223344DD, 0x11223344)
+        for (offset in 0..3) {
+            val leftCpu = R4300Cpu()
+            leftCpu.loadBytes(0, words(
+                iType(0x09, 0, 1, 0x100),
+                iType(0x0F, 0, 2, 0x1122),
+                iType(0x0D, 2, 2, 0x3344),
+                iType(0x2A, 1, 2, offset)
+            ))
+            leftCpu.loadBytes(0x100, byteArrayOf(0xAA.toByte(), 0xBB.toByte(), 0xCC.toByte(), 0xDD.toByte()))
+            repeat(4) { leftCpu.step() }
+            assertEquals("SWL offset $offset", expectedSwl[offset], leftCpu.readWord(0x100))
+
+            val rightCpu = R4300Cpu()
+            rightCpu.loadBytes(0, words(
+                iType(0x09, 0, 1, 0x100),
+                iType(0x0F, 0, 2, 0x1122),
+                iType(0x0D, 2, 2, 0x3344),
+                iType(0x2E, 1, 2, offset)
+            ))
+            rightCpu.loadBytes(0x100, byteArrayOf(0xAA.toByte(), 0xBB.toByte(), 0xCC.toByte(), 0xDD.toByte()))
+            repeat(4) { rightCpu.step() }
+            assertEquals("SWR offset $offset", expectedSwr[offset], rightCpu.readWord(0x100))
+        }
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 

@@ -212,14 +212,18 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
             0x05 -> if (a != b) pendingBranchTarget = pc + (signedImmediate shl 2) // BNE
             0x18 -> writeRegister(rt, Math.addExact(a, signedImmediate)) // DADDI
             0x19 -> writeRegister(rt, a + signedImmediate) // DADDIU
+            0x22 -> writeRegister(rt, loadWordLeft(address, b.toInt()).toLong()) // LWL
             0x20 -> writeRegister(rt, readByte(address).toLong()) // LB
             0x21 -> writeRegister(rt, readHalf(address).toLong()) // LH
             0x23 -> writeRegister(rt, readWord(address).toLong()) // LW
+            0x26 -> writeRegister(rt, loadWordRight(address, b.toInt()).toLong()) // LWR
             0x24 -> writeRegister(rt, readByte(address).toLong() and 0xFFL) // LBU
             0x25 -> writeRegister(rt, readHalf(address).toLong() and 0xFFFFL) // LHU
+            0x2A -> storeWordLeft(address, b.toInt()) // SWL
             0x28 -> writeByte(address, b.toByte()) // SB
             0x29 -> writeHalf(address, b.toShort()) // SH
             0x2B -> writeWord(address, b.toInt()) // SW
+            0x2E -> storeWordRight(address, b.toInt()) // SWR
             0x37 -> writeRegister(rt, readLong(address)) // LD
             0x3F -> writeLong(address, b) // SD
             0x02 -> pendingBranchTarget =
@@ -230,6 +234,56 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
         // The instruction just executed was a delay-slot instruction.
         if (branchToApply != null) pc = branchToApply
         gpr[0] = 0L
+    }
+
+
+    /** Big-endian MIPS LWL: merge memory's left bytes into the high end of rt. */
+    private fun loadWordLeft(address: Int, oldValue: Int): Int {
+        val offset = address and 3
+        val word = readWord(address and -4)
+        val preservedMask = if (offset == 0) 0 else (1 shl (offset * 8)) - 1
+        return (word shl (offset * 8)) or (oldValue and preservedMask)
+    }
+
+    /** Big-endian MIPS LWR: merge memory's right bytes into the low end of rt. */
+    private fun loadWordRight(address: Int, oldValue: Int): Int {
+        val offset = address and 3
+        val word = readWord(address and -4)
+        val preservedMask = when (offset) {
+            0 -> 0xFFFFFF00.toInt()
+            1 -> 0xFFFF0000.toInt()
+            2 -> 0xFF000000.toInt()
+            else -> 0
+        }
+        return (oldValue and preservedMask) or (word ushr ((3 - offset) * 8))
+    }
+
+    /** Big-endian MIPS SWL: store rt's left bytes through the end of the aligned word. */
+    private fun storeWordLeft(address: Int, value: Int) {
+        val offset = address and 3
+        val aligned = address and -4
+        val preservedMask = when (offset) {
+            0 -> 0
+            1 -> 0xFF000000.toInt()
+            2 -> 0xFFFF0000.toInt()
+            else -> 0xFFFFFF00.toInt()
+        }
+        val shift = offset * 8
+        writeWord(aligned, (readWord(aligned) and preservedMask) or (value ushr shift))
+    }
+
+    /** Big-endian MIPS SWR: store rt's right bytes from the start through the effective address. */
+    private fun storeWordRight(address: Int, value: Int) {
+        val offset = address and 3
+        val aligned = address and -4
+        val preservedMask = when (offset) {
+            0 -> 0x00FFFFFF
+            1 -> 0x0000FFFF
+            2 -> 0x000000FF
+            else -> 0
+        }
+        val shift = (3 - offset) * 8
+        writeWord(aligned, (readWord(aligned) and preservedMask) or (value shl shift))
     }
 
     private fun writeRegister(index: Int, value: Long) {
