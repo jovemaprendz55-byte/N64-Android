@@ -127,7 +127,7 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
         val signedImmediate = immediate.toShort().toLong()
         val a = register(rs)
         val b = register(rt)
-        val address = (a + signedImmediate).toInt()
+        val address = effectiveAddress(a, signedImmediate)
 
         when (opcode) {
             0 -> when (funct) {
@@ -299,6 +299,19 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
         gpr[0] = 0L
     }
 
+
+    /** Converts a virtual effective address only when it is representable by this simplified RAM. */
+    private fun effectiveAddress(base: Long, offset: Long): Int {
+        val address = try {
+            Math.addExact(base, offset)
+        } catch (error: ArithmeticException) {
+            throw IllegalArgumentException("Effective address overflow", error)
+        }
+        require(address in 0L..Int.MAX_VALUE.toLong()) {
+            "Effective address outside simplified RAM address range"
+        }
+        return address.toInt()
+    }
 
     /** Big-endian MIPS LDL: merge bytes from the effective address to the block's end. */
     private fun loadDoublewordLeft(address: Int, oldValue: Long): Long {

@@ -520,6 +520,24 @@ class R4300CpuTest {
         }
     }
 
+    @Test fun effectiveAddressDoesNotWrapHighAddressesIntoLowRam() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 1),       // r1 = 0x0000000000010000
+            rType(0, 1, 1, 0, 0x3C),    // DSLL32 r1, r1, 0 => 0x0000000100000000
+            iType(0x19, 1, 1, 0x100),   // r1 = 0x0000000100000100
+            iType(0x23, 1, 2, 0)        // LW must not alias address 0x100
+        ))
+        repeat(3) { cpu.step() }
+        try {
+            cpu.step()
+            throw AssertionError("Expected high effective address to be rejected")
+        } catch (_: IllegalArgumentException) {
+            // The simplified RAM rejects addresses it cannot represent.
+        }
+        assertEquals(0L, cpu.register(2))
+    }
+
     private fun longToBytes(value: Long): ByteArray =
         ByteArray(8) { index -> (value ushr (56 - index * 8)).toByte() }
 
