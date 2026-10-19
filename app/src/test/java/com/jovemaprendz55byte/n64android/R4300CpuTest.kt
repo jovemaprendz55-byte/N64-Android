@@ -23,6 +23,39 @@ class R4300CpuTest {
         assertEquals(0x12340000, cpu.readWord(0x100))
     }
 
+    @Test fun signedBranchesAndZeroComparisonsRespectDelaySlots() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, -1),    // r1 = -1
+            iType(0x01, 1, 0, 2),     // BLTZ -> address 16
+            iType(0x09, 0, 2, 10),    // delay slot executes
+            iType(0x09, 0, 3, 30),    // skipped
+            iType(0x09, 0, 4, 40),    // branch target
+            iType(0x09, 0, 1, 0),     // r1 = 0
+            iType(0x01, 1, 1, 2),     // BGEZ -> address 36
+            iType(0x09, 0, 5, 50),    // delay slot executes
+            iType(0x09, 0, 6, 60),    // skipped
+            iType(0x09, 0, 7, 70),    // branch target
+            iType(0x06, 1, 0, 2),     // BLEZ with zero -> address 52
+            iType(0x09, 0, 8, 80),    // delay slot executes
+            iType(0x09, 0, 9, 90),    // skipped
+            iType(0x07, 1, 0, 2),     // BGTZ with zero is not taken
+            iType(0x09, 0, 10, 100),
+            iType(0x09, 0, 11, 110)
+        ))
+        repeat(16) { cpu.step() }
+        assertEquals(10L, cpu.register(2))
+        assertEquals(0L, cpu.register(3))
+        assertEquals(40L, cpu.register(4))
+        assertEquals(50L, cpu.register(5))
+        assertEquals(0L, cpu.register(6))
+        assertEquals(70L, cpu.register(7))
+        assertEquals(80L, cpu.register(8))
+        assertEquals(0L, cpu.register(9))
+        assertEquals(100L, cpu.register(10))
+        assertEquals(110L, cpu.register(11))
+    }
+
     @Test fun branchAppliesAfterOneDelaySlot() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(iType(0x09, 0, 1, 1), iType(0x04, 1, 1, 2), iType(0x09, 0, 2, 7), iType(0x09, 0, 3, 99), iType(0x09, 0, 4, 5)))
