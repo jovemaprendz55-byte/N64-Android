@@ -97,6 +97,24 @@ class R4300CpuTest {
         assertEquals(0L, cpu.register(4))
     }
 
+    @Test fun spStatusCommandsClearAndSetHaltFlag() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x0404), // r1 = SP register base
+            iType(0x09, 0, 2, 1),      // command bit 0: clear HALT
+            iType(0x2B, 1, 2, 0x10),   // write SP_STATUS
+            iType(0x23, 1, 3, 0x10),   // HALT should now be clear
+            iType(0x09, 0, 2, 2),      // command bit 1: set HALT
+            iType(0x2B, 1, 2, 0x10),   // write SP_STATUS
+            iType(0x23, 1, 4, 0x10)    // HALT should now be set
+        ))
+
+        repeat(7) { cpu.step() }
+
+        assertEquals(0L, cpu.register(3) and 1L)
+        assertEquals(1L, cpu.register(4) and 1L)
+    }
+
     @Test fun executesImmediateArithmeticAndKeepsZeroRegisterConstant() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(iType(0x09, 0, 1, 10), iType(0x0D, 1, 2, 0x20), iType(0x09, 0, 0, 99)))
