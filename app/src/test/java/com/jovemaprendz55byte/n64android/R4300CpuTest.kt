@@ -42,6 +42,20 @@ class R4300CpuTest {
         assertEquals(0xAABBCCDD.toInt(), cpu.register(4).toInt())
     }
 
+    @Test fun cpuCanReadAndWriteSpMemoryMappedRegisters() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x0404), // r1 = SP register base 0x04040000
+            iType(0x09, 0, 2, 0x100),  // r2 = SP_MEM_ADDR value
+            iType(0x2B, 1, 2, 0),      // SW r2, SP_MEM_ADDR
+            iType(0x23, 1, 3, 0)       // LW r3, SP_MEM_ADDR
+        ))
+
+        repeat(4) { cpu.step() }
+
+        assertEquals(0x100L, cpu.register(3))
+    }
+
     @Test fun executesImmediateArithmeticAndKeepsZeroRegisterConstant() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(iType(0x09, 0, 1, 10), iType(0x0D, 1, 2, 0x20), iType(0x09, 0, 0, 99)))
