@@ -325,19 +325,22 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
             }
             40 -> bus.writeByte(dmemAddress(a + immediate), b.toByte()) // SB
             41 -> bus.writeHalf(dmemAddress(a + immediate), b.toShort()) // SH
-            42 -> { // SWL: store register bytes into the aligned word's left side
+            42 -> { // SWL: store the most-significant bytes at the addressed word's right side
                 val address = a + immediate
                 val aligned = dmemAddress(address and -4)
-                for (index in 0..(address and 3)) {
-                    bus.writeByte(aligned + index.toLong(), (b ushr (24 - index * 8)).toByte())
+                val offset = (address and 3)
+                for (index in offset..3) {
+                    val sourceIndex = index - offset
+                    bus.writeByte(aligned + index.toLong(), (b ushr (24 - sourceIndex * 8)).toByte())
                 }
             }
             43 -> bus.writeWord(dmemAddress(a + immediate), b) // SW
-            46 -> { // SWR: store register bytes into the aligned word's right side
+            46 -> { // SWR: store the least-significant bytes at the addressed word's left side
                 val address = a + immediate
                 val aligned = dmemAddress(address and -4)
-                for (index in (address and 3)..3) {
-                    bus.writeByte(aligned + index.toLong(), (b ushr ((3 - index) * 8)).toByte())
+                val offset = (address and 3)
+                for (index in 0..offset) {
+                    bus.writeByte(aligned + index.toLong(), (b ushr ((offset - index) * 8)).toByte())
                 }
             }
             else -> unsupported(instruction)
