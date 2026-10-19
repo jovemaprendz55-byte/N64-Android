@@ -4,7 +4,7 @@ package com.jovemaprendz55byte.n64android
  * Minimal scalar RSP interpreter foundation.
  *
  * Implements a deliberately small MIPS-I integer subset for smoke tests.
- * Implements a limited vector subset (VADD, VSUB, VABS, VADDC, VSUBC, VAND, VNAND, VOR, VNOR, VXOR, VNXOR, VANDC, VORC) with
+ * Implements a limited vector subset (VMULF, VMULU, VADD, VSUB, VABS, VADDC, VSUBC, VLT, VEQ, VNE, VGE, and logic operations) with
  * element selector e=0. Other vector operations, DMA scheduling, interrupts,
  * and cycle timing are not implemented. COP0 access is limited to SP registers.
  * Branches use a one-instruction delay slot.
