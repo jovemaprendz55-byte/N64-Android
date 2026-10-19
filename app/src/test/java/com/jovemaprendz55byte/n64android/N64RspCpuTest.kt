@@ -815,10 +815,10 @@ class N64RspCpuTest {
 
         repeat(14) { rsp.step() }
 
-        assertEquals(0x0005, rsp.register(2)) // VLT: lane 0 equal with both flags; lane 2 less
-        assertEquals(0x00DA, rsp.register(3)) // VEQ: equal lanes without VCO_HI
-        assertEquals(0x0125, rsp.register(4)) // VNE: unequal lanes or VCO_HI
-        assertEquals(0x00DB, rsp.register(5)) // VGE: greater/equal, except equal with both flags
+        assertEquals(0x0025, rsp.register(2)) // VLT: lane 0 equal with both flags; lanes 2 and 5 less
+        assertEquals(0x00D2, rsp.register(3)) // VEQ: equal lanes without VCO_HI
+        assertEquals(0x002D, rsp.register(4)) // VNE: unequal lanes or VCO_HI
+        assertEquals(0x00DA, rsp.register(5)) // VGE: greater/equal, except equal with both flags
         for (lane in 0..7) {
             val selected = (rsp.register(5) and (1 shl lane)) != 0
             assertEquals(if (selected) left[lane] else right[lane], rsp.vectorLane(14, lane))
