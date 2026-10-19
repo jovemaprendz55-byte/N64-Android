@@ -869,6 +869,25 @@ class R4300CpuTest {
         assertEquals(0L, cpu.register(6))
     }
 
+    @Test fun dsubRejectsSigned64BitOverflow() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x7FFF), // r1 = 0x7FFF0000
+            iType(0x0D, 1, 1, 0xFFFF), // r1 = 0x7FFFFFFF
+            rType(0, 1, 2, 0, 0x3E),   // DSRL32 r2, r1, 0 => 0x000000007FFFFFFF
+            iType(0x0F, 0, 3, 0x8000), // r3 = 0xFFFFFFFF80000000
+            rType(3, 2, 4, 0, 0x2E)    // DSUB: minimum signed value - positive => underflow
+        ))
+        repeat(4) { cpu.step() }
+        try {
+            cpu.step()
+            throw AssertionError("Expected DSUB signed overflow to be detected")
+        } catch (_: ArithmeticException) {
+            // The simplified core detects overflow but does not model a MIPS exception.
+        }
+        assertEquals(0L, cpu.register(4))
+    }
+
     @Test fun daddAndDaddiRejectSigned64BitOverflow() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
