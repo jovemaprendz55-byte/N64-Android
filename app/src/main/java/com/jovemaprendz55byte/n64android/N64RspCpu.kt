@@ -328,7 +328,7 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                 val address = a + immediate
                 val aligned = dmemAddress(address and -4)
                 for (index in 0..(address and 3)) {
-                    bus.writeByte(aligned + index, (b ushr (24 - index * 8)).toByte())
+                    bus.writeByte(aligned + index.toLong(), (b ushr (24 - index * 8)).toByte())
                 }
             }
             43 -> bus.writeWord(dmemAddress(a + immediate), b) // SW
@@ -336,7 +336,7 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                 val address = a + immediate
                 val aligned = dmemAddress(address and -4)
                 for (index in (address and 3)..3) {
-                    bus.writeByte(aligned + index, (b ushr ((3 - index) * 8)).toByte())
+                    bus.writeByte(aligned + index.toLong(), (b ushr ((3 - index) * 8)).toByte())
                 }
             }
             else -> unsupported(instruction)
