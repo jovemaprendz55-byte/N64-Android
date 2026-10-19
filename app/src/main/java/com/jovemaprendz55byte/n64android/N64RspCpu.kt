@@ -203,7 +203,15 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                     // VMULU uses the same fractional product but saturates the destination as unsigned.
                     val acc = a.toLong() * b.toLong() * 2L + 0x8000L
                     accumulator[lane] = signExtend48(acc)
-                    (acc shr 16).coerceIn(0L, 0xFFFFL).toInt()
+                    run {
+                        val high = (signExtend48(acc) shr 32) and 0xFFFFL
+                        val middle = (acc shr 16) and 0xFFFFL
+                        when {
+                            high == 0L && (middle and 0x8000L) != 0L -> 0xFFFF
+                            high == 0xFFFFL && (middle and 0x8000L) == 0L -> 0
+                            else -> middle.toInt()
+                        }
+                    }
                 }
                 0x10 -> (a + b + carryIn)
                     .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()) // VADD
