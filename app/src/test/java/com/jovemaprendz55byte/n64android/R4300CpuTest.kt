@@ -887,6 +887,30 @@ class R4300CpuTest {
         assertEquals(6148914691236517203L, cpu.lo)
     }
 
+    @Test fun ddivAndDdivuByZeroPreserveHiLo() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, -7),     // r1 = -7
+            iType(0x09, 0, 2, 3),      // r2 = 3
+            rType(1, 2, 0, 0, 0x1E),   // DDIV: HI=-1, LO=-2
+            rType(1, 0, 0, 0, 0x1E),   // DDIV by zero should preserve HI/LO
+            rType(0, 0, 3, 0, 0x10),   // MFHI r3
+            rType(0, 0, 4, 0, 0x12),   // MFLO r4
+            iType(0x09, 0, 5, 7),      // r5 = 7
+            rType(5, 2, 0, 0, 0x1F),   // DDIVU: HI=1, LO=2
+            rType(5, 0, 0, 0, 0x1F),   // DDIVU by zero should preserve HI/LO
+            rType(0, 0, 6, 0, 0x10),   // MFHI r6
+            rType(0, 0, 7, 0, 0x12)    // MFLO r7
+        ))
+        repeat(11) { cpu.step() }
+        assertEquals(-1L, cpu.register(3))
+        assertEquals(-2L, cpu.register(4))
+        assertEquals(1L, cpu.register(6))
+        assertEquals(2L, cpu.register(7))
+        assertEquals(1L, cpu.hi)
+        assertEquals(2L, cpu.lo)
+    }
+
     @Test fun ddivSignedOverflowUsesSimplifiedCoreBoundaryResult() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
