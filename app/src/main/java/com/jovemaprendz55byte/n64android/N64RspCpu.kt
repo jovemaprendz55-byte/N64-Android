@@ -311,7 +311,7 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                 val memoryWord = bus.readWord(aligned)
                 val shift = (3 - (address and 3)) * 8
                 val preserveMask = 0x00FF_FFFF ushr ((address and 3) * 8)
-                writeRegister(rt, (b and preserveMask) or (memoryWord shl shift))
+                writeRegister(rt, (b and preserveMask) or (memoryWord and (-1 shl shift)))
             }
             37 -> writeRegister(rt, bus.readHalf(dmemAddress(a + immediate)).toInt() and 0xFFFF) // LHU
             38 -> { // LWR: merge memory bytes from the aligned word's right side
@@ -320,7 +320,7 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                 val memoryWord = bus.readWord(aligned)
                 val shift = (address and 3) * 8
                 val preserveMask = 0xFFFF_FF00 shl ((3 - (address and 3)) * 8)
-                writeRegister(rt, (b and preserveMask) or (memoryWord ushr shift))
+                writeRegister(rt, (b and preserveMask) or (memoryWord and (-1 ushr shift)))
             }
             40 -> bus.writeByte(dmemAddress(a + immediate), b.toByte()) // SB
             41 -> bus.writeHalf(dmemAddress(a + immediate), b.toShort()) // SH
