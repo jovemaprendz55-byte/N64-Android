@@ -610,6 +610,31 @@ class N64RspCpuTest {
         assertEquals(0x34, bus.readByte(N64SpMemory.DMEM_BASE + 0x35).toInt() and 0xFF)
     }
 
+    @Test fun supportsVectorWordLoadAndStoreWithElementWrap() {
+        val bus = N64MemoryBus()
+        fun vectorMemory(op: Int, base: Int, vt: Int, subop: Int, element: Int, offset: Int) =
+            (op shl 26) or (base shl 21) or (vt shl 16) or
+                (subop shl 11) or (element shl 7) or (offset and 0x7F)
+
+        bus.writeByte(N64SpMemory.DMEM_BASE + 0x40, 0x12.toByte())
+        bus.writeByte(N64SpMemory.DMEM_BASE + 0x41, 0x34.toByte())
+        bus.writeByte(N64SpMemory.DMEM_BASE + 0x42, 0x56.toByte())
+        bus.writeByte(N64SpMemory.DMEM_BASE + 0x43, 0x78.toByte())
+        bus.writeWord(N64SpMemory.IMEM_BASE, i(9, 0, 1, 0x40))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, vectorMemory(50, 1, 2, 2, 14, 0)) // LLV v2[14]
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, vectorMemory(58, 1, 2, 2, 14, 1)) // SLV v2[14], 4(base)
+
+        val rsp = N64RspCpu(bus)
+        repeat(3) { rsp.step() }
+
+        assertEquals(0x1234, rsp.vectorLane(2, 7).toInt() and 0xFFFF)
+        assertEquals(0x5678, rsp.vectorLane(2, 0).toInt() and 0xFFFF)
+        assertEquals(0x12, bus.readByte(N64SpMemory.DMEM_BASE + 0x44).toInt() and 0xFF)
+        assertEquals(0x34, bus.readByte(N64SpMemory.DMEM_BASE + 0x45).toInt() and 0xFF)
+        assertEquals(0x56, bus.readByte(N64SpMemory.DMEM_BASE + 0x46).toInt() and 0xFF)
+        assertEquals(0x78, bus.readByte(N64SpMemory.DMEM_BASE + 0x47).toInt() and 0xFF)
+    }
+
     @Test fun dmemEffectiveAddressesWrapAtFourKilobytes() {
         val bus = N64MemoryBus()
         bus.writeWord(N64SpMemory.IMEM_BASE, i(9, 0, 1, 0x0FFF)) // r1 = 4095
