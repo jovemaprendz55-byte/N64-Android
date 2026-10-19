@@ -5,7 +5,7 @@ import java.math.BigInteger
 /**
  * Small, testable MIPS III/R4300 interpreter foundation.
  *
- * This remains a partial CPU core: exceptions, TLB, CP0/FPU, caches, and N64
+ * This remains a partial CPU core: exceptions, TLB/FPU, caches, and N64
  * peripherals are not implemented. Implemented RDRAM and SP DMEM/IMEM accesses
  * are routed through the physical memory bus.
  */
@@ -25,6 +25,8 @@ class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
         const val DEFAULT_RDRAM_SIZE: Int = 8 * 1024 * 1024
     }
     private val gpr = LongArray(32)
+    // Minimal CP0 register storage for common boot-code MFC0/MTC0 operations.
+    private val cp0 = LongArray(32)
 
     var pc: Long = 0L
     var hi: Long = 0L
@@ -144,6 +146,7 @@ class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
     fun resetExecutionState(entryPoint: Long) {
         require(entryPoint % 4L == 0L) { "Entry point must be 4-byte aligned" }
         gpr.fill(0L)
+        cp0.fill(0L)
         hi = 0L
         lo = 0L
         pc = entryPoint
@@ -171,6 +174,11 @@ class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
         val b = register(rt)
 
         when (opcode) {
+            0x10 -> when (rs) {
+                0x00 -> writeRegister(rt, cp0[rd].toInt().toLong()) // MFC0: sign-extend the 32-bit CP0 value
+                0x04 -> cp0[rd] = b.toInt().toLong() // MTC0: write the low 32 bits
+                else -> unsupported(instruction, instructionAddress)
+            }
             0 -> when (funct) {
                 0x00 -> writeRegister(rd, (b.toInt() shl shift).toLong()) // SLL
                 0x02 -> writeRegister(rd, (b.toInt() ushr shift).toLong()) // SRL
