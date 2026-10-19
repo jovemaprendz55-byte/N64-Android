@@ -77,7 +77,7 @@ class R4300CpuTest {
 
         assertEquals(0x12345678L, cpu.register(4))
         assertEquals(0x2143657FL, cpu.register(5))
-        assertEquals(0L, cpu.readWord(N64MemoryBus.SP_DMA_BUSY).toLong())
+        assertEquals(0L, cpu.readWord(N64MemoryBus.SP_DMA_BUSY.toInt()).toLong())
     }
 
     @Test fun executesImmediateArithmeticAndKeepsZeroRegisterConstant() {
