@@ -735,4 +735,48 @@ class N64RspCpuTest {
         assertEquals(0x5A, rsp.register(3))
         assertEquals(0x5A, bus.readByte(N64SpMemory.DMEM_BASE).toInt() and 0xFF)
     }
-}
+
+
+    @Test fun mtc2Element15DoesNotWrapButMfc2SecondByteDoes() {
+        val bus = N64MemoryBus()
+        fun cop2Move(rs: Int, rt: Int, vd: Int, element: Int) =
+            (18 shl 26) or (rs shl 21) or (rt shl 16) or
+                (vd shl 11) or (element shl 7)
+
+        val rsp = N64RspCpu(bus)
+        rsp.setVectorLane(2, 7, 0x7788.toShort())
+        rsp.setVectorLane(2, 0, 0x99AA.toShort())
+        bus.writeWord(N64SpMemory.IMEM_BASE, i(9, 0, 1, 0xFEDC))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, cop2Move(4, 1, 2, 15)) // MTC2 r1,v2[e15]
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, cop2Move(0, 3, 2, 15)) // MFC2 r3,v2[e15]
+
+        repeat(3) { rsp.step() }
+
+        assertEquals(0x77FE, rsp.vectorLane(2, 7).toInt() and 0xFFFF)
+        assertEquals(0x99AA, rsp.vectorLane(2, 0).toInt() and 0xFFFF)
+        assertEquals(0xFE99.toShort().toInt(), rsp.register(3))
+    }
+
+    @Test fun supportsCfc2AndCtc2ForVcoVccAndVce() {
+        val bus = N64MemoryBus()
+        fun cop2Move(rs: Int, rt: Int, control: Int) =
+            (18 shl 26) or (rs shl 21) or (rt shl 16) or (control shl 11)
+
+        bus.writeWord(N64SpMemory.IMEM_BASE, i(9, 0, 1, 0xFFFF)) // r1 = -1
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, i(13, 0, 2, 0x8123)) // r2 = 0x8123
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, i(13, 0, 3, 0xABCD)) // r3 = 0xABCD
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, cop2Move(6, 1, 0)) // CTC2 VCO
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, cop2Move(6, 2, 1)) // CTC2 VCC
+        bus.writeWord(N64SpMemory.IMEM_BASE + 20, cop2Move(6, 3, 2)) // CTC2 VCE
+        bus.writeWord(N64SpMemory.IMEM_BASE + 24, cop2Move(2, 4, 0)) // CFC2 VCO
+        bus.writeWord(N64SpMemory.IMEM_BASE + 28, cop2Move(2, 5, 1)) // CFC2 VCC
+        bus.writeWord(N64SpMemory.IMEM_BASE + 32, cop2Move(2, 6, 2)) // CFC2 VCE
+
+        val rsp = N64RspCpu(bus)
+        repeat(9) { rsp.step() }
+
+        assertEquals(-1, rsp.register(4))
+        assertEquals(0x8123.toShort().toInt(), rsp.register(5))
+        assertEquals(0xCD, rsp.register(6))
+    }
+\n}\n
