@@ -779,4 +779,5 @@ class N64RspCpuTest {
         assertEquals(0x8123.toShort().toInt(), rsp.register(5))
         assertEquals(0xCD, rsp.register(6))
     }
-\n}\n
+
+}
