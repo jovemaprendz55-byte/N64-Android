@@ -342,6 +342,51 @@ class R4300CpuTest {
         assertEquals(28L, cpu.pc)
     }
 
+    @Test fun signedDoublewordDivideWritesQuotientToLoAndRemainderToHi() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x19, 0, 1, -20),
+            iType(0x19, 0, 2, 3),
+            rType(1, 2, 0, 0, 0x1E), // DDIV: -20 / 3 = -6 remainder -2
+            rType(0, 0, 3, 0, 0x12), // MFLO
+            rType(0, 0, 4, 0, 0x10)  // MFHI
+        ))
+        repeat(5) { cpu.step() }
+        assertEquals(-6L, cpu.register(3))
+        assertEquals(-2L, cpu.register(4))
+    }
+
+    @Test fun unsignedDoublewordDivideUsesFullUnsigned64BitRange() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0xFFFF),
+            iType(0x0D, 1, 1, 0xFFFF), // r1 = 0xFFFFFFFFFFFFFFFF
+            iType(0x19, 0, 2, 2),
+            rType(1, 2, 0, 0, 0x1F), // DDIVU: (2^64 - 1) / 2
+            rType(0, 0, 3, 0, 0x12), // MFLO
+            rType(0, 0, 4, 0, 0x10)  // MFHI
+        ))
+        repeat(6) { cpu.step() }
+        assertEquals(0x7FFFFFFFFFFFFFFFL, cpu.register(3))
+        assertEquals(1L, cpu.register(4))
+    }
+
+    @Test fun doublewordDivideByZeroLeavesHiLoUnchangedInSimplifiedCore() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x19, 0, 1, 42),
+            iType(0x19, 0, 2, 7),
+            rType(1, 2, 0, 0, 0x11), // MTHI
+            rType(1, 2, 0, 0, 0x13), // MTLO
+            rType(1, 0, 0, 0, 0x1E), // DDIV by zero
+            rType(0, 0, 3, 0, 0x12), // MFLO
+            rType(0, 0, 4, 0, 0x10)  // MFHI
+        ))
+        repeat(7) { cpu.step() }
+        assertEquals(42L, cpu.register(3))
+        assertEquals(42L, cpu.register(4))
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 

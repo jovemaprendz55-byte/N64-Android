@@ -173,6 +173,26 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
                     lo = product.and(unsignedWordMask).toLong()
                     hi = product.shiftRight(64).toLong()
                 } // DMULTU: unsigned 64-bit product split across HI/LO
+                0x1E -> {
+                    if (b != 0L) {
+                        if (a == Long.MIN_VALUE && b == -1L) {
+                            lo = Long.MIN_VALUE
+                            hi = 0L
+                        } else {
+                            lo = a / b
+                            hi = a % b
+                        }
+                    }
+                } // DDIV: signed 64-bit division; HI/LO unchanged for divisor zero in this simplified core
+                0x1F -> {
+                    if (b != 0L) {
+                        val dividend = unsignedLongToBigInteger(a)
+                        val divisor = unsignedLongToBigInteger(b)
+                        val division = dividend.divideAndRemainder(divisor)
+                        lo = division[0].toLong()
+                        hi = division[1].toLong()
+                    }
+                } // DDIVU: unsigned 64-bit division; HI/LO unchanged for divisor zero in this simplified core
                 0x1B -> {
                     val dividend = a.toInt()
                     val divisor = b.toInt()
