@@ -180,7 +180,9 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
                 0x27 -> writeRegister(rd, (a or b).inv()) // NOR
                 0x2A -> writeRegister(rd, if (a < b) 1L else 0L) // SLT
                 0x2B -> writeRegister(rd, if (java.lang.Long.compareUnsigned(a, b) < 0) 1L else 0L) // SLTU
+                0x2C -> writeRegister(rd, Math.addExact(a, b)) // DADD (overflow detection; exception model is simplified)
                 0x2D -> writeRegister(rd, a + b) // DADDU
+                0x2E -> writeRegister(rd, Math.subtractExact(a, b)) // DSUB (overflow detection; exception model is simplified)
                 0x2F -> writeRegister(rd, a - b) // DSUBU
                 0x38 -> writeRegister(rd, b shl shift) // DSLL
                 0x3A -> writeRegister(rd, b ushr shift) // DSRL

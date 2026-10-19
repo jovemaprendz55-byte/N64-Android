@@ -76,6 +76,19 @@ class R4300CpuTest {
         assertEquals(5L, cpu.register(3))
     }
 
+    @Test fun daddAndDsubPerformSigned64BitArithmetic() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x19, 0, 1, 12),
+            iType(0x19, 0, 2, -5),
+            rType(1, 2, 3, 0, 0x2C), // DADD: 12 + -5 = 7
+            rType(1, 2, 4, 0, 0x2E)  // DSUB: 12 - -5 = 17
+        ))
+        repeat(4) { cpu.step() }
+        assertEquals(7L, cpu.register(3))
+        assertEquals(17L, cpu.register(4))
+    }
+
     @Test fun jalWritesReturnAddressAndTakesEffectAfterDelaySlot() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
