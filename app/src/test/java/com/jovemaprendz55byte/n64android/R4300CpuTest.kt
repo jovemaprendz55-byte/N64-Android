@@ -80,6 +80,23 @@ class R4300CpuTest {
         assertEquals(0L, cpu.readWord(N64MemoryBus.SP_DMA_BUSY.toInt()).toLong())
     }
 
+    @Test fun spSemaphoreReadSetsItAndWriteClearsIt() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x0404), // r1 = SP register base
+            iType(0x23, 1, 2, 0x1C),   // first read returns 0 and sets semaphore
+            iType(0x23, 1, 3, 0x1C),   // second read returns 1
+            iType(0x2B, 1, 0, 0x1C),   // write clears semaphore
+            iType(0x23, 1, 4, 0x1C)    // read returns 0 again
+        ))
+
+        repeat(5) { cpu.step() }
+
+        assertEquals(0L, cpu.register(2))
+        assertEquals(1L, cpu.register(3))
+        assertEquals(0L, cpu.register(4))
+    }
+
     @Test fun executesImmediateArithmeticAndKeepsZeroRegisterConstant() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(iType(0x09, 0, 1, 10), iType(0x0D, 1, 2, 0x20), iType(0x09, 0, 0, 99)))
