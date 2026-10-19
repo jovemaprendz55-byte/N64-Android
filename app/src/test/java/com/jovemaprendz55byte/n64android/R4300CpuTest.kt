@@ -37,7 +37,7 @@ class R4300CpuTest {
 
         assertEquals(0xAABBCCDD.toInt(), cpu.readWord(0x04000000))
         assertEquals(0xAABBCCDD.toInt(), cpu.readWord(0x04001000))
-        assertEquals(0xAABBCCDD.toInt(), cpu.readWord(0))
+        assertEquals(iType(0x0F, 0, 1, 0x0400), cpu.readWord(0))
         assertEquals(0xAABBCCDD.toInt(), cpu.register(3).toInt())
         assertEquals(0xAABBCCDD.toInt(), cpu.register(4).toInt())
     }
