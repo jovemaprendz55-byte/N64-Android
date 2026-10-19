@@ -319,7 +319,8 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                 val aligned = dmemAddress(address and -4)
                 val memoryWord = bus.readWord(aligned)
                 val shift = (address and 3).toInt() * 8
-                val preserveMask = (0xFFFF_FF00L shl ((3 - (address and 3).toInt()) * 8)).toInt()
+                val offset = (address and 3).toInt()
+                val preserveMask = if (offset == 0) 0 else (-1 shl ((4 - offset) * 8))
                 writeRegister(rt, (b and preserveMask) or (memoryWord and (-1 ushr shift)))
             }
             40 -> bus.writeByte(dmemAddress(a + immediate), b.toByte()) // SB
