@@ -183,4 +183,44 @@ class N64RspCpuTest {
         assertEquals(1, bus.readWord(N64MemoryBus.SP_STATUS) and 1)
     }
 
+
+    @Test fun supportsSignedMultiplyAndDivideThroughHiLo() {
+        val bus = N64MemoryBus()
+        bus.writeWord(N64SpMemory.IMEM_BASE, i(9, 0, 1, -7)) // ADDIU r1,r0,-7
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, i(9, 0, 2, 3)) // ADDIU r2,r0,3
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, r(1, 2, 0, 0, 24)) // MULT
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, r(0, 0, 3, 0, 16)) // MFHI r3
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, r(0, 0, 4, 0, 18)) // MFLO r4
+        bus.writeWord(N64SpMemory.IMEM_BASE + 20, r(1, 2, 0, 0, 26)) // DIV
+        bus.writeWord(N64SpMemory.IMEM_BASE + 24, r(0, 0, 5, 0, 18)) // MFLO r5
+        bus.writeWord(N64SpMemory.IMEM_BASE + 28, r(0, 0, 6, 0, 16)) // MFHI r6
+
+        val rsp = N64RspCpu(bus)
+        repeat(8) { rsp.step() }
+
+        assertEquals(-1, rsp.register(3))
+        assertEquals(-21, rsp.register(4))
+        assertEquals(-2, rsp.register(5))
+        assertEquals(-1, rsp.register(6))
+    }
+
+    @Test fun supportsUnsignedMultiplyAndDivideThroughHiLo() {
+        val bus = N64MemoryBus()
+        bus.writeWord(N64SpMemory.IMEM_BASE, i(15, 0, 1, 0x8000)) // r1 = 0x80000000
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, i(9, 0, 2, 2))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, r(1, 2, 0, 0, 25)) // MULTU
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, r(0, 0, 3, 0, 16)) // MFHI r3
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, r(0, 0, 4, 0, 18)) // MFLO r4
+        bus.writeWord(N64SpMemory.IMEM_BASE + 20, r(1, 2, 0, 0, 27)) // DIVU
+        bus.writeWord(N64SpMemory.IMEM_BASE + 24, r(0, 0, 5, 0, 18)) // MFLO r5
+        bus.writeWord(N64SpMemory.IMEM_BASE + 28, r(0, 0, 6, 0, 16)) // MFHI r6
+
+        val rsp = N64RspCpu(bus)
+        repeat(8) { rsp.step() }
+
+        assertEquals(1, rsp.register(3))
+        assertEquals(0, rsp.register(4))
+        assertEquals(0x40000000, rsp.register(5))
+        assertEquals(0, rsp.register(6))
+    }
 }

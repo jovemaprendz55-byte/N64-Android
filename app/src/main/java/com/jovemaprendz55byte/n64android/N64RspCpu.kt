@@ -11,6 +11,8 @@ package com.jovemaprendz55byte.n64android
  */
 internal class N64RspCpu(private val bus: N64MemoryBus) {
     private val gpr = IntArray(32)
+    private var hi = 0
+    private var lo = 0
     private val vector = Array(32) { ShortArray(8) }
     var pc: Int = 0
         private set
@@ -90,6 +92,33 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                 7 -> writeRegister(rd, b shr (a and 31)) // SRAV
                 8 -> pendingTarget = a // JR
                 13 -> bus.markSpBroke() // BREAK
+                16 -> writeRegister(rd, hi) // MFHI
+                17 -> hi = a // MTHI
+                18 -> writeRegister(rd, lo) // MFLO
+                19 -> lo = a // MTLO
+                24 -> {
+                    val product = a.toLong() * b.toLong()
+                    lo = product.toInt()
+                    hi = (product shr 32).toInt()
+                } // MULT
+                25 -> {
+                    val product = a.toUInt().toULong() * b.toUInt().toULong()
+                    lo = product.toInt()
+                    hi = (product shr 32).toInt()
+                } // MULTU
+                26 -> if (b != 0) {
+                    if (a == Int.MIN_VALUE && b == -1) {
+                        lo = Int.MIN_VALUE
+                        hi = 0
+                    } else {
+                        lo = a / b
+                        hi = a % b
+                    }
+                } // DIV; divide by zero leaves HI/LO unchanged
+                27 -> if (b != 0) {
+                    lo = (a.toUInt() / b.toUInt()).toInt()
+                    hi = (a.toUInt() % b.toUInt()).toInt()
+                } // DIVU; divide by zero leaves HI/LO unchanged
                 33 -> writeRegister(rd, a + b) // ADDU
                 35 -> writeRegister(rd, a - b) // SUBU
                 36 -> writeRegister(rd, a and b) // AND
