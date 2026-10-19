@@ -53,13 +53,25 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
         when (opcode) {
             0 -> when (instruction and 63) {
                 0 -> writeRegister(rd, b shl shamt) // SLL / NOP
+                2 -> writeRegister(rd, b ushr shamt) // SRL
+                3 -> writeRegister(rd, b shr shamt) // SRA
+                4 -> writeRegister(rd, b shl (a and 31)) // SLLV
+                6 -> writeRegister(rd, b ushr (a and 31)) // SRLV
+                7 -> writeRegister(rd, b shr (a and 31)) // SRAV
                 8 -> pendingTarget = a // JR
                 33 -> writeRegister(rd, a + b) // ADDU
                 35 -> writeRegister(rd, a - b) // SUBU
                 36 -> writeRegister(rd, a and b) // AND
                 37 -> writeRegister(rd, a or b) // OR
                 38 -> writeRegister(rd, a xor b) // XOR
+                39 -> writeRegister(rd, (a or b).inv()) // NOR
                 42 -> writeRegister(rd, if (a < b) 1 else 0) // SLT
+                43 -> writeRegister(rd, if (a.toUInt() < b.toUInt()) 1 else 0) // SLTU
+                else -> unsupported(instruction)
+            }
+            1 -> when (rt) {
+                0 -> if (a < 0) pendingTarget = pcPlus4 + (immediate shl 2) // BLTZ
+                1 -> if (a >= 0) pendingTarget = pcPlus4 + (immediate shl 2) // BGEZ
                 else -> unsupported(instruction)
             }
             2 -> pendingTarget = (pcPlus4 and 0xF0000000.toInt()) or
@@ -69,22 +81,30 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                 pendingTarget = (pcPlus4 and 0xF0000000.toInt()) or
                     ((instruction and 0x03FFFFFF) shl 2) // JAL
             }
-            4 -> if (a == b) pendingTarget = pcPlus4 + (immediate shl 2)
-            5 -> if (a != b) pendingTarget = pcPlus4 + (immediate shl 2)
+            4 -> if (a == b) pendingTarget = pcPlus4 + (immediate shl 2) // BEQ
+            5 -> if (a != b) pendingTarget = pcPlus4 + (immediate shl 2) // BNE
+            6 -> if (a <= 0) pendingTarget = pcPlus4 + (immediate shl 2) // BLEZ
+            7 -> if (a > 0) pendingTarget = pcPlus4 + (immediate shl 2) // BGTZ
             9 -> writeRegister(rt, a + immediate) // ADDIU
             12 -> writeRegister(rt, a and unsignedImmediate) // ANDI
             13 -> writeRegister(rt, a or unsignedImmediate) // ORI
             14 -> writeRegister(rt, a xor unsignedImmediate) // XORI
             15 -> writeRegister(rt, unsignedImmediate shl 16) // LUI
+            32 -> writeRegister(rt, bus.readByte(dmemAddress(a + immediate)).toInt()) // LB
+            33 -> writeRegister(rt, bus.readHalf(dmemAddress(a + immediate)).toInt()) // LH
             35 -> writeRegister(rt, bus.readWord(dmemAddress(a + immediate))) // LW
+            36 -> writeRegister(rt, bus.readByte(dmemAddress(a + immediate)).toInt() and 0xFF) // LBU
+            37 -> writeRegister(rt, bus.readHalf(dmemAddress(a + immediate)).toInt() and 0xFFFF) // LHU
+            40 -> bus.writeByte(dmemAddress(a + immediate), b.toByte()) // SB
+            41 -> bus.writeHalf(dmemAddress(a + immediate), b.toShort()) // SH
             43 -> bus.writeWord(dmemAddress(a + immediate), b) // SW
             else -> unsupported(instruction)
         }
     }
 
     private fun dmemAddress(address: Int): Long {
-        require(address in 0 until N64SpMemory.MEMORY_SIZE && address % 4 == 0) {
-            "RSP data address is outside DMEM or unaligned: 0x${address.toString(16)}"
+        require(address in 0 until N64SpMemory.MEMORY_SIZE) {
+            "RSP data address is outside DMEM: 0x${address.toString(16)}"
         }
         return N64SpMemory.DMEM_BASE + address
     }
