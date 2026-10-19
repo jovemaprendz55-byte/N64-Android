@@ -111,7 +111,7 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
     /** Executes one instruction; branches take effect after their delay slot. */
     fun step() {
         val instructionAddress = pc
-        val instruction = readWord(pc.toInt())
+        val instruction = fetchInstruction(pc)
         pc += 4L
 
         val branchToApply = pendingBranchTarget
@@ -298,6 +298,15 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
         gpr[0] = 0L
     }
 
+
+    /** Fetches an instruction without truncating a 64-bit PC into a different RAM address. */
+    private fun fetchInstruction(address: Long): Int {
+        require(address >= 0L && address % 4L == 0L &&
+            address <= memory.size.toLong() - 4L) {
+            "Instruction fetch must be aligned and inside configured RAM"
+        }
+        return readWord(address.toInt())
+    }
 
     /** Converts a virtual effective address only when it is representable by this simplified RAM. */
     private fun effectiveAddress(base: Long, offset: Long): Int {

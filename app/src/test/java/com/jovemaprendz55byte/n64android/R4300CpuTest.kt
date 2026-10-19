@@ -589,6 +589,32 @@ class R4300CpuTest {
         }
     }
 
+    @Test fun instructionFetchRejectsHighPcInsteadOfWrappingIntoLowRam() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(iType(0x09, 0, 2, 77)))
+        cpu.pc = 0x1_0000_0000L
+        try {
+            cpu.step()
+            throw AssertionError("Expected high PC to be rejected")
+        } catch (_: IllegalArgumentException) {
+            // The simplified core must not truncate the PC to a 32-bit RAM index.
+        }
+        assertEquals(0L, cpu.register(2))
+    }
+
+    @Test fun instructionFetchRejectsUnalignedPc() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(iType(0x09, 0, 2, 77)))
+        cpu.pc = 2L
+        try {
+            cpu.step()
+            throw AssertionError("Expected unaligned PC to be rejected")
+        } catch (_: IllegalArgumentException) {
+            // Instructions are four-byte aligned in this simplified core.
+        }
+        assertEquals(0L, cpu.register(2))
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
