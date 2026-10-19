@@ -330,10 +330,11 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
         }
         // Other operations currently implement only element selector zero.
         if (element != 0) unsupported(instruction)
-        if (function !in setOf(0x00, 0x01, 0x07, 0x08, 0x09, 0x10, 0x11, 0x13, 0x14, 0x15, 0x20, 0x21, 0x22, 0x23, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F)) {
+        if (function !in setOf(0x00, 0x01, 0x07, 0x08, 0x09, 0x10, 0x11, 0x13, 0x14, 0x15, 0x20, 0x21, 0x22, 0x23, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F)) {
             unsupported(instruction)
         }
         var nextVco = 0
+        var nextVcc = 0
         for (lane in 0..7) {
             val a = vector[vs][lane].toInt()
             val b = vector[vt][lane].toInt()
@@ -392,10 +393,19 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                     if (difference != 0) nextVco = nextVco or (1 shl (lane + 8))
                     difference // VSUBC
                 }
-                0x20 -> if (a < b || (a == b && (vco and (1 shl lane)) != 0)) a else b // VLT
-                0x21 -> if (a == b && (vco and (1 shl lane)) == 0) a else b // VEQ
-                0x22 -> if (a != b || (vco and (1 shl lane)) != 0) a else b // VNE
-                0x23 -> if (a > b || (a == b && (vco and (1 shl lane)) == 0)) a else b // VGE
+                0x20, 0x21, 0x22, 0x23 -> {
+                    val vcoLow = (vco and (1 shl lane)) != 0
+                    val vcoHigh = (vco and (1 shl (lane + 8))) != 0
+                    val selectVs = when (function) {
+                        0x20 -> a < b || (a == b && vcoLow && vcoHigh) // VLT
+                        0x21 -> a == b && !vcoHigh // VEQ
+                        0x22 -> a != b || vcoHigh // VNE
+                        else -> a > b || (a == b && !(vcoLow && vcoHigh)) // VGE
+                    }
+                    if (selectVs) nextVcc = nextVcc or (1 shl lane)
+                    if (selectVs) a else b
+                }
+                0x27 -> if ((vcc and (1 shl lane)) != 0) a else b // VMRG
                 0x28 -> a and b // VAND
                 0x29 -> (a and b).inv() // VNAND
                 0x2A -> a or b // VOR
@@ -411,7 +421,10 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
         when (function) {
             0x10, 0x11 -> vco = 0 // VADD and VSUB consume and clear VCO
             0x14, 0x15 -> vco = nextVco
-            0x20, 0x21, 0x22, 0x23 -> vco = 0 // Comparisons consume and clear VCO
+            0x20, 0x21, 0x22, 0x23 -> {
+                vcc = nextVcc // comparison predicates occupy VCC low half; high half is cleared
+                vco = 0
+            }
         }
     }
 
