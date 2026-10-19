@@ -91,6 +91,10 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                 6 -> writeRegister(rd, b ushr (a and 31)) // SRLV
                 7 -> writeRegister(rd, b shr (a and 31)) // SRAV
                 8 -> pendingTarget = a // JR
+                9 -> {
+                    writeRegister(rd, (pcPlus4 + 4) and 0xFFC)
+                    pendingTarget = a
+                } // JALR
                 13 -> bus.markSpBroke() // BREAK
                 16 -> writeRegister(rd, hi) // MFHI
                 17 -> hi = a // MTHI
@@ -153,6 +157,8 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
             6 -> if (a <= 0) pendingTarget = pcPlus4 + (immediate shl 2) // BLEZ
             7 -> if (a > 0) pendingTarget = pcPlus4 + (immediate shl 2) // BGTZ
             9 -> writeRegister(rt, a + immediate) // ADDIU
+            10 -> writeRegister(rt, if (a < immediate) 1 else 0) // SLTI
+            11 -> writeRegister(rt, if (a.toUInt() < immediate.toUInt()) 1 else 0) // SLTIU
             12 -> writeRegister(rt, a and unsignedImmediate) // ANDI
             13 -> writeRegister(rt, a or unsignedImmediate) // ORI
             14 -> writeRegister(rt, a xor unsignedImmediate) // XORI

@@ -223,4 +223,36 @@ class N64RspCpuTest {
         assertEquals(0x40000000, rsp.register(5))
         assertEquals(0, rsp.register(6))
     }
+
+    @Test fun supportsSignedAndUnsignedImmediateComparisons() {
+        val bus = N64MemoryBus()
+        bus.writeWord(N64SpMemory.IMEM_BASE, i(9, 0, 1, -1)) // r1 = -1
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, i(10, 1, 2, 1)) // SLTI r2,r1,1
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, i(11, 1, 3, 1)) // SLTIU r3,r1,1
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, i(11, 0, 4, -1)) // SLTIU r4,r0,0xFFFF
+
+        val rsp = N64RspCpu(bus)
+        repeat(4) { rsp.step() }
+
+        assertEquals(1, rsp.register(2))
+        assertEquals(0, rsp.register(3))
+        assertEquals(1, rsp.register(4))
+    }
+
+    @Test fun jalrExecutesDelaySlotAndStoresReturnAddress() {
+        val bus = N64MemoryBus()
+        bus.writeWord(N64SpMemory.IMEM_BASE, i(9, 0, 1, 16)) // target address
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, r(1, 0, 5, 0, 9)) // JALR r5,r1
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, i(9, 0, 2, 22)) // delay slot
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, i(9, 0, 3, 33)) // skipped
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, i(9, 0, 4, 44)) // target
+
+        val rsp = N64RspCpu(bus)
+        repeat(4) { rsp.step() }
+
+        assertEquals(12, rsp.register(5))
+        assertEquals(22, rsp.register(2))
+        assertEquals(0, rsp.register(3))
+        assertEquals(44, rsp.register(4))
+    }
 }
