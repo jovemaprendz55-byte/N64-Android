@@ -1206,6 +1206,41 @@ class R4300CpuTest {
         assertEquals(0x12345678, cpu.readWord(lastWordAddress))
     }
 
+    @Test fun loadsNormalizedCartridgeAndRunsOnlyWithinInstructionBudget() {
+        val rom = ByteArray(0x1000)
+        rom[0] = 0x80.toByte()
+        rom[1] = 0x37
+        rom[2] = 0x12
+        rom[3] = 0x40
+        // ADDIU r1, r0, 42 at ROM offset 0x40.
+        rom[0x40] = 0x24
+        rom[0x41] = 0x01
+        rom[0x42] = 0x00
+        rom[0x43] = 0x2A
+
+        val cpu = R4300Cpu()
+        cpu.loadCartridgeRom(rom)
+        cpu.pc = 0xFFFF_FFFF_B000_0040UL.toLong()
+        assertEquals(1, cpu.run(maxInstructions = 1))
+        assertEquals(42L, cpu.register(1))
+        assertEquals(0xFFFF_FFFF_B000_0044UL.toLong(), cpu.pc)
+    }
+
+    @Test fun cartridgeRomMustBeNormalizedAndHaveValidSize() {
+        val cpu = R4300Cpu()
+        val invalid = ByteArray(0x1000)
+        invalid[0] = 0x37
+        invalid[1] = 0x80.toByte()
+        invalid[2] = 0x40
+        invalid[3] = 0x12
+        try {
+            cpu.loadCartridgeRom(invalid)
+            throw AssertionError("Expected swapped ROM to be rejected")
+        } catch (_: IllegalArgumentException) {
+            // Caller must normalize to Z64 first.
+        }
+    }
+
     @Test fun kseg0ProgramCounterFetchesFromTranslatedPhysicalRam() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(iType(0x09, 0, 1, 42)))

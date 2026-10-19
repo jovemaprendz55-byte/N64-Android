@@ -48,6 +48,24 @@ class N64MemoryBusTest {
         }
     }
 
+    @Test fun cartridgeRomIsReadableAndReadOnly() {
+        val bus = N64MemoryBus()
+        bus.loadCartridgeRom(byteArrayOf(0x80.toByte(), 0x37, 0x12, 0x40, 1, 2, 3, 4))
+        assertEquals(0x80371240.toInt(), bus.readWord(0x10000000L))
+        assertEquals(1, bus.readByte(0x10000004L).toInt())
+        assertThrows(IllegalArgumentException::class.java) {
+            bus.writeByte(0x10000000L, 0)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            bus.readWord(0x10000008L)
+        }
+    }
+
+    @Test fun cartridgeReadFailsBeforeRomIsLoaded() {
+        val bus = N64MemoryBus()
+        assertThrows(IllegalStateException::class.java) { bus.readByte(0x10000000L) }
+    }
+
     @Test fun rejectsUnsupportedDeviceRegistersAndUnmappedAddresses() {
         val bus = N64MemoryBus()
         assertThrows(IllegalArgumentException::class.java) { bus.readWord(0x04300000L) }

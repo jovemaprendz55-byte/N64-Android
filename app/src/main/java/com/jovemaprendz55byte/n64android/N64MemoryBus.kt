@@ -10,6 +10,8 @@ internal class N64MemoryBus(
     rdramSize: Int = R4300Cpu.DEFAULT_RDRAM_SIZE,
     private val spMemory: N64SpMemory = N64SpMemory()
 ) {
+    private var cartridgeRom: ByteArray? = null
+
     private val rdram = ByteArray(rdramSize.also { size ->
         require(size > 0 && size % 4 == 0) {
             "RDRAM size must be a positive multiple of four bytes"
@@ -84,6 +86,7 @@ internal class N64MemoryBus(
                     (rdram[address + 3].toInt() and 0xFF)
             }
             N64MemoryMap.Region.SP_REGISTERS -> readSpRegister(physicalAddress)
+            N64MemoryMap.Region.CARTRIDGE_DOMAIN -> readCartridgeWord(physicalAddress)
             else -> unsupported(physicalAddress)
         }
     }
@@ -104,6 +107,35 @@ internal class N64MemoryBus(
             N64MemoryMap.Region.SP_REGISTERS -> writeSpRegister(physicalAddress, value)
             else -> unsupported(physicalAddress)
         }
+    }
+
+    /** Maps a normalized, big-endian cartridge image into the N64 cartridge domain. */
+    fun loadCartridgeRom(bytes: ByteArray) {
+        require(bytes.isNotEmpty() && bytes.size <= 64 * 1024 * 1024) {
+            "Cartridge ROM must be between 1 byte and 64 MiB"
+        }
+        require(bytes.size % 4 == 0) { "Cartridge ROM size must be a multiple of four bytes" }
+        cartridgeRom = bytes.copyOf()
+    }
+
+    private fun readCartridgeByte(physicalAddress: Long): Byte {
+        val rom = cartridgeRom
+            ?: throw IllegalStateException("No cartridge ROM has been loaded")
+        val offset = physicalAddress - 0x1000_0000L
+        require(offset >= 0L && offset < rom.size.toLong()) {
+            "Cartridge read is outside the loaded ROM"
+        }
+        return rom[offset.toInt()]
+    }
+
+    private fun readCartridgeWord(physicalAddress: Long): Int {
+        require(physicalAddress <= 0x1FFF_FFFFL - 3L) {
+            "Cartridge word access exceeds the physical address range"
+        }
+        return ((readCartridgeByte(physicalAddress).toInt() and 0xFF) shl 24) or
+            ((readCartridgeByte(physicalAddress + 1).toInt() and 0xFF) shl 16) or
+            ((readCartridgeByte(physicalAddress + 2).toInt() and 0xFF) shl 8) or
+            (readCartridgeByte(physicalAddress + 3).toInt() and 0xFF)
     }
 
     fun loadRdram(physicalAddress: Long, bytes: ByteArray) {

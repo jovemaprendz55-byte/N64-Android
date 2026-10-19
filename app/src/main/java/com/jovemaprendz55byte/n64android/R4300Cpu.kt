@@ -39,6 +39,36 @@ class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
         return if (index == 0) 0L else gpr[index]
     }
 
+    /**
+     * Maps a normalized Z64 cartridge ROM into the physical cartridge domain.
+     * This does not emulate the PIF boot process or initialize N64 hardware.
+     */
+    fun loadCartridgeRom(bytes: ByteArray) {
+        require(bytes.size >= 0x1000 && bytes.size <= 64 * 1024 * 1024 &&
+            bytes.size % 4 == 0) {
+            "ROM size must be 4 KiB..64 MiB and a multiple of four bytes"
+        }
+        val header = RomHeader.parse(bytes)
+        require(header?.format == RomHeader.Format.Z64_BIG_ENDIAN) {
+            "Cartridge ROM must be normalized to Z64 big-endian order"
+        }
+        memoryBus.loadCartridgeRom(bytes)
+    }
+
+    /**
+     * Executes at most [maxInstructions] instructions. Returns the number run.
+     * This bounded loop is a CPU harness, not a complete game boot/frame loop.
+     */
+    fun run(maxInstructions: Int): Int {
+        require(maxInstructions > 0) { "Instruction budget must be positive" }
+        var executed = 0
+        while (executed < maxInstructions) {
+            step()
+            executed++
+        }
+        return executed
+    }
+
     /** Loads a program/data image into physical RDRAM through the memory bus. */
     fun loadBytes(address: Int, bytes: ByteArray) {
         require(address >= 0) { "Memory address must not be negative" }
@@ -329,7 +359,8 @@ class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
             )
         val region = N64MemoryMap.regionOf(physicalAddress)
         require(region == N64MemoryMap.Region.RDRAM ||
-            region == N64MemoryMap.Region.SP_DMEM || region == N64MemoryMap.Region.SP_IMEM) {
+            region == N64MemoryMap.Region.SP_DMEM || region == N64MemoryMap.Region.SP_IMEM ||
+            region == N64MemoryMap.Region.CARTRIDGE_DOMAIN) {
             if (region == null) {
                 "Physical address 0x${physicalAddress.toString(16)} is outside a mapped N64 region"
             } else {
