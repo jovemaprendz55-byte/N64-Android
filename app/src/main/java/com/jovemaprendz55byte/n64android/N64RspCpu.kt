@@ -172,6 +172,15 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                         setVectorByte(rt, element + index, value)
                     }
                 }
+                4 -> { // LQV: load up to the next 16-byte DMEM boundary
+                    val element = (instruction ushr 7) and 15
+                    val address = a + signExtend7(instruction and 0x7F) * 16
+                    val count = minOf(16 - element, 16 - (address and 15))
+                    repeat(count) { index ->
+                        val value = bus.readByte(dmemAddress(address + index)).toInt() and 0xFF
+                        setVectorByte(rt, element + index, value)
+                    }
+                }
                 else -> unsupported(instruction)
             }
             58 -> when (rd) {
@@ -206,6 +215,17 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                     repeat(8) { index ->
                         bus.writeByte(
                             dmemAddress(a + offset + index),
+                            getVectorByte(rt, element + index).toByte()
+                        )
+                    }
+                }
+                4 -> { // SQV: store through the next 16-byte DMEM boundary
+                    val element = (instruction ushr 7) and 15
+                    val address = a + signExtend7(instruction and 0x7F) * 16
+                    val count = 16 - (address and 15)
+                    repeat(count) { index ->
+                        bus.writeByte(
+                            dmemAddress(address + index),
                             getVectorByte(rt, element + index).toByte()
                         )
                     }
