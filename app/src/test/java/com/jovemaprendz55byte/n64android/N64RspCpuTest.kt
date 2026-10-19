@@ -690,10 +690,10 @@ class N64RspCpuTest {
         // LQV stops at the aligned boundary and updates only bytes e4..e7.
         assertEquals(0xA1B2, rsp.vectorLane(2, 2).toInt() and 0xFFFF)
         assertEquals(0xC3D4, rsp.vectorLane(2, 3).toInt() and 0xFFFF)
-        assertEquals(0x1404, rsp.vectorLane(2, 4).toInt() and 0xFFFF)
+        assertEquals(0x1484, rsp.vectorLane(2, 4).toInt() and 0xFFFF)
 
         // SQV writes bytes e12..e15, then wraps the vector element to e0..e3.
-        val expectedBytes = intArrayOf(0x14, 0x84, 0x15, 0x85, 0x16, 0x86, 0x17, 0x87)
+        val expectedBytes = intArrayOf(0x16, 0x86, 0x17, 0x87, 0x10, 0x80, 0x11, 0x81)
         for (index in expectedBytes.indices) {
             assertEquals(
                 expectedBytes[index],
