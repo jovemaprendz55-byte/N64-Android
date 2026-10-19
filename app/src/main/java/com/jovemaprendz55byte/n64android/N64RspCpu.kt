@@ -14,6 +14,8 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
     private var hi = 0
     private var lo = 0
     private val vector = Array(32) { ShortArray(8) }
+    // One signed 48-bit accumulator value per vector lane (kept in Long for safe intermediates).
+    private val accumulator = LongArray(8)
     // VCO is stored as low-byte carry/borrow bits and high-byte nonzero bits.
     private var vco = 0
     var pc: Int = 0
@@ -182,7 +184,7 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
         // RSP's lane-broadcast/element-routing table and are rejected explicitly.
         if (element != 0) unsupported(instruction)
         val function = instruction and 63
-        if (function !in setOf(0x10, 0x11, 0x13, 0x14, 0x15, 0x20, 0x21, 0x22, 0x23, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F)) {
+        if (function !in setOf(0x00, 0x01, 0x10, 0x11, 0x13, 0x14, 0x15, 0x20, 0x21, 0x22, 0x23, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F)) {
             unsupported(instruction)
         }
         var nextVco = 0
@@ -191,6 +193,18 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
             val b = vector[vt][lane].toInt()
             val carryIn = if ((vco and (1 shl lane)) != 0) 1 else 0
             val result = when (function) {
+                0x00 -> {
+                    // VMULF: signed fractional product, doubled with the RSP rounding constant.
+                    val acc = a.toLong() * b.toLong() * 2L + 0x8000L
+                    accumulator[lane] = signExtend48(acc)
+                    (acc shr 16).coerceIn(Short.MIN_VALUE.toLong(), Short.MAX_VALUE.toLong()).toInt()
+                }
+                0x01 -> {
+                    // VMULU uses the same fractional product but saturates the destination as unsigned.
+                    val acc = a.toLong() * b.toLong() * 2L + 0x8000L
+                    accumulator[lane] = signExtend48(acc)
+                    (acc shr 16).coerceIn(0L, 0xFFFFL).toInt()
+                }
                 0x10 -> (a + b + carryIn)
                     .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()) // VADD
                 0x11 -> (a - b - carryIn)
@@ -234,6 +248,11 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
             0x14, 0x15 -> vco = nextVco
             0x20, 0x21, 0x22, 0x23 -> vco = 0 // Comparisons consume and clear VCO
         }
+    }
+
+    private fun signExtend48(value: Long): Long {
+        val masked = value and 0x0000_FFFF_FFFF_FFFFL
+        return if ((masked and (1L shl 47)) != 0L) masked or -0x0001_0000_0000_0000L else masked
     }
 
     private fun readSpCop0(index: Int): Int {
