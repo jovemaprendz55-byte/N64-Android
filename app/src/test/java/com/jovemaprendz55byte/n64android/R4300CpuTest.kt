@@ -260,6 +260,24 @@ class R4300CpuTest {
         assertEquals(-65536L, cpu.register(1))
     }
 
+    @Test fun logicalImmediatesZeroExtendTheirSixteenBitOperands() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0xFFFF), // LUI sign-extends to -65536
+            iType(0x0D, 1, 1, 0xFFFF), // ORI produces -1
+            iType(0x0C, 1, 2, 0x00FF), // ANDI zero-extends immediate
+            iType(0x0D, 0, 3, 0xFFFF), // ORI zero-extends immediate to 65535
+            iType(0x0E, 1, 4, 0x00FF), // XORI: -1 xor 255 = -256
+            iType(0x0C, 1, 5, 0xFFFF)  // ANDI masks to 65535
+        ))
+        repeat(6) { cpu.step() }
+        assertEquals(-1L, cpu.register(1))
+        assertEquals(255L, cpu.register(2))
+        assertEquals(65535L, cpu.register(3))
+        assertEquals(-256L, cpu.register(4))
+        assertEquals(65535L, cpu.register(5))
+    }
+
     @Test fun sltiuComparesAgainstSignExtendedImmediateAsUnsigned() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
