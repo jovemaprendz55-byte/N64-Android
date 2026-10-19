@@ -860,7 +860,7 @@ class N64RspCpuTest {
 
     @Test fun unalignedWordLoadsHandleEveryBigEndianOffset() {
         val memoryWord: Int = 0x11223344
-        val initial: Int = 0xAABBCCDD
+        val initial: Int = 0xAABBCCDD.toInt()
         for (offset in 0..3) {
             run {
                 val bus = N64MemoryBus()
