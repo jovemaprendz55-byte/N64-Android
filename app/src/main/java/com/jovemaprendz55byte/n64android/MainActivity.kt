@@ -48,6 +48,10 @@ class MainActivity : Activity() {
             text = "Executar autoteste da CPU"
             setOnClickListener { runCpuSelfTest() }
         }, matchWrap())
+        root.addView(Button(this).apply {
+            text = "Testar execução inicial da ROM (64 instruções)"
+            setOnClickListener { runRomInstructionTest() }
+        }, matchWrap())
         status = TextView(this).apply {
             text = "Escolha uma ROM N64 válida (.z64, .v64 ou .n64)."
             textSize = 16f
@@ -86,6 +90,41 @@ class MainActivity : Activity() {
             append("Valor do delay slot em r5: ").append(result.delaySlotValue).append('\n')
             append("Valor do destino do branch em r6: ").append(result.branchTargetValue).append('\n')
             append("Contador de programa: 0x").append(result.programCounter.toString(16).uppercase(java.util.Locale.ROOT))
+        }
+    }
+
+    private fun runRomInstructionTest() {
+        val rom = preparedRom
+        if (rom == null) {
+            showError("Selecione e prepare uma ROM válida antes de executar o teste.")
+            return
+        }
+
+        status.text = "Executando até 64 instruções iniciais da ROM..."
+        try {
+            val core = N64EmulatorCore()
+            core.loadRom(rom)
+            // This is a diagnostic entry into the cartridge boot code, not a
+            // replacement for the missing PIF boot and hardware initialization.
+            val result = core.executeFrom(0xFFFF_FFFF_B000_0040UL.toLong(), 64)
+            romDetails.text = buildString {
+                append("Teste de execução da ROM (diagnóstico)\n")
+                append("Instruções executadas: ").append(result.instructionsExecuted).append(" / 64\n")
+                append("PC final: 0x").append(result.programCounter.toString(16).uppercase(java.util.Locale.ROOT)).append('\n')
+                append("Resultado: ").append(when (result.stopReason) {
+                    N64EmulatorCore.StopReason.INSTRUCTION_BUDGET_REACHED -> "limite de instruções atingido"
+                    N64EmulatorCore.StopReason.EXECUTION_ERROR -> "erro durante a execução"
+                }).append('\n')
+                result.errorMessage?.let { append("Erro: ").append(it).append('\n') }
+                append("Observação: este teste não executa o boot completo nem comprova compatibilidade com jogos.")
+            }
+            status.text = if (result.stopReason == N64EmulatorCore.StopReason.INSTRUCTION_BUDGET_REACHED) {
+                "A CPU executou as 64 instruções do teste."
+            } else {
+                "A execução da ROM parou em um erro; veja o diagnóstico abaixo."
+            }
+        } catch (error: Exception) {
+            showError("Não foi possível iniciar o teste da ROM: " + (error.message ?: "erro desconhecido"))
         }
     }
 
