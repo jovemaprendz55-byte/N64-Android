@@ -196,7 +196,7 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
         }
         // Other operations currently implement only element selector zero.
         if (element != 0) unsupported(instruction)
-        if (function !in setOf(0x00, 0x01, 0x08, 0x09, 0x10, 0x11, 0x13, 0x14, 0x15, 0x20, 0x21, 0x22, 0x23, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F)) {
+        if (function !in setOf(0x00, 0x01, 0x07, 0x08, 0x09, 0x10, 0x11, 0x13, 0x14, 0x15, 0x20, 0x21, 0x22, 0x23, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F)) {
             unsupported(instruction)
         }
         var nextVco = 0
@@ -216,6 +216,12 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                     val acc = a.toLong() * b.toLong() * 2L + 0x8000L
                     accumulator[lane] = signExtend48(acc)
                     saturateAccumulatorUnsigned(accumulator[lane])
+                }
+                0x07 -> {
+                    // VMUDH: signed high-part multiply; place the 16x16 product in accumulator bits 47..16.
+                    val acc = signExtend48((a.toLong() * b.toLong()) shl 16)
+                    accumulator[lane] = acc
+                    ((acc shr 32) and 0xFFFFL).toInt()
                 }
                 0x08 -> {
                     // VMACF: add a signed fractional product to the existing 48-bit accumulator.
