@@ -164,6 +164,14 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                         setVectorByte(rt, element + index, value)
                     }
                 }
+                3 -> { // LDV: load eight consecutive bytes; offset is scaled by eight
+                    val element = (instruction ushr 7) and 15
+                    val offset = signExtend7(instruction and 0x7F) * 8
+                    repeat(8) { index ->
+                        val value = bus.readByte(dmemAddress(a + offset + index)).toInt() and 0xFF
+                        setVectorByte(rt, element + index, value)
+                    }
+                }
                 else -> unsupported(instruction)
             }
             58 -> when (rd) {
@@ -186,6 +194,16 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                     val element = (instruction ushr 7) and 15
                     val offset = signExtend7(instruction and 0x7F) * 4
                     repeat(4) { index ->
+                        bus.writeByte(
+                            dmemAddress(a + offset + index),
+                            getVectorByte(rt, element + index).toByte()
+                        )
+                    }
+                }
+                3 -> { // SDV: store eight consecutive bytes; offset is scaled by eight
+                    val element = (instruction ushr 7) and 15
+                    val offset = signExtend7(instruction and 0x7F) * 8
+                    repeat(8) { index ->
                         bus.writeByte(
                             dmemAddress(a + offset + index),
                             getVectorByte(rt, element + index).toByte()
