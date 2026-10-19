@@ -483,7 +483,7 @@ class N64RspCpuTest {
         bus.writeWord(N64SpMemory.IMEM_BASE + 8, i(9, 0, 2, 22)) // delay slot
         bus.writeWord(N64SpMemory.IMEM_BASE + 12, i(9, 0, 3, 33))
         val rsp = N64RspCpu(bus)
-        repeat(3) { rsp.step() }
+        repeat(4) { rsp.step() }
 
         assertEquals(0, rsp.register(31))
         assertEquals(22, rsp.register(2))
