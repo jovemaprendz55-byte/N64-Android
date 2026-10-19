@@ -234,7 +234,8 @@ internal class N64RspCpu(private val bus: N64MemoryBus) {
                 0x11 -> (a - b - carryIn)
                     .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()) // VSUB
                 0x13 -> when {
-                    a < 0 -> (-b).coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+                    // VABS operates on 16-bit lanes; negating -32768 wraps back to 0x8000.
+                    a < 0 -> -b
                     a > 0 -> b
                     else -> 0
                 } // VABS: sign comes from vs; magnitude comes from vt
