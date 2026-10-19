@@ -822,6 +822,21 @@ class R4300CpuTest {
         assertEquals(0L, cpu.register(2))
     }
 
+    @Test fun dadduAndDsubuHandleSigned64BitBoundaryValues() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0xFFFF), // r1 = -65536
+            iType(0x0D, 1, 1, 0xFFFF), // r1 = -1
+            iType(0x19, 0, 2, 1),      // r2 = 1
+            rType(1, 2, 3, 0, 0x2D),   // DADDU: -1 + 1 = 0
+            rType(3, 2, 4, 0, 0x2F)    // DSUBU: 0 - 1 = -1
+        ))
+        repeat(5) { cpu.step() }
+        assertEquals(-1L, cpu.register(1))
+        assertEquals(0L, cpu.register(3))
+        assertEquals(-1L, cpu.register(4))
+    }
+
     @Test fun addiuWrapsSigned32BitResultWithoutOverflowException() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
