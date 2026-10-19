@@ -79,8 +79,12 @@ class MainActivity : Activity() {
         romDetails.text = buildString {
             append("Tipo: programa sintético (não é uma ROM de jogo)\n")
             append("Instruções executadas: ").append(result.instructionsExecuted).append('\n')
-            append("Registrador r1 esperado: ").append(result.expectedRegisterValue).append('\n')
-            append("Registrador r1 obtido: ").append(result.actualRegisterValue).append('\n')
+            append("Instruções esperadas: 8 (ADDIU, ADDU, SW/LW e branch)\n")
+            append("Valor esperado da soma: ").append(result.expectedRegisterValue).append('\n')
+            append("Soma obtida em r3: ").append(result.actualRegisterValue).append('\n')
+            append("Valor recuperado da RAM em r4: ").append(result.loadedBackValue).append('\n')
+            append("Valor do delay slot em r5: ").append(result.delaySlotValue).append('\n')
+            append("Valor do destino do branch em r6: ").append(result.branchTargetValue).append('\n')
             append("Contador de programa: 0x").append(result.programCounter.toString(16).uppercase(java.util.Locale.ROOT))
         }
     }
