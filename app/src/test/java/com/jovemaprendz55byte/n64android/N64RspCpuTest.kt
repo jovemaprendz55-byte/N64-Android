@@ -825,4 +825,36 @@ class N64RspCpuTest {
         }
     }
 
+
+    @Test fun unalignedWordLoadsMergeBigEndianBytesCorrectly() {
+        val bus = N64MemoryBus()
+        bus.writeWord(N64SpMemory.DMEM_BASE, 0x11223344)
+        bus.writeWord(N64SpMemory.DMEM_BASE + 4, 0x55667788)
+        // Set r1 to DMEM base; r2 starts with a known merge pattern.
+        bus.writeWord(N64SpMemory.IMEM_BASE, i(9, 0, 1, 0)) // ADDIU r1, r0, 0
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, i(15, 0, 2, 0xAABB)) // LUI r2, 0xAABB
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, i(34, 1, 2, 0)) // LWL r2, 0(r1)
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, i(15, 0, 3, 0xAABB)) // LUI r3, 0xAABB
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, i(38, 1, 3, 3)) // LWR r3, 3(r1)
+        val rsp = N64RspCpu(bus)
+        repeat(5) { rsp.step() }
+        assertEquals(0x11BB, rsp.register(2) and 0xFFFF)
+        assertEquals(0x11223344, rsp.register(3))
+    }
+
+    @Test fun unalignedWordStoresWriteOnlySelectedBigEndianBytes() {
+        val bus = N64MemoryBus()
+        bus.writeWord(N64SpMemory.DMEM_BASE, 0x00000000)
+        bus.writeWord(N64SpMemory.DMEM_BASE + 4, 0x00000000)
+        // r1 is zero (DMEM base); r2 contains 0xAABBCCDD.
+        bus.writeWord(N64SpMemory.IMEM_BASE, i(15, 0, 2, 0xAABB))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, i(13, 2, 2, 0xCCDD))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, i(42, 1, 2, 1)) // SWL r2, 1(r1)
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, i(46, 1, 2, 6)) // SWR r2, 6(r1)
+        val rsp = N64RspCpu(bus)
+        repeat(4) { rsp.step() }
+        assertEquals(0x0000AABB, bus.readWord(N64SpMemory.DMEM_BASE))
+        assertEquals(0xCCDD0000, bus.readWord(N64SpMemory.DMEM_BASE + 4))
+    }
+
 }
