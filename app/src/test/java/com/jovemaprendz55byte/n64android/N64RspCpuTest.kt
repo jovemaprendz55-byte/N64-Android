@@ -859,8 +859,8 @@ class N64RspCpuTest {
 
 
     @Test fun unalignedWordLoadsHandleEveryBigEndianOffset() {
-        val memoryWord = 0x11223344
-        val initial = 0xAABBCCDD
+        val memoryWord: Int = 0x11223344
+        val initial: Int = 0xAABBCCDD
         for (offset in 0..3) {
             run {
                 val bus = N64MemoryBus()
@@ -871,8 +871,8 @@ class N64RspCpuTest {
                 val rsp = N64RspCpu(bus)
                 repeat(3) { rsp.step() }
                 val shift = (3 - offset) * 8
-                val preserve = 0x00FF_FFFF ushr (offset * 8)
-                val expected = (initial and preserve) or (memoryWord and (-1 shl shift))
+                val preserve: Int = 0x00FF_FFFF ushr (offset * 8)
+                val expected: Int = (initial and preserve) or (memoryWord and (-1 shl shift))
                 assertEquals("LWL offset $offset", expected, rsp.register(1))
             }
             run {
@@ -884,8 +884,8 @@ class N64RspCpuTest {
                 val rsp = N64RspCpu(bus)
                 repeat(3) { rsp.step() }
                 val shift = offset * 8
-                val preserve = (0xFFFF_FF00L shl ((3 - offset) * 8)).toInt()
-                val expected = (initial and preserve) or (memoryWord ushr shift)
+                val preserve: Int = (0xFFFF_FF00L shl ((3 - offset) * 8)).toInt()
+                val expected: Int = (initial and preserve) or (memoryWord ushr shift)
                 assertEquals("LWR offset $offset", expected, rsp.register(1))
             }
         }
