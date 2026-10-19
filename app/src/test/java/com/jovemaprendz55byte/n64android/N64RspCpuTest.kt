@@ -884,8 +884,8 @@ class N64RspCpuTest {
                 val rsp = N64RspCpu(bus)
                 repeat(3) { rsp.step() }
                 val shift = offset * 8
-                val preserve: Int = (0xFFFF_FF00L shl ((3 - offset) * 8)).toInt()
-                val expected: Int = (initial and preserve) or (memoryWord ushr shift)
+                val preserve: Int = if (offset == 0) 0 else (-1 shl ((4 - offset) * 8))
+                val expected: Int = (initial and preserve) or (memoryWord and (-1 ushr shift))
                 assertEquals("LWR offset $offset", expected, rsp.register(1))
             }
         }
