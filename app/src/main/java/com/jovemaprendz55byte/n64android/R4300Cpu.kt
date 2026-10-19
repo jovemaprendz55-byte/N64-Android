@@ -255,6 +255,8 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
             0x05 -> if (a != b) pendingBranchTarget = pc + (signedImmediate shl 2) // BNE
             0x18 -> writeRegister(rt, Math.addExact(a, signedImmediate)) // DADDI
             0x19 -> writeRegister(rt, a + signedImmediate) // DADDIU
+            0x1A -> writeRegister(rt, loadDoublewordLeft(address, b)) // LDL
+            0x1B -> writeRegister(rt, loadDoublewordRight(address, b)) // LDR
             0x22 -> writeRegister(rt, loadWordLeft(address, b.toInt()).toLong()) // LWL
             0x20 -> writeRegister(rt, readByte(address).toLong()) // LB
             0x21 -> writeRegister(rt, readHalf(address).toLong()) // LH
@@ -262,6 +264,8 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
             0x26 -> writeRegister(rt, loadWordRight(address, b.toInt()).toLong()) // LWR
             0x24 -> writeRegister(rt, readByte(address).toLong() and 0xFFL) // LBU
             0x25 -> writeRegister(rt, readHalf(address).toLong() and 0xFFFFL) // LHU
+            0x2C -> storeDoublewordLeft(address, b) // SDL
+            0x2D -> storeDoublewordRight(address, b) // SDR
             0x2A -> storeWordLeft(address, b.toInt()) // SWL
             0x28 -> writeByte(address, b.toByte()) // SB
             0x29 -> writeHalf(address, b.toShort()) // SH
@@ -279,6 +283,42 @@ class R4300Cpu(memorySize: Int = 1024 * 1024) {
         gpr[0] = 0L
     }
 
+
+    /** Big-endian MIPS LDL: merge bytes from the effective address to the block's end. */
+    private fun loadDoublewordLeft(address: Int, oldValue: Long): Long {
+        val offset = address and 7
+        val word = readLong(address and -8)
+        val shift = offset * 8
+        val preservedMask = if (shift == 0) 0L else (-1L ushr (64 - shift))
+        return (word shl shift) or (oldValue and preservedMask)
+    }
+
+    /** Big-endian MIPS LDR: merge bytes from the block's start through the effective address. */
+    private fun loadDoublewordRight(address: Int, oldValue: Long): Long {
+        val offset = address and 7
+        val word = readLong(address and -8)
+        val shift = (7 - offset) * 8
+        val preservedMask = if (offset == 7) 0L else (-1L shl ((offset + 1) * 8))
+        return (oldValue and preservedMask) or (word ushr shift)
+    }
+
+    /** Big-endian MIPS SDL: store the high portion of rt starting at the effective address. */
+    private fun storeDoublewordLeft(address: Int, value: Long) {
+        val offset = address and 7
+        val aligned = address and -8
+        val shift = offset * 8
+        val preservedMask = if (shift == 0) 0L else (-1L shl (64 - shift))
+        writeLong(aligned, (readLong(aligned) and preservedMask) or (value ushr shift))
+    }
+
+    /** Big-endian MIPS SDR: store the low portion of rt through the effective address. */
+    private fun storeDoublewordRight(address: Int, value: Long) {
+        val offset = address and 7
+        val aligned = address and -8
+        val preservedMask = if (offset == 7) 0L else (1L shl ((7 - offset) * 8)) - 1L
+        val shift = (7 - offset) * 8
+        writeLong(aligned, (readLong(aligned) and preservedMask) or (value shl shift))
+    }
 
     /** Big-endian MIPS LWL: merge memory's left bytes into the high end of rt. */
     private fun loadWordLeft(address: Int, oldValue: Int): Int {
