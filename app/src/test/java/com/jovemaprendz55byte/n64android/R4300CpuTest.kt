@@ -4,6 +4,22 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class R4300CpuTest {
+    @Test fun constructorRejectsInvalidRamSizes() {
+        for (size in listOf(0, -4, 3)) {
+            try {
+                R4300Cpu(memorySize = size)
+                throw AssertionError("Expected RAM size $size to be rejected")
+            } catch (_: IllegalArgumentException) {
+                // RAM must have a positive, word-aligned capacity.
+            }
+        }
+    }
+
+    @Test fun constructorAcceptsSmallWordAlignedRamForUnitTests() {
+        val cpu = R4300Cpu(memorySize = 0x100)
+        cpu.writeWord(0xFC, 0x12345678)
+        assertEquals(0x12345678, cpu.readWord(0xFC))
+    }
     @Test fun executesImmediateArithmeticAndKeepsZeroRegisterConstant() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(iType(0x09, 0, 1, 10), iType(0x0D, 1, 2, 0x20), iType(0x09, 0, 0, 99)))

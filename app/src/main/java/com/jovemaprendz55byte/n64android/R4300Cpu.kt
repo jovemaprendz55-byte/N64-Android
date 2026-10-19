@@ -10,7 +10,11 @@ import java.math.BigInteger
  * not the Nintendo 64 memory map.
  */
 class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
-    private val memory = ByteArray(memorySize)
+    private val memory = ByteArray(memorySize.also { size ->
+        require(size > 0 && size % 4 == 0) {
+            "RAM size must be a positive multiple of four bytes"
+        }
+    })
 
     companion object {
         /** Maximum standard Nintendo 64 RDRAM capacity (8 MiB). */
