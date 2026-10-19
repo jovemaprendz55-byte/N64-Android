@@ -44,8 +44,7 @@ class N64SpMemoryTest {
         val sp = N64SpMemory()
         assertThrows(IllegalArgumentException::class.java) { sp.readByte(0x04002000L) }
         assertThrows(IllegalArgumentException::class.java) { sp.writeByte(0x03FFFFFFL, 0) }
-        assertThrows(IllegalArgumentException::class.java) {
-            sp.readWord(N64SpMemory.DMEM_BASE + N64SpMemory.MEMORY_SIZE)
-        }
+        // DMEM ends where IMEM begins, so this boundary address is valid IMEM.
+        assertEquals(0, sp.readWord(N64SpMemory.IMEM_BASE))
     }
 }
