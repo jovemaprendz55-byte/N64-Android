@@ -695,6 +695,34 @@ class R4300CpuTest {
         assertEquals(2147483647L, cpu.register(5))
     }
 
+    @Test fun daddAndDaddiRejectSigned64BitOverflow() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0xFFFF), // r1 = -65536
+            iType(0x0D, 1, 1, 0xFFFF), // r1 = -1
+            rType(0, 1, 2, 1, 0x3A),   // DSRL r2, r1, 1 => Long.MAX_VALUE
+            iType(0x19, 0, 3, 1),      // r3 = 1
+            rType(2, 3, 4, 0, 0x2C),   // DADD Long.MAX_VALUE + 1 overflows
+            iType(0x18, 2, 5, 1)       // DADDI Long.MAX_VALUE + 1 overflows
+        ))
+        repeat(4) { cpu.step() }
+
+        try {
+            cpu.step()
+            throw AssertionError("Expected DADD signed overflow to be detected")
+        } catch (_: ArithmeticException) {
+            // The simplified CPU reports overflow instead of modeling a MIPS exception.
+        }
+        try {
+            cpu.step()
+            throw AssertionError("Expected DADDI signed overflow to be detected")
+        } catch (_: ArithmeticException) {
+            // The simplified CPU reports overflow instead of modeling a MIPS exception.
+        }
+        assertEquals(0L, cpu.register(4))
+        assertEquals(0L, cpu.register(5))
+    }
+
     @Test fun daddiuWrapsAcrossSigned64BitBoundaries() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
