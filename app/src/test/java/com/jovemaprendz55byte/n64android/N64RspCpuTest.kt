@@ -88,6 +88,37 @@ class N64RspCpuTest {
         }
     }
 
+    @Test fun vectorAddAndSubtractConsumeAndClearCarryFlags() {
+        val bus = N64MemoryBus()
+        fun v(vt: Int, vs: Int, vd: Int, funct: Int) =
+            (18 shl 26) or (16 shl 21) or (vt shl 16) or
+                (vs shl 11) or (vd shl 6) or funct
+
+        bus.writeWord(N64SpMemory.IMEM_BASE, v(2, 1, 3, 0x14)) // VADDC
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, v(5, 4, 6, 0x10)) // VADD consumes carry
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, v(5, 4, 7, 0x10)) // VADD after clear
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, v(2, 1, 8, 0x15)) // VSUBC
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, v(10, 9, 11, 0x11)) // VSUB consumes borrow
+        bus.writeWord(N64SpMemory.IMEM_BASE + 20, v(10, 9, 12, 0x11)) // VSUB after clear
+
+        val rsp = N64RspCpu(bus)
+        rsp.setVectorLane(1, 0, 0xFFFF.toShort())
+        rsp.setVectorLane(2, 0, 1)
+        rsp.setVectorLane(4, 0, 0)
+        rsp.setVectorLane(5, 0, 0)
+        rsp.setVectorLane(9, 0, 5)
+        rsp.setVectorLane(10, 0, 3)
+
+        repeat(6) { rsp.step() }
+
+        assertEquals(0, rsp.vectorLane(3, 0).toInt()) // unsigned sum wraps
+        assertEquals(1, rsp.vectorLane(6, 0).toInt()) // carry-in consumed
+        assertEquals(0, rsp.vectorLane(7, 0).toInt()) // carry flag cleared
+        assertEquals((-1).toShort(), rsp.vectorLane(8, 0)) // unsigned subtraction wraps
+        assertEquals(1, rsp.vectorLane(11, 0).toInt()) // borrow-in consumed
+        assertEquals(2, rsp.vectorLane(12, 0).toInt()) // borrow flag cleared
+    }
+
     @Test fun executesScalarInstructionsAndLoadsStoresDmem() {
         val bus = N64MemoryBus()
         bus.writeWord(N64SpMemory.IMEM_BASE, i(15, 0, 1, 0x1234))
