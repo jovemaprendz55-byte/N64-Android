@@ -56,7 +56,7 @@ class N64EmulatorCore(
         } catch (error: Exception) {
             RspExecutionResult(
                 instructionsExecuted = executed,
-                programCounter = rsp.pc,
+                programCounter = rsp.lastInstructionAddress,
                 halted = rsp.halted,
                 errorMessage = error.message ?: error::class.java.simpleName
             )
