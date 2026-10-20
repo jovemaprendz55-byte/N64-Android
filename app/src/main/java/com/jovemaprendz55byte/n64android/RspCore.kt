@@ -167,8 +167,8 @@ internal class RspCore(private val bus: N64MemoryBus) {
             val left = vector[vs][lane].toInt()
             val right = vector[vt][selectedVectorLane(element, lane)].toInt()
             val result = when (funct) {
-                0x10 -> left + right // VADD (accumulator/carry behavior simplified)
-                0x11 -> left - right // VSUB (accumulator/carry behavior simplified)
+                0x10 -> (left + right).coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()) // VADD signed saturation; VCO carry-in not modeled
+                0x11 -> (left - right).coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()) // VSUB signed saturation; VCO carry-in not modeled
                 0x28 -> left and right // VAND
                 0x29 -> (left and right).inv() // VNAND
                 0x2A -> left or right // VOR
