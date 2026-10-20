@@ -10,6 +10,8 @@ package com.jovemaprendz55byte.n64android
 internal class RspCore(private val bus: N64MemoryBus) {
     private val gpr = IntArray(32)
     private val vector = Array(32) { ShortArray(8) }
+    private var hi = 0
+    private var lo = 0
     var pc: Int = 0
         private set
     /** IMEM offset of the most recently attempted instruction, useful for fault diagnostics. */
@@ -31,6 +33,8 @@ internal class RspCore(private val bus: N64MemoryBus) {
         }
         gpr.fill(0)
         vector.forEach { it.fill(0) }
+        hi = 0
+        lo = 0
         pc = entryPoint
         pendingBranchTarget = null
         halted = false
@@ -79,6 +83,28 @@ internal class RspCore(private val bus: N64MemoryBus) {
                     halted = true
                     return false
                 } // BREAK
+                0x10 -> writeReg(rd, hi) // MFHI
+                0x11 -> hi = a // MTHI
+                0x12 -> writeReg(rd, lo) // MFLO
+                0x13 -> lo = a // MTLO
+                0x18 -> {
+                    val product = a.toLong() * b.toLong()
+                    lo = product.toInt()
+                    hi = (product shr 32).toInt()
+                } // MULT signed
+                0x19 -> {
+                    val product = Integer.toUnsignedLong(a) * Integer.toUnsignedLong(b)
+                    lo = product.toInt()
+                    hi = (product ushr 32).toInt()
+                } // MULTU
+                0x1A -> if (b != 0) {
+                    lo = a / b
+                    hi = a % b
+                } // DIV signed; HI/LO unchanged on divide by zero
+                0x1B -> if (b != 0) {
+                    lo = Integer.divideUnsigned(a, b)
+                    hi = Integer.remainderUnsigned(a, b)
+                } // DIVU
                 0x20, 0x21 -> writeReg(rd, a + b) // ADD/ADDU, simplified wraparound
                 0x22, 0x23 -> writeReg(rd, a - b) // SUB/SUBU
                 0x24 -> writeReg(rd, a and b)
