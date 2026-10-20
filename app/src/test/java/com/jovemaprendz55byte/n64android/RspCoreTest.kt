@@ -714,6 +714,26 @@ class RspCoreTest {
     private fun cop2(rs: Int, rt: Int, vd: Int, element: Int): Int =
         (0x12 shl 26) or (rs shl 21) or (rt shl 16) or (vd shl 11) or (element shl 7)
 
+    private fun jType(op: Int, target: Int): Int =
+        (op shl 26) or ((target ushr 2) and 0x03FF_FFFF)
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
+    @Test fun jalWritesPcPlusEightAndExecutesItsDelaySlot() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        bus.writeWord(N64SpMemory.IMEM_BASE, jType(0x03, 0x20)) // JAL IMEM+0x20
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, iType(0x09, 0, 2, 7)) // delay slot
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, iType(0x09, 0, 2, 99)) // skipped
+        bus.writeWord(N64SpMemory.IMEM_BASE + 0x20, iType(0x09, 0, 3, 42))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 0x24, 0x0000000D) // BREAK
+
+        rsp.start()
+        repeat(4) { assertTrue(rsp.step()) }
+        assertEquals(8, rsp.register(31))
+        assertEquals(7, rsp.register(2))
+        assertEquals(42, rsp.register(3))
+        assertFalse(rsp.step())
+    }
+
 }
