@@ -32,6 +32,8 @@ internal class N64MemoryBus(
     private var spSemaphore = 0
     private var siDramAddress = 0
     private var siStatus = 0
+    // Basic register storage only; RI timing and hardware side effects are not modeled.
+    private val riRegisters = IntArray(8)
 
     companion object {
         const val SP_MEM_ADDR = 0x0404_0000L
@@ -47,6 +49,15 @@ internal class N64MemoryBus(
         const val SI_PIF_ADDR_RD64B = 0x0480_0004L
         const val SI_PIF_ADDR_WR64B = 0x0480_0010L
         const val SI_STATUS = 0x0480_0018L
+
+        const val RI_MODE = 0x0470_0000L
+        const val RI_CONFIG = 0x0470_0004L
+        const val RI_CURRENT_LOAD = 0x0470_0008L
+        const val RI_SELECT = 0x0470_000CL
+        const val RI_REFRESH = 0x0470_0010L
+        const val RI_LATENCY = 0x0470_0014L
+        const val RI_RERROR = 0x0470_0018L
+        const val RI_WERROR = 0x0470_001CL
 
         private const val SP_STATUS_HALT = 1 shl 0
         private const val SP_STATUS_BROKE = 1 shl 1
@@ -117,6 +128,7 @@ internal class N64MemoryBus(
             N64MemoryMap.Region.SP_REGISTERS -> readSpRegister(physicalAddress)
             N64MemoryMap.Region.VI_REGISTERS -> videoInterface.readRegister(physicalAddress)
             N64MemoryMap.Region.SI_REGISTERS -> readSiRegister(physicalAddress)
+            N64MemoryMap.Region.RI_REGISTERS -> readRiRegister(physicalAddress)
             N64MemoryMap.Region.CARTRIDGE_DOMAIN -> readCartridgeWord(physicalAddress)
             else -> unsupported(physicalAddress)
         }
@@ -138,6 +150,7 @@ internal class N64MemoryBus(
             N64MemoryMap.Region.SP_REGISTERS -> writeSpRegister(physicalAddress, value)
             N64MemoryMap.Region.VI_REGISTERS -> videoInterface.writeRegister(physicalAddress, value)
             N64MemoryMap.Region.SI_REGISTERS -> writeSiRegister(physicalAddress, value)
+            N64MemoryMap.Region.RI_REGISTERS -> writeRiRegister(physicalAddress, value)
             else -> unsupported(physicalAddress)
         }
     }
@@ -196,6 +209,22 @@ internal class N64MemoryBus(
         require(start <= rdram.size && length <= rdram.size - start) {
             "DMA range crosses the RDRAM boundary"
         }
+    }
+
+    private fun readRiRegister(address: Long): Int {
+        val index = ((address - RI_MODE) / 4L).toInt()
+        require(address >= RI_MODE && index in riRegisters.indices) {
+            "Unknown RI register 0x${address.toString(16)}"
+        }
+        return riRegisters[index]
+    }
+
+    private fun writeRiRegister(address: Long, value: Int) {
+        val index = ((address - RI_MODE) / 4L).toInt()
+        require(address >= RI_MODE && index in riRegisters.indices) {
+            "Unknown RI register 0x${address.toString(16)}"
+        }
+        riRegisters[index] = value
     }
 
     private fun readSiRegister(address: Long): Int = when (address) {
