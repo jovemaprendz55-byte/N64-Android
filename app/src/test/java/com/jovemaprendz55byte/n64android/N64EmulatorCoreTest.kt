@@ -47,6 +47,21 @@ class N64EmulatorCoreTest {
         assertNotNull(result.errorMessage)
     }
 
+    @Test fun cartridgeDiagnosticStartsWithAValidRdramStack() {
+        // SW r19, 0(r29): direct cartridge entry must not start with SP = 0.
+        val rom = syntheticRomWithInstructions(0xAFB30000.toInt())
+        val core = N64EmulatorCore()
+        core.loadRom(rom)
+
+        core.startCartridgeDiagnosticExecution(0xFFFF_FFFF_B000_0040UL.toLong())
+        val result = core.executeSlice(1)
+
+        assertEquals(1, result.instructionsExecuted)
+        assertEquals(N64EmulatorCore.StopReason.INSTRUCTION_BUDGET_REACHED, result.stopReason)
+        assertEquals(null, result.errorMessage)
+        assertEquals(0xFFFF_FFFF_B000_0044UL.toLong(), result.programCounter)
+    }
+
     @Test fun requiresRomBeforeExecution() {
         val core = N64EmulatorCore()
         try {
