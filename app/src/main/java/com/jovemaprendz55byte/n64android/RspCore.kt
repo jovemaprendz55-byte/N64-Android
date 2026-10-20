@@ -174,16 +174,20 @@ internal class RspCore(private val bus: N64MemoryBus) {
         address: Int
     ) {
         val subOperation = (instruction ushr 11) and 31
-        if (subOperation != 0) unsupported(instruction, address) // LBV/SBV encoding
+        if (subOperation !in 0..1) unsupported(instruction, address) // LBV/SBV and LSV/SSV
         val vt = (instruction ushr 16) and 31
         val element = (instruction ushr 7) and 15
         val offset7 = instruction and 0x7F
         val signedOffset = if (offset7 and 0x40 != 0) offset7 - 0x80 else offset7
-        val memoryAddress = dmemAddress(base + signedOffset)
-        if (load) {
-            setVectorByte(vt, element, bus.readByte(memoryAddress).toInt() and 0xFF)
-        } else {
-            bus.writeByte(memoryAddress, getVectorByte(vt, element).toByte())
+        val byteCount = 1 shl subOperation // LBV/SBV: 1 byte; LSV/SSV: 2 bytes.
+        val memoryStart = base + signedOffset * byteCount
+        for (index in 0 until byteCount) {
+            val addressForByte = dmemAddress(memoryStart + index)
+            if (load) {
+                setVectorByte(vt, element + index, bus.readByte(addressForByte).toInt() and 0xFF)
+            } else {
+                bus.writeByte(addressForByte, getVectorByte(vt, element + index).toByte())
+            }
         }
     }
 
