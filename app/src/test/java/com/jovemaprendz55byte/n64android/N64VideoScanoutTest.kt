@@ -7,7 +7,7 @@ import org.junit.Test
 class N64VideoScanoutTest {
     @Test fun readsBigEndianRgba5551Rows() {
         val frame = N64VideoFrameBuffer(2, 1)
-        val memory = byteArrayOf(0xF8.toByte(), 0x01, 0x07, 0xC1.toByte())
+        val memory = byteArrayOf(0xF8.toByte(), 0x01, 0x07, 0xC0.toByte())
         N64VideoScanout.copyRgba5551(
             source = memory,
             sourceWidth = 2,
@@ -23,7 +23,7 @@ class N64VideoScanoutTest {
         val frame = N64VideoFrameBuffer(2, 2)
         val memory = byteArrayOf(
             0xF8.toByte(), 0x01, 0, 0,
-            0x07, 0xC1.toByte(), 0, 0
+            0x07, 0xC0.toByte(), 0, 0
         )
         N64VideoScanout.copyRgba5551(
             source = memory,
