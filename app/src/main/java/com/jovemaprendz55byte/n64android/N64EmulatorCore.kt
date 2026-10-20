@@ -68,6 +68,7 @@ class N64EmulatorCore(
     fun loadRom(normalizedRom: ByteArray) {
         cpu.loadCartridgeRom(normalizedRom)
         romLoaded = true
+        executionStarted = false
     }
 
     /**
