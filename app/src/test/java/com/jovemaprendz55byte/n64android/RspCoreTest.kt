@@ -45,6 +45,25 @@ class RspCoreTest {
         assertEquals(20, rsp.pc)
     }
 
+    @Test fun supportsSignedImmediateCompareXorAndSignedHalfwordLoad() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        bus.writeHalf(N64SpMemory.DMEM_BASE + 16, 0xFFFE.toShort())
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, -1)) // r1 = -1
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, iType(0x0A, 1, 2, 0)) // slti r2,r1,0 => 1
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, iType(0x0E, 1, 3, 0x00FF)) // xor r3 => -256
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, iType(0x21, 0, 4, 16)) // lh r4,16(r0)
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, iType(0x2B, 0, 3, 0)) // sw r3,0(r0)
+
+        rsp.start()
+        repeat(5) { rsp.step() }
+
+        assertEquals(1, rsp.register(2))
+        assertEquals(-256, rsp.register(3))
+        assertEquals(-2, rsp.register(4))
+        assertEquals(-256, bus.readWord(N64SpMemory.DMEM_BASE))
+    }
+
     @Test fun registerZeroCannotBeChanged() {
         val bus = N64MemoryBus()
         val rsp = RspCore(bus)
