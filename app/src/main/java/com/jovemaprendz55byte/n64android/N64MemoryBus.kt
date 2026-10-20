@@ -208,7 +208,7 @@ internal class N64MemoryBus(
                 }
             }
             SI_STATUS -> {
-                // SI interrupt and DMA timing are not modeled; bit 0 is the
+                // SI interrupt timing is not modeled; bit 12 is the
                 // write-one-to-clear interrupt acknowledge.
                 if (value and SI_STATUS_INTERRUPT != 0) {
                     siStatus = siStatus and SI_STATUS_INTERRUPT.inv()
