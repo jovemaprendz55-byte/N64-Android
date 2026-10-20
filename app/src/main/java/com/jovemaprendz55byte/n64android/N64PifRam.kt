@@ -16,7 +16,7 @@ internal class N64PifRam(
 
     fun writeByte(physicalAddress: Long, value: Byte) {
         ram[index(physicalAddress)] = value
-        if (index(physicalAddress) == CONTROL_INDEX && value.toInt() and 0x01 == 0) {
+        if (index(physicalAddress) == CONTROL_INDEX && value.toInt() and 0x01 != 0) {
             executeJoybusCommands()
         }
     }
@@ -26,9 +26,8 @@ internal class N64PifRam(
     fun write64(bytes: ByteArray) {
         require(bytes.size == SIZE) { "PIF DMA must transfer exactly 64 bytes" }
         bytes.copyInto(ram)
-        // Bit 0 of the final control byte requests PIF execution; command buffers
-        // commonly use 0x01 before the SI write-DMA is started.
-        if (ram[CONTROL_INDEX].toInt() and 0x01 == 0) executeJoybusCommands()
+        // Bit 0 of the final control byte requests Joybus command execution.
+        if (ram[CONTROL_INDEX].toInt() and 0x01 != 0) executeJoybusCommands()
     }
 
     private fun executeJoybusCommands() {
