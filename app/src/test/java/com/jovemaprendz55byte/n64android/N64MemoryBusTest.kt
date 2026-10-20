@@ -159,6 +159,27 @@ class N64MemoryBusTest {
         assertEquals(0, bus.readWord(N64MemoryBus.SP_DMA_BUSY))
     }
 
+
+    @Test fun spStatusCommandsControlHaltBrokeAndSignalFlags() {
+        val bus = N64MemoryBus()
+
+        assertEquals(1, bus.readWord(N64MemoryBus.SP_STATUS) and 1)
+        bus.writeWord(N64MemoryBus.SP_STATUS, 1) // clear HALT
+        assertEquals(0, bus.readWord(N64MemoryBus.SP_STATUS) and 1)
+        bus.writeWord(N64MemoryBus.SP_STATUS, 2) // set HALT
+        assertEquals(1, bus.readWord(N64MemoryBus.SP_STATUS) and 1)
+
+        bus.markSpBroke()
+        assertEquals(2, bus.readWord(N64MemoryBus.SP_STATUS) and 2)
+        bus.writeWord(N64MemoryBus.SP_STATUS, 4) // clear BROKE
+        assertEquals(0, bus.readWord(N64MemoryBus.SP_STATUS) and 2)
+
+        bus.writeWord(N64MemoryBus.SP_STATUS, 1 shl 10) // set signal 0
+        assertEquals(1 shl 7, bus.readWord(N64MemoryBus.SP_STATUS) and (1 shl 7))
+        bus.writeWord(N64MemoryBus.SP_STATUS, 1 shl 9) // clear signal 0
+        assertEquals(0, bus.readWord(N64MemoryBus.SP_STATUS) and (1 shl 7))
+    }
+
     @Test fun spDmaCopiesRdramToDmemAndBack() {
         val bus = N64MemoryBus()
         bus.loadRdram(0x100L, byteArrayOf(
