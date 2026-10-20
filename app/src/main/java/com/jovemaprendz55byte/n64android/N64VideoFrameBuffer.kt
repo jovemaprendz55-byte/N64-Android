@@ -56,6 +56,7 @@ class N64VideoFrameBuffer(val width: Int, val height: Int) {
         destinationY: Int = 0
     ) {
         require(sourceWidth >= 0 && sourceHeight >= 0) { "Source dimensions cannot be negative" }
+        require(sourceWidth <= Int.MAX_VALUE / 4) { "Source row is too wide" }
         require(sourceStride >= sourceWidth * 4) { "Source stride is smaller than a row" }
         require(sourceOffset >= 0 && sourceOffset <= source.size) { "Invalid source offset" }
         if (sourceWidth == 0 || sourceHeight == 0) return
