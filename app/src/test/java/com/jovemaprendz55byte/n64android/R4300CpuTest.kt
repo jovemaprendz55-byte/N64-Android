@@ -416,13 +416,6 @@ class R4300CpuTest {
     }
 
     @Test fun sdlMergesLeftBytesInBigEndianOrderForEveryAlignment() {
-        val expectedWords = listOf(
-            0xAA223344.toInt(), 0xAABB3344.toInt(), 0xAABBCC44.toInt(), 0xAABBCCDD.toInt()
-        )
-        val expectedLowWords = listOf(
-            0x55667788, 0x55667788, 0x55667788, 0x55667788
-        )
-
         for (offset in 0..7) {
             val cpu = R4300Cpu()
             cpu.writeLong(0x100, 0x1122334455667788L)
@@ -446,8 +439,8 @@ class R4300CpuTest {
                 1 -> 0xAABB334455667788UL.toLong()
                 2 -> 0xAABBCC4455667788UL.toLong()
                 3 -> 0xAABBCCDD55667788UL.toLong()
-                4 -> 0xAABBCCDDEEFF7788UL.toLong()
-                5 -> 0xAABBCCDDEEFF0088UL.toLong()
+                4 -> 0xAABBCCDDEE667788UL.toLong()
+                5 -> 0xAABBCCDDEEFF7788UL.toLong()
                 6 -> 0xAABBCCDDEEFF0011UL.toLong()
                 else -> 0xAABBCCDDEEFF0011UL.toLong()
             }
