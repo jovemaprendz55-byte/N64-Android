@@ -42,6 +42,7 @@ class N64EmulatorCoreTest {
         val result = core.executeFrom(0xFFFF_FFFF_B000_0040UL.toLong(), 10)
 
         assertEquals(0, result.instructionsExecuted)
+        assertEquals(0xFFFF_FFFF_B000_0040UL.toLong(), result.programCounter)
         assertEquals(N64EmulatorCore.StopReason.EXECUTION_ERROR, result.stopReason)
         assertNotNull(result.errorMessage)
     }
