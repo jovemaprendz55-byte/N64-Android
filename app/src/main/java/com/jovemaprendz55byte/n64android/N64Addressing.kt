@@ -4,8 +4,8 @@ package com.jovemaprendz55byte.n64android
  * Address helpers for the Nintendo 64's 32-bit MIPS virtual address layout.
  *
  * KSEG0 and KSEG1 are direct-mapped segments. KUSEG/KSEG2/KSEG3 require TLB
- * handling and deliberately return null here. This helper is not yet wired
- * into R4300Cpu's flat test RAM.
+ * handling and deliberately return null here. R4300Cpu uses this helper when
+ * resolving instruction fetches and data accesses through the simplified bus.
  */
 internal object N64Addressing {
     private const val ADDRESS_MASK = 0xFFFF_FFFFL
