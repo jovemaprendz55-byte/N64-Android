@@ -171,9 +171,13 @@ internal class RspCore(private val bus: N64MemoryBus) {
         val vd = (instruction ushr 6) and 31
         val funct = instruction and 63
         val element = (instruction ushr 21) and 0xF
+        // The vector unit reads both source registers before writing any destination
+        // lane. Snapshot them first so vd may safely alias vs or vt when swizzling.
+        val sourceVs = vector[vs].copyOf()
+        val sourceVt = vector[vt].copyOf()
         for (lane in 0 until 8) {
-            val left = vector[vs][lane].toInt()
-            val right = vector[vt][selectedVectorLane(element, lane)].toInt()
+            val left = sourceVs[lane].toInt()
+            val right = sourceVt[selectedVectorLane(element, lane)].toInt()
             val result = when (funct) {
                 0x10 -> (left + right).coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()) // VADD signed saturation; VCO carry-in not modeled
                 0x11 -> (left - right).coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()) // VSUB signed saturation; VCO carry-in not modeled
