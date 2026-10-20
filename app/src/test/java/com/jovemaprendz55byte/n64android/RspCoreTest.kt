@@ -462,7 +462,7 @@ class RspCoreTest {
         assertTrue(rsp.step())
         assertTrue(rsp.step())
 
-        assertEquals(0xAB, bus.readByte(N64SpMemory.DMEM_BASE + 0x21).toInt() and 0xFF)
+        assertEquals(0xAB, bus.readByte(N64SpMemory.DMEM_BASE + 0x20).toInt() and 0xFF)
         assertEquals(0xAB, bus.readByte(N64SpMemory.DMEM_BASE + 0x21).toInt() and 0xFF)
         assertFalse(rsp.step())
     }
