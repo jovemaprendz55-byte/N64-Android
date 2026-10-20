@@ -1515,6 +1515,24 @@ class R4300CpuTest {
         assertEquals(0x44L, cpu.pc)
     }
 
+
+    @Test fun rspBreakSetsBrokeAndHaltAndStatusCommandsClearThemIndependently() {
+        val bus = N64MemoryBus()
+
+        bus.markSpBroke()
+        val brokeStatus = bus.readWord(N64MemoryBus.SP_STATUS)
+        assertEquals(1, brokeStatus and 0x1) // HALT
+        assertEquals(1, brokeStatus and 0x2) // BROKE
+
+        bus.writeWord(N64MemoryBus.SP_STATUS, 1 shl 2) // clear BROKE only
+        val clearedBrokeStatus = bus.readWord(N64MemoryBus.SP_STATUS)
+        assertEquals(1, clearedBrokeStatus and 0x1)
+        assertEquals(0, clearedBrokeStatus and 0x2)
+
+        bus.writeWord(N64MemoryBus.SP_STATUS, 1) // clear HALT
+        assertEquals(0, bus.readWord(N64MemoryBus.SP_STATUS) and 0x1)
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
