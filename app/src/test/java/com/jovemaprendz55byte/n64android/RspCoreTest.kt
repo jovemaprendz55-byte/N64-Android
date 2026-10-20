@@ -531,7 +531,7 @@ class RspCoreTest {
         }
 
         assertEquals(-21, rsp.register(3))
-        assertEquals(0, rsp.register(4))
+        assertEquals(-1, rsp.register(4))
         assertEquals(-2, rsp.register(5))
         assertEquals(-1, rsp.register(6))
         assertFalse(rsp.step())
