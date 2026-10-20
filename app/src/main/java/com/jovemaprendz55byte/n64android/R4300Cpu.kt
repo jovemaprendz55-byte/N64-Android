@@ -316,22 +316,22 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                     0x01 -> if (a >= 0L) pendingBranchTarget = branchTarget // BGEZ
                     0x02 -> if (a < 0L) pendingBranchTarget = branchTarget else pc += 4L // BLTZL
                     0x03 -> if (a >= 0L) pendingBranchTarget = branchTarget else pc += 4L // BGEZL
-                    0x10 -> if (a < 0L) {
+                    0x10 -> {
                         writeRegister(31, instructionAddress + 8L)
-                        pendingBranchTarget = branchTarget
-                    } // BLTZAL
-                    0x11 -> if (a >= 0L) {
+                        if (a < 0L) pendingBranchTarget = branchTarget
+                    } // BLTZAL links whether or not the branch is taken
+                    0x11 -> {
                         writeRegister(31, instructionAddress + 8L)
-                        pendingBranchTarget = branchTarget
-                    } // BGEZAL
-                    0x12 -> if (a < 0L) {
+                        if (a >= 0L) pendingBranchTarget = branchTarget
+                    } // BGEZAL links whether or not the branch is taken
+                    0x12 -> {
                         writeRegister(31, instructionAddress + 8L)
-                        pendingBranchTarget = branchTarget
-                    } else pc += 4L // BLTZALL
-                    0x13 -> if (a >= 0L) {
+                        if (a < 0L) pendingBranchTarget = branchTarget else pc += 4L
+                    } // BLTZALL links even when not taken; annul delay slot
+                    0x13 -> {
                         writeRegister(31, instructionAddress + 8L)
-                        pendingBranchTarget = branchTarget
-                    } else pc += 4L // BGEZALL
+                        if (a >= 0L) pendingBranchTarget = branchTarget else pc += 4L
+                    } // BGEZALL links even when not taken; annul delay slot
                     else -> unsupported(instruction, instructionAddress)
                 }
             }
