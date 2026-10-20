@@ -1560,24 +1560,24 @@ class R4300CpuTest {
         val bus = N64MemoryBus()
 
         // Set signal 0 and signal 7 using their alternating command bits.
-        bus.writeWord(N64MemoryBus.SP_STATUS, (1 shl 8) or (1 shl 22))
+        bus.writeWord(N64MemoryBus.SP_STATUS, (1 shl 10) or (1 shl 24))
         var status = bus.readWord(N64MemoryBus.SP_STATUS)
         assertEquals(1 shl 7, status and (1 shl 7))
         assertEquals(1 shl 14, status and (1 shl 14))
 
         // Clear the same signals without affecting the other status flags.
-        bus.writeWord(N64MemoryBus.SP_STATUS, (1 shl 7) or (1 shl 21))
+        bus.writeWord(N64MemoryBus.SP_STATUS, (1 shl 9) or (1 shl 23))
         status = bus.readWord(N64MemoryBus.SP_STATUS)
         assertEquals(0, status and (1 shl 7))
         assertEquals(0, status and (1 shl 14))
 
         // Interrupt-on-break and single-step controls are independently writable.
-        bus.writeWord(N64MemoryBus.SP_STATUS, (1 shl 4) or (1 shl 6))
+        bus.writeWord(N64MemoryBus.SP_STATUS, (1 shl 8) or (1 shl 6))
         status = bus.readWord(N64MemoryBus.SP_STATUS)
         assertEquals(1 shl 6, status and (1 shl 6))
         assertEquals(1 shl 5, status and (1 shl 5))
 
-        bus.writeWord(N64MemoryBus.SP_STATUS, (1 shl 3) or (1 shl 5))
+        bus.writeWord(N64MemoryBus.SP_STATUS, (1 shl 7) or (1 shl 5))
         status = bus.readWord(N64MemoryBus.SP_STATUS)
         assertEquals(0, status and (1 shl 6))
         assertEquals(0, status and (1 shl 5))
@@ -1587,10 +1587,10 @@ class R4300CpuTest {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
             iType(0x0F, 0, 1, 0x0404), // r1 = SP register base
-            iType(0x09, 0, 2, 1 shl 10), // set signal 1: command bit 10
+            iType(0x09, 0, 2, 1 shl 12), // set signal 1: command bit 12
             iType(0x2B, 1, 2, 0x10), // write SP_STATUS
             iType(0x23, 1, 3, 0x10), // read SP_STATUS
-            iType(0x09, 0, 2, 1 shl 9), // clear signal 1: command bit 9
+            iType(0x09, 0, 2, 1 shl 11), // clear signal 1: command bit 11
             iType(0x2B, 1, 2, 0x10), // write SP_STATUS
             iType(0x23, 1, 4, 0x10) // read SP_STATUS again
         ))
