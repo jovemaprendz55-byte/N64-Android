@@ -4,6 +4,27 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class R4300CpuTest {
+    @Test fun tlbRequiredAddressDiagnosticIncludesTheFaultingVirtualAddress() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x4000), // r1 = 0x40000000 (TLB-mapped KUSEG)
+            iType(0x23, 1, 2, 0)       // LW from an address requiring TLB translation
+        ))
+
+        cpu.step()
+        try {
+            cpu.step()
+            throw AssertionError("Expected TLB translation failure")
+        } catch (error: IllegalArgumentException) {
+            org.junit.Assert.assertTrue(
+                error.message.orEmpty().contains("0x0000000040000000")
+            )
+            org.junit.Assert.assertTrue(
+                error.message.orEmpty().contains("requires TLB translation")
+            )
+        }
+    }
+
     @Test fun cpuLoadsAndStoresThroughRiRegisterRegion() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
