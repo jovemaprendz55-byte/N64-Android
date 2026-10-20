@@ -391,6 +391,30 @@ class R4300CpuTest {
         assertEquals(5L, cpu.register(4))
     }
 
+    @Test fun swlMergesLeftBytesInBigEndianOrderForEveryAlignment() {
+        val expectedWords = listOf(
+            0xAA223344.toInt(),
+            0xAABB3344.toInt(),
+            0xAABBCC44.toInt(),
+            0xAABBCCDD.toInt()
+        )
+
+        for (offset in 0..3) {
+            val cpu = R4300Cpu()
+            cpu.writeWord(0x100, 0x11223344)
+            cpu.loadBytes(0, words(
+                iType(0x09, 0, 1, 0x100), // r1 = destination address
+                iType(0x0F, 0, 2, 0xAABB), // r2 = 0xAABB0000
+                iType(0x0D, 2, 2, 0xCCDD), // r2 = 0xAABBCCDD
+                iType(0x2A, 1, 2, offset)  // SWL at selected byte alignment
+            ))
+
+            repeat(4) { cpu.step() }
+
+            assertEquals("SWL offset $offset", expectedWords[offset], cpu.readWord(0x100))
+        }
+    }
+
     @Test fun supportsSignedAndUnsignedByteAndHalfwordLoads() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(iType(0x20, 0, 1, 0x100), iType(0x24, 0, 2, 0x100), iType(0x21, 0, 3, 0x102), iType(0x25, 0, 4, 0x102)))
