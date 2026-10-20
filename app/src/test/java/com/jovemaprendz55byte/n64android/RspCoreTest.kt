@@ -448,6 +448,57 @@ class RspCoreTest {
     }
 
 
+    @Test fun scalarMultiplyAndDivideInstructionsUpdateHiLo() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, -7)) // r1 = -7
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, iType(0x09, 0, 2, 3)) // r2 = 3
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, rType(1, 2, 0, 0x18)) // MULT
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, rType(0, 0, 3, 0x12)) // MFLO
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, rType(0, 0, 4, 0x10)) // MFHI
+        bus.writeWord(N64SpMemory.IMEM_BASE + 20, rType(1, 2, 0, 0x1A)) // DIV
+        bus.writeWord(N64SpMemory.IMEM_BASE + 24, rType(0, 0, 5, 0x12)) // MFLO
+        bus.writeWord(N64SpMemory.IMEM_BASE + 28, rType(0, 0, 6, 0x10)) // MFHI
+        bus.writeWord(N64SpMemory.IMEM_BASE + 32, 0x0000000D) // BREAK
+
+        rsp.start()
+        repeat(8) { index ->
+            assertTrue("RSP stopped at scalar arithmetic instruction $index", rsp.step())
+        }
+
+        assertEquals(-21, rsp.register(3))
+        assertEquals(0, rsp.register(4))
+        assertEquals(-2, rsp.register(5))
+        assertEquals(-1, rsp.register(6))
+        assertFalse(rsp.step())
+    }
+
+    @Test fun unsignedMultiplyAndDivideUseUnsignedOperands() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x0F, 0, 1, 0xFFFF))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, iType(0x0D, 1, 1, 0xFFFF))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, iType(0x09, 0, 2, 2))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, rType(1, 2, 0, 0x19)) // MULTU
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, rType(0, 0, 3, 0x12)) // MFLO
+        bus.writeWord(N64SpMemory.IMEM_BASE + 20, rType(0, 0, 4, 0x10)) // MFHI
+        bus.writeWord(N64SpMemory.IMEM_BASE + 24, rType(1, 2, 0, 0x1B)) // DIVU
+        bus.writeWord(N64SpMemory.IMEM_BASE + 28, rType(0, 0, 5, 0x12)) // MFLO
+        bus.writeWord(N64SpMemory.IMEM_BASE + 32, rType(0, 0, 6, 0x10)) // MFHI
+        bus.writeWord(N64SpMemory.IMEM_BASE + 36, 0x0000000D) // BREAK
+
+        rsp.start()
+        repeat(9) { index ->
+            assertTrue("RSP stopped at unsigned arithmetic instruction $index", rsp.step())
+        }
+
+        assertEquals(-2, rsp.register(3))
+        assertEquals(1, rsp.register(4))
+        assertEquals(0x7FFFFFFF, rsp.register(5))
+        assertEquals(1, rsp.register(6))
+        assertFalse(rsp.step())
+    }
+
     @Test fun vectorByteLoadsAndStoresRespectElementAndSignedOffset() {
         val bus = N64MemoryBus()
         val rsp = RspCore(bus)
