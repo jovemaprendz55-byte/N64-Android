@@ -393,10 +393,10 @@ class R4300CpuTest {
 
     @Test fun swlMergesLeftBytesInBigEndianOrderForEveryAlignment() {
         val expectedWords = listOf(
-            0xAA223344.toInt(),
-            0xAABB3344.toInt(),
-            0xAABBCC44.toInt(),
-            0xAABBCCDD.toInt()
+            0xAABBCCDD.toInt(),
+            0x11AABBCC.toInt(),
+            0x1122AABB.toInt(),
+            0x112233AA.toInt()
         )
 
         for (offset in 0..3) {
@@ -435,14 +435,14 @@ class R4300CpuTest {
             repeat(10) { cpu.step() }
 
             val expected = when (offset) {
-                0 -> 0xAA22334455667788UL.toLong()
-                1 -> 0xAABB334455667788UL.toLong()
-                2 -> 0xAABBCC4455667788UL.toLong()
-                3 -> 0xAABBCCDD55667788UL.toLong()
-                4 -> 0xAABBCCDDEE667788UL.toLong()
-                5 -> 0xAABBCCDDEEFF7788UL.toLong()
-                6 -> 0xAABBCCDDEEFF0011UL.toLong()
-                else -> 0xAABBCCDDEEFF0011UL.toLong()
+                0 -> 0xAABBCCDDEEFF0011UL.toLong()
+                1 -> 0x11AABBCCDDEEFF00UL.toLong()
+                2 -> 0x1122AABBCCDDEEFFUL.toLong()
+                3 -> 0x112233AABBCCDDEEUL.toLong()
+                4 -> 0x11223344AABBCCDDUL.toLong()
+                5 -> 0x1122334455AABBCCUL.toLong()
+                6 -> 0x112233445566AABBUL.toLong()
+                else -> 0x11223344556677AAUL.toLong()
             }
             assertEquals("SDL offset $offset", expected, cpu.readLong(0x100))
         }
