@@ -1601,6 +1601,31 @@ class R4300CpuTest {
         assertEquals(0L, cpu.register(4) and (1L shl 8))
     }
 
+    @Test fun executesZeroSourceMtc0AtKseg1CartridgeEntry() {
+        val cpu = R4300Cpu()
+        val rom = ByteArray(0x1000)
+        fun putWord(offset: Int, value: Int) {
+            rom[offset] = (value ushr 24).toByte()
+            rom[offset + 1] = (value ushr 16).toByte()
+            rom[offset + 2] = (value ushr 8).toByte()
+            rom[offset + 3] = value.toByte()
+        }
+
+        // Valid normalized Z64 header followed by a small CP0 smoke-test program.
+        putWord(0, 0x80371240.toInt())
+        putWord(0x40, iType(0x09, 0, 1, 42)) // ADDIU r1, r0, 42
+        putWord(0x44, (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (13 shl 11)) // MTC0 r1, Cause
+        putWord(0x48, 0x40806800) // MTC0 r0, Cause (exact opcode seen in the boot failure)
+        putWord(0x4C, (0x10 shl 26) or (2 shl 16) or (13 shl 11)) // MFC0 r2, Cause
+        cpu.loadCartridgeRom(rom)
+        cpu.pc = 0xFFFF_FFFF_B000_0040UL.toLong()
+
+        repeat(4) { cpu.step() }
+
+        assertEquals(0L, cpu.register(2))
+        assertEquals(0xFFFF_FFFF_B000_0050UL.toLong(), cpu.pc)
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
