@@ -108,7 +108,8 @@ class N64EmulatorCore(
                     instructionsExecuted = executed,
                     programCounter = instructionAddress,
                     stopReason = StopReason.EXECUTION_ERROR,
-                    errorMessage = error.message ?: error::class.java.simpleName
+                    errorMessage = (error.message ?: error::class.java.simpleName) +
+                        "\\nEstado da CPU: " + cpu.diagnosticSnapshot()
                 )
             }
         }
