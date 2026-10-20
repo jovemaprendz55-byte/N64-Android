@@ -86,6 +86,17 @@ class N64EmulatorCore(
     }
 
     /**
+     * Starts a diagnostic-only direct entry into cartridge code with a usable
+     * RDRAM stack. This is not a replacement for the PIF boot sequence.
+     */
+    fun startCartridgeDiagnosticExecution(entryPoint: Long) {
+        require(romLoaded) { "Load a normalized ROM before execution" }
+        require(entryPoint % 4L == 0L) { "Entry point must be 4-byte aligned" }
+        cpu.resetForCartridgeDiagnostic(entryPoint)
+        executionStarted = true
+    }
+
+    /**
      * Executes a bounded slice in the current session, preserving CPU state
      * between calls. A CPU exception is returned as a diagnostic stop result.
      */
