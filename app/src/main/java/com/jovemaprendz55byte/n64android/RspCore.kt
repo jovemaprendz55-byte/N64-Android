@@ -162,8 +162,11 @@ internal class RspCore(private val bus: N64MemoryBus) {
                 0x10 -> left + right // VADD (accumulator/carry behavior simplified)
                 0x11 -> left - right // VSUB (accumulator/carry behavior simplified)
                 0x28 -> left and right // VAND
+                0x29 -> (left and right).inv() // VNAND
                 0x2A -> left or right // VOR
+                0x2B -> (left or right).inv() // VNOR
                 0x2C -> left xor right // VXOR
+                0x2D -> (left xor right).inv() // VNXOR
                 else -> unsupported(instruction, address)
             }
             vector[vd][lane] = result.toShort()
