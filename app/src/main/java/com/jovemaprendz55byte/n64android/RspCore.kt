@@ -153,9 +153,9 @@ internal class RspCore(private val bus: N64MemoryBus) {
     }
 
     /**
-     * First lane-wise vector ALU subset. Element selection/swizzling and the
-     * accumulator/flags are not modeled yet; this initial implementation uses
-     * corresponding lanes and 16-bit wraparound.
+     * Lane-wise vector ALU subset. Element selection/swizzling is supported for
+     * the implemented operations; VADD/VSUB saturate signed 16-bit results, but
+     * VCO carry-in and the 48-bit accumulator/flags are not modeled yet.
      */
     private fun executeVectorAlu(instruction: Int, address: Int) {
         val vt = (instruction ushr 16) and 31
