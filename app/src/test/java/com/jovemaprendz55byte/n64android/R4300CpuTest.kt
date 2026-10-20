@@ -101,6 +101,27 @@ class R4300CpuTest {
         assertEquals(0, cpu.readWord(N64MemoryBus.SP_DMA_BUSY.toInt()))
     }
 
+    @Test fun cpuCanCopySpImemBackToRdramWithSpDmaWriteLength() {
+        val cpu = R4300Cpu()
+        cpu.writeWord(0x04001000, 0x89ABCDEF.toInt())
+        cpu.writeWord(0x04001004, 0x76543210)
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x0404), // r1 = SP register base
+            iType(0x09, 0, 2, 0x1000), // select IMEM bank
+            iType(0x2B, 1, 2, 0),      // SP_MEM_ADDR = IMEM offset 0
+            iType(0x09, 0, 2, 0x100),  // RDRAM destination address
+            iType(0x2B, 1, 2, 4),      // SP_DRAM_ADDR = 0x100
+            iType(0x09, 0, 2, 7),      // encoded DMA length for 8 bytes
+            iType(0x2B, 1, 2, 0x0C)    // SP_WR_LEN: SP-to-RDRAM DMA
+        ))
+
+        repeat(7) { cpu.step() }
+
+        assertEquals(0x89ABCDEF.toInt(), cpu.readWord(0x100))
+        assertEquals(0x76543210, cpu.readWord(0x104))
+        assertEquals(0, cpu.readWord(N64MemoryBus.SP_DMA_BUSY.toInt()))
+    }
+
     @Test fun spSemaphoreReadSetsItAndWriteClearsIt() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
