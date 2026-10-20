@@ -20,8 +20,38 @@ class N64EmulatorCore {
         val errorMessage: String? = null
     )
 
-    private val cpu = R4300Cpu()
+    internal val memoryBus = N64MemoryBus()
+    private val cpu = R4300Cpu(memoryBus)
+    private val rsp = RspCore(memoryBus)
     private var romLoaded = false
+
+    data class RspExecutionResult(
+        val instructionsExecuted: Int,
+        val programCounter: Int,
+        val halted: Boolean,
+        val errorMessage: String? = null
+    )
+
+    /**
+     * Runs a bounded diagnostic slice of the RSP from an explicitly supplied
+     * IMEM offset. This shares SP memory/registers with the CPU bus, but is not
+     * yet scheduled automatically by the R4300 CPU or a full RSP task system.
+     */
+    fun executeRspFromImem(entryPoint: Int, instructionBudget: Int): RspExecutionResult {
+        require(instructionBudget > 0) { "Instruction budget must be positive" }
+        rsp.start(entryPoint)
+        return try {
+            val executed = rsp.run(instructionBudget)
+            RspExecutionResult(executed, rsp.pc, rsp.halted)
+        } catch (error: Exception) {
+            RspExecutionResult(
+                instructionsExecuted = 0,
+                programCounter = rsp.pc,
+                halted = rsp.halted,
+                errorMessage = error.message ?: error::class.java.simpleName
+            )
+        }
+    }
 
     /** Loads a canonical Z64 big-endian cartridge image into the CPU bus. */
     fun loadRom(normalizedRom: ByteArray) {
