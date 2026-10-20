@@ -283,6 +283,36 @@ class RspCoreTest {
         assertEquals(0x0FFF, bus.readWord(N64SpMemory.DMEM_BASE + 4))
     }
 
+    @Test fun vectorBitwiseComplementOperationsPreserveSixteenBitResults() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 0x00F3))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, iType(0x09, 0, 2, 0x0F3F))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, cop2(4, 1, 1, 0)) // v1[0] = 0x00F3
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, cop2(4, 2, 2, 0)) // v2[0] = 0x0F3F
+        val operations = listOf(
+            Triple(0x29, 3, 0), // VNAND: ~(0x00F3 & 0x0F3F) = 0xFFCC
+            Triple(0x2B, 4, 4), // VNOR: ~(0x00F3 | 0x0F3F) = 0xF000
+            Triple(0x2D, 5, 8)  // VNXOR: ~(0x00F3 ^ 0x0F3F) = 0xF033
+        )
+        var pc = 16
+        for ((funct, vd, offset) in operations) {
+            bus.writeWord(N64SpMemory.IMEM_BASE + pc, vectorAlu(2, 1, vd, funct))
+            bus.writeWord(N64SpMemory.IMEM_BASE + pc + 4, cop2(0, 6, vd, 0))
+            bus.writeWord(N64SpMemory.IMEM_BASE + pc + 8, iType(0x2B, 0, 6, offset))
+            pc += 12
+        }
+
+        rsp.start()
+        repeat(13) { index ->
+            assertTrue("RSP stopped at instruction $index (PC=${rsp.pc})", rsp.step())
+        }
+
+        assertEquals(0xFFFFFFCC.toInt(), bus.readWord(N64SpMemory.DMEM_BASE))
+        assertEquals(0xFFFFF000.toInt(), bus.readWord(N64SpMemory.DMEM_BASE + 4))
+        assertEquals(0xFFFFF033.toInt(), bus.readWord(N64SpMemory.DMEM_BASE + 8))
+    }
+
     @Test fun vectorAluUsesSelectedVectorElementForAllDestinationLanes() {
         val bus = N64MemoryBus()
         val rsp = RspCore(bus)
