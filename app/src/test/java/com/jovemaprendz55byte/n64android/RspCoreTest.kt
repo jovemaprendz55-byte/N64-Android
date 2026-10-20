@@ -213,13 +213,13 @@ class RspCoreTest {
     @Test fun vectorAddSaturatesSignedHalfwordOverflow() {
         val bus = N64MemoryBus()
         val rsp = RspCore(bus)
-        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x0F, 0, 1, 0x7FFF)) // r1 = 0x7FFF0000
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 0x7FFF)) // r1 = 32767, transferred as 0x7FFF
         bus.writeWord(N64SpMemory.IMEM_BASE + 4, cop2(4, 1, 1, 0)) // v1[0] = 32767
-        bus.writeWord(N64SpMemory.IMEM_BASE + 8, iType(0x0F, 0, 2, 0x8000)) // r2 = 0x80000000
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, iType(0x09, 0, 2, -32768)) // r2 = -32768, transferred as 0x8000
         bus.writeWord(N64SpMemory.IMEM_BASE + 12, cop2(4, 2, 1, 2)) // v1[1] = -32768
-        bus.writeWord(N64SpMemory.IMEM_BASE + 16, iType(0x0F, 0, 3, 1)) // r3 = 0x00010000
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, iType(0x09, 0, 3, 1)) // r3 = 1
         bus.writeWord(N64SpMemory.IMEM_BASE + 20, cop2(4, 3, 2, 0)) // v2[0] = 1
-        bus.writeWord(N64SpMemory.IMEM_BASE + 24, iType(0x0F, 0, 4, 0xFFFF)) // r4 = 0xFFFF0000
+        bus.writeWord(N64SpMemory.IMEM_BASE + 24, iType(0x09, 0, 4, -1)) // r4 = -1, transferred as 0xFFFF
         bus.writeWord(N64SpMemory.IMEM_BASE + 28, cop2(4, 4, 2, 2)) // v2[1] = -1
         bus.writeWord(N64SpMemory.IMEM_BASE + 32, vectorAlu(2, 1, 3, 0x10)) // VADD with signed saturation
         bus.writeWord(N64SpMemory.IMEM_BASE + 36, cop2(0, 5, 3, 0))
