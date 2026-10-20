@@ -109,6 +109,26 @@ class N64MemoryBusTest {
         assertEquals(0, bus.readWord(N64SpMemory.IMEM_BASE))
     }
 
+
+    @Test fun spDmaAppliesSkipBetweenEveryEncodedBlock() {
+        val bus = N64MemoryBus()
+        val source = ByteArray(0x30) { it.toByte() }
+        bus.loadRdram(0x100L, source)
+
+        bus.writeWord(N64MemoryBus.SP_MEM_ADDR, 0x20)
+        bus.writeWord(N64MemoryBus.SP_DRAM_ADDR, 0x100)
+        // Two 8-byte blocks; the DRAM address skips 0x10 bytes after each block.
+        val command = (0x10 shl 20) or (1 shl 12) or 7
+        bus.writeWord(N64MemoryBus.SP_RD_LEN, command)
+
+        for (i in 0 until 8) {
+            assertEquals("first block byte $i", source[i], bus.readByte(N64SpMemory.DMEM_BASE + 0x20 + i))
+            assertEquals("second block byte $i", source[0x18 + i], bus.readByte(N64SpMemory.DMEM_BASE + 0x28 + i))
+        }
+        // The programmed SP memory destination remains contiguous across blocks.
+        assertEquals(source[8], bus.readByte(N64SpMemory.DMEM_BASE + 0x30))
+    }
+
     @Test fun spDmaCopiesRdramToDmemAndBack() {
         val bus = N64MemoryBus()
         bus.loadRdram(0x100L, byteArrayOf(
