@@ -225,10 +225,12 @@ internal class N64MemoryBus(
         if (value and (1 shl 0) != 0) spStatus = spStatus and SP_STATUS_HALT.inv()
         if (value and (1 shl 1) != 0) spStatus = spStatus or SP_STATUS_HALT
         if (value and (1 shl 2) != 0) spStatus = spStatus and SP_STATUS_BROKE.inv()
-        if (value and (1 shl 3) != 0) {
+        // Interrupt-on-break is controlled by command bits 7/8; bits 3/4
+        // control the separate MI interrupt line, which is not modeled here.
+        if (value and (1 shl 7) != 0) {
             spStatus = spStatus and SP_STATUS_INTERRUPT_BREAK.inv()
         }
-        if (value and (1 shl 4) != 0) {
+        if (value and (1 shl 8) != 0) {
             spStatus = spStatus or SP_STATUS_INTERRUPT_BREAK
         }
         if (value and (1 shl 5) != 0) {
@@ -241,8 +243,8 @@ internal class N64MemoryBus(
         // Signal commands use alternating clear/set bits (7/8 through 21/22).
         for (signal in 0 until 8) {
             val statusBit = 1 shl (7 + signal)
-            val clearCommandBit = 1 shl (7 + signal * 2)
-            val setCommandBit = 1 shl (8 + signal * 2)
+            val clearCommandBit = 1 shl (9 + signal * 2)
+            val setCommandBit = 1 shl (10 + signal * 2)
             if (value and clearCommandBit != 0) spStatus = spStatus and statusBit.inv()
             if (value and setCommandBit != 0) spStatus = spStatus or statusBit
         }
