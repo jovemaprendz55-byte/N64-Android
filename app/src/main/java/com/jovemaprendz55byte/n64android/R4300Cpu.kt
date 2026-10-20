@@ -170,6 +170,16 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         pendingBranchTarget = null
     }
 
+    /**
+     * Diagnostic-only approximation for directly entering cartridge IPL3 code.
+     * A real N64 starts through the PIF boot ROM, which initializes hardware and
+     * CPU state. This helper only supplies a usable RDRAM stack for this shortcut.
+     */
+    internal fun resetForCartridgeDiagnostic(entryPoint: Long) {
+        resetExecutionState(entryPoint)
+        gpr[29] = 0xFFFF_FFFF_803F_FFF0UL.toLong()
+    }
+
     /** Executes one instruction; branches take effect after their delay slot. */
     fun step() {
         val instructionAddress = pc
