@@ -178,7 +178,7 @@ class RspCoreTest {
         assertEquals(6, rsp.register(6))
     }
 
-    @Test fun vectorSubtractAndAndOrOperationsProduceExpectedLaneValues() {
+    @Test fun vectorAndOrOperationsProduceExpectedLaneValues() {
         val bus = N64MemoryBus()
         val rsp = RspCore(bus)
         bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 0x00F3))
