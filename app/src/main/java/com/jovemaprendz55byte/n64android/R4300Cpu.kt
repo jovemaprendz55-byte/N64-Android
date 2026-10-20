@@ -9,7 +9,10 @@ import java.math.BigInteger
  * peripherals are not implemented. Implemented RDRAM and SP DMEM/IMEM accesses
  * are routed through the physical memory bus.
  */
-class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
+class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64MemoryBus) {
+    constructor(memorySize: Int = DEFAULT_RDRAM_SIZE) : this(memorySize, N64MemoryBus(memorySize))
+
+    internal constructor(memoryBus: N64MemoryBus) : this(DEFAULT_RDRAM_SIZE, memoryBus)
     private val rdramSize = memorySize.also { size ->
         require(size > 0 && size % 4 == 0) {
             "RAM size must be a positive multiple of four bytes"
@@ -18,7 +21,6 @@ class R4300Cpu(memorySize: Int = DEFAULT_RDRAM_SIZE) {
             "RAM size cannot exceed the standard 8 MiB RDRAM capacity"
         }
     }
-    private val memoryBus = N64MemoryBus(rdramSize)
 
     companion object {
         /** Maximum standard Nintendo 64 RDRAM capacity (8 MiB). */
