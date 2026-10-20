@@ -108,7 +108,7 @@ class MainActivity : Activity() {
         try {
             core.loadRom(rom)
             // Development entry point only: the real PIF boot sequence is not implemented.
-            core.startExecution(0xFFFF_FFFF_B000_0040UL.toLong())
+            core.startCartridgeDiagnosticExecution(0xFFFF_FFFF_B000_0040UL.toLong())
         } catch (error: Exception) {
             emulationRunning.set(false)
             showError("Não foi possível iniciar a CPU: " + (error.message ?: "erro desconhecido"))
@@ -198,6 +198,11 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun runCartridgeDiagnostic(core: N64EmulatorCore, entryPoint: Long, budget: Int): N64EmulatorCore.ExecutionResult {
+        core.startCartridgeDiagnosticExecution(entryPoint)
+        return core.executeSlice(budget)
+    }
+
     private fun runRomInstructionTest() {
         val rom = preparedRom
         if (rom == null) {
@@ -211,7 +216,7 @@ class MainActivity : Activity() {
             core.loadRom(rom)
             // This is a diagnostic entry into the cartridge boot code, not a
             // replacement for the missing PIF boot and hardware initialization.
-            val result = core.executeFrom(0xFFFF_FFFF_B000_0040UL.toLong(), 64)
+            val result = runCartridgeDiagnostic(core, 0xFFFF_FFFF_B000_0040UL.toLong(), 64)
             romDetails.text = buildString {
                 append("Teste de execução da ROM (diagnóstico)\n")
                 append("Instruções executadas: ").append(result.instructionsExecuted).append(" / 64\n")
