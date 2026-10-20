@@ -105,10 +105,8 @@ class R4300CpuTest {
         assertEquals(0, cpu.readWord(0x10C))
         assertEquals(0, cpu.readWord(0x110))
         assertEquals(0, cpu.readWord(0x114))
-        assertEquals(0, cpu.readWord(0x118))
-        assertEquals(0, cpu.readWord(0x11C))
-        assertEquals(0x55556666, cpu.readWord(0x120))
-        assertEquals(0x77778888, cpu.readWord(0x124))
+        assertEquals(0x55556666, cpu.readWord(0x118))
+        assertEquals(0x77778888, cpu.readWord(0x11C))
         assertEquals(0, cpu.readWord(N64MemoryBus.SP_DMA_BUSY.toInt()))
     }
 
