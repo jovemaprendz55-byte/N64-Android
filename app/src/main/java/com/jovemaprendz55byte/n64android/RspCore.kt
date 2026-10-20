@@ -89,7 +89,7 @@ internal class RspCore(private val bus: N64MemoryBus) {
             0x12 -> when (rs) {
                 0x00 -> writeReg(rt, vector[vectorRegister][(element ushr 1) and 7].toInt()) // MFC2
                 0x04 -> vector[vectorRegister][(element ushr 1) and 7] = b.toShort() // MTC2
-                0x10 -> executeVectorAlu(instruction, instructionPc)
+                in 0x10..0x1F -> executeVectorAlu(instruction, instructionPc)
                 else -> unsupported(instruction, instructionPc)
             }
             0x02 -> pendingBranchTarget = ((pc and 0xF0000000.toInt()) or
@@ -155,9 +155,11 @@ internal class RspCore(private val bus: N64MemoryBus) {
         val vs = (instruction ushr 11) and 31
         val vd = (instruction ushr 6) and 31
         val funct = instruction and 63
+        val element = (instruction ushr 21) and 0xF
+        require(element in 0..7) { "Unsupported RSP vector element selector $element" }
         for (lane in 0 until 8) {
             val left = vector[vs][lane].toInt()
-            val right = vector[vt][lane].toInt()
+            val right = vector[vt][selectedVectorLane(element, lane)].toInt()
             val result = when (funct) {
                 0x10 -> left + right // VADD (accumulator/carry behavior simplified)
                 0x11 -> left - right // VSUB (accumulator/carry behavior simplified)
@@ -171,6 +173,22 @@ internal class RspCore(private val bus: N64MemoryBus) {
             }
             vector[vd][lane] = result.toShort()
         }
+    }
+
+    /**
+     * Implements the RSP's eight basic 16-bit element swizzles. Selectors 8..15
+     * use byte-oriented patterns and are deliberately rejected until implemented.
+     */
+    private fun selectedVectorLane(element: Int, lane: Int): Int = when (element) {
+        0 -> lane
+        1 -> lane or 1
+        2 -> (lane and 4) or 2
+        3 -> (lane and 4) or 3
+        4 -> 4
+        5 -> 5
+        6 -> 6
+        7 -> 7
+        else -> throw IllegalArgumentException("Unsupported RSP vector element selector $element")
     }
 
     private fun readSpCop0(index: Int): Int = when (index) {
