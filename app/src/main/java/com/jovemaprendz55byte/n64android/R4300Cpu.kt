@@ -37,6 +37,21 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         private set
 
     private var pendingBranchTarget: Long? = null
+    /** Last fetched instruction, retained so execution failures can be diagnosed. */
+    internal var lastInstructionWord: Int = 0
+        private set
+
+    /** Compact CPU state snapshot attached to ROM-test failures. */
+    internal fun diagnosticSnapshot(): String = buildString {
+        append("Instrucao=0x")
+        append(lastInstructionWord.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+        append("; registradores:")
+        for (index in 1..31) {
+            append(" r").append(index).append("=0x")
+            append(register(index).toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+        }
+    }
+
 
     fun register(index: Int): Long {
         require(index in 0..31) { "Register index must be 0..31" }
@@ -159,6 +174,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     fun step() {
         val instructionAddress = pc
         val instruction = fetchInstruction(pc)
+        lastInstructionWord = instruction
         pc += 4L
 
         val branchToApply = pendingBranchTarget
@@ -439,7 +455,18 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         } catch (error: ArithmeticException) {
             throw IllegalArgumentException("Effective address overflow", error)
         }
-        return resolveRamAddress(address)
+        return try {
+            resolveRamAddress(address)
+        } catch (error: IllegalArgumentException) {
+            throw IllegalArgumentException(
+                "Falha ao resolver endereco efetivo: base=0x" +
+                    base.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0') +
+                    ", deslocamento=" + offset + ", endereco=0x" +
+                    address.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0') +
+                    ". " + (error.message ?: "endereco nao suportado"),
+                error
+            )
+        }
     }
 
     /** Big-endian MIPS LDL: merge bytes from the effective address to the block's end. */
