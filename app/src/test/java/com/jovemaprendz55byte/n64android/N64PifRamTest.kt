@@ -53,6 +53,32 @@ class N64PifRamTest {
         assertEquals(0x02, bus.readByte(0x205L).toInt() and 0xFF)
     }
 
+    @Test fun pifChannelResetMarkerRestartsControllerChannelNumbering() {
+        val port = N64ControllerPort().apply {
+            setButton(N64ControllerState.B, true)
+            setAnalogStick(12, -34)
+        }
+        val bus = N64MemoryBus(controllerPort = port)
+        val commandBuffer = ByteArray(N64PifRam.SIZE)
+        commandBuffer[0] = 0xFE.toByte() // reset channel numbering
+        commandBuffer[1] = 1 // tx length
+        commandBuffer[2] = 4 // rx length
+        commandBuffer[3] = 1 // read controller
+        commandBuffer[8] = 0xFF.toByte()
+        commandBuffer[63] = 1
+        bus.loadRdram(0x100L, commandBuffer)
+
+        bus.writeWord(N64MemoryBus.SI_DRAM_ADDR, 0x100)
+        bus.writeWord(N64MemoryBus.SI_PIF_ADDR_WR64B, 0)
+        bus.writeWord(N64MemoryBus.SI_DRAM_ADDR, 0x200)
+        bus.writeWord(N64MemoryBus.SI_PIF_ADDR_RD64B, 0)
+
+        assertEquals(0x40, bus.readByte(0x204L).toInt() and 0xFF)
+        assertEquals(0x00, bus.readByte(0x205L).toInt() and 0xFF)
+        assertEquals(12.toByte(), bus.readByte(0x206L))
+        assertEquals((-34).toByte(), bus.readByte(0x207L))
+    }
+
     @Test fun rejectsPifDmaWhenRdramRangeIsTooSmallWithoutPartialWrites() {
         val bus = N64MemoryBus(rdramSize = 0x100)
         bus.loadRdram(0xC8, ByteArray(0x38) { 0x5A })
