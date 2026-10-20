@@ -6,6 +6,20 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RspCoreTest {
+    @Test fun emulatorCorePreservesCompletedInstructionCountWhenRspInstructionFails() {
+        val core = N64EmulatorCore()
+        core.memoryBus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 9))
+        core.memoryBus.writeWord(N64SpMemory.IMEM_BASE + 4, 0xFC000000.toInt()) // Unsupported opcode.
+
+        val result = core.executeRspFromImem(entryPoint = 0, instructionBudget = 10)
+
+        assertEquals(1, result.instructionsExecuted)
+        assertEquals(8, result.programCounter)
+        assertTrue(result.errorMessage != null)
+        assertTrue(result.errorMessage!!.contains("Unsupported RSP instruction"))
+        assertEquals(9, core.memoryBus.readWord(N64SpMemory.DMEM_BASE + 0x100)) // No unrelated write.
+    }
+
     @Test fun executesScalarArithmeticAndStoresResultInDmem() {
         val bus = N64MemoryBus()
         val rsp = RspCore(bus)
