@@ -1466,6 +1466,20 @@ class R4300CpuTest {
         assertEquals(0x56780000, cpu.readWord(0x100))
     }
 
+    @Test fun kseg1VirtualDataAddressesReachSpDmemThroughPhysicalBus() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0xA400), // r1 = sign-extended KSEG1 SP DMEM base
+            iType(0x09, 0, 2, 0x1234), // r2 = 0x1234
+            iType(0x2B, 1, 2, 0),      // SW to 0xA4000000 -> physical SP DMEM
+            iType(0x23, 1, 3, 0)       // LW through the same virtual address
+        ))
+
+        repeat(4) { cpu.step() }
+
+        assertEquals(0x1234L, cpu.register(3))
+    }
+
     @Test fun defaultRamCoversEightMibRdramRange() {
         val cpu = R4300Cpu()
         val lastWordAddress = R4300Cpu.DEFAULT_RDRAM_SIZE - 4
