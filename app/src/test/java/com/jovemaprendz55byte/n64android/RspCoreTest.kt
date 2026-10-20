@@ -170,6 +170,23 @@ class RspCoreTest {
         assertEquals(0x1234, bus.readWord(N64SpMemory.DMEM_BASE))
     }
 
+    @Test fun cop2Element15WrapsMfc2ReadToByteZeroAndSignExtends() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 0xABCD))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, cop2(4, 1, 3, 15)) // byte 15 gets 0xAB only
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, iType(0x09, 0, 1, 0x1234))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, cop2(4, 1, 3, 0)) // bytes 0..1 = 0x12, 0x34
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, cop2(0, 2, 3, 15)) // bytes 15 and 0 => 0xAB12
+        bus.writeWord(N64SpMemory.IMEM_BASE + 20, iType(0x2B, 0, 2, 0))
+
+        rsp.start()
+        repeat(6) { assertTrue("RSP stopped at instruction $it", rsp.step()) }
+
+        assertEquals(0xFFFF_AB12.toInt(), rsp.register(2))
+        assertEquals(0xFFFF_AB12.toInt(), bus.readWord(N64SpMemory.DMEM_BASE))
+    }
+
     @Test fun vectorAddAndBitwiseLogicOperateOnLanes() {
         val bus = N64MemoryBus()
         val rsp = RspCore(bus)
