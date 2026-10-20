@@ -1536,12 +1536,12 @@ class R4300CpuTest {
     }
 
 
-    @Test fun mfc0AndMtc0TransferValuesThroughCop0Registers() {
+    @Test fun mfc0AndMtc0TransferValuesThroughWritableCop0Registers() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
             iType(0x09, 0, 1, 42),       // ADDIU r1, r0, 42
-            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (13 shl 11), // MTC0 r1, Cause
-            (0x10 shl 26) or (2 shl 16) or (13 shl 11),                 // MFC0 r2, Cause
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (14 shl 11), // MTC0 r1, EPC
+            (0x10 shl 26) or (2 shl 16) or (14 shl 11),                 // MFC0 r2, EPC
         ))
         repeat(3) { cpu.step() }
         assertEquals(42L, cpu.register(2))
@@ -1552,8 +1552,8 @@ class R4300CpuTest {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
             iType(0x0F, 0, 1, 0x8000), // LUI r1, 0x8000 -> 0xFFFFFFFF80000000
-            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (13 shl 11), // MTC0 r1, Cause
-            (0x10 shl 26) or (2 shl 16) or (13 shl 11) // MFC0 r2, Cause
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (14 shl 11), // MTC0 r1, EPC
+            (0x10 shl 26) or (2 shl 16) or (14 shl 11) // MFC0 r2, EPC
         ))
 
         repeat(3) { cpu.step() }
@@ -1561,6 +1561,19 @@ class R4300CpuTest {
         assertEquals(-2147483648L, cpu.register(1))
         assertEquals(-2147483648L, cpu.register(2))
         assertEquals(12L, cpu.pc)
+    }
+
+    @Test fun mtc0CauseOnlyWritesSoftwareInterruptPendingBits() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, -1), // ADDIU r1, r0, -1
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (13 shl 11), // MTC0 r1, Cause
+            (0x10 shl 26) or (2 shl 16) or (13 shl 11) // MFC0 r2, Cause
+        ))
+
+        repeat(3) { cpu.step() }
+
+        assertEquals(0x300L, cpu.register(2))
     }
 
     @Test fun eretJumpsToEpcAndClearsExceptionLevelForSimplifiedCore() {

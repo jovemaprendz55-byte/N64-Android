@@ -178,7 +178,15 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         when (opcode) {
             0x10 -> when (rs) {
                 0x00 -> writeRegister(rt, cp0[rd].toInt().toLong()) // MFC0: sign-extend the 32-bit CP0 value
-                0x04 -> cp0[rd] = b.toInt().toLong() // MTC0: write the low 32 bits
+                0x04 -> {
+                    val value = b.toInt()
+                    cp0[rd] = if (rd == 13) {
+                        // Only software interrupt pending bits IP0/IP1 are writable in Cause.
+                        ((cp0[rd].toInt() and 0xFFFF_FCFF) or (value and 0x0000_0300)).toLong()
+                    } else {
+                        value.toLong()
+                    }
+                } // MTC0: honor Cause's writable-bit mask
                 0x10 -> when (funct) {
                     0x18 -> {
                         // ERET: return to EPC and clear Status.EXL. Exception
