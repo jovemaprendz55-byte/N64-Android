@@ -27,6 +27,24 @@ class RspCoreTest {
         assertEquals(12, rsp.register(2))
     }
 
+    @Test fun conditionalBranchExecutesDelaySlotAndSkipsUntakenInstructions() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 1)) // r1 = 1
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, iType(0x04, 1, 1, 2)) // branch to PC 16
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, iType(0x09, 0, 2, 7)) // delay slot
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, iType(0x09, 0, 2, 99)) // skipped
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, iType(0x2B, 0, 2, 0)) // store r2
+        bus.writeWord(N64SpMemory.IMEM_BASE + 20, 0x0000000D) // BREAK
+
+        rsp.start()
+        repeat(5) { rsp.step() }
+
+        assertEquals(7, bus.readWord(N64SpMemory.DMEM_BASE))
+        assertEquals(7, rsp.register(2))
+        assertEquals(20, rsp.pc)
+    }
+
     @Test fun registerZeroCannotBeChanged() {
         val bus = N64MemoryBus()
         val rsp = RspCore(bus)
