@@ -129,6 +129,22 @@ class N64MemoryBusTest {
         assertEquals(0, bus.readByte(N64SpMemory.DMEM_BASE + 0x30).toInt())
     }
 
+
+    @Test fun spDmaTargetsImemWhenSpMemoryAddressSelectsInstructionBank() {
+        val bus = N64MemoryBus()
+        bus.loadRdram(0x200L, byteArrayOf(
+            0x12, 0x34, 0x56, 0x78, 0x01, 0x23, 0x45, 0x67
+        ))
+        bus.writeWord(N64MemoryBus.SP_MEM_ADDR, 0x1000)
+        bus.writeWord(N64MemoryBus.SP_DRAM_ADDR, 0x200)
+        bus.writeWord(N64MemoryBus.SP_RD_LEN, 7)
+
+        assertEquals(0x12345678, bus.readWord(N64SpMemory.IMEM_BASE))
+        assertEquals(0x01234567, bus.readWord(N64SpMemory.IMEM_BASE + 4))
+        assertEquals(0, bus.readWord(N64SpMemory.DMEM_BASE))
+        assertEquals(0, bus.readWord(N64MemoryBus.SP_DMA_BUSY))
+    }
+
     @Test fun spDmaCopiesRdramToDmemAndBack() {
         val bus = N64MemoryBus()
         bus.loadRdram(0x100L, byteArrayOf(
