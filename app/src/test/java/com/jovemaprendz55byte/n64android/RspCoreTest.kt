@@ -448,6 +448,30 @@ class RspCoreTest {
     }
 
 
+    @Test fun conditionalMoveInstructionsRespectZeroAndNonzeroConditions() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 42)) // r1 = 42
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, iType(0x09, 0, 2, 0)) // r2 = 0
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, iType(0x09, 0, 3, 9)) // r3 = 9
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, rType(1, 2, 3, 0x0A)) // MOVZ r3,r1,r2 => 42
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, iType(0x09, 0, 2, 1)) // r2 = 1
+        bus.writeWord(N64SpMemory.IMEM_BASE + 20, rType(1, 2, 4, 0x0B)) // MOVN r4,r1,r2 => 42
+        bus.writeWord(N64SpMemory.IMEM_BASE + 24, rType(1, 2, 3, 0x0A)) // MOVZ not taken; r3 stays 42
+        bus.writeWord(N64SpMemory.IMEM_BASE + 28, rType(1, 0, 5, 0x0B)) // MOVN not taken; r5 stays 0
+        bus.writeWord(N64SpMemory.IMEM_BASE + 32, 0x0000000D) // BREAK
+
+        rsp.start()
+        repeat(8) { index ->
+            assertTrue("RSP stopped at conditional move $index (PC=${rsp.pc})", rsp.step())
+        }
+
+        assertEquals(42, rsp.register(3))
+        assertEquals(42, rsp.register(4))
+        assertEquals(0, rsp.register(5))
+        assertFalse(rsp.step())
+    }
+
     @Test fun branchAndLinkWritesReturnAddressAndExecutesDelaySlot() {
         val bus = N64MemoryBus()
         val rsp = RspCore(bus)
