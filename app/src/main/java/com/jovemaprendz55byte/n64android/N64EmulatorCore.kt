@@ -43,12 +43,19 @@ class N64EmulatorCore(
     fun executeRspFromImem(entryPoint: Int, instructionBudget: Int): RspExecutionResult {
         require(instructionBudget > 0) { "Instruction budget must be positive" }
         rsp.start(entryPoint)
+        var executed = 0
         return try {
-            val executed = rsp.run(instructionBudget)
+            while (executed < instructionBudget && !rsp.halted && !memoryBus.isSpHalted()) {
+                val continued = rsp.step()
+                // A BREAK is still an executed instruction; a thrown decode/memory
+                // error is not counted, while earlier completed instructions are.
+                executed++
+                if (!continued) break
+            }
             RspExecutionResult(executed, rsp.pc, rsp.halted)
         } catch (error: Exception) {
             RspExecutionResult(
-                instructionsExecuted = 0,
+                instructionsExecuted = executed,
                 programCounter = rsp.pc,
                 halted = rsp.halted,
                 errorMessage = error.message ?: error::class.java.simpleName
