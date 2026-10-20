@@ -695,6 +695,35 @@ class RspCoreTest {
         }
     }
 
+    @Test fun vectorQuadLoadAndStoreStopAtTheNextMemoryBoundary() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        for (index in 0 until 16) {
+            bus.writeByte(N64SpMemory.DMEM_BASE + 0x20 + index, (0x40 + index).toByte())
+        }
+        // Effective address 0x23, element 4: LQV transfers 12 bytes (0x23..0x2E).
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 0x23))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, vectorMemory(0x32, 2, 1, 4, 0, subOperation = 4))
+        // SQV writes the same 12 bytes to 0x43..0x4E.
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, iType(0x09, 0, 1, 0x43))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, vectorMemory(0x3A, 2, 1, 4, 0, subOperation = 4))
+
+        rsp.start()
+        repeat(4) { index ->
+            assertTrue("RSP stopped at quad load/store instruction $index", rsp.step())
+        }
+
+        for (index in 0 until 12) {
+            assertEquals(
+                "copied byte $index",
+                0x43 + index,
+                bus.readByte(N64SpMemory.DMEM_BASE + 0x43 + index).toInt() and 0xFF
+            )
+        }
+        // Bytes after the boundary must remain untouched.
+        assertEquals(0, bus.readByte(N64SpMemory.DMEM_BASE + 0x4F).toInt() and 0xFF)
+    }
+
     private fun rType(rs: Int, rt: Int, rd: Int, funct: Int): Int =
         (rs shl 21) or (rt shl 16) or (rd shl 11) or (funct and 63)
 
