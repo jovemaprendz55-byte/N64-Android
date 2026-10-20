@@ -99,6 +99,21 @@ class RspCoreTest {
         assertEquals(20, rsp.pc)
     }
 
+    @Test fun conditionalBranchAndLinkWritesReturnAddressWhenNotTaken() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x01, 1, 0x10, 2)) // BLTZAL r1, target; r1=0
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, iType(0x09, 0, 2, 7)) // delay slot
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, 0x0000000D) // BREAK
+
+        rsp.start()
+        assertTrue(rsp.step())
+        assertTrue(rsp.step())
+        assertEquals(8, rsp.register(31))
+        assertEquals(7, rsp.register(2))
+        assertFalse(rsp.step())
+    }
+
     @Test fun supportsSignedImmediateCompareXorAndSignedHalfwordLoad() {
         val bus = N64MemoryBus()
         val rsp = RspCore(bus)
