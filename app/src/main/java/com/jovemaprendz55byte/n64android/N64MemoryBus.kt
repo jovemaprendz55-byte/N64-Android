@@ -21,6 +21,8 @@ internal class N64MemoryBus(
         }
     })
 
+    private val videoInterface = N64VideoInterface(::readWord, ::readHalf)
+
     private var spMemAddress = 0
     private var spDramAddress = 0
     private var spReadLength = 0
@@ -89,6 +91,7 @@ internal class N64MemoryBus(
                     (rdram[address + 3].toInt() and 0xFF)
             }
             N64MemoryMap.Region.SP_REGISTERS -> readSpRegister(physicalAddress)
+            N64MemoryMap.Region.VI_REGISTERS -> videoInterface.readRegister(physicalAddress)
             N64MemoryMap.Region.CARTRIDGE_DOMAIN -> readCartridgeWord(physicalAddress)
             else -> unsupported(physicalAddress)
         }
@@ -108,6 +111,7 @@ internal class N64MemoryBus(
                 rdram[address + 3] = value.toByte()
             }
             N64MemoryMap.Region.SP_REGISTERS -> writeSpRegister(physicalAddress, value)
+            N64MemoryMap.Region.VI_REGISTERS -> videoInterface.writeRegister(physicalAddress, value)
             else -> unsupported(physicalAddress)
         }
     }
@@ -213,6 +217,8 @@ internal class N64MemoryBus(
             spStatus = spStatus and SP_STATUS_DMA_BUSY.inv()
         }
     }
+
+    internal fun captureVideoFrame(): N64VideoInterface.Frame? = videoInterface.captureFrame()
 
     internal fun isSpHalted(): Boolean = spStatus and SP_STATUS_HALT != 0
 
