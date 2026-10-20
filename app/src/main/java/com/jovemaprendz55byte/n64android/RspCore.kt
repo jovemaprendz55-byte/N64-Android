@@ -2,7 +2,7 @@ package com.jovemaprendz55byte.n64android
 
 /**
  * Early RSP interpreter foundation. Supports a subset of scalar instructions,
- * basic COP0 transfers to SP registers, MFC2/MTC2 lane transfers, and BREAK.
+ * basic COP0 transfers to SP registers, byte-accurate MFC2/MTC2 transfers, and BREAK.
  * Vector ALU operations, accurate DMA timing, interrupts, and full task
  * execution remain unimplemented.
  */
@@ -87,8 +87,15 @@ internal class RspCore(private val bus: N64MemoryBus) {
                 else -> unsupported(instruction, instructionPc)
             }
             0x12 -> when (rs) {
-                0x00 -> writeReg(rt, vector[vectorRegister][(element ushr 1) and 7].toInt()) // MFC2
-                0x04 -> vector[vectorRegister][(element ushr 1) and 7] = b.toShort() // MTC2
+                0x00 -> {
+                    val value = (getVectorByte(vectorRegister, element) shl 8) or
+                        getVectorByte(vectorRegister, element + 1)
+                    writeReg(rt, value.toShort().toInt()) // MFC2 reads two consecutive bytes.
+                }
+                0x04 -> {
+                    setVectorByte(vectorRegister, element, b ushr 8)
+                    if (element != 15) setVectorByte(vectorRegister, element + 1, b)
+                } // MTC2 writes two bytes, except element 15 writes only the high byte.
                 in 0x10..0x1F -> executeVectorAlu(instruction, instructionPc)
                 else -> unsupported(instruction, instructionPc)
             }
@@ -218,6 +225,23 @@ internal class RspCore(private val bus: N64MemoryBus) {
 
     private fun dmemAddress(offset: Int): Long =
         N64SpMemory.DMEM_BASE + (offset and 0xFFF).toLong()
+
+    /** Vector byte 0 is the high byte of lane 0; byte indices wrap modulo 16. */
+    private fun getVectorByte(register: Int, element: Int): Int {
+        val lane = (element and 15) ushr 1
+        val value = vector[register][lane].toInt() and 0xFFFF
+        return if (element and 1 == 0) value ushr 8 else value and 0xFF
+    }
+
+    private fun setVectorByte(register: Int, element: Int, value: Int) {
+        val lane = (element and 15) ushr 1
+        val old = vector[register][lane].toInt() and 0xFFFF
+        vector[register][lane] = (if (element and 1 == 0) {
+            ((value and 0xFF) shl 8) or (old and 0x00FF)
+        } else {
+            (old and 0xFF00) or (value and 0xFF)
+        }).toShort()
+    }
 
     private fun unsupported(instruction: Int, address: Int): Nothing =
         throw IllegalArgumentException(

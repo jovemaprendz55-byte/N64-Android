@@ -155,6 +155,21 @@ class RspCoreTest {
     }
 
 
+    @Test fun cop2TransfersUseByteElementsIncludingOddOffsets() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 0x1234))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, cop2(4, 1, 3, 5)) // MTC2 v3 byte 5 = 0x12, byte 6 = 0x34
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, cop2(0, 2, 3, 5)) // MFC2 reads bytes 5 and 6
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, iType(0x2B, 0, 2, 0))
+
+        rsp.start()
+        repeat(4) { assertTrue(rsp.step()) }
+
+        assertEquals(0x1234, rsp.register(2))
+        assertEquals(0x1234, bus.readWord(N64SpMemory.DMEM_BASE))
+    }
+
     @Test fun vectorAddAndBitwiseLogicOperateOnLanes() {
         val bus = N64MemoryBus()
         val rsp = RspCore(bus)
