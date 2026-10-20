@@ -27,7 +27,7 @@ internal class RspCore(private val bus: N64MemoryBus) {
         pc = entryPoint
         pendingBranchTarget = null
         halted = false
-        bus.writeWord(N64MemoryBus.SP_STATUS, 1) // clear HALT command
+        bus.writeWord(N64MemoryBus.SP_STATUS, (1 shl 0) or (1 shl 2)) // clear HALT and stale BROKE
     }
 
     /** Executes one scalar instruction; returns false when halted or BREAK executes. */
@@ -116,7 +116,11 @@ internal class RspCore(private val bus: N64MemoryBus) {
     fun run(maxInstructions: Int): Int {
         require(maxInstructions > 0) { "Instruction budget must be positive" }
         var executed = 0
-        while (executed < maxInstructions && step()) executed++
+        while (executed < maxInstructions && !halted && !bus.isSpHalted()) {
+            val continued = step()
+            executed++ // Count BREAK as an executed instruction too.
+            if (!continued) break
+        }
         return executed
     }
 
