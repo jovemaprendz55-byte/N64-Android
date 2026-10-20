@@ -213,7 +213,11 @@ class RspCoreTest {
         bus.writeWord(N64SpMemory.IMEM_BASE + 32, iType(0x2B, 0, 4, 0))
 
         rsp.start()
-        repeat(9) { assertTrue("RSP stopped at instruction $it", rsp.step()) }
+        repeat(7) { index ->
+            assertTrue("RSP stopped before vector operation at instruction $index (PC=${rsp.pc})", rsp.step())
+        }
+        assertTrue("RSP stopped while reading selected result (PC=${rsp.pc})", rsp.step())
+        assertTrue("RSP stopped while storing selected result (PC=${rsp.pc})", rsp.step())
 
         assertEquals(0x32, bus.readWord(N64SpMemory.DMEM_BASE))
     }
