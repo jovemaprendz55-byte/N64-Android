@@ -8,10 +8,12 @@ package com.jovemaprendz55byte.n64android
  */
 internal class N64MemoryBus(
     rdramSize: Int = R4300Cpu.DEFAULT_RDRAM_SIZE,
-    private val spMemory: N64SpMemory = N64SpMemory()
+    private val spMemory: N64SpMemory = N64SpMemory(),
+    private val controllerPort: N64ControllerPort = N64ControllerPort()
 ) {
     private var cartridgeRom: ByteArray? = null
     private val videoInterface = N64VideoInterface()
+    private val pifRam = N64PifRam(controllerPort)
 
     private val rdram = ByteArray(rdramSize.also { size ->
         require(size > 0 && size % 4 == 0) {
@@ -28,6 +30,8 @@ internal class N64MemoryBus(
     private var spWriteLength = 0
     private var spStatus = SP_STATUS_HALT
     private var spSemaphore = 0
+    private var siDramAddress = 0
+    private var siStatus = 0
 
     companion object {
         const val SP_MEM_ADDR = 0x0404_0000L
@@ -39,12 +43,19 @@ internal class N64MemoryBus(
         const val SP_DMA_BUSY = 0x0404_0018L
         const val SP_SEMAPHORE = 0x0404_001CL
 
+        const val SI_DRAM_ADDR = 0x0480_0000L
+        const val SI_PIF_ADDR_RD64B = 0x0480_0004L
+        const val SI_PIF_ADDR_WR64B = 0x0480_0010L
+        const val SI_STATUS = 0x0480_0018L
+
         private const val SP_STATUS_HALT = 1 shl 0
         private const val SP_STATUS_BROKE = 1 shl 1
         private const val SP_STATUS_DMA_BUSY = 1 shl 2
         private const val SP_STATUS_DMA_FULL = 1 shl 3
         private const val SP_STATUS_SINGLE_STEP = 1 shl 5
         private const val SP_STATUS_INTERRUPT_BREAK = 1 shl 6
+        private const val SI_STATUS_DMA_BUSY = 1 shl 0
+        private const val SI_STATUS_INTERRUPT = 1 shl 12
     }
 
     fun readByte(physicalAddress: Long): Byte = when (region(physicalAddress)) {
@@ -52,6 +63,7 @@ internal class N64MemoryBus(
         N64MemoryMap.Region.SP_DMEM, N64MemoryMap.Region.SP_IMEM ->
             spMemory.readByte(physicalAddress)
         N64MemoryMap.Region.CARTRIDGE_DOMAIN -> readCartridgeByte(physicalAddress)
+        N64MemoryMap.Region.PIF -> pifRam.readByte(physicalAddress)
         else -> unsupported(physicalAddress)
     }
 
@@ -60,6 +72,7 @@ internal class N64MemoryBus(
             N64MemoryMap.Region.RDRAM -> rdram[rdramIndex(physicalAddress)] = value
             N64MemoryMap.Region.SP_DMEM, N64MemoryMap.Region.SP_IMEM ->
                 spMemory.writeByte(physicalAddress, value)
+            N64MemoryMap.Region.PIF -> pifRam.writeByte(physicalAddress, value)
             else -> unsupported(physicalAddress)
         }
     }
@@ -91,6 +104,7 @@ internal class N64MemoryBus(
             }
             N64MemoryMap.Region.SP_REGISTERS -> readSpRegister(physicalAddress)
             N64MemoryMap.Region.VI_REGISTERS -> videoInterface.readRegister(physicalAddress)
+            N64MemoryMap.Region.SI_REGISTERS -> readSiRegister(physicalAddress)
             N64MemoryMap.Region.CARTRIDGE_DOMAIN -> readCartridgeWord(physicalAddress)
             else -> unsupported(physicalAddress)
         }
@@ -111,6 +125,7 @@ internal class N64MemoryBus(
             }
             N64MemoryMap.Region.SP_REGISTERS -> writeSpRegister(physicalAddress, value)
             N64MemoryMap.Region.VI_REGISTERS -> videoInterface.writeRegister(physicalAddress, value)
+            N64MemoryMap.Region.SI_REGISTERS -> writeSiRegister(physicalAddress, value)
             else -> unsupported(physicalAddress)
         }
     }
@@ -158,6 +173,49 @@ internal class N64MemoryBus(
             "RDRAM load crosses its boundary"
         }
         bytes.copyInto(rdram, start)
+    }
+
+    private fun readSiRegister(address: Long): Int = when (address) {
+        SI_DRAM_ADDR -> siDramAddress
+        SI_PIF_ADDR_RD64B, SI_PIF_ADDR_WR64B -> 0
+        SI_STATUS -> siStatus
+        else -> throw IllegalArgumentException("Unknown SI register 0x${address.toString(16)}")
+    }
+
+    private fun writeSiRegister(address: Long, value: Int) {
+        when (address) {
+            SI_DRAM_ADDR -> siDramAddress = value and 0x00FF_FFF8
+            SI_PIF_ADDR_WR64B -> {
+                siStatus = siStatus or SI_STATUS_DMA_BUSY
+                try {
+                    val source = ByteArray(N64PifRam.SIZE) { offset ->
+                        readByte(siDramAddress.toLong() + offset)
+                    }
+                    pifRam.write64(source)
+                } finally {
+                    siStatus = siStatus and SI_STATUS_DMA_BUSY.inv()
+                }
+            }
+            SI_PIF_ADDR_RD64B -> {
+                siStatus = siStatus or SI_STATUS_DMA_BUSY
+                try {
+                    val destination = pifRam.read64()
+                    destination.forEachIndexed { offset, byte ->
+                        writeByte(siDramAddress.toLong() + offset, byte)
+                    }
+                } finally {
+                    siStatus = siStatus and SI_STATUS_DMA_BUSY.inv()
+                }
+            }
+            SI_STATUS -> {
+                // SI interrupt and DMA timing are not modeled; bit 0 is the
+                // write-one-to-clear interrupt acknowledge.
+                if (value and SI_STATUS_INTERRUPT != 0) {
+                    siStatus = siStatus and SI_STATUS_INTERRUPT.inv()
+                }
+            }
+            else -> throw IllegalArgumentException("Unknown SI register 0x${address.toString(16)}")
+        }
     }
 
     private fun readSpRegister(address: Long): Int = when (address) {
