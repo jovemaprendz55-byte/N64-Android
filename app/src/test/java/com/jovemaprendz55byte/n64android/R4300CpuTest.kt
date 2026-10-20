@@ -448,6 +448,28 @@ class R4300CpuTest {
         }
     }
 
+    @Test fun movzAndMovnUseRtAsConditionAndRsAsSource() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 11), // r1 = source value
+            iType(0x09, 0, 2, 0),  // r2 = zero
+            iType(0x09, 0, 3, 33), // r3 = destination sentinel
+            rType(1, 2, 3, 0, 0x0A), // MOVZ r3, r1, r2: move because rt == 0
+            iType(0x09, 0, 2, 1),  // r2 = nonzero
+            iType(0x09, 0, 4, 44), // r4 = destination sentinel
+            rType(1, 2, 4, 0, 0x0B), // MOVN r4, r1, r2: move because rt != 0
+            iType(0x09, 0, 5, 55), // r5 = destination sentinel
+            rType(1, 0, 5, 0, 0x0B), // MOVN must not move when rt == 0
+            iType(0x09, 0, 6, 66), // r6 = destination sentinel
+            rType(1, 2, 6, 0, 0x0A)  // MOVZ must not move when rt != 0
+        ))
+        repeat(11) { cpu.step() }
+        assertEquals(11L, cpu.register(3))
+        assertEquals(11L, cpu.register(4))
+        assertEquals(55L, cpu.register(5))
+        assertEquals(66L, cpu.register(6))
+    }
+
     @Test fun supportsSignedAndUnsignedByteAndHalfwordLoads() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(iType(0x20, 0, 1, 0x100), iType(0x24, 0, 2, 0x100), iType(0x21, 0, 3, 0x102), iType(0x25, 0, 4, 0x102)))
