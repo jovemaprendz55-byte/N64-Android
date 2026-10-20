@@ -24,6 +24,13 @@ object N64VideoScanout {
         require(sourceOffset >= 0 && sourceOffset <= source.size) { "Invalid source offset" }
         if (sourceWidth == 0 || sourceHeight == 0) return
 
+        // Validate before writing any pixels to avoid partially updated frames.
+        val requiredEnd = sourceOffset.toLong() +
+            (sourceHeight - 1L) * sourceStride.toLong() + sourceWidth.toLong() * 2L
+        require(requiredEnd <= source.size.toLong()) {
+            "Source buffer does not contain the requested pixels"
+        }
+
         for (sy in 0 until sourceHeight) {
             val dy = destinationY.toLong() + sy
             if (dy !in 0L until destination.height.toLong()) continue
@@ -31,9 +38,6 @@ object N64VideoScanout {
                 val dx = destinationX.toLong() + sx
                 if (dx !in 0L until destination.width.toLong()) continue
                 val p = sourceOffset.toLong() + sy.toLong() * sourceStride + sx.toLong() * 2L
-                require(p >= 0L && p + 1L < source.size.toLong()) {
-                    "Source buffer does not contain the requested pixels"
-                }
                 val pixel = ((source[p.toInt()].toInt() and 0xFF) shl 8) or
                     (source[p.toInt() + 1].toInt() and 0xFF)
                 destination.setRgba5551(dx.toInt(), dy.toInt(), pixel)
