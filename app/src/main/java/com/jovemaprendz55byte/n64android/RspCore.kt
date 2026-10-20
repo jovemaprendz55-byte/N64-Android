@@ -174,12 +174,12 @@ internal class RspCore(private val bus: N64MemoryBus) {
         address: Int
     ) {
         val subOperation = (instruction ushr 11) and 31
-        if (subOperation !in 0..1) unsupported(instruction, address) // LBV/SBV and LSV/SSV
+        if (subOperation !in 0..2) unsupported(instruction, address) // LBV/SBV, LSV/SSV, LLV/SLV
         val vt = (instruction ushr 16) and 31
         val element = (instruction ushr 7) and 15
         val offset7 = instruction and 0x7F
         val signedOffset = if (offset7 and 0x40 != 0) offset7 - 0x80 else offset7
-        val byteCount = 1 shl subOperation // LBV/SBV: 1 byte; LSV/SSV: 2 bytes.
+        val byteCount = 1 shl subOperation // 1, 2, or 4 bytes for the implemented forms.
         val memoryStart = base + signedOffset * byteCount
         for (index in 0 until byteCount) {
             val addressForByte = dmemAddress(memoryStart + index)
