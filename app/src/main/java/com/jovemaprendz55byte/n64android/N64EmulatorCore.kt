@@ -96,6 +96,9 @@ class N64EmulatorCore(
 
         var executed = 0
         while (executed < instructionBudget) {
+            // step() advances PC before decoding/executing; preserve the address
+            // of this instruction so diagnostics identify the actual failure.
+            val instructionAddress = cpu.pc
             try {
                 cpu.step()
                 executed++
@@ -103,7 +106,7 @@ class N64EmulatorCore(
                 executionStarted = false
                 return ExecutionResult(
                     instructionsExecuted = executed,
-                    programCounter = cpu.pc,
+                    programCounter = instructionAddress,
                     stopReason = StopReason.EXECUTION_ERROR,
                     errorMessage = error.message ?: error::class.java.simpleName
                 )
