@@ -152,14 +152,14 @@ internal class RspCore(private val bus: N64MemoryBus) {
             0x01 -> when (rt) {
                 0x00 -> if (a < 0) pendingBranchTarget = (pc + (imm shl 2)) and 0xFFF // BLTZ
                 0x01 -> if (a >= 0) pendingBranchTarget = (pc + (imm shl 2)) and 0xFFF // BGEZ
-                0x10 -> if (a < 0) {
+                0x10 -> {
                     writeReg(31, (instructionPc + 8) and 0xFFF)
-                    pendingBranchTarget = (pc + (imm shl 2)) and 0xFFF
-                } // BLTZAL
-                0x11 -> if (a >= 0) {
+                    if (a < 0) pendingBranchTarget = (pc + (imm shl 2)) and 0xFFF
+                } // BLTZAL writes the link register even when not taken
+                0x11 -> {
                     writeReg(31, (instructionPc + 8) and 0xFFF)
-                    pendingBranchTarget = (pc + (imm shl 2)) and 0xFFF
-                } // BGEZAL
+                    if (a >= 0) pendingBranchTarget = (pc + (imm shl 2)) and 0xFFF
+                } // BGEZAL writes the link register even when not taken
                 else -> unsupported(instruction, instructionPc)
             }
             0x04 -> if (a == b) pendingBranchTarget = (pc + (imm shl 2)) and 0xFFF // BEQ
