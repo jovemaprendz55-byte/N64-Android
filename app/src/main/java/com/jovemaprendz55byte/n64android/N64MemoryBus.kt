@@ -42,6 +42,8 @@ internal class N64MemoryBus(
         private const val SP_STATUS_BROKE = 1 shl 1
         private const val SP_STATUS_DMA_BUSY = 1 shl 2
         private const val SP_STATUS_DMA_FULL = 1 shl 3
+        private const val SP_STATUS_SINGLE_STEP = 1 shl 5
+        private const val SP_STATUS_INTERRUPT_BREAK = 1 shl 6
     }
 
     fun readByte(physicalAddress: Long): Byte = when (region(physicalAddress)) {
@@ -223,7 +225,27 @@ internal class N64MemoryBus(
         if (value and (1 shl 0) != 0) spStatus = spStatus and SP_STATUS_HALT.inv()
         if (value and (1 shl 1) != 0) spStatus = spStatus or SP_STATUS_HALT
         if (value and (1 shl 2) != 0) spStatus = spStatus and SP_STATUS_BROKE.inv()
-        // Interrupt and signal command bits are accepted but interrupt wiring is not modeled.
+        if (value and (1 shl 3) != 0) {
+            spStatus = spStatus and SP_STATUS_INTERRUPT_BREAK.inv()
+        }
+        if (value and (1 shl 4) != 0) {
+            spStatus = spStatus or SP_STATUS_INTERRUPT_BREAK
+        }
+        if (value and (1 shl 5) != 0) {
+            spStatus = spStatus and SP_STATUS_SINGLE_STEP.inv()
+        }
+        if (value and (1 shl 6) != 0) {
+            spStatus = spStatus or SP_STATUS_SINGLE_STEP
+        }
+
+        // Signal commands use alternating clear/set bits (7/8 through 21/22).
+        for (signal in 0 until 8) {
+            val statusBit = 1 shl (7 + signal)
+            val clearCommandBit = 1 shl (7 + signal * 2)
+            val setCommandBit = 1 shl (8 + signal * 2)
+            if (value and clearCommandBit != 0) spStatus = spStatus and statusBit.inv()
+            if (value and setCommandBit != 0) spStatus = spStatus or statusBit
+        }
     }
 
     private fun rdramIndex(address: Long): Int {
