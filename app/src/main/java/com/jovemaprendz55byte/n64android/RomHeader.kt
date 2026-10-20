@@ -19,12 +19,19 @@ data class RomHeader(
                 matches(bytes, 0x40, 0x12, 0x37, 0x80) -> Format.N64_LITTLE_ENDIAN
                 else -> return null
             }
-            val title = bytes.copyOfRange(0x20, 0x34)
-                .map { (it.toInt() and 0xFF).toChar() }
+            // Header fields are stored in the ROM's detected byte order.
+            // Read their canonical big-endian positions without copying the ROM.
+            fun canonicalByte(index: Int): Byte = when (format) {
+                Format.Z64_BIG_ENDIAN -> bytes[index]
+                Format.V64_BYTE_SWAPPED -> bytes[index xor 1]
+                Format.N64_LITTLE_ENDIAN -> bytes[(index and -4) + (3 - (index and 3))]
+            }
+            val title = (0x20 until 0x34)
+                .map { (canonicalByte(it).toInt() and 0xFF).toChar() }
                 .joinToString("")
                 .trim { it <= ' ' || it == '\u0000' }
                 .ifBlank { "Sem título no cabeçalho" }
-            val rawCountry = bytes[0x3E].toInt() and 0xFF
+            val rawCountry = canonicalByte(0x3E).toInt() and 0xFF
             val country = rawCountry.takeIf { it in 0x20..0x7E }?.toChar()
             return RomHeader(format, title, country)
         }
