@@ -77,6 +77,11 @@ internal class RspCore(private val bus: N64MemoryBus) {
                 0x06 -> writeReg(rd, b ushr (a and 31)) // SRLV
                 0x07 -> writeReg(rd, b shr (a and 31)) // SRAV
                 0x08 -> pendingBranchTarget = a and 0xFFC // JR
+                0x09 -> {
+                    val target = a and 0xFFC
+                    writeReg(rd, (instructionPc + 8) and 0xFFF)
+                    pendingBranchTarget = target
+                } // JALR; capture target before writing link in case rd == rs
                 0x0D -> {
                     pc = instructionPc
                     bus.markSpBroke()
