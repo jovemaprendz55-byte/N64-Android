@@ -69,7 +69,10 @@ internal class RspCore(private val bus: N64MemoryBus) {
                 0x00 -> writeReg(rd, b shl shift) // SLL
                 0x02 -> writeReg(rd, b ushr shift) // SRL
                 0x03 -> writeReg(rd, b shr shift) // SRA
-                0x08 -> pendingBranchTarget = a and 0xFFF // JR
+                0x04 -> writeReg(rd, b shl (a and 31)) // SLLV
+                0x06 -> writeReg(rd, b ushr (a and 31)) // SRLV
+                0x07 -> writeReg(rd, b shr (a and 31)) // SRAV
+                0x08 -> pendingBranchTarget = a and 0xFFC // JR
                 0x0D -> {
                     pc = instructionPc
                     bus.markSpBroke()
