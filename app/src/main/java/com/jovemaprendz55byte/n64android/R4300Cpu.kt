@@ -407,7 +407,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
      */
     private fun resolveRamAddress(address: Long): Int {
         val physicalAddress = N64Addressing.translateDirectMappedAddress(address)
-            ?: if (address in 0L..Int.MAX_VALUE.toLong()) address
+            ?: if (address in 0L..0x1FFF_FFFFL) address
             else throw IllegalArgumentException(
                 "Virtual address 0x%016X requires TLB translation or is outside the simplified RAM address range"
                     .format(address)
