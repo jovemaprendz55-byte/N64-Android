@@ -1,10 +1,11 @@
 package com.jovemaprendz55byte.n64android
 
 /**
- * Early RSP interpreter foundation. Supports a subset of scalar instructions,
- * basic COP0 transfers to SP registers, byte-accurate MFC2/MTC2 transfers, and BREAK.
- * Vector ALU operations, accurate DMA timing, interrupts, and full task
- * execution remain unimplemented.
+ * Partial RSP interpreter supporting a subset of scalar instructions,
+ * basic COP0 transfers to SP registers, byte-accurate MFC2/MTC2 transfers,
+ * BREAK, and a limited lane-wise vector ALU subset (VADD, VSUB, and bitwise
+ * logic). Full vector accumulator/flag behavior, accurate DMA timing,
+ * interrupts, and complete task execution remain unimplemented.
  */
 internal class RspCore(private val bus: N64MemoryBus) {
     private val gpr = IntArray(32)
