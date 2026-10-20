@@ -11,6 +11,7 @@ internal class N64MemoryBus(
     private val spMemory: N64SpMemory = N64SpMemory()
 ) {
     private var cartridgeRom: ByteArray? = null
+    private val videoInterface = N64VideoInterface()
 
     private val rdram = ByteArray(rdramSize.also { size ->
         require(size > 0 && size % 4 == 0) {
@@ -89,6 +90,7 @@ internal class N64MemoryBus(
                     (rdram[address + 3].toInt() and 0xFF)
             }
             N64MemoryMap.Region.SP_REGISTERS -> readSpRegister(physicalAddress)
+            N64MemoryMap.Region.VI_REGISTERS -> videoInterface.readRegister(physicalAddress)
             N64MemoryMap.Region.CARTRIDGE_DOMAIN -> readCartridgeWord(physicalAddress)
             else -> unsupported(physicalAddress)
         }
@@ -108,6 +110,7 @@ internal class N64MemoryBus(
                 rdram[address + 3] = value.toByte()
             }
             N64MemoryMap.Region.SP_REGISTERS -> writeSpRegister(physicalAddress, value)
+            N64MemoryMap.Region.VI_REGISTERS -> videoInterface.writeRegister(physicalAddress, value)
             else -> unsupported(physicalAddress)
         }
     }
@@ -140,6 +143,10 @@ internal class N64MemoryBus(
             ((readCartridgeByte(physicalAddress + 2).toInt() and 0xFF) shl 8) or
             (readCartridgeByte(physicalAddress + 3).toInt() and 0xFF)
     }
+
+    /** Copies the current VI framebuffer from RDRAM to a CPU-side frame. */
+    internal fun renderVideoFrame(destination: N64VideoFrameBuffer, height: Int = destination.height): Boolean =
+        videoInterface.scanout(rdram, destination, height)
 
     fun loadRdram(physicalAddress: Long, bytes: ByteArray) {
         require(region(physicalAddress) == N64MemoryMap.Region.RDRAM) {
