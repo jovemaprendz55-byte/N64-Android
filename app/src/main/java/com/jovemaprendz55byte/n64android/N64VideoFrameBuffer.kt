@@ -61,6 +61,14 @@ class N64VideoFrameBuffer(val width: Int, val height: Int) {
         require(sourceOffset >= 0 && sourceOffset <= source.size) { "Invalid source offset" }
         if (sourceWidth == 0 || sourceHeight == 0) return
 
+        // Validate the entire requested source rectangle before changing the
+        // destination, so malformed input cannot leave a partially copied frame.
+        val requiredEnd = sourceOffset.toLong() +
+            (sourceHeight - 1L) * sourceStride.toLong() + sourceWidth.toLong() * 4L
+        require(requiredEnd <= source.size.toLong()) {
+            "Source buffer does not contain the requested pixels"
+        }
+
         for (sy in 0 until sourceHeight) {
             val dy = destinationY.toLong() + sy
             if (dy !in 0L until height.toLong()) continue
@@ -69,9 +77,6 @@ class N64VideoFrameBuffer(val width: Int, val height: Int) {
                 val dx = destinationX.toLong() + sx
                 if (dx !in 0L until width.toLong()) continue
                 val p = rowStart + sx.toLong() * 4L
-                require(p >= 0L && p + 3L < source.size.toLong()) {
-                    "Source buffer does not contain the requested pixels"
-                }
                 val red = source[p.toInt()].toInt() and 0xFF
                 val green = source[p.toInt() + 1].toInt() and 0xFF
                 val blue = source[p.toInt() + 2].toInt() and 0xFF
