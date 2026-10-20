@@ -83,7 +83,7 @@ class N64EmulatorCoreTest {
         assertEquals(2, result.instructionsExecuted)
         assertEquals(N64EmulatorCore.StopReason.INSTRUCTION_BUDGET_REACHED, result.stopReason)
         assertEquals(null, result.errorMessage)
-        assertEquals(0L, result.programCounter - 0xFFFF_FFFF_B000_0040UL.toLong())
+        assertEquals(0xFFFF_FFFF_B000_0048UL.toLong(), result.programCounter)
     }
 
     private fun syntheticRomWithInstructions(vararg instructions: Int): ByteArray {
