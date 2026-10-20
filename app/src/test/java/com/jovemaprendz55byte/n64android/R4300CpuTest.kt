@@ -1583,6 +1583,24 @@ class R4300CpuTest {
         assertEquals(0, status and (1 shl 5))
     }
 
+    @Test fun cpuCanSetAndClearSpStatusSignalThroughMemoryMappedRegister() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x0404), // r1 = SP register base
+            iType(0x09, 0, 2, 1 shl 10), // set signal 1: command bit 10
+            iType(0x2B, 1, 2, 0x10), // write SP_STATUS
+            iType(0x23, 1, 3, 0x10), // read SP_STATUS
+            iType(0x09, 0, 2, 1 shl 9), // clear signal 1: command bit 9
+            iType(0x2B, 1, 2, 0x10), // write SP_STATUS
+            iType(0x23, 1, 4, 0x10) // read SP_STATUS again
+        ))
+
+        repeat(7) { cpu.step() }
+
+        assertEquals(1L shl 8, cpu.register(3) and (1L shl 8))
+        assertEquals(0L, cpu.register(4) and (1L shl 8))
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
