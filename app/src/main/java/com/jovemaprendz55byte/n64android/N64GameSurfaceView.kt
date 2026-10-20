@@ -37,9 +37,15 @@ class N64GameSurfaceView @JvmOverloads constructor(
         val pixels = frame.snapshot()
         val bitmap = Bitmap.createBitmap(pixels, frame.width, frame.height, Bitmap.Config.ARGB_8888)
         post {
+            // A frame may have been queued by a worker while this View was
+            // being detached. Do not retain a bitmap after detachment.
+            if (!isAttachedToWindow) {
+                bitmap.recycle()
+                return@post
+            }
             val old = frameBitmap
             frameBitmap = bitmap
-            old?.recycle()
+            if (old !== bitmap && old?.isRecycled == false) old.recycle()
             invalidate()
         }
     }
@@ -53,7 +59,9 @@ class N64GameSurfaceView @JvmOverloads constructor(
     }
 
     override fun onDetachedFromWindow() {
-        frameBitmap?.recycle()
+        frameBitmap?.let { bitmap ->
+            if (!bitmap.isRecycled) bitmap.recycle()
+        }
         frameBitmap = null
         super.onDetachedFromWindow()
     }
