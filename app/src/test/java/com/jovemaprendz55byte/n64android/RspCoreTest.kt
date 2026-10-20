@@ -205,11 +205,11 @@ class RspCoreTest {
         bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 0x10))
         bus.writeWord(N64SpMemory.IMEM_BASE + 4, iType(0x09, 0, 2, 0x111))
         bus.writeWord(N64SpMemory.IMEM_BASE + 8, iType(0x09, 0, 3, 0x22))
-        bus.writeWord(N64SpMemory.IMEM_BASE + 12, cop2(4, 1, 1, 0)) // v1 lane 0 = 0x10
-        bus.writeWord(N64SpMemory.IMEM_BASE + 16, cop2(4, 2, 2, 0)) // v2 lane 0 = 0x111
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, cop2(4, 1, 1, 8)) // v1 lane 4 = 0x10
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, cop2(4, 2, 2, 8)) // v2 lane 4 = 0x111
         bus.writeWord(N64SpMemory.IMEM_BASE + 20, cop2(4, 3, 2, 8)) // v2 lane 4 = 0x22
-        bus.writeWord(N64SpMemory.IMEM_BASE + 24, vectorAlu(2, 1, 3, 0x2A, element = 4))
-        bus.writeWord(N64SpMemory.IMEM_BASE + 28, cop2(0, 4, 3, 0))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 24, vectorAlu(2, 1, 3, 0x2A, element = 2))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 28, cop2(0, 4, 3, 8)) // read destination lane 4
         bus.writeWord(N64SpMemory.IMEM_BASE + 32, iType(0x2B, 0, 4, 0))
 
         rsp.start()
