@@ -187,6 +187,17 @@ internal class N64MemoryBus(
         bytes.copyInto(rdram, start)
     }
 
+    private fun requireRdramRange(physicalAddress: Long, length: Int) {
+        require(length >= 0 && region(physicalAddress) == N64MemoryMap.Region.RDRAM) {
+            "DMA range must start inside RDRAM"
+        }
+        require(physicalAddress <= Int.MAX_VALUE.toLong()) { "DMA address is too large" }
+        val start = physicalAddress.toInt()
+        require(start <= rdram.size && length <= rdram.size - start) {
+            "DMA range crosses the RDRAM boundary"
+        }
+    }
+
     private fun readSiRegister(address: Long): Int = when (address) {
         SI_DRAM_ADDR -> siDramAddress
         SI_PIF_ADDR_RD64B, SI_PIF_ADDR_WR64B -> 0
@@ -211,6 +222,9 @@ internal class N64MemoryBus(
             SI_PIF_ADDR_RD64B -> {
                 siStatus = siStatus or SI_STATUS_DMA_BUSY
                 try {
+                    // Validate the complete DMA destination before writing any
+                    // bytes, so an invalid range cannot partially corrupt RDRAM.
+                    requireRdramRange(siDramAddress.toLong(), N64PifRam.SIZE)
                     val destination = pifRam.read64()
                     destination.forEachIndexed { offset, byte ->
                         writeByte(siDramAddress.toLong() + offset, byte)
