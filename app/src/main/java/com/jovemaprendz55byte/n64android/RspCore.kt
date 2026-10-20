@@ -205,8 +205,8 @@ internal class RspCore(private val bus: N64MemoryBus) {
 
     /**
      * Implements a subset of the RSP vector load/store unit using byte transfers.
-     * The currently supported forms transfer 1, 2, 4, or 8 bytes; other
-     * suboperations are rejected until their specific alignment rules are modeled.
+     * The currently supported forms are LBV/LSV/LLV/LDV and LQV/SQV.
+     * Other suboperations are rejected until their alignment rules are modeled.
      */
     private fun executeVectorByteMemory(
         instruction: Int,
@@ -215,14 +215,23 @@ internal class RspCore(private val bus: N64MemoryBus) {
         address: Int
     ) {
         val subOperation = (instruction ushr 11) and 31
-        if (subOperation !in 0..3) unsupported(instruction, address) // LBV/SBV, LSV/SSV, LLV/SLV, LDV/SDV
+        if (subOperation !in 0..4) {
+            unsupported(instruction, address) // LBV/SBV through LDV/SDV, plus LQV/SQV.
+        }
         val vt = (instruction ushr 16) and 31
         val element = (instruction ushr 7) and 15
         val offset7 = instruction and 0x7F
         val signedOffset = if (offset7 and 0x40 != 0) offset7 - 0x80 else offset7
-        val byteCount = 1 shl subOperation // 1, 2, 4, or 8 bytes for the implemented forms.
+        val byteCount = 1 shl subOperation // 1, 2, 4, 8, or 16 bytes.
         val memoryStart = base + signedOffset * byteCount
-        for (index in 0 until byteCount) {
+        // LQV/SQV stop at the next 16-byte memory boundary and never wrap the
+        // vector register. Smaller transfers retain their byte-element wrap behavior.
+        val transferCount = if (subOperation == 4) {
+            minOf(16 - element, 16 - (memoryStart and 15))
+        } else {
+            byteCount
+        }
+        for (index in 0 until transferCount) {
             val addressForByte = dmemAddress(memoryStart + index)
             if (load) {
                 setVectorByte(vt, element + index, bus.readByte(addressForByte).toInt() and 0xFF)
