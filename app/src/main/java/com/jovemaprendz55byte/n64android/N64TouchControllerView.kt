@@ -133,7 +133,12 @@ class N64TouchControllerView @JvmOverloads constructor(
         if (button != null) {
             activePointers[pointerId] = button
             controllerPort.setButton(button, true)
-        } else if (distanceSquared(x, y, stickCenterX, stickCenterY) <= stickRadius * stickRadius * 2.25f) {
+        } else if (stickPointerId == null &&
+            distanceSquared(x, y, stickCenterX, stickCenterY) <= stickRadius * stickRadius * 2.25f
+        ) {
+            // One pointer owns the analog stick until it is released. A second
+            // finger must not steal ownership and leave the first finger's
+            // eventual ACTION_UP unable to reset the stick to neutral.
             stickPointerId = pointerId
             updateStick(x, y)
         }
