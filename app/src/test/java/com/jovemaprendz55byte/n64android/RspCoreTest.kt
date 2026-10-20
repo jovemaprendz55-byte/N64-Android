@@ -11,9 +11,9 @@ class RspCoreTest {
         val rsp = RspCore(bus)
         bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 2)) // shift amount = 2
         bus.writeWord(N64SpMemory.IMEM_BASE + 4, iType(0x09, 0, 2, -16)) // source = 0xFFFFFFF0
-        bus.writeWord(N64SpMemory.IMEM_BASE + 8, rType(2, 1, 3, 0x04)) // SLLV
-        bus.writeWord(N64SpMemory.IMEM_BASE + 12, rType(2, 1, 4, 0x06)) // SRLV
-        bus.writeWord(N64SpMemory.IMEM_BASE + 16, rType(2, 1, 5, 0x07)) // SRAV
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, rType(1, 2, 3, 0x04)) // SLLV
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, rType(1, 2, 4, 0x06)) // SRLV
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, rType(1, 2, 5, 0x07)) // SRAV
 
         rsp.start()
         repeat(5) { assertTrue(rsp.step()) }
