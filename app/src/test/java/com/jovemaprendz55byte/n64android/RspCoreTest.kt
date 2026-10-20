@@ -106,6 +106,41 @@ class RspCoreTest {
         }
     }
 
+
+    @Test fun cop0CanStartDmaFromRdramIntoDmem() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        val payload = byteArrayOf(0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x08)
+        bus.loadRdram(0x200, payload)
+
+        // Set SP_MEM_ADDR=0x100, SP_DRAM_ADDR=0x200, then SP_RD_LEN=7 (one 8-byte block).
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 0x100))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, cop0(4, 1, 0))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, iType(0x09, 0, 2, 0x200))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, cop0(4, 2, 1))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, iType(0x09, 0, 3, 7))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 20, cop0(4, 3, 2))
+
+        rsp.start()
+        repeat(6) { assertTrue(rsp.step()) }
+
+        for (i in payload.indices) {
+            assertEquals(payload[i], bus.readByte(N64SpMemory.DMEM_BASE + 0x100 + i))
+        }
+    }
+
+    @Test fun cop0CanReadSpStatusIntoScalarRegister() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        bus.writeWord(N64SpMemory.IMEM_BASE, cop0(0, 1, 4))
+        rsp.start()
+        assertTrue(rsp.step())
+        assertEquals(0, rsp.register(1) and 1) // start cleared HALT
+    }
+
+    private fun cop0(rs: Int, rt: Int, rd: Int): Int =
+        (0x10 shl 26) or (rs shl 21) or (rt shl 16) or (rd shl 11)
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 }
