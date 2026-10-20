@@ -154,6 +154,34 @@ class RspCoreTest {
         assertEquals(0x1234, rsp.register(2))
     }
 
+
+    @Test fun vectorAddAndBitwiseLogicOperateOnLanes() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 3)) // r1 = 3
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, iType(0x09, 0, 2, 4)) // r2 = 4
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, cop2(4, 1, 1, 0)) // v1[0] = 3
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, cop2(4, 2, 2, 0)) // v2[0] = 4
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, vectorAlu(2, 1, 3, 0x10)) // v3 = v1 + v2
+        bus.writeWord(N64SpMemory.IMEM_BASE + 20, cop2(0, 4, 3, 0)) // r4 = v3[0]
+        bus.writeWord(N64SpMemory.IMEM_BASE + 24, iType(0x2B, 0, 4, 0))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 28, vectorAlu(2, 1, 5, 0x2C)) // v5 = v1 XOR v2
+        bus.writeWord(N64SpMemory.IMEM_BASE + 32, cop2(0, 6, 5, 0)) // r6 = v5[0]
+        bus.writeWord(N64SpMemory.IMEM_BASE + 36, iType(0x2B, 0, 6, 4))
+
+        rsp.start()
+        repeat(10) { assertTrue(rsp.step()) }
+
+        assertEquals(7, bus.readWord(N64SpMemory.DMEM_BASE))
+        assertEquals(7, rsp.register(4))
+        assertEquals(7, bus.readWord(N64SpMemory.DMEM_BASE + 4))
+        assertEquals(7, rsp.register(6))
+    }
+
+    private fun vectorAlu(vt: Int, vs: Int, vd: Int, funct: Int): Int =
+        (0x12 shl 26) or (0x10 shl 21) or (vt shl 16) or
+            (vs shl 11) or (vd shl 6) or (funct and 63)
+
     private fun cop0(rs: Int, rt: Int, rd: Int): Int =
         (0x10 shl 26) or (rs shl 21) or (rt shl 16) or (rd shl 11)
 
