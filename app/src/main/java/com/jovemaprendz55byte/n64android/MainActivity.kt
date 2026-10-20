@@ -6,18 +6,23 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
+import java.util.concurrent.atomic.AtomicBoolean
 
 class MainActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var romDetails: TextView
     // Retain the normalized ROM in memory so the emulator core can use it later.
     private var preparedRom: ByteArray? = null
+    private var homeRoot: View? = null
+    private val emulationRunning = AtomicBoolean(false)
+    private var emulationThread: Thread? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,6 +57,10 @@ class MainActivity : Activity() {
             text = "Testar execução inicial da ROM (64 instruções)"
             setOnClickListener { runRomInstructionTest() }
         }, matchWrap())
+        root.addView(Button(this).apply {
+            text = "Iniciar emulação experimental"
+            setOnClickListener { startExperimentalEmulation() }
+        }, matchWrap())
         status = TextView(this).apply {
             text = "Escolha uma ROM N64 válida (.z64, .v64 ou .n64)."
             textSize = 16f
@@ -70,7 +79,90 @@ class MainActivity : Activity() {
             setTextColor(Color.rgb(180, 185, 198))
             setPadding(0, dp(32), 0, 0)
         }, matchWrap())
+        homeRoot = root
         setContentView(root)
+    }
+
+    private fun startExperimentalEmulation() {
+        val rom = preparedRom?.copyOf()
+        if (rom == null) {
+            showError("Selecione e prepare uma ROM válida antes de iniciar.")
+            return
+        }
+        if (!emulationRunning.compareAndSet(false, true)) return
+
+        val core = N64EmulatorCore()
+        try {
+            core.loadRom(rom)
+            // Development entry point only: the real PIF boot sequence is not implemented.
+            core.startExecution(0xFFFF_FFFF_B000_0040UL.toLong())
+        } catch (error: Exception) {
+            emulationRunning.set(false)
+            showError("Não foi possível iniciar a CPU: " + (error.message ?: "erro desconhecido"))
+            return
+        }
+
+        val gameView = N64GameSurfaceView(this)
+        val controls = N64TouchControllerView(this).apply { controllerPort = core.controllerPort }
+        val gameStatus = TextView(this).apply {
+            text = "Emulação experimental iniciada. Boot, RDP e áudio ainda estão incompletos."
+            textSize = 13f
+            setTextColor(Color.WHITE)
+            setPadding(dp(12), dp(8), dp(12), dp(8))
+        }
+        val gameLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.BLACK)
+            addView(gameView, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
+            ))
+            addView(controls, matchWrap())
+            addView(gameStatus, matchWrap())
+            addView(Button(this@MainActivity).apply {
+                text = "Parar e voltar"
+                setOnClickListener {
+                    stopExperimentalEmulation()
+                    setContentView(homeRoot)
+                    status.text = "Emulação experimental interrompida."
+                }
+            }, matchWrap())
+        }
+        setContentView(gameLayout)
+
+        emulationThread = Thread({
+            val frame = N64VideoFrameBuffer(320, 240)
+            while (emulationRunning.get() && !Thread.currentThread().isInterrupted) {
+                val result = core.executeSlice(20_000)
+                if (result.stopReason == N64EmulatorCore.StopReason.EXECUTION_ERROR) {
+                    emulationRunning.set(false)
+                    runOnUiThread {
+                        gameStatus.text = "CPU parou em PC 0x${result.programCounter.toString(16).uppercase(java.util.Locale.ROOT)}: " +
+                            (result.errorMessage ?: "erro de execução")
+                    }
+                    break
+                }
+                if (core.renderVideoFrame(frame)) gameView.presentFrame(frame)
+                try {
+                    Thread.sleep(16L)
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                }
+            }
+        }, "N64-Emulation-Loop").apply {
+            isDaemon = true
+            start()
+        }
+    }
+
+    private fun stopExperimentalEmulation() {
+        emulationRunning.set(false)
+        emulationThread?.interrupt()
+        emulationThread = null
+    }
+
+    override fun onDestroy() {
+        stopExperimentalEmulation()
+        super.onDestroy()
     }
 
     private fun runCpuSelfTest() {
