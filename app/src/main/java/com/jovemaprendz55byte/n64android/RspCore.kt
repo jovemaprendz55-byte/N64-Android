@@ -2,12 +2,13 @@ package com.jovemaprendz55byte.n64android
 
 /**
  * Early RSP interpreter foundation. Supports a subset of scalar instructions,
- * basic COP0 transfers to SP memory-mapped registers, and BREAK. Vector
- * operations, accurate DMA timing, interrupts, and full task execution remain
- * unimplemented.
+ * basic COP0 transfers to SP registers, MFC2/MTC2 lane transfers, and BREAK.
+ * Vector ALU operations, accurate DMA timing, interrupts, and full task
+ * execution remain unimplemented.
  */
 internal class RspCore(private val bus: N64MemoryBus) {
     private val gpr = IntArray(32)
+    private val vector = Array(32) { ShortArray(8) }
     var pc: Int = 0
         private set
     var halted: Boolean = true
@@ -25,6 +26,7 @@ internal class RspCore(private val bus: N64MemoryBus) {
             "RSP entry point must be an aligned IMEM offset"
         }
         gpr.fill(0)
+        vector.forEach { it.fill(0) }
         pc = entryPoint
         pendingBranchTarget = null
         halted = false
@@ -51,6 +53,8 @@ internal class RspCore(private val bus: N64MemoryBus) {
         val shift = (instruction ushr 6) and 31
         val funct = instruction and 63
         val cop0rd = (instruction ushr 11) and 31
+        val element = (instruction ushr 7) and 0xF
+        val vectorRegister = (instruction ushr 11) and 31
         val imm = instruction.toShort().toInt()
         val a = register(rs)
         val b = register(rt)
@@ -80,6 +84,11 @@ internal class RspCore(private val bus: N64MemoryBus) {
             0x10 -> when (rs) {
                 0x00 -> writeReg(rt, readSpCop0(cop0rd)) // MFC0
                 0x04 -> writeSpCop0(cop0rd, b) // MTC0
+                else -> unsupported(instruction, instructionPc)
+            }
+            0x12 -> when (rs) {
+                0x00 -> writeReg(rt, vector[vectorRegister][(element ushr 1) and 7].toInt()) // MFC2
+                0x04 -> vector[vectorRegister][(element ushr 1) and 7] = b.toShort() // MTC2
                 else -> unsupported(instruction, instructionPc)
             }
             0x02 -> pendingBranchTarget = ((pc and 0xF0000000.toInt()) or
