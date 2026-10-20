@@ -70,6 +70,22 @@ class N64EmulatorCoreTest {
         assertEquals(null, second.errorMessage)
     }
 
+    @Test fun coreExecutesZeroSourceMtc0CauseWithoutUnsupportedInstructionError() {
+        val rom = syntheticRomWithInstructions(
+            0x40806800, // MTC0 r0, Cause: regression instruction from the reported boot error.
+            (0x10 shl 26) or (2 shl 16) or (13 shl 11) // MFC0 r2, Cause
+        )
+        val core = N64EmulatorCore()
+        core.loadRom(rom)
+
+        val result = core.executeFrom(0xFFFF_FFFF_B000_0040UL.toLong(), 2)
+
+        assertEquals(2, result.instructionsExecuted)
+        assertEquals(N64EmulatorCore.StopReason.INSTRUCTION_BUDGET_REACHED, result.stopReason)
+        assertEquals(null, result.errorMessage)
+        assertEquals(0L, result.programCounter - 0xFFFF_FFFF_B000_0040UL.toLong())
+    }
+
     private fun syntheticRomWithInstructions(vararg instructions: Int): ByteArray {
         val rom = ByteArray(0x1000)
         rom[0] = 0x80.toByte()
