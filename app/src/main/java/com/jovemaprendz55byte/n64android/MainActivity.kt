@@ -215,7 +215,7 @@ class MainActivity : Activity() {
             romDetails.text = buildString {
                 append("Teste de execução da ROM (diagnóstico)\n")
                 append("Instruções executadas: ").append(result.instructionsExecuted).append(" / 64\n")
-                append("PC final: 0x").append(result.programCounter.toString(16).uppercase(java.util.Locale.ROOT)).append('\n')
+                append("PC final: 0x").append(result.programCounter.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0')).append('\n')
                 append("Resultado: ").append(when (result.stopReason) {
                     N64EmulatorCore.StopReason.INSTRUCTION_BUDGET_REACHED -> "limite de instruções atingido"
                     N64EmulatorCore.StopReason.EXECUTION_ERROR -> "erro durante a execução"
