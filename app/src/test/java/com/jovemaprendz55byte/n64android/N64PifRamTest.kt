@@ -53,12 +53,18 @@ class N64PifRamTest {
         assertEquals(0x02, bus.readByte(0x205L).toInt() and 0xFF)
     }
 
-    @Test fun rejectsPifDmaWhenRdramRangeIsTooSmall() {
+    @Test fun rejectsPifDmaWhenRdramRangeIsTooSmallWithoutPartialWrites() {
         val bus = N64MemoryBus(rdramSize = 0x100)
+        bus.loadRdram(0xC8, ByteArray(0x38) { 0x5A })
         bus.writeWord(N64MemoryBus.SI_DRAM_ADDR, 0xC8)
+
         org.junit.Assert.assertThrows(IllegalArgumentException::class.java) {
             bus.writeWord(N64MemoryBus.SI_PIF_ADDR_RD64B, 0)
         }
+
+        // The invalid 64-byte DMA must fail before modifying its valid prefix.
+        assertEquals(0x5A, bus.readByte(0xC8).toInt() and 0xFF)
+        assertEquals(0x5A, bus.readByte(0xFF).toInt() and 0xFF)
         assertEquals(0, bus.readWord(N64MemoryBus.SI_STATUS) and 1)
     }
 }
