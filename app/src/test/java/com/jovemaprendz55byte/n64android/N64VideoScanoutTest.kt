@@ -49,4 +49,15 @@ class N64VideoScanoutTest {
             )
         }
     }
+
+    @Test fun rejectsSourceWidthThatWouldOverflowRgba5551RowSize() {
+        assertThrows(IllegalArgumentException::class.java) {
+            N64VideoScanout.copyRgba5551(
+                source = byteArrayOf(),
+                sourceWidth = Int.MAX_VALUE,
+                sourceHeight = 1,
+                destination = N64VideoFrameBuffer(1, 1)
+            )
+        }
+    }
 }
