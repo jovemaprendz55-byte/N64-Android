@@ -80,6 +80,37 @@ class R4300CpuTest {
         assertEquals(0L, cpu.readWord(N64MemoryBus.SP_DMA_BUSY.toInt()).toLong())
     }
 
+    @Test fun spDmaWriteLengthCopiesMultipleBlocksAndAppliesDramSkip() {
+        val cpu = R4300Cpu()
+        cpu.writeWord(0x04000000, 0x11112222)
+        cpu.writeWord(0x04000004, 0x33334444)
+        cpu.writeWord(0x04000008, 0x55556666)
+        cpu.writeWord(0x0400000C, 0x77778888)
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x0404), // r1 = SP register base
+            iType(0x09, 0, 2, 0),      // SP DMEM offset 0
+            iType(0x2B, 1, 2, 0),      // SP_MEM_ADDR = 0
+            iType(0x09, 0, 2, 0x100),  // RDRAM destination address
+            iType(0x2B, 1, 2, 4),      // SP_DRAM_ADDR = 0x100
+            iType(0x09, 0, 2, 0x101007), // 2 blocks, 8 bytes each, 16-byte DRAM skip
+            iType(0x2B, 1, 2, 0x0C)    // SP_WR_LEN: SP-to-RDRAM DMA
+        ))
+
+        repeat(7) { cpu.step() }
+
+        assertEquals(0x11112222, cpu.readWord(0x100))
+        assertEquals(0x33334444, cpu.readWord(0x104))
+        assertEquals(0, cpu.readWord(0x108))
+        assertEquals(0, cpu.readWord(0x10C))
+        assertEquals(0, cpu.readWord(0x110))
+        assertEquals(0, cpu.readWord(0x114))
+        assertEquals(0, cpu.readWord(0x118))
+        assertEquals(0, cpu.readWord(0x11C))
+        assertEquals(0x55556666, cpu.readWord(0x120))
+        assertEquals(0x77778888, cpu.readWord(0x124))
+        assertEquals(0, cpu.readWord(N64MemoryBus.SP_DMA_BUSY.toInt()))
+    }
+
     @Test fun cpuCanCopySpDmemBackToRdramWithSpDmaWriteLength() {
         val cpu = R4300Cpu()
         cpu.writeWord(0x04000000, 0x12345678)
