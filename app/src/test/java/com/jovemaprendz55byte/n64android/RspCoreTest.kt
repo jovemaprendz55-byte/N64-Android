@@ -6,6 +6,23 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RspCoreTest {
+    @Test fun supportsVariableLeftLogicalAndArithmeticRightShifts() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 2)) // shift amount = 2
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, iType(0x09, 0, 2, -16)) // source = 0xFFFFFFF0
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, rType(2, 1, 3, 0x04)) // SLLV
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, rType(2, 1, 4, 0x06)) // SRLV
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, rType(2, 1, 5, 0x07)) // SRAV
+
+        rsp.start()
+        repeat(5) { assertTrue(rsp.step()) }
+
+        assertEquals(0xFFFFFFC0.toInt(), rsp.register(3))
+        assertEquals(0x3FFFFFFC, rsp.register(4))
+        assertEquals(-4, rsp.register(5))
+    }
+
     @Test fun emulatorCorePreservesCompletedInstructionCountWhenRspInstructionFails() {
         val core = N64EmulatorCore()
         core.memoryBus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 9))
@@ -407,6 +424,9 @@ class RspCoreTest {
             }
         }
     }
+
+    private fun rType(rs: Int, rt: Int, rd: Int, funct: Int): Int =
+        (rs shl 21) or (rt shl 16) or (rd shl 11) or (funct and 63)
 
     private fun vectorAlu(vt: Int, vs: Int, vd: Int, funct: Int, element: Int = 0): Int =
         (0x12 shl 26) or ((0x10 or element) shl 21) or (vt shl 16) or
