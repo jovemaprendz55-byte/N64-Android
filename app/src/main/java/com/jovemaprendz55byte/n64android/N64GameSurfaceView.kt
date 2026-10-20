@@ -8,6 +8,8 @@ import android.graphics.Paint
 import android.graphics.Rect
 import android.util.AttributeSet
 import android.view.View
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Android presentation surface for frames produced by the N64 video pipeline.
@@ -23,6 +25,10 @@ class N64GameSurfaceView @JvmOverloads constructor(
     private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
     private val destination = Rect()
     private var frameBitmap: Bitmap? = null
+    // Keep at most one not-yet-presented frame; slow UI rendering must not queue
+    // an unbounded number of bitmaps from the emulator worker.
+    private val pendingBitmap = AtomicReference<Bitmap?>(null)
+    private val frameUpdatePosted = AtomicBoolean(false)
 
     init {
         setBackgroundColor(Color.BLACK)
@@ -36,17 +42,36 @@ class N64GameSurfaceView @JvmOverloads constructor(
     fun presentFrame(frame: N64VideoFrameBuffer) {
         val pixels = frame.snapshot()
         val bitmap = Bitmap.createBitmap(pixels, frame.width, frame.height, Bitmap.Config.ARGB_8888)
+        // Replace stale pending frames instead of posting one UI runnable per
+        // frame. This bounds queued presentation memory if the UI is busy.
+        pendingBitmap.getAndSet(bitmap)?.let { oldPending ->
+            if (!oldPending.isRecycled) oldPending.recycle()
+        }
+        scheduleFrameUpdate()
+    }
+
+    private fun scheduleFrameUpdate() {
+        if (!frameUpdatePosted.compareAndSet(false, true)) return
         post {
-            // A frame may have been queued by a worker while this View was
-            // being detached. Do not retain a bitmap after detachment.
             if (!isAttachedToWindow) {
-                bitmap.recycle()
+                pendingBitmap.getAndSet(null)?.let { pending ->
+                    if (!pending.isRecycled) pending.recycle()
+                }
+                frameUpdatePosted.set(false)
                 return@post
             }
-            val old = frameBitmap
-            frameBitmap = bitmap
-            if (old !== bitmap && old?.isRecycled == false) old.recycle()
-            invalidate()
+
+            pendingBitmap.getAndSet(null)?.let { next ->
+                val old = frameBitmap
+                frameBitmap = next
+                if (old !== next && old?.isRecycled == false) old.recycle()
+                invalidate()
+            }
+
+            frameUpdatePosted.set(false)
+            // Close the race where a worker publishes a frame while this
+            // runnable is finishing and after it cleared the posted flag.
+            if (pendingBitmap.get() != null) scheduleFrameUpdate()
         }
     }
 
@@ -59,6 +84,9 @@ class N64GameSurfaceView @JvmOverloads constructor(
     }
 
     override fun onDetachedFromWindow() {
+        pendingBitmap.getAndSet(null)?.let { bitmap ->
+            if (!bitmap.isRecycled) bitmap.recycle()
+        }
         frameBitmap?.let { bitmap ->
             if (!bitmap.isRecycled) bitmap.recycle()
         }
