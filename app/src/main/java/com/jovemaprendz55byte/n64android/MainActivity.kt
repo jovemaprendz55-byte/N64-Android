@@ -8,6 +8,8 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ScrollView
+import android.util.Base64
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -21,6 +23,8 @@ class MainActivity : Activity() {
     // Retain the normalized ROM in memory so the emulator core can use it later.
     private var preparedRom: ByteArray? = null
     private var homeRoot: View? = null
+    private lateinit var libraryContainer: LinearLayout
+    private var preparedRomUri: Uri? = null
     private val emulationRunning = AtomicBoolean(false)
     private var emulationThread: Thread? = null
 
@@ -74,13 +78,23 @@ class MainActivity : Activity() {
         }
         root.addView(romDetails, matchWrap())
         root.addView(TextView(this).apply {
-            text = "O autoteste executa uma instrução sintética na CPU; ele não inicia a ROM nem comprova compatibilidade com jogos. O boot real, gráficos e áudio ainda não estão implementados."
+            text = "Biblioteca de ROMs"
+            textSize = 20f
+            setTextColor(Color.WHITE)
+            setPadding(0, dp(24), 0, dp(8))
+        }, matchWrap())
+        libraryContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        root.addView(libraryContainer, matchWrap())
+        root.addView(TextView(this).apply {
+            text = "O autoteste executa um programa sintético; não comprova compatibilidade com jogos. O boot real, gráficos e áudio ainda estão incompletos."
             textSize = 13f
             setTextColor(Color.rgb(180, 185, 198))
-            setPadding(0, dp(32), 0, 0)
+            setPadding(0, dp(24), 0, dp(16))
         }, matchWrap())
-        homeRoot = root
-        setContentView(root)
+        val scroll = ScrollView(this).apply { addView(root) }
+        homeRoot = scroll
+        refreshLibraryView()
+        setContentView(scroll)
     }
 
     private fun startExperimentalEmulation() {
@@ -224,6 +238,7 @@ class MainActivity : Activity() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "*/*"
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
         }
         startActivityForResult(intent, REQUEST_ROM)
     }
@@ -233,11 +248,18 @@ class MainActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode != REQUEST_ROM || resultCode != RESULT_OK) return
         val uri: Uri = data?.data ?: return
+        val grantedFlags = data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        try {
+            contentResolver.takePersistableUriPermission(uri, grantedFlags and Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        } catch (_: SecurityException) {
+            // Some document providers do not offer persistable permissions; the ROM still works for this session.
+        }
         inspectRom(uri)
     }
 
-    private fun inspectRom(uri: Uri) {
+    private fun inspectRom(uri: Uri, addToLibrary: Boolean = true) {
         preparedRom = null
+        preparedRomUri = null
         try {
             val rawRom = contentResolver.openInputStream(uri)?.use { input ->
                 readRomLimited(input)
@@ -271,6 +293,8 @@ class MainActivity : Activity() {
             }
 
             preparedRom = normalized
+            preparedRomUri = uri
+            if (addToLibrary) saveLibraryEntry(uri, normalizedHeader.title, originalHeader.format.name, normalized.size)
             status.text = "ROM validada e preparada em memória."
             romDetails.text = buildString {
                 append("Título: ").append(normalizedHeader.title).append('\n')
@@ -284,7 +308,7 @@ class MainActivity : Activity() {
                 originalHeader.countryCode?.let {
                     append("Código de região: ").append(it).append('\n')
                 }
-                append("Próxima etapa: conectar esta ROM ao núcleo de emulação.")
+                append("ROM guardada na biblioteca do aparelho.")
             }
         } catch (error: Exception) {
             showError("Erro ao ler a ROM: " + (error.message ?: "erro desconhecido"))
@@ -306,6 +330,94 @@ class MainActivity : Activity() {
             total += count
         }
         return output.toByteArray()
+    }
+
+    private data class LibraryEntry(val uri: String, val title: String, val format: String, val sizeBytes: Int)
+
+    private fun encodeField(value: String): String =
+        Base64.encodeToString(value.toByteArray(Charsets.UTF_8), Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+
+    private fun decodeField(value: String): String =
+        String(Base64.decode(value, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING), Charsets.UTF_8)
+
+    private fun loadLibraryEntries(): List<LibraryEntry> {
+        val stored = getSharedPreferences(LIBRARY_PREFS, MODE_PRIVATE).getString(LIBRARY_KEY, "") ?: ""
+        return stored.lineSequence().mapNotNull { line ->
+            if (line.isBlank()) return@mapNotNull null
+            try {
+                val fields = line.split('|')
+                if (fields.size != 4) return@mapNotNull null
+                LibraryEntry(decodeField(fields[0]), decodeField(fields[1]), decodeField(fields[2]), decodeField(fields[3]).toInt())
+            } catch (_: Exception) {
+                null
+            }
+        }.distinctBy { it.uri }
+    }
+
+    private fun saveLibraryEntry(uri: Uri, title: String, format: String, sizeBytes: Int) {
+        val entries = loadLibraryEntries().toMutableList()
+        entries.removeAll { it.uri == uri.toString() }
+        entries.add(0, LibraryEntry(uri.toString(), title.ifBlank { "ROM sem título" }, format, sizeBytes))
+        val serialized = entries.joinToString("\n") { entry ->
+            listOf(entry.uri, entry.title, entry.format, entry.sizeBytes.toString())
+                .joinToString("|") { encodeField(it) }
+        }
+        getSharedPreferences(LIBRARY_PREFS, MODE_PRIVATE).edit().putString(LIBRARY_KEY, serialized).apply()
+        if (::libraryContainer.isInitialized) refreshLibraryView()
+    }
+
+    private fun removeLibraryEntry(uri: String) {
+        val serialized = loadLibraryEntries().filterNot { it.uri == uri }.joinToString("\n") { entry ->
+            listOf(entry.uri, entry.title, entry.format, entry.sizeBytes.toString())
+                .joinToString("|") { encodeField(it) }
+        }
+        getSharedPreferences(LIBRARY_PREFS, MODE_PRIVATE).edit().putString(LIBRARY_KEY, serialized).apply()
+        if (::libraryContainer.isInitialized) refreshLibraryView()
+    }
+
+    private fun refreshLibraryView() {
+        libraryContainer.removeAllViews()
+        val entries = loadLibraryEntries()
+        if (entries.isEmpty()) {
+            libraryContainer.addView(TextView(this).apply {
+                text = "Nenhuma ROM salva ainda. Toque em “Selecionar e preparar ROM” para adicionar uma."
+                textSize = 14f
+                setTextColor(Color.LTGRAY)
+                setPadding(0, dp(4), 0, dp(12))
+            }, matchWrap())
+            return
+        }
+
+        entries.forEach { entry ->
+            val card = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(12), dp(10), dp(12), dp(10))
+                setBackgroundColor(Color.rgb(28, 36, 53))
+            }
+            card.addView(TextView(this).apply {
+                text = entry.title.ifBlank { "ROM sem título" }
+                textSize = 16f
+                setTextColor(Color.WHITE)
+            }, matchWrap())
+            card.addView(TextView(this).apply {
+                text = "\${entry.format} • \${formatSize(entry.sizeBytes)}"
+                textSize = 12f
+                setTextColor(Color.rgb(170, 185, 210))
+                setPadding(0, dp(3), 0, dp(6))
+            }, matchWrap())
+            val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            actions.addView(Button(this@MainActivity).apply {
+                text = "Carregar"
+                setOnClickListener { inspectRom(Uri.parse(entry.uri), addToLibrary = false) }
+            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            actions.addView(Button(this@MainActivity).apply {
+                text = "Remover"
+                setOnClickListener { removeLibraryEntry(entry.uri) }
+            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            card.addView(actions, matchWrap())
+            val cardParams = matchWrap().apply { bottomMargin = dp(8) }
+            libraryContainer.addView(card, cardParams)
+        }
     }
 
     private fun showError(message: String) {
@@ -330,5 +442,7 @@ class MainActivity : Activity() {
         private const val REQUEST_ROM = 1001
         private const val MIN_ROM_SIZE = 0x1000
         private const val MAX_ROM_SIZE = 64 * 1024 * 1024
+        private const val LIBRARY_PREFS = "n64_rom_library"
+        private const val LIBRARY_KEY = "entries_v1"
     }
 }
