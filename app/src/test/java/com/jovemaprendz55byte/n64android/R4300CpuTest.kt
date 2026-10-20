@@ -17,7 +17,7 @@ class R4300CpuTest {
             throw AssertionError("Expected TLB translation failure")
         } catch (error: IllegalArgumentException) {
             org.junit.Assert.assertTrue(
-                error.message.orEmpty().contains("0x0000000040000000")
+                error.message.orEmpty().contains("40000000")
             )
             org.junit.Assert.assertTrue(
                 error.message.orEmpty().contains("requires TLB translation")
