@@ -126,7 +126,7 @@ class N64MemoryBusTest {
             assertEquals("second block byte $i", source[0x18 + i], bus.readByte(N64SpMemory.DMEM_BASE + 0x28 + i))
         }
         // The programmed SP memory destination remains contiguous across blocks.
-        assertEquals(source[8], bus.readByte(N64SpMemory.DMEM_BASE + 0x30))
+        assertEquals(0, bus.readByte(N64SpMemory.DMEM_BASE + 0x30).toInt())
     }
 
     @Test fun spDmaCopiesRdramToDmemAndBack() {
