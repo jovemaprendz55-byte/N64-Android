@@ -63,7 +63,13 @@ internal class N64MemoryBus(
         N64MemoryMap.Region.SP_DMEM, N64MemoryMap.Region.SP_IMEM ->
             spMemory.readByte(physicalAddress)
         N64MemoryMap.Region.CARTRIDGE_DOMAIN -> readCartridgeByte(physicalAddress)
-        N64MemoryMap.Region.PIF -> pifRam.readByte(physicalAddress)
+        N64MemoryMap.Region.PIF -> {
+            if (physicalAddress in N64PifRam.PIF_RAM_BASE until N64PifRam.PIF_RAM_END) {
+                pifRam.readByte(physicalAddress)
+            } else {
+                unsupported(physicalAddress) // PIF boot ROM is not implemented.
+            }
+        }
         else -> unsupported(physicalAddress)
     }
 
@@ -72,7 +78,13 @@ internal class N64MemoryBus(
             N64MemoryMap.Region.RDRAM -> rdram[rdramIndex(physicalAddress)] = value
             N64MemoryMap.Region.SP_DMEM, N64MemoryMap.Region.SP_IMEM ->
                 spMemory.writeByte(physicalAddress, value)
-            N64MemoryMap.Region.PIF -> pifRam.writeByte(physicalAddress, value)
+            N64MemoryMap.Region.PIF -> {
+                if (physicalAddress in N64PifRam.PIF_RAM_BASE until N64PifRam.PIF_RAM_END) {
+                    pifRam.writeByte(physicalAddress, value)
+                } else {
+                    unsupported(physicalAddress)
+                }
+            }
             else -> unsupported(physicalAddress)
         }
     }
