@@ -415,6 +415,46 @@ class R4300CpuTest {
         }
     }
 
+    @Test fun sdlMergesLeftBytesInBigEndianOrderForEveryAlignment() {
+        val expectedWords = listOf(
+            0xAA223344.toInt(), 0xAABB3344.toInt(), 0xAABBCC44.toInt(), 0xAABBCCDD.toInt()
+        )
+        val expectedLowWords = listOf(
+            0x55667788, 0x55667788, 0x55667788, 0x55667788
+        )
+
+        for (offset in 0..7) {
+            val cpu = R4300Cpu()
+            cpu.writeLong(0x100, 0x1122334455667788L)
+            cpu.loadBytes(0, words(
+                iType(0x09, 0, 1, 0x100), // r1 = destination address
+                iType(0x0F, 0, 2, 0xAABB),
+                iType(0x0D, 2, 2, 0xCCDD),
+                rType(0, 2, 2, 0, 0x3C), // DSLL32 r2, r2, 0
+                iType(0x0F, 0, 3, 0xEEFF),
+                iType(0x0D, 3, 3, 0x0011),
+                rType(0, 3, 3, 0, 0x3C), // shift low word into high half
+                rType(0, 3, 3, 0, 0x3E), // DSRL32 zero-extends low word
+                rType(2, 3, 2, 0, 0x25), // OR full 64-bit source value
+                iType(0x2C, 1, 2, offset) // SDL at selected byte alignment
+            ))
+
+            repeat(10) { cpu.step() }
+
+            val expected = when (offset) {
+                0 -> 0xAA22334455667788UL.toLong()
+                1 -> 0xAABB334455667788UL.toLong()
+                2 -> 0xAABBCC4455667788UL.toLong()
+                3 -> 0xAABBCCDD55667788UL.toLong()
+                4 -> 0xAABBCCDDEEFF7788UL.toLong()
+                5 -> 0xAABBCCDDEEFF0088UL.toLong()
+                6 -> 0xAABBCCDDEEFF0011UL.toLong()
+                else -> 0xAABBCCDDEEFF0011UL.toLong()
+            }
+            assertEquals("SDL offset $offset", expected, cpu.readLong(0x100))
+        }
+    }
+
     @Test fun supportsSignedAndUnsignedByteAndHalfwordLoads() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(iType(0x20, 0, 1, 0x100), iType(0x24, 0, 2, 0x100), iType(0x21, 0, 3, 0x102), iType(0x25, 0, 4, 0x102)))
