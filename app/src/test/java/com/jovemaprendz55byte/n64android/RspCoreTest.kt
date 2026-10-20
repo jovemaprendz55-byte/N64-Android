@@ -514,6 +514,30 @@ class RspCoreTest {
         assertFalse(rsp.step())
     }
 
+    @Test fun vectorDoubleLoadsAndStoresTransferEightBytesWithScaledSignedOffset() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        for (index in 0 until 8) {
+            bus.writeByte(N64SpMemory.DMEM_BASE + 0x20 + index, (0xB0 + index).toByte())
+        }
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 0x30)) // base = 0x30
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, vectorMemory(0x32, 2, 1, 12, -2, subOperation = 3))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, vectorMemory(0x3A, 2, 1, 12, -1, subOperation = 3))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, 0x0000000D) // BREAK
+
+        rsp.start()
+        assertTrue(rsp.step())
+        assertTrue(rsp.step())
+        assertTrue(rsp.step())
+
+        // Eight transferred bytes wrap at the end of the 16-byte vector register.
+        for (index in 0 until 8) {
+            assertEquals(0xB0 + index, bus.readByte(N64SpMemory.DMEM_BASE + 0x20 + index).toInt() and 0xFF)
+            assertEquals(0xB0 + index, bus.readByte(N64SpMemory.DMEM_BASE + 0x28 + index).toInt() and 0xFF)
+        }
+        assertFalse(rsp.step())
+    }
+
     @Test fun vectorAluSnapshotsSourcesWhenDestinationAliasesSwizzledSource() {
         val bus = N64MemoryBus()
         val rsp = RspCore(bus)
