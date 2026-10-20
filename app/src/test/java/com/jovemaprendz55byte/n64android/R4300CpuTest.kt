@@ -1674,6 +1674,31 @@ class R4300CpuTest {
     }
 
 
+    @Test fun jumpUsesLow32BitPcAndSignExtendsTarget() {
+        val cpu = R4300Cpu()
+        val jumpToIndexFour = (0x02 shl 26) or 4
+        cpu.loadBytes(0, words(jumpToIndexFour, 0)) // J 0x10; delay-slot NOP
+        cpu.pc = 0xFFFF_FFFF_8000_0000UL.toLong()
+
+        cpu.step()
+        cpu.step()
+
+        assertEquals(0xFFFF_FFFF_8000_0010UL.toLong(), cpu.pc)
+    }
+
+    @Test fun jumpAndLinkUsesCorrectSignExtendedTargetAndReturnAddress() {
+        val cpu = R4300Cpu()
+        val jumpAndLinkToIndexFour = (0x03 shl 26) or 4
+        cpu.loadBytes(0, words(jumpAndLinkToIndexFour, 0)) // JAL 0x10; delay-slot NOP
+        cpu.pc = 0xFFFF_FFFF_8000_0000UL.toLong()
+
+        cpu.step()
+        assertEquals(0xFFFF_FFFF_8000_0008UL.toLong(), cpu.register(31))
+        cpu.step()
+
+        assertEquals(0xFFFF_FFFF_8000_0010UL.toLong(), cpu.pc)
+    }
+
     @Test fun mfc0AndMtc0TransferValuesThroughWritableCop0Registers() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
