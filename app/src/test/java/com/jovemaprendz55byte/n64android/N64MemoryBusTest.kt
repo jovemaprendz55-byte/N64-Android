@@ -149,10 +149,11 @@ class N64MemoryBusTest {
     @Test fun spDmaClearsBusyFlagWhenRdramTransferFails() {
         val bus = N64MemoryBus(rdramSize = 0x100)
         bus.writeWord(N64MemoryBus.SP_MEM_ADDR, 0)
-        bus.writeWord(N64MemoryBus.SP_DRAM_ADDR, 0xFC)
+        bus.writeWord(N64MemoryBus.SP_DRAM_ADDR, 0xF8)
 
+        // The address register is aligned down to 8 bytes; 16 bytes cross RDRAM's end.
         assertThrows(IllegalArgumentException::class.java) {
-            bus.writeWord(N64MemoryBus.SP_RD_LEN, 7)
+            bus.writeWord(N64MemoryBus.SP_RD_LEN, 15)
         }
 
         assertEquals(0, bus.readWord(N64MemoryBus.SP_DMA_BUSY))
