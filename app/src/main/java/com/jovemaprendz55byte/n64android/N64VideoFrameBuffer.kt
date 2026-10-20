@@ -24,6 +24,12 @@ class N64VideoFrameBuffer(val width: Int, val height: Int) {
         pixels.fill(argb)
     }
 
+    /** Sets a pixel from an ARGB int (0xAARRGGBB). Out-of-frame writes are ignored. */
+    fun setPixelArgb(x: Int, y: Int, argb: Int) {
+        if (!contains(x, y)) return
+        pixels[y * width + x] = argb
+    }
+
     /** Sets one pixel from a 16-bit RGBA5551 value. Out-of-frame writes are ignored. */
     fun setRgba5551(x: Int, y: Int, value: Int) {
         if (!contains(x, y)) return
