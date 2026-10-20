@@ -122,7 +122,7 @@ class MainActivity : Activity() {
                 text = "Parar e voltar"
                 setOnClickListener {
                     stopExperimentalEmulation()
-                    setContentView(homeRoot)
+                    homeRoot?.let { setContentView(it) }
                     status.text = "Emulação experimental interrompida."
                 }
             }, matchWrap())
