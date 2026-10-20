@@ -150,6 +150,14 @@ internal class RspCore(private val bus: N64MemoryBus) {
             0x01 -> when (rt) {
                 0x00 -> if (a < 0) pendingBranchTarget = (pc + (imm shl 2)) and 0xFFF // BLTZ
                 0x01 -> if (a >= 0) pendingBranchTarget = (pc + (imm shl 2)) and 0xFFF // BGEZ
+                0x10 -> if (a < 0) {
+                    writeReg(31, (instructionPc + 8) and 0xFFF)
+                    pendingBranchTarget = (pc + (imm shl 2)) and 0xFFF
+                } // BLTZAL
+                0x11 -> if (a >= 0) {
+                    writeReg(31, (instructionPc + 8) and 0xFFF)
+                    pendingBranchTarget = (pc + (imm shl 2)) and 0xFFF
+                } // BGEZAL
                 else -> unsupported(instruction, instructionPc)
             }
             0x04 -> if (a == b) pendingBranchTarget = (pc + (imm shl 2)) and 0xFFF // BEQ
