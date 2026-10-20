@@ -353,8 +353,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             }
             0x03 -> {
                 writeRegister(31, instructionAddress + 8L)
-                pendingBranchTarget = (pc and -0x10000000L) or
-                    ((instruction.toLong() and 0x03FFFFFFL) shl 2)
+                pendingBranchTarget = jumpTarget(instruction, pc)
             } // JAL
             0x06 -> if (a <= 0L) pendingBranchTarget = pc + (signedImmediate shl 2) // BLEZ
             0x07 -> if (a > 0L) pendingBranchTarget = pc + (signedImmediate shl 2) // BGTZ
@@ -395,8 +394,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             0x33 -> Unit // PREF: prefetch hint has no effect in this interpreter
             0x37 -> writeRegister(rt, readLong(effectiveAddress(a, signedImmediate))) // LD
             0x3F -> writeLong(effectiveAddress(a, signedImmediate), b) // SD
-            0x02 -> pendingBranchTarget =
-                (pc and -0x10000000L) or ((instruction.toLong() and 0x03FFFFFFL) shl 2) // J
+            0x02 -> pendingBranchTarget = jumpTarget(instruction, pc) // J
             else -> unsupported(instruction, instructionAddress)
         }
 
@@ -405,6 +403,16 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         gpr[0] = 0L
     }
 
+
+    /**
+     * Builds a MIPS J/JAL target from the low 32-bit virtual PC.
+     * The target is then sign-extended to the R4300's 64-bit address form.
+     */
+    private fun jumpTarget(instruction: Int, pcAfterFetch: Long): Long {
+        val target32 = ((pcAfterFetch and 0xF000_0000L) or
+            ((instruction.toLong() and 0x03FF_FFFFL) shl 2)).toInt()
+        return target32.toLong()
+    }
 
     /** Fetches through the physical bus after direct-mapped KSEG0/KSEG1 translation. */
     private fun fetchInstruction(address: Long): Int {
