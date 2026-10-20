@@ -1555,6 +1555,34 @@ class R4300CpuTest {
         assertEquals(0, bus.readWord(N64MemoryBus.SP_STATUS) and 0x1)
     }
 
+
+    @Test fun spStatusCommandsSetAndClearSignalsAndControlFlags() {
+        val bus = N64MemoryBus()
+
+        // Set signal 0 and signal 7 using their alternating command bits.
+        bus.writeWord(N64MemoryBus.SP_STATUS, (1 shl 8) or (1 shl 22))
+        var status = bus.readWord(N64MemoryBus.SP_STATUS)
+        assertEquals(1 shl 7, status and (1 shl 7))
+        assertEquals(1 shl 14, status and (1 shl 14))
+
+        // Clear the same signals without affecting the other status flags.
+        bus.writeWord(N64MemoryBus.SP_STATUS, (1 shl 7) or (1 shl 21))
+        status = bus.readWord(N64MemoryBus.SP_STATUS)
+        assertEquals(0, status and (1 shl 7))
+        assertEquals(0, status and (1 shl 14))
+
+        // Interrupt-on-break and single-step controls are independently writable.
+        bus.writeWord(N64MemoryBus.SP_STATUS, (1 shl 4) or (1 shl 6))
+        status = bus.readWord(N64MemoryBus.SP_STATUS)
+        assertEquals(1 shl 6, status and (1 shl 6))
+        assertEquals(1 shl 5, status and (1 shl 5))
+
+        bus.writeWord(N64MemoryBus.SP_STATUS, (1 shl 3) or (1 shl 5))
+        status = bus.readWord(N64MemoryBus.SP_STATUS)
+        assertEquals(0, status and (1 shl 6))
+        assertEquals(0, status and (1 shl 5))
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
