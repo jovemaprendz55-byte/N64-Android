@@ -42,3 +42,9 @@ O APK de depuração será gerado em `app/build/outputs/apk/debug/app-debug.apk`
 4. Desenvolver RSP/RDP, gráficos, áudio, controles e salvamento.
 
 Use apenas ROMs que você tem direito de utilizar. Este projeto não inclui jogos nem BIOS proprietárias.
+
+### SI/PIF controller input (partial)
+
+The memory bus now models a basic SI DMA path to and from the 64-byte PIF RAM. The PIF command handler supports controller 0 status (Joybus command `0x00`) and button/stick reads (`0x01`), sourcing the four-byte response from `N64ControllerPort`. Tests cover the basic response bytes and an out-of-range DMA.
+
+This is only a first input-protocol slice: the PIF boot ROM/authentication, accessory commands, additional controller channels, SI interrupts/timing, and integration of touch controls into the running Android game screen are still missing. It does not make commercial ROMs bootable by itself.
