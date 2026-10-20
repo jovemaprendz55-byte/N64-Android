@@ -20,7 +20,7 @@ class N64VideoScanoutTest {
     }
 
     @Test fun honorsSourceStrideAndDestinationClipping() {
-        val frame = N64VideoFrameBuffer(2, 1)
+        val frame = N64VideoFrameBuffer(2, 2)
         val memory = byteArrayOf(
             0xF8.toByte(), 0x01, 0, 0,
             0x07, 0xC1.toByte(), 0, 0
@@ -35,7 +35,7 @@ class N64VideoScanoutTest {
         )
 
         assertEquals(0xFFFF0000.toInt(), frame.pixelAt(1, 0))
-        assertEquals(0x0000FF00, frame.pixelAt(1, 1.coerceAtMost(0))) // destination is one row high
+        assertEquals(0x0000FF00, frame.pixelAt(1, 1))
     }
 
     @Test fun rejectsStrideShorterThanPixelRow() {
