@@ -181,13 +181,13 @@ internal class RspCore(private val bus: N64MemoryBus) {
      */
     private fun selectedVectorLane(element: Int, lane: Int): Int = when (element) {
         0 -> lane
-        1 -> lane or 1
-        2 -> (lane and 4) or 2
-        3 -> (lane and 4) or 3
-        4 -> 4
-        5 -> 5
-        6 -> 6
-        7 -> 7
+        1 -> lane and 0b110
+        2 -> lane and 0b100
+        3 -> 0
+        4 -> (lane and 0b110) or 1
+        5 -> (lane and 0b100) or 1
+        6 -> (lane and 0b100) or 2
+        7 -> (lane and 0b100) or 3
         else -> throw IllegalArgumentException("Unsupported RSP vector element selector $element")
     }
 
