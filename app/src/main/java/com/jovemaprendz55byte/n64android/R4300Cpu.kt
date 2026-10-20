@@ -460,8 +460,8 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private fun storeDoublewordLeft(address: Int, value: Long) {
         val offset = address and 7
         val aligned = address and -8
-        val shift = (7 - offset) * 8
-        val preservedMask = if (offset == 7) 0L else (1L shl shift) - 1L
+        val shift = offset * 8
+        val preservedMask = if (shift == 0) 0L else (-1L shl (64 - shift))
         writeLong(aligned, (readLong(aligned) and preservedMask) or (value ushr shift))
     }
 
@@ -499,13 +499,8 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private fun storeWordLeft(address: Int, value: Int) {
         val offset = address and 3
         val aligned = address and -4
-        val preservedMask = when (offset) {
-            0 -> 0x00FFFFFF
-            1 -> 0x0000FFFF
-            2 -> 0x000000FF
-            else -> 0
-        }
-        val shift = (3 - offset) * 8
+        val shift = offset * 8
+        val preservedMask = if (shift == 0) 0 else (-1 shl (32 - shift))
         writeWord(aligned, (readWord(aligned) and preservedMask) or (value ushr shift))
     }
 
