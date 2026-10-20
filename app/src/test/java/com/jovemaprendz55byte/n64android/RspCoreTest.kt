@@ -138,8 +138,27 @@ class RspCoreTest {
         assertEquals(0, rsp.register(1) and 1) // start cleared HALT
     }
 
+
+    @Test fun cop2MovesScalarValuesToAndFromVectorLanes() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 0x1234)) // r1 = 0x1234
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, cop2(4, 1, 3, 4)) // MTC2 r1, v3[e=4]
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, cop2(0, 2, 3, 4)) // MFC2 r2, v3[e=4]
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, iType(0x2B, 0, 2, 0)) // store result
+
+        rsp.start()
+        repeat(4) { assertTrue(rsp.step()) }
+
+        assertEquals(0x1234, bus.readWord(N64SpMemory.DMEM_BASE))
+        assertEquals(0x1234, rsp.register(2))
+    }
+
     private fun cop0(rs: Int, rt: Int, rd: Int): Int =
         (0x10 shl 26) or (rs shl 21) or (rt shl 16) or (rd shl 11)
+
+    private fun cop2(rs: Int, rt: Int, vd: Int, element: Int): Int =
+        (0x12 shl 26) or (rs shl 21) or (rt shl 16) or (vd shl 11) or (element shl 7)
 
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
