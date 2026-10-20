@@ -48,3 +48,7 @@ Use apenas ROMs que você tem direito de utilizar. Este projeto não inclui jogo
 The memory bus now models a basic SI DMA path to and from the 64-byte PIF RAM. The PIF command handler supports controller 0 status (Joybus command `0x00`) and button/stick reads (`0x01`), sourcing the four-byte response from `N64ControllerPort`. Tests cover the basic response bytes and an out-of-range DMA.
 
 This is only a first input-protocol slice: the PIF boot ROM/authentication, accessory commands, additional controller channels, SI interrupts/timing, and integration of touch controls into the running Android game screen are still missing. It does not make commercial ROMs bootable by itself.
+
+### Build validation workflow
+
+Added `.github/workflows/android-ci.yml` to run the Android unit-test task and assemble a debug APK on pushes, pull requests, or manual workflow dispatch. The workflow is committed, but its first run has not yet been confirmed, so build/test success is still unverified.
