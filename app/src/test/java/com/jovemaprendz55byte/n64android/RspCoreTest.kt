@@ -448,6 +448,25 @@ class RspCoreTest {
     }
 
 
+    @Test fun vectorByteLoadsAndStoresRespectElementAndSignedOffset() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        bus.writeByte(N64SpMemory.DMEM_BASE + 0x20, 0xAB.toByte())
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 0x22)) // base = 0x22
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, vectorMemory(0x32, 2, 1, 6, -2)) // LBV v2[6], -2(r1)
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, vectorMemory(0x3A, 2, 1, 6, -1)) // SBV v2[6], -1(r1)
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, 0x0000000D) // BREAK
+
+        rsp.start()
+        assertTrue(rsp.step())
+        assertTrue(rsp.step())
+        assertTrue(rsp.step())
+
+        assertEquals(0xAB, bus.readByte(N64SpMemory.DMEM_BASE + 0x21).toInt() and 0xFF)
+        assertEquals(0xAB, bus.readByte(N64SpMemory.DMEM_BASE + 0x21).toInt() and 0xFF)
+        assertFalse(rsp.step())
+    }
+
     @Test fun vectorAluSnapshotsSourcesWhenDestinationAliasesSwizzledSource() {
         val bus = N64MemoryBus()
         val rsp = RspCore(bus)
@@ -492,6 +511,10 @@ class RspCoreTest {
 
     private fun rType(rs: Int, rt: Int, rd: Int, funct: Int): Int =
         (rs shl 21) or (rt shl 16) or (rd shl 11) or (funct and 63)
+
+    private fun vectorMemory(op: Int, vt: Int, base: Int, element: Int, offset: Int): Int =
+        (op shl 26) or (base shl 21) or (vt shl 16) or
+            (element shl 7) or (offset and 0x7F)
 
     private fun vectorAlu(vt: Int, vs: Int, vd: Int, funct: Int, element: Int = 0): Int =
         (0x12 shl 26) or ((0x10 or element) shl 21) or (vt shl 16) or
