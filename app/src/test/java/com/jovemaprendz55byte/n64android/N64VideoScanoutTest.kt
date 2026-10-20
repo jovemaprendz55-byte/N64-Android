@@ -38,6 +38,23 @@ class N64VideoScanoutTest {
         assertEquals(0x0000FF00, frame.pixelAt(1, 1))
     }
 
+    @Test fun rejectsTruncatedSourceBeforeChangingDestination() {
+        val frame = N64VideoFrameBuffer(2, 1)
+        frame.clear(0xFF112233.toInt())
+
+        assertThrows(IllegalArgumentException::class.java) {
+            N64VideoScanout.copyRgba5551(
+                source = byteArrayOf(0xF8.toByte(), 0x01, 0x07),
+                sourceWidth = 2,
+                sourceHeight = 1,
+                destination = frame
+            )
+        }
+
+        assertEquals(0xFF112233.toInt(), frame.pixelAt(0, 0))
+        assertEquals(0xFF112233.toInt(), frame.pixelAt(1, 0))
+    }
+
     @Test fun rejectsStrideShorterThanPixelRow() {
         assertThrows(IllegalArgumentException::class.java) {
             N64VideoScanout.copyRgba5551(
