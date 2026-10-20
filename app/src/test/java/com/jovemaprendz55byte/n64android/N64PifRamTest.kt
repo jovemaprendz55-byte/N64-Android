@@ -17,6 +17,7 @@ class N64PifRamTest {
         commandBuffer[1] = 4
         commandBuffer[2] = 1
         commandBuffer[7] = 0xFF.toByte()
+        commandBuffer[63] = 1
         bus.loadRdram(0x100L, commandBuffer)
 
         bus.writeWord(N64MemoryBus.SI_DRAM_ADDR, 0x100)
@@ -39,6 +40,7 @@ class N64PifRamTest {
         commandBuffer[1] = 3
         commandBuffer[2] = 0
         commandBuffer[6] = 0xFF.toByte()
+        commandBuffer[63] = 1
         bus.loadRdram(0x100L, commandBuffer)
 
         bus.writeWord(N64MemoryBus.SI_DRAM_ADDR, 0x100)
