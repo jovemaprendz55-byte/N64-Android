@@ -15,7 +15,7 @@ class RspCoreTest {
         val result = core.executeRspFromImem(entryPoint = 0, instructionBudget = 10)
 
         assertEquals(2, result.instructionsExecuted)
-        assertEquals(12, result.programCounter)
+        assertEquals(8, result.programCounter) // Point to the unsupported instruction, not the next PC.
         assertTrue(result.errorMessage != null)
         assertTrue(result.errorMessage!!.contains("Unsupported scalar RSP instruction"))
         assertEquals(9, core.memoryBus.readWord(N64SpMemory.DMEM_BASE))
