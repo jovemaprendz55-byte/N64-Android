@@ -222,6 +222,55 @@ class RspCoreTest {
         assertEquals(0x32, bus.readWord(N64SpMemory.DMEM_BASE))
     }
 
+
+    @Test fun vectorElementSelectorsCoverAllEightHalfwordSwizzles() {
+        val expected = arrayOf(
+            intArrayOf(0, 1, 2, 3, 4, 5, 6, 7),
+            intArrayOf(0, 0, 2, 2, 4, 4, 6, 6),
+            intArrayOf(0, 0, 0, 0, 4, 4, 4, 4),
+            intArrayOf(0, 0, 0, 0, 0, 0, 0, 0),
+            intArrayOf(1, 1, 3, 3, 5, 5, 7, 7),
+            intArrayOf(1, 1, 1, 1, 5, 5, 5, 5),
+            intArrayOf(2, 2, 2, 2, 6, 6, 6, 6),
+            intArrayOf(3, 3, 3, 3, 7, 7, 7, 7)
+        )
+
+        for (selector in 0..7) {
+            val bus = N64MemoryBus()
+            val rsp = RspCore(bus)
+            var pc = 0
+
+            // Initialize vt lanes with distinct values 0x10..0x17.
+            for (lane in 0 until 8) {
+                bus.writeWord(N64SpMemory.IMEM_BASE + pc, iType(0x09, 0, 1, 0x10 + lane))
+                pc += 4
+                bus.writeWord(N64SpMemory.IMEM_BASE + pc, cop2(4, 1, 2, lane * 2))
+                pc += 4
+            }
+            // vs is zero, so VOR copies the selected vt lane into every vd lane.
+            bus.writeWord(N64SpMemory.IMEM_BASE + pc, vectorAlu(2, 0, 3, 0x2A, element = selector))
+            pc += 4
+            for (lane in 0 until 8) {
+                bus.writeWord(N64SpMemory.IMEM_BASE + pc, cop2(0, 4, 3, lane * 2))
+                pc += 4
+                bus.writeWord(N64SpMemory.IMEM_BASE + pc, iType(0x2B, 0, 4, lane * 4))
+                pc += 4
+            }
+
+            rsp.start()
+            repeat(pc / 4) { index ->
+                assertTrue("Selector $selector stopped at instruction $index (PC=${rsp.pc})", rsp.step())
+            }
+            for (lane in 0 until 8) {
+                assertEquals(
+                    "selector=$selector lane=$lane",
+                    0x10 + expected[selector][lane],
+                    bus.readWord(N64SpMemory.DMEM_BASE + lane * 4)
+                )
+            }
+        }
+    }
+
     private fun vectorAlu(vt: Int, vs: Int, vd: Int, funct: Int, element: Int = 0): Int =
         (0x12 shl 26) or ((0x10 or element) shl 21) or (vt shl 16) or
             (vs shl 11) or (vd shl 6) or (funct and 63)
