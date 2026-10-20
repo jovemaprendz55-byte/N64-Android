@@ -1626,6 +1626,29 @@ class R4300CpuTest {
         assertEquals(0xFFFF_FFFF_B000_0050UL.toLong(), cpu.pc)
     }
 
+    @Test fun loadWordFromKseg1CartridgeAddressUsesPhysicalRomMapping() {
+        val cpu = R4300Cpu()
+        val rom = ByteArray(0x1000)
+        fun putRomWord(offset: Int, value: Int) {
+            rom[offset] = (value ushr 24).toByte()
+            rom[offset + 1] = (value ushr 16).toByte()
+            rom[offset + 2] = (value ushr 8).toByte()
+            rom[offset + 3] = value.toByte()
+        }
+        putRomWord(0, 0x80371240.toInt())
+        putRomWord(0x50, 0x13572468)
+
+        cpu.loadCartridgeRom(rom)
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0xB000), // LUI r1, 0xB000 -> sign-extended KSEG1 base
+            iType(0x23, 1, 2, 0x50)    // LW r2, 0x50(r1) from cartridge ROM
+        ))
+
+        repeat(2) { cpu.step() }
+
+        assertEquals(0x13572468L, cpu.register(2))
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
