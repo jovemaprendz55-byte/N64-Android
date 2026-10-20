@@ -495,17 +495,17 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         return (oldValue and preservedMask) or (word ushr ((3 - offset) * 8))
     }
 
-    /** Big-endian MIPS SWL: store rt's left bytes through the end of the aligned word. */
+    /** Big-endian MIPS SWL: store the leftmost bytes of rt through the effective byte. */
     private fun storeWordLeft(address: Int, value: Int) {
         val offset = address and 3
         val aligned = address and -4
         val preservedMask = when (offset) {
-            0 -> 0
-            1 -> 0xFF000000.toInt()
-            2 -> 0xFFFF0000.toInt()
-            else -> 0xFFFFFF00.toInt()
+            0 -> 0x00FFFFFF
+            1 -> 0x0000FFFF
+            2 -> 0x000000FF
+            else -> 0
         }
-        val shift = offset * 8
+        val shift = (3 - offset) * 8
         writeWord(aligned, (readWord(aligned) and preservedMask) or (value ushr shift))
     }
 
