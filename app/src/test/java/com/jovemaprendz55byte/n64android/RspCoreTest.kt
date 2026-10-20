@@ -447,6 +447,49 @@ class RspCoreTest {
         }
     }
 
+
+    @Test fun vectorAluSnapshotsSourcesWhenDestinationAliasesSwizzledSource() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        var pc = 0
+
+        // v1 lanes are all 1; v2 lanes are 10..17.
+        bus.writeWord(N64SpMemory.IMEM_BASE + pc, iType(0x09, 0, 1, 1))
+        pc += 4
+        for (lane in 0 until 8) {
+            bus.writeWord(N64SpMemory.IMEM_BASE + pc, cop2(4, 1, 1, lane * 2))
+            pc += 4
+        }
+        for (lane in 0 until 8) {
+            bus.writeWord(N64SpMemory.IMEM_BASE + pc, iType(0x09, 0, 2, 10 + lane))
+            pc += 4
+            bus.writeWord(N64SpMemory.IMEM_BASE + pc, cop2(4, 2, 2, lane * 2))
+            pc += 4
+        }
+
+        // VADD v2, v1, v2[e=1] writes back into vt. Selector 1 maps lanes
+        // (0,1)->0, (2,3)->2, etc. Lane 1 must use the original v2[0] (10),
+        // not the already-updated v2[0] (11).
+        bus.writeWord(N64SpMemory.IMEM_BASE + pc, vectorAlu(2, 1, 2, 0x10, element = 1))
+        pc += 4
+        for (lane in 0 until 8) {
+            bus.writeWord(N64SpMemory.IMEM_BASE + pc, cop2(0, 3, 2, lane * 2))
+            pc += 4
+            bus.writeWord(N64SpMemory.IMEM_BASE + pc, iType(0x2B, 0, 3, lane * 4))
+            pc += 4
+        }
+
+        rsp.start()
+        repeat(pc / 4) { index ->
+            assertTrue("RSP stopped at instruction $index (PC=${rsp.pc})", rsp.step())
+        }
+
+        val expected = intArrayOf(11, 11, 13, 13, 15, 15, 17, 17)
+        for (lane in expected.indices) {
+            assertEquals("destination lane $lane", expected[lane], bus.readWord(N64SpMemory.DMEM_BASE + lane * 4))
+        }
+    }
+
     private fun rType(rs: Int, rt: Int, rd: Int, funct: Int): Int =
         (rs shl 21) or (rt shl 16) or (rd shl 11) or (funct and 63)
 
