@@ -68,7 +68,7 @@ class N64VideoInterfaceTest {
     fun invalidFramebufferRangeIsRejectedWithoutPartialRender() {
         val bus = N64MemoryBus(rdramSize = 0x100)
         bus.writeWord(N64VideoInterface.VI_STATUS, 3)
-        bus.writeWord(N64VideoInterface.VI_ORIGIN, 0xFC)
+        bus.writeWord(N64VideoInterface.VI_ORIGIN, 0x100)
         bus.writeWord(N64VideoInterface.VI_WIDTH, 2)
         val frame = N64VideoFrameBuffer(2, 1)
         frame.clear(0xFF010203.toInt())
