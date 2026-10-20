@@ -82,6 +82,8 @@ internal class RspCore(private val bus: N64MemoryBus) {
                     writeReg(rd, (instructionPc + 8) and 0xFFF)
                     pendingBranchTarget = target
                 } // JALR; capture target before writing link in case rd == rs
+                0x0A -> if (b == 0) writeReg(rd, a) // MOVZ
+                0x0B -> if (b != 0) writeReg(rd, a) // MOVN
                 0x0D -> {
                     pc = instructionPc
                     bus.markSpBroke()
