@@ -348,7 +348,7 @@ class MainActivity : Activity() {
             } catch (_: Exception) {
                 null
             }
-        }.distinctBy { it.uri }
+        }.distinctBy { it.uri }.toList()
     }
 
     private fun saveLibraryEntry(uri: Uri, title: String, format: String, sizeBytes: Int) {
