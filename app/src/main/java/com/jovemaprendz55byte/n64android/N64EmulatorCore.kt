@@ -7,7 +7,10 @@ package com.jovemaprendz55byte.n64android
  * from an explicitly supplied entry point. It does not implement PIF boot,
  * device initialization, frame timing, graphics, audio, or game compatibility.
  */
-class N64EmulatorCore {
+class N64EmulatorCore(
+    /** Shared input state for the Android touch overlay and PIF Joybus reads. */
+    val controllerPort: N64ControllerPort = N64ControllerPort()
+) {
     enum class StopReason {
         INSTRUCTION_BUDGET_REACHED,
         EXECUTION_ERROR
@@ -20,7 +23,7 @@ class N64EmulatorCore {
         val errorMessage: String? = null
     )
 
-    internal val memoryBus = N64MemoryBus()
+    internal val memoryBus = N64MemoryBus(controllerPort = controllerPort)
     private val cpu = R4300Cpu(memoryBus)
     private val rsp = RspCore(memoryBus)
     private var romLoaded = false
