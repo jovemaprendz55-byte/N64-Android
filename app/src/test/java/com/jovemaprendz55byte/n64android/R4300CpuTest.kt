@@ -92,11 +92,12 @@ class R4300CpuTest {
             iType(0x2B, 1, 2, 0),      // SP_MEM_ADDR = 0
             iType(0x09, 0, 2, 0x100),  // RDRAM destination address
             iType(0x2B, 1, 2, 4),      // SP_DRAM_ADDR = 0x100
-            iType(0x09, 0, 2, 0x101007), // 2 blocks, 8 bytes each, 16-byte DRAM skip
+            iType(0x0F, 0, 2, 0x0100), // upper bits for a 16-byte DRAM skip
+            iType(0x0D, 2, 2, 0x1007), // 2 blocks, 8 bytes each, skip 16 bytes
             iType(0x2B, 1, 2, 0x0C)    // SP_WR_LEN: SP-to-RDRAM DMA
         ))
 
-        repeat(7) { cpu.step() }
+        repeat(8) { cpu.step() }
 
         assertEquals(0x11112222, cpu.readWord(0x100))
         assertEquals(0x33334444, cpu.readWord(0x104))
