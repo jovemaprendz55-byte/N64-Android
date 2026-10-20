@@ -147,12 +147,16 @@ class N64TouchControllerView @JvmOverloads constructor(
         val oldButton = activePointers[pointerId]
         val newButton = buttonRects.entries.firstOrNull { it.value.contains(x, y) }?.key
         if (oldButton != newButton) {
-            if (oldButton != null) controllerPort.setButton(oldButton, false)
+            if (oldButton != null) {
+                activePointers.remove(pointerId)
+                // Another finger may still be holding this same button.
+                if (activePointers.values.none { it == oldButton }) {
+                    controllerPort.setButton(oldButton, false)
+                }
+            }
             if (newButton != null) {
                 activePointers[pointerId] = newButton
                 controllerPort.setButton(newButton, true)
-            } else {
-                activePointers.remove(pointerId)
             }
         }
     }
