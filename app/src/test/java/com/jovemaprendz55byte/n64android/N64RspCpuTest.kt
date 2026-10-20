@@ -685,7 +685,7 @@ class N64RspCpuTest {
         assertEquals(-292, rsp.register(3)) // 0xFEDC sign-extends from 16 bits
     }
 
-    @Test fun supportsQuadwordLoadAndStoreAcrossVectorElementWrap() {
+    @Test fun supportsQuadwordLoadAndStoreWithoutVectorElementWrap() {
         val bus = N64MemoryBus()
         fun vectorMemory(op: Int, base: Int, vt: Int, subop: Int, element: Int, offset: Int) =
             (op shl 26) or (base shl 21) or (vt shl 16) or
@@ -712,8 +712,9 @@ class N64RspCpuTest {
         assertEquals(0xC3D4, rsp.vectorLane(2, 3).toInt() and 0xFFFF)
         assertEquals(0x1484, rsp.vectorLane(2, 4).toInt() and 0xFFFF)
 
-        // SQV writes bytes e12..e15, then wraps the vector element to e0..e3.
-        val expectedBytes = intArrayOf(0x16, 0x86, 0x17, 0x87, 0x10, 0x80, 0x11, 0x81)
+        // SQV writes only bytes e12..e15; it must not wrap to e0..e3.
+        // The following four DMEM bytes retain the values used by the LQV test.
+        val expectedBytes = intArrayOf(0x16, 0x86, 0x17, 0x87, 0xA1, 0xB2, 0xC3, 0xD4)
         for (index in expectedBytes.indices) {
             assertEquals(
                 expectedBytes[index],
