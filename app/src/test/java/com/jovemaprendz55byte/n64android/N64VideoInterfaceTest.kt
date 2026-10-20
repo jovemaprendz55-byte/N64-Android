@@ -51,6 +51,26 @@ class N64VideoInterfaceTest {
     }
 
     @Test
+    fun smallerActiveImageClearsPixelsLeftOverFromPreviousFrame() {
+        val bus = N64MemoryBus()
+        bus.loadRdram(0L, byteArrayOf(0x12, 0x34, 0x56, 0x78))
+        bus.writeWord(N64VideoInterface.VI_STATUS, 3)
+        bus.writeWord(N64VideoInterface.VI_ORIGIN, 0)
+        bus.writeWord(N64VideoInterface.VI_WIDTH, 1)
+
+        val frame = N64VideoFrameBuffer(3, 2)
+        frame.clear(0xFFABCDEF.toInt())
+
+        assertTrue(bus.renderVideoFrame(frame, height = 1))
+        assertEquals(0x78123456, frame.pixelAt(0, 0))
+        assertEquals(0xFF000000.toInt(), frame.pixelAt(1, 0))
+        assertEquals(0xFF000000.toInt(), frame.pixelAt(2, 0))
+        assertEquals(0xFF000000.toInt(), frame.pixelAt(0, 1))
+        assertEquals(0xFF000000.toInt(), frame.pixelAt(1, 1))
+        assertEquals(0xFF000000.toInt(), frame.pixelAt(2, 1))
+    }
+
+    @Test
     fun blankOrUnsupportedPixelFormatDoesNotRender() {
         val bus = N64MemoryBus()
         val frame = N64VideoFrameBuffer(1, 1)
