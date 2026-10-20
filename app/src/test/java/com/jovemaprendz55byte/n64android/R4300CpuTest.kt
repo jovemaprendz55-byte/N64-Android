@@ -955,10 +955,10 @@ class R4300CpuTest {
         cpu.loadBytes(0, words(
             iType(0x09, 0, 1, 11),       // r1 = 11
             iType(0x09, 0, 3, 22),       // r3 = 22
-            rType(2, 1, 4, 0, 0x0A),     // MOVZ: zero condition, copy r1 to r4
-            rType(3, 1, 5, 0, 0x0A),     // MOVZ: nonzero condition, leave r5
-            rType(3, 1, 6, 0, 0x0B),     // MOVN: nonzero condition, copy r1 to r6
-            rType(2, 3, 7, 0, 0x0B),     // MOVN: zero condition, leave r7
+            rType(1, 2, 4, 0, 0x0A),     // MOVZ: rt is zero, copy rs (r1) to r4
+            rType(1, 3, 5, 0, 0x0A),     // MOVZ: rt is nonzero, leave r5
+            rType(1, 3, 6, 0, 0x0B),     // MOVN: rt is nonzero, copy rs (r1) to r6
+            rType(1, 2, 7, 0, 0x0B),     // MOVN: rt is zero, leave r7
             rType(0, 0, 0, 0, 0x0F)      // SYNC
         ))
         repeat(7) { cpu.step() }
