@@ -456,12 +456,12 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         return (oldValue and preservedMask) or (word ushr shift)
     }
 
-    /** Big-endian MIPS SDL: store the high portion of rt starting at the effective address. */
+    /** Big-endian MIPS SDL: store the leftmost bytes of rt through the effective byte. */
     private fun storeDoublewordLeft(address: Int, value: Long) {
         val offset = address and 7
         val aligned = address and -8
-        val shift = offset * 8
-        val preservedMask = if (shift == 0) 0L else (-1L shl (64 - shift))
+        val shift = (7 - offset) * 8
+        val preservedMask = if (offset == 7) 0L else (1L shl shift) - 1L
         writeLong(aligned, (readLong(aligned) and preservedMask) or (value ushr shift))
     }
 
