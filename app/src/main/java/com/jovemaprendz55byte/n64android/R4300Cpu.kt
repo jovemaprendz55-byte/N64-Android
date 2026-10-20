@@ -182,7 +182,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                     val value = b.toInt()
                     cp0[rd] = if (rd == 13) {
                         // Only software interrupt pending bits IP0/IP1 are writable in Cause.
-                        ((cp0[rd].toInt() and 0xFFFF_FCFF) or (value and 0x0000_0300)).toLong()
+                        ((cp0[rd].toInt() and 0xFFFF_FCFF.toInt()) or (value and 0x0000_0300)).toLong()
                     } else {
                         value.toLong()
                     }
