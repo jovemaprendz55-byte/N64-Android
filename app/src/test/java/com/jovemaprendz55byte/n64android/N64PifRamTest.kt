@@ -55,7 +55,7 @@ class N64PifRamTest {
 
     @Test fun rejectsPifDmaWhenRdramRangeIsTooSmall() {
         val bus = N64MemoryBus(rdramSize = 0x100)
-        bus.writeWord(N64MemoryBus.SI_DRAM_ADDR, 0xC0)
+        bus.writeWord(N64MemoryBus.SI_DRAM_ADDR, 0xC8)
         org.junit.Assert.assertThrows(IllegalArgumentException::class.java) {
             bus.writeWord(N64MemoryBus.SI_PIF_ADDR_RD64B, 0)
         }
