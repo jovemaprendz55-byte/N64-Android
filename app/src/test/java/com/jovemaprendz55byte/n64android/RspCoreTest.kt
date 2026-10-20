@@ -81,6 +81,28 @@ class RspCoreTest {
         assertEquals(2, status and 2) // BROKE
     }
 
+    @Test fun jumpAndLinkStoresReturnAddressAndExecutesDelaySlot() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        bus.writeWord(N64SpMemory.IMEM_BASE, (0x03 shl 26) or 4) // JAL target IMEM+16
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, iType(0x09, 0, 2, 7)) // delay slot
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, iType(0x09, 0, 2, 99)) // must be skipped
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, iType(0x2B, 0, 31, 0)) // save link
+        bus.writeWord(N64SpMemory.IMEM_BASE + 20, iType(0x2B, 0, 2, 4)) // save delay-slot result
+        bus.writeWord(N64SpMemory.IMEM_BASE + 24, 0x0000000D) // BREAK
+
+        rsp.start()
+        repeat(4) { index ->
+            assertTrue("RSP stopped at instruction $index (PC=${rsp.pc})", rsp.step())
+        }
+        assertFalse(rsp.step())
+
+        assertEquals(8, rsp.register(31))
+        assertEquals(7, rsp.register(2))
+        assertEquals(8, bus.readWord(N64SpMemory.DMEM_BASE))
+        assertEquals(7, bus.readWord(N64SpMemory.DMEM_BASE + 4))
+    }
+
     @Test fun registerZeroCannotBeChanged() {
         val bus = N64MemoryBus()
         val rsp = RspCore(bus)
