@@ -448,6 +448,26 @@ class RspCoreTest {
     }
 
 
+    @Test fun jumpAndLinkRegisterWritesLinkAndExecutesDelaySlot() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 0x20)) // r1 = target
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, rType(1, 0, 3, 0x09)) // JALR r3,r1
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, iType(0x09, 0, 2, 7)) // delay slot
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, iType(0x09, 0, 2, 9)) // must be skipped
+        bus.writeWord(N64SpMemory.IMEM_BASE + 0x20, 0x0000000D) // BREAK
+
+        rsp.start()
+        assertTrue(rsp.step())
+        assertTrue(rsp.step())
+        assertTrue(rsp.step())
+
+        assertEquals(12, rsp.register(3))
+        assertEquals(7, rsp.register(2))
+        assertEquals(0x20, rsp.pc)
+        assertFalse(rsp.step())
+    }
+
     @Test fun scalarMultiplyAndDivideInstructionsUpdateHiLo() {
         val bus = N64MemoryBus()
         val rsp = RspCore(bus)
