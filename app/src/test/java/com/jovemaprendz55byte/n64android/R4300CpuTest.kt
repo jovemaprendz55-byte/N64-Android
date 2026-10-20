@@ -110,6 +110,31 @@ class R4300CpuTest {
         assertEquals(0, cpu.readWord(N64MemoryBus.SP_DMA_BUSY.toInt()))
     }
 
+    @Test fun spDmaReadLengthWrapsWithinDmemAtTheEndOfItsBank() {
+        val cpu = R4300Cpu()
+        cpu.writeWord(0x100, 0x11223344)
+        cpu.writeWord(0x104, 0x55667788)
+        cpu.writeWord(0x108, 0x99AABBCC.toInt())
+        cpu.writeWord(0x10C, 0xDDEEFF00.toInt())
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x0404), // r1 = SP register base
+            iType(0x09, 0, 2, 0x0FF8), // start at last 8 bytes of DMEM
+            iType(0x2B, 1, 2, 0),      // SP_MEM_ADDR = 0xFF8
+            iType(0x09, 0, 2, 0x100),  // RDRAM source address
+            iType(0x2B, 1, 2, 4),      // SP_DRAM_ADDR = 0x100
+            iType(0x09, 0, 2, 15),     // encoded DMA length for 16 bytes
+            iType(0x2B, 1, 2, 8)       // SP_RD_LEN: RDRAM-to-SP DMA
+        ))
+
+        repeat(7) { cpu.step() }
+
+        assertEquals(0x11223344, cpu.readWord(0x04000FF8))
+        assertEquals(0x55667788, cpu.readWord(0x04000FFC))
+        assertEquals(0x99AABBCC.toInt(), cpu.readWord(0x04000000))
+        assertEquals(0xDDEEFF00.toInt(), cpu.readWord(0x04000004))
+        assertEquals(0, cpu.readWord(N64MemoryBus.SP_DMA_BUSY.toInt()))
+    }
+
     @Test fun cpuCanCopySpDmemBackToRdramWithSpDmaWriteLength() {
         val cpu = R4300Cpu()
         cpu.writeWord(0x04000000, 0x12345678)
