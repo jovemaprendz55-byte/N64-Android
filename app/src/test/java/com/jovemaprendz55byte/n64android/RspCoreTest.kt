@@ -64,6 +64,23 @@ class RspCoreTest {
         assertEquals(-256, bus.readWord(N64SpMemory.DMEM_BASE))
     }
 
+    @Test fun emulatorCoreRunsRspAgainstSharedSpMemoryAndCountsBreak() {
+        val core = N64EmulatorCore()
+        core.memoryBus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 9))
+        core.memoryBus.writeWord(N64SpMemory.IMEM_BASE + 4, iType(0x2B, 0, 1, 0))
+        core.memoryBus.writeWord(N64SpMemory.IMEM_BASE + 8, 0x0000000D) // BREAK
+
+        val result = core.executeRspFromImem(entryPoint = 0, instructionBudget = 10)
+
+        assertEquals(3, result.instructionsExecuted)
+        assertTrue(result.halted)
+        assertEquals(8, result.programCounter)
+        assertEquals(9, core.memoryBus.readWord(N64SpMemory.DMEM_BASE))
+        val status = core.memoryBus.readWord(N64MemoryBus.SP_STATUS)
+        assertEquals(1, status and 1) // HALT
+        assertEquals(2, status and 2) // BROKE
+    }
+
     @Test fun registerZeroCannotBeChanged() {
         val bus = N64MemoryBus()
         val rsp = RspCore(bus)
