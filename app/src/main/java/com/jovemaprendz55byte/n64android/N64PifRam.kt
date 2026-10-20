@@ -34,7 +34,7 @@ internal class N64PifRam(
         var cursor = 0
         var channel = 0
         var commandCount = 0
-        while (cursor < CONTROL_INDEX && commandCount++ < MAX_COMMANDS) {
+        while (cursor < CONTROL_INDEX && commandCount++ < MAX_PARSE_STEPS) {
             val txLengthByte = ram[cursor].toInt() and 0xFF
             if (txLengthByte == 0xFE) { // reset the Joybus channel sequence
                 channel = 0
@@ -102,6 +102,8 @@ internal class N64PifRam(
         const val SIZE = 64
         private const val CONTROL_INDEX = 63
         private const val MAX_COMMANDS = 6
+        // Marker/empty-channel records also consume parser iterations.
+        private const val MAX_PARSE_STEPS = MAX_COMMANDS * 2 + 1
         private const val CMD_STATUS = 0x00
         private const val CMD_READ_CONTROLLER = 0x01
     }
