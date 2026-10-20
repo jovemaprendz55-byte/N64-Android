@@ -107,8 +107,8 @@ internal class RspCore(private val bus: N64MemoryBus) {
                 in 0x10..0x1F -> executeVectorAlu(instruction, instructionPc)
                 else -> unsupported(instruction, instructionPc)
             }
-            0x32 -> executeVectorByteMemory(instruction, a, load = true, instructionPc) // LWC2 LBV subset
-            0x3A -> executeVectorByteMemory(instruction, a, load = false, instructionPc) // SWC2 SBV subset
+            0x32 -> executeVectorByteMemory(instruction, a, true, instructionPc) // LWC2 LBV subset
+            0x3A -> executeVectorByteMemory(instruction, a, false, instructionPc) // SWC2 SBV subset
             0x02 -> pendingBranchTarget = ((pc and 0xF0000000.toInt()) or
                 ((instruction and 0x03FFFFFF) shl 2)) and 0xFFF // J
             0x03 -> {
