@@ -32,15 +32,18 @@ internal class N64PifRam(
 
     private fun executeJoybusCommands() {
         var cursor = 0
+        var channel = 0
         var commandCount = 0
         while (cursor < CONTROL_INDEX && commandCount++ < MAX_COMMANDS) {
             val txLengthByte = ram[cursor].toInt() and 0xFF
-            if (txLengthByte == 0xFE) { // channel reset marker
+            if (txLengthByte == 0xFE) { // reset the Joybus channel sequence
+                channel = 0
                 cursor++
                 continue
             }
             if (txLengthByte == 0xFF) break // end of command list
             if (txLengthByte == 0x00) { // unused channel
+                channel++
                 cursor++
                 continue
             }
@@ -53,8 +56,7 @@ internal class N64PifRam(
             val commandOffset = cursor + 2
             val responseOffset = commandOffset + txLength
             if (responseOffset + rxLength > CONTROL_INDEX) break
-            val channel = commandCount - 1
-
+            // Channel numbers advance for each command record, not for parser iterations.
             // This implementation has one physical controller on channel 0.
             if (channel == 0 && txLength >= 1) {
                 when (ram[commandOffset].toInt() and 0xFF) {
@@ -77,6 +79,7 @@ internal class N64PifRam(
                 markError(cursor)
             }
             cursor = responseOffset + rxLength
+            channel++
         }
         // Clear the execute bit after processing; preserve other control bits.
         ram[CONTROL_INDEX] = (ram[CONTROL_INDEX].toInt() and 0x01.inv()).toByte()
