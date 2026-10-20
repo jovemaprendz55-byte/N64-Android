@@ -107,6 +107,8 @@ internal class RspCore(private val bus: N64MemoryBus) {
                 in 0x10..0x1F -> executeVectorAlu(instruction, instructionPc)
                 else -> unsupported(instruction, instructionPc)
             }
+            0x32 -> executeVectorByteMemory(instruction, a, load = true, instructionPc) // LWC2 LBV subset
+            0x3A -> executeVectorByteMemory(instruction, a, load = false, instructionPc) // SWC2 SBV subset
             0x02 -> pendingBranchTarget = ((pc and 0xF0000000.toInt()) or
                 ((instruction and 0x03FFFFFF) shl 2)) and 0xFFF // J
             0x03 -> {
@@ -158,6 +160,31 @@ internal class RspCore(private val bus: N64MemoryBus) {
 
     private fun writeReg(index: Int, value: Int) {
         if (index != 0) gpr[index] = value
+    }
+
+    /**
+     * Implements the byte forms LBV and SBV of the RSP vector load/store unit.
+     * Other vector memory suboperations are deliberately rejected until their
+     * lane grouping and alignment rules are implemented.
+     */
+    private fun executeVectorByteMemory(
+        instruction: Int,
+        base: Int,
+        load: Boolean,
+        address: Int
+    ) {
+        val subOperation = (instruction ushr 11) and 31
+        if (subOperation != 0) unsupported(instruction, address) // LBV/SBV encoding
+        val vt = (instruction ushr 16) and 31
+        val element = (instruction ushr 7) and 15
+        val offset7 = instruction and 0x7F
+        val signedOffset = if (offset7 and 0x40 != 0) offset7 - 0x80 else offset7
+        val memoryAddress = dmemAddress(base + signedOffset)
+        if (load) {
+            setVectorByte(vt, element, bus.readByte(memoryAddress).toInt() and 0xFF)
+        } else {
+            bus.writeByte(memoryAddress, getVectorByte(vt, element).toByte())
+        }
     }
 
     /**
