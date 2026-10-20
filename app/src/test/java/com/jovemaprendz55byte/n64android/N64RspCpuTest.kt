@@ -934,4 +934,27 @@ class N64RspCpuTest {
         }
     }
 
+
+    @Test fun quadStoreStopsAtVectorRegisterEnd() {
+        val bus = N64MemoryBus()
+        val rsp = N64RspCpu(bus)
+        // Effective address 0x43 leaves 13 bytes in the memory quadword,
+        // but element 12 leaves only four bytes in the vector register.
+        bus.writeWord(N64SpMemory.IMEM_BASE, i(9, 0, 2, 0x43))
+        val sqv = (58 shl 26) or (2 shl 21) or (1 shl 16) or
+            (4 shl 11) or (12 shl 7) // SQV v1[12], 0(r2)
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, sqv)
+        for (index in 0 until 8) {
+            rsp.setVectorLane(1, index, (0x1011 + index * 0x0202).toShort())
+        }
+
+        repeat(2) { rsp.step() }
+
+        assertEquals(0x1C, bus.readByte(N64SpMemory.DMEM_BASE + 0x43).toInt() and 0xFF)
+        assertEquals(0x1D, bus.readByte(N64SpMemory.DMEM_BASE + 0x44).toInt() and 0xFF)
+        assertEquals(0x1E, bus.readByte(N64SpMemory.DMEM_BASE + 0x45).toInt() and 0xFF)
+        assertEquals(0x1F, bus.readByte(N64SpMemory.DMEM_BASE + 0x46).toInt() and 0xFF)
+        assertEquals(0, bus.readByte(N64SpMemory.DMEM_BASE + 0x47).toInt() and 0xFF)
+    }
+
 }
