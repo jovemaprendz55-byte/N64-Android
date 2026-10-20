@@ -448,6 +448,26 @@ class RspCoreTest {
     }
 
 
+    @Test fun branchAndLinkWritesReturnAddressAndExecutesDelaySlot() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 5)) // r1 = 5
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, iType(0x01, 1, 0x11, 3)) // BGEZAL +3
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, iType(0x09, 0, 2, 7)) // delay slot
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, iType(0x09, 0, 2, 99)) // skipped
+        bus.writeWord(N64SpMemory.IMEM_BASE + 20, 0x0000000D) // target BREAK
+
+        rsp.start()
+        assertTrue(rsp.step())
+        assertTrue(rsp.step())
+        assertTrue(rsp.step())
+
+        assertEquals(12, rsp.register(31))
+        assertEquals(7, rsp.register(2))
+        assertEquals(20, rsp.pc)
+        assertFalse(rsp.step())
+    }
+
     @Test fun jumpAndLinkRegisterWritesLinkAndExecutesDelaySlot() {
         val bus = N64MemoryBus()
         val rsp = RspCore(bus)
