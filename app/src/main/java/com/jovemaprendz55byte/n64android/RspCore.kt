@@ -163,7 +163,6 @@ internal class RspCore(private val bus: N64MemoryBus) {
         val vd = (instruction ushr 6) and 31
         val funct = instruction and 63
         val element = (instruction ushr 21) and 0xF
-        require(element in 0..7) { "Unsupported RSP vector element selector $element" }
         for (lane in 0 until 8) {
             val left = vector[vs][lane].toInt()
             val right = vector[vt][selectedVectorLane(element, lane)].toInt()
@@ -183,8 +182,8 @@ internal class RspCore(private val bus: N64MemoryBus) {
     }
 
     /**
-     * Implements the RSP's eight basic 16-bit element swizzles. Selectors 8..15
-     * use byte-oriented patterns and are deliberately rejected until implemented.
+     * Selects the RSP vector source lane. Selectors 0..7 use the hardware's
+     * halfword swizzles; selectors 8..15 broadcast one selected halfword.
      */
     private fun selectedVectorLane(element: Int, lane: Int): Int = when (element) {
         0 -> lane
@@ -195,7 +194,8 @@ internal class RspCore(private val bus: N64MemoryBus) {
         5 -> (lane and 0b100) or 1
         6 -> (lane and 0b100) or 2
         7 -> (lane and 0b100) or 3
-        else -> throw IllegalArgumentException("Unsupported RSP vector element selector $element")
+        in 8..15 -> element and 0b111
+        else -> throw IllegalArgumentException("Invalid RSP vector element selector $element")
     }
 
     private fun readSpCop0(index: Int): Int = when (index) {

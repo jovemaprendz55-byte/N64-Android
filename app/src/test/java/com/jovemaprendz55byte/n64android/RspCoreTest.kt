@@ -264,10 +264,18 @@ class RspCoreTest {
             intArrayOf(1, 1, 3, 3, 5, 5, 7, 7),
             intArrayOf(1, 1, 1, 1, 5, 5, 5, 5),
             intArrayOf(2, 2, 2, 2, 6, 6, 6, 6),
-            intArrayOf(3, 3, 3, 3, 7, 7, 7, 7)
+            intArrayOf(3, 3, 3, 3, 7, 7, 7, 7),
+            intArrayOf(0, 0, 0, 0, 0, 0, 0, 0),
+            intArrayOf(1, 1, 1, 1, 1, 1, 1, 1),
+            intArrayOf(2, 2, 2, 2, 2, 2, 2, 2),
+            intArrayOf(3, 3, 3, 3, 3, 3, 3, 3),
+            intArrayOf(4, 4, 4, 4, 4, 4, 4, 4),
+            intArrayOf(5, 5, 5, 5, 5, 5, 5, 5),
+            intArrayOf(6, 6, 6, 6, 6, 6, 6, 6),
+            intArrayOf(7, 7, 7, 7, 7, 7, 7, 7)
         )
 
-        for (selector in 0..7) {
+        for (selector in 0..15) {
             val bus = N64MemoryBus()
             val rsp = RspCore(bus)
             var pc = 0
