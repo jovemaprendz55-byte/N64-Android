@@ -82,13 +82,24 @@ internal class RspCore(private val bus: N64MemoryBus) {
                 pendingBranchTarget = ((pc and 0xF0000000.toInt()) or
                     ((instruction and 0x03FFFFFF) shl 2)) and 0xFFF // JAL
             }
+            0x01 -> when (rt) {
+                0x00 -> if (a < 0) pendingBranchTarget = (pc + (imm shl 2)) and 0xFFF // BLTZ
+                0x01 -> if (a >= 0) pendingBranchTarget = (pc + (imm shl 2)) and 0xFFF // BGEZ
+                else -> unsupported(instruction, instructionPc)
+            }
             0x04 -> if (a == b) pendingBranchTarget = (pc + (imm shl 2)) and 0xFFF // BEQ
             0x05 -> if (a != b) pendingBranchTarget = (pc + (imm shl 2)) and 0xFFF // BNE
-            0x08, 0x09 -> writeReg(rt, a + imm) // ADDI(U)
-            0x0C -> writeReg(rt, a and (instruction and 0xFFFF))
-            0x0D -> writeReg(rt, a or (instruction and 0xFFFF))
-            0x0F -> writeReg(rt, (instruction and 0xFFFF) shl 16)
-            0x20 -> writeReg(rt, bus.readByte(dmemAddress(a + imm)).toInt())
+            0x06 -> if (a <= 0) pendingBranchTarget = (pc + (imm shl 2)) and 0xFFF // BLEZ
+            0x07 -> if (a > 0) pendingBranchTarget = (pc + (imm shl 2)) and 0xFFF // BGTZ
+            0x08, 0x09 -> writeReg(rt, a + imm) // ADDI(U), wrapping arithmetic
+            0x0A -> writeReg(rt, if (a < imm) 1 else 0) // SLTI
+            0x0B -> writeReg(rt, if (Integer.compareUnsigned(a, imm) < 0) 1 else 0) // SLTIU
+            0x0C -> writeReg(rt, a and (instruction and 0xFFFF)) // ANDI
+            0x0D -> writeReg(rt, a or (instruction and 0xFFFF)) // ORI
+            0x0E -> writeReg(rt, a xor (instruction and 0xFFFF)) // XORI
+            0x0F -> writeReg(rt, (instruction and 0xFFFF) shl 16) // LUI
+            0x20 -> writeReg(rt, bus.readByte(dmemAddress(a + imm)).toInt()) // LB
+            0x21 -> writeReg(rt, bus.readHalf(dmemAddress(a + imm)).toInt()) // LH
             0x23 -> writeReg(rt, bus.readWord(dmemAddress(a + imm))) // LW
             0x24 -> writeReg(rt, bus.readByte(dmemAddress(a + imm)).toInt() and 0xFF)
             0x25 -> writeReg(rt, bus.readHalf(dmemAddress(a + imm)).toInt() and 0xFFFF)
