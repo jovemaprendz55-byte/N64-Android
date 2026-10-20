@@ -145,6 +145,19 @@ class N64MemoryBusTest {
         assertEquals(0, bus.readWord(N64MemoryBus.SP_DMA_BUSY))
     }
 
+
+    @Test fun spDmaClearsBusyFlagWhenRdramTransferFails() {
+        val bus = N64MemoryBus(rdramSize = 0x100)
+        bus.writeWord(N64MemoryBus.SP_MEM_ADDR, 0)
+        bus.writeWord(N64MemoryBus.SP_DRAM_ADDR, 0xFC)
+
+        assertThrows(IllegalArgumentException::class.java) {
+            bus.writeWord(N64MemoryBus.SP_RD_LEN, 7)
+        }
+
+        assertEquals(0, bus.readWord(N64MemoryBus.SP_DMA_BUSY))
+    }
+
     @Test fun spDmaCopiesRdramToDmemAndBack() {
         val bus = N64MemoryBus()
         bus.loadRdram(0x100L, byteArrayOf(
