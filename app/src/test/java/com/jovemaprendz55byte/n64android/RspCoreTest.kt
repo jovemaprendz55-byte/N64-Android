@@ -729,7 +729,7 @@ class RspCoreTest {
         bus.writeWord(N64SpMemory.IMEM_BASE + 0x24, 0x0000000D) // BREAK
 
         rsp.start()
-        repeat(4) { assertTrue(rsp.step()) }
+        repeat(3) { assertTrue(rsp.step()) }
         assertEquals(8, rsp.register(31))
         assertEquals(7, rsp.register(2))
         assertEquals(42, rsp.register(3))
