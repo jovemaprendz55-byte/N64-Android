@@ -72,6 +72,20 @@ class N64MemoryBusTest {
         assertThrows(IllegalArgumentException::class.java) { bus.readByte(0x05000000L) }
     }
 
+    @Test fun riRegistersSupportBasicWordReadsAndWrites() {
+        val bus = N64MemoryBus()
+
+        assertEquals(0, bus.readWord(N64MemoryBus.RI_MODE))
+        bus.writeWord(N64MemoryBus.RI_MODE, 0x00000003)
+        bus.writeWord(N64MemoryBus.RI_CONFIG, 0x00000012)
+        bus.writeWord(N64MemoryBus.RI_REFRESH, 0x00000024)
+
+        assertEquals(0x00000003, bus.readWord(N64MemoryBus.RI_MODE))
+        assertEquals(0x00000012, bus.readWord(N64MemoryBus.RI_CONFIG))
+        assertEquals(0x00000024, bus.readWord(N64MemoryBus.RI_REFRESH))
+        assertEquals(0, bus.readWord(N64MemoryBus.RI_WERROR))
+    }
+
     @Test fun rejectsMisalignedAccessesAndOutOfRangeRdram() {
         val bus = N64MemoryBus(rdramSize = 0x100)
         assertThrows(IllegalArgumentException::class.java) { bus.readWord(2L) }
