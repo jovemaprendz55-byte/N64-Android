@@ -25,6 +25,20 @@ class N64EmulatorCore {
     private val rsp = RspCore(memoryBus)
     private var romLoaded = false
 
+    /** A CPU-readable snapshot of the VI framebuffer, when VI is configured. */
+    data class VideoFrame(val width: Int, val height: Int, val argbPixels: IntArray)
+
+    /**
+     * Captures the framebuffer configured by VI registers.
+     *
+     * This exposes direct framebuffer scanout only; it does not render RDP
+     * display lists or imply that a game has completed booting.
+     */
+    fun captureVideoFrame(): VideoFrame? {
+        val frame = memoryBus.captureVideoFrame() ?: return null
+        return VideoFrame(frame.width, frame.height, frame.pixels)
+    }
+
     data class RspExecutionResult(
         val instructionsExecuted: Int,
         val programCounter: Int,
