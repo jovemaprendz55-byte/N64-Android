@@ -18,12 +18,13 @@ class RspCoreTest {
         bus.writeWord(N64SpMemory.IMEM_BASE + 0x24, 0x0000000D) // BREAK
 
         rsp.start()
-        repeat(4) { index ->
+        repeat(3) { index ->
             assertTrue("RSP stopped at instruction $index (PC=${rsp.pc})", rsp.step())
         }
+        // The delay slot has completed and the pending target is now the next PC.
         assertEquals(7, rsp.register(2))
         assertEquals(0x20, rsp.pc)
-        assertTrue(rsp.step())
+        assertTrue(rsp.step()) // execute the target instruction, which stores r2
         assertEquals(7, bus.readWord(N64SpMemory.DMEM_BASE))
     }
 
