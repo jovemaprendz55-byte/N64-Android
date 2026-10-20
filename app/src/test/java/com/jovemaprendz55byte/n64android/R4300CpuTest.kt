@@ -15,6 +15,25 @@ class R4300CpuTest {
         }
     }
 
+    @Test fun branchAndLinkWritesReturnAddressEvenWhenBranchIsNotTaken() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x01, 1, 0x10, 2), // BLTZAL r1, target; r1=0, so not taken, but link is written
+            iType(0x09, 0, 2, 7),    // ordinary delay slot still executes
+            iType(0x01, 1, 0x12, 2), // BLTZALL r1, target; link is written and delay slot annulled
+            iType(0x09, 0, 3, 99),   // annulled delay slot
+            iType(0x09, 0, 4, 42)    // execution continues here
+        ))
+
+        repeat(4) { cpu.step() }
+
+        assertEquals(16L, cpu.register(31))
+        assertEquals(7L, cpu.register(2))
+        assertEquals(0L, cpu.register(3))
+        assertEquals(42L, cpu.register(4))
+        assertEquals(20L, cpu.pc)
+    }
+
     @Test fun constructorAcceptsSmallWordAlignedRamForUnitTests() {
         val cpu = R4300Cpu(memorySize = 0x100)
         cpu.writeWord(0xFC, 0x12345678)
