@@ -89,6 +89,7 @@ internal class RspCore(private val bus: N64MemoryBus) {
             0x12 -> when (rs) {
                 0x00 -> writeReg(rt, vector[vectorRegister][(element ushr 1) and 7].toInt()) // MFC2
                 0x04 -> vector[vectorRegister][(element ushr 1) and 7] = b.toShort() // MTC2
+                0x10 -> executeVectorAlu(instruction, instructionPc)
                 else -> unsupported(instruction, instructionPc)
             }
             0x02 -> pendingBranchTarget = ((pc and 0xF0000000.toInt()) or
@@ -142,6 +143,31 @@ internal class RspCore(private val bus: N64MemoryBus) {
 
     private fun writeReg(index: Int, value: Int) {
         if (index != 0) gpr[index] = value
+    }
+
+    /**
+     * First lane-wise vector ALU subset. Element selection/swizzling and the
+     * accumulator/flags are not modeled yet; this initial implementation uses
+     * corresponding lanes and 16-bit wraparound.
+     */
+    private fun executeVectorAlu(instruction: Int, address: Int) {
+        val vt = (instruction ushr 16) and 31
+        val vs = (instruction ushr 11) and 31
+        val vd = (instruction ushr 6) and 31
+        val funct = instruction and 63
+        for (lane in 0 until 8) {
+            val left = vector[vs][lane].toInt()
+            val right = vector[vt][lane].toInt()
+            val result = when (funct) {
+                0x10 -> left + right // VADD (accumulator/carry behavior simplified)
+                0x11 -> left - right // VSUB (accumulator/carry behavior simplified)
+                0x28 -> left and right // VAND
+                0x2A -> left or right // VOR
+                0x2C -> left xor right // VXOR
+                else -> unsupported(instruction, address)
+            }
+            vector[vd][lane] = result.toShort()
+        }
     }
 
     private fun readSpCop0(index: Int): Int = when (index) {
