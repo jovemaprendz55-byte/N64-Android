@@ -1576,6 +1576,29 @@ class R4300CpuTest {
         assertEquals(0x300L, cpu.register(2))
     }
 
+    @Test fun mtc0CauseCanSetAndClearEachSoftwareInterruptPendingBit() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, -1), // Set both writable software interrupt pending bits.
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (13 shl 11), // MTC0 r1, Cause
+            iType(0x09, 0, 1, 0x100),
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (13 shl 11), // MTC0 r1, Cause
+            (0x10 shl 26) or (2 shl 16) or (13 shl 11), // MFC0 r2, Cause: IP0 only
+            iType(0x09, 0, 1, 0x200),
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (13 shl 11), // MTC0 r1, Cause
+            (0x10 shl 26) or (3 shl 16) or (13 shl 11), // MFC0 r3, Cause: IP1 only
+            iType(0x09, 0, 1, 0),
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (13 shl 11), // Clear both bits
+            (0x10 shl 26) or (4 shl 16) or (13 shl 11) // MFC0 r4, Cause
+        ))
+
+        repeat(11) { cpu.step() }
+
+        assertEquals(0x100L, cpu.register(2))
+        assertEquals(0x200L, cpu.register(3))
+        assertEquals(0L, cpu.register(4))
+    }
+
     @Test fun eretJumpsToEpcAndClearsExceptionLevelForSimplifiedCore() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
