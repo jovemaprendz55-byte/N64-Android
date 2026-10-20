@@ -199,8 +199,27 @@ class RspCoreTest {
         assertEquals(0x0FFF, bus.readWord(N64SpMemory.DMEM_BASE + 4))
     }
 
-    private fun vectorAlu(vt: Int, vs: Int, vd: Int, funct: Int): Int =
-        (0x12 shl 26) or (0x10 shl 21) or (vt shl 16) or
+    @Test fun vectorAluUsesSelectedVectorElementForAllDestinationLanes() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 0x10))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, iType(0x09, 0, 2, 0x111))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, iType(0x09, 0, 3, 0x22))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, cop2(4, 1, 1, 0)) // v1 lane 0 = 0x10
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, cop2(4, 2, 2, 0)) // v2 lane 0 = 0x111
+        bus.writeWord(N64SpMemory.IMEM_BASE + 20, cop2(4, 3, 2, 8)) // v2 lane 4 = 0x22
+        bus.writeWord(N64SpMemory.IMEM_BASE + 24, vectorAlu(2, 1, 3, 0x2A, element = 4))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 28, cop2(0, 4, 3, 0))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 32, iType(0x2B, 0, 4, 0))
+
+        rsp.start()
+        repeat(9) { assertTrue("RSP stopped at instruction $it", rsp.step()) }
+
+        assertEquals(0x32, bus.readWord(N64SpMemory.DMEM_BASE))
+    }
+
+    private fun vectorAlu(vt: Int, vs: Int, vd: Int, funct: Int, element: Int = 0): Int =
+        (0x12 shl 26) or ((0x10 or element) shl 21) or (vt shl 16) or
             (vs shl 11) or (vd shl 6) or (funct and 63)
 
     private fun cop0(rs: Int, rt: Int, rd: Int): Int =
