@@ -46,6 +46,22 @@ class N64VideoFrameBufferTest {
         }
     }
 
+    @Test fun rejectsTruncatedSourceBeforeChangingDestination() {
+        val frame = N64VideoFrameBuffer(2, 1)
+        frame.clear(0xFF112233.toInt())
+
+        assertThrows(IllegalArgumentException::class.java) {
+            frame.copyRgba8888(
+                source = byteArrayOf(10, 20, 30, -1, 40, 50, 60),
+                sourceWidth = 2,
+                sourceHeight = 1
+            )
+        }
+
+        assertEquals(0xFF112233.toInt(), frame.pixelAt(0, 0))
+        assertEquals(0xFF112233.toInt(), frame.pixelAt(1, 0))
+    }
+
     @Test fun rejectsSourceWidthThatWouldOverflowRgba8888RowSize() {
         val frame = N64VideoFrameBuffer(1, 1)
         assertThrows(IllegalArgumentException::class.java) {
