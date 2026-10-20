@@ -24,7 +24,6 @@ class MainActivity : Activity() {
     private var preparedRom: ByteArray? = null
     private var homeRoot: View? = null
     private lateinit var libraryContainer: LinearLayout
-    private var preparedRomUri: Uri? = null
     private val emulationRunning = AtomicBoolean(false)
     private var emulationThread: Thread? = null
 
@@ -259,7 +258,6 @@ class MainActivity : Activity() {
 
     private fun inspectRom(uri: Uri, addToLibrary: Boolean = true) {
         preparedRom = null
-        preparedRomUri = null
         try {
             val rawRom = contentResolver.openInputStream(uri)?.use { input ->
                 readRomLimited(input)
@@ -293,7 +291,6 @@ class MainActivity : Activity() {
             }
 
             preparedRom = normalized
-            preparedRomUri = uri
             if (addToLibrary) saveLibraryEntry(uri, normalizedHeader.title, originalHeader.format.name, normalized.size)
             status.text = "ROM validada e preparada em memória."
             romDetails.text = buildString {
@@ -400,7 +397,7 @@ class MainActivity : Activity() {
                 setTextColor(Color.WHITE)
             }, matchWrap())
             card.addView(TextView(this).apply {
-                text = "\${entry.format} • \${formatSize(entry.sizeBytes)}"
+                text = "${entry.format} • ${formatSize(entry.sizeBytes)}"
                 textSize = 12f
                 setTextColor(Color.rgb(170, 185, 210))
                 setPadding(0, dp(3), 0, dp(6))
