@@ -27,6 +27,7 @@ class N64EmulatorCore(
     private val cpu = R4300Cpu(memoryBus)
     private val rsp = RspCore(memoryBus)
     private var romLoaded = false
+    private var executionStarted = false
 
     data class RspExecutionResult(
         val instructionsExecuted: Int,
@@ -70,24 +71,35 @@ class N64EmulatorCore(
     }
 
     /**
-     * Runs at most [instructionBudget] instructions from [entryPoint].
+     * Starts a persistent CPU session at an explicit address. Call [executeSlice]
+     * repeatedly to continue execution without resetting registers or branch state.
      *
-     * The entry point is explicit because the real N64 reset/PIF boot sequence
-     * is not implemented. Errors are returned as a result instead of escaping
-     * the runner, so callers can show diagnostics without crashing the UI.
+     * This bypasses the real PIF boot sequence and is intended for development
+     * until hardware initialization and a complete boot path are implemented.
      */
-    fun executeFrom(entryPoint: Long, instructionBudget: Int): ExecutionResult {
+    fun startExecution(entryPoint: Long) {
         require(romLoaded) { "Load a normalized ROM before execution" }
         require(entryPoint % 4L == 0L) { "Entry point must be 4-byte aligned" }
+        cpu.resetExecutionState(entryPoint)
+        executionStarted = true
+    }
+
+    /**
+     * Executes a bounded slice in the current session, preserving CPU state
+     * between calls. A CPU exception is returned as a diagnostic stop result.
+     */
+    fun executeSlice(instructionBudget: Int): ExecutionResult {
+        require(romLoaded) { "Load a normalized ROM before execution" }
+        require(executionStarted) { "Call startExecution before running a slice" }
         require(instructionBudget > 0) { "Instruction budget must be positive" }
 
-        cpu.resetExecutionState(entryPoint)
         var executed = 0
         while (executed < instructionBudget) {
             try {
                 cpu.step()
                 executed++
             } catch (error: Exception) {
+                executionStarted = false
                 return ExecutionResult(
                     instructionsExecuted = executed,
                     programCounter = cpu.pc,
@@ -102,5 +114,19 @@ class N64EmulatorCore(
             programCounter = cpu.pc,
             stopReason = StopReason.INSTRUCTION_BUDGET_REACHED
         )
+    }
+
+    /** Copies the current VI framebuffer into [destination], if its format is supported. */
+    fun renderVideoFrame(destination: N64VideoFrameBuffer, height: Int = destination.height): Boolean =
+        memoryBus.renderVideoFrame(destination, height)
+
+    /**
+     * Runs at most [instructionBudget] instructions from [entryPoint], resetting
+     * the CPU first. Prefer startExecution + executeSlice for a persistent loop.
+     */
+    fun executeFrom(entryPoint: Long, instructionBudget: Int): ExecutionResult {
+        require(instructionBudget > 0) { "Instruction budget must be positive" }
+        startExecution(entryPoint)
+        return executeSlice(instructionBudget)
     }
 }
