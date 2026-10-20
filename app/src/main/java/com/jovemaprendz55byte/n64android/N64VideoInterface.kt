@@ -50,6 +50,10 @@ internal class N64VideoInterface {
         val finalExclusive = origin.toLong() + (height - 1L) * rowBytes + rowBytes
         if (origin < 0 || finalExclusive > rdram.size.toLong()) return false
 
+        // A smaller active VI image must not leave pixels from a previous frame
+        // visible in the unused part of the host framebuffer.
+        destination.clear()
+
         for (y in 0 until height) {
             val rowStart = origin + y * rowBytes.toInt()
             for (x in 0 until sourceWidth) {
