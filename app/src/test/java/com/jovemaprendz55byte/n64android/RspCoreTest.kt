@@ -6,6 +6,27 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RspCoreTest {
+    @Test fun jumpRegisterAlignsTargetAndExecutesDelaySlot() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        // r1 = 0x21; JR must clear the low two address bits and jump to IMEM+0x20.
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 0x21))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, rType(1, 0, 0, 0x08)) // JR r1
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, iType(0x09, 0, 2, 7)) // delay slot
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, iType(0x09, 0, 2, 99)) // must be skipped
+        bus.writeWord(N64SpMemory.IMEM_BASE + 0x20, iType(0x2B, 0, 2, 0)) // store delay-slot result
+        bus.writeWord(N64SpMemory.IMEM_BASE + 0x24, 0x0000000D) // BREAK
+
+        rsp.start()
+        repeat(4) { index ->
+            assertTrue("RSP stopped at instruction $index (PC=${rsp.pc})", rsp.step())
+        }
+        assertEquals(7, rsp.register(2))
+        assertEquals(0x20, rsp.pc)
+        assertTrue(rsp.step())
+        assertEquals(7, bus.readWord(N64SpMemory.DMEM_BASE))
+    }
+
     @Test fun supportsVariableLeftLogicalAndArithmeticRightShifts() {
         val bus = N64MemoryBus()
         val rsp = RspCore(bus)
