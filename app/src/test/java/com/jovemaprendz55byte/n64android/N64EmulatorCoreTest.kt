@@ -18,6 +18,22 @@ class N64EmulatorCoreTest {
         assertEquals(null, result.errorMessage)
     }
 
+    @Test fun executionSlicesContinueFromPreviousProgramCounter() {
+        val rom = syntheticRomWithInstructions(0x2401002A, 0x24210001, 0x24210001)
+        val core = N64EmulatorCore()
+        core.loadRom(rom)
+
+        core.startExecution(0xFFFF_FFFF_B000_0040UL.toLong())
+        val first = core.executeSlice(1)
+        val second = core.executeSlice(2)
+
+        assertEquals(1, first.instructionsExecuted)
+        assertEquals(0xFFFF_FFFF_B000_0044UL.toLong(), first.programCounter)
+        assertEquals(2, second.instructionsExecuted)
+        assertEquals(0xFFFF_FFFF_B000_004CUL.toLong(), second.programCounter)
+        assertEquals(N64EmulatorCore.StopReason.INSTRUCTION_BUDGET_REACHED, second.stopReason)
+    }
+
     @Test fun reportsUnsupportedInstructionInsteadOfCrashingCaller() {
         val rom = syntheticRomWithInstructions(0xFFFFFFFF.toInt())
         val core = N64EmulatorCore()
