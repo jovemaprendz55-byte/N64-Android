@@ -1544,7 +1544,7 @@ class R4300CpuTest {
         bus.markSpBroke()
         val brokeStatus = bus.readWord(N64MemoryBus.SP_STATUS)
         assertEquals(1, brokeStatus and 0x1) // HALT
-        assertEquals(1, brokeStatus and 0x2) // BROKE
+        assertEquals(0x2, brokeStatus and 0x2) // BROKE
 
         bus.writeWord(N64MemoryBus.SP_STATUS, 1 shl 2) // clear BROKE only
         val clearedBrokeStatus = bus.readWord(N64MemoryBus.SP_STATUS)
