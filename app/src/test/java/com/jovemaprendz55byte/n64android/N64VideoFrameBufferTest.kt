@@ -45,4 +45,11 @@ class N64VideoFrameBufferTest {
             frame.copyRgba8888(byteArrayOf(), sourceWidth = 1, sourceHeight = 1, sourceStride = 3)
         }
     }
+
+    @Test fun rejectsSourceWidthThatWouldOverflowRgba8888RowSize() {
+        val frame = N64VideoFrameBuffer(1, 1)
+        assertThrows(IllegalArgumentException::class.java) {
+            frame.copyRgba8888(byteArrayOf(), sourceWidth = Int.MAX_VALUE, sourceHeight = 1)
+        }
+    }
 }
