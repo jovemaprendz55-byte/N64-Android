@@ -159,7 +159,7 @@ class RspCoreTest {
         val bus = N64MemoryBus()
         val rsp = RspCore(bus)
         bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 3)) // r1 = 3
-        bus.writeWord(N64SpMemory.IMEM_BASE + 4, iType(0x09, 0, 2, 4)) // r2 = 4
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, iType(0x09, 0, 2, 5)) // r2 = 5
         bus.writeWord(N64SpMemory.IMEM_BASE + 8, cop2(4, 1, 1, 0)) // v1[0] = 3
         bus.writeWord(N64SpMemory.IMEM_BASE + 12, cop2(4, 2, 2, 0)) // v2[0] = 4
         bus.writeWord(N64SpMemory.IMEM_BASE + 16, vectorAlu(2, 1, 3, 0x10)) // v3 = v1 + v2
@@ -172,10 +172,10 @@ class RspCoreTest {
         rsp.start()
         repeat(10) { assertTrue(rsp.step()) }
 
-        assertEquals(7, bus.readWord(N64SpMemory.DMEM_BASE))
-        assertEquals(7, rsp.register(4))
-        assertEquals(7, bus.readWord(N64SpMemory.DMEM_BASE + 4))
-        assertEquals(7, rsp.register(6))
+        assertEquals(8, bus.readWord(N64SpMemory.DMEM_BASE))
+        assertEquals(8, rsp.register(4))
+        assertEquals(6, bus.readWord(N64SpMemory.DMEM_BASE + 4))
+        assertEquals(6, rsp.register(6))
     }
 
     private fun vectorAlu(vt: Int, vs: Int, vd: Int, funct: Int): Int =
