@@ -12,6 +12,9 @@ internal class RspCore(private val bus: N64MemoryBus) {
     private val vector = Array(32) { ShortArray(8) }
     var pc: Int = 0
         private set
+    /** IMEM offset of the most recently attempted instruction, useful for fault diagnostics. */
+    var lastInstructionAddress: Int = 0
+        private set
     var halted: Boolean = true
         private set
     private var pendingBranchTarget: Int? = null
@@ -40,6 +43,7 @@ internal class RspCore(private val bus: N64MemoryBus) {
             halted = true
             return false
         }
+        lastInstructionAddress = pc
         val address = N64SpMemory.IMEM_BASE + pc.toLong()
         val instruction = bus.readWord(address)
         val instructionPc = pc
