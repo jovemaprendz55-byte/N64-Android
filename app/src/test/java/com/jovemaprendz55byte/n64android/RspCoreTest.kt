@@ -178,6 +178,27 @@ class RspCoreTest {
         assertEquals(6, rsp.register(6))
     }
 
+    @Test fun vectorSubtractAndAndOrOperationsProduceExpectedLaneValues() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 0x00F3))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, iType(0x09, 0, 2, 0x0F3F))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, cop2(4, 1, 1, 0)) // v1[0]
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, cop2(4, 2, 2, 0)) // v2[0]
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, vectorAlu(2, 1, 3, 0x28)) // VAND
+        bus.writeWord(N64SpMemory.IMEM_BASE + 20, cop2(0, 4, 3, 0))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 24, iType(0x2B, 0, 4, 0))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 28, vectorAlu(2, 1, 5, 0x2A)) // VOR
+        bus.writeWord(N64SpMemory.IMEM_BASE + 32, cop2(0, 6, 5, 0))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 36, iType(0x2B, 0, 6, 4))
+
+        rsp.start()
+        repeat(10) { assertTrue("RSP stopped at instruction $it", rsp.step()) }
+
+        assertEquals(0x0033, bus.readWord(N64SpMemory.DMEM_BASE))
+        assertEquals(0x0FFF, bus.readWord(N64SpMemory.DMEM_BASE + 4))
+    }
+
     private fun vectorAlu(vt: Int, vs: Int, vd: Int, funct: Int): Int =
         (0x12 shl 26) or (0x10 shl 21) or (vt shl 16) or
             (vs shl 11) or (vd shl 6) or (funct and 63)
