@@ -1,9 +1,10 @@
 package com.jovemaprendz55byte.n64android
 
 /**
- * Early scalar RSP interpreter foundation. Supports a small subset of the
- * scalar instruction set and BREAK; vector operations, COP0, DMA timing,
- * interrupts, and full RSP task execution remain unimplemented.
+ * Early RSP interpreter foundation. Supports a subset of scalar instructions,
+ * basic COP0 transfers to SP memory-mapped registers, and BREAK. Vector
+ * operations, accurate DMA timing, interrupts, and full task execution remain
+ * unimplemented.
  */
 internal class RspCore(private val bus: N64MemoryBus) {
     private val gpr = IntArray(32)
@@ -49,6 +50,7 @@ internal class RspCore(private val bus: N64MemoryBus) {
         val rd = (instruction ushr 11) and 31
         val shift = (instruction ushr 6) and 31
         val funct = instruction and 63
+        val cop0rd = (instruction ushr 11) and 31
         val imm = instruction.toShort().toInt()
         val a = register(rs)
         val b = register(rt)
@@ -73,6 +75,11 @@ internal class RspCore(private val bus: N64MemoryBus) {
                 0x27 -> writeReg(rd, (a or b).inv())
                 0x2A -> writeReg(rd, if (a < b) 1 else 0)
                 0x2B -> writeReg(rd, if (Integer.compareUnsigned(a, b) < 0) 1 else 0)
+                else -> unsupported(instruction, instructionPc)
+            }
+            0x10 -> when (rs) {
+                0x00 -> writeReg(rt, readSpCop0(cop0rd)) // MFC0
+                0x04 -> writeSpCop0(cop0rd, b) // MTC0
                 else -> unsupported(instruction, instructionPc)
             }
             0x02 -> pendingBranchTarget = ((pc and 0xF0000000.toInt()) or
@@ -126,6 +133,31 @@ internal class RspCore(private val bus: N64MemoryBus) {
 
     private fun writeReg(index: Int, value: Int) {
         if (index != 0) gpr[index] = value
+    }
+
+    private fun readSpCop0(index: Int): Int = when (index) {
+        0 -> bus.readWord(N64MemoryBus.SP_MEM_ADDR)
+        1 -> bus.readWord(N64MemoryBus.SP_DRAM_ADDR)
+        2 -> bus.readWord(N64MemoryBus.SP_RD_LEN)
+        3 -> bus.readWord(N64MemoryBus.SP_WR_LEN)
+        4 -> bus.readWord(N64MemoryBus.SP_STATUS)
+        5 -> bus.readWord(N64MemoryBus.SP_DMA_FULL)
+        6 -> bus.readWord(N64MemoryBus.SP_DMA_BUSY)
+        7 -> bus.readWord(N64MemoryBus.SP_SEMAPHORE)
+        else -> throw IllegalArgumentException("Unsupported RSP COP0 register $index")
+    }
+
+    private fun writeSpCop0(index: Int, value: Int) {
+        val address = when (index) {
+            0 -> N64MemoryBus.SP_MEM_ADDR
+            1 -> N64MemoryBus.SP_DRAM_ADDR
+            2 -> N64MemoryBus.SP_RD_LEN
+            3 -> N64MemoryBus.SP_WR_LEN
+            4 -> N64MemoryBus.SP_STATUS
+            7 -> N64MemoryBus.SP_SEMAPHORE
+            else -> throw IllegalArgumentException("RSP cannot write COP0 register $index")
+        }
+        bus.writeWord(address, value)
     }
 
     private fun dmemAddress(offset: Int): Long =
