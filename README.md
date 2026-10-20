@@ -52,4 +52,4 @@ This is only a first input-protocol slice: the PIF boot ROM/authentication, acce
 
 ### Build validation workflow
 
-Added `.github/workflows/android-ci.yml` to run the Android unit-test task and assemble a debug APK on pushes, pull requests, or manual workflow dispatch. The workflow is committed, but its first run has not yet been confirmed, so build/test success is still unverified.
+Added `.github/workflows/android-ci.yml` to run unit tests and assemble a debug APK on pushes, pull requests, or manual workflow dispatch. The initial build-and-test workflow passed. A duplicate workflow then exposed an obsolete Android SDK package request (`sdkmanager "tools"`); that setup was removed in favor of the already validated Gradle setup. The CI workflow now runs unit tests and APK assembly in one Gradle invocation and uploads the debug APK as an artifact.
