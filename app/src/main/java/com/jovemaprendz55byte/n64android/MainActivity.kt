@@ -165,14 +165,14 @@ class MainActivity : Activity() {
                 slicesSinceStatus++
                 if (slicesSinceStatus >= 60) {
                     slicesSinceStatus = 0
-                    val pcText = "0x" + result.programCounter.toString(16)
-                        .uppercase(java.util.Locale.ROOT)
+                    val pcText = "0x" + result.programCounter.toULong().toString(16)
+                        .uppercase(java.util.Locale.ROOT).padStart(16, '0')
                     val instructionText = totalInstructions.toString()
                     val frameText = renderedFrames.toString()
+                    val videoText = core.videoDiagnosticSummary()
                     runOnUiThread {
                         if (emulationRunning.get()) {
-                            gameStatus.text = "CPU executando: $instructionText instruções | PC $pcText | quadros de vídeo: $frameText. " +
-                                "Se a tela continuar preta, o vídeo ainda pode não estar inicializado."
+                            gameStatus.text = "CPU executando: $instructionText instruções | PC $pcText | quadros de vídeo: $frameText. $videoText"
                         }
                     }
                 }
