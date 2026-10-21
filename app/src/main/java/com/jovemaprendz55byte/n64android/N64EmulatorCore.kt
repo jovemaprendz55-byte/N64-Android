@@ -28,6 +28,7 @@ class N64EmulatorCore(
     private val rsp = RspCore(memoryBus)
     private var romLoaded = false
     private var executionStarted = false
+    private var normalizedRom: ByteArray? = null
 
     data class RspExecutionResult(
         val instructionsExecuted: Int,
@@ -67,8 +68,29 @@ class N64EmulatorCore(
     /** Loads a canonical Z64 big-endian cartridge image into the CPU bus. */
     fun loadRom(normalizedRom: ByteArray) {
         cpu.loadCartridgeRom(normalizedRom)
+        this.normalizedRom = normalizedRom.copyOf()
         romLoaded = true
         executionStarted = false
+    }
+
+    /**
+     * Starts IPL3 at its hardware-style location for a diagnostic shortcut:
+     * copy the cartridge IPL3 image (ROM offset 0x40) into SP DMEM and enter
+     * through KSEG1 address 0xA4000040. This still bypasses the PIF boot ROM
+     * and does not initialize all hardware registers.
+     */
+    fun startIpl3DiagnosticExecution() {
+        require(romLoaded) { "Load a normalized ROM before execution" }
+        val rom = normalizedRom ?: throw IllegalStateException("No normalized ROM is retained")
+        require(rom.size >= 0x1000) { "ROM is too small to contain the complete IPL3 image" }
+
+        // IPL3 occupies cartridge offsets 0x40..0xFFF and is copied to DMEM
+        // offsets 0x40..0xFFF by the N64 boot path.
+        for (offset in 0x40 until 0x1000) {
+            memoryBus.writeByte(0x0400_0000L + offset, rom[offset])
+        }
+        cpu.resetForCartridgeDiagnostic(0xFFFF_FFFF_A400_0040UL.toLong())
+        executionStarted = true
     }
 
     /**
