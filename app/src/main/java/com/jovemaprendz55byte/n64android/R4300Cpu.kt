@@ -47,6 +47,15 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     internal var lastInstructionWord: Int = 0
         private set
 
+    /** Small rolling instruction history, frozen on the first sustained PC loop. */
+    private val recentInstructions = java.util.ArrayDeque<String>()
+    private val seenInstructionPcs = HashSet<Long>()
+    private var frozenLoopTrace: String? = null
+    private var totalSteps: Long = 0L
+
+    internal fun executionHistoryDiagnosticSummary(): String =
+        frozenLoopTrace ?: recentInstructions.joinToString(" | ").ifBlank { "sem historico" }
+
     /** Compact CPU state snapshot attached to ROM-test failures. */
     internal fun diagnosticSnapshot(): String = buildString {
         append("PC=0x")
@@ -206,6 +215,10 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         lastBranchInstructionAddress = null
         lastBranchInstructionWord = null
         lastBranchTarget = null
+        recentInstructions.clear()
+        seenInstructionPcs.clear()
+        frozenLoopTrace = null
+        totalSteps = 0L
     }
 
     /**
@@ -224,6 +237,16 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         val instruction = fetchInstruction(pc)
         lastInstructionAddress = instructionAddress
         lastInstructionWord = instruction
+        totalSteps++
+        val traceEntry = "0x" + instructionAddress.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0') +
+            "=0x" + instruction.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0')
+        if (recentInstructions.size >= 16) recentInstructions.removeFirst()
+        recentInstructions.addLast(traceEntry)
+        // Freeze the instructions leading into the first repeated PC after startup,
+        // so a later infinite loop does not erase the useful evidence.
+        if (totalSteps > 256L && frozenLoopTrace == null && !seenInstructionPcs.add(instructionAddress)) {
+            frozenLoopTrace = recentInstructions.joinToString(" | ")
+        }
         pc += 4L
 
         val branchToApply = pendingBranchTarget
