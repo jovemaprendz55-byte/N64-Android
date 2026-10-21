@@ -49,6 +49,9 @@ internal class N64MemoryBus(
     private var lastPiDmaDramAddress = 0
     private var lastPiDmaCartAddress = 0L
     private var lastPiDmaLength = 0
+    private var piRegisterWriteCount = 0L
+    private var lastPiRegisterWriteAddress = 0L
+    private var lastPiRegisterWriteValue = 0
 
     companion object {
         const val SP_MEM_ADDR = 0x0404_0000L
@@ -261,6 +264,11 @@ internal class N64MemoryBus(
             .append(lastPiDmaCartAddress.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
         append(", PI_DMA_LAST_LENGTH=0x")
             .append(lastPiDmaLength.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+        append(", PI_REG_WRITES=").append(piRegisterWriteCount)
+        append(", PI_REG_LAST_ADDR=0x")
+            .append(lastPiRegisterWriteAddress.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+        append(", PI_REG_LAST_VALUE=0x")
+            .append(lastPiRegisterWriteValue.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
     }
 
     fun loadRdram(physicalAddress: Long, bytes: ByteArray) {
@@ -351,6 +359,9 @@ internal class N64MemoryBus(
         require(address >= PI_DRAM_ADDR && index in piRegisters.indices) {
             "Unknown PI register 0x${address.toString(16)}"
         }
+        piRegisterWriteCount++
+        lastPiRegisterWriteAddress = address
+        lastPiRegisterWriteValue = value
         when (address) {
             PI_DRAM_ADDR -> piRegisters[index] = value and 0x00FF_FFFF
             PI_CART_ADDR -> piRegisters[index] = value
