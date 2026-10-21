@@ -245,6 +245,8 @@ internal class N64MemoryBus(
     internal fun renderVideoFrame(destination: N64VideoFrameBuffer, height: Int = destination.height): Boolean =
         videoInterface.scanout(rdram, destination, height)
 
+    internal fun videoDiagnosticSummary(): String = videoInterface.diagnosticSummary()
+
     fun loadRdram(physicalAddress: Long, bytes: ByteArray) {
         require(region(physicalAddress) == N64MemoryMap.Region.RDRAM) {
             "Bulk loads are supported only in RDRAM"
