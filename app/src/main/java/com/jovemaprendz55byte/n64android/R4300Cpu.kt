@@ -453,6 +453,8 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             region == N64MemoryMap.Region.SP_REGISTERS ||
             region == N64MemoryMap.Region.MI_REGISTERS ||
             region == N64MemoryMap.Region.VI_REGISTERS ||
+            region == N64MemoryMap.Region.AI_REGISTERS ||
+            region == N64MemoryMap.Region.PI_REGISTERS ||
             region == N64MemoryMap.Region.RI_REGISTERS ||
             region == N64MemoryMap.Region.SI_REGISTERS ||
             region == N64MemoryMap.Region.CARTRIDGE_DOMAIN) {
