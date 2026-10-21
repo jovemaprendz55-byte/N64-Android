@@ -44,6 +44,22 @@ class R4300CpuTest {
         assertEquals(28L, cpu.pc)
     }
 
+    @Test fun cpuCanAccessMiMemoryMappedRegisters() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x0430), // r1 = MI register base
+            iType(0x09, 0, 2, 0x0010), // MI_MODE INIT_SET command
+            iType(0x2B, 1, 2, 0),      // SW r2, MI_MODE(r1)
+            iType(0x23, 1, 3, 0),      // LW r3, MI_MODE(r1)
+            iType(0x23, 1, 4, 4)       // LW r4, MI_VERSION(r1)
+        ))
+
+        repeat(5) { cpu.step() }
+
+        assertEquals(1L, cpu.register(3))
+        assertEquals(0x02020102L, cpu.register(4))
+    }
+
     @Test fun constructorRejectsInvalidRamSizes() {
         for (size in listOf(0, -4, 3)) {
             try {
