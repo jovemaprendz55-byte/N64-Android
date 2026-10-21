@@ -189,6 +189,7 @@ class N64EmulatorCore(
         append(memoryBus.readWord(N64MemoryBus.PI_CART_ADDR).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
         append(", PI_STATUS=0x")
         append(memoryBus.readWord(N64MemoryBus.PI_STATUS).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+        append(", ").append(memoryBus.piDmaDiagnosticSummary())
         append(", RDRAM_REG[0x03F08000]=0x")
         append(memoryBus.readWord(0x03F0_8000L).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
     }
