@@ -222,7 +222,11 @@ internal class N64MemoryBus(
             ?: throw IllegalStateException("No cartridge ROM has been loaded")
         val offset = physicalAddress - 0x1000_0000L
         require(offset >= 0L && offset < rom.size.toLong()) {
-            "Cartridge read is outside the loaded ROM"
+            "Cartridge read is outside the loaded ROM: physical=0x" +
+                physicalAddress.toString(16).uppercase(java.util.Locale.ROOT) +
+                ", ROM offset=0x" + offset.toString(16).uppercase(java.util.Locale.ROOT) +
+                ", loaded size=0x" + rom.size.toString(16).uppercase(java.util.Locale.ROOT) +
+                " (" + rom.size + " bytes). Check the CPU jump target and cartridge mapping."
         }
         return rom[offset.toInt()]
     }
