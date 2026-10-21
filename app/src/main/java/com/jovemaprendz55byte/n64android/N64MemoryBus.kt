@@ -40,8 +40,10 @@ internal class N64MemoryBus(
     private var miMode = 0
     private var miInterrupt = 0
     private var miInterruptMask = 0
-    // Basic register storage only; RI timing and hardware side effects are not modeled.
+    // Basic register storage only; peripheral timing and DMA/interrupt side effects are not modeled.
     private val riRegisters = IntArray(8)
+    private val aiRegisters = IntArray(6)
+    private val piRegisters = IntArray(13)
 
     companion object {
         const val SP_MEM_ADDR = 0x0404_0000L
@@ -62,6 +64,19 @@ internal class N64MemoryBus(
         const val MI_VERSION = 0x0430_0004L
         const val MI_INTR = 0x0430_0008L
         const val MI_INTR_MASK = 0x0430_000CL
+
+        const val AI_DRAM_ADDR = 0x0450_0000L
+        const val AI_LEN = 0x0450_0004L
+        const val AI_CONTROL = 0x0450_0008L
+        const val AI_STATUS = 0x0450_000CL
+        const val AI_DACRATE = 0x0450_0010L
+        const val AI_BITRATE = 0x0450_0014L
+
+        const val PI_DRAM_ADDR = 0x0460_0000L
+        const val PI_CART_ADDR = 0x0460_0004L
+        const val PI_RD_LEN = 0x0460_0008L
+        const val PI_WR_LEN = 0x0460_000CL
+        const val PI_STATUS = 0x0460_0010L
 
         const val RI_MODE = 0x0470_0000L
         const val RI_CONFIG = 0x0470_0004L
@@ -159,6 +174,8 @@ internal class N64MemoryBus(
             N64MemoryMap.Region.SP_REGISTERS -> readSpRegister(physicalAddress)
             N64MemoryMap.Region.MI_REGISTERS -> readMiRegister(physicalAddress)
             N64MemoryMap.Region.VI_REGISTERS -> videoInterface.readRegister(physicalAddress)
+            N64MemoryMap.Region.AI_REGISTERS -> readAiRegister(physicalAddress)
+            N64MemoryMap.Region.PI_REGISTERS -> readPiRegister(physicalAddress)
             N64MemoryMap.Region.SI_REGISTERS -> readSiRegister(physicalAddress)
             N64MemoryMap.Region.RI_REGISTERS -> readRiRegister(physicalAddress)
             N64MemoryMap.Region.CARTRIDGE_DOMAIN -> readCartridgeWord(physicalAddress)
@@ -183,6 +200,8 @@ internal class N64MemoryBus(
             N64MemoryMap.Region.SP_REGISTERS -> writeSpRegister(physicalAddress, value)
             N64MemoryMap.Region.MI_REGISTERS -> writeMiRegister(physicalAddress, value)
             N64MemoryMap.Region.VI_REGISTERS -> videoInterface.writeRegister(physicalAddress, value)
+            N64MemoryMap.Region.AI_REGISTERS -> writeAiRegister(physicalAddress, value)
+            N64MemoryMap.Region.PI_REGISTERS -> writePiRegister(physicalAddress, value)
             N64MemoryMap.Region.SI_REGISTERS -> writeSiRegister(physicalAddress, value)
             N64MemoryMap.Region.RI_REGISTERS -> writeRiRegister(physicalAddress, value)
             else -> unsupported(physicalAddress)
@@ -279,6 +298,38 @@ internal class N64MemoryBus(
             MI_VERSION, MI_INTR -> Unit // Read-only registers.
             else -> throw IllegalArgumentException("Unknown MI register 0x${address.toString(16)}")
         }
+    }
+
+    private fun readAiRegister(address: Long): Int {
+        val index = ((address - AI_DRAM_ADDR) / 4L).toInt()
+        require(address >= AI_DRAM_ADDR && index in aiRegisters.indices) {
+            "Unknown AI register 0x${address.toString(16)}"
+        }
+        return if (address == AI_STATUS) 0 else aiRegisters[index]
+    }
+
+    private fun writeAiRegister(address: Long, value: Int) {
+        val index = ((address - AI_DRAM_ADDR) / 4L).toInt()
+        require(address >= AI_DRAM_ADDR && index in aiRegisters.indices) {
+            "Unknown AI register 0x${address.toString(16)}"
+        }
+        if (address != AI_STATUS) aiRegisters[index] = value
+    }
+
+    private fun readPiRegister(address: Long): Int {
+        val index = ((address - PI_DRAM_ADDR) / 4L).toInt()
+        require(address >= PI_DRAM_ADDR && index in piRegisters.indices) {
+            "Unknown PI register 0x${address.toString(16)}"
+        }
+        return if (address == PI_STATUS) piRegisters[index] and 0x3 else piRegisters[index]
+    }
+
+    private fun writePiRegister(address: Long, value: Int) {
+        val index = ((address - PI_DRAM_ADDR) / 4L).toInt()
+        require(address >= PI_DRAM_ADDR && index in piRegisters.indices) {
+            "Unknown PI register 0x${address.toString(16)}"
+        }
+        piRegisters[index] = if (address == PI_DRAM_ADDR) value and 0x00FF_FFFF else value
     }
 
     private fun readRiRegister(address: Long): Int {
