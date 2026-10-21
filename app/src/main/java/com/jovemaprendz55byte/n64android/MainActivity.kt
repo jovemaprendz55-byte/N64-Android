@@ -107,6 +107,9 @@ class MainActivity : Activity() {
         }
         if (!emulationRunning.compareAndSet(false, true)) return
 
+        // Keep Android from dimming/suspending the display during a long diagnostic run.
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
         val core = N64EmulatorCore()
         try {
             core.loadRom(rom)
@@ -244,6 +247,7 @@ class MainActivity : Activity() {
 
     private fun stopExperimentalEmulation() {
         emulationRunning.set(false)
+        window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         emulationThread?.interrupt()
         emulationThread = null
     }
