@@ -170,7 +170,7 @@ class N64EmulatorCore(
     /** Returns the early instruction sequence that led into a repeated-PC loop. */
     fun executionHistoryDiagnosticSummary(): String = cpu.executionHistoryDiagnosticSummary()
 
-    /** Reads the stalled boot-code area to distinguish an empty RDRAM loop from valid code. */
+    /** Reads the stalled boot-code area and the memory address currently probed by the trace. */
     fun bootMemoryDiagnosticSummary(): String = buildString {
         append("RDRAM[0x1C8]=0x")
         append(memoryBus.readWord(0x1C8L).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
@@ -178,6 +178,17 @@ class N64EmulatorCore(
         append(memoryBus.readWord(0x1CCL).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
         append(", RDRAM[0x400]=0x")
         append(memoryBus.readWord(0x400L).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+        // The current boot trace loads from virtual 0xFFFFFFFF80036238 (physical 0x36238).
+        append(", RDRAM[0x36234]=0x")
+        append(memoryBus.readWord(0x36234L).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+        append(", RDRAM[0x36238]=0x")
+        append(memoryBus.readWord(0x36238L).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+        append(", PI_DRAM_ADDR=0x")
+        append(memoryBus.readWord(N64MemoryBus.PI_DRAM_ADDR).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+        append(", PI_CART_ADDR=0x")
+        append(memoryBus.readWord(N64MemoryBus.PI_CART_ADDR).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+        append(", PI_STATUS=0x")
+        append(memoryBus.readWord(N64MemoryBus.PI_STATUS).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
         append(", RDRAM_REG[0x03F08000]=0x")
         append(memoryBus.readWord(0x03F0_8000L).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
     }
