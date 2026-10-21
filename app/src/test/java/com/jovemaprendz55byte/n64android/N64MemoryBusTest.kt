@@ -70,7 +70,7 @@ class N64MemoryBusTest {
 
         bus.writeWord(N64MemoryBus.PI_DRAM_ADDR, 0x200)
         bus.writeWord(N64MemoryBus.PI_CART_ADDR, 0x10000004)
-        bus.writeWord(N64MemoryBus.PI_RD_LEN, 3) // PI length is encoded as bytes minus one.
+        bus.writeWord(N64MemoryBus.PI_WR_LEN, 3) // Cartridge-to-RDRAM DMA uses PI_WR_LEN.
 
         assertEquals(0x11223344, bus.readWord(0x200L))
         assertEquals(0x204, bus.readWord(N64MemoryBus.PI_DRAM_ADDR))
@@ -271,10 +271,10 @@ class N64MemoryBusTest {
         val bus = N64MemoryBus()
         bus.writeWord(N64MemoryBus.PI_DRAM_ADDR, 0xFF123456.toInt())
         bus.writeWord(N64MemoryBus.PI_CART_ADDR, 0x10000000)
-        bus.writeWord(N64MemoryBus.PI_WR_LEN, 0x40)
+        bus.writeWord(N64MemoryBus.PI_RD_LEN, 0x40)
         assertEquals(0x00123456, bus.readWord(N64MemoryBus.PI_DRAM_ADDR))
         assertEquals(0x10000000, bus.readWord(N64MemoryBus.PI_CART_ADDR))
-        assertEquals(0x40, bus.readWord(N64MemoryBus.PI_WR_LEN))
+        assertEquals(0x40, bus.readWord(N64MemoryBus.PI_RD_LEN))
     }
 
 }
