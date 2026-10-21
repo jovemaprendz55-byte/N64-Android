@@ -164,6 +164,16 @@ class N64EmulatorCore(
     /** Returns the most recent instruction and branch state for live diagnostics. */
     fun executionDiagnosticSummary(): String = cpu.executionDiagnosticSummary()
 
+    /** Reads the stalled boot-code area to distinguish an empty RDRAM loop from valid code. */
+    fun bootMemoryDiagnosticSummary(): String = buildString {
+        append("RDRAM[0x1C8]=0x")
+        append(memoryBus.readWord(0x1C8L).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+        append(", RDRAM[0x1CC]=0x")
+        append(memoryBus.readWord(0x1CCL).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+        append(", RDRAM[0x400]=0x")
+        append(memoryBus.readWord(0x400L).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+    }
+
     /**
      * Runs at most [instructionBudget] instructions from [entryPoint], resetting
      * the CPU first. Prefer startExecution + executeSlice for a persistent loop.
