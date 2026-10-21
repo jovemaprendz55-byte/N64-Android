@@ -171,7 +171,7 @@ class MainActivity : Activity() {
             addView(diagnosticActions, matchWrap())
             addView(ScrollView(this@MainActivity).apply {
                 isFillViewport = false
-                addView(gameStatus, ScrollView.LayoutParams(
+                addView(gameStatus, ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT
                 ))
