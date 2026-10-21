@@ -123,7 +123,7 @@ class MainActivity : Activity() {
         val gameStatus = TextView(this).apply {
             text = "Build experimental MI-FIX-20261020. Boot, RDP e áudio ainda estão incompletos."
             textSize = 11f
-            maxLines = 30
+            maxLines = 70
             setTextIsSelectable(true)
             setTextColor(Color.WHITE)
             setPadding(dp(8), dp(4), dp(8), dp(4))
@@ -209,21 +209,14 @@ class MainActivity : Activity() {
                     val frameText = renderedFrames.toString()
                     val videoText = core.videoDiagnosticSummary()
                     val cpuTraceText = core.executionDiagnosticSummary()
+                    val fullCpuText = core.fullCpuDiagnosticSummary()
                     val bootMemoryText = core.bootMemoryDiagnosticSummary()
                     val historyTraceText = core.executionHistoryDiagnosticSummary()
                     runOnUiThread {
                         if (emulationRunning.get()) {
-                            val shortCpu = cpuTraceText.split(", ").filter {
-                                it.startsWith("LAST_PC=") ||
-                                    it.startsWith("LAST_INSTR=") ||
-                                    it.startsWith("LAST_BRANCH=") ||
-                                    it.startsWith("BRANCH_TARGET=") ||
-                                    it.startsWith("R17=")
-                            }.joinToString("\n")
-                            val rdramRegister = bootMemoryText.substringAfter("RDRAM_REG[0x03F08000]=", "não disponível")
-                            val shortHistory = historyTraceText.split(" | ").takeLast(4).joinToString(" | ")
+                            val shortHistory = historyTraceText.split(" | ").takeLast(12).joinToString(" | ")
                             gameStatus.text = "CPU: $instructionText instruções | PC $pcText | quadros: $frameText\n" +
-                                "$videoText\n$shortCpu\nRDRAM_REG= $rdramRegister\nHist.: $shortHistory"
+                                "$videoText\n$cpuTraceText\n$fullCpuText\n$bootMemoryText\nHist.: $shortHistory"
                         }
                     }
                 }
