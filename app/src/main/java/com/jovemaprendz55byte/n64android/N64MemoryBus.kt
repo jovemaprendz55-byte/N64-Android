@@ -44,6 +44,11 @@ internal class N64MemoryBus(
     private val riRegisters = IntArray(8)
     private val aiRegisters = IntArray(6)
     private val piRegisters = IntArray(13)
+    // Keep the most recent PI DMA details so boot hangs can be tied to actual ROM copies.
+    private var piDmaCount = 0L
+    private var lastPiDmaDramAddress = 0
+    private var lastPiDmaCartAddress = 0L
+    private var lastPiDmaLength = 0
 
     companion object {
         const val SP_MEM_ADDR = 0x0404_0000L
@@ -247,6 +252,17 @@ internal class N64MemoryBus(
 
     internal fun videoDiagnosticSummary(): String = videoInterface.diagnosticSummary()
 
+    /** Summarizes the last cartridge-to-RDRAM DMA actually performed. */
+    internal fun piDmaDiagnosticSummary(): String = buildString {
+        append("PI_DMA_COUNT=").append(piDmaCount)
+        append(", PI_DMA_LAST_DRAM=0x")
+            .append(lastPiDmaDramAddress.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+        append(", PI_DMA_LAST_CART=0x")
+            .append(lastPiDmaCartAddress.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+        append(", PI_DMA_LAST_LENGTH=0x")
+            .append(lastPiDmaLength.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+    }
+
     fun loadRdram(physicalAddress: Long, bytes: ByteArray) {
         require(region(physicalAddress) == N64MemoryMap.Region.RDRAM) {
             "Bulk loads are supported only in RDRAM"
@@ -374,6 +390,10 @@ internal class N64MemoryBus(
             length.toLong() <= rom.size.toLong() - cartOffset) {
             "PI DMA cartridge range is outside the loaded ROM: cart=0x${cartAddress.toString(16)}, length=0x${length.toString(16)}, ROM size=0x${rom.size.toString(16)}"
         }
+        piDmaCount++
+        lastPiDmaDramAddress = dramAddress
+        lastPiDmaCartAddress = cartAddress
+        lastPiDmaLength = length
         for (offset in 0 until length) {
             writeByte(dramAddress.toLong() + offset, rom[(cartOffset + offset).toInt()])
         }
