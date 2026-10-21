@@ -448,6 +448,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             )
         val region = N64MemoryMap.regionOf(physicalAddress)
         require(region == N64MemoryMap.Region.RDRAM ||
+            region == N64MemoryMap.Region.RDRAM_REGISTERS ||
             region == N64MemoryMap.Region.SP_DMEM || region == N64MemoryMap.Region.SP_IMEM ||
             region == N64MemoryMap.Region.SP_REGISTERS ||
             region == N64MemoryMap.Region.MI_REGISTERS ||
