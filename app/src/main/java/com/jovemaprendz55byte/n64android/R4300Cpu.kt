@@ -37,13 +37,21 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         private set
 
     private var pendingBranchTarget: Long? = null
+    /** Address of the last instruction fetched successfully, for failure diagnostics. */
+    private var lastInstructionAddress: Long? = null
     /** Last fetched instruction, retained so execution failures can be diagnosed. */
     internal var lastInstructionWord: Int = 0
         private set
 
     /** Compact CPU state snapshot attached to ROM-test failures. */
     internal fun diagnosticSnapshot(): String = buildString {
-        append("Instrucao=0x")
+        append("PC=0x")
+        append(pc.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+        append("; ultimaInstrucaoEm=")
+        append(lastInstructionAddress?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "nenhuma")
+        append("; alvoPendente=")
+        append(pendingBranchTarget?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "nenhum")
+        append("; Instrucao=0x")
         append(lastInstructionWord.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
         append("; registradores:")
         for (index in 1..31) {
@@ -168,6 +176,8 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         lo = 0L
         pc = entryPoint
         pendingBranchTarget = null
+        lastInstructionAddress = null
+        lastInstructionWord = 0
     }
 
     /**
@@ -184,6 +194,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     fun step() {
         val instructionAddress = pc
         val instruction = fetchInstruction(pc)
+        lastInstructionAddress = instructionAddress
         lastInstructionWord = instruction
         pc += 4L
 
