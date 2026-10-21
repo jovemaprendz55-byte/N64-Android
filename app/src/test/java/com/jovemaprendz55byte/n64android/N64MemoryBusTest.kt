@@ -92,6 +92,14 @@ class N64MemoryBusTest {
         assertEquals(0, bus.readWord(N64MemoryBus.MI_INTR))
     }
 
+    @Test fun rdramRegisterWindowSupportsBasicWordReadsAndWrites() {
+        val bus = N64MemoryBus()
+        val address = 0x03F8008L
+        assertEquals(0, bus.readWord(address))
+        bus.writeWord(address, 0x12345678)
+        assertEquals(0x12345678, bus.readWord(address))
+    }
+
     @Test fun riRegistersSupportBasicWordReadsAndWrites() {
         val bus = N64MemoryBus()
 
