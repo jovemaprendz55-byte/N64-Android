@@ -192,6 +192,24 @@ class N64EmulatorCore(
         append(", ").append(memoryBus.piDmaDiagnosticSummary())
         append(", RDRAM_REG[0x03F08000]=0x")
         append(memoryBus.readWord(0x03F0_8000L).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+        // Instructions around current KSEG PC reveal what the CPU is waiting for.
+        val physicalPc = cpu.pc and 0x1FFF_FFFFL
+        append(", CPU_CODE_WINDOW_PC=0x")
+        append(cpu.pc.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+        append(", CPU_CODE_WINDOW=")
+        if (physicalPc < 0x0080_0000L && physicalPc % 4L == 0L) {
+            val start = (physicalPc - 16L).coerceAtLeast(0L)
+            val end = (physicalPc + 20L).coerceAtMost(0x0080_0000L)
+            var address = start
+            while (address + 4L <= end) {
+                if (address != start) append(";")
+                append("0x").append(address.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+                append("=0x").append(memoryBus.readWord(address).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+                address += 4L
+            }
+        } else {
+            append("fora_da_RDRAM")
+        }
     }
 
     /**
