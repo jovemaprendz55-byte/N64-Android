@@ -123,7 +123,7 @@ class MainActivity : Activity() {
         val gameStatus = TextView(this).apply {
             text = "Build experimental MI-FIX-20261020. Boot, RDP e áudio ainda estão incompletos."
             textSize = 11f
-            maxLines = 70
+            maxLines = 8
             setTextIsSelectable(true)
             setTextColor(Color.WHITE)
             setPadding(dp(8), dp(4), dp(8), dp(4))
@@ -167,8 +167,18 @@ class MainActivity : Activity() {
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
             ))
             addView(controls, matchWrap())
-            addView(gameStatus, matchWrap())
+            // Keep diagnostic actions visible; long logs scroll in a bounded area below them.
             addView(diagnosticActions, matchWrap())
+            addView(ScrollView(this@MainActivity).apply {
+                isFillViewport = false
+                addView(gameStatus, ScrollView.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ))
+            }, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(112)
+            ))
             addView(Button(this@MainActivity).apply {
                 text = "Parar e voltar"
                 setOnClickListener {
