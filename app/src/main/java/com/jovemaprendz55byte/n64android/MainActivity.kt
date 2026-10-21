@@ -144,8 +144,12 @@ class MainActivity : Activity() {
 
         emulationThread = Thread({
             val frame = N64VideoFrameBuffer(320, 240)
+            var totalInstructions = 0L
+            var renderedFrames = 0L
+            var slicesSinceStatus = 0
             while (emulationRunning.get() && !Thread.currentThread().isInterrupted) {
                 val result = core.executeSlice(20_000)
+                totalInstructions += result.instructionsExecuted.toLong()
                 if (result.stopReason == N64EmulatorCore.StopReason.EXECUTION_ERROR) {
                     emulationRunning.set(false)
                     runOnUiThread {
@@ -154,7 +158,24 @@ class MainActivity : Activity() {
                     }
                     break
                 }
-                if (core.renderVideoFrame(frame)) gameView.presentFrame(frame)
+                if (core.renderVideoFrame(frame)) {
+                    renderedFrames++
+                    gameView.presentFrame(frame)
+                }
+                slicesSinceStatus++
+                if (slicesSinceStatus >= 60) {
+                    slicesSinceStatus = 0
+                    val pcText = "0x" + result.programCounter.toString(16)
+                        .uppercase(java.util.Locale.ROOT)
+                    val instructionText = totalInstructions.toString()
+                    val frameText = renderedFrames.toString()
+                    runOnUiThread {
+                        if (emulationRunning.get()) {
+                            gameStatus.text = "CPU executando: $instructionText instruções | PC $pcText | quadros de vídeo: $frameText. " +
+                                "Se a tela continuar preta, o vídeo ainda pode não estar inicializado."
+                        }
+                    }
+                }
                 try {
                     Thread.sleep(16L)
                 } catch (_: InterruptedException) {
