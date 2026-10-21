@@ -234,7 +234,7 @@ class MainActivity : Activity() {
                     }
                 }
                 try {
-                    Thread.sleep(16L)
+                    Thread.sleep(1L)
                 } catch (_: InterruptedException) {
                     Thread.currentThread().interrupt()
                 }
