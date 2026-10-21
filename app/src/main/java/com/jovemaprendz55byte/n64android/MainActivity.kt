@@ -118,7 +118,7 @@ class MainActivity : Activity() {
         val gameView = N64GameSurfaceView(this)
         val controls = N64TouchControllerView(this).apply { controllerPort = core.controllerPort }
         val gameStatus = TextView(this).apply {
-            text = "Emulação experimental iniciada. Boot, RDP e áudio ainda estão incompletos."
+            text = "Build experimental MI-FIX-20261020. Boot, RDP e áudio ainda estão incompletos."
             textSize = 13f
             setTextColor(Color.WHITE)
             setPadding(dp(12), dp(8), dp(12), dp(8))
@@ -149,7 +149,7 @@ class MainActivity : Activity() {
                 if (result.stopReason == N64EmulatorCore.StopReason.EXECUTION_ERROR) {
                     emulationRunning.set(false)
                     runOnUiThread {
-                        gameStatus.text = "CPU parou em PC 0x${result.programCounter.toString(16).uppercase(java.util.Locale.ROOT)}: " +
+                        gameStatus.text = "[MI-FIX-20261020] CPU parou em PC 0x${result.programCounter.toString(16).uppercase(java.util.Locale.ROOT)}: " +
                             (result.errorMessage ?: "erro de execução")
                     }
                     break
