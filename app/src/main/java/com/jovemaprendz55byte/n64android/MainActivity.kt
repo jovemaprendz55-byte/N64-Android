@@ -171,9 +171,10 @@ class MainActivity : Activity() {
                     val frameText = renderedFrames.toString()
                     val videoText = core.videoDiagnosticSummary()
                     val cpuTraceText = core.executionDiagnosticSummary()
+                    val bootMemoryText = core.bootMemoryDiagnosticSummary()
                     runOnUiThread {
                         if (emulationRunning.get()) {
-                            gameStatus.text = "CPU: $instructionText instruções | PC $pcText | quadros: $frameText. $videoText. $cpuTraceText"
+                            gameStatus.text = "CPU: $instructionText instruções | PC $pcText | quadros: $frameText. $videoText. $cpuTraceText. $bootMemoryText"
                         }
                     }
                 }
