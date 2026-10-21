@@ -164,6 +164,9 @@ class N64EmulatorCore(
     /** Returns the most recent instruction and branch state for live diagnostics. */
     fun executionDiagnosticSummary(): String = cpu.executionDiagnosticSummary()
 
+    /** Returns the full CPU snapshot, including all 31 general-purpose registers. */
+    fun fullCpuDiagnosticSummary(): String = cpu.diagnosticSnapshot()
+
     /** Returns the early instruction sequence that led into a repeated-PC loop. */
     fun executionHistoryDiagnosticSummary(): String = cpu.executionHistoryDiagnosticSummary()
 
