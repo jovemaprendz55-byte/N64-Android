@@ -340,12 +340,13 @@ internal class N64MemoryBus(
             PI_CART_ADDR -> piRegisters[index] = value
             PI_RD_LEN -> {
                 piRegisters[index] = value
-                transferPiDma(cartToRdram = true, command = value)
+                // PI read transfers RDRAM to the cartridge bus. Cartridge ROM
+                // is read-only in this emulator, so no reverse DMA is performed.
             }
             PI_WR_LEN -> {
                 piRegisters[index] = value
-                // Cartridge ROM is read-only; retain the register write but do
-                // not attempt to modify the loaded ROM image.
+                // PI write transfers cartridge data into RDRAM.
+                transferPiDma(cartToRdram = true, command = value)
             }
             PI_STATUS -> {
                 // PI_STATUS command bit 1 clears the DMA interrupt flag.
