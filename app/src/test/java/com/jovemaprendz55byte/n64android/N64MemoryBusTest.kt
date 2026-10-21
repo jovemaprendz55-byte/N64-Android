@@ -240,4 +240,25 @@ class N64MemoryBusTest {
         assertEquals(0x5060707F, bus.readWord(0x184))
         assertEquals(0, bus.readWord(N64MemoryBus.SP_DMA_BUSY))
     }
+    @Test fun aiRegistersAreAccessibleThroughBasicStorageModel() {
+        val bus = N64MemoryBus()
+        bus.writeWord(N64MemoryBus.AI_DRAM_ADDR, 0x12345678)
+        bus.writeWord(N64MemoryBus.AI_LEN, 0x100)
+        bus.writeWord(N64MemoryBus.AI_DACRATE, 0x3FFF)
+        assertEquals(0x12345678, bus.readWord(N64MemoryBus.AI_DRAM_ADDR))
+        assertEquals(0x100, bus.readWord(N64MemoryBus.AI_LEN))
+        assertEquals(0, bus.readWord(N64MemoryBus.AI_STATUS))
+        assertEquals(0x3FFF, bus.readWord(N64MemoryBus.AI_DACRATE))
+    }
+
+    @Test fun piRegistersAreAccessibleThroughBasicStorageModel() {
+        val bus = N64MemoryBus()
+        bus.writeWord(N64MemoryBus.PI_DRAM_ADDR, 0xFF123456.toInt())
+        bus.writeWord(N64MemoryBus.PI_CART_ADDR, 0x10000000)
+        bus.writeWord(N64MemoryBus.PI_RD_LEN, 0x40)
+        assertEquals(0x00123456, bus.readWord(N64MemoryBus.PI_DRAM_ADDR))
+        assertEquals(0x10000000, bus.readWord(N64MemoryBus.PI_CART_ADDR))
+        assertEquals(0x40, bus.readWord(N64MemoryBus.PI_RD_LEN))
+    }
+
 }
