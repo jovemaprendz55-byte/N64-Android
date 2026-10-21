@@ -119,9 +119,10 @@ class MainActivity : Activity() {
         val controls = N64TouchControllerView(this).apply { controllerPort = core.controllerPort }
         val gameStatus = TextView(this).apply {
             text = "Build experimental MI-FIX-20261020. Boot, RDP e áudio ainda estão incompletos."
-            textSize = 13f
+            textSize = 11f
+            maxLines = 8
             setTextColor(Color.WHITE)
-            setPadding(dp(12), dp(8), dp(12), dp(8))
+            setPadding(dp(8), dp(4), dp(8), dp(4))
         }
         val gameLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -175,7 +176,17 @@ class MainActivity : Activity() {
                     val historyTraceText = core.executionHistoryDiagnosticSummary()
                     runOnUiThread {
                         if (emulationRunning.get()) {
-                            gameStatus.text = "CPU: $instructionText instruções | PC $pcText | quadros: $frameText. $videoText. $cpuTraceText. $bootMemoryText. HISTÓRICO: $historyTraceText"
+                            val shortCpu = cpuTraceText.split(", ").filter {
+                                it.startsWith("LAST_PC=") ||
+                                    it.startsWith("LAST_INSTR=") ||
+                                    it.startsWith("LAST_BRANCH=") ||
+                                    it.startsWith("BRANCH_TARGET=") ||
+                                    it.startsWith("R17=")
+                            }.joinToString("\n")
+                            val rdramRegister = bootMemoryText.substringAfter("RDRAM_REG[0x03F08000]=", "não disponível")
+                            val shortHistory = historyTraceText.split(" | ").takeLast(4).joinToString(" | ")
+                            gameStatus.text = "CPU: $instructionText instruções | PC $pcText | quadros: $frameText\n" +
+                                "$videoText\n$shortCpu\nRDRAM_REG= $rdramRegister\nHist.: $shortHistory"
                         }
                     }
                 }
