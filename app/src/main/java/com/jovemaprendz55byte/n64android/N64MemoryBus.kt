@@ -102,6 +102,8 @@ internal class N64MemoryBus(
         const val RI_LATENCY = 0x0470_0014L
         const val RI_RERROR = 0x0470_0018L
         const val RI_WERROR = 0x0470_001CL
+        private const val RDRAM_MODE_REG = 0x03F0_000CL
+        private const val RDRAM_MODE_INIT = Int.MIN_VALUE
 
         private const val SP_STATUS_HALT = 1 shl 0
         private const val SP_STATUS_BROKE = 1 shl 1
@@ -303,7 +305,17 @@ internal class N64MemoryBus(
     }
 
     private fun readRdramRegister(address: Long): Int {
-        val value = rdramRegisters[((address - 0x03F0_0000L) ushr 2).toInt()]
+        val index = ((address - 0x03F0_0000L) ushr 2).toInt()
+        // RDRAM_MODE_REG (0x03F0000C): INIT is a command/status bit.
+        // Hardware completes initialization by clearing bit 31; a plain
+        // register array incorrectly leaves it set forever and traps IPL3
+        // in its polling loop.
+        val value = if (address == RDRAM_MODE_REG) {
+            rdramRegisters[index] = rdramRegisters[index] and RDRAM_MODE_INIT.inv()
+            rdramRegisters[index]
+        } else {
+            rdramRegisters[index]
+        }
         rdramRegisterReadHistory += "0x" +
             address.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0') +
             "=0x" + value.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0')
