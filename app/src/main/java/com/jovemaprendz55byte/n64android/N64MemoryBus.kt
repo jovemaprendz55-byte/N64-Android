@@ -35,6 +35,7 @@ internal class N64MemoryBus(
     // Basic MI state. Device interrupt sources are not yet wired to these bits.
     private var miMode = 0
     private var miInterrupt = 0
+    private var miInterruptMask = 0
     // Basic register storage only; RI timing and hardware side effects are not modeled.
     private val riRegisters = IntArray(8)
 
@@ -242,7 +243,7 @@ internal class N64MemoryBus(
         MI_MODE -> miMode
         MI_VERSION -> MI_VERSION_VALUE
         MI_INTR -> miInterrupt
-        MI_INTR_MASK -> 0 // Interrupt mask state is not connected to device IRQs yet.
+        MI_INTR_MASK -> miInterruptMask
         else -> throw IllegalArgumentException("Unknown MI register 0x${address.toString(16)}")
     }
 
@@ -265,8 +266,8 @@ internal class N64MemoryBus(
                     MI_INTR_MASK_VI, MI_INTR_MASK_PI, MI_INTR_MASK_DP
                 )
                 sources.forEachIndexed { index, bit ->
-                    if (value and (1 shl (index * 2)) != 0) miInterrupt = miInterrupt and bit.inv()
-                    if (value and (1 shl (index * 2 + 1)) != 0) miInterrupt = miInterrupt or bit
+                    if (value and (1 shl (index * 2)) != 0) miInterruptMask = miInterruptMask and bit.inv()
+                    if (value and (1 shl (index * 2 + 1)) != 0) miInterruptMask = miInterruptMask or bit
                 }
             }
             MI_VERSION, MI_INTR -> Unit // Read-only registers.
