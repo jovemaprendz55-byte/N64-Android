@@ -93,7 +93,10 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         append(lastBranchTarget?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "NONE")
         append(", R1=0x").append(register(1).toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
         append(", R2=0x").append(register(2).toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
-        append(", S1=0x").append(register(17).toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+        for (index in 8..17) {
+            append(", R").append(index).append("=0x")
+                .append(register(index).toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+        }
         append(", SP=0x").append(register(29).toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
     }
 
