@@ -86,7 +86,7 @@ internal class N64MemoryBus(
         private const val MI_MODE_EBUS_SET = 1 shl 6
         private const val MI_MODE_RDRAM_CLEAR = 1 shl 8
         private const val MI_MODE_RDRAM_SET = 1 shl 9
-        private const val MI_INTR_DP_CLEAR = 1 shl 2
+        private const val MI_INTR_DP_CLEAR = 1 shl 7
         private const val MI_INTR_MASK_SP = 1 shl 0
         private const val MI_INTR_MASK_SI = 1 shl 1
         private const val MI_INTR_MASK_AI = 1 shl 2
