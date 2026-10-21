@@ -158,6 +158,9 @@ class N64EmulatorCore(
     fun renderVideoFrame(destination: N64VideoFrameBuffer, height: Int = destination.height): Boolean =
         memoryBus.renderVideoFrame(destination, height)
 
+    /** Returns VI register values to help diagnose a blank output. */
+    fun videoDiagnosticSummary(): String = memoryBus.videoDiagnosticSummary()
+
     /**
      * Runs at most [instructionBudget] instructions from [entryPoint], resetting
      * the CPU first. Prefer startExecution + executeSlice for a persistent loop.
