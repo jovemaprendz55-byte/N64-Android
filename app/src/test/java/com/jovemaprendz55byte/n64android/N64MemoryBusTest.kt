@@ -68,8 +68,28 @@ class N64MemoryBusTest {
 
     @Test fun rejectsUnsupportedDeviceRegistersAndUnmappedAddresses() {
         val bus = N64MemoryBus()
-        assertThrows(IllegalArgumentException::class.java) { bus.readWord(0x04300000L) }
+        assertThrows(IllegalArgumentException::class.java) { bus.readWord(0x04100000L) }
         assertThrows(IllegalArgumentException::class.java) { bus.readByte(0x05000000L) }
+    }
+
+    @Test fun miRegistersSupportBasicReadsAndCommandWrites() {
+        val bus = N64MemoryBus()
+        assertEquals(0, bus.readWord(N64MemoryBus.MI_MODE))
+        assertEquals(0x02020102, bus.readWord(N64MemoryBus.MI_VERSION))
+        assertEquals(0, bus.readWord(N64MemoryBus.MI_INTR))
+        assertEquals(0, bus.readWord(N64MemoryBus.MI_INTR_MASK))
+        bus.writeWord(N64MemoryBus.MI_MODE, (1 shl 4) or (1 shl 6) or (1 shl 11))
+        assertEquals((1 shl 7) or (1 shl 8) or (1 shl 9), bus.readWord(N64MemoryBus.MI_MODE))
+        bus.writeWord(N64MemoryBus.MI_MODE, (1 shl 3) or (1 shl 5) or (1 shl 10))
+        assertEquals(0, bus.readWord(N64MemoryBus.MI_MODE))
+        bus.writeWord(N64MemoryBus.MI_INTR_MASK, (1 shl 1) or (1 shl 5))
+        assertEquals((1 shl 0) or (1 shl 2), bus.readWord(N64MemoryBus.MI_INTR_MASK))
+        bus.writeWord(N64MemoryBus.MI_INTR_MASK, (1 shl 0) or (1 shl 4))
+        assertEquals(1 shl 2, bus.readWord(N64MemoryBus.MI_INTR_MASK))
+        bus.writeWord(N64MemoryBus.MI_VERSION, 0xFFFFFFFF.toInt())
+        bus.writeWord(N64MemoryBus.MI_INTR, 0xFFFFFFFF.toInt())
+        assertEquals(0x02020102, bus.readWord(N64MemoryBus.MI_VERSION))
+        assertEquals(0, bus.readWord(N64MemoryBus.MI_INTR))
     }
 
     @Test fun riRegistersSupportBasicWordReadsAndWrites() {
