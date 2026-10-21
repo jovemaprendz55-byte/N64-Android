@@ -20,6 +20,7 @@ internal class N64MemoryBus(
     private val rdramRegisters = IntArray(0x0010_0000 / 4)
     private var rdramRegisterWriteCount = 0L
     private val rdramRegisterReadHistory = mutableListOf<String>()
+    private val rdramRegisterWriteHistory = mutableListOf<String>()
     private var rdramWriteCount = 0L
     private val rdramWriteHistory = mutableListOf<String>()
     private var lastRdramRegisterWriteAddress = 0L
@@ -220,6 +221,10 @@ internal class N64MemoryBus(
                 rdramRegisterWriteCount++
                 lastRdramRegisterWriteAddress = physicalAddress
                 lastRdramRegisterWriteValue = value
+                rdramRegisterWriteHistory += "0x" +
+                    physicalAddress.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0') +
+                    "=0x" + value.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0')
+                if (rdramRegisterWriteHistory.size > 16) rdramRegisterWriteHistory.removeAt(0)
             }
             N64MemoryMap.Region.SP_REGISTERS -> writeSpRegister(physicalAddress, value)
             N64MemoryMap.Region.MI_REGISTERS -> writeMiRegister(physicalAddress, value)
@@ -292,6 +297,7 @@ internal class N64MemoryBus(
         append(", RDRAM_REG_LAST_VALUE=0x")
             .append(lastRdramRegisterWriteValue.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
         append(", RDRAM_REG_READ_HISTORY=").append(rdramRegisterReadHistory.joinToString(";"))
+        append(", RDRAM_REG_WRITE_HISTORY=").append(rdramRegisterWriteHistory.joinToString(";"))
         append(", RDRAM_WRITES=").append(rdramWriteCount)
         append(", RDRAM_WRITE_HISTORY=").append(rdramWriteHistory.joinToString(";"))
     }
