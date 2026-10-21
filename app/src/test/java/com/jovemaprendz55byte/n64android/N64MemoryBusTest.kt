@@ -84,7 +84,7 @@ class N64MemoryBusTest {
         assertEquals(0, bus.readWord(N64MemoryBus.MI_MODE))
         bus.writeWord(N64MemoryBus.MI_INTR_MASK, (1 shl 1) or (1 shl 5))
         assertEquals((1 shl 0) or (1 shl 2), bus.readWord(N64MemoryBus.MI_INTR_MASK))
-        bus.writeWord(N64MemoryBus.MI_INTR_MASK, (1 shl 0) or (1 shl 4))
+        bus.writeWord(N64MemoryBus.MI_INTR_MASK, 1 shl 0)
         assertEquals(1 shl 2, bus.readWord(N64MemoryBus.MI_INTR_MASK))
         bus.writeWord(N64MemoryBus.MI_VERSION, 0xFFFFFFFF.toInt())
         bus.writeWord(N64MemoryBus.MI_INTR, 0xFFFFFFFF.toInt())
