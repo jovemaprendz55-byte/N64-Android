@@ -335,7 +335,49 @@ internal class N64MemoryBus(
         require(address >= PI_DRAM_ADDR && index in piRegisters.indices) {
             "Unknown PI register 0x${address.toString(16)}"
         }
-        piRegisters[index] = if (address == PI_DRAM_ADDR) value and 0x00FF_FFFF else value
+        when (address) {
+            PI_DRAM_ADDR -> piRegisters[index] = value and 0x00FF_FFFF
+            PI_CART_ADDR -> piRegisters[index] = value
+            PI_RD_LEN -> {
+                piRegisters[index] = value
+                transferPiDma(cartToRdram = true, command = value)
+            }
+            PI_WR_LEN -> {
+                piRegisters[index] = value
+                // Cartridge ROM is read-only; retain the register write but do
+                // not attempt to modify the loaded ROM image.
+            }
+            PI_STATUS -> {
+                // PI_STATUS command bit 1 clears the DMA interrupt flag.
+                if (value and 0x2 != 0) piRegisters[index] = piRegisters[index] and 0x8.inv()
+            }
+            else -> piRegisters[index] = value
+        }
+    }
+
+    /**
+     * Performs the synchronous cartridge-to-RDRAM DMA used by IPL3 to load
+     * the game boot code. Timing, bus contention and PI interrupts are not
+     * modeled, but the transferred bytes are visible to the CPU immediately.
+     */
+    private fun transferPiDma(cartToRdram: Boolean, command: Int) {
+        if (!cartToRdram) return
+        val length = (command and 0x00FF_FFFF) + 1
+        val dramAddress = piRegisters[0] and 0x00FF_FFFF
+        val cartAddress = piRegisters[1].toLong() and 0xFFFF_FFFFL
+        require(length > 0) { "PI DMA length must be positive" }
+        requireRdramRange(dramAddress.toLong(), length)
+        val cartOffset = cartAddress - 0x1000_0000L
+        val rom = cartridgeRom ?: throw IllegalStateException("No cartridge ROM has been loaded")
+        require(cartOffset >= 0L && cartOffset <= rom.size.toLong() &&
+            length.toLong() <= rom.size.toLong() - cartOffset) {
+            "PI DMA cartridge range is outside the loaded ROM: cart=0x${cartAddress.toString(16)}, length=0x${length.toString(16)}, ROM size=0x${rom.size.toString(16)}"
+        }
+        for (offset in 0 until length) {
+            writeByte(dramAddress.toLong() + offset, rom[(cartOffset + offset).toInt()])
+        }
+        piRegisters[0] = (dramAddress + length) and 0x00FF_FFFF
+        piRegisters[1] = ((cartAddress + length) and 0xFFFF_FFFFL).toInt()
     }
 
     private fun readRiRegister(address: Long): Int {
