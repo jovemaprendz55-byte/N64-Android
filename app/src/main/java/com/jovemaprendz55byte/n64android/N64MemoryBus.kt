@@ -19,6 +19,8 @@ internal class N64MemoryBus(
     // Store words by offset until hardware-specific register semantics are implemented.
     private val rdramRegisters = IntArray(0x0010_0000 / 4)
     private var rdramRegisterWriteCount = 0L
+    private var rdramWriteCount = 0L
+    private val rdramWriteHistory = mutableListOf<String>()
     private var lastRdramRegisterWriteAddress = 0L
     private var lastRdramRegisterWriteValue = 0
 
@@ -143,7 +145,10 @@ internal class N64MemoryBus(
 
     fun writeByte(physicalAddress: Long, value: Byte) {
         when (region(physicalAddress)) {
-            N64MemoryMap.Region.RDRAM -> rdram[rdramIndex(physicalAddress)] = value
+            N64MemoryMap.Region.RDRAM -> {
+                rdram[rdramIndex(physicalAddress)] = value
+                recordRdramWrite(physicalAddress, value.toInt() and 0xFF, 1)
+            }
             N64MemoryMap.Region.SP_DMEM, N64MemoryMap.Region.SP_IMEM ->
                 spMemory.writeByte(physicalAddress, value)
             N64MemoryMap.Region.PIF -> {
@@ -207,6 +212,7 @@ internal class N64MemoryBus(
                 rdram[address + 1] = (value ushr 16).toByte()
                 rdram[address + 2] = (value ushr 8).toByte()
                 rdram[address + 3] = value.toByte()
+                recordRdramWrite(physicalAddress, value, 4)
             }
             N64MemoryMap.Region.RDRAM_REGISTERS -> {
                 rdramRegisters[((physicalAddress - 0x03F0_0000L) ushr 2).toInt()] = value
@@ -284,6 +290,17 @@ internal class N64MemoryBus(
             .append(lastRdramRegisterWriteAddress.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
         append(", RDRAM_REG_LAST_VALUE=0x")
             .append(lastRdramRegisterWriteValue.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+        append(", RDRAM_WRITES=").append(rdramWriteCount)
+        append(", RDRAM_WRITE_HISTORY=").append(rdramWriteHistory.joinToString(";"))
+    }
+
+    private fun recordRdramWrite(address: Long, value: Int, width: Int) {
+        rdramWriteCount++
+        val digits = if (width == 1) 2 else 8
+        rdramWriteHistory += "0x" +
+            address.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0') +
+            "/$width=0x" + value.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(digits, '0')
+        if (rdramWriteHistory.size > 16) rdramWriteHistory.removeAt(0)
     }
 
     fun loadRdram(physicalAddress: Long, bytes: ByteArray) {
