@@ -172,9 +172,10 @@ class MainActivity : Activity() {
                     val videoText = core.videoDiagnosticSummary()
                     val cpuTraceText = core.executionDiagnosticSummary()
                     val bootMemoryText = core.bootMemoryDiagnosticSummary()
+                    val historyTraceText = core.executionHistoryDiagnosticSummary()
                     runOnUiThread {
                         if (emulationRunning.get()) {
-                            gameStatus.text = "CPU: $instructionText instruções | PC $pcText | quadros: $frameText. $videoText. $cpuTraceText. $bootMemoryText"
+                            gameStatus.text = "CPU: $instructionText instruções | PC $pcText | quadros: $frameText. $videoText. $cpuTraceText. $bootMemoryText. HISTÓRICO: $historyTraceText"
                         }
                     }
                 }
