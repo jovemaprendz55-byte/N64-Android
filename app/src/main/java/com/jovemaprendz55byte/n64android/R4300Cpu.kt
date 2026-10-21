@@ -71,6 +71,21 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     }
 
 
+    /** Compact live execution trace for diagnosing loops before video initialization. */
+    internal fun executionDiagnosticSummary(): String = buildString {
+        append("LAST_PC=0x")
+        append(lastInstructionAddress?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "NONE")
+        append(", LAST_INSTR=0x")
+        append(lastInstructionWord.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+        append(", LAST_BRANCH=0x")
+        append(lastBranchInstructionAddress?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "NONE")
+        append(", BRANCH_TARGET=0x")
+        append(lastBranchTarget?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "NONE")
+        append(", R1=0x").append(register(1).toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+        append(", R2=0x").append(register(2).toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+        append(", SP=0x").append(register(29).toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+    }
+
     fun register(index: Int): Long {
         require(index in 0..31) { "Register index must be 0..31" }
         return if (index == 0) 0L else gpr[index]
