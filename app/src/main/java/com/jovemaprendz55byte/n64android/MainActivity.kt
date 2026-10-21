@@ -2,6 +2,9 @@ package com.jovemaprendz55byte.n64android
 
 import android.app.Activity
 import android.content.Intent
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.widget.Toast
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
@@ -120,9 +123,42 @@ class MainActivity : Activity() {
         val gameStatus = TextView(this).apply {
             text = "Build experimental MI-FIX-20261020. Boot, RDP e áudio ainda estão incompletos."
             textSize = 11f
-            maxLines = 8
+            maxLines = 30
+            setTextIsSelectable(true)
             setTextColor(Color.WHITE)
             setPadding(dp(8), dp(4), dp(8), dp(4))
+        }
+        val diagnosticActions = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            addView(Button(this@MainActivity).apply {
+                text = "Copiar diagnóstico"
+                setOnClickListener {
+                    val logText = gameStatus.text?.toString().orEmpty()
+                    if (logText.isBlank()) {
+                        Toast.makeText(this@MainActivity, "Ainda não há diagnóstico para copiar.", Toast.LENGTH_SHORT).show()
+                    } else {
+                        val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                        clipboard.setPrimaryClip(ClipData.newPlainText("Diagnóstico N64", logText))
+                        Toast.makeText(this@MainActivity, "Diagnóstico copiado. Volte ao ChatGPT e cole a mensagem.", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(Button(this@MainActivity).apply {
+                text = "Compartilhar"
+                setOnClickListener {
+                    val logText = gameStatus.text?.toString().orEmpty()
+                    if (logText.isBlank()) {
+                        Toast.makeText(this@MainActivity, "Ainda não há diagnóstico para compartilhar.", Toast.LENGTH_SHORT).show()
+                    } else {
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, "Diagnóstico do emulador N64")
+                            putExtra(Intent.EXTRA_TEXT, logText)
+                        }
+                        startActivity(Intent.createChooser(shareIntent, "Enviar diagnóstico"))
+                    }
+                }
+            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         }
         val gameLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -132,6 +168,7 @@ class MainActivity : Activity() {
             ))
             addView(controls, matchWrap())
             addView(gameStatus, matchWrap())
+            addView(diagnosticActions, matchWrap())
             addView(Button(this@MainActivity).apply {
                 text = "Parar e voltar"
                 setOnClickListener {
