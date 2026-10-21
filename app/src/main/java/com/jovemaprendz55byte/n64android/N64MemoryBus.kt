@@ -32,6 +32,9 @@ internal class N64MemoryBus(
     private var spSemaphore = 0
     private var siDramAddress = 0
     private var siStatus = 0
+    // Basic MI state. Device interrupt sources are not yet wired to these bits.
+    private var miMode = 0
+    private var miInterrupt = 0
     // Basic register storage only; RI timing and hardware side effects are not modeled.
     private val riRegisters = IntArray(8)
 
@@ -50,6 +53,11 @@ internal class N64MemoryBus(
         const val SI_PIF_ADDR_WR64B = 0x0480_0010L
         const val SI_STATUS = 0x0480_0018L
 
+        const val MI_MODE = 0x0430_0000L
+        const val MI_VERSION = 0x0430_0004L
+        const val MI_INTR = 0x0430_0008L
+        const val MI_INTR_MASK = 0x0430_000CL
+
         const val RI_MODE = 0x0470_0000L
         const val RI_CONFIG = 0x0470_0004L
         const val RI_CURRENT_LOAD = 0x0470_0008L
@@ -67,6 +75,23 @@ internal class N64MemoryBus(
         private const val SP_STATUS_INTERRUPT_BREAK = 1 shl 6
         private const val SI_STATUS_DMA_BUSY = 1 shl 0
         private const val SI_STATUS_INTERRUPT = 1 shl 12
+        private const val MI_VERSION_VALUE = 0x0202_0102
+        private const val MI_MODE_INIT = 1 shl 7
+        private const val MI_MODE_EBUS = 1 shl 8
+        private const val MI_MODE_RDRAM = 1 shl 9
+        private const val MI_MODE_INIT_CLEAR = 1 shl 3
+        private const val MI_MODE_INIT_SET = 1 shl 4
+        private const val MI_MODE_EBUS_CLEAR = 1 shl 5
+        private const val MI_MODE_EBUS_SET = 1 shl 6
+        private const val MI_MODE_RDRAM_CLEAR = 1 shl 10
+        private const val MI_MODE_RDRAM_SET = 1 shl 11
+        private const val MI_INTR_DP_CLEAR = 1 shl 2
+        private const val MI_INTR_MASK_SP = 1 shl 0
+        private const val MI_INTR_MASK_SI = 1 shl 1
+        private const val MI_INTR_MASK_AI = 1 shl 2
+        private const val MI_INTR_MASK_VI = 1 shl 3
+        private const val MI_INTR_MASK_PI = 1 shl 4
+        private const val MI_INTR_MASK_DP = 1 shl 5
     }
 
     fun readByte(physicalAddress: Long): Byte = when (region(physicalAddress)) {
@@ -126,6 +151,7 @@ internal class N64MemoryBus(
                     (rdram[address + 3].toInt() and 0xFF)
             }
             N64MemoryMap.Region.SP_REGISTERS -> readSpRegister(physicalAddress)
+            N64MemoryMap.Region.MI_REGISTERS -> readMiRegister(physicalAddress)
             N64MemoryMap.Region.VI_REGISTERS -> videoInterface.readRegister(physicalAddress)
             N64MemoryMap.Region.SI_REGISTERS -> readSiRegister(physicalAddress)
             N64MemoryMap.Region.RI_REGISTERS -> readRiRegister(physicalAddress)
@@ -148,6 +174,7 @@ internal class N64MemoryBus(
                 rdram[address + 3] = value.toByte()
             }
             N64MemoryMap.Region.SP_REGISTERS -> writeSpRegister(physicalAddress, value)
+            N64MemoryMap.Region.MI_REGISTERS -> writeMiRegister(physicalAddress, value)
             N64MemoryMap.Region.VI_REGISTERS -> videoInterface.writeRegister(physicalAddress, value)
             N64MemoryMap.Region.SI_REGISTERS -> writeSiRegister(physicalAddress, value)
             N64MemoryMap.Region.RI_REGISTERS -> writeRiRegister(physicalAddress, value)
@@ -208,6 +235,42 @@ internal class N64MemoryBus(
         val start = physicalAddress.toInt()
         require(start <= rdram.size && length <= rdram.size - start) {
             "DMA range crosses the RDRAM boundary"
+        }
+    }
+
+    private fun readMiRegister(address: Long): Int = when (address) {
+        MI_MODE -> miMode
+        MI_VERSION -> MI_VERSION_VALUE
+        MI_INTR -> miInterrupt
+        MI_INTR_MASK -> 0 // Interrupt mask state is not connected to device IRQs yet.
+        else -> throw IllegalArgumentException("Unknown MI register 0x${address.toString(16)}")
+    }
+
+    private fun writeMiRegister(address: Long, value: Int) {
+        when (address) {
+            MI_MODE -> {
+                if (value and MI_MODE_INIT_CLEAR != 0) miMode = miMode and MI_MODE_INIT.inv()
+                if (value and MI_MODE_INIT_SET != 0) miMode = miMode or MI_MODE_INIT
+                if (value and MI_MODE_EBUS_CLEAR != 0) miMode = miMode and MI_MODE_EBUS.inv()
+                if (value and MI_MODE_EBUS_SET != 0) miMode = miMode or MI_MODE_EBUS
+                if (value and MI_MODE_RDRAM_CLEAR != 0) miMode = miMode and MI_MODE_RDRAM.inv()
+                if (value and MI_MODE_RDRAM_SET != 0) miMode = miMode or MI_MODE_RDRAM
+                // The DP interrupt-clear command is accepted, but DP IRQs are not modeled.
+                if (value and MI_INTR_DP_CLEAR != 0) miInterrupt = miInterrupt and MI_INTR_MASK_DP.inv()
+            }
+            MI_INTR_MASK -> {
+                // MI_INTR_MASK is command-based: each interrupt has a clear/set pair.
+                val sources = intArrayOf(
+                    MI_INTR_MASK_SP, MI_INTR_MASK_SI, MI_INTR_MASK_AI,
+                    MI_INTR_MASK_VI, MI_INTR_MASK_PI, MI_INTR_MASK_DP
+                )
+                sources.forEachIndexed { index, bit ->
+                    if (value and (1 shl (index * 2)) != 0) miInterrupt = miInterrupt and bit.inv()
+                    if (value and (1 shl (index * 2 + 1)) != 0) miInterrupt = miInterrupt or bit
+                }
+            }
+            MI_VERSION, MI_INTR -> Unit // Read-only registers.
+            else -> throw IllegalArgumentException("Unknown MI register 0x${address.toString(16)}")
         }
     }
 
