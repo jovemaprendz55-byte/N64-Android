@@ -18,6 +18,9 @@ internal class N64MemoryBus(
     // Diagnostic boot code may touch the RDRAM controller register window.
     // Store words by offset until hardware-specific register semantics are implemented.
     private val rdramRegisters = IntArray(0x0010_0000 / 4)
+    private var rdramRegisterWriteCount = 0L
+    private var lastRdramRegisterWriteAddress = 0L
+    private var lastRdramRegisterWriteValue = 0
 
     private val rdram = ByteArray(rdramSize.also { size ->
         require(size > 0 && size % 4 == 0) {
@@ -205,7 +208,12 @@ internal class N64MemoryBus(
                 rdram[address + 2] = (value ushr 8).toByte()
                 rdram[address + 3] = value.toByte()
             }
-            N64MemoryMap.Region.RDRAM_REGISTERS -> rdramRegisters[((physicalAddress - 0x03F0_0000L) ushr 2).toInt()] = value
+            N64MemoryMap.Region.RDRAM_REGISTERS -> {
+                rdramRegisters[((physicalAddress - 0x03F0_0000L) ushr 2).toInt()] = value
+                rdramRegisterWriteCount++
+                lastRdramRegisterWriteAddress = physicalAddress
+                lastRdramRegisterWriteValue = value
+            }
             N64MemoryMap.Region.SP_REGISTERS -> writeSpRegister(physicalAddress, value)
             N64MemoryMap.Region.MI_REGISTERS -> writeMiRegister(physicalAddress, value)
             N64MemoryMap.Region.VI_REGISTERS -> videoInterface.writeRegister(physicalAddress, value)
@@ -271,6 +279,11 @@ internal class N64MemoryBus(
         append(", PI_REG_LAST_VALUE=0x")
             .append(lastPiRegisterWriteValue.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
         append(", PI_REG_HISTORY=").append(piRegisterWriteHistory.joinToString(";"))
+        append(", RDRAM_REG_WRITES=").append(rdramRegisterWriteCount)
+        append(", RDRAM_REG_LAST_ADDR=0x")
+            .append(lastRdramRegisterWriteAddress.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+        append(", RDRAM_REG_LAST_VALUE=0x")
+            .append(lastRdramRegisterWriteValue.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
     }
 
     fun loadRdram(physicalAddress: Long, bytes: ByteArray) {
