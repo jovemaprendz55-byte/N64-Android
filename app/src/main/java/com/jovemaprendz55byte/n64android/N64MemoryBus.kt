@@ -15,6 +15,10 @@ internal class N64MemoryBus(
     private val videoInterface = N64VideoInterface()
     private val pifRam = N64PifRam(controllerPort)
 
+    // Diagnostic boot code may touch the RDRAM controller register window.
+    // Store words by offset until hardware-specific register semantics are implemented.
+    private val rdramRegisters = IntArray(0x0010_0000 / 4)
+
     private val rdram = ByteArray(rdramSize.also { size ->
         require(size > 0 && size % 4 == 0) {
             "RDRAM size must be a positive multiple of four bytes"
@@ -151,6 +155,7 @@ internal class N64MemoryBus(
                     ((rdram[address + 2].toInt() and 0xFF) shl 8) or
                     (rdram[address + 3].toInt() and 0xFF)
             }
+            N64MemoryMap.Region.RDRAM_REGISTERS -> rdramRegisters[((physicalAddress - 0x03F0_0000L) ushr 2).toInt()]
             N64MemoryMap.Region.SP_REGISTERS -> readSpRegister(physicalAddress)
             N64MemoryMap.Region.MI_REGISTERS -> readMiRegister(physicalAddress)
             N64MemoryMap.Region.VI_REGISTERS -> videoInterface.readRegister(physicalAddress)
@@ -174,6 +179,7 @@ internal class N64MemoryBus(
                 rdram[address + 2] = (value ushr 8).toByte()
                 rdram[address + 3] = value.toByte()
             }
+            N64MemoryMap.Region.RDRAM_REGISTERS -> rdramRegisters[((physicalAddress - 0x03F0_0000L) ushr 2).toInt()] = value
             N64MemoryMap.Region.SP_REGISTERS -> writeSpRegister(physicalAddress, value)
             N64MemoryMap.Region.MI_REGISTERS -> writeMiRegister(physicalAddress, value)
             N64MemoryMap.Region.VI_REGISTERS -> videoInterface.writeRegister(physicalAddress, value)
