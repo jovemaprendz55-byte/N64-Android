@@ -199,7 +199,7 @@ class MainActivity : Activity() {
             var renderedFrames = 0L
             var slicesSinceStatus = 0
             while (emulationRunning.get() && !Thread.currentThread().isInterrupted) {
-                val result = core.executeSlice(100_000)
+                val result = core.executeSlice(20_000)
                 totalInstructions += result.instructionsExecuted.toLong()
                 if (result.stopReason == N64EmulatorCore.StopReason.EXECUTION_ERROR) {
                     emulationRunning.set(false)
@@ -214,7 +214,7 @@ class MainActivity : Activity() {
                     gameView.presentFrame(frame)
                 }
                 slicesSinceStatus++
-                if (slicesSinceStatus >= 12) {
+                if (slicesSinceStatus >= 60) {
                     slicesSinceStatus = 0
                     val pcText = "0x" + result.programCounter.toULong().toString(16)
                         .uppercase(java.util.Locale.ROOT).padStart(16, '0')
