@@ -61,6 +61,22 @@ class N64MemoryBusTest {
         }
     }
 
+    @Test fun piDmaCopiesCartridgeBytesIntoRdram() {
+        val bus = N64MemoryBus()
+        bus.loadCartridgeRom(byteArrayOf(
+            0x80.toByte(), 0x37, 0x12, 0x40,
+            0x11, 0x22, 0x33, 0x44
+        ))
+
+        bus.writeWord(N64MemoryBus.PI_DRAM_ADDR, 0x200)
+        bus.writeWord(N64MemoryBus.PI_CART_ADDR, 0x10000004)
+        bus.writeWord(N64MemoryBus.PI_RD_LEN, 3) // PI length is encoded as bytes minus one.
+
+        assertEquals(0x11223344, bus.readWord(0x200L))
+        assertEquals(0x204, bus.readWord(N64MemoryBus.PI_DRAM_ADDR))
+        assertEquals(0x10000008, bus.readWord(N64MemoryBus.PI_CART_ADDR))
+    }
+
     @Test fun cartridgeReadFailsBeforeRomIsLoaded() {
         val bus = N64MemoryBus()
         assertThrows(IllegalStateException::class.java) { bus.readByte(0x10000000L) }
