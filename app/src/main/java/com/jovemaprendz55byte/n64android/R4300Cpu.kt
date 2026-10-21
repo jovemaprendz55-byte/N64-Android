@@ -37,6 +37,10 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         private set
 
     private var pendingBranchTarget: Long? = null
+    /** Most recent branch/jump instruction and target, retained for ROM failure diagnostics. */
+    private var lastBranchInstructionAddress: Long? = null
+    private var lastBranchInstructionWord: Int? = null
+    private var lastBranchTarget: Long? = null
     /** Address of the last instruction fetched successfully, for failure diagnostics. */
     private var lastInstructionAddress: Long? = null
     /** Last fetched instruction, retained so execution failures can be diagnosed. */
@@ -51,6 +55,12 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         append(lastInstructionAddress?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "nenhuma")
         append("; alvoPendente=")
         append(pendingBranchTarget?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "nenhum")
+        append("; ultimoSaltoEm=")
+        append(lastBranchInstructionAddress?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "nenhum")
+        append("; instrucaoSalto=0x")
+        append(lastBranchInstructionWord?.toUInt()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(8, '0') ?: "nenhuma")
+        append("; alvoUltimoSalto=")
+        append(lastBranchTarget?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "nenhum")
         append("; Instrucao=0x")
         append(lastInstructionWord.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
         append("; registradores:")
@@ -178,6 +188,9 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         pendingBranchTarget = null
         lastInstructionAddress = null
         lastInstructionWord = 0
+        lastBranchInstructionAddress = null
+        lastBranchInstructionWord = null
+        lastBranchTarget = null
     }
 
     /**
@@ -417,6 +430,14 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             0x3F -> writeLong(effectiveAddress(a, signedImmediate), b) // SD
             0x02 -> pendingBranchTarget = jumpTarget(instruction, pc) // J
             else -> unsupported(instruction, instructionAddress)
+        }
+
+        // Keep the instruction and destination that requested this delayed transfer.
+        // A following fetch failure can then distinguish a bad jump target from a bus issue.
+        pendingBranchTarget?.let { target ->
+            lastBranchInstructionAddress = instructionAddress
+            lastBranchInstructionWord = instruction
+            lastBranchTarget = target
         }
 
         // The instruction just executed was a delay-slot instruction.
