@@ -164,6 +164,9 @@ class N64EmulatorCore(
     /** Returns the most recent instruction and branch state for live diagnostics. */
     fun executionDiagnosticSummary(): String = cpu.executionDiagnosticSummary()
 
+    /** Returns the early instruction sequence that led into a repeated-PC loop. */
+    fun executionHistoryDiagnosticSummary(): String = cpu.executionHistoryDiagnosticSummary()
+
     /** Reads the stalled boot-code area to distinguish an empty RDRAM loop from valid code. */
     fun bootMemoryDiagnosticSummary(): String = buildString {
         append("RDRAM[0x1C8]=0x")
