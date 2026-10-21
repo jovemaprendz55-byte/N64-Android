@@ -175,6 +175,8 @@ class N64EmulatorCore(
         append(memoryBus.readWord(0x1CCL).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
         append(", RDRAM[0x400]=0x")
         append(memoryBus.readWord(0x400L).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+        append(", RDRAM_REG[0x03F08000]=0x")
+        append(memoryBus.readWord(0x03F0_8000L).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
     }
 
     /**
