@@ -53,9 +53,9 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private var frozenLoopTrace: String? = null
     private var totalSteps: Long = 0L
 
-    /** Always show the live rolling trace; the frozen first-loop trace can be stale after execution advances. */
+    /** Prefer the trace captured when execution first entered a repeated-PC loop. */
     internal fun executionHistoryDiagnosticSummary(): String =
-        recentInstructions.joinToString(" | ").ifBlank { "sem historico" }
+        (frozenLoopTrace ?: recentInstructions.joinToString(" | ")).ifBlank { "sem historico" }
 
     /** Compact CPU state snapshot attached to ROM-test failures. */
     internal fun diagnosticSnapshot(): String = buildString {
