@@ -52,6 +52,7 @@ internal class N64MemoryBus(
     private var piRegisterWriteCount = 0L
     private var lastPiRegisterWriteAddress = 0L
     private var lastPiRegisterWriteValue = 0
+    private val piRegisterWriteHistory = mutableListOf<String>()
 
     companion object {
         const val SP_MEM_ADDR = 0x0404_0000L
@@ -269,6 +270,7 @@ internal class N64MemoryBus(
             .append(lastPiRegisterWriteAddress.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
         append(", PI_REG_LAST_VALUE=0x")
             .append(lastPiRegisterWriteValue.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+        append(", PI_REG_HISTORY=").append(piRegisterWriteHistory.joinToString(";"))
     }
 
     fun loadRdram(physicalAddress: Long, bytes: ByteArray) {
@@ -362,6 +364,10 @@ internal class N64MemoryBus(
         piRegisterWriteCount++
         lastPiRegisterWriteAddress = address
         lastPiRegisterWriteValue = value
+        piRegisterWriteHistory += "0x" +
+            address.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0') +
+            "=0x" + value.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0')
+        if (piRegisterWriteHistory.size > 8) piRegisterWriteHistory.removeAt(0)
         when (address) {
             PI_DRAM_ADDR -> piRegisters[index] = value and 0x00FF_FFFF
             PI_CART_ADDR -> piRegisters[index] = value
