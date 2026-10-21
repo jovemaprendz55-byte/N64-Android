@@ -53,8 +53,9 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private var frozenLoopTrace: String? = null
     private var totalSteps: Long = 0L
 
+    /** Always show the live rolling trace; the frozen first-loop trace can be stale after execution advances. */
     internal fun executionHistoryDiagnosticSummary(): String =
-        frozenLoopTrace ?: recentInstructions.joinToString(" | ").ifBlank { "sem historico" }
+        recentInstructions.joinToString(" | ").ifBlank { "sem historico" }
 
     /** Compact CPU state snapshot attached to ROM-test failures. */
     internal fun diagnosticSnapshot(): String = buildString {
@@ -92,6 +93,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         append(lastBranchTarget?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "NONE")
         append(", R1=0x").append(register(1).toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
         append(", R2=0x").append(register(2).toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+        append(", S1=0x").append(register(17).toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
         append(", SP=0x").append(register(29).toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
     }
 
