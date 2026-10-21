@@ -19,6 +19,7 @@ internal class N64MemoryBus(
     // Store words by offset until hardware-specific register semantics are implemented.
     private val rdramRegisters = IntArray(0x0010_0000 / 4)
     private var rdramRegisterWriteCount = 0L
+    private val rdramRegisterReadHistory = mutableListOf<String>()
     private var rdramWriteCount = 0L
     private val rdramWriteHistory = mutableListOf<String>()
     private var lastRdramRegisterWriteAddress = 0L
@@ -187,7 +188,7 @@ internal class N64MemoryBus(
                     ((rdram[address + 2].toInt() and 0xFF) shl 8) or
                     (rdram[address + 3].toInt() and 0xFF)
             }
-            N64MemoryMap.Region.RDRAM_REGISTERS -> rdramRegisters[((physicalAddress - 0x03F0_0000L) ushr 2).toInt()]
+            N64MemoryMap.Region.RDRAM_REGISTERS -> readRdramRegister(physicalAddress)
             N64MemoryMap.Region.SP_REGISTERS -> readSpRegister(physicalAddress)
             N64MemoryMap.Region.MI_REGISTERS -> readMiRegister(physicalAddress)
             N64MemoryMap.Region.VI_REGISTERS -> videoInterface.readRegister(physicalAddress)
@@ -290,8 +291,18 @@ internal class N64MemoryBus(
             .append(lastRdramRegisterWriteAddress.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
         append(", RDRAM_REG_LAST_VALUE=0x")
             .append(lastRdramRegisterWriteValue.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+        append(", RDRAM_REG_READ_HISTORY=").append(rdramRegisterReadHistory.joinToString(";"))
         append(", RDRAM_WRITES=").append(rdramWriteCount)
         append(", RDRAM_WRITE_HISTORY=").append(rdramWriteHistory.joinToString(";"))
+    }
+
+    private fun readRdramRegister(address: Long): Int {
+        val value = rdramRegisters[((address - 0x03F0_0000L) ushr 2).toInt()]
+        rdramRegisterReadHistory += "0x" +
+            address.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0') +
+            "=0x" + value.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0')
+        if (rdramRegisterReadHistory.size > 16) rdramRegisterReadHistory.removeAt(0)
+        return value
     }
 
     private fun recordRdramWrite(address: Long, value: Int, width: Int) {
