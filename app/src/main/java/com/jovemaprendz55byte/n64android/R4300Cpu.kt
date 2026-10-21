@@ -47,9 +47,11 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     internal var lastInstructionWord: Int = 0
         private set
 
-    /** Small rolling instruction history, frozen on the first sustained PC loop. */
-    private val recentInstructions = java.util.ArrayDeque<String>()
-    private val seenInstructionPcs = HashSet<Long>()
+    /** Bounded diagnostics: avoid allocating strings and growing a HashSet on every CPU step. */
+    private val recentInstructions = java.util.ArrayDeque<String>(16)
+    private val recentInstructionPcs = LongArray(64)
+    private var recentInstructionPcIndex = 0
+    private var recentInstructionPcCount = 0
     private var frozenLoopTrace: String? = null
     private var totalSteps: Long = 0L
 
@@ -221,7 +223,9 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         lastBranchInstructionWord = null
         lastBranchTarget = null
         recentInstructions.clear()
-        seenInstructionPcs.clear()
+        recentInstructionPcs.fill(0L)
+        recentInstructionPcIndex = 0
+        recentInstructionPcCount = 0
         frozenLoopTrace = null
         totalSteps = 0L
     }
@@ -243,13 +247,29 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         lastInstructionAddress = instructionAddress
         lastInstructionWord = instruction
         totalSteps++
-        val traceEntry = "0x" + instructionAddress.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0') +
-            "=0x" + instruction.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0')
-        if (recentInstructions.size >= 16) recentInstructions.removeFirst()
-        recentInstructions.addLast(traceEntry)
-        // Freeze the instructions leading into the first repeated PC after startup,
-        // so a later infinite loop does not erase the useful evidence.
-        if (totalSteps > 256L && frozenLoopTrace == null && !seenInstructionPcs.add(instructionAddress)) {
+        // Track recent PCs in a fixed-size ring (no unbounded HashSet growth).
+        var repeatedRecentPc = false
+        var i = 0
+        while (i < recentInstructionPcCount) {
+            if (recentInstructionPcs[i] == instructionAddress) {
+                repeatedRecentPc = true
+                break
+            }
+            i++
+        }
+        recentInstructionPcs[recentInstructionPcIndex] = instructionAddress
+        recentInstructionPcIndex = (recentInstructionPcIndex + 1) % recentInstructionPcs.size
+        if (recentInstructionPcCount < recentInstructionPcs.size) recentInstructionPcCount++
+
+        // Format diagnostic text only during startup, periodically, or on a detected loop.
+        if (totalSteps <= 256L || (totalSteps and 63L) == 0L || repeatedRecentPc) {
+            val traceEntry = "0x" + instructionAddress.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0') +
+                "=0x" + instruction.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0')
+            if (recentInstructions.size >= 16) recentInstructions.removeFirst()
+            recentInstructions.addLast(traceEntry)
+        }
+        // Preserve useful evidence when execution enters a repeated-PC loop.
+        if (totalSteps > 256L && frozenLoopTrace == null && repeatedRecentPc) {
             frozenLoopTrace = recentInstructions.joinToString(" | ")
         }
         pc += 4L
