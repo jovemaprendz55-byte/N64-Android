@@ -9,6 +9,11 @@ package com.jovemaprendz55byte.n64android
 internal class N64VideoInterface {
     private val registers = IntArray(REGISTER_COUNT)
 
+    /** Current VI register snapshot for diagnosing why scanout has no frame. */
+    fun diagnosticSummary(): String = "VI_STATUS=0x${registers[indexOf(VI_STATUS)].toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0')}, " +
+        "VI_ORIGIN=0x${registers[indexOf(VI_ORIGIN)].toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0')}, " +
+        "VI_WIDTH=${registers[indexOf(VI_WIDTH)]}"
+
     fun readRegister(physicalAddress: Long): Int {
         val index = registerIndex(physicalAddress)
         return registers[index]
