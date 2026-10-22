@@ -27,6 +27,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         const val DEFAULT_RDRAM_SIZE: Int = 8 * 1024 * 1024
     }
     private val gpr = LongArray(32)
+    private val cpuMemoryProbeHistory = mutableListOf<String>()
     // Minimal CP0 register storage for common boot-code MFC0/MTC0 operations.
     private val cp0 = LongArray(32)
 
@@ -71,6 +72,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         append(lastBranchInstructionAddress?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "nenhum")
         append("; instrucaoSalto=0x")
         append(lastBranchInstructionWord?.toUInt()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(8, '0') ?: "nenhuma")
+        append("; CPU_MEMORY_PROBE_HISTORY=").append(cpuMemoryProbeHistory.joinToString(";"))
         append("; alvoUltimoSalto=")
         append(lastBranchTarget?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "nenhum")
         append("; Instrucao=0x")
@@ -512,7 +514,12 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             0x22 -> writeRegister(rt, loadWordLeft(effectiveAddress(a, signedImmediate), b.toInt()).toLong()) // LWL
             0x20 -> writeRegister(rt, readByte(effectiveAddress(a, signedImmediate)).toLong()) // LB
             0x21 -> writeRegister(rt, readHalf(effectiveAddress(a, signedImmediate)).toLong()) // LH
-            0x23 -> writeRegister(rt, readWord(effectiveAddress(a, signedImmediate)).toLong()) // LW
+            0x23 -> {
+                val address = effectiveAddress(a, signedImmediate)
+                val value = readWord(address)
+                recordCpuMemoryProbe("LW", instructionAddress, address, value)
+                writeRegister(rt, value.toLong())
+            }
             0x26 -> writeRegister(rt, loadWordRight(effectiveAddress(a, signedImmediate), b.toInt()).toLong()) // LWR
             0x27 -> writeRegister(rt, Integer.toUnsignedLong(readWord(effectiveAddress(a, signedImmediate)))) // LWU
             0x24 -> writeRegister(rt, readByte(effectiveAddress(a, signedImmediate)).toLong() and 0xFFL) // LBU
@@ -522,7 +529,12 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             0x2A -> storeWordLeft(effectiveAddress(a, signedImmediate), b.toInt()) // SWL
             0x28 -> writeByte(effectiveAddress(a, signedImmediate), b.toByte()) // SB
             0x29 -> writeHalf(effectiveAddress(a, signedImmediate), b.toShort()) // SH
-            0x2B -> writeWord(effectiveAddress(a, signedImmediate), b.toInt()) // SW
+            0x2B -> {
+                val address = effectiveAddress(a, signedImmediate)
+                val value = b.toInt()
+                recordCpuMemoryProbe("SW", instructionAddress, address, value)
+                writeWord(address, value)
+            }
             0x2E -> storeWordRight(effectiveAddress(a, signedImmediate), b.toInt()) // SWR
             0x2F -> Unit // CACHE: ignored because this interpreter has no modeled caches
             0x33 -> Unit // PREF: prefetch hint has no effect in this interpreter
@@ -600,6 +612,15 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             "Physical address cannot be represented by this interpreter"
         }
         return physicalAddress.toInt()
+    }
+
+    private fun recordCpuMemoryProbe(operation: String, instructionAddress: Long, address: Int, value: Int) {
+        if (address !in 0x0010_03F0..0x0010_0440) return
+        val entry = operation + " PC=0x" + instructionAddress.toULong().toString(16).uppercase(java.util.Locale.ROOT) +
+            " ADDR=0x" + address.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0') +
+            " VALUE=0x" + value.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0')
+        cpuMemoryProbeHistory += entry
+        if (cpuMemoryProbeHistory.size > 32) cpuMemoryProbeHistory.removeAt(0)
     }
 
     /** Computes an effective address and resolves supported direct-mapped segments. */
