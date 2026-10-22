@@ -30,8 +30,8 @@ internal class N64BootInitialization(
      * A checksum mismatch is reported, never silently patched or bypassed.
      */
     fun prepareCic6105(rom: ByteArray): Preflight {
-        require(rom.size >= GAME_SEGMENT_END) {
-            "ROM precisa conter o IPL3 e 1 MiB de código/dados a partir de 0x1000"
+        require(rom.size >= IPL3_ROM_END) {
+            "ROM pequena demais para conter o IPL3 (mínimo 0x1000 bytes)"
         }
         val header = RomHeader.parse(rom)
         require(header?.format == RomHeader.Format.Z64_BIG_ENDIAN) {
@@ -55,7 +55,7 @@ internal class N64BootInitialization(
         return Preflight(
             romBytes = rom.size,
             ipl3Bytes = image.byteCount,
-            gameSegmentBytes = GAME_SEGMENT_END - GAME_SEGMENT_START,
+            gameSegmentBytes = minOf(GAME_SEGMENT_END - GAME_SEGMENT_START, (rom.size - GAME_SEGMENT_START).coerceAtLeast(0)),
             region = image.region,
             expectedCrc1 = expectedCrc1,
             expectedCrc2 = expectedCrc2,
@@ -69,6 +69,7 @@ internal class N64BootInitialization(
     }
 
     companion object {
+        private const val IPL3_ROM_END = 0x1000
         private const val GAME_SEGMENT_START = 0x1000
         private const val GAME_SEGMENT_END = 0x101000
 
