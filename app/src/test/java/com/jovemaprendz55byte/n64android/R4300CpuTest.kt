@@ -4,6 +4,17 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class R4300CpuTest {
+    @Test fun luiSignExtendsTheResultTo64Bits() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x8006) // LUI r1, 0x8006 -> 0xFFFFFFFF80060000
+        ))
+
+        cpu.step()
+
+        assertEquals(0xFFFF_FFFF_8006_0000UL.toLong(), cpu.register(1))
+    }
+
     @Test fun cic6105Ipl3DiagnosticSeedsTheBootRegistersAndSpForNtsc() {
         val cpu = R4300Cpu()
         cpu.resetForCic6105Ipl3Diagnostic(0xFFFF_FFFF_A400_0040UL.toLong(), pal = false)
