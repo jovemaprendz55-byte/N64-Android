@@ -233,10 +233,21 @@ class MainActivity : Activity() {
                     val cpuDiagnostic = core.executionDiagnosticSummary()
                     val cpuState = core.fullCpuDiagnosticSummary()
                     val history = core.executionHistoryDiagnosticSummary()
+                    val videoDiagnostic = core.videoDiagnosticSummary()
+                    val automaticDiagnosis = N64AutoDiagnostics.analyze(
+                        rom = rom,
+                        stopReason = result.stopReason.name,
+                        programCounter = result.programCounter,
+                        errorMessage = result.errorMessage,
+                        bootSummary = bootDiagnostic,
+                        videoSummary = videoDiagnostic,
+                        executionSummary = cpuDiagnostic
+                    )
                     runOnUiThread {
-                        gameStatus.text = "$reasonText em PC $pcText. " +
+                        gameStatus.text = automaticDiagnosis + "\\n\\n" +
+                            "$reasonText em PC $pcText. " +
                             (result.errorMessage ?: "A emulação foi parada.") +
-                            "\\n$bootDiagnostic\\n$cpuDiagnostic\\n$cpuState\\nHist.: $history"
+                            "\\n$bootDiagnostic\\n$videoDiagnostic\\n$cpuDiagnostic\\n$cpuState\\nHist.: $history"
                     }
                     break
                 }
