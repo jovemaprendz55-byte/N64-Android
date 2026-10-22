@@ -336,6 +336,14 @@ internal class N64MemoryBus(
         if (rdramWriteHistory.size > 16) rdramWriteHistory.removeAt(0)
     }
 
+    private fun recordRdramDmaWrite(address: Long, length: Int) {
+        rdramWriteCount += length
+        rdramWriteHistory += "0x" +
+            address.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0') +
+            "/DMA=$length"
+        if (rdramWriteHistory.size > 16) rdramWriteHistory.removeAt(0)
+    }
+
     fun loadRdram(physicalAddress: Long, bytes: ByteArray) {
         require(region(physicalAddress) == N64MemoryMap.Region.RDRAM) {
             "Bulk loads are supported only in RDRAM"
@@ -474,9 +482,18 @@ internal class N64MemoryBus(
         lastPiDmaDramAddress = dramAddress
         lastPiDmaCartAddress = cartAddress
         lastPiDmaLength = length
-        for (offset in 0 until length) {
-            writeByte(dramAddress.toLong() + offset, rom[(cartOffset + offset).toInt()])
-        }
+
+        // DMA writes a contiguous block. Copy it in one operation instead of
+        // routing every byte through writeByte(), which also formats and stores
+        // a diagnostic-history string per byte. Keep the write counter's
+        // byte-level meaning while recording the DMA as one history entry.
+        rom.copyInto(
+            destination = rdram,
+            destinationOffset = dramAddress,
+            startIndex = cartOffset.toInt(),
+            endIndex = cartOffset.toInt() + length
+        )
+        recordRdramDmaWrite(dramAddress.toLong(), length)
         piRegisters[0] = (dramAddress + length) and 0x00FF_FFFF
         piRegisters[1] = ((cartAddress + length) and 0xFFFF_FFFFL).toInt()
     }
