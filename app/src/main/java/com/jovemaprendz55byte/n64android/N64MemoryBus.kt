@@ -23,6 +23,10 @@ internal class N64MemoryBus(
     private val rdramRegisterWriteHistory = mutableListOf<String>()
     private var rdramWriteCount = 0L
     private val rdramWriteHistory = mutableListOf<String>()
+    // Focused trace for IPL3's suspicious physical address 0x00100400.
+    private val rdramProbeHistory = mutableListOf<String>()
+    private val rdramProbeStart = 0x0010_03F0L
+    private val rdramProbeEnd = 0x0010_0440L
     private var lastRdramRegisterWriteAddress = 0L
     private var lastRdramRegisterWriteValue = 0
 
@@ -189,8 +193,12 @@ internal class N64MemoryBus(
                 require(address <= rdram.size - 4) { "RDRAM word access crosses its boundary" }
                 ((rdram[address].toInt() and 0xFF) shl 24) or
                     ((rdram[address + 1].toInt() and 0xFF) shl 16) or
+                    (((rdram[address].toInt() and 0xFF) shl 24) or
+                    ((rdram[address + 1].toInt() and 0xFF) shl 16) or
                     ((rdram[address + 2].toInt() and 0xFF) shl 8) or
-                    (rdram[address + 3].toInt() and 0xFF)
+                    (rdram[address + 3].toInt() and 0xFF)).also { value ->
+                    recordRdramProbe('R', physicalAddress, value)
+                }
             }
             N64MemoryMap.Region.RDRAM_REGISTERS -> readRdramRegister(physicalAddress)
             N64MemoryMap.Region.SP_REGISTERS -> readSpRegister(physicalAddress)
@@ -218,6 +226,7 @@ internal class N64MemoryBus(
                 rdram[address + 2] = (value ushr 8).toByte()
                 rdram[address + 3] = value.toByte()
                 recordRdramWrite(physicalAddress, value, 4)
+                recordRdramProbe('W', physicalAddress, value)
             }
             N64MemoryMap.Region.RDRAM_REGISTERS -> {
                 rdramRegisters[((physicalAddress - 0x03F0_0000L) ushr 2).toInt()] = value
@@ -303,6 +312,7 @@ internal class N64MemoryBus(
         append(", RDRAM_REG_WRITE_HISTORY=").append(rdramRegisterWriteHistory.joinToString(";"))
         append(", RDRAM_WRITES=").append(rdramWriteCount)
         append(", RDRAM_WRITE_HISTORY=").append(rdramWriteHistory.joinToString(";"))
+        append(", RDRAM_PROBE_HISTORY=").append(rdramProbeHistory.joinToString(";"))
     }
 
     private fun readRdramRegister(address: Long): Int {
@@ -325,6 +335,15 @@ internal class N64MemoryBus(
             "=0x" + value.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0')
         if (rdramRegisterReadHistory.size > 16) rdramRegisterReadHistory.removeAt(0)
         return value
+    }
+
+    private fun recordRdramProbe(operation: Char, address: Long, value: Int) {
+        if (address !in rdramProbeStart..rdramProbeEnd) return
+        val entry = "$operation 0x" +
+            address.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0') +
+            "=0x" + value.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0')
+        rdramProbeHistory += entry
+        if (rdramProbeHistory.size > 32) rdramProbeHistory.removeAt(0)
     }
 
     private fun recordRdramWrite(address: Long, value: Int, width: Int) {
