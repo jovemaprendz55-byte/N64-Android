@@ -113,9 +113,11 @@ class N64MemoryBusTest {
         assertThrows(IllegalStateException::class.java) { bus.readByte(0x10000000L) }
     }
 
-    @Test fun rejectsUnsupportedDeviceRegistersAndUnmappedAddresses() {
+    @Test fun supportsDpcRegistersAndRejectsUnmappedAddresses() {
         val bus = N64MemoryBus()
-        assertThrows(IllegalArgumentException::class.java) { bus.readWord(0x04100000L) }
+        assertEquals(0, bus.readWord(N64RdpProcessor.DPC_START))
+        bus.writeWord(N64RdpProcessor.DPC_START, 0x100)
+        assertEquals(0x100, bus.readWord(N64RdpProcessor.DPC_START))
         assertThrows(IllegalArgumentException::class.java) { bus.readByte(0x05000000L) }
     }
 
