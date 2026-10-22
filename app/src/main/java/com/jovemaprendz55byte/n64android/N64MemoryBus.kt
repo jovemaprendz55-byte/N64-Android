@@ -198,7 +198,6 @@ internal class N64MemoryBus(
                 recordRdramProbe('R', physicalAddress, value)
                 value
             }
-}
             N64MemoryMap.Region.RDRAM_REGISTERS -> readRdramRegister(physicalAddress)
             N64MemoryMap.Region.SP_REGISTERS -> readSpRegister(physicalAddress)
             N64MemoryMap.Region.MI_REGISTERS -> readMiRegister(physicalAddress)
