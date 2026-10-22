@@ -240,6 +240,37 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         gpr[29] = 0xFFFF_FFFF_803F_FFF0UL.toLong()
     }
 
+    /**
+     * Approximate the register handoff from the PIF/ IPL2 boot path for a
+     * CIC-NUS-6105 cartridge before entering its IPL3 image in SP DMEM.
+     * This is not a substitute for executing the PIF boot ROM or validating
+     * the cartridge CIC checksum; it supplies the known 6105 NTSC/PAL seeds.
+     */
+    internal fun resetForCic6105Ipl3Diagnostic(entryPoint: Long, pal: Boolean) {
+        resetExecutionState(entryPoint)
+        gpr[2] = 0xFFFF_FFFF_D173_1BE9UL.toLong()
+        gpr[3] = 0xFFFF_FFFF_D173_1BE9UL.toLong()
+        gpr[4] = 0x1BE9L
+        gpr[5] = if (pal) 0xFFFF_FFFF_DECA_AAD1UL.toLong() else 0x5493_FB9AL
+        gpr[6] = 0xFFFF_FFFF_A400_1F0CUL.toLong()
+        gpr[7] = 0xFFFF_FFFF_A400_1F08UL.toLong()
+        gpr[8] = 0xC0L
+        gpr[9] = 0L
+        gpr[10] = 0x40L
+        gpr[11] = 0xFFFF_FFFF_A400_0040UL.toLong()
+        gpr[12] = 0xFFFF_FFFF_D133_0BC3UL.toLong()
+        gpr[13] = 0xFFFF_FFFF_D133_0BC3UL.toLong()
+        gpr[14] = if (pal) 0x0CF8_5C13L else 0xFFFF_FFFF_C2C2_0384UL.toLong()
+        gpr[15] = 0x2EA0_4317L
+        gpr[20] = if (pal) 0L else 1L
+        gpr[22] = 0x61L
+        gpr[23] = 0L
+        gpr[24] = if (pal) 2L else 3L
+        gpr[25] = 0xFFFF_FFFF_D73F_2993UL.toLong()
+        gpr[29] = 0xFFFF_FFFF_A400_1FF0UL.toLong()
+        gpr[31] = 0xFFFF_FFFF_A400_1554UL.toLong()
+    }
+
     /** Executes one instruction; branches take effect after their delay slot. */
     fun step() {
         val instructionAddress = pc
