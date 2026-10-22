@@ -198,6 +198,8 @@ class MainActivity : Activity() {
             var totalInstructions = 0L
             var renderedFrames = 0L
             var slicesSinceStatus = 0
+            var nextPresentationNanos = 0L
+            val frameIntervalNanos = 1_000_000_000L / 60L
             while (emulationRunning.get() && !Thread.currentThread().isInterrupted) {
                 val result = core.executeSlice(20_000)
                 totalInstructions += result.instructionsExecuted.toLong()
@@ -209,9 +211,15 @@ class MainActivity : Activity() {
                     }
                     break
                 }
-                if (core.renderVideoFrame(frame)) {
-                    renderedFrames++
-                    gameView.presentFrame(frame)
+                // Present at most 60 frames per second; CPU instruction slices
+                // are not video frames and must not flood the Android UI with bitmaps.
+                val nowNanos = System.nanoTime()
+                if (nowNanos >= nextPresentationNanos) {
+                    nextPresentationNanos = nowNanos + frameIntervalNanos
+                    if (core.renderVideoFrame(frame)) {
+                        renderedFrames++
+                        gameView.presentFrame(frame)
+                    }
                 }
                 slicesSinceStatus++
                 if (slicesSinceStatus >= 60) {
@@ -228,7 +236,7 @@ class MainActivity : Activity() {
                     runOnUiThread {
                         if (emulationRunning.get()) {
                             val shortHistory = historyTraceText.split(" | ").takeLast(12).joinToString(" | ")
-                            gameStatus.text = "CPU: $instructionText instruções | PC $pcText | quadros: $frameText\n" +
+                            gameStatus.text = "CPU: $instructionText instruções | PC $pcText | quadros exibidos: $frameText\n" +
                                 "$videoText\n$cpuTraceText\n$fullCpuText\n$bootMemoryText\nHist.: $shortHistory"
                         }
                     }
