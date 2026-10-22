@@ -504,7 +504,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             0x0C -> writeRegister(rt, a and immediate.toLong()) // ANDI
             0x0D -> writeRegister(rt, a or immediate.toLong()) // ORI
             0x0E -> writeRegister(rt, a xor immediate.toLong()) // XORI
-            0x0F -> writeRegister(rt, (immediate shl 16).toLong()) // LUI (sign-extended 32-bit result)
+            0x0F -> writeRegister(rt, (immediate shl 16).toInt().toLong()) // LUI sign-extends the 32-bit result on MIPS III
             0x04 -> if (a == b) pendingBranchTarget = pc + (signedImmediate shl 2) // BEQ
             0x05 -> if (a != b) pendingBranchTarget = pc + (signedImmediate shl 2) // BNE
             0x18 -> writeRegister(rt, Math.addExact(a, signedImmediate)) // DADDI
