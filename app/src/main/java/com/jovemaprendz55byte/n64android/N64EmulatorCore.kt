@@ -80,7 +80,7 @@ class N64EmulatorCore(
     }
 
     /**
-     * Runs the clean-room CIC-6105 PIF-to-IPL3 handoff currently implemented.
+     * Runs the diagnostic PIF-to-IPL3 handoff for the detected CIC where a register state is implemented.
      * This does not emulate the PIF boot ROM firmware or identify/authenticate CICs.
      */
     internal fun startCic6105BootSequence(): N64PifBootSequence.BootHandoff {
