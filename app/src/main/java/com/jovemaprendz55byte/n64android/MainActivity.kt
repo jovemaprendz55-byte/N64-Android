@@ -197,6 +197,8 @@ class MainActivity : Activity() {
             val frame = N64VideoFrameBuffer(320, 240)
             var totalInstructions = 0L
             var renderedFrames = 0L
+            var validGameFrames = 0L
+            var diagnosticFrames = 0L
             var slicesSinceStatus = 0
             var nextPresentationNanos = 0L
             val frameIntervalNanos = 1_000_000_000L / 60L
@@ -218,8 +220,14 @@ class MainActivity : Activity() {
                     nextPresentationNanos = nowNanos + frameIntervalNanos
                     if (core.renderVideoFrame(frame)) {
                         renderedFrames++
-                        gameView.presentFrame(frame)
+                        validGameFrames++
+                    } else {
+                        // Diagnostic only: VI is not producing a valid game frame yet.
+                        frame.fillDiagnosticPattern(diagnosticFrames)
+                        diagnosticFrames++
+                        renderedFrames++
                     }
+                    gameView.presentFrame(frame)
                 }
                 slicesSinceStatus++
                 if (slicesSinceStatus >= 60) {
@@ -228,6 +236,8 @@ class MainActivity : Activity() {
                         .uppercase(java.util.Locale.ROOT).padStart(16, '0')
                     val instructionText = totalInstructions.toString()
                     val frameText = renderedFrames.toString()
+                    val validFrameText = validGameFrames.toString()
+                    val diagnosticFrameText = diagnosticFrames.toString()
                     val videoText = core.videoDiagnosticSummary()
                     val cpuTraceText = core.executionDiagnosticSummary()
                     val fullCpuText = core.fullCpuDiagnosticSummary()
@@ -237,6 +247,7 @@ class MainActivity : Activity() {
                         if (emulationRunning.get()) {
                             val shortHistory = historyTraceText.split(" | ").takeLast(12).joinToString(" | ")
                             gameStatus.text = "CPU: $instructionText instruções | PC $pcText | quadros exibidos: $frameText\n" +
+                                "Quadros reais: $validFrameText | diagnóstico: $diagnosticFrameText\n" +
                                 "$videoText\n$cpuTraceText\n$fullCpuText\n$bootMemoryText\nHist.: $shortHistory"
                         }
                     }
