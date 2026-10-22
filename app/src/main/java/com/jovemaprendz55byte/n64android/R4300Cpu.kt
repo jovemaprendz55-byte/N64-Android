@@ -32,6 +32,10 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private val cpuPiWriteHistory = mutableListOf<String>()
     // CP0 register file and the R4300's 32-entry software-managed TLB.
     private val cp0 = LongArray(32)
+    // COP1 floating-point registers and control registers. The current core
+    // implements register transfers first; arithmetic/exception semantics remain partial.
+    private val fpr = LongArray(32)
+    private val fcr = IntArray(32)
     private data class TlbEntry(var pageMask: Int = 0, var entryHi: Int = 0, var entryLo0: Int = 0, var entryLo1: Int = 0)
     private val tlb = Array(32) { TlbEntry() }
 
@@ -238,6 +242,8 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     fun resetExecutionState(entryPoint: Long) {
         require(entryPoint % 4L == 0L) { "Entry point must be 4-byte aligned" }
         gpr.fill(0L)
+        fpr.fill(0L)
+        fcr.fill(0)
         cp0.fill(0L)
         tlb.forEach { it.pageMask = 0; it.entryHi = 0; it.entryLo0 = 0; it.entryLo1 = 0 }
         cp0[1] = 31L // Random starts at the last TLB slot
@@ -420,6 +426,30 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         val b = register(rt)
 
         when (opcode) {
+            0x11 -> when (rs) {
+                0x00 -> writeRegister(rt, fpr[rd].toInt().toLong()) // MFC1: move single-precision register bits
+                0x01 -> writeRegister(rt, fpr[rd]) // DMFC1: move 64-bit FPR contents
+                0x02 -> writeRegister(rt, fcr[rd].toLong()) // CFC1: read FPU control register (including FCR31)
+                0x04 -> fpr[rd] = (fpr[rd] and 0xFFFF_FFFF_0000_0000UL.toLong()) or (b.toInt().toLong() and 0xFFFF_FFFFL) // MTC1
+                0x05 -> fpr[rd] = b // DMTC1
+                0x06 -> {
+                    // FCR31: preserve only architecturally writable condition/rounding/flag bits.
+                    fcr[rd] = if (rd == 31) {
+                        (b.toInt() and 0x0183_FFFF)
+                    } else {
+                        b.toInt()
+                    }
+                } // CTC1
+                0x08 -> {
+                    // BC1F/T and likely variants; the FCR31 condition bit is bit 23.
+                    val branchCondition = (fcr[31] and (1 shl 23)) != 0
+                    val likely = (rt and 0x02) != 0
+                    val take = if ((rt and 0x01) != 0) branchCondition else !branchCondition
+                    if (take) pendingBranchTarget = pc + (signedImmediate shl 2)
+                    else if (likely) pc += 4L
+                }
+                else -> unsupported(instruction, instructionAddress)
+            }
             0x10 -> when (rs) {
                 0x00 -> writeRegister(rt, cp0[rd].toInt().toLong()) // MFC0: sign-extend the 32-bit CP0 value
                 0x04 -> {
