@@ -62,6 +62,39 @@ class N64EmulatorCoreTest {
         assertEquals(0xFFFF_FFFF_B000_0044UL.toLong(), result.programCounter)
     }
 
+    @Test fun ipl3DiagnosticCopiesCodeAndUsesNtscBootSeed() {
+        // SW r20, 0(r0): the diagnostic CIC-6105 handoff seeds r20=1 for NTSC.
+        val rom = syntheticRomWithInstructions(0xAF140000.toInt())
+        rom[0x3E] = 'E'.code.toByte()
+        val core = N64EmulatorCore()
+        core.loadRom(rom)
+
+        core.startIpl3DiagnosticExecution()
+        val result = core.executeSlice(1)
+
+        assertEquals(1, result.instructionsExecuted)
+        assertEquals(N64EmulatorCore.StopReason.INSTRUCTION_BUDGET_REACHED, result.stopReason)
+        assertEquals(null, result.errorMessage)
+        assertEquals(0xFFFF_FFFF_A400_0044UL.toLong(), result.programCounter)
+        assertEquals(1, core.memoryBus.readWord(0))
+    }
+
+    @Test fun ipl3DiagnosticUsesPalBootSeedForPalCountryCode() {
+        // SW r20, 0(r0): the diagnostic CIC-6105 handoff seeds r20=0 for PAL.
+        val rom = syntheticRomWithInstructions(0xAF140000.toInt())
+        rom[0x3E] = 'P'.code.toByte()
+        val core = N64EmulatorCore()
+        core.loadRom(rom)
+
+        core.startIpl3DiagnosticExecution()
+        val result = core.executeSlice(1)
+
+        assertEquals(1, result.instructionsExecuted)
+        assertEquals(N64EmulatorCore.StopReason.INSTRUCTION_BUDGET_REACHED, result.stopReason)
+        assertEquals(null, result.errorMessage)
+        assertEquals(0, core.memoryBus.readWord(0))
+    }
+
     @Test fun requiresRomBeforeExecution() {
         val core = N64EmulatorCore()
         try {
