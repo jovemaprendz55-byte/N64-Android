@@ -226,9 +226,17 @@ class MainActivity : Activity() {
                         N64EmulatorCore.StopReason.BOOT_CHECKSUM_FAILURE_LOOP -> "IPL3 preso no loop de falha de checksum"
                         N64EmulatorCore.StopReason.INSTRUCTION_BUDGET_REACHED -> "Limite de instruções atingido"
                     }
+                    // Preserve the ROM/CIC/checksum and CPU evidence when the core
+                    // stops. Previously this branch replaced the live diagnostic with
+                    // only the stop message, hiding the exact data needed to debug IPL3.
+                    val bootDiagnostic = core.bootMemoryDiagnosticSummary()
+                    val cpuDiagnostic = core.executionDiagnosticSummary()
+                    val cpuState = core.fullCpuDiagnosticSummary()
+                    val history = core.executionHistoryDiagnosticSummary()
                     runOnUiThread {
                         gameStatus.text = "$reasonText em PC $pcText. " +
-                            (result.errorMessage ?: "A emulação foi parada para evitar uma nova chamada inválida.")
+                            (result.errorMessage ?: "A emulação foi parada.") +
+                            "\\n$bootDiagnostic\\n$cpuDiagnostic\\n$cpuState\\nHist.: $history"
                     }
                     break
                 }
