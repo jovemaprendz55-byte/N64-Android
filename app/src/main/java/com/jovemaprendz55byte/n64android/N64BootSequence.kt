@@ -53,6 +53,6 @@ internal class N64BootSequence(
         private const val IPL3_ROM_END = 0x1000
         private const val COUNTRY_CODE_OFFSET = 0x3E
         private const val SP_DMEM_BASE = 0x0400_0000L
-        const val IPL3_ENTRY_POINT = 0xFFFF_FFFF_A400_0040UL.toLong()
+        const val IPL3_ENTRY_POINT = -1_543_503_808L
     }
 }
