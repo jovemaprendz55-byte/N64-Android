@@ -19,7 +19,8 @@ internal object N64MemoryMap {
         Range(0x03F0_0000L, 0x03FF_FFFFL, Region.RDRAM_REGISTERS),
         Range(0x0400_0000L, 0x0400_0FFFL, Region.SP_DMEM),
         Range(0x0400_1000L, 0x0400_1FFFL, Region.SP_IMEM),
-        // SP control registers occupy a 1 MiB physical window; SP_PC is at 0x04080000.\n        Range(0x0404_0000L, 0x040F_FFFFL, Region.SP_REGISTERS),
+        // SP control registers occupy a 1 MiB physical window; SP_PC is at 0x04080000.
+        Range(0x0404_0000L, 0x040F_FFFFL, Region.SP_REGISTERS),
         Range(0x0410_0000L, 0x0410_001FL, Region.DPC_REGISTERS),
         Range(0x0420_0000L, 0x0420_001FL, Region.DPS_REGISTERS),
         Range(0x0430_0000L, 0x0430_000FL, Region.MI_REGISTERS),
