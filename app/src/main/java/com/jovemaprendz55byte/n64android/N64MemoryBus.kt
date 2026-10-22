@@ -191,15 +191,14 @@ internal class N64MemoryBus(
             N64MemoryMap.Region.RDRAM -> {
                 val address = physicalAddress.toInt()
                 require(address <= rdram.size - 4) { "RDRAM word access crosses its boundary" }
-                ((rdram[address].toInt() and 0xFF) shl 24) or
-                    ((rdram[address + 1].toInt() and 0xFF) shl 16) or
-                    (((rdram[address].toInt() and 0xFF) shl 24) or
+                val value = ((rdram[address].toInt() and 0xFF) shl 24) or
                     ((rdram[address + 1].toInt() and 0xFF) shl 16) or
                     ((rdram[address + 2].toInt() and 0xFF) shl 8) or
-                    (rdram[address + 3].toInt() and 0xFF)).also { value ->
-                    recordRdramProbe('R', physicalAddress, value)
-                }
+                    (rdram[address + 3].toInt() and 0xFF)
+                recordRdramProbe('R', physicalAddress, value)
+                value
             }
+}
             N64MemoryMap.Region.RDRAM_REGISTERS -> readRdramRegister(physicalAddress)
             N64MemoryMap.Region.SP_REGISTERS -> readSpRegister(physicalAddress)
             N64MemoryMap.Region.MI_REGISTERS -> readMiRegister(physicalAddress)
