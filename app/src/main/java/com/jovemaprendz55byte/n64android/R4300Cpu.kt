@@ -28,6 +28,8 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     }
     private val gpr = LongArray(32)
     private val cpuMemoryProbeHistory = mutableListOf<String>()
+    /** CPU-side stores that launch PI DMA, including the issuing instruction PC. */
+    private val cpuPiWriteHistory = mutableListOf<String>()
     // Minimal CP0 register storage for common boot-code MFC0/MTC0 operations.
     private val cp0 = LongArray(32)
 
@@ -105,6 +107,9 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     }
 
     internal fun readCp0ForTest(index: Int): Long = cp0[index]
+
+    internal fun piWriteDiagnosticSummary(): String =
+        cpuPiWriteHistory.joinToString(";").ifBlank { "sem_escritas_PI_pela_CPU" }
 
     fun register(index: Int): Long {
         require(index in 0..31) { "Register index must be 0..31" }
@@ -539,6 +544,17 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                 val address = effectiveAddress(a, signedImmediate)
                 val value = b.toInt()
                 recordCpuMemoryProbe("SW", instructionAddress, address, value)
+                if (address in 0x0460_0000..0x0460_000CL) {
+                    val entry = "PC=0x" +
+                        instructionAddress.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0') +
+                        " INSTR=0x" + instruction.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0') +
+                        " ADDR=0x" + address.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0') +
+                        " VALUE=0x" + value.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0') +
+                        " BASE=r" + rs + ":0x" + a.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0') +
+                        " RT=r" + rt
+                    cpuPiWriteHistory += entry
+                    if (cpuPiWriteHistory.size > 12) cpuPiWriteHistory.removeAt(0)
+                }
                 writeWord(address, value)
             }
             0x2E -> storeWordRight(effectiveAddress(a, signedImmediate), b.toInt()) // SWR
