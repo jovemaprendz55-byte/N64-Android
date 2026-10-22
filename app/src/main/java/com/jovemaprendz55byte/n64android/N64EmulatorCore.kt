@@ -105,13 +105,11 @@ class N64EmulatorCore(
         // Preflight the RDRAM model, IPL3 payload, and ROM checksum before
         // entering the diagnostic IPL3 path. A mismatch is logged, not patched.
         lastBootPreflight = N64BootInitialization(memoryBus, cpu).prepareCic6105(rom)
-        // This component copies the cartridge IPL3 payload. It does NOT run
-        // the PIF boot ROM or identify the cartridge CIC from the country byte.
-        val image = bootSequence.loadIpl3(rom)
-        // Temporary diagnostic handoff retained for existing CPU tests only.
-        // This is not a real boot: CIC family and hardware state are not verified.
-        val pal = image.region == N64BootSequence.Region.PAL
-        cpu.resetForCic6105Ipl3Diagnostic(image.entryPoint, pal)
+        // The preflight above already loaded IPL3 and selected the CPU handoff
+        // from the detected CIC. Do not reset to CIC-6105 here: doing so overwrites
+        // CIC-6102's 0x3F checksum seed with 0x91 and recreates the checksum loop.
+        // Keep this explicit as a diagnostic shortcut; it still bypasses PIF ROM.
+        bootSequence.loadIpl3(rom)
         resetBootLoopDetector()
         executionStarted = true
     }
