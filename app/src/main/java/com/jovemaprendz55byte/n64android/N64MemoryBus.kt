@@ -212,6 +212,14 @@ internal class N64MemoryBus(
             N64MemoryMap.Region.SI_REGISTERS -> readSiRegister(physicalAddress)
             N64MemoryMap.Region.RI_REGISTERS -> readRiRegister(physicalAddress)
             N64MemoryMap.Region.CARTRIDGE_DOMAIN -> readCartridgeWord(physicalAddress)
+            N64MemoryMap.Region.PIF -> {
+                // PIF RAM is byte-addressable; compose CPU word reads in big-endian order.
+                // PIF boot ROM occupies the earlier part of the region and remains unsupported.
+                ((readByte(physicalAddress).toInt() and 0xFF) shl 24) or
+                    ((readByte(physicalAddress + 1).toInt() and 0xFF) shl 16) or
+                    ((readByte(physicalAddress + 2).toInt() and 0xFF) shl 8) or
+                    (readByte(physicalAddress + 3).toInt() and 0xFF)
+            }
             else -> unsupported(physicalAddress)
         }
     }
@@ -249,6 +257,13 @@ internal class N64MemoryBus(
             N64MemoryMap.Region.PI_REGISTERS -> writePiRegister(physicalAddress, value)
             N64MemoryMap.Region.SI_REGISTERS -> writeSiRegister(physicalAddress, value)
             N64MemoryMap.Region.RI_REGISTERS -> writeRiRegister(physicalAddress, value)
+            N64MemoryMap.Region.PIF -> {
+                // Preserve byte semantics because writing PIF RAM's control byte can execute Joybus.
+                writeByte(physicalAddress, (value ushr 24).toByte())
+                writeByte(physicalAddress + 1, (value ushr 16).toByte())
+                writeByte(physicalAddress + 2, (value ushr 8).toByte())
+                writeByte(physicalAddress + 3, value.toByte())
+            }
             else -> unsupported(physicalAddress)
         }
     }
