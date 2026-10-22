@@ -96,6 +96,18 @@ class N64MemoryBusTest {
         assertEquals(true, bus.piDmaDiagnosticSummary().contains("0x00000400/DMA=1024"))
     }
 
+    @Test fun tracesRdramReadsAndWritesNearIpl3ComparisonAddress() {
+        val bus = N64MemoryBus()
+
+        bus.writeWord(0x00100400L, 0x12345678)
+        assertEquals(0x12345678, bus.readWord(0x00100400L))
+
+        val summary = bus.piDmaDiagnosticSummary()
+        assertEquals(true, summary.contains("W 0x00100400=0x12345678"))
+        assertEquals(true, summary.contains("R 0x00100400=0x12345678"))
+        assertEquals(0x12345678, bus.readWord(0x00100400L))
+    }
+
     @Test fun cartridgeReadFailsBeforeRomIsLoaded() {
         val bus = N64MemoryBus()
         assertThrows(IllegalStateException::class.java) { bus.readByte(0x10000000L) }
