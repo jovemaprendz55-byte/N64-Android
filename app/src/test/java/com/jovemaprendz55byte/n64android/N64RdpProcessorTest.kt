@@ -12,7 +12,7 @@ class N64RdpProcessorTest {
         val imageAddress = 0x200
         val commands = intArrayOf(
             (0x3F shl 24) or (2 shl 19) or 1, imageAddress, // RGBA5551, width=2
-            (0x37 shl 24), 0xF801_F801.toInt(),             // opaque red fill
+            (0x37 shl 24), 0xFFFF_F801.toInt(),             // alternate white/red fill pixels
             (0x36 shl 24) or (0 shl 12) or 0, (4 shl 12) or 4 // 2x2 rectangle
         )
         val bytes = ByteArray(commands.size * 4)
@@ -33,7 +33,8 @@ class N64RdpProcessorTest {
         val frame = N64VideoFrameBuffer(2, 2)
         assertTrue(bus.renderVideoFrame(frame))
         for (y in 0..1) for (x in 0..1) {
-            assertEquals(0xFFFF0000.toInt(), frame.pixelAt(x, y))
+            val expected = if (x == 0) 0xFFFF0000.toInt() else 0xFFFFFFFF.toInt()
+            assertEquals(expected, frame.pixelAt(x, y))
         }
         assertTrue(bus.videoDiagnosticSummary().contains("RDP_COMMANDS=3"))
         assertTrue(bus.videoDiagnosticSummary().contains("RDP_RECTS=1"))
