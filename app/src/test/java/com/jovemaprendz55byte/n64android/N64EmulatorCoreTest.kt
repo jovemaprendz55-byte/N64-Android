@@ -70,6 +70,7 @@ class N64EmulatorCoreTest {
         core.loadRom(rom)
 
         core.startIpl3DiagnosticExecution()
+        assertEquals(0xAC140000.toInt(), core.memoryBus.readWord(N64SpMemory.DMEM_BASE + 0x40L))
         val result = core.executeSlice(1)
 
         assertEquals(1, result.instructionsExecuted)
