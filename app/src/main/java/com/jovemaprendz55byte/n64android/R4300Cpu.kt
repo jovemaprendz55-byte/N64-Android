@@ -258,24 +258,41 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     internal fun resetForCic6105Ipl3Diagnostic(entryPoint: Long, pal: Boolean) {
         resetExecutionState(entryPoint)
 
-        // Seed the measured IPL2-to-IPL3 handoff registers used by CIC-6105.
-        // In particular, t3 is the SP DMEM base (A4000000), not the IPL3
-        // entry address (A4000040): IPL3 uses 0x44(t3) while descrambling itself.
-        // The old shortcut omitted a0-a3/t0/t2 and gave t3 the wrong value,
-        // so the 6105 self-descrambler/checksum ran with an invalid initial state.
-        gpr[1] = 1L // at
+        // CIC-6105 IPL2 handoff values, cross-checked against the documented
+        // PIF/boot register setup used by N64 IPL3 implementations.
+        // IPL3 depends on these values while descrambling itself and checking
+        // the first MiB of the cartridge; plausible-looking partial seeds fail.
+        gpr[1] = 0L // at
+        gpr[2] = 0xFFFF_FFFF_D173_1BE9UL.toLong() // v0
+        gpr[3] = 0xFFFF_FFFF_D173_1BE9UL.toLong() // v1
+        gpr[4] = 0x1BE9L // a0
+        gpr[5] = 0xFFFF_FFFF_F452_31E5UL.toLong() // a1
         gpr[6] = 0xFFFF_FFFF_A400_1F0CUL.toLong() // a2
         gpr[7] = 0xFFFF_FFFF_A400_1F08UL.toLong() // a3
         gpr[8] = 0xC0L // t0
+        gpr[9] = 0L // t1
         gpr[10] = 0x40L // t2
-        gpr[11] = 0xFFFF_FFFF_A400_0000UL.toLong() // t3: SP DMEM base
-        gpr[19] = 0L // s3
+        gpr[11] = 0xFFFF_FFFF_A400_0040UL.toLong() // t3: IPL3 entry in SP DMEM
+        gpr[12] = 0xFFFF_FFFF_D133_0BC3UL.toLong() // t4
+        gpr[13] = 0xFFFF_FFFF_D133_0BC3UL.toLong() // t5
+        gpr[14] = 0x2561_3A26L // t6
+        gpr[15] = 0x2EA0_4317L // t7
+        gpr[16] = 0L // s0
+        gpr[17] = 0L // s1
+        gpr[18] = 0L // s2
+        gpr[19] = 0L // s3: cartridge boot
         gpr[20] = if (pal) 0L else 1L // s4: PAL=0, NTSC=1
         gpr[21] = 0L // s5: cold reset
-        gpr[22] = 0x91L // s6: CIC-NUS-6105 seed
-        gpr[23] = 0L // s7
+        gpr[22] = 0x91L // s6: CIC-NUS-6105 checksum seed
+        gpr[23] = 6L // s7: IPL3 version
+        gpr[24] = 0L // t8
+        gpr[25] = 0xFFFF_FFFF_D73F_2993UL.toLong() // t9
+        gpr[26] = 0L // k0
+        gpr[27] = 0L // k1
+        gpr[28] = 0L // gp
         gpr[29] = 0xFFFF_FFFF_A400_1FF0UL.toLong() // sp
-        gpr[31] = 0xFFFF_FFFF_A400_1550UL.toLong() // ra
+        gpr[30] = 0L // s8
+        gpr[31] = 0xFFFF_FFFF_A400_1554UL.toLong() // ra
 
         // PIF boot ROM's CP0 state and the eight-word IPL2 stub required by
         // CIC x105. IPL3 itself was copied into SP DMEM by the caller.
