@@ -65,7 +65,7 @@ class N64EmulatorCoreTest {
     @Test fun ipl3DiagnosticCopiesCodeAndUsesNtscBootSeed() {
         // SW r20, 0(r0): the diagnostic CIC-6105 handoff seeds r20=1 for NTSC.
         val rom = syntheticRomWithInstructions(0xAC140000.toInt())
-        rom[0x3E] = 'E'.code.toByte()
+        rom[0x3E] = 'J'.code.toByte()
         val core = N64EmulatorCore()
         core.loadRom(rom)
 
@@ -80,10 +80,10 @@ class N64EmulatorCoreTest {
         assertEquals(1, core.memoryBus.readWord(0))
     }
 
-    @Test fun ipl3DiagnosticUsesPalBootSeedForPalCountryCode() {
+    @Test fun ipl3DiagnosticUsesPalBootSeedForEuropeanCountryCode() {
         // SW r20, 0(r0): the diagnostic CIC-6105 handoff seeds r20=0 for PAL.
         val rom = syntheticRomWithInstructions(0xAC140000.toInt())
-        rom[0x3E] = 'P'.code.toByte()
+        rom[0x3E] = 'E'.code.toByte()
         val core = N64EmulatorCore()
         core.loadRom(rom)
 
