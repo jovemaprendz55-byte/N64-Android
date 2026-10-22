@@ -203,13 +203,32 @@ class MainActivity : Activity() {
             var nextPresentationNanos = 0L
             val frameIntervalNanos = 1_000_000_000L / 60L
             while (emulationRunning.get() && !Thread.currentThread().isInterrupted) {
-                val result = core.executeSlice(20_000)
-                totalInstructions += result.instructionsExecuted.toLong()
-                if (result.stopReason == N64EmulatorCore.StopReason.EXECUTION_ERROR) {
+                // A boot diagnostic can intentionally stop execution (for example,
+                // when IPL3 detects a checksum failure). Never request another slice
+                // after the core has stopped, or IllegalArgumentException can crash
+                // this worker and close the app.
+                val result = try {
+                    core.executeSlice(20_000)
+                } catch (error: Exception) {
                     emulationRunning.set(false)
                     runOnUiThread {
-                        gameStatus.text = "[MI-FIX-20261020] CPU parou em PC 0x${result.programCounter.toString(16).uppercase(java.util.Locale.ROOT)}: " +
-                            (result.errorMessage ?: "erro de execução")
+                        gameStatus.text = "Emulação interrompida com segurança: " +
+                            (error.message ?: error::class.java.simpleName)
+                    }
+                    break
+                }
+                totalInstructions += result.instructionsExecuted.toLong()
+                if (result.stopReason != N64EmulatorCore.StopReason.INSTRUCTION_BUDGET_REACHED) {
+                    emulationRunning.set(false)
+                    val pcText = "0x${result.programCounter.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0')}"
+                    val reasonText = when (result.stopReason) {
+                        N64EmulatorCore.StopReason.EXECUTION_ERROR -> "Erro de execução da CPU"
+                        N64EmulatorCore.StopReason.BOOT_CHECKSUM_FAILURE_LOOP -> "IPL3 preso no loop de falha de checksum"
+                        N64EmulatorCore.StopReason.INSTRUCTION_BUDGET_REACHED -> "Limite de instruções atingido"
+                    }
+                    runOnUiThread {
+                        gameStatus.text = "$reasonText em PC $pcText. " +
+                            (result.errorMessage ?: "A emulação foi parada para evitar uma nova chamada inválida.")
                     }
                     break
                 }
