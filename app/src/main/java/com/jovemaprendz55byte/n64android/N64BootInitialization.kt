@@ -55,7 +55,7 @@ internal class N64BootInitialization(
             N64RomChecksum.CicType.CIC_6101,
             N64RomChecksum.CicType.CIC_6103,
             N64RomChecksum.CicType.CIC_6106 -> throw IllegalStateException(
-                "CIC ${checksum.cic.label} detectado, mas o atalho de inicialização ainda não tem estado de registradores validado para esse CIC."
+                "CIC ${checksum?.cic?.label ?: "desconhecido"} detectado, mas o atalho de inicialização ainda não tem estado de registradores validado para esse CIC."
             )
             null -> {
                 // Synthetic test ROMs may have no recognizable IPL3. Keep the
