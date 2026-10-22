@@ -258,16 +258,22 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     internal fun resetForCic6105Ipl3Diagnostic(entryPoint: Long, pal: Boolean) {
         resetExecutionState(entryPoint)
 
-        // PIF/IPL2's documented handoff for CIC-NUS-6105: s3-s7 describe
-        // cartridge/TV/reset/CIC/version, and t3/sp/ra point into SP memory.
-        // The previous shortcut seeded unrelated GPRs with guessed constants;
-        // those values are not part of the PIF handoff and corrupt IPL3 startup.
-        gpr[19] = 0L // s3: cartridge ROM
+        // Seed the measured IPL2-to-IPL3 handoff registers used by CIC-6105.
+        // In particular, t3 is the SP DMEM base (A4000000), not the IPL3
+        // entry address (A4000040): IPL3 uses 0x44(t3) while descrambling itself.
+        // The old shortcut omitted a0-a3/t0/t2 and gave t3 the wrong value,
+        // so the 6105 self-descrambler/checksum ran with an invalid initial state.
+        gpr[1] = 1L // at
+        gpr[6] = 0xFFFF_FFFF_A400_1F0CUL.toLong() // a2
+        gpr[7] = 0xFFFF_FFFF_A400_1F08UL.toLong() // a3
+        gpr[8] = 0xC0L // t0
+        gpr[10] = 0x40L // t2
+        gpr[11] = 0xFFFF_FFFF_A400_0000UL.toLong() // t3: SP DMEM base
+        gpr[19] = 0L // s3
         gpr[20] = if (pal) 0L else 1L // s4: PAL=0, NTSC=1
         gpr[21] = 0L // s5: cold reset
         gpr[22] = 0x91L // s6: CIC-NUS-6105 seed
         gpr[23] = 0L // s7
-        gpr[11] = 0xFFFF_FFFF_A400_0040UL.toLong() // t3: IPL3 entry
         gpr[29] = 0xFFFF_FFFF_A400_1FF0UL.toLong() // sp
         gpr[31] = 0xFFFF_FFFF_A400_1550UL.toLong() // ra
 
