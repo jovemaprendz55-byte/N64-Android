@@ -160,6 +160,8 @@ class N64EmulatorCoreTest {
         rom[1] = 0x37
         rom[2] = 0x12
         rom[3] = 0x40
+        // Valid NTSC country code so boot preflight can select the CIC-6105 seed.
+        rom[0x3E] = 'E'.code.toByte()
         instructions.forEachIndexed { index, instruction ->
             val offset = 0x40 + index * 4
             rom[offset] = (instruction ushr 24).toByte()
