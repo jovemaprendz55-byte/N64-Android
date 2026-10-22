@@ -82,8 +82,9 @@ class N64EmulatorCoreTest {
 
     @Test fun ipl3DiagnosticUsesPalBootSeedForEuropeanCountryCode() {
         // SW r20, 0(r0): the diagnostic CIC-6105 handoff seeds r20=0 for PAL.
+        // 'P' is a PAL country code; 'E' identifies North America (NTSC).
         val rom = syntheticRomWithInstructions(0xAC140000.toInt())
-        rom[0x3E] = 'E'.code.toByte()
+        rom[0x3E] = 'P'.code.toByte()
         val core = N64EmulatorCore()
         core.loadRom(rom)
 
