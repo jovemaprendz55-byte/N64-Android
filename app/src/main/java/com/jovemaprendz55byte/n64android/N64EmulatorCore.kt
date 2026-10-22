@@ -13,7 +13,8 @@ class N64EmulatorCore(
 ) {
     enum class StopReason {
         INSTRUCTION_BUDGET_REACHED,
-        EXECUTION_ERROR
+        EXECUTION_ERROR,
+        BOOT_CHECKSUM_FAILURE_LOOP
     }
 
     data class ExecutionResult(
@@ -31,6 +32,8 @@ class N64EmulatorCore(
     private var lastBootPreflight: N64BootInitialization.Preflight? = null
     private var romLoaded = false
     private var executionStarted = false
+    private var checksumFailureLoopAddress: Long? = null
+    private var checksumFailureLoopHits = 0
     private var normalizedRom: ByteArray? = null
 
     data class RspExecutionResult(
@@ -85,6 +88,7 @@ class N64EmulatorCore(
         val rom = normalizedRom ?: throw IllegalStateException("No normalized ROM is retained")
         lastBootPreflight = N64BootInitialization(memoryBus, cpu).prepareCic6105(rom)
         val handoff = pifBootSequence.startCic6105(rom)
+        resetBootLoopDetector()
         executionStarted = true
         return handoff
     }
@@ -108,7 +112,13 @@ class N64EmulatorCore(
         // This is not a real boot: CIC family and hardware state are not verified.
         val pal = image.region == N64BootSequence.Region.PAL
         cpu.resetForCic6105Ipl3Diagnostic(image.entryPoint, pal)
+        resetBootLoopDetector()
         executionStarted = true
+    }
+
+    private fun resetBootLoopDetector() {
+        checksumFailureLoopAddress = null
+        checksumFailureLoopHits = 0
     }
 
     /**
@@ -122,6 +132,7 @@ class N64EmulatorCore(
         require(romLoaded) { "Load a normalized ROM before execution" }
         require(entryPoint % 4L == 0L) { "Entry point must be 4-byte aligned" }
         cpu.resetExecutionState(entryPoint)
+        resetBootLoopDetector()
         executionStarted = true
     }
 
@@ -133,6 +144,7 @@ class N64EmulatorCore(
         require(romLoaded) { "Load a normalized ROM before execution" }
         require(entryPoint % 4L == 0L) { "Entry point must be 4-byte aligned" }
         cpu.resetForCartridgeDiagnostic(entryPoint)
+        resetBootLoopDetector()
         executionStarted = true
     }
 
@@ -153,6 +165,30 @@ class N64EmulatorCore(
             try {
                 cpu.step()
                 executed++
+
+                val executedAddress = cpu.lastExecutedInstructionAddress
+                if (cpu.isIpl3ChecksumFailureBranch() && executedAddress != null) {
+                    if (checksumFailureLoopAddress == executedAddress) {
+                        checksumFailureLoopHits++
+                    } else {
+                        checksumFailureLoopAddress = executedAddress
+                        checksumFailureLoopHits = 1
+                    }
+                    if (checksumFailureLoopHits >= 8) {
+                        executionStarted = false
+                        return ExecutionResult(
+                            instructionsExecuted = executed,
+                            programCounter = executedAddress,
+                            stopReason = StopReason.BOOT_CHECKSUM_FAILURE_LOOP,
+                            errorMessage = "IPL3 repetiu o desvio de falha de checksum (BGEZAL $zero,-1). " +
+                                "A CPU foi parada para evitar gastar milhões de instruções nesse loop. " +
+                                "Confira ROM_CIC_DETECTED, ROM_HOST_CRC_MATCH e o checksum do cabeçalho."
+                        )
+                    }
+                } else if (checksumFailureLoopAddress != null) {
+                    val delaySlot = checksumFailureLoopAddress!! + 4L
+                    if (executedAddress != delaySlot) resetBootLoopDetector()
+                }
             } catch (error: Exception) {
                 executionStarted = false
                 return ExecutionResult(
