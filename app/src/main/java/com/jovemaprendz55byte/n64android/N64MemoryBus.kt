@@ -39,6 +39,8 @@ internal class N64MemoryBus(
         }
     })
 
+    private val rdp = N64RdpProcessor(rdram)
+
     private var spMemAddress = 0
     private var spDramAddress = 0
     private var spReadLength = 0
@@ -202,6 +204,7 @@ internal class N64MemoryBus(
             N64MemoryMap.Region.SP_REGISTERS -> readSpRegister(physicalAddress)
             N64MemoryMap.Region.MI_REGISTERS -> readMiRegister(physicalAddress)
             N64MemoryMap.Region.VI_REGISTERS -> videoInterface.readRegister(physicalAddress)
+            N64MemoryMap.Region.DPC_REGISTERS -> rdp.readRegister(physicalAddress)
             N64MemoryMap.Region.AI_REGISTERS -> readAiRegister(physicalAddress)
             N64MemoryMap.Region.PI_REGISTERS -> readPiRegister(physicalAddress)
             N64MemoryMap.Region.SI_REGISTERS -> readSiRegister(physicalAddress)
@@ -239,6 +242,7 @@ internal class N64MemoryBus(
             N64MemoryMap.Region.SP_REGISTERS -> writeSpRegister(physicalAddress, value)
             N64MemoryMap.Region.MI_REGISTERS -> writeMiRegister(physicalAddress, value)
             N64MemoryMap.Region.VI_REGISTERS -> videoInterface.writeRegister(physicalAddress, value)
+            N64MemoryMap.Region.DPC_REGISTERS -> rdp.writeRegister(physicalAddress, value)
             N64MemoryMap.Region.AI_REGISTERS -> writeAiRegister(physicalAddress, value)
             N64MemoryMap.Region.PI_REGISTERS -> writePiRegister(physicalAddress, value)
             N64MemoryMap.Region.SI_REGISTERS -> writeSiRegister(physicalAddress, value)
@@ -284,7 +288,7 @@ internal class N64MemoryBus(
     internal fun renderVideoFrame(destination: N64VideoFrameBuffer, height: Int = destination.height): Boolean =
         videoInterface.scanout(rdram, destination, height)
 
-    internal fun videoDiagnosticSummary(): String = videoInterface.diagnosticSummary()
+    internal fun videoDiagnosticSummary(): String = videoInterface.diagnosticSummary() + ", " + rdp.diagnosticSummary()
 
     /** Summarizes the last cartridge-to-RDRAM DMA actually performed. */
     internal fun piDmaDiagnosticSummary(): String = buildString {
