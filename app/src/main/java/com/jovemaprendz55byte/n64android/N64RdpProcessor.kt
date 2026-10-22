@@ -126,8 +126,12 @@ internal class N64RdpProcessor(private val rdram: ByteArray) {
                 if (pixelIndex < 0 || pixelIndex >= maxPixels.toLong()) continue
                 val offset = (pixelIndex * bytesPerPixel).toInt()
                 if (bytesPerPixel == 2) {
-                    // Fill mode alternates the upper/lower halfword by scanline.
-                    val value = if (y and 1 == 0) fillColor and 0xFFFF else fillColor ushr 16
+                    // A 32-bit fill-color word supplies alternating 16-bit pixels.
+                    val value = if ((y * colorImageWidth + x) and 1 == 0) {
+                        fillColor and 0xFFFF
+                    } else {
+                        fillColor ushr 16
+                    }
                     rdram[offset] = (value ushr 8).toByte()
                     rdram[offset + 1] = value.toByte()
                 } else {
