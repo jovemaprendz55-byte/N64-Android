@@ -2017,6 +2017,19 @@ class R4300CpuTest {
         assertEquals(99L, cpu.register(4))
     }
 
+    @Test fun cpuLoadsPifRamThroughKseg1Alias() {
+        val cpu = R4300Cpu()
+        cpu.memoryBus.writeWord(0x1FC0_07FCL, 0x12345678)
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0xBFC0), // LUI r1, 0xBFC0 -> PIF virtual segment
+            iType(0x23, 1, 2, 0x07FC) // LW r2, 0x7FC(r1) -> final word of PIF RAM
+        ))
+
+        repeat(2) { cpu.step() }
+
+        assertEquals(0x12345678L, cpu.register(2))
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
