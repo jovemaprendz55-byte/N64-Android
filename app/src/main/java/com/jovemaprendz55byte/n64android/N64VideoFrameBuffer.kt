@@ -24,6 +24,28 @@ class N64VideoFrameBuffer(val width: Int, val height: Int) {
         pixels.fill(argb)
     }
 
+    /**
+     * Draws an animated diagnostic pattern when VI has not produced a valid game frame.
+     * This verifies Android presentation only; it is not emulated game output.
+     */
+    fun fillDiagnosticPattern(frameNumber: Long) {
+        val bars = intArrayOf(
+            0xFFFFFFFF.toInt(), 0xFFFFFF00.toInt(), 0xFF00FFFF.toInt(),
+            0xFF00FF00.toInt(), 0xFFFF00FF.toInt(), 0xFFFF0000.toInt(),
+            0xFF0000FF.toInt(), 0xFF202020.toInt()
+        )
+        val stripeWidth = maxOf(1, width / bars.size)
+        for (y in 0 until height) {
+            for (x in 0 until width) {
+                val movingBar = ((x + (frameNumber % width).toInt()) / stripeWidth) % bars.size
+                val color = if (y < height * 3 / 4) bars[movingBar]
+                    else if (((x / maxOf(1, width / 32)) + frameNumber.toInt()) % 2 == 0)
+                        0xFFFF8000.toInt() else 0xFF101010.toInt()
+                pixels[y * width + x] = color
+            }
+        }
+    }
+
     /** Sets a pixel from an ARGB int (0xAARRGGBB). Out-of-frame writes are ignored. */
     fun setPixelArgb(x: Int, y: Int, argb: Int) {
         if (!contains(x, y)) return
