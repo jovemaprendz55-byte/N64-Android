@@ -265,6 +265,45 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     }
 
     /**
+     * Approximate the documented CIC-NUS-6102/7101 IPL3 handoff used by
+     * common retail cartridges. This is still an HLE diagnostic shortcut,
+     * not execution of the console's PIF boot ROM.
+     */
+    internal fun resetForCic6102Ipl3Diagnostic(entryPoint: Long, pal: Boolean) {
+        resetExecutionState(entryPoint)
+
+        // Register values follow the published Project64-derived R4300 boot
+        // state for CIC-6102. In particular s6 MUST be 0x3F, not 0x91 (6105).
+        gpr[1] = 1L
+        gpr[2] = 0x0EBDA536L
+        gpr[3] = 0x0EBDA536L
+        gpr[4] = 0xA536L
+        gpr[5] = 0xFFFF_FFFF_C0F1_D859UL.toLong()
+        gpr[6] = 0xFFFF_FFFF_A400_1F0CUL.toLong()
+        gpr[7] = 0xFFFF_FFFF_A400_1F08UL.toLong()
+        gpr[8] = 0xC0L
+        gpr[9] = 0L
+        gpr[10] = 0x40L
+        gpr[11] = 0xFFFF_FFFF_A400_0040UL.toLong()
+        gpr[12] = 0xFFFF_FFFF_ED10_D0B3UL.toLong()
+        gpr[13] = 0x1402_A4CCL
+        gpr[14] = 0x2DE1_08EAL
+        gpr[15] = 0x3103_E121L
+        gpr[19] = 0L // s3: cartridge boot
+        gpr[20] = if (pal) 0L else 1L // s4: PAL=0, NTSC=1
+        gpr[21] = 0L // s5: cold reset
+        gpr[22] = 0x3FL // s6: CIC-6102 checksum seed
+        gpr[23] = 0L // s7: legacy IPL2 version
+        gpr[24] = 3L
+        gpr[25] = 0xFFFF_FFFF_9DEB_B54FUL.toLong()
+        gpr[29] = 0xFFFF_FFFF_A400_1FF0UL.toLong()
+        gpr[31] = 0xFFFF_FFFF_A400_1550UL.toLong()
+
+        cp0[12] = 0x3400_0000L // Status
+        cp0[16] = 0x0006_E463L // Config
+    }
+
+    /**
      * Approximate the register handoff from the PIF/ IPL2 boot path for a
      * CIC-NUS-6105 cartridge before entering its IPL3 image in SP DMEM.
      * This is not a substitute for executing the PIF boot ROM or validating
