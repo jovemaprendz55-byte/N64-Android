@@ -247,22 +247,28 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         lastInstructionAddress = instructionAddress
         lastInstructionWord = instruction
         totalSteps++
-        // Track recent PCs in a fixed-size ring (no unbounded HashSet growth).
+        // Keep the fixed-size PC ring updated every instruction, but only
+        // scan it at the existing 64-instruction diagnostic cadence. Scanning
+        // all recent PCs on every step adds up to 64 comparisons per emulated
+        // instruction and does not affect CPU semantics.
+        val diagnosticCheckpoint = (totalSteps and 63L) == 0L
         var repeatedRecentPc = false
-        var i = 0
-        while (i < recentInstructionPcCount) {
-            if (recentInstructionPcs[i] == instructionAddress) {
-                repeatedRecentPc = true
-                break
+        if (diagnosticCheckpoint) {
+            var i = 0
+            while (i < recentInstructionPcCount) {
+                if (recentInstructionPcs[i] == instructionAddress) {
+                    repeatedRecentPc = true
+                    break
+                }
+                i++
             }
-            i++
         }
         recentInstructionPcs[recentInstructionPcIndex] = instructionAddress
         recentInstructionPcIndex = (recentInstructionPcIndex + 1) % recentInstructionPcs.size
         if (recentInstructionPcCount < recentInstructionPcs.size) recentInstructionPcCount++
 
         // Format diagnostic text only during startup, periodically, or on a detected loop.
-        if (totalSteps <= 256L || (totalSteps and 63L) == 0L || repeatedRecentPc) {
+        if (totalSteps <= 256L || diagnosticCheckpoint || repeatedRecentPc) {
             val traceEntry = "0x" + instructionAddress.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0') +
                 "=0x" + instruction.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0')
             if (recentInstructions.size >= 16) recentInstructions.removeFirst()
