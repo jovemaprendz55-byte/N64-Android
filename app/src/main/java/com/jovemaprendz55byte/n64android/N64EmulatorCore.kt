@@ -222,21 +222,15 @@ class N64EmulatorCore(
                 (memoryBus.readByte(0x0400_0750L + offset).toInt() and 0xFF)
                     .toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
             })
-            N64RomChecksum.calculateCic6105(rom)?.let { (crc1, crc2) ->
-                val expectedCrc1 = ((rom[0x10].toUInt() and 0xFFu) shl 24) or
-                    ((rom[0x11].toUInt() and 0xFFu) shl 16) or
-                    ((rom[0x12].toUInt() and 0xFFu) shl 8) or
-                    (rom[0x13].toUInt() and 0xFFu)
-                val expectedCrc2 = ((rom[0x14].toUInt() and 0xFFu) shl 24) or
-                    ((rom[0x15].toUInt() and 0xFFu) shl 16) or
-                    ((rom[0x16].toUInt() and 0xFFu) shl 8) or
-                    (rom[0x17].toUInt() and 0xFFu)
-                append(", ROM_HOST_CRC6105=")
-                append(crc1.toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
-                append(crc2.toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
-                append(", ROM_HOST_CRC_MATCH=")
-                append(crc1 == expectedCrc1 && crc2 == expectedCrc2)
-            }
+            N64RomChecksum.calculate(rom)?.let { checksum ->
+                append(", ROM_CIC_DETECTED=").append(checksum.cic.label)
+                append(", ROM_HOST_CRC1=")
+                append(checksum.crc1.toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+                append(", ROM_HOST_CRC2=")
+                append(checksum.crc2.toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+                append(", ROM_HOST_CRC_MATCH=").append(checksum.matchesHeader)
+            } ?: append(", ROM_CIC_DETECTED=UNKNOWN_OR_SHORT_ROM")
+
             append("; ")
         }
         lastBootPreflight?.let { preflight ->
