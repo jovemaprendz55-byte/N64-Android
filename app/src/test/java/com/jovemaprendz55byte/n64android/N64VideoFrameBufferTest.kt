@@ -1,4 +1,6 @@
 package com.jovemaprendz55byte.n64android
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotSame
@@ -36,6 +38,17 @@ class N64VideoFrameBufferTest {
 
         assertEquals(0xFF123456.toInt(), frame.pixelAt(0, 0))
         assertNotSame(snapshot, frame.snapshot())
+    }
+
+    @Test fun diagnosticPatternChangesBetweenFramesAndFillsTheImage() {
+        val frame = N64VideoFrameBuffer(32, 24)
+        frame.fillDiagnosticPattern(0)
+        val first = frame.snapshot()
+        assertTrue(first.any { it != 0 })
+
+        frame.fillDiagnosticPattern(1)
+        val second = frame.snapshot()
+        assertFalse(first.contentEquals(second))
     }
 
     @Test fun rejectsInvalidDimensionsAndSourceStride() {
