@@ -98,6 +98,21 @@ class N64EmulatorCoreTest {
         assertEquals(0, core.memoryBus.readWord(0))
     }
 
+    @Test fun stopsTheKnownIpl3ChecksumFailureLoopEarly() {
+        val core = N64EmulatorCore()
+        core.loadRom(syntheticRomWithInstructions(0))
+        // IPL3 failure loop: BGEZAL $zero,-1, with a delay-slot NOP.
+        core.memoryBus.writeWord(0x1C8L, 0x0411FFFF)
+        core.memoryBus.writeWord(0x1CCL, 0x00000000)
+        core.startExecution(0xFFFF_FFFF_8000_01C8UL.toLong())
+
+        val result = core.executeSlice(1000)
+
+        assertEquals(N64EmulatorCore.StopReason.BOOT_CHECKSUM_FAILURE_LOOP, result.stopReason)
+        assertNotNull(result.errorMessage)
+        org.junit.Assert.assertTrue(result.instructionsExecuted < 1000)
+    }
+
     @Test fun requiresRomBeforeExecution() {
         val core = N64EmulatorCore()
         try {
