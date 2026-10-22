@@ -70,7 +70,7 @@ class N64MemoryBusTest {
 
         bus.writeWord(N64MemoryBus.PI_DRAM_ADDR, 0x200)
         bus.writeWord(N64MemoryBus.PI_CART_ADDR, 0x10000004)
-        bus.writeWord(N64MemoryBus.PI_RD_LEN, 3) // PI read DMA copies cartridge bytes to RDRAM.
+        bus.writeWord(N64MemoryBus.PI_WR_LEN, 3) // PI write-length DMA copies cartridge bytes to RDRAM.
 
         assertEquals(0x11223344, bus.readWord(0x200L))
         assertEquals(0x204, bus.readWord(N64MemoryBus.PI_DRAM_ADDR))
@@ -84,7 +84,7 @@ class N64MemoryBusTest {
 
         bus.writeWord(N64MemoryBus.PI_DRAM_ADDR, 0x400)
         bus.writeWord(N64MemoryBus.PI_CART_ADDR, 0x10000000)
-        bus.writeWord(N64MemoryBus.PI_RD_LEN, 0x3FF)
+        bus.writeWord(N64MemoryBus.PI_WR_LEN, 0x3FF)
 
         assertEquals(0x00010203, bus.readWord(0x400L))
         assertEquals(0xFCFDFEFF.toInt(), bus.readWord(0x7FCL))
@@ -311,14 +311,16 @@ class N64MemoryBusTest {
         assertEquals(0x3FFF, bus.readWord(N64MemoryBus.AI_DACRATE))
     }
 
-    @Test fun piRegistersAreAccessibleThroughBasicStorageModel() {
+    @Test fun piWriteLengthStartsCartridgeToRdramDmaAndMasksAddresses() {
         val bus = N64MemoryBus()
+        bus.loadCartridgeRom(ByteArray(0x41) { (it and 0xFF).toByte() })
         bus.writeWord(N64MemoryBus.PI_DRAM_ADDR, 0xFF123456.toInt())
         bus.writeWord(N64MemoryBus.PI_CART_ADDR, 0x10000000)
         bus.writeWord(N64MemoryBus.PI_WR_LEN, 0x40)
-        assertEquals(0x00123456, bus.readWord(N64MemoryBus.PI_DRAM_ADDR))
-        assertEquals(0x10000000, bus.readWord(N64MemoryBus.PI_CART_ADDR))
+        assertEquals(0x00123497, bus.readWord(N64MemoryBus.PI_DRAM_ADDR))
+        assertEquals(0x10000041, bus.readWord(N64MemoryBus.PI_CART_ADDR))
         assertEquals(0x40, bus.readWord(N64MemoryBus.PI_WR_LEN))
+        assertEquals(0x00010203, bus.readWord(0x00123456L))
     }
 
 }
