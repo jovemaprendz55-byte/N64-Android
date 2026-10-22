@@ -89,7 +89,11 @@ class N64EmulatorCore(
         for (offset in 0x40 until 0x1000) {
             memoryBus.writeByte(0x0400_0000L + offset, rom[offset])
         }
-        cpu.resetForCartridgeDiagnostic(0xFFFF_FFFF_A400_0040UL.toLong())
+        // GoldenEye 007 uses the CIC-NUS-6105 bootcode. Approximate the
+        // PIF/ IPL2 register handoff so IPL3 doesn't start with all-zero GPRs.
+        val countryCode = rom[0x3E].toInt() and 0xFF
+        val pal = countryCode in listOf('P'.code, 'D'.code, 'F'.code, 'I'.code, 'S'.code, 'U'.code, 'X'.code, 'Y'.code)
+        cpu.resetForCic6105Ipl3Diagnostic(0xFFFF_FFFF_A400_0040UL.toLong(), pal)
         executionStarted = true
     }
 
