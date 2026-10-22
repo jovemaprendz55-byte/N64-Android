@@ -221,6 +221,7 @@ class N64EmulatorCore(
         append(", PI_STATUS=0x")
         append(memoryBus.readWord(N64MemoryBus.PI_STATUS).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
         append(", ").append(memoryBus.piDmaDiagnosticSummary())
+        append(", CPU_PI_WRITE_HISTORY=").append(cpu.piWriteDiagnosticSummary())
         append(", RDRAM_REG[0x03F08000]=0x")
         append(memoryBus.readWord(0x03F0_8000L).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
         // Instructions around current KSEG PC reveal what the CPU is waiting for.
