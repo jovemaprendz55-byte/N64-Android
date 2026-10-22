@@ -28,6 +28,7 @@ class N64EmulatorCore(
     private val rsp = RspCore(memoryBus)
     private val bootSequence = N64BootSequence(memoryBus)
     private val pifBootSequence = N64PifBootSequence(memoryBus, cpu)
+    private var lastBootPreflight: N64BootInitialization.Preflight? = null
     private var romLoaded = false
     private var executionStarted = false
     private var normalizedRom: ByteArray? = null
@@ -82,6 +83,7 @@ class N64EmulatorCore(
     internal fun startCic6105BootSequence(): N64PifBootSequence.BootHandoff {
         require(romLoaded) { "Load a normalized ROM before execution" }
         val rom = normalizedRom ?: throw IllegalStateException("No normalized ROM is retained")
+        lastBootPreflight = N64BootInitialization(memoryBus, cpu).prepareCic6105(rom)
         val handoff = pifBootSequence.startCic6105(rom)
         executionStarted = true
         return handoff
@@ -96,6 +98,9 @@ class N64EmulatorCore(
     fun startIpl3DiagnosticExecution() {
         require(romLoaded) { "Load a normalized ROM before execution" }
         val rom = normalizedRom ?: throw IllegalStateException("No normalized ROM is retained")
+        // Preflight the RDRAM model, IPL3 payload, and ROM checksum before
+        // entering the diagnostic IPL3 path. A mismatch is logged, not patched.
+        lastBootPreflight = N64BootInitialization(memoryBus, cpu).prepareCic6105(rom)
         // This component copies the cartridge IPL3 payload. It does NOT run
         // the PIF boot ROM or identify the cartridge CIC from the country byte.
         val image = bootSequence.loadIpl3(rom)
@@ -232,6 +237,14 @@ class N64EmulatorCore(
                 append(", ROM_HOST_CRC_MATCH=")
                 append(crc1 == expectedCrc1 && crc2 == expectedCrc2)
             }
+            append("; ")
+        }
+        lastBootPreflight?.let { preflight ->
+            append("BOOT_PREFLIGHT_RDRAM_READY=").append(preflight.rdramModelReady)
+            append(", RDRAM_CAPACITY=").append(preflight.rdramCapacityBytes)
+            append(", IPL3_BYTES=").append(preflight.ipl3Bytes)
+            append(", GAME_SEGMENT_BYTES=").append(preflight.gameSegmentBytes)
+            append(", BOOT_CHECKSUM_MATCH=").append(preflight.checksumMatches)
             append("; ")
         }
         append("RDRAM[0x1C8]=0x")
