@@ -48,10 +48,22 @@ internal class N64BootInitialization(
         val checksum = N64RomChecksum.calculate(rom)
         val expectedCrc1 = readWord(rom, 0x10)
         val expectedCrc2 = readWord(rom, 0x14)
-        cpu.resetForCic6105Ipl3Diagnostic(
-            entryPoint = image.entryPoint,
-            pal = image.region == N64BootSequence.Region.PAL
-        )
+        val pal = image.region == N64BootSequence.Region.PAL
+        when (checksum?.cic) {
+            N64RomChecksum.CicType.CIC_6102 -> cpu.resetForCic6102Ipl3Diagnostic(image.entryPoint, pal)
+            N64RomChecksum.CicType.CIC_6105 -> cpu.resetForCic6105Ipl3Diagnostic(image.entryPoint, pal)
+            N64RomChecksum.CicType.CIC_6101,
+            N64RomChecksum.CicType.CIC_6103,
+            N64RomChecksum.CicType.CIC_6106 -> throw IllegalStateException(
+                "CIC ${checksum.cic.label} detectado, mas o atalho de inicialização ainda não tem estado de registradores validado para esse CIC."
+            )
+            null -> {
+                // Synthetic test ROMs may have no recognizable IPL3. Keep the
+                // legacy diagnostic seed for those tests only; real recognized
+                // retail ROMs must always select their matching CIC handoff.
+                cpu.resetForCic6105Ipl3Diagnostic(image.entryPoint, pal)
+            }
+        }
 
         return Preflight(
             romBytes = rom.size,
