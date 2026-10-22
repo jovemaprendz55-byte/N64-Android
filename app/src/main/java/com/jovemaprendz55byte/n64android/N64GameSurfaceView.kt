@@ -79,7 +79,15 @@ class N64GameSurfaceView @JvmOverloads constructor(
         super.onDraw(canvas)
         val bitmap = frameBitmap ?: return
         if (width <= 0 || height <= 0) return
-        destination.set(0, 0, width, height)
+        // Keep the console image's aspect ratio (normally 4:3) and letterbox
+        // instead of stretching pixels to the phone's tall display.
+        val scale = minOf(width.toFloat() / bitmap.width, height.toFloat() / bitmap.height)
+        val drawWidth = (bitmap.width * scale).toInt().coerceAtLeast(1)
+        val drawHeight = (bitmap.height * scale).toInt().coerceAtLeast(1)
+        val left = (width - drawWidth) / 2
+        val top = (height - drawHeight) / 2
+        destination.set(left, top, left + drawWidth, top + drawHeight)
+        canvas.drawColor(Color.BLACK)
         canvas.drawBitmap(bitmap, null, destination, paint)
     }
 
