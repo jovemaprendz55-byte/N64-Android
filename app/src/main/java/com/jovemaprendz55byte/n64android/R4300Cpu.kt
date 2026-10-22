@@ -790,7 +790,8 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             region == N64MemoryMap.Region.PI_REGISTERS ||
             region == N64MemoryMap.Region.RI_REGISTERS ||
             region == N64MemoryMap.Region.SI_REGISTERS ||
-            region == N64MemoryMap.Region.CARTRIDGE_DOMAIN) {
+            region == N64MemoryMap.Region.CARTRIDGE_DOMAIN ||
+            region == N64MemoryMap.Region.PIF) {
             if (region == null) {
                 "Physical address 0x${physicalAddress.toString(16)} is outside a mapped N64 region"
             } else {
