@@ -4,6 +4,31 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class R4300CpuTest {
+    @Test fun cic6105Ipl3DiagnosticSeedsTheBootRegistersAndSpForNtsc() {
+        val cpu = R4300Cpu()
+        cpu.resetForCic6105Ipl3Diagnostic(0xFFFF_FFFF_A400_0040UL.toLong(), pal = false)
+
+        assertEquals(0xFFFF_FFFF_D173_1BE9UL.toLong(), cpu.register(2))
+        assertEquals(0x5493_FB9AL, cpu.register(5))
+        assertEquals(0xFFFF_FFFF_A400_1F0CUL.toLong(), cpu.register(6))
+        assertEquals(0xC0L, cpu.register(8))
+        assertEquals(0xFFFF_FFFF_A400_1FF0UL.toLong(), cpu.register(29))
+        assertEquals(0xFFFF_FFFF_A400_1550UL.toLong(), cpu.register(31))
+        assertEquals(0xFFFF_FFFF_A400_0040UL.toLong(), cpu.pc)
+    }
+
+    @Test fun cic6105Ipl3DiagnosticUsesPalSpecificSeeds() {
+        val cpu = R4300Cpu()
+        cpu.resetForCic6105Ipl3Diagnostic(0xFFFF_FFFF_A400_0040UL.toLong(), pal = true)
+
+        assertEquals(0xFFFF_FFFF_DECA_AAD1UL.toLong(), cpu.register(5))
+        assertEquals(0x0CF8_5C13L, cpu.register(14))
+        assertEquals(0L, cpu.register(20))
+        assertEquals(6L, cpu.register(23))
+        assertEquals(2L, cpu.register(24))
+        assertEquals(0xFFFF_FFFF_A400_1554UL.toLong(), cpu.register(31))
+    }
+
     @Test fun tlbRequiredAddressDiagnosticIncludesTheFaultingVirtualAddress() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
