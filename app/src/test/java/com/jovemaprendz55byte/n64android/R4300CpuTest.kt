@@ -15,29 +15,34 @@ class R4300CpuTest {
         assertEquals(0xFFFF_FFFF_8006_0000UL.toLong(), cpu.register(1))
     }
 
-    @Test fun cic6105Ipl3DiagnosticSeedsTheBootRegistersAndSpForNtsc() {
+    @Test fun cic6105Ipl3DiagnosticUsesDocumentedNtscHandoffAndImemStub() {
         val cpu = R4300Cpu()
         cpu.resetForCic6105Ipl3Diagnostic(0xFFFF_FFFF_A400_0040UL.toLong(), pal = false)
 
-        assertEquals(0xFFFF_FFFF_D173_1BE9UL.toLong(), cpu.register(2))
-        assertEquals(0x5493_FB9AL, cpu.register(5))
-        assertEquals(0xFFFF_FFFF_A400_1F0CUL.toLong(), cpu.register(6))
-        assertEquals(0xC0L, cpu.register(8))
+        assertEquals(0L, cpu.register(19)) // s3: cartridge
+        assertEquals(1L, cpu.register(20)) // s4: NTSC
+        assertEquals(0L, cpu.register(21)) // s5: cold reset
+        assertEquals(0x91L, cpu.register(22)) // s6: CIC-6105 seed
+        assertEquals(0L, cpu.register(23)) // s7
+        assertEquals(0L, cpu.register(2)) // not an invented IPL3 seed
+        assertEquals(0xFFFF_FFFF_A400_0040UL.toLong(), cpu.register(11))
         assertEquals(0xFFFF_FFFF_A400_1FF0UL.toLong(), cpu.register(29))
         assertEquals(0xFFFF_FFFF_A400_1550UL.toLong(), cpu.register(31))
+        assertEquals(0x3400_0000L, cpu.readCp0ForTest(12))
+        assertEquals(0x7006_E463L, cpu.readCp0ForTest(16))
+        assertEquals(0x3C0D_BFC0, cpu.readWord(0x0400_1000))
+        assertEquals(0x3C0B_B000, cpu.readWord(0x0400_101C))
         assertEquals(0xFFFF_FFFF_A400_0040UL.toLong(), cpu.pc)
     }
 
-    @Test fun cic6105Ipl3DiagnosticUsesPalSpecificSeeds() {
+    @Test fun cic6105Ipl3DiagnosticUsesPalTvTypeButSameCicSeed() {
         val cpu = R4300Cpu()
         cpu.resetForCic6105Ipl3Diagnostic(0xFFFF_FFFF_A400_0040UL.toLong(), pal = true)
 
-        assertEquals(0xFFFF_FFFF_DECA_AAD1UL.toLong(), cpu.register(5))
-        assertEquals(0x0CF8_5C13L, cpu.register(14))
         assertEquals(0L, cpu.register(20))
-        assertEquals(6L, cpu.register(23))
-        assertEquals(2L, cpu.register(24))
-        assertEquals(0xFFFF_FFFF_A400_1554UL.toLong(), cpu.register(31))
+        assertEquals(0x91L, cpu.register(22))
+        assertEquals(0L, cpu.register(23))
+        assertEquals(0xFFFF_FFFF_A400_1550UL.toLong(), cpu.register(31))
     }
 
     @Test fun tlbRequiredAddressDiagnosticIncludesTheFaultingVirtualAddress() {
