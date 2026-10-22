@@ -102,7 +102,8 @@ internal class N64MemoryBus(
         const val RI_LATENCY = 0x0470_0014L
         const val RI_RERROR = 0x0470_0018L
         const val RI_WERROR = 0x0470_001CL
-        private const val RDRAM_MODE_REG = 0x03F0_000CL
+        private const val RDRAM_MODE_REG_OFFSET = 0x0000_000CL
+        private const val RDRAM_DEVICE_REGISTER_WINDOW_SIZE = 0x0008_0000L
         private const val RDRAM_MODE_INIT = Int.MIN_VALUE
 
         private const val SP_STATUS_HALT = 1 shl 0
@@ -306,11 +307,14 @@ internal class N64MemoryBus(
 
     private fun readRdramRegister(address: Long): Int {
         val index = ((address - 0x03F0_0000L) ushr 2).toInt()
-        // RDRAM_MODE_REG (0x03F0000C): INIT is a command/status bit.
-        // Hardware completes initialization by clearing bit 31; a plain
-        // register array incorrectly leaves it set forever and traps IPL3
-        // in its polling loop.
-        val value = if (address == RDRAM_MODE_REG) {
+        // Each RDRAM device has its own register window (0x03F00000 and
+        // 0x03F80000). MODE at offset 0x0C exposes INIT as a self-clearing
+        // command/status bit. Apply the same behavior to both device banks;
+        // otherwise IPL3 can poll the second device forever.
+        val isModeRegister =
+            (address - 0x03F0_0000L) % RDRAM_DEVICE_REGISTER_WINDOW_SIZE ==
+                RDRAM_MODE_REG_OFFSET
+        val value = if (isModeRegister) {
             rdramRegisters[index] = rdramRegisters[index] and RDRAM_MODE_INIT.inv()
             rdramRegisters[index]
         } else {
