@@ -180,7 +180,7 @@ class N64EmulatorCore(
                             instructionsExecuted = executed,
                             programCounter = executedAddress,
                             stopReason = StopReason.BOOT_CHECKSUM_FAILURE_LOOP,
-                            errorMessage = "IPL3 repetiu o desvio de falha de checksum (BGEZAL $zero,-1). " +
+                            errorMessage = "IPL3 repetiu o desvio de falha de checksum (BGEZAL \$zero,-1). " +
                                 "A CPU foi parada para evitar gastar milhões de instruções nesse loop. " +
                                 "Confira ROM_CIC_DETECTED, ROM_HOST_CRC_MATCH e o checksum do cabeçalho."
                         )
