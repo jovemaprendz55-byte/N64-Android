@@ -1998,6 +1998,25 @@ class R4300CpuTest {
         assertEquals(0x13572468L, cpu.register(2))
     }
 
+    @Test fun cop1ControlRegisterTransferExecutesCfc1Fcr31AndCtc1() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 0x0080), // r1 = FCR31 condition bit (bit 23 via LUI below)
+            iType(0x0F, 0, 1, 0x0080), // r1 = 0x00800000
+            (0x11 shl 26) or (0x06 shl 21) or (1 shl 16) or (31 shl 11), // CTC1 r1, FCR31
+            (0x11 shl 26) or (0x02 shl 21) or (2 shl 16) or (31 shl 11), // CFC1 r2, FCR31
+            (0x11 shl 26) or (0x08 shl 21) or (0x01 shl 16) or 1, // BC1T +1, delay slot next
+            iType(0x09, 0, 3, 77), // delay slot
+            iType(0x09, 0, 4, 99) // branch target
+        ))
+
+        repeat(7) { cpu.step() }
+
+        assertEquals(0x00800000L, cpu.register(2))
+        assertEquals(77L, cpu.register(3))
+        assertEquals(99L, cpu.register(4))
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
