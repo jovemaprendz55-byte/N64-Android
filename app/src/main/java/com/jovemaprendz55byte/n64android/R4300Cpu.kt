@@ -271,8 +271,8 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         cp0[12] = 0x3400_0000L // Status
         cp0[16] = 0x7006_E463L // Config
         val ipl2ImemStub = intArrayOf(
-            0x3C0D_BFC0, 0x8DA8_07FC, 0x25AD_07C0, 0x3108_0080,
-            0x5500_FFFC, 0x3C0D_BFC0, 0x8DA8_0024, 0x3C0B_B000
+            0x3C0D_BFC0, 0x8DA8_07FCL.toInt(), 0x25AD_07C0, 0x3108_0080,
+            0x5500_FFFC, 0x3C0D_BFC0, 0x8DA8_0024L.toInt(), 0x3C0B_B000
         )
         for (index in ipl2ImemStub.indices) {
             memoryBus.writeWord(0x0400_1000L + index * 4L, ipl2ImemStub[index])
