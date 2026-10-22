@@ -264,11 +264,11 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         gpr[15] = 0x2EA0_4317L
         gpr[20] = if (pal) 0L else 1L
         gpr[22] = 0x61L
-        gpr[23] = 0L
+        gpr[23] = if (pal) 6L else 0L
         gpr[24] = if (pal) 2L else 3L
         gpr[25] = 0xFFFF_FFFF_D73F_2993UL.toLong()
         gpr[29] = 0xFFFF_FFFF_A400_1FF0UL.toLong()
-        gpr[31] = 0xFFFF_FFFF_A400_1554UL.toLong()
+        gpr[31] = if (pal) 0xFFFF_FFFF_A400_1554UL.toLong() else 0xFFFF_FFFF_A400_1550UL.toLong()
     }
 
     /** Executes one instruction; branches take effect after their delay slot. */
