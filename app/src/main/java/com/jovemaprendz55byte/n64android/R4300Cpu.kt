@@ -253,7 +253,10 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         gpr[2] = 0xFFFF_FFFF_D173_1BE9UL.toLong()
         gpr[3] = 0xFFFF_FFFF_D173_1BE9UL.toLong()
         gpr[4] = 0x1BE9L
-        gpr[5] = if (pal) 0xFFFF_FFFF_DECA_AAD1UL.toLong() else 0x5493_FB9AL
+        // Values below match the documented CIC-6105 PIF/IPL2 handoff.
+        // In particular, s6 carries the CIC seed byte 0x91 (not the
+        // CIC identifier suffix 0x61), and t4/t6 are bootcode inputs.
+        gpr[5] = 0xFFFF_FFFF_F452_31E5UL.toLong()
         gpr[6] = 0xFFFF_FFFF_A400_1F0CUL.toLong()
         gpr[7] = 0xFFFF_FFFF_A400_1F08UL.toLong()
         gpr[8] = 0xC0L
@@ -262,15 +265,15 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         gpr[11] = 0xFFFF_FFFF_A400_0040UL.toLong()
         gpr[12] = 0xFFFF_FFFF_D133_0BC3UL.toLong()
         gpr[13] = 0xFFFF_FFFF_D133_0BC3UL.toLong()
-        gpr[14] = if (pal) 0x0CF8_5C13L else 0xFFFF_FFFF_C2C2_0384UL.toLong()
+        gpr[14] = 0x2561_3A26L
         gpr[15] = 0x2EA0_4317L
         gpr[20] = if (pal) 0L else 1L
-        gpr[22] = 0x61L
-        gpr[23] = if (pal) 6L else 0L
-        gpr[24] = if (pal) 2L else 3L
+        gpr[22] = 0x91L
+        gpr[23] = 0x6L
+        gpr[24] = 0L
         gpr[25] = 0xFFFF_FFFF_D73F_2993UL.toLong()
         gpr[29] = 0xFFFF_FFFF_A400_1FF0UL.toLong()
-        gpr[31] = if (pal) 0xFFFF_FFFF_A400_1554UL.toLong() else 0xFFFF_FFFF_A400_1550UL.toLong()
+        gpr[31] = 0xFFFF_FFFF_A400_1554UL.toLong()
     }
 
     /** Executes one instruction; branches take effect after their delay slot. */
