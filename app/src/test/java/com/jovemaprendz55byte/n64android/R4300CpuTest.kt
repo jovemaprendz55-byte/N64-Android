@@ -4,6 +4,19 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class R4300CpuTest {
+    @Test fun cic6102Ipl3DiagnosticUses6102SeedAndRegisterState() {
+        val cpu = R4300Cpu()
+        cpu.resetForCic6102Ipl3Diagnostic(0xFFFF_FFFF_A400_0040UL.toLong(), pal = false)
+
+        assertEquals(1L, cpu.register(1))
+        assertEquals(0x0EBDA536L, cpu.register(2))
+        assertEquals(0xFFFF_FFFF_C0F1_D859UL.toLong(), cpu.register(5))
+        assertEquals(0xFFFF_FFFF_A400_0040UL.toLong(), cpu.register(11))
+        assertEquals(0x3FL, cpu.register(22)) // CIC-6102 seed, not CIC-6105's 0x91
+        assertEquals(1L, cpu.register(20)) // NTSC
+        assertEquals(0xFFFF_FFFF_A400_1FF0UL.toLong(), cpu.register(29))
+    }
+
     @Test fun luiSignExtendsTheResultTo64Bits() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
