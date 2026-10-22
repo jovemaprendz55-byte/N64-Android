@@ -20,7 +20,9 @@ internal class N64BootInitialization(
         val expectedCrc2: UInt,
         val calculatedCrc1: UInt?,
         val calculatedCrc2: UInt?,
-        val checksumMatches: Boolean
+        val checksumMatches: Boolean,
+        val rdramCapacityBytes: Int,
+        val rdramModelReady: Boolean
     )
 
     /**
@@ -41,6 +43,7 @@ internal class N64BootInitialization(
             "Código de região desconhecido; não é seguro escolher o seed PAL/NTSC"
         }
 
+        val rdram = N64RdramInitialization(memoryBus).initializeModel()
         val calculated = N64RomChecksum.calculateCic6105(rom)
         val expectedCrc1 = readWord(rom, 0x10)
         val expectedCrc2 = readWord(rom, 0x14)
@@ -59,7 +62,9 @@ internal class N64BootInitialization(
             calculatedCrc1 = calculated?.first,
             calculatedCrc2 = calculated?.second,
             checksumMatches = calculated != null &&
-                calculated.first == expectedCrc1 && calculated.second == expectedCrc2
+                calculated.first == expectedCrc1 && calculated.second == expectedCrc2,
+            rdramCapacityBytes = rdram.capacityBytes,
+            rdramModelReady = rdram.memoryModelReady
         )
     }
 
