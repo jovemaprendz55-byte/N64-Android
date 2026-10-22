@@ -77,6 +77,25 @@ class N64MemoryBusTest {
         assertEquals(0x10000008, bus.readWord(N64MemoryBus.PI_CART_ADDR))
     }
 
+    @Test fun piDmaUsesBulkCopyAndReportsOneDmaHistoryEntry() {
+        val bus = N64MemoryBus()
+        val rom = ByteArray(0x1000) { (it and 0xFF).toByte() }
+        bus.loadCartridgeRom(rom)
+
+        bus.writeWord(N64MemoryBus.PI_DRAM_ADDR, 0x400)
+        bus.writeWord(N64MemoryBus.PI_CART_ADDR, 0x10000000)
+        bus.writeWord(N64MemoryBus.PI_RD_LEN, 0x3FF)
+
+        assertEquals(0x00010203, bus.readWord(0x400L))
+        assertEquals(0xFCFDFEFF.toInt(), bus.readWord(0x7FCL))
+        assertEquals(0x800, bus.readWord(N64MemoryBus.PI_DRAM_ADDR))
+        assertEquals(0x10000400, bus.readWord(N64MemoryBus.PI_CART_ADDR))
+        assertEquals(1024, bus.diagnosticSummary().let { summary ->
+            Regex("RDRAM_WRITES=(\\d+)").find(summary)?.groupValues?.get(1)?.toInt()
+        })
+        assertEquals(true, bus.diagnosticSummary().contains("0x00000400/DMA=1024"))
+    }
+
     @Test fun cartridgeReadFailsBeforeRomIsLoaded() {
         val bus = N64MemoryBus()
         assertThrows(IllegalStateException::class.java) { bus.readByte(0x10000000L) }
