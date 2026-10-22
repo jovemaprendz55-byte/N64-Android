@@ -46,7 +46,7 @@ internal class N64MemoryBus(
     private var spReadLength = 0
     private var spWriteLength = 0
     private var spStatus = SP_STATUS_HALT
-    private var spSemaphore = 0
+    private var spSemaphore = 0\n    private var spProgramCounter = 0
     private var siDramAddress = 0
     private var siStatus = 0
     // Basic MI state. Device interrupt sources are not yet wired to these bits.
@@ -75,7 +75,7 @@ internal class N64MemoryBus(
         const val SP_STATUS = 0x0404_0010L
         const val SP_DMA_FULL = 0x0404_0014L
         const val SP_DMA_BUSY = 0x0404_0018L
-        const val SP_SEMAPHORE = 0x0404_001CL
+        const val SP_SEMAPHORE = 0x0404_001CL\n        const val SP_PC = 0x0408_0000L
 
         const val SI_DRAM_ADDR = 0x0480_0000L
         const val SI_PIF_ADDR_RD64B = 0x0480_0004L
@@ -589,7 +589,7 @@ internal class N64MemoryBus(
         SP_STATUS -> spStatus
         SP_DMA_FULL -> if (spStatus and SP_STATUS_DMA_FULL != 0) 1 else 0
         SP_DMA_BUSY -> if (spStatus and SP_STATUS_DMA_BUSY != 0) 1 else 0
-        SP_SEMAPHORE -> spSemaphore.also { spSemaphore = 1 }
+        SP_SEMAPHORE -> spSemaphore.also { spSemaphore = 1 }\n        SP_PC -> spProgramCounter
         else -> throw IllegalArgumentException("Unknown SP register 0x${address.toString(16)}")
     }
 
@@ -607,7 +607,7 @@ internal class N64MemoryBus(
             }
             SP_STATUS -> applySpStatusCommand(value)
             SP_DMA_FULL, SP_DMA_BUSY -> Unit // read-only status registers
-            SP_SEMAPHORE -> spSemaphore = 0
+            SP_SEMAPHORE -> spSemaphore = 0\n            SP_PC -> spProgramCounter = value and 0x0000_0FFCL
             else -> throw IllegalArgumentException("Unknown SP register 0x${address.toString(16)}")
         }
     }
