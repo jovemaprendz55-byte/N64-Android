@@ -194,6 +194,20 @@ class N64EmulatorCore(
             append(rom.copyOfRange(0x40, 0x50).joinToString("") {
                 (it.toInt() and 0xFF).toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
             })
+            val dmemIpl3CopyMatches = (0x40 until 0x1000).all { offset ->
+                (memoryBus.readByte(0x0400_0000L + offset).toInt() and 0xFF) ==
+                    (rom[offset].toInt() and 0xFF)
+            }
+            append(", SP_DMEM_IPL3_COPY_MATCH=").append(dmemIpl3CopyMatches)
+            append(", ROM_IPL3_0x750=")
+            append(rom.copyOfRange(0x750, 0x760).joinToString("") {
+                (it.toInt() and 0xFF).toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
+            })
+            append(", SP_DMEM_0x750=")
+            append((0 until 16).joinToString("") { offset ->
+                (memoryBus.readByte(0x0400_0750L + offset).toInt() and 0xFF)
+                    .toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
+            })
             N64RomChecksum.calculateCic6105(rom)?.let { (crc1, crc2) ->
                 val expectedCrc1 = ((rom[0x10].toUInt() and 0xFFu) shl 24) or
                     ((rom[0x11].toUInt() and 0xFFu) shl 16) or
