@@ -209,8 +209,10 @@ class N64EmulatorCore(
         append(cpu.pc.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
         append(", CPU_CODE_WINDOW=")
         if (physicalPc < 0x0080_0000L && physicalPc % 4L == 0L) {
-            val start = (physicalPc - 16L).coerceAtLeast(0L)
-            val end = (physicalPc + 20L).coerceAtMost(0x0080_0000L)
+            // Include the setup instructions before IPL3's failure branch so the
+            // register comparison can be traced back to its loads/calculations.
+            val start = (physicalPc - 0x48L).coerceAtLeast(0L)
+            val end = (physicalPc + 0x20L).coerceAtMost(0x0080_0000L)
             var address = start
             while (address + 4L <= end) {
                 if (address != start) append(";")
