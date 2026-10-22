@@ -104,6 +104,8 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         append(", SP=0x").append(register(29).toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
     }
 
+    internal fun readCp0ForTest(index: Int): Long = cp0[index]
+
     fun register(index: Int): Long {
         require(index in 0..31) { "Register index must be 0..31" }
         return if (index == 0) 0L else gpr[index]
@@ -250,27 +252,31 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
      */
     internal fun resetForCic6105Ipl3Diagnostic(entryPoint: Long, pal: Boolean) {
         resetExecutionState(entryPoint)
-        gpr[2] = 0xFFFF_FFFF_D173_1BE9UL.toLong()
-        gpr[3] = 0xFFFF_FFFF_D173_1BE9UL.toLong()
-        gpr[4] = 0x1BE9L
-        gpr[5] = if (pal) 0xFFFF_FFFF_DECA_AAD1UL.toLong() else 0x5493_FB9AL
-        gpr[6] = 0xFFFF_FFFF_A400_1F0CUL.toLong()
-        gpr[7] = 0xFFFF_FFFF_A400_1F08UL.toLong()
-        gpr[8] = 0xC0L
-        gpr[9] = 0L
-        gpr[10] = 0x40L
-        gpr[11] = 0xFFFF_FFFF_A400_0040UL.toLong()
-        gpr[12] = 0xFFFF_FFFF_D133_0BC3UL.toLong()
-        gpr[13] = 0xFFFF_FFFF_D133_0BC3UL.toLong()
-        gpr[14] = if (pal) 0x0CF8_5C13L else 0xFFFF_FFFF_C2C2_0384UL.toLong()
-        gpr[15] = 0x2EA0_4317L
-        gpr[20] = if (pal) 0L else 1L
-        gpr[22] = 0x61L
-        gpr[23] = if (pal) 6L else 0L
-        gpr[24] = if (pal) 2L else 3L
-        gpr[25] = 0xFFFF_FFFF_D73F_2993UL.toLong()
-        gpr[29] = 0xFFFF_FFFF_A400_1FF0UL.toLong()
-        gpr[31] = if (pal) 0xFFFF_FFFF_A400_1554UL.toLong() else 0xFFFF_FFFF_A400_1550UL.toLong()
+
+        // PIF/IPL2's documented handoff for CIC-NUS-6105: s3-s7 describe
+        // cartridge/TV/reset/CIC/version, and t3/sp/ra point into SP memory.
+        // The previous shortcut seeded unrelated GPRs with guessed constants;
+        // those values are not part of the PIF handoff and corrupt IPL3 startup.
+        gpr[19] = 0L // s3: cartridge ROM
+        gpr[20] = if (pal) 0L else 1L // s4: PAL=0, NTSC=1
+        gpr[21] = 0L // s5: cold reset
+        gpr[22] = 0x91L // s6: CIC-NUS-6105 seed
+        gpr[23] = 0L // s7
+        gpr[11] = 0xFFFF_FFFF_A400_0040UL.toLong() // t3: IPL3 entry
+        gpr[29] = 0xFFFF_FFFF_A400_1FF0UL.toLong() // sp
+        gpr[31] = 0xFFFF_FFFF_A400_1550UL.toLong() // ra
+
+        // PIF boot ROM's CP0 state and the eight-word IPL2 stub required by
+        // CIC x105. IPL3 itself was copied into SP DMEM by the caller.
+        cp0[12] = 0x3400_0000L // Status
+        cp0[16] = 0x7006_E463L // Config
+        val ipl2ImemStub = intArrayOf(
+            0x3C0D_BFC0, 0x8DA8_07FC, 0x25AD_07C0, 0x3108_0080,
+            0x5500_FFFC, 0x3C0D_BFC0, 0x8DA8_0024, 0x3C0B_B000
+        )
+        for (index in ipl2ImemStub.indices) {
+            memoryBus.writeWord(0x0400_1000L + index * 4L, ipl2ImemStub[index])
+        }
     }
 
     /** Executes one instruction; branches take effect after their delay slot. */
