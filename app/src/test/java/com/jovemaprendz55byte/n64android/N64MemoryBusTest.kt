@@ -184,6 +184,15 @@ class N64MemoryBusTest {
         assertThrows(IllegalArgumentException::class.java) { bus.writeByte(0x100L, 0) }
     }
 
+    @Test fun spProgramCounterRegisterIsMappedAt04080000() {
+        val bus = N64MemoryBus()
+
+        assertEquals(N64MemoryMap.Region.SP_REGISTERS, N64MemoryMap.regionOf(0x04080000L))
+        assertEquals(0, bus.readWord(N64MemoryBus.SP_PC))
+        bus.writeWord(N64MemoryBus.SP_PC, 0x00000123)
+        assertEquals(0x120, bus.readWord(N64MemoryBus.SP_PC))
+    }
+
     @Test fun spRegistersExposeAddressesAndSemaphoreBehavior() {
         val bus = N64MemoryBus()
         bus.writeWord(N64MemoryBus.SP_MEM_ADDR, 0x100)
