@@ -176,6 +176,26 @@ class N64EmulatorCore(
 
     /** Reads the stalled boot-code area and the memory address currently probed by the trace. */
     fun bootMemoryDiagnosticSummary(): String = buildString {
+        val rom = normalizedRom
+        if (rom != null && rom.size >= 0x1010) {
+            append("ROM_SIZE=0x")
+            append(rom.size.toString(16).uppercase(java.util.Locale.ROOT))
+            append(", ROM_HEADER_CRC=")
+            append(rom.copyOfRange(0x10, 0x18).joinToString("") {
+                (it.toInt() and 0xFF).toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
+            })
+            append(", ROM_COUNTRY=0x")
+            append((rom[0x3E].toInt() and 0xFF).toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0'))
+            append(", ROM_BOOTCODE_0x1000=")
+            append(rom.copyOfRange(0x1000, 0x1010).joinToString("") {
+                (it.toInt() and 0xFF).toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
+            })
+            append(", IPL3_START=")
+            append(rom.copyOfRange(0x40, 0x50).joinToString("") {
+                (it.toInt() and 0xFF).toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
+            })
+            append("; ")
+        }
         append("RDRAM[0x1C8]=0x")
         append(memoryBus.readWord(0x1C8L).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
         append(", RDRAM[0x1CC]=0x")
