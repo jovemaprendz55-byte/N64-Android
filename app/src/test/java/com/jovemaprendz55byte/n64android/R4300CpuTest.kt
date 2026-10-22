@@ -74,6 +74,25 @@ class R4300CpuTest {
         assertEquals(0xFFFF_FFFF_A400_1554UL.toLong(), cpu.register(31))
     }
 
+
+    @Test fun tlbwiInstallsEntryAndLoadsFromTranslatedVirtualAddress() {
+        val cpu = R4300Cpu()
+        cpu.writeWord(0x2000, 0x12345678)
+        fun mtc0(rt: Int, rd: Int) = (0x10 shl 26) or (0x04 shl 21) or (rt shl 16) or (rd shl 11)
+        val program = intArrayOf(
+            (0x0F shl 26) or (4 shl 16) or 0x4000, // LUI r4, 0x4000: virtual address
+            (0x09 shl 26) or (0 shl 21) or (1 shl 16) or 0x0087, // r1 = EntryLo V/D/G + PFN 2
+            mtc0(4, 10), // EntryHi = 0x40000000, ASID 0
+            mtc0(1, 2),  // EntryLo0 maps physical 0x2000
+            mtc0(1, 3),  // EntryLo1 maps physical 0x2000
+            0x42000002,  // TLBWI, Index defaults to 0
+            (0x23 shl 26) or (4 shl 21) or (2 shl 16) // LW r2, 0(r4)
+        )
+        cpu.loadBytes(0, words(*program))
+        repeat(program.size) { cpu.step() }
+        assertEquals(0x12345678L, cpu.register(2))
+    }
+
     @Test fun tlbRequiredAddressDiagnosticIncludesTheFaultingVirtualAddress() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
