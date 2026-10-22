@@ -20,6 +20,7 @@ internal class N64BootInitialization(
         val expectedCrc2: UInt,
         val calculatedCrc1: UInt?,
         val calculatedCrc2: UInt?,
+        val detectedCic: String?,
         val checksumMatches: Boolean,
         val rdramCapacityBytes: Int,
         val rdramModelReady: Boolean
@@ -44,7 +45,7 @@ internal class N64BootInitialization(
         }
 
         val rdram = N64RdramInitialization(memoryBus).initializeModel()
-        val calculated = N64RomChecksum.calculateCic6105(rom)
+        val checksum = N64RomChecksum.calculate(rom)
         val expectedCrc1 = readWord(rom, 0x10)
         val expectedCrc2 = readWord(rom, 0x14)
         cpu.resetForCic6105Ipl3Diagnostic(
@@ -59,10 +60,10 @@ internal class N64BootInitialization(
             region = image.region,
             expectedCrc1 = expectedCrc1,
             expectedCrc2 = expectedCrc2,
-            calculatedCrc1 = calculated?.first,
-            calculatedCrc2 = calculated?.second,
-            checksumMatches = calculated != null &&
-                calculated.first == expectedCrc1 && calculated.second == expectedCrc2,
+            calculatedCrc1 = checksum?.crc1,
+            calculatedCrc2 = checksum?.crc2,
+            detectedCic = checksum?.cic?.label,
+            checksumMatches = checksum?.matchesHeader == true,
             rdramCapacityBytes = rdram.capacityBytes,
             rdramModelReady = rdram.memoryModelReady
         )
