@@ -26,8 +26,8 @@ class N64BootInitializationTest {
     }
 
     @Test(expected = IllegalArgumentException::class)
-    fun preflightRejectsRomWithoutFullOneMiBGameSegment() {
-        N64BootInitialization(N64MemoryBus(), R4300Cpu()).prepareCic6105(validRom(0x1000))
+    fun preflightRejectsRomTooSmallToContainIpl3() {
+        N64BootInitialization(N64MemoryBus(), R4300Cpu()).prepareCic6105(validRom(0x0FFC))
     }
 
     private fun validRom(size: Int = 0x101000): ByteArray = ByteArray(size).also { rom ->
