@@ -19,13 +19,18 @@ class R4300CpuTest {
         val cpu = R4300Cpu()
         cpu.resetForCic6105Ipl3Diagnostic(0xFFFF_FFFF_A400_0040UL.toLong(), pal = false)
 
-        assertEquals(0L, cpu.register(19)) // s3: cartridge
+        assertEquals(1L, cpu.register(1)) // at
+        assertEquals(0xFFFF_FFFF_A400_1F0CUL.toLong(), cpu.register(6)) // a2
+        assertEquals(0xFFFF_FFFF_A400_1F08UL.toLong(), cpu.register(7)) // a3
+        assertEquals(0xC0L, cpu.register(8)) // t0
+        assertEquals(0x40L, cpu.register(10)) // t2
+        assertEquals(0xFFFF_FFFF_A400_0000UL.toLong(), cpu.register(11)) // t3 is DMEM base
+        assertEquals(0L, cpu.register(19)) // s3
         assertEquals(1L, cpu.register(20)) // s4: NTSC
         assertEquals(0L, cpu.register(21)) // s5: cold reset
         assertEquals(0x91L, cpu.register(22)) // s6: CIC-6105 seed
         assertEquals(0L, cpu.register(23)) // s7
         assertEquals(0L, cpu.register(2)) // not an invented IPL3 seed
-        assertEquals(0xFFFF_FFFF_A400_0040UL.toLong(), cpu.register(11))
         assertEquals(0xFFFF_FFFF_A400_1FF0UL.toLong(), cpu.register(29))
         assertEquals(0xFFFF_FFFF_A400_1550UL.toLong(), cpu.register(31))
         assertEquals(0x3400_0000L, cpu.readCp0ForTest(12))
@@ -40,6 +45,8 @@ class R4300CpuTest {
         cpu.resetForCic6105Ipl3Diagnostic(0xFFFF_FFFF_A400_0040UL.toLong(), pal = true)
 
         assertEquals(0L, cpu.register(20))
+        assertEquals(0xFFFF_FFFF_A400_0000UL.toLong(), cpu.register(11))
+        assertEquals(0x40L, cpu.register(10))
         assertEquals(0x91L, cpu.register(22))
         assertEquals(0L, cpu.register(23))
         assertEquals(0xFFFF_FFFF_A400_1550UL.toLong(), cpu.register(31))
