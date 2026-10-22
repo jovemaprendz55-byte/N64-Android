@@ -116,6 +116,19 @@ class N64MemoryBusTest {
         assertEquals(0x12345678, bus.readWord(address))
     }
 
+    @Test fun rdramModeInitBitClearsForBothRdramDeviceBanks() {
+        val bus = N64MemoryBus()
+        val firstDeviceMode = 0x03F0_000CL
+        val secondDeviceMode = 0x03F8_000CL
+
+        bus.writeWord(firstDeviceMode, 0xC6C0C0C0.toInt())
+        bus.writeWord(secondDeviceMode, 0xC4000000.toInt())
+
+        // INIT is a self-clearing command/status bit on each RDRAM device.
+        assertEquals(0x46C0C0C0, bus.readWord(firstDeviceMode))
+        assertEquals(0x44000000, bus.readWord(secondDeviceMode))
+    }
+
     @Test fun riRegistersSupportBasicWordReadsAndWrites() {
         val bus = N64MemoryBus()
 
