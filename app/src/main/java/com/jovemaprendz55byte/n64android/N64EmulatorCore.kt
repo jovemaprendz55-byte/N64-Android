@@ -26,6 +26,7 @@ class N64EmulatorCore(
     internal val memoryBus = N64MemoryBus(controllerPort = controllerPort)
     private val cpu = R4300Cpu(memoryBus)
     private val rsp = RspCore(memoryBus)
+    private val bootSequence = N64BootSequence(memoryBus)
     private var romLoaded = false
     private var executionStarted = false
     private var normalizedRom: ByteArray? = null
@@ -82,18 +83,13 @@ class N64EmulatorCore(
     fun startIpl3DiagnosticExecution() {
         require(romLoaded) { "Load a normalized ROM before execution" }
         val rom = normalizedRom ?: throw IllegalStateException("No normalized ROM is retained")
-        require(rom.size >= 0x1000) { "ROM is too small to contain the complete IPL3 image" }
-
-        // IPL3 occupies cartridge offsets 0x40..0xFFF and is copied to DMEM
-        // offsets 0x40..0xFFF by the N64 boot path.
-        for (offset in 0x40 until 0x1000) {
-            memoryBus.writeByte(0x0400_0000L + offset, rom[offset])
-        }
-        // GoldenEye 007 uses the CIC-NUS-6105 bootcode. Approximate the
-        // PIF/ IPL2 register handoff so IPL3 doesn't start with all-zero GPRs.
-        val countryCode = rom[0x3E].toInt() and 0xFF
-        val pal = countryCode in listOf('E'.code, 'P'.code, 'D'.code, 'F'.code, 'I'.code, 'S'.code, 'U'.code, 'X'.code, 'Y'.code)
-        cpu.resetForCic6105Ipl3Diagnostic(0xFFFF_FFFF_A400_0040UL.toLong(), pal)
+        // This component copies the cartridge IPL3 payload. It does NOT run
+        // the PIF boot ROM or identify the cartridge CIC from the country byte.
+        val image = bootSequence.loadIpl3(rom)
+        // Temporary diagnostic handoff retained for existing CPU tests only.
+        // This is not a real boot: CIC family and hardware state are not verified.
+        val pal = image.region == N64BootSequence.Region.PAL
+        cpu.resetForCic6105Ipl3Diagnostic(image.entryPoint, pal)
         executionStarted = true
     }
 
