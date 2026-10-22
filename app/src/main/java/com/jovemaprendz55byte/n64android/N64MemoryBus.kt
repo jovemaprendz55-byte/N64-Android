@@ -482,13 +482,14 @@ internal class N64MemoryBus(
             PI_CART_ADDR -> piRegisters[index] = value
             PI_RD_LEN -> {
                 piRegisters[index] = value
-                // PI read transfers RDRAM data toward the cartridge bus.
-                // Cartridge ROM is read-only, so no reverse transfer is modeled.
+                // A PI read transfers cartridge/device data into RDRAM.
+                // IPL3 uses this direction to copy the game boot segment.
+                transferPiDma(cartToRdram = true, command = value)
             }
             PI_WR_LEN -> {
                 piRegisters[index] = value
-                // PI write DMA copies cartridge data into RDRAM, as IPL3 does.
-                transferPiDma(cartToRdram = true, command = value)
+                // A PI write transfers RDRAM toward the cartridge bus.
+                // The cartridge ROM is read-only, so this reverse DMA is not modeled.
             }
             PI_STATUS -> {
                 // PI_STATUS command bit 1 clears the DMA interrupt flag.
