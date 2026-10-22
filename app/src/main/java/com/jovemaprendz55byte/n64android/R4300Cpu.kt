@@ -30,8 +30,10 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private val cpuMemoryProbeHistory = mutableListOf<String>()
     /** CPU-side stores that launch PI DMA, including the issuing instruction PC. */
     private val cpuPiWriteHistory = mutableListOf<String>()
-    // Minimal CP0 register storage for common boot-code MFC0/MTC0 operations.
+    // CP0 register file and the R4300's 32-entry software-managed TLB.
     private val cp0 = LongArray(32)
+    private data class TlbEntry(var pageMask: Int = 0, var entryHi: Int = 0, var entryLo0: Int = 0, var entryLo1: Int = 0)
+    private val tlb = Array(32) { TlbEntry() }
 
     var pc: Long = 0L
     var hi: Long = 0L
@@ -237,6 +239,8 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         require(entryPoint % 4L == 0L) { "Entry point must be 4-byte aligned" }
         gpr.fill(0L)
         cp0.fill(0L)
+        tlb.forEach { it.pageMask = 0; it.entryHi = 0; it.entryLo0 = 0; it.entryLo1 = 0 }
+        cp0[1] = 31L // Random starts at the last TLB slot
         hi = 0L
         lo = 0L
         pc = entryPoint
@@ -428,6 +432,26 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                     }
                 } // MTC0: honor Cause's writable-bit mask
                 0x10 -> when (funct) {
+                    0x01 -> { // TLBR: copy the indexed TLB entry into CP0
+                        val entry = tlb[cp0[0].toInt() and 31]
+                        cp0[5] = entry.pageMask.toLong()
+                        cp0[10] = entry.entryHi.toLong()
+                        cp0[2] = entry.entryLo0.toLong()
+                        cp0[3] = entry.entryLo1.toLong()
+                    }
+                    0x02 -> writeTlbEntry(cp0[0].toInt() and 31) // TLBWI
+                    0x06 -> writeTlbEntry(cp0[1].toInt() and 31) // TLBWR
+                    0x08 -> { // TLBP: probe EntryHi; set Index.P on miss
+                        val hiValue = cp0[10].toInt()
+                        val asid = hiValue and 0xFF
+                        val vpnMask = (cp0[5].toInt() or 0x1FFF).inv()
+                        val found = tlb.indexOfFirst { entry ->
+                            (entry.entryHi and vpnMask) == (hiValue and vpnMask) &&
+                                (((entry.entryLo0 and 1) != 0 && (entry.entryLo1 and 1) != 0) ||
+                                    (entry.entryHi and 0xFF) == asid)
+                        }
+                        cp0[0] = if (found >= 0) found.toLong() else 0x8000_0000L
+                    }
                     0x18 -> {
                         // ERET: return to EPC and clear Status.EXL. Exception
                         // entry itself is not modeled by this simplified core.
@@ -667,6 +691,42 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         return target32.toLong()
     }
 
+    /** Writes CP0 PageMask/EntryHi/EntryLo values into one software-managed TLB slot. */
+    private fun writeTlbEntry(index: Int) {
+        val entry = tlb[index]
+        // EntryHi's VPN and ASID are stored as a 32-bit architectural value.
+        entry.pageMask = cp0[5].toInt() and 0x01FF_E000
+        entry.entryHi = cp0[10].toInt()
+        entry.entryLo0 = cp0[2].toInt()
+        entry.entryLo1 = cp0[3].toInt()
+    }
+
+    /**
+     * Translate a TLB-mapped virtual address using paired pages. Returns null
+     * for a miss/invalid half. This interpreter currently reports faults rather
+     * than entering the architectural TLB exception vector.
+     */
+    private fun translateTlbAddress(address: Long): Long? {
+        val virtual = address.toInt()
+        val currentAsid = cp0[10].toInt() and 0xFF
+        for (entry in tlb) {
+            val pairMask = entry.pageMask or 0x1FFF
+            val vpnMask = pairMask.inv()
+            val global = (entry.entryLo0 and 1) != 0 && (entry.entryLo1 and 1) != 0
+            if ((virtual and vpnMask) != (entry.entryHi and vpnMask)) continue
+            if (!global && (entry.entryHi and 0xFF) != currentAsid) continue
+
+            val pageSize = (pairMask + 1) ushr 1
+            val odd = (virtual and pageSize) != 0
+            val lo = if (odd) entry.entryLo1 else entry.entryLo0
+            if ((lo and 2) == 0) return null // EntryLo.V is clear
+            val pfn = (lo ushr 6) and 0xFFFFF
+            val physicalBase = (pfn.toLong() shl 12) and (pageSize - 1).inv().toLong()
+            return physicalBase or (virtual.toLong() and (pageSize - 1).toLong())
+        }
+        return null
+    }
+
     /** Fetches through the physical bus after direct-mapped KSEG0/KSEG1 translation. */
     private fun fetchInstruction(address: Long): Int {
         require(address % 4L == 0L) {
@@ -685,8 +745,8 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private fun resolveRamAddress(address: Long): Int {
         val physicalAddress = N64Addressing.translateDirectMappedAddress(address)
             ?: if (address in 0L..0x1FFF_FFFFL) address
-            else throw IllegalArgumentException(
-                "Virtual address 0x%016X requires TLB translation or is outside the simplified RAM address range"
+            else translateTlbAddress(address) ?: throw IllegalArgumentException(
+                "Virtual address 0x%016X requires TLB translation; no valid matching R4300 TLB entry"
                     .format(address)
             )
         val region = N64MemoryMap.regionOf(physicalAddress)
