@@ -322,6 +322,7 @@ class MainActivity : Activity() {
                 append("Resultado: ").append(when (result.stopReason) {
                     N64EmulatorCore.StopReason.INSTRUCTION_BUDGET_REACHED -> "limite de instruções atingido"
                     N64EmulatorCore.StopReason.EXECUTION_ERROR -> "erro durante a execução"
+                    N64EmulatorCore.StopReason.BOOT_CHECKSUM_FAILURE_LOOP -> "loop de falha de checksum do IPL3 detectado"
                 }).append('\n')
                 result.errorMessage?.let { append("Erro: ").append(it).append('\n') }
                 append("Observação: este teste não executa o boot completo nem comprova compatibilidade com jogos.")
