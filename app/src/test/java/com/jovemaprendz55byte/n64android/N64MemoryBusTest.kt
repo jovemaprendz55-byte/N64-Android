@@ -90,10 +90,10 @@ class N64MemoryBusTest {
         assertEquals(0xFCFDFEFF.toInt(), bus.readWord(0x7FCL))
         assertEquals(0x800, bus.readWord(N64MemoryBus.PI_DRAM_ADDR))
         assertEquals(0x10000400, bus.readWord(N64MemoryBus.PI_CART_ADDR))
-        assertEquals(1024, bus.diagnosticSummary().let { summary ->
+        assertEquals(1024, bus.piDmaDiagnosticSummary().let { summary ->
             Regex("RDRAM_WRITES=(\\d+)").find(summary)?.groupValues?.get(1)?.toInt()
         })
-        assertEquals(true, bus.diagnosticSummary().contains("0x00000400/DMA=1024"))
+        assertEquals(true, bus.piDmaDiagnosticSummary().contains("0x00000400/DMA=1024"))
     }
 
     @Test fun cartridgeReadFailsBeforeRomIsLoaded() {
