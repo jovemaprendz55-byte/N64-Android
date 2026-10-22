@@ -79,7 +79,7 @@ class N64EmulatorCore(
      * Runs the clean-room CIC-6105 PIF-to-IPL3 handoff currently implemented.
      * This does not emulate the PIF boot ROM firmware or identify/authenticate CICs.
      */
-    fun startCic6105BootSequence(): N64PifBootSequence.BootHandoff {
+    internal fun startCic6105BootSequence(): N64PifBootSequence.BootHandoff {
         require(romLoaded) { "Load a normalized ROM before execution" }
         val rom = normalizedRom ?: throw IllegalStateException("No normalized ROM is retained")
         val handoff = pifBootSequence.startCic6105(rom)
