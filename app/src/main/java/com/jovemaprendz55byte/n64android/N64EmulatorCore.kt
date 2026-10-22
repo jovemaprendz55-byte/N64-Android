@@ -178,6 +178,9 @@ class N64EmulatorCore(
         append(memoryBus.readWord(0x1CCL).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
         append(", RDRAM[0x400]=0x")
         append(memoryBus.readWord(0x400L).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+        // The failing comparison uses virtual 0x80100400 (physical 0x00100400).
+        append(", RDRAM[0x100400]=0x")
+        append(memoryBus.readWord(0x0010_0400L).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
         // The current boot trace loads from virtual 0xFFFFFFFF80036238 (physical 0x36238).
         append(", RDRAM[0x36234]=0x")
         append(memoryBus.readWord(0x36234L).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
@@ -187,6 +190,10 @@ class N64EmulatorCore(
         append(memoryBus.readWord(N64MemoryBus.PI_DRAM_ADDR).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
         append(", PI_CART_ADDR=0x")
         append(memoryBus.readWord(N64MemoryBus.PI_CART_ADDR).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+        append(", PI_RD_LEN=0x")
+        append(memoryBus.readWord(N64MemoryBus.PI_RD_LEN).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+        append(", PI_WR_LEN=0x")
+        append(memoryBus.readWord(N64MemoryBus.PI_WR_LEN).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
         append(", PI_STATUS=0x")
         append(memoryBus.readWord(N64MemoryBus.PI_STATUS).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
         append(", ").append(memoryBus.piDmaDiagnosticSummary())
