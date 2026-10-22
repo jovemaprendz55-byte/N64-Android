@@ -97,6 +97,33 @@ class N64EmulatorCoreTest {
         assertEquals(0, core.memoryBus.readWord(0))
     }
 
+    @Test fun ipl3DiagnosticUsesDocumentedCic6105RegisterSeeds() {
+        // SW the IPL3 handoff registers into RDRAM so the test can inspect them.
+        fun sw(rt: Int, offset: Int): Int =
+            (0x2B shl 26) or (rt shl 16) or (offset and 0xFFFF)
+        val rom = syntheticRomWithInstructions(
+            sw(5, 0),   // a1 = 0xFFFFFFFFF45231E5
+            sw(14, 4),  // t6 = 0x25613A26
+            sw(22, 8),  // s6 = CIC-6105 seed byte 0x91
+            sw(24, 12), // t8 = 0
+            sw(31, 16)  // ra = 0xFFFFFFFFA4001554
+        )
+        rom[0x3E] = 'E'.code.toByte()
+        val core = N64EmulatorCore()
+        core.loadRom(rom)
+
+        core.startIpl3DiagnosticExecution()
+        val result = core.executeSlice(5)
+
+        assertEquals(5, result.instructionsExecuted)
+        assertEquals(N64EmulatorCore.StopReason.INSTRUCTION_BUDGET_REACHED, result.stopReason)
+        assertEquals(0xF45231E5.toInt(), core.memoryBus.readWord(0))
+        assertEquals(0x25613A26, core.memoryBus.readWord(4))
+        assertEquals(0x91, core.memoryBus.readWord(8))
+        assertEquals(0, core.memoryBus.readWord(12))
+        assertEquals(0xA4001554.toInt(), core.memoryBus.readWord(16))
+    }
+
     @Test fun requiresRomBeforeExecution() {
         val core = N64EmulatorCore()
         try {
