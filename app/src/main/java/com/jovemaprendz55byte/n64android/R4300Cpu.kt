@@ -58,6 +58,21 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private var frozenLoopTrace: String? = null
     private var totalSteps: Long = 0L
 
+    internal val lastExecutedInstructionAddress: Long?
+        get() = lastInstructionAddress
+
+    /**
+     * True only for the known IPL3 checksum-failure self-branch (BGEZAL $zero,-1).
+     * It is diagnostic, not a general rule that all self-loops are errors.
+     */
+    internal fun isIpl3ChecksumFailureBranch(): Boolean {
+        val address = lastInstructionAddress ?: return false
+        if (lastInstructionWord != 0x0411FFFF || lastBranchTarget != address) return false
+        val physical = address and 0x1FFF_FFFFL
+        return physical < 0x1000L ||
+            (physical >= 0x0400_0000L && physical < 0x0400_1000L)
+    }
+
     /** Prefer the trace captured when execution first entered a repeated-PC loop. */
     internal fun executionHistoryDiagnosticSummary(): String =
         (frozenLoopTrace ?: recentInstructions.joinToString(" | ")).ifBlank { "sem historico" }
