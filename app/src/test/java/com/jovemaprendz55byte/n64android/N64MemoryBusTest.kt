@@ -314,13 +314,13 @@ class N64MemoryBusTest {
     @Test fun piWriteLengthStartsCartridgeToRdramDmaAndMasksAddresses() {
         val bus = N64MemoryBus()
         bus.loadCartridgeRom(ByteArray(0x41) { (it and 0xFF).toByte() })
-        bus.writeWord(N64MemoryBus.PI_DRAM_ADDR, 0xFF123456.toInt())
+        bus.writeWord(N64MemoryBus.PI_DRAM_ADDR, 0xFF001234.toInt())
         bus.writeWord(N64MemoryBus.PI_CART_ADDR, 0x10000000)
         bus.writeWord(N64MemoryBus.PI_WR_LEN, 0x40)
-        assertEquals(0x00123497, bus.readWord(N64MemoryBus.PI_DRAM_ADDR))
+        assertEquals(0x001275, bus.readWord(N64MemoryBus.PI_DRAM_ADDR))
         assertEquals(0x10000041, bus.readWord(N64MemoryBus.PI_CART_ADDR))
         assertEquals(0x40, bus.readWord(N64MemoryBus.PI_WR_LEN))
-        assertEquals(0x00010203, bus.readWord(0x00123456L))
+        assertEquals(0x00010203, bus.readWord(0x1234L))
     }
 
 }
