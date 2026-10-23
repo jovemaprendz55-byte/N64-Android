@@ -27,10 +27,10 @@ class N64EmulatorCore(
     internal val memoryBus = N64MemoryBus(controllerPort = controllerPort)
     private val cpu = R4300Cpu(memoryBus)
     private val rsp = RspCore(memoryBus)
-    private val bootSequence = N64BootSequence(memoryBus)
-    private val pifBootSequence = N64PifBootSequence(memoryBus, cpu)
+    private val pifBootSequence = N64PifBootCoordinator(memoryBus, cpu)
     private var lastBootPreflight: N64BootInitialization.Preflight? = null
     private var bootIpl3CopyMatchedAtHandoff: Boolean? = null
+    private var bootIpl3FirstMismatchAtHandoff: String? = null
     private var romLoaded = false
     private var executionStarted = false
     private var checksumFailureLoopAddress: Long? = null
@@ -76,6 +76,9 @@ class N64EmulatorCore(
     fun loadRom(normalizedRom: ByteArray) {
         cpu.loadCartridgeRom(normalizedRom)
         this.normalizedRom = normalizedRom.copyOf()
+        lastBootPreflight = null
+        bootIpl3CopyMatchedAtHandoff = null
+        bootIpl3FirstMismatchAtHandoff = null
         romLoaded = true
         executionStarted = false
     }
@@ -97,6 +100,9 @@ class N64EmulatorCore(
                 "CIC ${lastBootPreflight?.detectedCic} has no validated PIF-to-IPL3 handoff."
             )
         }
+        // Record the DMEM copy at the actual CIC-specific handoff, before IPL3
+        // runs and is free to reuse the scratch memory.
+        captureIpl3CopyMatchAtHandoff(rom)
         resetBootLoopDetector()
         executionStarted = true
         return handoff
@@ -118,16 +124,30 @@ class N64EmulatorCore(
         // from the detected CIC. Do not reset to CIC-6105 here: doing so overwrites
         // CIC-6102's 0x3F checksum seed with 0x91 and recreates the checksum loop.
         // Keep this explicit as a diagnostic shortcut; it still bypasses PIF ROM.
-        bootSequence.loadIpl3(rom)
-        // Capture the initial DMEM copy before IPL3 executes. The running IPL3 may
+        // Preflight above already copied the full boot region into DMEM.
+        // Capture that initial copy before IPL3 executes. The running IPL3 may
         // legitimately reuse DMEM as scratch, so a post-execution mismatch alone
         // cannot tell us whether the initial cartridge copy failed.
-        bootIpl3CopyMatchedAtHandoff = (0x40 until 0x1000).all { offset ->
-            (memoryBus.readByte(N64SpMemory.DMEM_BASE + offset).toInt() and 0xFF) ==
-                (rom[offset].toInt() and 0xFF)
-        }
+        captureIpl3CopyMatchAtHandoff(rom)
         resetBootLoopDetector()
         executionStarted = true
+    }
+
+    private fun captureIpl3CopyMatchAtHandoff(rom: ByteArray) {
+        var firstMismatch: String? = null
+        for (offset in 0 until 0x1000) {
+            val expected = rom[offset].toInt() and 0xFF
+            val actual = memoryBus.readByte(N64SpMemory.DMEM_BASE + offset).toInt() and 0xFF
+            if (expected != actual) {
+                firstMismatch = "offset=0x" +
+                    offset.toString(16).uppercase(java.util.Locale.ROOT).padStart(3, '0') +
+                    ",ROM=0x" + expected.toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0') +
+                    ",DMEM=0x" + actual.toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
+                break
+            }
+        }
+        bootIpl3FirstMismatchAtHandoff = firstMismatch
+        bootIpl3CopyMatchedAtHandoff = firstMismatch == null
     }
 
     private fun resetBootLoopDetector() {
@@ -284,13 +304,22 @@ class N64EmulatorCore(
     /** Returns the full CPU snapshot, including all 31 general-purpose registers. */
     fun fullCpuDiagnosticSummary(): String = cpu.diagnosticSnapshot()
 
+    /** Returns CP0 state needed to diagnose CPU exceptions and TLB faults. */
+    fun cp0DiagnosticSummary(): String = cpu.cp0DiagnosticSummary()
+
     /** Returns the early instruction sequence that led into a repeated-PC loop. */
     fun executionHistoryDiagnosticSummary(): String = cpu.executionHistoryDiagnosticSummary()
 
     /** Reads the stalled boot-code area and the memory address currently probed by the trace. */
     fun bootMemoryDiagnosticSummary(): String = buildString {
+        append("CP0_DIAGNOSTICS=").append(cpu.cp0DiagnosticSummary()).append("; ")
+        append("CPU_EXECUTION_HISTORY=").append(cpu.executionHistoryDiagnosticSummary()).append("; ")
+        append("TLB_DIAGNOSTICS=").append(cpu.firstTlbFaultDiagnosticSummary()).append("; ")
+        append("TLB_FIRST_FAULT_CONTEXT=").append(cpu.firstTlbFaultContextSummary()).append("; ")
+        append("TLB_CURRENT_STATE=").append(cpu.currentTlbDiagnosticSummary()).append("; ")
+        append("CPU_CURRENT_EXECUTION_TRACE=").append(cpu.currentExecutionTraceDiagnosticSummary()).append("; ")
         val rom = normalizedRom
-        if (rom != null && rom.size >= 0x1010) {
+        if (rom != null && rom.size >= 0x1000) {
             append("ROM_SIZE=0x")
             append(rom.size.toString(16).uppercase(java.util.Locale.ROOT))
             append(", ROM_HEADER_CRC=")
@@ -299,21 +328,27 @@ class N64EmulatorCore(
             })
             append(", ROM_COUNTRY=0x")
             append((rom[0x3E].toInt() and 0xFF).toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0'))
-            append(", ROM_BOOTCODE_0x1000=")
-            append(rom.copyOfRange(0x1000, 0x1010).joinToString("") {
-                (it.toInt() and 0xFF).toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
-            })
+            if (rom.size >= 0x1010) {
+                append(", ROM_BOOTCODE_0x1000=")
+                append(rom.copyOfRange(0x1000, 0x1010).joinToString("") {
+                    (it.toInt() and 0xFF).toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
+                })
+            } else {
+                append(", ROM_BOOTCODE_0x1000=unavailable-short-rom")
+            }
             append(", IPL3_START=")
             append(rom.copyOfRange(0x40, 0x50).joinToString("") {
                 (it.toInt() and 0xFF).toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
             })
-            val dmemIpl3CopyMatches = (0x40 until 0x1000).all { offset ->
+            val dmemIpl3CopyMatches = (0 until 0x1000).all { offset ->
                 (memoryBus.readByte(0x0400_0000L + offset).toInt() and 0xFF) ==
                     (rom[offset].toInt() and 0xFF)
             }
             append(", SP_DMEM_IPL3_COPY_MATCH=").append(dmemIpl3CopyMatches)
             append(", SP_DMEM_IPL3_COPY_MATCH_AT_HANDOFF=")
                 .append(bootIpl3CopyMatchedAtHandoff ?: "not-started")
+            append(", SP_DMEM_BOOT_REGION_FIRST_MISMATCH_AT_HANDOFF=")
+                .append(bootIpl3FirstMismatchAtHandoff ?: if (bootIpl3CopyMatchedAtHandoff == true) "none" else "not-started")
             append(", ROM_IPL3_0x750=")
             append(rom.copyOfRange(0x750, 0x760).joinToString("") {
                 (it.toInt() and 0xFF).toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
@@ -370,14 +405,17 @@ class N64EmulatorCore(
         append(", CPU_PI_WRITE_HISTORY=").append(cpu.piWriteDiagnosticSummary())
         append(", RDRAM_REG[0x03F08000]=0x")
         append(memoryBus.readWord(0x03F0_8000L).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
-        // Instructions around current KSEG PC reveal what the CPU is waiting for.
-        val physicalPc = cpu.pc and 0x1FFF_FFFFL
+        // Translate the live virtual PC through the same direct-map/TLB rules
+        // used by instruction fetch; masking a TLB address is not a translation.
+        val physicalPc = cpu.diagnosticPhysicalAddress(cpu.pc)
         append(", CPU_CODE_WINDOW_PC=0x")
         append(cpu.pc.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+        append(", CPU_CODE_WINDOW_PHYSICAL=")
+        append(physicalPc?.let { "0x" + it.toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0') } ?: "UNMAPPED")
         append(", CPU_CODE_WINDOW=")
-        if (physicalPc < 0x0080_0000L && physicalPc % 4L == 0L) {
-            // Include the setup instructions before IPL3's failure branch so the
-            // register comparison can be traced back to its loads/calculations.
+        if (physicalPc != null && physicalPc < 0x0080_0000L && physicalPc % 4L == 0L) {
+            // Show physical memory around the translated PC, including the
+            // suspicious 0x71C area when the large TLB page maps 0x70000000 -> 0.
             val start = (physicalPc - 0x48L).coerceAtLeast(0L)
             val end = (physicalPc + 0x20L).coerceAtMost(0x0080_0000L)
             var address = start
@@ -388,7 +426,7 @@ class N64EmulatorCore(
                 address += 4L
             }
         } else {
-            append("fora_da_RDRAM")
+            append("unmapped_or_outside_RDRAM")
         }
     }
 

@@ -15,6 +15,7 @@ class N64BootInitializationTest {
         val result = N64BootInitialization(bus, cpu).prepareCic6105(validRom())
 
         assertEquals(0xFC0, result.ipl3Bytes)
+        assertEquals(0x1000, result.bootRegionBytes)
         assertEquals(0x100000, result.gameSegmentBytes)
         assertEquals(R4300Cpu.DEFAULT_RDRAM_SIZE, result.rdramCapacityBytes)
         assertTrue(result.rdramModelReady)
