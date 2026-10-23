@@ -15,7 +15,9 @@ internal class TlbTranslationFault(
     val virtualAddress: Long,
     val access: TlbAccess,
     /** MIPS exception code: MOD=1, TLBL=2, TLBS=3. */
-    val exceptionCode: Int = if (access == TlbAccess.STORE) 3 else 2
+    val exceptionCode: Int = if (access == TlbAccess.STORE) 3 else 2,
+    /** Only a true TLB miss uses the refill vector; invalid/modified entries use the general vector. */
+    val refillEligible: Boolean = true
 ) : IllegalArgumentException(
     "Virtual address 0x%016X requires TLB translation (access=%s, exceptionCode=%d)".format(
         virtualAddress, access, exceptionCode
@@ -202,6 +204,8 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             firstTlbFaultContext = buildString {
                 append("TLB_FAULT_VADDR=0x").append(fault.virtualAddress.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
                 append(",ACCESS=").append(fault.access)
+                append(",EXCEPTION_CODE=").append(fault.exceptionCode)
+                append(",REFILL_ELIGIBLE=").append(fault.refillEligible)
                 append(",FAULT_PC=0x").append(faultingPc.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
                 append(",FAULT_INSTRUCTION=").append(instruction?.let { "0x" + it.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0') } ?: "unavailable-fetch-fault")
                 append(",OPCODE=").append(opcode?.let { "0x" + it.toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0') } ?: "unknown")
@@ -237,8 +241,12 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
 
         val exceptionVector = when {
             alreadyExl -> 0xFFFF_FFFF_8000_0180UL.toLong()
-            (oldStatus and (1 shl 22)) != 0 -> 0xFFFF_FFFF_BFC0_0200UL.toLong() // Status.BEV
-            else -> 0xFFFF_FFFF_8000_0000UL.toLong() // TLB refill vector
+            (oldStatus and (1 shl 22)) != 0 -> {
+                if (fault.refillEligible) 0xFFFF_FFFF_BFC0_0200UL.toLong()
+                else 0xFFFF_FFFF_BFC0_0380UL.toLong()
+            }
+            fault.refillEligible -> 0xFFFF_FFFF_8000_0000UL.toLong() // TLB refill vector
+            else -> 0xFFFF_FFFF_8000_0180UL.toLong() // invalid / modified general vector
         }
         pendingBranchTarget = null
         pc = exceptionVector
@@ -977,10 +985,13 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             val pageSize = (pairMask + 1) ushr 1
             val odd = (virtual and pageSize) != 0
             val lo = if (odd) entry.entryLo1 else entry.entryLo0
-            if ((lo and 2) == 0) return null // EntryLo.V is clear: TLBL/TLBS
+            if ((lo and 2) == 0) {
+                // A matching entry with V=0 is an invalid exception, not a refill miss.
+                throw TlbTranslationFault(address, access, refillEligible = false)
+            }
             if (access == TlbAccess.STORE && (lo and 4) == 0) {
                 // A valid, matching page without D raises TLB Modified (MOD), not TLBS.
-                throw TlbTranslationFault(address, access, exceptionCode = 1)
+                throw TlbTranslationFault(address, access, exceptionCode = 1, refillEligible = false)
             }
             val pfn = (lo ushr 6) and 0xFFFFF
             val physicalBase = (pfn.toLong() shl 12) and (pageSize - 1).inv().toLong()
