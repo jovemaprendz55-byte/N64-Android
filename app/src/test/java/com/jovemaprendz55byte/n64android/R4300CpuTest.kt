@@ -191,8 +191,8 @@ class R4300CpuTest {
         repeat(8) { cpu.step() }
 
         // 0x70005D58's odd 4 KiB page maps to physical 0x1000 + 0xD58.
-        cpu.writeWord(0x1D58L, 0x0FC002F4) // JAL whose encoded target is 0x7F000BD0
-        cpu.writeWord(0x1D5CL, 0x00000000) // delay-slot NOP
+        cpu.writeWord(0x1D58, 0x0FC002F4) // JAL whose encoded target is 0x7F000BD0
+        cpu.writeWord(0x1D5C, 0x00000000) // delay-slot NOP
         cpu.pc = 0x70005D58L
 
         cpu.step()
