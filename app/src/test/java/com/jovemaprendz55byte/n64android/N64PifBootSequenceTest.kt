@@ -24,6 +24,20 @@ class N64PifBootSequenceTest {
     }
 
     @Test
+    fun cic6102HandoffUsesItsOwnChecksumSeedAndDoesNotInstall6105Stub() {
+        val bus = N64MemoryBus()
+        val cpu = R4300Cpu(bus)
+
+        val result = N64PifBootSequence(bus, cpu).startCic6102(validRom('E'))
+
+        assertEquals(N64PifBootSequence.CicFamily.CIC_6102, result.cic)
+        assertEquals(0x3FL, cpu.register(22))
+        assertEquals(0xFFFF_FFFF_A400_0040UL.toLong(), cpu.pc)
+        // The x105 IPL2 IMEM stub is specific to CIC-6105.
+        assertEquals(0, bus.readWord(N64SpMemory.IMEM_BASE))
+    }
+
+    @Test
     fun cic6105NtscHandoffUsesNtscSeed() {
         val bus = N64MemoryBus()
         val cpu = R4300Cpu(bus)
