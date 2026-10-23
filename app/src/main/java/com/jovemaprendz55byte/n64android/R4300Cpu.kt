@@ -47,8 +47,8 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private val fcr = IntArray(32)
     private data class TlbEntry(var pageMask: Int = 0, var entryHi: Int = 0, var entryLo0: Int = 0, var entryLo1: Int = 0)
     private val tlb = Array(32) { TlbEntry() }
-    /** Last TLB writes, including the instruction that installed each mapping. */
-    private val tlbWriteHistory = java.util.ArrayDeque<String>(16)
+    /** Recent TLB writes, including initialization writes before the faulting access. */
+    private val tlbWriteHistory = java.util.ArrayDeque<String>(64)
 
     var pc: Long = 0L
     var hi: Long = 0L
@@ -893,7 +893,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             (lastInstructionAddress ?: pc).toInt(), index,
             entry.pageMask, entry.entryHi, entry.entryLo0, entry.entryLo1
         )
-        if (tlbWriteHistory.size == 16) tlbWriteHistory.removeFirst()
+        if (tlbWriteHistory.size == 64) tlbWriteHistory.removeFirst()
         tlbWriteHistory.addLast(event)
     }
 
