@@ -27,7 +27,7 @@ class N64EmulatorCore(
     internal val memoryBus = N64MemoryBus(controllerPort = controllerPort)
     private val cpu = R4300Cpu(memoryBus)
     private val rsp = RspCore(memoryBus)
-    private val pifBootSequence = N64PifBootSequence(memoryBus, cpu)
+    private val pifBootSequence = N64PifBootCoordinator(memoryBus, cpu)
     private var lastBootPreflight: N64BootInitialization.Preflight? = null
     private var bootIpl3CopyMatchedAtHandoff: Boolean? = null
     private var bootIpl3FirstMismatchAtHandoff: String? = null
