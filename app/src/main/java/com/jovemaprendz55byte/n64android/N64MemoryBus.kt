@@ -663,7 +663,14 @@ internal class N64MemoryBus(
         try {
             repeat(blockCount) {
                 repeat(blockLength) {
-                    val spAddress = N64SpMemory.DMEM_BASE + (spMemAddress and 0x1FFF).toLong()
+                    // SP_MEM_ADDR bit 12 selects IMEM; the low 12 bits are the offset.
+                    // Using DMEM_BASE unconditionally silently routed IMEM DMA into DMEM.
+                    val spBankBase = if (spMemAddress and 0x1000 != 0) {
+                        N64SpMemory.IMEM_BASE
+                    } else {
+                        N64SpMemory.DMEM_BASE
+                    }
+                    val spAddress = spBankBase + (spMemAddress and 0x0FFF).toLong()
                     val dramAddress = spDramAddress.toLong()
                     if (toSpMemory) {
                         spMemory.writeByte(spAddress, readByte(dramAddress))
