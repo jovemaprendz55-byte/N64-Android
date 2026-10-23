@@ -295,9 +295,9 @@ internal class RspCore(private val bus: N64MemoryBus) {
                     (left - right - borrowIn).coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
                 } // VSUB consumes and clears VCO.
                 0x13 -> when {
-                    left < 0 && right < 0 -> -right
-                    left < 0 -> right
-                    else -> left
+                    left < 0 -> -right
+                    left > 0 -> right
+                    else -> 0
                 } // VABS; signed 16-bit wrap is intentional.
                 0x14 -> {
                     val sum = leftUnsigned + rightUnsigned
@@ -310,10 +310,18 @@ internal class RspCore(private val bus: N64MemoryBus) {
                     if (diff != 0) nextVco = nextVco or (1 shl (lane + 8))
                     diff and 0xFFFF
                 } // VSUBC sets borrow and nonzero flags.
-                0x20 -> if (left < right) left else right // VLT
-                0x21 -> if (left == right) left else right // VEQ
-                0x22 -> if (left != right) left else right // VNE
-                0x23 -> if (left >= right) left else right // VGE
+                0x20 -> if (left < right) {
+                    nextVcc = nextVcc or (1 shl lane); left
+                } else right // VLT
+                0x21 -> if (left == right) {
+                    nextVcc = nextVcc or (1 shl lane); left
+                } else right // VEQ
+                0x22 -> if (left != right) {
+                    nextVcc = nextVcc or (1 shl lane); left
+                } else right // VNE
+                0x23 -> if (left >= right) {
+                    nextVcc = nextVcc or (1 shl lane); left
+                } else right // VGE
                 0x28 -> left and right // VAND
                 0x29 -> (left and right).inv() // VNAND
                 0x2A -> left or right // VOR
