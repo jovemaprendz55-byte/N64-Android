@@ -93,6 +93,37 @@ class R4300CpuTest {
         assertEquals(0x12345678L, cpu.register(2))
     }
 
+    @Test fun tlbpUsesCandidatePageMaskAndTlbrRestoresEntry() {
+        val cpu = R4300Cpu()
+        fun mtc0(rt: Int, rd: Int) =
+            (0x10 shl 26) or (0x04 shl 21) or (rt shl 16) or (rd shl 11)
+        fun mfc0(rt: Int, rd: Int) =
+            (0x10 shl 26) or (rt shl 16) or (rd shl 11)
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 4, 0x4000), // r4 = 0x40000000
+            iType(0x0D, 0, 5, 0x6000), // PageMask = 16 KiB pages
+            iType(0x0D, 0, 1, 0x0087), // PFN=2, G/V/D set
+            mtc0(5, 5),                 // MTC0 r5, PageMask
+            mtc0(4, 10),                // MTC0 r4, EntryHi
+            mtc0(1, 2),                 // MTC0 r1, EntryLo0
+            mtc0(1, 3),                 // MTC0 r1, EntryLo1
+            0x42000002,                 // TLBWI at Index 0
+            mtc0(0, 5),                 // clear CP0 PageMask to prove TLBP uses candidate mask
+            iType(0x0D, 4, 4, 0x3000),  // r4 = 0x40003000, same 16 KiB page pair
+            mtc0(4, 10),                // EntryHi = query VPN
+            0x42000008,                 // TLBP
+            0x42000001,                 // TLBR
+            mfc0(6, 5),                 // MFC0 r6, PageMask
+            mfc0(7, 10)                 // MFC0 r7, EntryHi
+        ))
+
+        repeat(15) { cpu.step() }
+
+        assertEquals(0L, cpu.readCp0ForTest(0) and 0x1FL) // TLBP found entry 0, P clear
+        assertEquals(0x6000L, cpu.register(6))
+        assertEquals(0x40000000L, cpu.register(7)) // TLBR restores stored EntryHi, not query VPN
+    }
+
     @Test fun storeToValidTlbPageWithoutDirtyBitRaisesModifiedException() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
