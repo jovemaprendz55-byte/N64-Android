@@ -686,9 +686,10 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                     0x08 -> { // TLBP: probe EntryHi; set Index.P on miss
                         val hiValue = cp0[10].toInt()
                         val asid = hiValue and 0xFF
-                        val vpnMask = (cp0[5].toInt() or 0x1FFF).inv()
                         val found = tlb.indexOfFirst { entry ->
-                            (entry.entryHi and vpnMask) == (hiValue and vpnMask) &&
+                            // TLBP compares against each candidate's own PageMask, not CP0.PageMask.
+                            val candidateVpnMask = (entry.pageMask or 0x1FFF).inv()
+                            (entry.entryHi and candidateVpnMask) == (hiValue and candidateVpnMask) &&
                                 (((entry.entryLo0 and 1) != 0 && (entry.entryLo1 and 1) != 0) ||
                                     (entry.entryHi and 0xFF) == asid)
                         }
