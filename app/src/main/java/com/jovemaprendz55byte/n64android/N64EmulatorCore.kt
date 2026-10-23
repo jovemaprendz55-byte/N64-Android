@@ -252,8 +252,16 @@ class N64EmulatorCore(
         append(", SP_DRAM_ADDR=0x").append(hex(memoryBus.readWord(N64MemoryBus.SP_DRAM_ADDR)))
         append(", SP_DMA_BUSY=").append(memoryBus.readWord(N64MemoryBus.SP_DMA_BUSY))
         append(", SP_DMA_FULL=").append(memoryBus.readWord(N64MemoryBus.SP_DMA_FULL))
+        // DMEM offset 0x0000 is not where the cartridge IPL3 begins:
+        // IPL3 is copied from ROM 0x0040..0x0FFF to DMEM 0x0040..0x0FFF.
+        // Report both the first cache line and the actual IPL3 entry bytes so
+        // a zero-filled DMEM prefix cannot be mistaken for a failed IPL3 copy.
         append(", SP_DMEM_0000=")
         append((0x00 until 0x40 step 4).joinToString("") { offset ->
+            hex(memoryBus.readWord(N64SpMemory.DMEM_BASE + offset), 8)
+        })
+        append(", SP_DMEM_IPL3_0040=")
+        append((0x40 until 0x80 step 4).joinToString("") { offset ->
             hex(memoryBus.readWord(N64SpMemory.DMEM_BASE + offset), 8)
         })
         append(", SP_IMEM_0000=")
