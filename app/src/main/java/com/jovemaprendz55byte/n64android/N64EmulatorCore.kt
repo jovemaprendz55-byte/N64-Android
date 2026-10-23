@@ -170,6 +170,7 @@ class N64EmulatorCore(
             val instructionAddress = cpu.pc
             try {
                 cpu.step()
+                serviceRspScheduler()
                 executed++
 
                 val executedAddress = cpu.lastExecutedInstructionAddress
@@ -218,6 +219,20 @@ class N64EmulatorCore(
             programCounter = cpu.pc,
             stopReason = StopReason.INSTRUCTION_BUDGET_REACHED
         )
+    }
+
+    /**
+     * Interleaves one RSP instruction with each CPU instruction. A transition
+     * from SP HALT to running starts the RSP at the programmed SP_PC. This is
+     * an initial deterministic scheduler, not cycle-accurate hardware timing.
+     */
+    private fun serviceRspScheduler() {
+        if (memoryBus.consumeSpTaskStartRequest()) {
+            rsp.start(memoryBus.spProgramCounter())
+        }
+        if (!rsp.halted && !memoryBus.isSpHalted()) {
+            rsp.step()
+        }
     }
 
     /** Copies the current VI framebuffer into [destination], if its format is supported. */
