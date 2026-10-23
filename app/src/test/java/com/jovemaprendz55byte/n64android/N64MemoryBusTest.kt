@@ -48,6 +48,17 @@ class N64MemoryBusTest {
         }
     }
 
+    @Test fun cartridgeSramWindowSupportsBigEndianReadWriteAndMirrors() {
+        val bus = N64MemoryBus()
+        bus.writeWord(0x0500_0508L, 0x12345678)
+        assertEquals(0x12345678, bus.readWord(0x0500_0508L))
+        assertEquals(0x12.toByte(), bus.readByte(0x0500_0508L))
+        // The 16 MiB Domain 2 window mirrors the 32 KiB SRAM backing.
+        assertEquals(0x12345678, bus.readWord(0x0500_8508L))
+        bus.writeByte(0x0500_0508L, 0xAB.toByte())
+        assertEquals(0xAB.toByte(), bus.readByte(0x0500_8508L))
+    }
+
     @Test fun cartridgeRomIsReadableAndReadOnly() {
         val bus = N64MemoryBus()
         bus.loadCartridgeRom(byteArrayOf(0x80.toByte(), 0x37, 0x12, 0x40, 1, 2, 3, 4))
