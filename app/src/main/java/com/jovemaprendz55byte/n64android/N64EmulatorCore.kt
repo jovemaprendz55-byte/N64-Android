@@ -76,6 +76,9 @@ class N64EmulatorCore(
     fun loadRom(normalizedRom: ByteArray) {
         cpu.loadCartridgeRom(normalizedRom)
         this.normalizedRom = normalizedRom.copyOf()
+        lastBootPreflight = null
+        bootIpl3CopyMatchedAtHandoff = null
+        bootIpl3FirstMismatchAtHandoff = null
         romLoaded = true
         executionStarted = false
     }
