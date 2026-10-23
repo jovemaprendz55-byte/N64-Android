@@ -129,7 +129,8 @@ class N64MemoryBusTest {
         assertEquals(0, bus.readWord(N64RdpProcessor.DPC_START))
         bus.writeWord(N64RdpProcessor.DPC_START, 0x100)
         assertEquals(0x100, bus.readWord(N64RdpProcessor.DPC_START))
-        assertThrows(IllegalArgumentException::class.java) { bus.readByte(0x05000000L) }
+        assertEquals(0, bus.readByte(0x05000000L).toInt())
+        assertThrows(IllegalArgumentException::class.java) { bus.readByte(0x06000000L) }
     }
 
     @Test fun miRegistersSupportBasicReadsAndCommandWrites() {
