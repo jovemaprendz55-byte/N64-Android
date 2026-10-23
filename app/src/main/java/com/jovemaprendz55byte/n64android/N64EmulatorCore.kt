@@ -292,6 +292,7 @@ class N64EmulatorCore(
 
     /** Reads the stalled boot-code area and the memory address currently probed by the trace. */
     fun bootMemoryDiagnosticSummary(): String = buildString {
+        append("CP0_DIAGNOSTICS=").append(cpu.cp0DiagnosticSummary()).append("; ")
         val rom = normalizedRom
         if (rom != null && rom.size >= 0x1010) {
             append("ROM_SIZE=0x")
