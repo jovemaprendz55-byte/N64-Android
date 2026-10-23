@@ -313,6 +313,7 @@ class N64EmulatorCore(
         append("CP0_DIAGNOSTICS=").append(cpu.cp0DiagnosticSummary()).append("; ")
         append("CPU_EXECUTION_HISTORY=").append(cpu.executionHistoryDiagnosticSummary()).append("; ")
         append("TLB_DIAGNOSTICS=").append(cpu.firstTlbFaultDiagnosticSummary()).append("; ")
+        append("TLB_FIRST_FAULT_CONTEXT=").append(cpu.firstTlbFaultContextSummary()).append("; ")
         append("TLB_CURRENT_STATE=").append(cpu.currentTlbDiagnosticSummary()).append("; ")
         append("CPU_CURRENT_EXECUTION_TRACE=").append(cpu.currentExecutionTraceDiagnosticSummary()).append("; ")
         val rom = normalizedRom
