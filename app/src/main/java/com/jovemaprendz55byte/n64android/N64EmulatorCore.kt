@@ -405,14 +405,17 @@ class N64EmulatorCore(
         append(", CPU_PI_WRITE_HISTORY=").append(cpu.piWriteDiagnosticSummary())
         append(", RDRAM_REG[0x03F08000]=0x")
         append(memoryBus.readWord(0x03F0_8000L).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
-        // Instructions around current KSEG PC reveal what the CPU is waiting for.
-        val physicalPc = cpu.pc and 0x1FFF_FFFFL
+        // Translate the live virtual PC through the same direct-map/TLB rules
+        // used by instruction fetch; masking a TLB address is not a translation.
+        val physicalPc = cpu.diagnosticPhysicalAddress(cpu.pc)
         append(", CPU_CODE_WINDOW_PC=0x")
         append(cpu.pc.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+        append(", CPU_CODE_WINDOW_PHYSICAL=")
+        append(physicalPc?.let { "0x" + it.toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0') } ?: "UNMAPPED")
         append(", CPU_CODE_WINDOW=")
-        if (physicalPc < 0x0080_0000L && physicalPc % 4L == 0L) {
-            // Include the setup instructions before IPL3's failure branch so the
-            // register comparison can be traced back to its loads/calculations.
+        if (physicalPc != null && physicalPc < 0x0080_0000L && physicalPc % 4L == 0L) {
+            // Show physical memory around the translated PC, including the
+            // suspicious 0x71C area when the large TLB page maps 0x70000000 -> 0.
             val start = (physicalPc - 0x48L).coerceAtLeast(0L)
             val end = (physicalPc + 0x20L).coerceAtMost(0x0080_0000L)
             var address = start
@@ -423,7 +426,7 @@ class N64EmulatorCore(
                 address += 4L
             }
         } else {
-            append("fora_da_RDRAM")
+            append("unmapped_or_outside_RDRAM")
         }
     }
 
