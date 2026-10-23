@@ -242,6 +242,26 @@ class N64EmulatorCore(
     /** Returns VI register values to help diagnose a blank output. */
     fun videoDiagnosticSummary(): String = memoryBus.videoDiagnosticSummary()
 
+    /** Returns SP/RSP task state and the first words of its local memories for boot debugging. */
+    fun rspDiagnosticSummary(): String = buildString {
+        fun hex(value: Int, digits: Int = 8) =
+            value.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(digits, '0')
+        append("SP_STATUS=0x").append(hex(memoryBus.readWord(N64MemoryBus.SP_STATUS)))
+        append(", SP_PC=0x").append(hex(memoryBus.readWord(N64MemoryBus.SP_PC)))
+        append(", SP_MEM_ADDR=0x").append(hex(memoryBus.readWord(N64MemoryBus.SP_MEM_ADDR)))
+        append(", SP_DRAM_ADDR=0x").append(hex(memoryBus.readWord(N64MemoryBus.SP_DRAM_ADDR)))
+        append(", SP_DMA_BUSY=").append(memoryBus.readWord(N64MemoryBus.SP_DMA_BUSY))
+        append(", SP_DMA_FULL=").append(memoryBus.readWord(N64MemoryBus.SP_DMA_FULL))
+        append(", SP_DMEM_0000=")
+        append((0x00 until 0x40 step 4).joinToString("") { offset ->
+            hex(memoryBus.readWord(N64SpMemory.DMEM_BASE + offset), 8)
+        })
+        append(", SP_IMEM_0000=")
+        append((0x00 until 0x40 step 4).joinToString("") { offset ->
+            hex(memoryBus.readWord(N64SpMemory.IMEM_BASE + offset), 8)
+        })
+    }
+
     /** Returns the most recent instruction and branch state for live diagnostics. */
     fun executionDiagnosticSummary(): String = cpu.executionDiagnosticSummary()
 
