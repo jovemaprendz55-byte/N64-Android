@@ -78,6 +78,8 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private var instructionTraceIndex = 0
     private var instructionTraceCount = 0
     private var firstTlbFaultHistory: String? = null
+    /** TLB contents captured before software handles the first translation fault. */
+    private var firstTlbFaultTlbHistory: String? = null
     private var recentInstructionPcCount = 0
     private var frozenLoopTrace: String? = null
     private var totalSteps: Long = 0L
@@ -171,6 +173,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     internal fun handleTlbTranslationFault(fault: TlbTranslationFault, faultingPc: Long) {
         if (firstTlbFaultHistory == null) {
             firstTlbFaultHistory = currentInstructionTraceSummary()
+            firstTlbFaultTlbHistory = tlbDiagnosticSummary(fault.virtualAddress)
         }
         val oldStatus = cp0[12].toInt()
         val alreadyExl = (oldStatus and 0x2) != 0
@@ -221,6 +224,42 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         append(", ")
         reg("Random", 1)
     }
+
+    /**
+     * Reports non-empty TLB slots and whether any slot covers the faulting VPN.
+     * This is diagnostic only: it never creates or alters a translation.
+     */
+    internal fun tlbDiagnosticSummary(faultAddress: Long? = null): String {
+        val address = (faultAddress ?: cp0[8]).toInt()
+        val asid = cp0[10].toInt() and 0xFF
+        var matchingVpnCount = 0
+        val entries = mutableListOf<String>()
+        tlb.forEachIndexed { index, entry ->
+            if (entry.pageMask != 0 || entry.entryHi != 0 || entry.entryLo0 != 0 || entry.entryLo1 != 0) {
+                val pairMask = entry.pageMask or 0x1FFF
+                val vpnMask = pairMask.inv()
+                val vpnMatches = (address and vpnMask) == (entry.entryHi and vpnMask)
+                val global = (entry.entryLo0 and 1) != 0 && (entry.entryLo1 and 1) != 0
+                val asidMatches = (entry.entryHi and 0xFF) == asid
+                val pageSize = (pairMask + 1) ushr 1
+                val odd = (address and pageSize) != 0
+                val selectedLo = if (odd) entry.entryLo1 else entry.entryLo0
+                val usable = vpnMatches && (global || asidMatches) && (selectedLo and 2) != 0
+                if (vpnMatches && (global || asidMatches)) matchingVpnCount++
+                entries += "TLB_ENTRY_$index=PM=0x%08X,HI=0x%08X,LO0=0x%08X,LO1=0x%08X,VPN_MATCH=%s,ASID_MATCH=%s,SELECTED=%s,VALID=%s".format(
+                    java.util.Locale.ROOT,
+                    entry.pageMask, entry.entryHi, entry.entryLo0, entry.entryLo1,
+                    vpnMatches, global || asidMatches, if (odd) "LO1" else "LO0", usable
+                )
+            }
+        }
+        return "TLB_NONZERO_COUNT=${entries.size}, TLB_FAULT_ADDRESS=0x%08X, TLB_FAULT_MATCHING_VPN_COUNT=%d, TLB_ENTRIES=%s".format(
+            java.util.Locale.ROOT, address, matchingVpnCount, entries.joinToString(";").ifBlank { "none" }
+        )
+    }
+
+    internal fun firstTlbFaultDiagnosticSummary(): String =
+        firstTlbFaultTlbHistory ?: tlbDiagnosticSummary()
 
     internal fun readCp0ForTest(index: Int): Long = cp0[index]
 
@@ -362,6 +401,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         instructionTraceIndex = 0
         instructionTraceCount = 0
         firstTlbFaultHistory = null
+        firstTlbFaultTlbHistory = null
         frozenLoopTrace = null
         totalSteps = 0L
     }
