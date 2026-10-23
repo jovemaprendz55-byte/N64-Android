@@ -164,12 +164,6 @@ class N64EmulatorCore(
                     val delaySlot = checksumFailureLoopAddress!! + 4L
                     if (executedAddress != delaySlot) resetBootLoopDetector()
                 }
-            } catch (fault: TlbTranslationFault) {
-                // A TLB miss is a CPU exception, not a host-side emulator crash.
-                // The exception handler must establish a valid mapping; do not
-                // silently map the missing virtual page to arbitrary RAM.
-                cpu.handleTlbTranslationFault(fault, instructionAddress)
-                executed++
             } catch (error: Exception) {
                 executionStarted = false
                 return ExecutionResult(
@@ -254,9 +248,7 @@ class N64EmulatorCore(
     fun bootMemoryDiagnosticSummary(): String = buildString {
         append("CP0_DIAGNOSTICS=").append(cpu.cp0DiagnosticSummary()).append("; ")
         append("CPU_EXECUTION_HISTORY=").append(cpu.executionHistoryDiagnosticSummary()).append("; ")
-        append("TLB_DIAGNOSTICS=").append(cpu.firstTlbFaultDiagnosticSummary()).append("; ")
-        append("TLB_FIRST_FAULT_CONTEXT=").append(cpu.firstTlbFaultContextSummary()).append("; ")
-        append("TLB_CURRENT_STATE=").append(cpu.currentTlbDiagnosticSummary()).append("; ")
+        append("TLB_IMPLEMENTATION=removed_for_clean_rebuild; ")
         append("CPU_CURRENT_EXECUTION_TRACE=").append(cpu.currentExecutionTraceDiagnosticSummary()).append("; ")
         val rom = normalizedRom
         if (rom != null && rom.size >= 0x1000) {
@@ -333,8 +325,7 @@ class N64EmulatorCore(
         append(", CPU_PI_WRITE_HISTORY=").append(cpu.piWriteDiagnosticSummary())
         append(", RDRAM_REG[0x03F08000]=0x")
         append(memoryBus.readWord(0x03F0_8000L).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
-        // Translate the live virtual PC through the same direct-map/TLB rules
-        // used by instruction fetch; masking a TLB address is not a translation.
+        // Diagnostic translation is limited to direct-mapped and physical addresses until the TLB is rebuilt.
         val physicalPc = cpu.diagnosticPhysicalAddress(cpu.pc)
         append(", CPU_CODE_WINDOW_PC=0x")
         append(cpu.pc.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
@@ -342,8 +333,7 @@ class N64EmulatorCore(
         append(physicalPc?.let { "0x" + it.toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0') } ?: "UNMAPPED")
         append(", CPU_CODE_WINDOW=")
         if (physicalPc != null && physicalPc < 0x0080_0000L && physicalPc % 4L == 0L) {
-            // Show physical memory around the translated PC, including the
-            // suspicious 0x71C area when the large TLB page maps 0x70000000 -> 0.
+            // Show physical memory around a directly translated PC.
             val start = (physicalPc - 0x48L).coerceAtLeast(0L)
             val end = (physicalPc + 0x20L).coerceAtMost(0x0080_0000L)
             var address = start
