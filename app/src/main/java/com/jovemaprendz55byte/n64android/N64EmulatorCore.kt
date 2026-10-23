@@ -80,9 +80,6 @@ class N64EmulatorCore(
      * Runs the diagnostic PIF-to-IPL3 handoff for the detected CIC where a register state is implemented.
      * This does not emulate the PIF boot ROM firmware or identify/authenticate CICs.
      */
-    internal fun startCic6105BootSequence(): N64PifBootSequence.BootHandoff {
-        throw UnsupportedOperationException("IPL3/PIF boot was removed for a clean-room rebuild.")
-    }
 
     /**
      * Starts IPL3 at its hardware-style location for a diagnostic shortcut:
@@ -90,9 +87,6 @@ class N64EmulatorCore(
      * through KSEG1 address 0xA4000040. This still bypasses the PIF boot ROM
      * and does not initialize all hardware registers.
      */
-    fun startIpl3DiagnosticExecution() {
-        throw UnsupportedOperationException("IPL3/PIF boot was removed for a clean-room rebuild.")
-    }
 
 
 
