@@ -31,6 +31,7 @@ class N64EmulatorCore(
     private val pifBootSequence = N64PifBootSequence(memoryBus, cpu)
     private var lastBootPreflight: N64BootInitialization.Preflight? = null
     private var bootIpl3CopyMatchedAtHandoff: Boolean? = null
+    private var bootIpl3FirstMismatchAtHandoff: String? = null
     private var romLoaded = false
     private var executionStarted = false
     private var checksumFailureLoopAddress: Long? = null
@@ -131,10 +132,20 @@ class N64EmulatorCore(
     }
 
     private fun captureIpl3CopyMatchAtHandoff(rom: ByteArray) {
-        bootIpl3CopyMatchedAtHandoff = (0x40 until 0x1000).all { offset ->
-            (memoryBus.readByte(N64SpMemory.DMEM_BASE + offset).toInt() and 0xFF) ==
-                (rom[offset].toInt() and 0xFF)
+        var firstMismatch: String? = null
+        for (offset in 0 until 0x1000) {
+            val expected = rom[offset].toInt() and 0xFF
+            val actual = memoryBus.readByte(N64SpMemory.DMEM_BASE + offset).toInt() and 0xFF
+            if (expected != actual) {
+                firstMismatch = "offset=0x" +
+                    offset.toString(16).uppercase(java.util.Locale.ROOT).padStart(3, '0') +
+                    ",ROM=0x" + expected.toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0') +
+                    ",DMEM=0x" + actual.toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
+                break
+            }
         }
+        bootIpl3FirstMismatchAtHandoff = firstMismatch
+        bootIpl3CopyMatchedAtHandoff = firstMismatch == null
     }
 
     private fun resetBootLoopDetector() {
@@ -322,13 +333,15 @@ class N64EmulatorCore(
             append(rom.copyOfRange(0x40, 0x50).joinToString("") {
                 (it.toInt() and 0xFF).toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
             })
-            val dmemIpl3CopyMatches = (0x40 until 0x1000).all { offset ->
+            val dmemIpl3CopyMatches = (0 until 0x1000).all { offset ->
                 (memoryBus.readByte(0x0400_0000L + offset).toInt() and 0xFF) ==
                     (rom[offset].toInt() and 0xFF)
             }
             append(", SP_DMEM_IPL3_COPY_MATCH=").append(dmemIpl3CopyMatches)
             append(", SP_DMEM_IPL3_COPY_MATCH_AT_HANDOFF=")
                 .append(bootIpl3CopyMatchedAtHandoff ?: "not-started")
+            append(", SP_DMEM_BOOT_REGION_FIRST_MISMATCH_AT_HANDOFF=")
+                .append(bootIpl3FirstMismatchAtHandoff ?: if (bootIpl3CopyMatchedAtHandoff == true) "none" else "not-started")
             append(", ROM_IPL3_0x750=")
             append(rom.copyOfRange(0x750, 0x760).joinToString("") {
                 (it.toInt() and 0xFF).toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
