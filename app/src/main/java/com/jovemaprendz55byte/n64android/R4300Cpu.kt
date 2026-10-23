@@ -47,6 +47,8 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private val fcr = IntArray(32)
     private data class TlbEntry(var pageMask: Int = 0, var entryHi: Int = 0, var entryLo0: Int = 0, var entryLo1: Int = 0)
     private val tlb = Array(32) { TlbEntry() }
+    /** Last TLB writes, including the instruction that installed each mapping. */
+    private val tlbWriteHistory = java.util.ArrayDeque<String>(16)
 
     var pc: Long = 0L
     var hi: Long = 0L
@@ -233,9 +235,14 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         val address = (faultAddress ?: cp0[8]).toInt()
         val asid = cp0[10].toInt() and 0xFF
         var matchingVpnCount = 0
+        var meaningfulEntryCount = 0
         val entries = mutableListOf<String>()
         tlb.forEachIndexed { index, entry ->
-            if (entry.pageMask != 0 || entry.entryHi != 0 || entry.entryLo0 != 0 || entry.entryLo1 != 0) {
+            // Reset-valued HI=0x80000000 by itself is not a populated mapping.
+            val populated = entry.pageMask != 0 || entry.entryLo0 != 0 || entry.entryLo1 != 0 ||
+                (entry.entryHi != 0 && entry.entryHi != 0x8000_0000.toInt())
+            if (populated) {
+                meaningfulEntryCount++
                 val pairMask = entry.pageMask or 0x1FFF
                 val vpnMask = pairMask.inv()
                 val vpnMatches = (address and vpnMask) == (entry.entryHi and vpnMask)
@@ -253,7 +260,8 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                 )
             }
         }
-        return "TLB_NONZERO_COUNT=${entries.size}, TLB_FAULT_ADDRESS=0x%08X, TLB_FAULT_MATCHING_VPN_COUNT=%d, TLB_ENTRIES=%s".format(
+        val writes = tlbWriteHistory.joinToString(";").ifBlank { "none" }
+        return "TLB_NONZERO_COUNT=$meaningfulEntryCount, TLB_WRITE_HISTORY=$writes, TLB_FAULT_ADDRESS=0x%08X, TLB_FAULT_MATCHING_VPN_COUNT=%d, TLB_ENTRIES=%s".format(
             java.util.Locale.ROOT, address, matchingVpnCount, entries.joinToString(";").ifBlank { "none" }
         )
     }
@@ -402,6 +410,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         instructionTraceCount = 0
         firstTlbFaultHistory = null
         firstTlbFaultTlbHistory = null
+        tlbWriteHistory.clear()
         frozenLoopTrace = null
         totalSteps = 0L
     }
@@ -879,6 +888,13 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         entry.entryHi = cp0[10].toInt()
         entry.entryLo0 = cp0[2].toInt()
         entry.entryLo1 = cp0[3].toInt()
+        val event = "PC=0x%08X,INDEX=%d,PM=0x%08X,HI=0x%08X,LO0=0x%08X,LO1=0x%08X".format(
+            java.util.Locale.ROOT,
+            (lastInstructionAddress ?: pc).toInt(), index,
+            entry.pageMask, entry.entryHi, entry.entryLo0, entry.entryLo1
+        )
+        if (tlbWriteHistory.size == 16) tlbWriteHistory.removeFirst()
+        tlbWriteHistory.addLast(event)
     }
 
     /**
