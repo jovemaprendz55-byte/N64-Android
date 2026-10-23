@@ -13,9 +13,13 @@ internal enum class TlbAccess { FETCH, LOAD, STORE }
 
 internal class TlbTranslationFault(
     val virtualAddress: Long,
-    val access: TlbAccess
+    val access: TlbAccess,
+    /** MIPS exception code: MOD=1, TLBL=2, TLBS=3. */
+    val exceptionCode: Int = if (access == TlbAccess.STORE) 3 else 2
 ) : IllegalArgumentException(
-    "Virtual address 0x%016X requires TLB translation; no valid matching R4300 TLB entry".format(virtualAddress)
+    "Virtual address 0x%016X requires TLB translation (access=%s, exceptionCode=%d)".format(
+        virtualAddress, access, exceptionCode
+    )
 )
 
 class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64MemoryBus) {
@@ -226,7 +230,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         cp0[4] = ((cp0[4].toInt() and 0xFF80_000F.toInt()) or
             ((virtual ushr 9) and 0x007F_FFF0)).toLong() // Context.BadVPN2
         cp0[10] = ((virtual and 0xFFFF_E000.toInt()) or (cp0[10].toInt() and 0xFF)).toLong() // EntryHi
-        val exceptionCode = if (fault.access == TlbAccess.STORE) 3 else 2 // TLBS / TLBL
+        val exceptionCode = fault.exceptionCode // MOD / TLBL / TLBS
         cp0[13] = ((cp0[13].toInt() and 0xFFFF_FF83.toInt()) or (exceptionCode shl 2)).toLong()
         if (!alreadyExl) cp0[14] = faultingPc // EPC
         cp0[12] = (oldStatus or 0x2).toLong() // Status.EXL
@@ -960,7 +964,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
      * for a miss/invalid half. This interpreter currently reports faults rather
      * than entering the architectural TLB exception vector.
      */
-    private fun translateTlbAddress(address: Long): Long? {
+    private fun translateTlbAddress(address: Long, access: TlbAccess): Long? {
         val virtual = address.toInt()
         val currentAsid = cp0[10].toInt() and 0xFF
         for (entry in tlb) {
@@ -973,7 +977,11 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             val pageSize = (pairMask + 1) ushr 1
             val odd = (virtual and pageSize) != 0
             val lo = if (odd) entry.entryLo1 else entry.entryLo0
-            if ((lo and 2) == 0) return null // EntryLo.V is clear
+            if ((lo and 2) == 0) return null // EntryLo.V is clear: TLBL/TLBS
+            if (access == TlbAccess.STORE && (lo and 4) == 0) {
+                // A valid, matching page without D raises TLB Modified (MOD), not TLBS.
+                throw TlbTranslationFault(address, access, exceptionCode = 1)
+            }
             val pfn = (lo ushr 6) and 0xFFFFF
             val physicalBase = (pfn.toLong() shl 12) and (pageSize - 1).inv().toLong()
             return physicalBase or (virtual.toLong() and (pageSize - 1).toLong())
@@ -999,7 +1007,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private fun resolveRamAddress(address: Long, access: TlbAccess = TlbAccess.LOAD): Int {
         val physicalAddress = N64Addressing.translateDirectMappedAddress(address)
             ?: if (address in 0L..0x1FFF_FFFFL) address
-            else translateTlbAddress(address) ?: throw TlbTranslationFault(address, access)
+            else translateTlbAddress(address, access) ?: throw TlbTranslationFault(address, access)
         val region = N64MemoryMap.regionOf(physicalAddress)
         require(region == N64MemoryMap.Region.RDRAM ||
             region == N64MemoryMap.Region.RDRAM_REGISTERS ||
