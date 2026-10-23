@@ -97,6 +97,9 @@ class N64EmulatorCore(
                 "CIC ${lastBootPreflight?.detectedCic} has no validated PIF-to-IPL3 handoff."
             )
         }
+        // Record the DMEM copy at the actual CIC-specific handoff, before IPL3
+        // runs and is free to reuse the scratch memory.
+        captureIpl3CopyMatchAtHandoff(rom)
         resetBootLoopDetector()
         executionStarted = true
         return handoff
@@ -122,12 +125,16 @@ class N64EmulatorCore(
         // Capture the initial DMEM copy before IPL3 executes. The running IPL3 may
         // legitimately reuse DMEM as scratch, so a post-execution mismatch alone
         // cannot tell us whether the initial cartridge copy failed.
+        captureIpl3CopyMatchAtHandoff(rom)
+        resetBootLoopDetector()
+        executionStarted = true
+    }
+
+    private fun captureIpl3CopyMatchAtHandoff(rom: ByteArray) {
         bootIpl3CopyMatchedAtHandoff = (0x40 until 0x1000).all { offset ->
             (memoryBus.readByte(N64SpMemory.DMEM_BASE + offset).toInt() and 0xFF) ==
                 (rom[offset].toInt() and 0xFF)
         }
-        resetBootLoopDetector()
-        executionStarted = true
     }
 
     private fun resetBootLoopDetector() {
