@@ -117,6 +117,21 @@ class R4300CpuTest {
         assertEquals(0xFFFF_FFFF_8000_0000UL.toLong(), cpu.pc) // TLB refill vector
     }
 
+    @Test fun diagnosticSnapshotRecordsIndirectJumpSourceRegisterAndValue() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x8000), // r1 = 0xFFFFFFFF80000000
+            (1 shl 21) or 0x08         // JR r1
+        ))
+
+        cpu.step()
+        cpu.step()
+
+        val summary = cpu.diagnosticSnapshot()
+        org.junit.Assert.assertTrue(summary.contains("JR_JALR_SOURCE=r1"))
+        org.junit.Assert.assertTrue(summary.contains("JR_JALR_VALUE=0xFFFFFFFF80000000"))
+    }
+
     @Test fun cp0DiagnosticSummaryShowsExceptionAndTranslationRegisters() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
