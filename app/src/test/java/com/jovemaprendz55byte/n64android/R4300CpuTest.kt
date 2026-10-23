@@ -174,6 +174,40 @@ class R4300CpuTest {
         assertEquals(24L, cpu.readCp0ForTest(14)) // EPC
     }
 
+    @Test fun reportedBootJalTargetIsCorrectAndRequiresItsOwnTlbMapping() {
+        val cpu = R4300Cpu()
+        fun mtc0(rt: Int, rd: Int) =
+            (0x10 shl 26) or (0x04 shl 21) or (rt shl 16) or (rd shl 11)
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 4, 0x7000), // r4 = 0x70000000
+            iType(0x0D, 4, 4, 0x4000), // r4 = 0x70004000, VPN2 for 0x70005D58
+            iType(0x0D, 0, 1, 0x0007), // EntryLo0: PFN=0, G/V/D set
+            iType(0x0D, 0, 2, 0x0047), // EntryLo1: PFN=1, G/V/D set
+            mtc0(4, 10),                // EntryHi
+            mtc0(1, 2),                 // EntryLo0
+            mtc0(2, 3),                 // EntryLo1
+            0x42000002                  // TLBWI
+        ))
+        repeat(8) { cpu.step() }
+
+        // 0x70005D58's odd 4 KiB page maps to physical 0x1000 + 0xD58.
+        cpu.writeWord(0x1D58L, 0x0FC002F4) // JAL whose encoded target is 0x7F000BD0
+        cpu.writeWord(0x1D5CL, 0x00000000) // delay-slot NOP
+        cpu.pc = 0x70005D58L
+
+        cpu.step()
+        org.junit.Assert.assertTrue(cpu.diagnosticSnapshot().contains("alvoUltimoSalto=0x000000007F000BD0"))
+        cpu.step() // execute the delay slot and transfer to the computed target
+
+        try {
+            cpu.step()
+            throw AssertionError("The target page must require a separate TLB mapping")
+        } catch (fault: TlbTranslationFault) {
+            assertEquals(0x7F000BD0L, fault.virtualAddress)
+            assertEquals(TlbAccess.FETCH, fault.access)
+        }
+    }
+
     @Test fun matchingTlbEntryWithValidBitClearUsesGeneralExceptionVector() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
