@@ -81,6 +81,20 @@ class N64EmulatorCoreTest {
         assertEquals(1, core.memoryBus.readWord(0))
     }
 
+    @Test fun cicHandoffDiagnosticRecordsIpl3CopyBeforeExecution() {
+        val rom = syntheticRomWithInstructions(0xAC140000.toInt())
+        rom[0x3E] = 'J'.code.toByte()
+        val core = N64EmulatorCore()
+        core.loadRom(rom)
+
+        core.startCic6105BootSequence()
+
+        assertEquals(
+            true,
+            core.bootMemoryDiagnosticSummary().contains("SP_DMEM_IPL3_COPY_MATCH_AT_HANDOFF=true")
+        )
+    }
+
     @Test fun ipl3DiagnosticUsesPalBootSeedForEuropeanCountryCode() {
         // SW r20, 0(r0): the diagnostic CIC-6105 handoff seeds r20=0 for PAL.
         // 'P' is a PAL country code; 'E' identifies North America (NTSC).
