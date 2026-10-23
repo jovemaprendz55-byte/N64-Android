@@ -82,28 +82,11 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             (physical >= 0x0400_0000L && physical < 0x0400_1000L)
     }
 
-    /** Exact instruction sequence immediately preceding the first TLB fault, if one occurred. */
-    internal fun executionHistoryDiagnosticSummary(): String =
-        firstTlbFaultHistory ?: currentInstructionTraceSummary().ifBlank {
-            frozenLoopTrace ?: recentInstructions.joinToString(" | ").ifBlank { "sem historico" }
-        }
+    internal fun executionHistoryDiagnosticSummary(): String = frozenLoopTrace ?: recentInstructions.joinToString(" | ").ifBlank { "sem historico" }
 
-    /** Most recent instructions, including exception-handler execution after the first TLB fault. */
-    internal fun currentExecutionTraceDiagnosticSummary(): String =
-        currentInstructionTraceSummary().ifBlank { "sem historico atual" }
+    internal fun currentExecutionTraceDiagnosticSummary(): String = recentInstructions.joinToString(" | ").ifBlank { "sem historico atual" }
 
 
-    private fun currentInstructionTraceSummary(): String {
-        if (instructionTraceCount == 0) return ""
-        val start = (instructionTraceIndex - instructionTraceCount + instructionTracePcs.size) % instructionTracePcs.size
-        return (0 until instructionTraceCount).joinToString(" | ") { offset ->
-            val index = (start + offset) % instructionTracePcs.size
-            "0x" + instructionTracePcs[index].toULong().toString(16)
-                .uppercase(java.util.Locale.ROOT).padStart(16, '0') +
-                "=0x" + instructionTraceWords[index].toUInt().toString(16)
-                .uppercase(java.util.Locale.ROOT).padStart(8, '0')
-        }
-    }
 
     /** Compact CPU state snapshot attached to ROM-test failures. */
     internal fun diagnosticSnapshot(): String = buildString {
@@ -184,8 +167,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     internal fun readCp0ForTest(index: Int): Long = cp0[index]
 
     /**
-     * Diagnostic-only virtual-to-physical translation. This never changes CPU/TLB
-     * state and returns null when the current TLB cannot translate the address.
+     * Diagnostic-only translation for direct-mapped and physical addresses. TLB support is pending.
      */
     internal fun diagnosticPhysicalAddress(address: Long): Long? =
         N64Addressing.translateDirectMappedAddress(address)
@@ -323,10 +305,6 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         recentInstructionPcs.fill(0L)
         recentInstructionPcIndex = 0
         recentInstructionPcCount = 0
-        instructionTracePcs.fill(0L)
-        instructionTraceWords.fill(0)
-        instructionTraceIndex = 0
-        instructionTraceCount = 0
         frozenLoopTrace = null
         totalSteps = 0L
     }
@@ -346,39 +324,6 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
      * common retail cartridges. This is still an HLE diagnostic shortcut,
      * not execution of the console's PIF boot ROM.
      */
-    internal fun resetForCic6102Ipl3Diagnostic(entryPoint: Long, pal: Boolean) {
-        resetExecutionState(entryPoint)
-
-        // Register values follow the published Project64-derived R4300 boot
-        // state for CIC-6102. In particular s6 MUST be 0x3F, not 0x91 (6105).
-        gpr[1] = 1L
-        gpr[2] = 0x0EBDA536L
-        gpr[3] = 0x0EBDA536L
-        gpr[4] = 0xA536L
-        gpr[5] = 0xFFFF_FFFF_C0F1_D859UL.toLong()
-        gpr[6] = 0xFFFF_FFFF_A400_1F0CUL.toLong()
-        gpr[7] = 0xFFFF_FFFF_A400_1F08UL.toLong()
-        gpr[8] = 0xC0L
-        gpr[9] = 0L
-        gpr[10] = 0x40L
-        gpr[11] = 0xFFFF_FFFF_A400_0040UL.toLong()
-        gpr[12] = 0xFFFF_FFFF_ED10_D0B3UL.toLong()
-        gpr[13] = 0x1402_A4CCL
-        gpr[14] = 0x2DE1_08EAL
-        gpr[15] = 0x3103_E121L
-        gpr[19] = 0L // s3: cartridge boot
-        gpr[20] = if (pal) 0L else 1L // s4: PAL=0, NTSC=1
-        gpr[21] = 0L // s5: cold reset
-        gpr[22] = 0x3FL // s6: CIC-6102 checksum seed
-        gpr[23] = 0L // s7: legacy IPL2 version
-        gpr[24] = 3L
-        gpr[25] = 0xFFFF_FFFF_9DEB_B54FUL.toLong()
-        gpr[29] = 0xFFFF_FFFF_A400_1FF0UL.toLong()
-        gpr[31] = 0xFFFF_FFFF_A400_1550UL.toLong()
-
-        cp0[12] = 0x3400_0000L // Status
-        cp0[16] = 0x0006_E463L // Config
-    }
 
     /**
      * Approximate the register handoff from the PIF/ IPL2 boot path for a
@@ -386,57 +331,6 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
      * This is not a substitute for executing the PIF boot ROM or validating
      * the cartridge CIC checksum; it supplies the known 6105 NTSC/PAL seeds.
      */
-    internal fun resetForCic6105Ipl3Diagnostic(entryPoint: Long, pal: Boolean) {
-        resetExecutionState(entryPoint)
-
-        // CIC-6105 IPL2 handoff values, cross-checked against the documented
-        // PIF/boot register setup used by N64 IPL3 implementations.
-        // IPL3 depends on these values while descrambling itself and checking
-        // the first MiB of the cartridge; plausible-looking partial seeds fail.
-        gpr[1] = 0L // at
-        gpr[2] = 0xFFFF_FFFF_D173_1BE9UL.toLong() // v0
-        gpr[3] = 0xFFFF_FFFF_D173_1BE9UL.toLong() // v1
-        gpr[4] = 0x1BE9L // a0
-        gpr[5] = 0xFFFF_FFFF_F452_31E5UL.toLong() // a1
-        gpr[6] = 0xFFFF_FFFF_A400_1F0CUL.toLong() // a2
-        gpr[7] = 0xFFFF_FFFF_A400_1F08UL.toLong() // a3
-        gpr[8] = 0xC0L // t0
-        gpr[9] = 0L // t1
-        gpr[10] = 0x40L // t2
-        gpr[11] = 0xFFFF_FFFF_A400_0040UL.toLong() // t3: IPL3 entry in SP DMEM
-        gpr[12] = 0xFFFF_FFFF_D133_0BC3UL.toLong() // t4
-        gpr[13] = 0xFFFF_FFFF_D133_0BC3UL.toLong() // t5
-        gpr[14] = 0x2561_3A26L // t6
-        gpr[15] = 0x2EA0_4317L // t7
-        gpr[16] = 0L // s0
-        gpr[17] = 0L // s1
-        gpr[18] = 0L // s2
-        gpr[19] = 0L // s3: cartridge boot
-        gpr[20] = if (pal) 0L else 1L // s4: PAL=0, NTSC=1
-        gpr[21] = 0L // s5: cold reset
-        gpr[22] = 0x91L // s6: CIC-NUS-6105 checksum seed
-        gpr[23] = 6L // s7: IPL3 version
-        gpr[24] = 0L // t8
-        gpr[25] = 0xFFFF_FFFF_D73F_2993UL.toLong() // t9
-        gpr[26] = 0L // k0
-        gpr[27] = 0L // k1
-        gpr[28] = 0L // gp
-        gpr[29] = 0xFFFF_FFFF_A400_1FF0UL.toLong() // sp
-        gpr[30] = 0L // s8
-        gpr[31] = 0xFFFF_FFFF_A400_1554UL.toLong() // ra
-
-        // PIF boot ROM's CP0 state and the eight-word IPL2 stub required by
-        // CIC x105. IPL3 itself was copied into SP DMEM by the caller.
-        cp0[12] = 0x3400_0000L // Status
-        cp0[16] = 0x7006_E463L // Config
-        val ipl2ImemStub = intArrayOf(
-            0x3C0D_BFC0, 0x8DA8_07FCL.toInt(), 0x25AD_07C0, 0x3108_0080,
-            0x5500_FFFC, 0x3C0D_BFC0, 0x8DA8_0024L.toInt(), 0x3C0B_B000
-        )
-        for (index in ipl2ImemStub.indices) {
-            memoryBus.writeWord(0x0400_1000L + index * 4L, ipl2ImemStub[index])
-        }
-    }
 
     /** Executes one instruction; branches take effect after their delay slot. */
     fun step() {
@@ -444,10 +338,6 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         val instruction = fetchInstruction(pc)
         lastInstructionAddress = instructionAddress
         lastInstructionWord = instruction
-        instructionTracePcs[instructionTraceIndex] = instructionAddress
-        instructionTraceWords[instructionTraceIndex] = instruction
-        instructionTraceIndex = (instructionTraceIndex + 1) % instructionTracePcs.size
-        if (instructionTraceCount < instructionTracePcs.size) instructionTraceCount++
         totalSteps++
         // Keep the fixed-size PC ring updated every instruction, but only
         // scan it at the existing 64-instruction diagnostic cadence. Scanning
@@ -722,7 +612,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             0x27 -> writeRegister(rt, Integer.toUnsignedLong(readWord(effectiveAddress(a, signedImmediate)))) // LWU
             0x24 -> writeRegister(rt, readByte(effectiveAddress(a, signedImmediate)).toLong() and 0xFFL) // LBU
             0x25 -> writeRegister(rt, readHalf(effectiveAddress(a, signedImmediate)).toLong() and 0xFFFFL) // LHU
-            0x2C -> storeDoublewordLeft(effectiveAddress(a, signedImmediate, TlbAccess.STORE), b) // SDL
+            0x2C -> storeDoublewordLeft(effectiveAddress(a, signedImmediate, MemoryAccess.STORE), b) // SDL
             0x2D -> storeDoublewordRight(effectiveAddress(a, signedImmediate, TlbAccess.STORE), b) // SDR
             0x2A -> storeWordLeft(effectiveAddress(a, signedImmediate, TlbAccess.STORE), b.toInt()) // SWL
             0x28 -> writeByte(effectiveAddress(a, signedImmediate, TlbAccess.STORE), b.toByte()) // SB
@@ -766,11 +656,6 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         gpr[0] = 0L
     }
 
-    /**
-     * CP0 Random advances once per executed instruction and wraps at Wired.
-     * TLBWR must not repeatedly overwrite the same slot because Random was
-     * left at its reset value for the lifetime of the emulated CPU.
-     */
 
 
     /**
@@ -783,13 +668,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         return target32.toLong()
     }
 
-    /** Writes CP0 PageMask/EntryHi/EntryLo values into one software-managed TLB slot. */
 
-    /**
-     * Translate a TLB-mapped virtual address using paired pages. Returns null
-     * for a miss/invalid half. This interpreter currently reports faults rather
-     * than entering the architectural TLB exception vector.
-     */
 
     /** Fetches through the physical bus after direct-mapped KSEG0/KSEG1 translation. */
     private fun fetchInstruction(address: Long): Int {
