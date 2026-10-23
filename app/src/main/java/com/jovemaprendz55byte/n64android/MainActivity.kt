@@ -113,9 +113,9 @@ class MainActivity : Activity() {
         val core = N64EmulatorCore()
         try {
             core.loadRom(rom)
-            // The old PIF/IPL3 shortcut was removed. Refuse to start rather than
-            // running with uninitialized SP DMEM while the boot pipeline is rebuilt.
-            throw UnsupportedOperationException("Inicialização PIF/IPL3 está sendo reconstruída do zero; boot temporariamente indisponível.")
+            // Diagnostic IPL3 handoff: load the cartridge boot image into SP DMEM
+            // and enter at 0xA4000040. This bypasses the PIF ROM and is not full boot.
+            core.startIpl3DiagnosticExecution()
         } catch (error: Exception) {
             emulationRunning.set(false)
             showError("Não foi possível iniciar a CPU: " + (error.message ?: "erro desconhecido"))
