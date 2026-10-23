@@ -16,6 +16,8 @@ internal class RspCore(private val bus: N64MemoryBus) {
     private var vco = 0
     private var vcc = 0
     private var vce = 0
+    // Signed 48-bit accumulator, one value per vector lane.
+    private val accumulator = LongArray(8)
     var pc: Int = 0
         private set
     /** IMEM offset of the most recently attempted instruction, useful for fault diagnostics. */
@@ -42,6 +44,7 @@ internal class RspCore(private val bus: N64MemoryBus) {
         vco = 0
         vcc = 0
         vce = 0
+        accumulator.fill(0L)
         pc = entryPoint
         pendingBranchTarget = null
         halted = false
@@ -174,6 +177,16 @@ internal class RspCore(private val bus: N64MemoryBus) {
             0x01 -> when (rt) {
                 0x00 -> if (a < 0) pendingBranchTarget = (pc + (imm shl 2)) and 0xFFF // BLTZ
                 0x01 -> if (a >= 0) pendingBranchTarget = (pc + (imm shl 2)) and 0xFFF // BGEZ
+                0x00 -> {
+                    val product = left.toLong() * right.toLong()
+                    accumulator[lane] = wrapAccumulator48((product shl 1) + 0x8000L)
+                    saturateAccumulator(accumulator[lane] shr 16)
+                } // VMULF: signed fractional multiply with rounding.
+                0x08 -> {
+                    val product = left.toLong() * right.toLong()
+                    accumulator[lane] = wrapAccumulator48(accumulator[lane] + (product shl 1))
+                    saturateAccumulator(accumulator[lane] shr 16)
+                } // VMACF: signed fractional multiply-accumulate.
                 0x10 -> {
                     writeReg(31, (instructionPc + 8) and 0xFFF)
                     if (a < 0) pendingBranchTarget = (pc + (imm shl 2)) and 0xFFF
@@ -349,6 +362,17 @@ internal class RspCore(private val bus: N64MemoryBus) {
      * Selects the RSP vector source lane. Selectors 0..7 use the hardware's
      * halfword swizzles; selectors 8..15 broadcast one selected halfword.
      */
+    /** Keep accumulator arithmetic within the RSP's signed 48-bit range. */
+    private fun wrapAccumulator48(value: Long): Long {
+        val masked = value and 0x0000_FFFF_FFFF_FFFFL
+        return if (masked and 0x0000_8000_0000_0000L != 0L) {
+            masked or -0x0001_0000_0000_0000L
+        } else masked
+    }
+
+    private fun saturateAccumulator(value: Long): Int =
+        value.coerceIn(Short.MIN_VALUE.toLong(), Short.MAX_VALUE.toLong()).toInt()
+
     private fun selectedVectorLane(element: Int, lane: Int): Int = when (element) {
         0 -> lane
         1 -> lane and 0b110
