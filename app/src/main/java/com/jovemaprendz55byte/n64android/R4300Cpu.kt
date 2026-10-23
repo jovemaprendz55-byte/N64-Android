@@ -466,6 +466,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         instructionTraceIndex = 0
         instructionTraceCount = 0
         firstTlbFaultHistory = null
+        firstTlbFaultContext = null
         firstTlbFaultTlbHistory = null
         tlbWriteHistory.clear()
         frozenLoopTrace = null
