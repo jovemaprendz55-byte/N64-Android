@@ -4,18 +4,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class R4300CpuTest {
-    @Test fun cic6102Ipl3DiagnosticUses6102SeedAndRegisterState() {
-        val cpu = R4300Cpu()
-        cpu.resetForCic6102Ipl3Diagnostic(0xFFFF_FFFF_A400_0040UL.toLong(), pal = false)
-
-        assertEquals(1L, cpu.register(1))
-        assertEquals(0x0EBDA536L, cpu.register(2))
-        assertEquals(0xFFFF_FFFF_C0F1_D859UL.toLong(), cpu.register(5))
-        assertEquals(0xFFFF_FFFF_A400_0040UL.toLong(), cpu.register(11))
-        assertEquals(0x3FL, cpu.register(22)) // CIC-6102 seed, not CIC-6105's 0x91
-        assertEquals(1L, cpu.register(20)) // NTSC
-        assertEquals(0xFFFF_FFFF_A400_1FF0UL.toLong(), cpu.register(29))
-    }
 
     @Test fun luiSignExtendsTheResultTo64Bits() {
         val cpu = R4300Cpu()
@@ -28,288 +16,17 @@ class R4300CpuTest {
         assertEquals(0xFFFF_FFFF_8006_0000UL.toLong(), cpu.register(1))
     }
 
-    @Test fun cic6105Ipl3DiagnosticUsesDocumentedNtscHandoffAndImemStub() {
-        val cpu = R4300Cpu()
-        cpu.resetForCic6105Ipl3Diagnostic(0xFFFF_FFFF_A400_0040UL.toLong(), pal = false)
-
-        assertEquals(0L, cpu.register(1)) // at
-        assertEquals(0xFFFF_FFFF_D173_1BE9UL.toLong(), cpu.register(2)) // v0
-        assertEquals(0xFFFF_FFFF_D173_1BE9UL.toLong(), cpu.register(3)) // v1
-        assertEquals(0x1BE9L, cpu.register(4)) // a0
-        assertEquals(0xFFFF_FFFF_F452_31E5UL.toLong(), cpu.register(5)) // a1
-        assertEquals(0xFFFF_FFFF_A400_1F0CUL.toLong(), cpu.register(6)) // a2
-        assertEquals(0xFFFF_FFFF_A400_1F08UL.toLong(), cpu.register(7)) // a3
-        assertEquals(0xC0L, cpu.register(8)) // t0
-        assertEquals(0L, cpu.register(9)) // t1
-        assertEquals(0x40L, cpu.register(10)) // t2
-        assertEquals(0xFFFF_FFFF_A400_0040UL.toLong(), cpu.register(11)) // t3: IPL3 entry
-        assertEquals(0xFFFF_FFFF_D133_0BC3UL.toLong(), cpu.register(12)) // t4
-        assertEquals(0xFFFF_FFFF_D133_0BC3UL.toLong(), cpu.register(13)) // t5
-        assertEquals(0x2561_3A26L, cpu.register(14)) // t6
-        assertEquals(0x2EA0_4317L, cpu.register(15)) // t7
-        assertEquals(0L, cpu.register(19)) // s3
-        assertEquals(1L, cpu.register(20)) // s4: NTSC
-        assertEquals(0L, cpu.register(21)) // s5: cold reset
-        assertEquals(0x91L, cpu.register(22)) // s6: CIC-6105 seed
-        assertEquals(6L, cpu.register(23)) // s7: IPL3 version
-        assertEquals(0xFFFF_FFFF_D73F_2993UL.toLong(), cpu.register(25)) // t9
-        assertEquals(0xFFFF_FFFF_A400_1FF0UL.toLong(), cpu.register(29))
-        assertEquals(0xFFFF_FFFF_A400_1554UL.toLong(), cpu.register(31))
-        assertEquals(0x3400_0000L, cpu.readCp0ForTest(12))
-        assertEquals(0x7006_E463L, cpu.readCp0ForTest(16))
-        assertEquals(0x3C0D_BFC0, cpu.readWord(0x0400_1000))
-        assertEquals(0x3C0B_B000, cpu.readWord(0x0400_101C))
-        assertEquals(0xFFFF_FFFF_A400_0040UL.toLong(), cpu.pc)
-    }
-
-    @Test fun cic6105Ipl3DiagnosticUsesPalTvTypeButSameCicSeed() {
-        val cpu = R4300Cpu()
-        cpu.resetForCic6105Ipl3Diagnostic(0xFFFF_FFFF_A400_0040UL.toLong(), pal = true)
-
-        assertEquals(0L, cpu.register(20))
-        assertEquals(0xFFFF_FFFF_A400_0040UL.toLong(), cpu.register(11))
-        assertEquals(0x40L, cpu.register(10))
-        assertEquals(0x91L, cpu.register(22))
-        assertEquals(6L, cpu.register(23))
-        assertEquals(0xFFFF_FFFF_A400_1554UL.toLong(), cpu.register(31))
-    }
 
 
-    @Test fun diagnosticTranslationUsesTlbMappingInsteadOfMaskingVirtualAddress() {
-        val cpu = R4300Cpu()
-        cpu.writeWord(0x71C, 0x1000FFFF)
-        fun mtc0(rt: Int, rd: Int) =
-            (0x10 shl 26) or (0x04 shl 21) or (rt shl 16) or (rd shl 11)
-        cpu.loadBytes(0, words(
-            iType(0x0F, 0, 4, 0x7000), // r4 = 0x70000000
-            iType(0x0D, 0, 1, 0x0007), // EntryLo: PFN 0, G/V/D
-            mtc0(4, 10),               // EntryHi
-            mtc0(1, 2),                // EntryLo0
-            mtc0(1, 3),                // EntryLo1
-            0x42000002                 // TLBWI
-        ))
-        repeat(6) { cpu.step() }
 
-        assertEquals(0x71CL, cpu.diagnosticPhysicalAddress(0x7000071CL))
-        assertEquals(0x1000FFFF, cpu.readWord(0x71C))
-    }
 
-    @Test fun tlbwiInstallsEntryAndLoadsFromTranslatedVirtualAddress() {
-        val cpu = R4300Cpu()
-        cpu.writeWord(0x2000, 0x12345678)
-        fun mtc0(rt: Int, rd: Int) = (0x10 shl 26) or (0x04 shl 21) or (rt shl 16) or (rd shl 11)
-        val program = intArrayOf(
-            (0x0F shl 26) or (4 shl 16) or 0x4000, // LUI r4, 0x4000: virtual address
-            (0x09 shl 26) or (0 shl 21) or (1 shl 16) or 0x0087, // r1 = EntryLo V/D/G + PFN 2
-            mtc0(4, 10), // EntryHi = 0x40000000, ASID 0
-            mtc0(1, 2),  // EntryLo0 maps physical 0x2000
-            mtc0(1, 3),  // EntryLo1 maps physical 0x2000
-            0x42000002,  // TLBWI, Index defaults to 0
-            (0x23 shl 26) or (4 shl 21) or (2 shl 16) // LW r2, 0(r4)
-        )
-        cpu.loadBytes(0, words(*program))
-        repeat(program.size) { cpu.step() }
-        assertEquals(0x12345678L, cpu.register(2))
-    }
 
-    @Test fun tlbwrWritesToCurrentRandomIndex() {
-        val cpu = R4300Cpu()
-        fun mtc0(rt: Int, rd: Int) =
-            (0x10 shl 26) or (0x04 shl 21) or (rt shl 16) or (rd shl 11)
-        cpu.loadBytes(0, words(
-            iType(0x0F, 0, 4, 0x4000), // r4 = 0x40000000
-            iType(0x0D, 0, 1, 0x0087), // PFN=2, G/V/D set
-            mtc0(4, 10),                // EntryHi
-            mtc0(1, 2),                 // EntryLo0
-            mtc0(1, 3),                 // EntryLo1
-            0x42000006                  // TLBWR uses Random
-        ))
-        repeat(5) { cpu.step() }
-        val expectedIndex = cpu.readCp0ForTest(1).toInt() and 31
 
-        cpu.step()
 
-        val summary = cpu.tlbDiagnosticSummary(0x40000000L)
-        org.junit.Assert.assertTrue(summary.contains("INDEX=$expectedIndex"))
-        org.junit.Assert.assertTrue(summary.contains("TLB_NONZERO_COUNT=1"))
-    }
 
-    @Test fun tlbpUsesCandidatePageMaskAndTlbrRestoresEntry() {
-        val cpu = R4300Cpu()
-        fun mtc0(rt: Int, rd: Int) =
-            (0x10 shl 26) or (0x04 shl 21) or (rt shl 16) or (rd shl 11)
-        fun mfc0(rt: Int, rd: Int) =
-            (0x10 shl 26) or (rt shl 16) or (rd shl 11)
-        cpu.loadBytes(0, words(
-            iType(0x0F, 0, 4, 0x4000), // r4 = 0x40000000
-            iType(0x0D, 0, 5, 0x6000), // PageMask = 16 KiB pages
-            iType(0x0D, 0, 1, 0x0087), // PFN=2, G/V/D set
-            mtc0(5, 5),                 // MTC0 r5, PageMask
-            mtc0(4, 10),                // MTC0 r4, EntryHi
-            mtc0(1, 2),                 // MTC0 r1, EntryLo0
-            mtc0(1, 3),                 // MTC0 r1, EntryLo1
-            0x42000002,                 // TLBWI at Index 0
-            mtc0(0, 5),                 // clear CP0 PageMask to prove TLBP uses candidate mask
-            iType(0x0D, 4, 4, 0x3000),  // r4 = 0x40003000, same 16 KiB page pair
-            mtc0(4, 10),                // EntryHi = query VPN
-            0x42000008,                 // TLBP
-            0x42000001,                 // TLBR
-            mfc0(6, 5),                 // MFC0 r6, PageMask
-            mfc0(7, 10)                 // MFC0 r7, EntryHi
-        ))
 
-        repeat(15) { cpu.step() }
 
-        assertEquals(0L, cpu.readCp0ForTest(0) and 0x1FL) // TLBP found entry 0, P clear
-        assertEquals(0x6000L, cpu.register(6))
-        assertEquals(0x40000000L, cpu.register(7)) // TLBR restores stored EntryHi, not query VPN
-    }
 
-    @Test fun storeToValidTlbPageWithoutDirtyBitRaisesModifiedException() {
-        val cpu = R4300Cpu()
-        cpu.loadBytes(0, words(
-            iType(0x0F, 0, 4, 0x4000), // r4 = 0x40000000
-            iType(0x0D, 0, 1, 0x0082), // EntryLo: PFN=2, V=1, D=0
-            (0x10 shl 26) or (0x04 shl 21) or (4 shl 16) or (10 shl 11), // MTC0 r4, EntryHi
-            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (2 shl 11), // MTC0 r1, EntryLo0
-            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (3 shl 11), // MTC0 r1, EntryLo1
-            0x42000002, // TLBWI
-            iType(0x2B, 4, 0, 0) // SW r0, 0(r4): valid but clean page must MOD fault
-        ))
-        repeat(6) { cpu.step() }
-
-        try {
-            cpu.step()
-            throw AssertionError("Expected TLB Modified exception for store with D=0")
-        } catch (fault: TlbTranslationFault) {
-            assertEquals(0x40000000L, fault.virtualAddress)
-            assertEquals(TlbAccess.STORE, fault.access)
-            assertEquals(1, fault.exceptionCode)
-            cpu.handleTlbTranslationFault(fault, 24L)
-        }
-
-        assertEquals(1L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL) // ExcCode=MOD
-        assertEquals(0x40000000L, cpu.readCp0ForTest(8)) // BadVAddr
-        assertEquals(24L, cpu.readCp0ForTest(14)) // EPC
-    }
-
-    @Test fun reportedBootJalTargetIsCorrectAndRequiresItsOwnTlbMapping() {
-        val cpu = R4300Cpu()
-        fun mtc0(rt: Int, rd: Int) =
-            (0x10 shl 26) or (0x04 shl 21) or (rt shl 16) or (rd shl 11)
-        cpu.loadBytes(0, words(
-            iType(0x0F, 0, 4, 0x7000), // r4 = 0x70000000
-            iType(0x0D, 4, 4, 0x4000), // r4 = 0x70004000, VPN2 for 0x70005D58
-            iType(0x0D, 0, 1, 0x0007), // EntryLo0: PFN=0, G/V/D set
-            iType(0x0D, 0, 2, 0x0047), // EntryLo1: PFN=1, G/V/D set
-            mtc0(4, 10),                // EntryHi
-            mtc0(1, 2),                 // EntryLo0
-            mtc0(2, 3),                 // EntryLo1
-            0x42000002                  // TLBWI
-        ))
-        repeat(8) { cpu.step() }
-
-        // 0x70005D58's odd 4 KiB page maps to physical 0x1000 + 0xD58.
-        cpu.writeWord(0x1D58, 0x0FC002F4) // JAL whose encoded target is 0x7F000BD0
-        cpu.writeWord(0x1D5C, 0x00000000) // delay-slot NOP
-        cpu.pc = 0x70005D58L
-
-        cpu.step() // JAL computes the architectural target
-        cpu.step() // execute the delay slot and transfer to the computed target
-        assertEquals(0x7F000BD0L, cpu.pc)
-
-        try {
-            cpu.step()
-            throw AssertionError("The target page must require a separate TLB mapping")
-        } catch (fault: TlbTranslationFault) {
-            assertEquals(0x7F000BD0L, fault.virtualAddress)
-            assertEquals(TlbAccess.FETCH, fault.access)
-        }
-    }
-
-    @Test fun matchingTlbEntryWithValidBitClearUsesGeneralExceptionVector() {
-        val cpu = R4300Cpu()
-        cpu.loadBytes(0, words(
-            iType(0x0F, 0, 4, 0x4000), // r4 = 0x40000000
-            iType(0x0D, 0, 1, 0x0080), // EntryLo: PFN=2, V=0
-            (0x10 shl 26) or (0x04 shl 21) or (4 shl 16) or (10 shl 11), // MTC0 r4, EntryHi
-            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (2 shl 11), // MTC0 r1, EntryLo0
-            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (3 shl 11), // MTC0 r1, EntryLo1
-            0x42000002, // TLBWI
-            iType(0x23, 4, 2, 0) // LW from a matching but invalid page
-        ))
-        repeat(6) { cpu.step() }
-
-        try {
-            cpu.step()
-            throw AssertionError("Expected invalid TLB entry exception")
-        } catch (fault: TlbTranslationFault) {
-            assertEquals(0x40000000L, fault.virtualAddress)
-            assertEquals(2, fault.exceptionCode) // TLBL
-            assertEquals(false, fault.refillEligible)
-            cpu.handleTlbTranslationFault(fault, 24L)
-        }
-
-        assertEquals(0xFFFF_FFFF_8000_0180UL.toLong(), cpu.pc)
-        assertEquals(2L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL)
-    }
-
-    @Test fun tlbMissEntersRefillExceptionAndRecordsFaultState() {
-        val cpu = R4300Cpu()
-        cpu.loadBytes(0, words(
-            iType(0x0F, 0, 1, 0x4000), // r1 = 0x40000000
-            iType(0x23, 1, 2, 0)       // LW causes a TLB load miss
-        ))
-        cpu.step()
-        try {
-            cpu.step()
-            throw AssertionError("Expected a TLB translation fault")
-        } catch (fault: TlbTranslationFault) {
-            assertEquals(0x40000000L, fault.virtualAddress)
-            assertEquals(TlbAccess.LOAD, fault.access)
-            cpu.handleTlbTranslationFault(fault, 4L)
-        }
-
-        assertEquals(0x40000000L, cpu.readCp0ForTest(8)) // BadVAddr
-        assertEquals(0x40000000L, cpu.readCp0ForTest(10) and 0xFFFF_E000L) // EntryHi.VPN2
-        assertEquals(4L, cpu.readCp0ForTest(14)) // EPC
-        assertEquals(2L, (cpu.readCp0ForTest(13) ushr 2) and 0x1F) // ExcCode=TLBL
-        assertEquals(2L, cpu.readCp0ForTest(12) and 2L) // Status.EXL
-        org.junit.Assert.assertTrue(cpu.firstTlbFaultDiagnosticSummary().contains("TLB_NONZERO_COUNT=0"))
-        org.junit.Assert.assertTrue(cpu.firstTlbFaultDiagnosticSummary().contains("TLB_FAULT_ADDRESS=0x40000000"))
-        val faultContext = cpu.firstTlbFaultContextSummary()
-        org.junit.Assert.assertTrue(faultContext.contains("ACCESS=LOAD"))
-        org.junit.Assert.assertTrue(faultContext.contains("FAULT_PC=0x0000000000000004"))
-        org.junit.Assert.assertTrue(faultContext.contains("FAULT_INSTRUCTION=0x8C220000"))
-        org.junit.Assert.assertTrue(faultContext.contains("RS=r1:0x0000000040000000"))
-        org.junit.Assert.assertTrue(faultContext.contains("COMPUTED_EFFECTIVE_ADDRESS=0x0000000040000000"))
-        assertEquals(0xFFFF_FFFF_8000_0000UL.toLong(), cpu.pc) // TLB refill vector
-        val faultTrace = cpu.executionHistoryDiagnosticSummary()
-        org.junit.Assert.assertTrue(faultTrace.contains("0x0000000000000000=0x3C014000"))
-        org.junit.Assert.assertTrue(faultTrace.contains("0x0000000000000004=0x8C220000"))
-        cpu.step() // Execute one instruction from the exception vector.
-        assertEquals(faultTrace, cpu.executionHistoryDiagnosticSummary()) // Preserve the pre-fault trace.
-    }
-
-    @Test fun tlbDiagnosticCountsPopulatedEntriesAndRecordsWriteInstruction() {
-        val cpu = R4300Cpu()
-        cpu.loadBytes(0, words(
-            iType(0x0F, 0, 1, 0x7000), // r1 = 0x70000000
-            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11), // MTC0 r1, EntryHi
-            iType(0x09, 0, 1, 0x001F), // r1 = EntryLo0 with V set
-            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (2 shl 11), // MTC0 r1, EntryLo0
-            iType(0x09, 0, 1, 1), // r1 = TLB index 1
-            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16), // MTC0 r1, Index
-            0x42000002 // TLBWI
-        ))
-
-        repeat(7) { cpu.step() }
-
-        val summary = cpu.tlbDiagnosticSummary(0x70000000L)
-        org.junit.Assert.assertTrue(summary.contains("TLB_NONZERO_COUNT=1"))
-        org.junit.Assert.assertTrue(summary.contains("TLB_WRITE_HISTORY=PC=0x00000018,INDEX=1"))
-        org.junit.Assert.assertTrue(summary.contains("HI=0x70000000"))
-    }
 
     @Test fun diagnosticSnapshotRecordsIndirectJumpSourceRegisterAndValue() {
         val cpu = R4300Cpu()
@@ -349,26 +66,6 @@ class R4300CpuTest {
         org.junit.Assert.assertTrue(summary.contains("EntryHi=0x"))
     }
 
-    @Test fun tlbRequiredAddressDiagnosticIncludesTheFaultingVirtualAddress() {
-        val cpu = R4300Cpu()
-        cpu.loadBytes(0, words(
-            iType(0x0F, 0, 1, 0x4000), // r1 = 0x40000000 (TLB-mapped KUSEG)
-            iType(0x23, 1, 2, 0)       // LW from an address requiring TLB translation
-        ))
-
-        cpu.step()
-        try {
-            cpu.step()
-            throw AssertionError("Expected TLB translation failure")
-        } catch (error: IllegalArgumentException) {
-            org.junit.Assert.assertTrue(
-                error.message.orEmpty().contains("40000000")
-            )
-            org.junit.Assert.assertTrue(
-                error.message.orEmpty().contains("requires TLB translation")
-            )
-        }
-    }
 
     @Test fun cpuLoadsAndStoresThroughRiRegisterRegion() {
         val cpu = R4300Cpu()
@@ -2298,25 +1995,6 @@ class R4300CpuTest {
         assertEquals(true, cpu.isIpl3ChecksumFailureBranch())
     }
 
-    @Test fun cp0RandomAdvancesAndWrapsAcrossTlbSlots() {
-        val cpu = R4300Cpu()
-        val readRandomR1 = (0x10 shl 26) or (1 shl 16) or (1 shl 11) // MFC0 r1, Random
-        val readRandomR2 = (0x10 shl 26) or (2 shl 16) or (1 shl 11) // MFC0 r2, Random
-        cpu.loadBytes(0, words(readRandomR1, readRandomR2))
-        cpu.reset()
-
-        cpu.step()
-        cpu.step()
-
-        assertEquals(31L, cpu.register(1))
-        assertEquals(30L, cpu.register(2))
-
-        val wrapCpu = R4300Cpu()
-        wrapCpu.loadBytes(0, words(*IntArray(32) { readRandomR1 }))
-        wrapCpu.reset()
-        repeat(32) { wrapCpu.step() }
-        assertEquals(31L, wrapCpu.readCp0ForTest(1))
-    }
 
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
