@@ -306,7 +306,6 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                 val selectedLo = if (odd) entry.entryLo1 else entry.entryLo0
                 val selectedValid = (selectedLo and 2) != 0
                 val selectedDirty = (selectedLo and 4) != 0
-                val usable = vpnMatches && (global || asidMatches) && selectedValid
                 if (vpnMatches && (global || asidMatches)) matchingVpnCount++
                 entries += "TLB_ENTRY_$index=PM=0x%08X,HI=0x%08X,LO0=0x%08X,LO1=0x%08X,VPN_MATCH=%s,ASID_MATCH=%s,GLOBAL=%s,SELECTED=%s,VALID=%s,DIRTY=%s,WRITE_ALLOWED=%s".format(
                     java.util.Locale.ROOT,
