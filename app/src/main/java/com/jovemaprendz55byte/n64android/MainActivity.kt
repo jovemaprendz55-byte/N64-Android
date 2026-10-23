@@ -286,7 +286,7 @@ class MainActivity : Activity() {
                             val shortHistory = historyTraceText.split(" | ").takeLast(12).joinToString(" | ")
                             gameStatus.text = "CPU: $instructionText instruções | PC $pcText | quadros exibidos: $frameText\n" +
                                 "Quadros reais: $validFrameText | diagnóstico: $diagnosticFrameText\n" +
-                                "$videoText\n$cpuTraceText\n$fullCpuText\n$bootMemoryText\nHist.: $shortHistory"
+                                "$videoText\\n$rspText\n$cpuTraceText\n$fullCpuText\n$bootMemoryText\nHist.: $shortHistory"
                         }
                     }
                 }
