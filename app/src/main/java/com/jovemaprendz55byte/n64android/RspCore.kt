@@ -12,6 +12,10 @@ internal class RspCore(private val bus: N64MemoryBus) {
     private val vector = Array(32) { ShortArray(8) }
     private var hi = 0
     private var lo = 0
+    // Vector condition flags are packed as one bit per lane in each byte.
+    private var vco = 0
+    private var vcc = 0
+    private var vce = 0
     var pc: Int = 0
         private set
     /** IMEM offset of the most recently attempted instruction, useful for fault diagnostics. */
@@ -35,6 +39,9 @@ internal class RspCore(private val bus: N64MemoryBus) {
         vector.forEach { it.fill(0) }
         hi = 0
         lo = 0
+        vco = 0
+        vcc = 0
+        vce = 0
         pc = entryPoint
         pendingBranchTarget = null
         halted = false
@@ -133,10 +140,25 @@ internal class RspCore(private val bus: N64MemoryBus) {
                         getVectorByte(vectorRegister, element + 1)
                     writeReg(rt, value.toShort().toInt()) // MFC2 reads two consecutive bytes.
                 }
+                0x02 -> { // CFC2: read vector condition flags.
+                    val value = when (cop0rd) {
+                        0 -> vco
+                        1 -> vcc
+                        2 -> vce
+                        else -> unsupported(instruction, instructionPc)
+                    }
+                    writeReg(rt, value.toShort().toInt())
+                }
                 0x04 -> {
                     setVectorByte(vectorRegister, element, b ushr 8)
                     if (element != 15) setVectorByte(vectorRegister, element + 1, b)
                 } // MTC2 writes two bytes, except element 15 writes only the high byte.
+                0x06 -> when (cop0rd) { // CTC2: write vector condition flags.
+                    0 -> vco = b and 0xFFFF
+                    1 -> vcc = b and 0xFFFF
+                    2 -> vce = b and 0xFF
+                    else -> unsupported(instruction, instructionPc)
+                }
                 in 0x10..0x1F -> executeVectorAlu(instruction, instructionPc)
                 else -> unsupported(instruction, instructionPc)
             }
@@ -256,21 +278,62 @@ internal class RspCore(private val bus: N64MemoryBus) {
         // lane. Snapshot them first so vd may safely alias vs or vt when swizzling.
         val sourceVs = vector[vs].copyOf()
         val sourceVt = vector[vt].copyOf()
+        var nextVco = 0
+        var nextVcc = 0
         for (lane in 0 until 8) {
             val left = sourceVs[lane].toInt()
             val right = sourceVt[selectedVectorLane(element, lane)].toInt()
+            val leftUnsigned = left and 0xFFFF
+            val rightUnsigned = right and 0xFFFF
             val result = when (funct) {
-                0x10 -> (left + right).coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()) // VADD signed saturation; VCO carry-in not modeled
-                0x11 -> (left - right).coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()) // VSUB signed saturation; VCO carry-in not modeled
+                0x10 -> {
+                    val carryIn = (vco ushr lane) and 1
+                    (left + right + carryIn).coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+                } // VADD consumes and clears VCO.
+                0x11 -> {
+                    val borrowIn = (vco ushr lane) and 1
+                    (left - right - borrowIn).coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+                } // VSUB consumes and clears VCO.
+                0x13 -> when {
+                    left < 0 && right < 0 -> -right
+                    left < 0 -> right
+                    else -> left
+                } // VABS; signed 16-bit wrap is intentional.
+                0x14 -> {
+                    val sum = leftUnsigned + rightUnsigned
+                    if (sum > 0xFFFF) nextVco = nextVco or (1 shl lane)
+                    sum and 0xFFFF
+                } // VADDC sets per-lane unsigned carry.
+                0x15 -> {
+                    val diff = leftUnsigned - rightUnsigned
+                    if (leftUnsigned < rightUnsigned) nextVco = nextVco or (1 shl lane)
+                    if (diff != 0) nextVco = nextVco or (1 shl (lane + 8))
+                    diff and 0xFFFF
+                } // VSUBC sets borrow and nonzero flags.
+                0x20 -> if (left < right) left else right // VLT
+                0x21 -> if (left == right) left else right // VEQ
+                0x22 -> if (left != right) left else right // VNE
+                0x23 -> if (left >= right) left else right // VGE
                 0x28 -> left and right // VAND
                 0x29 -> (left and right).inv() // VNAND
                 0x2A -> left or right // VOR
                 0x2B -> (left or right).inv() // VNOR
                 0x2C -> left xor right // VXOR
                 0x2D -> (left xor right).inv() // VNXOR
+                0x2E -> left and right.inv() // VANDC
+                0x2F -> left or right.inv() // VORC
                 else -> unsupported(instruction, address)
             }
             vector[vd][lane] = result.toShort()
+        }
+        when (funct) {
+            0x10, 0x11 -> vco = 0 // VADD/VSUB clear carry/borrow flags after consuming them.
+            0x14, 0x15 -> vco = nextVco
+            0x20, 0x21, 0x22, 0x23 -> {
+                vcc = nextVcc
+                vco = 0
+                vce = 0
+            }
         }
     }
 
