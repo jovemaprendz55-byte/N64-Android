@@ -149,7 +149,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         cp0[8] = fault.virtualAddress // BadVAddr
         cp0[4] = ((cp0[4].toInt() and 0xFF80_000F.toInt()) or
             ((virtual ushr 9) and 0x007F_FFF0)).toLong() // Context.BadVPN2
-        cp0[10] = ((virtual and 0xFFFF_E000) or (cp0[10].toInt() and 0xFF)).toLong() // EntryHi
+        cp0[10] = ((virtual and 0xFFFF_E000.toInt()) or (cp0[10].toInt() and 0xFF)).toLong() // EntryHi
         val exceptionCode = if (fault.access == TlbAccess.STORE) 3 else 2 // TLBS / TLBL
         cp0[13] = ((cp0[13].toInt() and 0xFFFF_FF83.toInt()) or (exceptionCode shl 2)).toLong()
         if (!alreadyExl) cp0[14] = faultingPc // EPC
