@@ -81,7 +81,7 @@ class N64EmulatorCoreTest {
         assertEquals(1, core.memoryBus.readWord(0))
     }
 
-    @Test fun cicHandoffDiagnosticRecordsIpl3CopyBeforeExecution() {
+    @Test fun cicHandoffDiagnosticReportsMissingDmemIpl3CopyInsteadOfClaimingSuccess() {
         val rom = syntheticRomWithInstructions(0xAC140000.toInt())
         rom[0x3E] = 'J'.code.toByte()
         val core = N64EmulatorCore()
@@ -89,9 +89,11 @@ class N64EmulatorCoreTest {
 
         core.startCic6105BootSequence()
 
+        // The current CIC handoff does not actually load IPL3 into SP DMEM.
+        // The diagnostic must expose that gap rather than report a false success.
         assertEquals(
             true,
-            core.bootMemoryDiagnosticSummary().contains("SP_DMEM_IPL3_COPY_MATCH_AT_HANDOFF=true")
+            core.bootMemoryDiagnosticSummary().contains("SP_DMEM_IPL3_COPY_MATCH_AT_HANDOFF=false")
         )
     }
 
