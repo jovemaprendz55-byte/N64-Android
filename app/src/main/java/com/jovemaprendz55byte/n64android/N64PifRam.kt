@@ -53,14 +53,27 @@ internal class N64PifRam(
                 continue
             }
 
-            val rxLengthByte = ram.getOrNull(cursor + 1)?.toInt()?.and(0xFF) ?: break
+            // A malformed record must not leave stale response bytes looking valid.
+            // Mark the record's RX-length byte as failed when that byte exists, then
+            // stop parsing because the next record boundary can no longer be trusted.
+            val rxLengthByte = ram.getOrNull(cursor + 1)?.toInt()?.and(0xFF)
+            if (rxLengthByte == null) {
+                markError(cursor)
+                break
+            }
             val txLength = txLengthByte and 0x3F
             val rxLength = rxLengthByte and 0x3F
-            if (txLength == 0 || cursor + 2 + txLength > CONTROL_INDEX) break
+            if (txLength == 0 || cursor + 2 + txLength > CONTROL_INDEX) {
+                markError(cursor)
+                break
+            }
 
             val commandOffset = cursor + 2
             val responseOffset = commandOffset + txLength
-            if (responseOffset + rxLength > CONTROL_INDEX) break
+            if (responseOffset + rxLength > CONTROL_INDEX) {
+                markError(cursor)
+                break
+            }
             // Channel numbers advance for each command record, not for parser iterations.
             // This implementation has one physical controller on channel 0.
             if (channel == 0 && txLength >= 1) {
@@ -91,7 +104,13 @@ internal class N64PifRam(
     }
 
     private fun markError(commandStart: Int) {
-        ram[commandStart + 1] = ((ram[commandStart + 1].toInt() and 0xFF) or 0x80).toByte()
+        // A command record needs at least two bytes before the PIF control byte.
+        // Guard this helper because it is also used while handling truncated input.
+        val rxLengthIndex = commandStart + 1
+        if (commandStart >= 0 && rxLengthIndex < CONTROL_INDEX) {
+            ram[rxLengthIndex] =
+                ((ram[rxLengthIndex].toInt() and 0xFF) or 0x80).toByte()
+        }
     }
 
     private fun index(address: Long): Int {
