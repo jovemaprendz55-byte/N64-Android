@@ -56,15 +56,16 @@ class R4300CpuHiLoRegressionTest {
 
         val unsignedCpu = R4300Cpu()
         unsignedCpu.loadBytes(0, words(
-            iType(0x0D, 0, 1, -1),       // r1 = 0x00000000FFFFFFFF
+            iType(0x0F, 0, 1, 0xFFFF),   // LUI r1, 0xFFFF -> 0xFFFFFFFFFFFF0000
+            iType(0x0D, 1, 1, 0xFFFF),   // ORI r1, r1, 0xFFFF -> low 32 bits 0xFFFFFFFF
             iType(0x09, 0, 2, 2),        // ADDIU r2, r0, 2
             rType(1, 2, 0, 0, 0x1B),     // DIVU r1, r2
             rType(0, 0, 3, 0, 0x10),     // MFHI r3
             rType(0, 0, 4, 0, 0x12)      // MFLO r4
         ))
-        repeat(5) { unsignedCpu.step() }
+        repeat(6) { unsignedCpu.step() }
         assertEquals(1L, unsignedCpu.register(3))
-        assertEquals(32767L, unsignedCpu.register(4))
+        assertEquals(2147483647L, unsignedCpu.register(4))
     }
 
     @Test
