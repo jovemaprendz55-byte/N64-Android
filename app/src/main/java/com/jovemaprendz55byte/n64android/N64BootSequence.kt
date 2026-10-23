@@ -3,9 +3,10 @@ package com.jovemaprendz55byte.n64android
 /**
  * Clean-room cartridge boot helpers.
  *
- * The IPL3 program is part of the loaded cartridge image; this class copies
- * those bytes to SP DMEM. It deliberately does not pretend to implement the
- * proprietary PIF boot ROM or infer a CIC from the country byte alone.
+ * Copies the first 4 KiB boot region from the normalized cartridge image to
+ * SP DMEM. The IPL3 payload itself starts at ROM offset 0x40; copying the
+ * header bytes at 0x00..0x3F is a separate fact from the IPL3 entry point.
+ * This does not execute or emulate the proprietary PIF boot ROM.
  */
 internal class N64BootSequence(
     private val memoryBus: N64MemoryBus
@@ -14,22 +15,24 @@ internal class N64BootSequence(
 
     data class Ipl3Image(
         val entryPoint: Long,
+        /** Number of bytes copied to DMEM (the complete 4 KiB boot region). */
         val byteCount: Int,
         val region: Region,
-        val countryCode: Int
+        val countryCode: Int,
+        /** Number of cartridge bytes belonging to the IPL3 payload, excluding the 0x40-byte header. */
+        val ipl3PayloadByteCount: Int = BOOT_REGION_END - IPL3_PAYLOAD_START
     )
 
     /**
-     * Copy the cartridge IPL3 payload (ROM 0x40..0xFFF) to SP DMEM at 0x40.
-     * The caller must separately perform a verified PIF/CIC handoff before
-     * treating this as a real hardware boot.
+     * Copy ROM 0x000..0xFFF to SP DMEM 0x04000000..0x04000FFF.
+     * The IPL3 code begins at DMEM+0x40 and the CPU entry remains 0xA4000040.
      */
     fun loadIpl3(rom: ByteArray): Ipl3Image {
-        require(rom.size >= IPL3_ROM_END) {
-            "ROM is too small to contain the IPL3 image (need at least 0x1000 bytes)"
+        require(rom.size >= BOOT_REGION_END) {
+            "ROM is too small to contain the 4 KiB boot region (need at least 0x1000 bytes)"
         }
 
-        for (romOffset in IPL3_ROM_START until IPL3_ROM_END) {
+        for (romOffset in 0 until BOOT_REGION_END) {
             memoryBus.writeByte(SP_DMEM_BASE + romOffset, rom[romOffset])
         }
 
@@ -42,17 +45,18 @@ internal class N64BootSequence(
 
         return Ipl3Image(
             entryPoint = IPL3_ENTRY_POINT,
-            byteCount = IPL3_ROM_END - IPL3_ROM_START,
+            byteCount = BOOT_REGION_END,
             region = region,
-            countryCode = countryCode
+            countryCode = countryCode,
+            ipl3PayloadByteCount = BOOT_REGION_END - IPL3_PAYLOAD_START
         )
     }
 
     companion object {
-        private const val IPL3_ROM_START = 0x40
-        private const val IPL3_ROM_END = 0x1000
+        private const val IPL3_PAYLOAD_START = 0x40
+        private const val BOOT_REGION_END = 0x1000
         private const val COUNTRY_CODE_OFFSET = 0x3E
-        private const val SP_DMEM_BASE = 0x0400_0000L
-        const val IPL3_ENTRY_POINT = -1_543_503_808L
+        private const val SP_DMEM_BASE = N64SpMemory.DMEM_BASE
+        const val IPL3_ENTRY_POINT = -1_543_503_808L // 0xFFFFFFFFA4000040
     }
 }
