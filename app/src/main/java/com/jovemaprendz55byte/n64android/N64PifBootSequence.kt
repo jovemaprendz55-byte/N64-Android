@@ -25,6 +25,7 @@ internal class N64PifBootSequence(
     enum class CicFamily { CIC_6102, CIC_6105 }
 
     fun startCic6102(rom: ByteArray): BootHandoff {
+        memoryBus.resetPifRam()
         val image = N64BootSequence(memoryBus).loadIpl3(rom)
         require(image.region != N64BootSequence.Region.UNKNOWN) {
             "Cannot select PAL/NTSC CIC-6102 boot seed: unknown cartridge country code"
@@ -45,6 +46,7 @@ internal class N64PifBootSequence(
     }
 
     fun startCic6105(rom: ByteArray): BootHandoff {
+        memoryBus.resetPifRam()
         val image = N64BootSequence(memoryBus).loadIpl3(rom)
         require(image.region != N64BootSequence.Region.UNKNOWN) {
             "Cannot select PAL/NTSC CIC-6105 boot seed: unknown cartridge country code"
