@@ -121,7 +121,7 @@ internal class R4300Tlb(
         const val PAGE_SIZE = 1 shl PAGE_SHIFT
         private const val PAGE_OFFSET_MASK = 0xFFFL
         private const val ENTRYHI_VPN2_MASK = 0xFFFF_E000L
-        private const val ENTRYHI_MASK = 0xFFFF_FFFF_FFFF_E0FFUL.toLong()
+        private const val ENTRYHI_MASK = -0x1F01L
         private const val ASID_MASK = 0xFFL
         private const val ENTRYLO_MASK = 0x3FFF_FFFFL
         private const val ENTRYLO_PFN_SHIFT = 6
