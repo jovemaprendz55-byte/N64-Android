@@ -124,6 +124,26 @@ class R4300CpuTest {
         assertEquals(faultTrace, cpu.executionHistoryDiagnosticSummary()) // Preserve the pre-fault trace.
     }
 
+    @Test fun tlbDiagnosticCountsPopulatedEntriesAndRecordsWriteInstruction() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x7000), // r1 = 0x70000000
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11), // MTC0 r1, EntryHi
+            iType(0x09, 0, 1, 0x001F), // r1 = EntryLo0 with V set
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (2 shl 11), // MTC0 r1, EntryLo0
+            iType(0x09, 0, 1, 1), // r1 = TLB index 1
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16), // MTC0 r1, Index
+            0x42000002 // TLBWI
+        ))
+
+        repeat(7) { cpu.step() }
+
+        val summary = cpu.tlbDiagnosticSummary(0x70000000L)
+        org.junit.Assert.assertTrue(summary.contains("TLB_NONZERO_COUNT=1"))
+        org.junit.Assert.assertTrue(summary.contains("TLB_WRITE_HISTORY=PC=0x00000018,INDEX=1"))
+        org.junit.Assert.assertTrue(summary.contains("HI=0x70000000"))
+    }
+
     @Test fun diagnosticSnapshotRecordsIndirectJumpSourceRegisterAndValue() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
