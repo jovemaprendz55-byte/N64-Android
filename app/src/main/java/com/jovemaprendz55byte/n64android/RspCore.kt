@@ -335,6 +335,7 @@ internal class RspCore(private val bus: N64MemoryBus) {
                 0x23 -> if (left >= right) {
                     nextVcc = nextVcc or (1 shl lane); left
                 } else right // VGE
+                0x27 -> if ((vcc ushr lane) and 1 != 0) left else right // VMRG
                 0x28 -> left and right // VAND
                 0x29 -> (left and right).inv() // VNAND
                 0x2A -> left or right // VOR
