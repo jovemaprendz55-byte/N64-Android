@@ -170,6 +170,30 @@ class N64EmulatorCoreTest {
         assertEquals(0xFFFF_FFFF_B000_0048UL.toLong(), result.programCounter)
     }
 
+    @Test fun cpuSpStatusWriteAutomaticallyStartsAndAdvancesRsp() {
+        val rom = syntheticRomWithInstructions(
+            0x3C01A408, // LUI r1, 0xA4080000: SP_PC register window (KSEG1).
+            0xAC200000.toInt(), // SW r0, 0(r1): SP_PC = 0.
+            0x3C01A404, // LUI r1, 0xA4040000: SP register window.
+            0x34210010, // ORI r1, r1, 0x10: SP_STATUS.
+            0x24020001, // ADDIU r2, r0, 1: clear HALT.
+            0xAC220000.toInt(), // SW r2, 0(r1): release SP; scheduler should start RSP.
+            0x00000000 // NOP gives scheduler another RSP step (BREAK).
+        )
+        val core = N64EmulatorCore()
+        core.loadRom(rom)
+        core.memoryBus.writeWord(N64SpMemory.IMEM_BASE, 0x2401002A) // ADDIU R1, R0, 42
+        core.memoryBus.writeWord(N64SpMemory.IMEM_BASE + 4L, 0x0000000D) // BREAK
+
+        core.startExecution(0xFFFF_FFFF_B000_0040UL.toLong())
+        val result = core.executeSlice(7)
+
+        assertEquals(N64EmulatorCore.StopReason.INSTRUCTION_BUDGET_REACHED, result.stopReason)
+        // BREAK must have run automatically after the CPU released SP from HALT.
+        org.junit.Assert.assertTrue(core.memoryBus.isSpHalted())
+        org.junit.Assert.assertTrue(core.memoryBus.readWord(N64MemoryBus.SP_STATUS) and (1 shl 1) != 0)
+    }
+
     private fun syntheticRomWithInstructions(vararg instructions: Int): ByteArray {
         val rom = ByteArray(0x1000)
         rom[0] = 0x80.toByte()
