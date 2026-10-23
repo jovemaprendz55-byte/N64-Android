@@ -53,6 +53,47 @@ class R4300CpuMemoryAccessRegressionTest {
         assertThrows(IllegalArgumentException::class.java) { wordCpu.step() }
     }
 
+    @Test
+    fun doublewordLoadAndStoreRoundTripInBigEndianOrder() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 0x100),    // base = 0x100
+            iType(0x19, 0, 2, -2),       // r2 = 0xFFFFFFFFFFFFFFFE
+            iType(0x3F, 1, 2, 0),        // SD r2, 0(r1)
+            iType(0x37, 1, 3, 0)         // LD r3, 0(r1)
+        ))
+
+        repeat(4) { cpu.step() }
+
+        assertEquals(-2L, cpu.register(3))
+        for (offset in 0 until 7) {
+            assertEquals(0xFF.toByte(), cpu.readByte(0x100 + offset))
+        }
+        assertEquals(0xFE.toByte(), cpu.readByte(0x107))
+    }
+
+    @Test
+    fun doublewordLoadsAndStoresRejectMisalignedAddresses() {
+        val loadCpu = R4300Cpu()
+        loadCpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 0x101),    // misaligned base
+            iType(0x37, 1, 2, 0)         // LD r2, 0(r1)
+        ))
+        loadCpu.loadBytes(0x100, ByteArray(8))
+        loadCpu.step()
+        assertThrows(IllegalArgumentException::class.java) { loadCpu.step() }
+
+        val storeCpu = R4300Cpu()
+        storeCpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 0x101),    // misaligned base
+            iType(0x19, 0, 2, 42),       // r2 = 42
+            iType(0x3F, 1, 2, 0)         // SD r2, 0(r1)
+        ))
+        storeCpu.step()
+        storeCpu.step()
+        assertThrows(IllegalArgumentException::class.java) { storeCpu.step() }
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
