@@ -195,9 +195,9 @@ class R4300CpuTest {
         cpu.writeWord(0x1D5C, 0x00000000) // delay-slot NOP
         cpu.pc = 0x70005D58L
 
-        cpu.step()
-        org.junit.Assert.assertTrue(cpu.diagnosticSnapshot().contains("alvoUltimoSalto=0x000000007F000BD0"))
+        cpu.step() // JAL computes the architectural target
         cpu.step() // execute the delay slot and transfer to the computed target
+        assertEquals(0x7F000BD0L, cpu.pc)
 
         try {
             cpu.step()
