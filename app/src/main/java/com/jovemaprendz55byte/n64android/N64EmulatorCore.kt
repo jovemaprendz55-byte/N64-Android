@@ -27,7 +27,6 @@ class N64EmulatorCore(
     internal val memoryBus = N64MemoryBus(controllerPort = controllerPort)
     private val cpu = R4300Cpu(memoryBus)
     private val rsp = RspCore(memoryBus)
-    private val bootSequence = N64BootSequence(memoryBus)
     private val pifBootSequence = N64PifBootSequence(memoryBus, cpu)
     private var lastBootPreflight: N64BootInitialization.Preflight? = null
     private var bootIpl3CopyMatchedAtHandoff: Boolean? = null
@@ -122,8 +121,8 @@ class N64EmulatorCore(
         // from the detected CIC. Do not reset to CIC-6105 here: doing so overwrites
         // CIC-6102's 0x3F checksum seed with 0x91 and recreates the checksum loop.
         // Keep this explicit as a diagnostic shortcut; it still bypasses PIF ROM.
-        bootSequence.loadIpl3(rom)
-        // Capture the initial DMEM copy before IPL3 executes. The running IPL3 may
+        // Preflight above already copied the full boot region into DMEM.
+        // Capture that initial copy before IPL3 executes. The running IPL3 may
         // legitimately reuse DMEM as scratch, so a post-execution mismatch alone
         // cannot tell us whether the initial cartridge copy failed.
         captureIpl3CopyMatchAtHandoff(rom)
