@@ -113,8 +113,9 @@ class MainActivity : Activity() {
         val core = N64EmulatorCore()
         try {
             core.loadRom(rom)
-            // Development entry point only: the real PIF boot sequence is not implemented.
-            core.startIpl3DiagnosticExecution()
+            // Use the detected CIC-specific IPL3 handoff path. The actual PIF boot-ROM
+            // firmware is still missing; this is a better-defined handoff, not a full boot.
+            core.startCic6105BootSequence()
         } catch (error: Exception) {
             emulationRunning.set(false)
             showError("Não foi possível iniciar a CPU: " + (error.message ?: "erro desconhecido"))
