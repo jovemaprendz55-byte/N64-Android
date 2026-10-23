@@ -35,7 +35,7 @@ class N64EmulatorCoreTest {
     }
 
     @Test fun reportsUnsupportedInstructionInsteadOfCrashingCaller() {
-        val rom = syntheticRomWithInstructions(0xFFFFFFFF.toInt())
+        // Opcode 0x1C (SPECIAL2) is not implemented; 0xFFFFFFFF is a valid SD encoding.\n        val rom = syntheticRomWithInstructions(0x70000000)
         val core = N64EmulatorCore()
         core.loadRom(rom)
 
