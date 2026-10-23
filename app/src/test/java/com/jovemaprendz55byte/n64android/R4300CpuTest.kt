@@ -2058,7 +2058,7 @@ class R4300CpuTest {
     @Test fun detectsIpl3ChecksumFailureBranchAfterFetchingFromSpDmem() {
         val cpu = R4300Cpu()
         // IPL3 executes from SP DMEM through the KSEG1 alias A4000040.
-        cpu.writeWord(0x0400_0040L, 0x0411FFFF) // BGEZAL zero, -1
+        cpu.memoryBus.writeWord(0x0400_0040L, 0x0411FFFF) // BGEZAL zero, -1
         cpu.resetForCartridgeDiagnostic(0xFFFF_FFFF_A400_0040UL.toLong())
 
         cpu.step()
