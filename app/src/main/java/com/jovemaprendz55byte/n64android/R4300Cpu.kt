@@ -164,6 +164,34 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         pc = exceptionVector
     }
 
+    /** Compact snapshot of CP0 registers relevant to boot and address exceptions. */
+    internal fun cp0DiagnosticSummary(): String = buildString {
+        fun reg(name: String, index: Int) {
+            append(name).append("=0x")
+                .append(cp0[index].toULong().toString(16)
+                    .uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+        }
+        reg("Status", 12)
+        append(", ")
+        reg("Cause", 13)
+        append(", ")
+        reg("EPC", 14)
+        append(", ")
+        reg("BadVAddr", 8)
+        append(", ")
+        reg("Context", 4)
+        append(", ")
+        reg("EntryHi", 10)
+        append(", ")
+        reg("EntryLo0", 2)
+        append(", ")
+        reg("EntryLo1", 3)
+        append(", ")
+        reg("Index", 0)
+        append(", ")
+        reg("Random", 1)
+    }
+
     internal fun readCp0ForTest(index: Int): Long = cp0[index]
 
     internal fun piWriteDiagnosticSummary(): String =
