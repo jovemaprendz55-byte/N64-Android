@@ -6,7 +6,7 @@ package com.jovemaprendz55byte.n64android
  */
 internal object N64MemoryMap {
     enum class Region {
-        RDRAM, RDRAM_REGISTERS, SP_DMEM, SP_IMEM, SP_REGISTERS,
+        RDRAM, RDRAM_REGISTERS, SP_DMEM, SP_IMEM, SP_REGISTERS, CARTRIDGE_SRAM,
         DPC_REGISTERS, DPS_REGISTERS, MI_REGISTERS, VI_REGISTERS,
         AI_REGISTERS, PI_REGISTERS, RI_REGISTERS, SI_REGISTERS,
         CARTRIDGE_DOMAIN, PIF
@@ -29,6 +29,8 @@ internal object N64MemoryMap {
         Range(0x0460_0000L, 0x0460_0033L, Region.PI_REGISTERS),
         Range(0x0470_0000L, 0x0470_001FL, Region.RI_REGISTERS),
         Range(0x0480_0000L, 0x0480_001BL, Region.SI_REGISTERS),
+        // PI Domain 2 Address 1 is commonly backed by 32 KiB cartridge SRAM.
+        Range(0x0500_0000L, 0x05FF_FFFFL, Region.CARTRIDGE_SRAM),
         Range(0x1000_0000L, 0x1FBF_FFFFL, Region.CARTRIDGE_DOMAIN),
         Range(0x1FC0_0000L, 0x1FC0_07FFL, Region.PIF)
     )
