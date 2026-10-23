@@ -336,7 +336,9 @@ class MainActivity : Activity() {
     }
 
     private fun runIpl3Diagnostic(core: N64EmulatorCore, budget: Int): N64EmulatorCore.ExecutionResult {
-        throw UnsupportedOperationException("Diagnóstico IPL3 indisponível durante a reconstrução do boot PIF/IPL3.")
+        require(budget > 0) { "O orçamento de instruções deve ser positivo." }
+        core.startIpl3DiagnosticExecution()
+        return core.executeSlice(budget)
     }
 
     private fun runRomInstructionTest() {
