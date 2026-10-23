@@ -67,7 +67,7 @@ internal class N64BootInitialization(
 
         return Preflight(
             romBytes = rom.size,
-            ipl3Bytes = image.byteCount,
+            ipl3Bytes = image.ipl3PayloadByteCount,
             gameSegmentBytes = minOf(GAME_SEGMENT_END - GAME_SEGMENT_START, (rom.size - GAME_SEGMENT_START).coerceAtLeast(0)),
             region = image.region,
             expectedCrc1 = expectedCrc1,
