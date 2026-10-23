@@ -874,6 +874,18 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         // The instruction just executed was a delay-slot instruction.
         if (branchToApply != null) pc = branchToApply
         gpr[0] = 0L
+        advanceRandomTlbIndex()
+    }
+
+    /**
+     * CP0 Random advances once per executed instruction and wraps at Wired.
+     * TLBWR must not repeatedly overwrite the same slot because Random was
+     * left at its reset value for the lifetime of the emulated CPU.
+     */
+    private fun advanceRandomTlbIndex() {
+        val wired = (cp0[6].toInt() and 0x3F).coerceIn(0, 31)
+        val random = cp0[1].toInt() and 0x3F
+        cp0[1] = if (random <= wired) 31L else (random - 1).toLong()
     }
 
 
@@ -895,9 +907,10 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         entry.entryHi = cp0[10].toInt()
         entry.entryLo0 = cp0[2].toInt()
         entry.entryLo1 = cp0[3].toInt()
-        val event = "PC=0x%08X,INDEX=%d,PM=0x%08X,HI=0x%08X,LO0=0x%08X,LO1=0x%08X".format(
+        val event = "PC=0x%08X,INDEX=%d,RANDOM=0x%02X,WIRED=0x%02X,PM=0x%08X,HI=0x%08X,LO0=0x%08X,LO1=0x%08X".format(
             java.util.Locale.ROOT,
             (lastInstructionAddress ?: pc).toInt(), index,
+            cp0[1].toInt() and 0x3F, cp0[6].toInt() and 0x3F,
             entry.pageMask, entry.entryHi, entry.entryLo0, entry.entryLo1
         )
         if (tlbWriteHistory.size == 64) tlbWriteHistory.removeFirst()
