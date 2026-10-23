@@ -784,6 +784,29 @@ class RspCoreTest {
         assertEquals(3, bus.readWord(N64SpMemory.DMEM_BASE + 4))
     }
 
+    @Test fun vectorFractionalMultiplyAndAccumulateUseSignedAccumulator() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        // 0x4000 * 0x4000 is 0.25 in signed 1.15 fixed point.
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 0x4000))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, cop2(4, 1, 1, 0)) // v1[0] = 0x4000
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, cop2(4, 1, 2, 0)) // v2[0] = 0x4000
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, vectorAlu(2, 1, 3, 0x00)) // VMULF
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, cop2(0, 4, 3, 0))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 20, iType(0x2B, 0, 4, 0))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 24, vectorAlu(2, 1, 3, 0x08)) // VMACF
+        bus.writeWord(N64SpMemory.IMEM_BASE + 28, cop2(0, 5, 3, 0))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 32, iType(0x2B, 0, 5, 4))
+
+        rsp.start()
+        repeat(9) { index ->
+            assertTrue("RSP stopped at multiply instruction $index (PC=${rsp.pc})", rsp.step())
+        }
+
+        assertEquals(0x2000, bus.readWord(N64SpMemory.DMEM_BASE))
+        assertEquals(0x6000, bus.readWord(N64SpMemory.DMEM_BASE + 4))
+    }
+
     private fun rType(rs: Int, rt: Int, rd: Int, funct: Int): Int =
         (rs shl 21) or (rt shl 16) or (rd shl 11) or (funct and 63)
 
