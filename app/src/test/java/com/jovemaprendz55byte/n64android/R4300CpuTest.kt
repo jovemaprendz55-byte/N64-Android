@@ -75,6 +75,25 @@ class R4300CpuTest {
     }
 
 
+    @Test fun diagnosticTranslationUsesTlbMappingInsteadOfMaskingVirtualAddress() {
+        val cpu = R4300Cpu()
+        cpu.writeWord(0x71C, 0x1000FFFF)
+        fun mtc0(rt: Int, rd: Int) =
+            (0x10 shl 26) or (0x04 shl 21) or (rt shl 16) or (rd shl 11)
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 4, 0x7000), // r4 = 0x70000000
+            iType(0x0D, 0, 1, 0x0007), // EntryLo: PFN 0, G/V/D
+            mtc0(4, 10),               // EntryHi
+            mtc0(1, 2),                // EntryLo0
+            mtc0(1, 3),                // EntryLo1
+            0x42000002                 // TLBWI
+        ))
+        repeat(6) { cpu.step() }
+
+        assertEquals(0x71CL, cpu.diagnosticPhysicalAddress(0x7000071CL))
+        assertEquals(0x1000FFFF, cpu.readWord(0x71C))
+    }
+
     @Test fun tlbwiInstallsEntryAndLoadsFromTranslatedVirtualAddress() {
         val cpu = R4300Cpu()
         cpu.writeWord(0x2000, 0x12345678)
