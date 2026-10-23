@@ -14,6 +14,7 @@ internal class N64BootInitialization(
     data class Preflight(
         val romBytes: Int,
         val ipl3Bytes: Int,
+        val bootRegionBytes: Int,
         val gameSegmentBytes: Int,
         val region: N64BootSequence.Region,
         val expectedCrc1: UInt,
@@ -68,6 +69,7 @@ internal class N64BootInitialization(
         return Preflight(
             romBytes = rom.size,
             ipl3Bytes = image.ipl3PayloadByteCount,
+            bootRegionBytes = image.byteCount,
             gameSegmentBytes = minOf(GAME_SEGMENT_END - GAME_SEGMENT_START, (rom.size - GAME_SEGMENT_START).coerceAtLeast(0)),
             region = image.region,
             expectedCrc1 = expectedCrc1,
