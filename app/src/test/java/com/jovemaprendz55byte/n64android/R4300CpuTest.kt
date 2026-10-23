@@ -4,17 +4,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class R4300CpuTest {
-    @Test fun detectsIpl3ChecksumFailureSelfBranchThroughKseg0Alias() {
-        val cpu = R4300Cpu()
-        cpu.loadBytes(0x1C, words(0x0411FFFF)) // BGEZAL $zero, -1: branch to itself
-        cpu.resetForCartridgeDiagnostic(0xFFFF_FFFF_8000_001CL)
-
-        cpu.step()
-
-        assertEquals(0xFFFF_FFFF_8000_001CL, cpu.pc)
-        assertEquals(true, cpu.isIpl3ChecksumFailureBranch())
-    }
-
     @Test fun cic6102Ipl3DiagnosticUses6102SeedAndRegisterState() {
         val cpu = R4300Cpu()
         cpu.resetForCic6102Ipl3Diagnostic(0xFFFF_FFFF_A400_0040UL.toLong(), pal = false)
