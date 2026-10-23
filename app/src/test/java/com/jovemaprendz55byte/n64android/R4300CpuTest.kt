@@ -117,6 +117,29 @@ class R4300CpuTest {
         assertEquals(0xFFFF_FFFF_8000_0000UL.toLong(), cpu.pc) // TLB refill vector
     }
 
+    @Test fun cp0DiagnosticSummaryShowsExceptionAndTranslationRegisters() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x4000),
+            iType(0x23, 1, 2, 0)
+        ))
+        cpu.step()
+        try {
+            cpu.step()
+            throw AssertionError("Expected TLB translation fault")
+        } catch (fault: TlbTranslationFault) {
+            cpu.handleTlbTranslationFault(fault, 4L)
+        }
+
+        val summary = cpu.cp0DiagnosticSummary()
+        org.junit.Assert.assertTrue(summary.contains("Status=0x"))
+        org.junit.Assert.assertTrue(summary.contains("Cause=0x"))
+        org.junit.Assert.assertTrue(summary.contains("EPC=0x0000000000000004"))
+        org.junit.Assert.assertTrue(summary.contains("BadVAddr=0x0000000040000000"))
+        org.junit.Assert.assertTrue(summary.contains("Context=0x"))
+        org.junit.Assert.assertTrue(summary.contains("EntryHi=0x"))
+    }
+
     @Test fun tlbRequiredAddressDiagnosticIncludesTheFaultingVirtualAddress() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
