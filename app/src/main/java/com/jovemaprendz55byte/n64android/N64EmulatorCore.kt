@@ -77,18 +77,28 @@ class N64EmulatorCore(
     }
 
     /**
-     * Runs the diagnostic PIF-to-IPL3 handoff for the detected CIC where a register state is implemented.
-     * This does not emulate the PIF boot ROM firmware or identify/authenticate CICs.
+     * Starts a diagnostic IPL3 handoff without loading a copyrighted PIF ROM.
+     *
+     * The cartridge boot image at ROM offset 0x40 is copied to SP DMEM at
+     * physical 0x04000040, then the CPU enters it through KSEG1 0xA4000040.
+     * This is a diagnostic shortcut, not a full PIF/CIC boot implementation:
+     * hardware initialization and CIC-specific register seeds remain incomplete.
      */
+    fun startIpl3DiagnosticExecution() {
+        require(romLoaded) { "Load a normalized ROM before starting IPL3" }
+        val rom = requireNotNull(normalizedRom) { "Normalized ROM is unavailable" }
+        require(rom.size >= 0x1000) { "ROM is too short to contain IPL3" }
 
-    /**
-     * Starts IPL3 at its hardware-style location for a diagnostic shortcut:
-     * copy the cartridge IPL3 image (ROM offset 0x40) into SP DMEM and enter
-     * through KSEG1 address 0xA4000040. This still bypasses the PIF boot ROM
-     * and does not initialize all hardware registers.
-     */
+        // IPL3 occupies cartridge offsets 0x40..0xFFF and SP DMEM offsets
+        // 0x040..0xFFF. Leave the first 64 bytes of DMEM untouched.
+        for (offset in 0x40 until 0x1000) {
+            memoryBus.writeByte(0x0400_0000L + offset, rom[offset])
+        }
 
-
+        cpu.resetForCartridgeDiagnostic(0xFFFF_FFFF_A400_0040UL.toLong())
+        resetBootLoopDetector()
+        executionStarted = true
+    }
 
     private fun resetBootLoopDetector() {
         checksumFailureLoopAddress = null
