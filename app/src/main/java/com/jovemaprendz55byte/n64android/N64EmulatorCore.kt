@@ -187,6 +187,12 @@ class N64EmulatorCore(
                     val delaySlot = checksumFailureLoopAddress!! + 4L
                     if (executedAddress != delaySlot) resetBootLoopDetector()
                 }
+            } catch (fault: TlbTranslationFault) {
+                // A TLB miss is a CPU exception, not a host-side emulator crash.
+                // The exception handler must establish a valid mapping; do not
+                // silently map the missing virtual page to arbitrary RAM.
+                cpu.handleTlbTranslationFault(fault, instructionAddress)
+                executed++
             } catch (error: Exception) {
                 executionStarted = false
                 return ExecutionResult(
