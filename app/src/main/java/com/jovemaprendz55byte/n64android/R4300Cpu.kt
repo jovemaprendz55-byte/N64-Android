@@ -304,12 +304,15 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                 val pageSize = (pairMask + 1) ushr 1
                 val odd = (address and pageSize) != 0
                 val selectedLo = if (odd) entry.entryLo1 else entry.entryLo0
-                val usable = vpnMatches && (global || asidMatches) && (selectedLo and 2) != 0
+                val selectedValid = (selectedLo and 2) != 0
+                val selectedDirty = (selectedLo and 4) != 0
+                val usable = vpnMatches && (global || asidMatches) && selectedValid
                 if (vpnMatches && (global || asidMatches)) matchingVpnCount++
-                entries += "TLB_ENTRY_$index=PM=0x%08X,HI=0x%08X,LO0=0x%08X,LO1=0x%08X,VPN_MATCH=%s,ASID_MATCH=%s,SELECTED=%s,VALID=%s".format(
+                entries += "TLB_ENTRY_$index=PM=0x%08X,HI=0x%08X,LO0=0x%08X,LO1=0x%08X,VPN_MATCH=%s,ASID_MATCH=%s,GLOBAL=%s,SELECTED=%s,VALID=%s,DIRTY=%s,WRITE_ALLOWED=%s".format(
                     java.util.Locale.ROOT,
                     entry.pageMask, entry.entryHi, entry.entryLo0, entry.entryLo1,
-                    vpnMatches, global || asidMatches, if (odd) "LO1" else "LO0", usable
+                    vpnMatches, global || asidMatches, global, if (odd) "LO1" else "LO0",
+                    selectedValid, selectedDirty, selectedValid && selectedDirty
                 )
             }
         }
