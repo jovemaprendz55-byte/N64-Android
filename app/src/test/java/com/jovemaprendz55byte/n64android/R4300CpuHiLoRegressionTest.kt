@@ -37,7 +37,7 @@ class R4300CpuHiLoRegressionTest {
         repeat(5) { cpu.step() }
 
         assertEquals(0L, cpu.register(3))
-        assertEquals(0xFFFE0001L, cpu.register(4))
+        assertEquals(-131071L, cpu.register(4))
     }
 
     @Test
@@ -64,7 +64,7 @@ class R4300CpuHiLoRegressionTest {
         ))
         repeat(5) { unsignedCpu.step() }
         assertEquals(1L, unsignedCpu.register(3))
-        assertEquals(2147483647L, unsignedCpu.register(4))
+        assertEquals(32767L, unsignedCpu.register(4))
     }
 
     @Test
