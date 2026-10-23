@@ -102,6 +102,22 @@ class N64PifRamTest {
         assertEquals(true, pif.read64().all { it == 0.toByte() })
     }
 
+    @Test fun malformedJoybusRecordSetsErrorFlagAndClearsExecuteBit() {
+        val pif = N64PifRam()
+        val commandBuffer = ByteArray(N64PifRam.SIZE)
+        // txLength=3, but only one payload byte fits before the control byte.
+        commandBuffer[0] = 3
+        commandBuffer[1] = 4
+        commandBuffer[2] = 1
+        commandBuffer[63] = 1
+
+        pif.write64(commandBuffer)
+        val response = pif.read64()
+
+        assertEquals(0x84, response[1].toInt() and 0xFF)
+        assertEquals(0, response[63].toInt() and 1)
+    }
+
     @Test fun pifRamDmaRequiresExactly64Bytes() {
         val pif = N64PifRam()
         org.junit.Assert.assertThrows(IllegalArgumentException::class.java) {
