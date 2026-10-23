@@ -59,6 +59,9 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private var lastBranchInstructionAddress: Long? = null
     private var lastBranchInstructionWord: Int? = null
     private var lastBranchTarget: Long? = null
+    /** Source register/value for the most recent JR/JALR, to trace unexpected indirect targets. */
+    private var lastIndirectJumpRegister: Int? = null
+    private var lastIndirectJumpValue: Long? = null
     /** Address of the last instruction fetched successfully, for failure diagnostics. */
     private var lastInstructionAddress: Long? = null
     /** Last fetched instruction, retained so execution failures can be diagnosed. */
@@ -107,6 +110,10 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         append("; CPU_MEMORY_PROBE_HISTORY=").append(cpuMemoryProbeHistory.joinToString(";"))
         append("; alvoUltimoSalto=")
         append(lastBranchTarget?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "nenhum")
+        append("; JR_JALR_SOURCE=")
+        append(lastIndirectJumpRegister?.let { "r$it" } ?: "nenhum")
+        append("; JR_JALR_VALUE=0x")
+        append(lastIndirectJumpValue?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "nenhum")
         append("; Instrucao=0x")
         append(lastInstructionWord.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
         append("; registradores:")
@@ -321,6 +328,8 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         lastBranchInstructionAddress = null
         lastBranchInstructionWord = null
         lastBranchTarget = null
+        lastIndirectJumpRegister = null
+        lastIndirectJumpValue = null
         recentInstructions.clear()
         recentInstructionPcs.fill(0L)
         recentInstructionPcIndex = 0
@@ -566,10 +575,14 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                 0x07 -> writeRegister(rd, (b.toInt() shr (a.toInt() and 0x1F)).toLong()) // SRAV
                 0x08 -> {
                     if (a % 4L != 0L) throw IllegalArgumentException("JR target must be 4-byte aligned")
+                    lastIndirectJumpRegister = rs
+                    lastIndirectJumpValue = a
                     pendingBranchTarget = a
                 } // JR
                 0x09 -> {
                     if (a % 4L != 0L) throw IllegalArgumentException("JALR target must be 4-byte aligned")
+                    lastIndirectJumpRegister = rs
+                    lastIndirectJumpValue = a
                     writeRegister(rd, instructionAddress + 8L)
                     pendingBranchTarget = a
                 } // JALR
