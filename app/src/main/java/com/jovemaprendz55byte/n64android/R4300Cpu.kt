@@ -107,6 +107,13 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             frozenLoopTrace ?: recentInstructions.joinToString(" | ").ifBlank { "sem historico" }
         }
 
+    /** Most recent instructions, including exception-handler execution after the first TLB fault. */
+    internal fun currentExecutionTraceDiagnosticSummary(): String =
+        currentInstructionTraceSummary().ifBlank { "sem historico atual" }
+
+    /** Current live TLB state; unlike the first-fault snapshot, this includes later handler writes. */
+    internal fun currentTlbDiagnosticSummary(): String = tlbDiagnosticSummary()
+
     private fun currentInstructionTraceSummary(): String {
         if (instructionTraceCount == 0) return ""
         val start = (instructionTraceIndex - instructionTraceCount + instructionTracePcs.size) % instructionTracePcs.size
