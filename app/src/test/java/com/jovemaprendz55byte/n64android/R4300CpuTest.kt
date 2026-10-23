@@ -2054,6 +2054,18 @@ class R4300CpuTest {
         assertEquals(0x12345678L, cpu.register(2))
     }
 
+
+    @Test fun detectsIpl3ChecksumFailureBranchAfterFetchingFromSpDmem() {
+        val cpu = R4300Cpu()
+        // IPL3 executes from SP DMEM through the KSEG1 alias A4000040.
+        cpu.writeWord(0x0400_0040L, 0x0411FFFF) // BGEZAL zero, -1
+        cpu.resetForCartridgeDiagnostic(0xFFFF_FFFF_A400_0040UL.toLong())
+
+        cpu.step()
+
+        assertEquals(true, cpu.isIpl3ChecksumFailureBranch())
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
