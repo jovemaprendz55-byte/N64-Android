@@ -121,6 +121,33 @@ class R4300CpuTest {
         assertEquals(24L, cpu.readCp0ForTest(14)) // EPC
     }
 
+    @Test fun matchingTlbEntryWithValidBitClearUsesGeneralExceptionVector() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 4, 0x4000), // r4 = 0x40000000
+            iType(0x0D, 0, 1, 0x0080), // EntryLo: PFN=2, V=0
+            (0x10 shl 26) or (0x04 shl 21) or (4 shl 16) or (10 shl 11), // MTC0 r4, EntryHi
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (2 shl 11), // MTC0 r1, EntryLo0
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (3 shl 11), // MTC0 r1, EntryLo1
+            0x42000002, // TLBWI
+            iType(0x23, 4, 2, 0) // LW from a matching but invalid page
+        ))
+        repeat(6) { cpu.step() }
+
+        try {
+            cpu.step()
+            throw AssertionError("Expected invalid TLB entry exception")
+        } catch (fault: TlbTranslationFault) {
+            assertEquals(0x40000000L, fault.virtualAddress)
+            assertEquals(2, fault.exceptionCode) // TLBL
+            assertEquals(false, fault.refillEligible)
+            cpu.handleTlbTranslationFault(fault, 24L)
+        }
+
+        assertEquals(0xFFFF_FFFF_8000_0180UL.toLong(), cpu.pc)
+        assertEquals(2L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL)
+    }
+
     @Test fun tlbMissEntersRefillExceptionAndRecordsFaultState() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
