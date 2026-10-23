@@ -93,6 +93,28 @@ class R4300CpuTest {
         assertEquals(0x12345678L, cpu.register(2))
     }
 
+    @Test fun tlbwrWritesToCurrentRandomIndex() {
+        val cpu = R4300Cpu()
+        fun mtc0(rt: Int, rd: Int) =
+            (0x10 shl 26) or (0x04 shl 21) or (rt shl 16) or (rd shl 11)
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 4, 0x4000), // r4 = 0x40000000
+            iType(0x0D, 0, 1, 0x0087), // PFN=2, G/V/D set
+            mtc0(4, 10),                // EntryHi
+            mtc0(1, 2),                 // EntryLo0
+            mtc0(1, 3),                 // EntryLo1
+            0x42000006                  // TLBWR uses Random
+        ))
+        repeat(5) { cpu.step() }
+        val expectedIndex = cpu.readCp0ForTest(1).toInt() and 31
+
+        cpu.step()
+
+        val summary = cpu.tlbDiagnosticSummary(0x40000000L)
+        org.junit.Assert.assertTrue(summary.contains("INDEX=$expectedIndex"))
+        org.junit.Assert.assertTrue(summary.contains("TLB_NONZERO_COUNT=1"))
+    }
+
     @Test fun tlbpUsesCandidatePageMaskAndTlbrRestoresEntry() {
         val cpu = R4300Cpu()
         fun mtc0(rt: Int, rd: Int) =
