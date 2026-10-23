@@ -86,6 +86,50 @@ class R4300CpuHiLoRegressionTest {
         assertEquals(456L, cpu.register(4))
     }
 
+    @Test
+    fun signedDoublewordMultiplyAndDivideSetHiLo() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x19, 0, 1, -7),       // DADDIU r1, r0, -7
+            iType(0x19, 0, 2, 3),        // DADDIU r2, r0, 3
+            rType(1, 2, 0, 0, 0x1C),     // DMULT r1, r2
+            rType(0, 0, 3, 0, 0x10),     // MFHI r3
+            rType(0, 0, 4, 0, 0x12),     // MFLO r4
+            rType(1, 2, 0, 0, 0x1E),     // DDIV r1, r2
+            rType(0, 0, 5, 0, 0x10),     // MFHI r5
+            rType(0, 0, 6, 0, 0x12)      // MFLO r6
+        ))
+
+        repeat(8) { cpu.step() }
+
+        assertEquals(-1L, cpu.register(3))
+        assertEquals(-21L, cpu.register(4))
+        assertEquals(-1L, cpu.register(5))
+        assertEquals(-2L, cpu.register(6))
+    }
+
+    @Test
+    fun unsignedDoublewordMultiplyAndDivideSetHiLo() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x19, 0, 1, 7),        // DADDIU r1, r0, 7
+            iType(0x19, 0, 2, 3),        // DADDIU r2, r0, 3
+            rType(1, 2, 0, 0, 0x1D),     // DMULTU r1, r2
+            rType(0, 0, 3, 0, 0x10),     // MFHI r3
+            rType(0, 0, 4, 0, 0x12),     // MFLO r4
+            rType(1, 2, 0, 0, 0x1F),     // DDIVU r1, r2
+            rType(0, 0, 5, 0, 0x10),     // MFHI r5
+            rType(0, 0, 6, 0, 0x12)      // MFLO r6
+        ))
+
+        repeat(8) { cpu.step() }
+
+        assertEquals(0L, cpu.register(3))
+        assertEquals(21L, cpu.register(4))
+        assertEquals(1L, cpu.register(5))
+        assertEquals(2L, cpu.register(6))
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
