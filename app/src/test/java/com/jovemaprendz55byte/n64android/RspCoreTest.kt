@@ -739,6 +739,51 @@ class RspCoreTest {
         assertEquals(0, bus.readByte(N64SpMemory.DMEM_BASE + 0x4F).toInt() and 0xFF)
     }
 
+    @Test fun vectorCarryOperationsAndControlFlagsRoundTrip() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        // v1[0]=0xFFFF and v2[0]=1: VADDC wraps and sets lane-0 carry.
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, -1))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, cop2(4, 1, 1, 0))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, iType(0x09, 0, 2, 1))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, cop2(4, 2, 2, 0))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, vectorAlu(2, 1, 3, 0x14)) // VADDC
+        bus.writeWord(N64SpMemory.IMEM_BASE + 20, cop2(2, 4, 0, 0)) // CFC2 r4,VCO
+        bus.writeWord(N64SpMemory.IMEM_BASE + 24, iType(0x2B, 0, 4, 0))
+
+        rsp.start()
+        repeat(7) { index ->
+            assertTrue("RSP stopped at vector carry instruction $index", rsp.step())
+        }
+
+        assertEquals(1, bus.readWord(N64SpMemory.DMEM_BASE))
+    }
+
+    @Test fun vectorComparisonsAndBitClearOperationsExecute() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        // Build lane 0 values 5 and 3.
+        bus.writeWord(N64MemoryBus.SP_STATUS, 0)
+        bus.writeWord(N64SpMemory.IMEM_BASE, iType(0x09, 0, 1, 5))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 4, cop2(4, 1, 1, 0))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 8, iType(0x09, 0, 2, 3))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 12, cop2(4, 2, 2, 0))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 16, vectorAlu(2, 1, 3, 0x2E)) // VANDC
+        bus.writeWord(N64SpMemory.IMEM_BASE + 20, cop2(0, 4, 3, 0))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 24, iType(0x2B, 0, 4, 0))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 28, vectorAlu(2, 1, 5, 0x20)) // VLT
+        bus.writeWord(N64SpMemory.IMEM_BASE + 32, cop2(0, 6, 5, 0))
+        bus.writeWord(N64SpMemory.IMEM_BASE + 36, iType(0x2B, 0, 6, 4))
+
+        rsp.start()
+        repeat(10) { index ->
+            assertTrue("RSP stopped at comparison instruction $index", rsp.step())
+        }
+
+        assertEquals(4, bus.readWord(N64SpMemory.DMEM_BASE))
+        assertEquals(3, bus.readWord(N64SpMemory.DMEM_BASE + 4))
+    }
+
     private fun rType(rs: Int, rt: Int, rd: Int, funct: Int): Int =
         (rs shl 21) or (rt shl 16) or (rd shl 11) or (funct and 63)
 
