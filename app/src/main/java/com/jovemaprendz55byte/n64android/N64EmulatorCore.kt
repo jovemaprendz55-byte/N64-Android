@@ -87,7 +87,15 @@ class N64EmulatorCore(
         require(romLoaded) { "Load a normalized ROM before execution" }
         val rom = normalizedRom ?: throw IllegalStateException("No normalized ROM is retained")
         lastBootPreflight = N64BootInitialization(memoryBus, cpu).prepareCic6105(rom)
-        val handoff = pifBootSequence.startCic6105(rom)
+        // The preflight identifies CIC from IPL3 bytes. Preserve that choice:
+        // a 6102 cartridge must not be reset with the incompatible 6105 seed.
+        val handoff = when (lastBootPreflight?.detectedCic) {
+            "6102/7101" -> pifBootSequence.startCic6102(rom)
+            "6105/7105", null -> pifBootSequence.startCic6105(rom)
+            else -> throw IllegalStateException(
+                "CIC ${lastBootPreflight?.detectedCic} has no validated PIF-to-IPL3 handoff."
+            )
+        }
         resetBootLoopDetector()
         executionStarted = true
         return handoff
