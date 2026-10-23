@@ -30,7 +30,9 @@ class N64MemoryMapTest {
         assertEquals(N64MemoryMap.Region.SI_REGISTERS, N64MemoryMap.regionOf(0x0480_0000L))
     }
 
-    @Test fun identifiesCartridgeAndPifRegions() {
+    @Test fun identifiesCartridgeSramRomAndPifRegions() {
+        assertEquals(N64MemoryMap.Region.CARTRIDGE_SRAM, N64MemoryMap.regionOf(0x0500_0000L))
+        assertEquals(N64MemoryMap.Region.CARTRIDGE_SRAM, N64MemoryMap.regionOf(0x0500_0508L))
         assertEquals(N64MemoryMap.Region.CARTRIDGE_DOMAIN, N64MemoryMap.regionOf(0x1000_0000L))
         assertEquals(N64MemoryMap.Region.PIF, N64MemoryMap.regionOf(0x1FC0_0000L))
         assertEquals(N64MemoryMap.Region.PIF, N64MemoryMap.regionOf(0x1FC0_07FFL))
