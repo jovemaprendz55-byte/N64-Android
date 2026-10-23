@@ -66,17 +66,10 @@ class R4300CpuBranchDelaySlotTest {
     fun notTakenBeqlAnnulsDelaySlot() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
-            iType(0x14, 1, 0, 2),      // BEQL r1, r0, +2; r1=0, so this IS taken
-            iType(0x09, 0, 2, 5),
-            iType(0x09, 0, 3, 9)
-        ))
-        // Set r1 nonzero without relying on a test-only register setter.
-        cpu.reset(0)
-        cpu.loadBytes(0, words(
             iType(0x09, 0, 1, 1),      // r1 = 1
-            iType(0x14, 1, 0, 2),      // BEQL r1, r0, +2; not taken, annul slot
-            iType(0x09, 0, 2, 5),      // annulled
-            iType(0x09, 0, 3, 9)
+            iType(0x14, 1, 0, 2),      // BEQL r1, r0, +2: not taken
+            iType(0x09, 0, 2, 5),      // annulled delay slot
+            iType(0x09, 0, 3, 9)       // next instruction
         ))
 
         repeat(3) { cpu.step() }
