@@ -295,6 +295,8 @@ class N64EmulatorCore(
         append("CP0_DIAGNOSTICS=").append(cpu.cp0DiagnosticSummary()).append("; ")
         append("CPU_EXECUTION_HISTORY=").append(cpu.executionHistoryDiagnosticSummary()).append("; ")
         append("TLB_DIAGNOSTICS=").append(cpu.firstTlbFaultDiagnosticSummary()).append("; ")
+        append("TLB_CURRENT_STATE=").append(cpu.currentTlbDiagnosticSummary()).append("; ")
+        append("CPU_CURRENT_EXECUTION_TRACE=").append(cpu.currentExecutionTraceDiagnosticSummary()).append("; ")
         val rom = normalizedRom
         if (rom != null && rom.size >= 0x1010) {
             append("ROM_SIZE=0x")
