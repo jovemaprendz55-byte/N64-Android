@@ -39,7 +39,7 @@ internal class N64PifBootSequence(
         return BootHandoff(
             cic = CicFamily.CIC_6102,
             entryPoint = image.entryPoint,
-            ipl3BytesLoaded = image.byteCount,
+            ipl3BytesLoaded = image.ipl3PayloadByteCount,
             region = image.region,
             countryCode = image.countryCode
         )
