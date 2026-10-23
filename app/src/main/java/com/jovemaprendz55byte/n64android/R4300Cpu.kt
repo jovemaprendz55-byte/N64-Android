@@ -613,12 +613,12 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             0x24 -> writeRegister(rt, readByte(effectiveAddress(a, signedImmediate)).toLong() and 0xFFL) // LBU
             0x25 -> writeRegister(rt, readHalf(effectiveAddress(a, signedImmediate)).toLong() and 0xFFFFL) // LHU
             0x2C -> storeDoublewordLeft(effectiveAddress(a, signedImmediate, MemoryAccess.STORE), b) // SDL
-            0x2D -> storeDoublewordRight(effectiveAddress(a, signedImmediate, TlbAccess.STORE), b) // SDR
-            0x2A -> storeWordLeft(effectiveAddress(a, signedImmediate, TlbAccess.STORE), b.toInt()) // SWL
-            0x28 -> writeByte(effectiveAddress(a, signedImmediate, TlbAccess.STORE), b.toByte()) // SB
-            0x29 -> writeHalf(effectiveAddress(a, signedImmediate, TlbAccess.STORE), b.toShort()) // SH
+            0x2D -> storeDoublewordRight(effectiveAddress(a, signedImmediate, MemoryAccess.STORE), b) // SDR
+            0x2A -> storeWordLeft(effectiveAddress(a, signedImmediate, MemoryAccess.STORE), b.toInt()) // SWL
+            0x28 -> writeByte(effectiveAddress(a, signedImmediate, MemoryAccess.STORE), b.toByte()) // SB
+            0x29 -> writeHalf(effectiveAddress(a, signedImmediate, MemoryAccess.STORE), b.toShort()) // SH
             0x2B -> {
-                val address = effectiveAddress(a, signedImmediate, TlbAccess.STORE)
+                val address = effectiveAddress(a, signedImmediate, MemoryAccess.STORE)
                 val value = b.toInt()
                 recordCpuMemoryProbe("SW", instructionAddress, address, value)
                 if (address in 0x0460_0000..0x0460_000CL) {
@@ -634,11 +634,11 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                 }
                 writeWord(address, value)
             }
-            0x2E -> storeWordRight(effectiveAddress(a, signedImmediate, TlbAccess.STORE), b.toInt()) // SWR
+            0x2E -> storeWordRight(effectiveAddress(a, signedImmediate, MemoryAccess.STORE), b.toInt()) // SWR
             0x2F -> Unit // CACHE: ignored because this interpreter has no modeled caches
             0x33 -> Unit // PREF: prefetch hint has no effect in this interpreter
             0x37 -> writeRegister(rt, readLong(effectiveAddress(a, signedImmediate))) // LD
-            0x3F -> writeLong(effectiveAddress(a, signedImmediate, TlbAccess.STORE), b) // SD
+            0x3F -> writeLong(effectiveAddress(a, signedImmediate, MemoryAccess.STORE), b) // SD
             0x02 -> pendingBranchTarget = jumpTarget(instruction, pc) // J
             else -> unsupported(instruction, instructionAddress)
         }
@@ -675,7 +675,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         require(address % 4L == 0L) {
             "Instruction fetch must be 4-byte aligned"
         }
-        return readWord(resolveRamAddress(address, TlbAccess.FETCH))
+        return readWord(resolveRamAddress(address, MemoryAccess.FETCH))
     }
 
     /**
@@ -685,7 +685,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
      * addresses are translated to physical addresses; TLB-mapped segments and
      * unsupported device/cart regions are rejected. RDRAM mirrors are not modeled.
      */
-    private fun resolveRamAddress(address: Long, access: TlbAccess = TlbAccess.LOAD): Int {
+    private fun resolveRamAddress(address: Long, access: MemoryAccess = MemoryAccess.LOAD): Int {
         val physicalAddress = N64Addressing.translateDirectMappedAddress(address)
             ?: if (address in 0L..0x1FFF_FFFFL) address
             else throw IllegalArgumentException("TLB-backed virtual address 0x${address.toULong().toString(16)} is unsupported while TLB is rebuilt")
@@ -725,7 +725,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     }
 
     /** Computes an effective address and resolves supported direct-mapped segments. */
-    private fun effectiveAddress(base: Long, offset: Long, access: TlbAccess = TlbAccess.LOAD): Int {
+    private fun effectiveAddress(base: Long, offset: Long, access: MemoryAccess = MemoryAccess.LOAD): Int {
         val address = try {
             Math.addExact(base, offset)
         } catch (error: ArithmeticException) {
