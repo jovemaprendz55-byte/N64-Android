@@ -177,16 +177,6 @@ internal class RspCore(private val bus: N64MemoryBus) {
             0x01 -> when (rt) {
                 0x00 -> if (a < 0) pendingBranchTarget = (pc + (imm shl 2)) and 0xFFF // BLTZ
                 0x01 -> if (a >= 0) pendingBranchTarget = (pc + (imm shl 2)) and 0xFFF // BGEZ
-                0x00 -> {
-                    val product = left.toLong() * right.toLong()
-                    accumulator[lane] = wrapAccumulator48((product shl 1) + 0x8000L)
-                    saturateAccumulator(accumulator[lane] shr 16)
-                } // VMULF: signed fractional multiply with rounding.
-                0x08 -> {
-                    val product = left.toLong() * right.toLong()
-                    accumulator[lane] = wrapAccumulator48(accumulator[lane] + (product shl 1))
-                    saturateAccumulator(accumulator[lane] shr 16)
-                } // VMACF: signed fractional multiply-accumulate.
                 0x10 -> {
                     writeReg(31, (instructionPc + 8) and 0xFFF)
                     if (a < 0) pendingBranchTarget = (pc + (imm shl 2)) and 0xFFF
@@ -299,6 +289,16 @@ internal class RspCore(private val bus: N64MemoryBus) {
             val leftUnsigned = left and 0xFFFF
             val rightUnsigned = right and 0xFFFF
             val result = when (funct) {
+                0x00 -> {
+                    val product = left.toLong() * right.toLong()
+                    accumulator[lane] = wrapAccumulator48((product shl 1) + 0x8000L)
+                    saturateAccumulator(accumulator[lane] shr 16)
+                } // VMULF: signed fractional multiply with rounding.
+                0x08 -> {
+                    val product = left.toLong() * right.toLong()
+                    accumulator[lane] = wrapAccumulator48(accumulator[lane] + (product shl 1))
+                    saturateAccumulator(accumulator[lane] shr 16)
+                } // VMACF: signed fractional multiply-accumulate.
                 0x10 -> {
                     val carryIn = (vco ushr lane) and 1
                     (left + right + carryIn).coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
