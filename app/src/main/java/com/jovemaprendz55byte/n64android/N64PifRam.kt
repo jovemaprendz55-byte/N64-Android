@@ -21,6 +21,11 @@ internal class N64PifRam(
         }
     }
 
+    /** Clears the 64-byte PIF RAM state when the emulated console is reset. */
+    fun reset() {
+        ram.fill(0)
+    }
+
     fun read64(): ByteArray = ram.copyOf()
 
     fun write64(bytes: ByteArray) {
