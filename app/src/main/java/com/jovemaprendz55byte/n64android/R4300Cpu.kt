@@ -9,6 +9,15 @@ import java.math.BigInteger
  * peripherals are not implemented. Implemented RDRAM and SP DMEM/IMEM accesses
  * are routed through the physical memory bus.
  */
+internal enum class TlbAccess { FETCH, LOAD, STORE }
+
+internal class TlbTranslationFault(
+    val virtualAddress: Long,
+    val access: TlbAccess
+) : IllegalArgumentException(
+    "Virtual address 0x%016X requires TLB translation; no valid matching R4300 TLB entry".format(virtualAddress)
+)
+
 class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64MemoryBus) {
     constructor(memorySize: Int = DEFAULT_RDRAM_SIZE) : this(memorySize, N64MemoryBus(memorySize))
 
@@ -125,6 +134,34 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                 .append(register(index).toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
         }
         append(", SP=0x").append(register(29).toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+    }
+
+    /**
+     * Enters the architectural TLB-refill exception path after an address
+     * translation miss. The core does not synthesize a mapping: software at
+     * the exception vector must install a real TLB entry before retrying.
+     */
+    internal fun handleTlbTranslationFault(fault: TlbTranslationFault, faultingPc: Long) {
+        val oldStatus = cp0[12].toInt()
+        val alreadyExl = (oldStatus and 0x2) != 0
+        val virtual = fault.virtualAddress.toInt()
+
+        cp0[8] = fault.virtualAddress // BadVAddr
+        cp0[4] = ((cp0[4].toInt() and 0xFF80_000F.toInt()) or
+            ((virtual ushr 9) and 0x007F_FFF0)).toLong() // Context.BadVPN2
+        cp0[10] = ((virtual and 0xFFFF_E000) or (cp0[10].toInt() and 0xFF)).toLong() // EntryHi
+        val exceptionCode = if (fault.access == TlbAccess.STORE) 3 else 2 // TLBS / TLBL
+        cp0[13] = ((cp0[13].toInt() and 0xFFFF_FF83.toInt()) or (exceptionCode shl 2)).toLong()
+        if (!alreadyExl) cp0[14] = faultingPc // EPC
+        cp0[12] = (oldStatus or 0x2).toLong() // Status.EXL
+
+        val exceptionVector = when {
+            alreadyExl -> 0xFFFF_FFFF_8000_0180UL.toLong()
+            (oldStatus and (1 shl 22)) != 0 -> 0xFFFF_FFFF_BFC0_0200UL.toLong() // Status.BEV
+            else -> 0xFFFF_FFFF_8000_0000UL.toLong() // TLB refill vector
+        }
+        pendingBranchTarget = null
+        pc = exceptionVector
     }
 
     internal fun readCp0ForTest(index: Int): Long = cp0[index]
@@ -666,13 +703,13 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             0x27 -> writeRegister(rt, Integer.toUnsignedLong(readWord(effectiveAddress(a, signedImmediate)))) // LWU
             0x24 -> writeRegister(rt, readByte(effectiveAddress(a, signedImmediate)).toLong() and 0xFFL) // LBU
             0x25 -> writeRegister(rt, readHalf(effectiveAddress(a, signedImmediate)).toLong() and 0xFFFFL) // LHU
-            0x2C -> storeDoublewordLeft(effectiveAddress(a, signedImmediate), b) // SDL
-            0x2D -> storeDoublewordRight(effectiveAddress(a, signedImmediate), b) // SDR
-            0x2A -> storeWordLeft(effectiveAddress(a, signedImmediate), b.toInt()) // SWL
-            0x28 -> writeByte(effectiveAddress(a, signedImmediate), b.toByte()) // SB
-            0x29 -> writeHalf(effectiveAddress(a, signedImmediate), b.toShort()) // SH
+            0x2C -> storeDoublewordLeft(effectiveAddress(a, signedImmediate, TlbAccess.STORE), b) // SDL
+            0x2D -> storeDoublewordRight(effectiveAddress(a, signedImmediate, TlbAccess.STORE), b) // SDR
+            0x2A -> storeWordLeft(effectiveAddress(a, signedImmediate, TlbAccess.STORE), b.toInt()) // SWL
+            0x28 -> writeByte(effectiveAddress(a, signedImmediate, TlbAccess.STORE), b.toByte()) // SB
+            0x29 -> writeHalf(effectiveAddress(a, signedImmediate, TlbAccess.STORE), b.toShort()) // SH
             0x2B -> {
-                val address = effectiveAddress(a, signedImmediate)
+                val address = effectiveAddress(a, signedImmediate, TlbAccess.STORE)
                 val value = b.toInt()
                 recordCpuMemoryProbe("SW", instructionAddress, address, value)
                 if (address in 0x0460_0000..0x0460_000CL) {
@@ -688,11 +725,11 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                 }
                 writeWord(address, value)
             }
-            0x2E -> storeWordRight(effectiveAddress(a, signedImmediate), b.toInt()) // SWR
+            0x2E -> storeWordRight(effectiveAddress(a, signedImmediate, TlbAccess.STORE), b.toInt()) // SWR
             0x2F -> Unit // CACHE: ignored because this interpreter has no modeled caches
             0x33 -> Unit // PREF: prefetch hint has no effect in this interpreter
             0x37 -> writeRegister(rt, readLong(effectiveAddress(a, signedImmediate))) // LD
-            0x3F -> writeLong(effectiveAddress(a, signedImmediate), b) // SD
+            0x3F -> writeLong(effectiveAddress(a, signedImmediate, TlbAccess.STORE), b) // SD
             0x02 -> pendingBranchTarget = jumpTarget(instruction, pc) // J
             else -> unsupported(instruction, instructionAddress)
         }
@@ -762,7 +799,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         require(address % 4L == 0L) {
             "Instruction fetch must be 4-byte aligned"
         }
-        return readWord(resolveRamAddress(address))
+        return readWord(resolveRamAddress(address, TlbAccess.FETCH))
     }
 
     /**
@@ -772,13 +809,10 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
      * addresses are translated to physical addresses; TLB-mapped segments and
      * unsupported device/cart regions are rejected. RDRAM mirrors are not modeled.
      */
-    private fun resolveRamAddress(address: Long): Int {
+    private fun resolveRamAddress(address: Long, access: TlbAccess = TlbAccess.LOAD): Int {
         val physicalAddress = N64Addressing.translateDirectMappedAddress(address)
             ?: if (address in 0L..0x1FFF_FFFFL) address
-            else translateTlbAddress(address) ?: throw IllegalArgumentException(
-                "Virtual address 0x%016X requires TLB translation; no valid matching R4300 TLB entry"
-                    .format(address)
-            )
+            else translateTlbAddress(address) ?: throw TlbTranslationFault(address, access)
         val region = N64MemoryMap.regionOf(physicalAddress)
         require(region == N64MemoryMap.Region.RDRAM ||
             region == N64MemoryMap.Region.RDRAM_REGISTERS ||
@@ -815,15 +849,16 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     }
 
     /** Computes an effective address and resolves supported direct-mapped segments. */
-    private fun effectiveAddress(base: Long, offset: Long): Int {
+    private fun effectiveAddress(base: Long, offset: Long, access: TlbAccess = TlbAccess.LOAD): Int {
         val address = try {
             Math.addExact(base, offset)
         } catch (error: ArithmeticException) {
             throw IllegalArgumentException("Effective address overflow", error)
         }
         return try {
-            resolveRamAddress(address)
+            resolveRamAddress(address, access)
         } catch (error: IllegalArgumentException) {
+            if (error is TlbTranslationFault) throw error
             throw IllegalArgumentException(
                 "Falha ao resolver endereco efetivo: base=0x" +
                     base.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0') +
