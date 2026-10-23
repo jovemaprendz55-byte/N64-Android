@@ -80,6 +80,8 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private var instructionTraceIndex = 0
     private var instructionTraceCount = 0
     private var firstTlbFaultHistory: String? = null
+    /** Bounded first-fault context: origin instruction, effective address, CP0 and TLB before exception entry. */
+    private var firstTlbFaultContext: String? = null
     /** TLB contents captured before software handles the first translation fault. */
     private var firstTlbFaultTlbHistory: String? = null
     private var recentInstructionPcCount = 0
@@ -184,6 +186,38 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             firstTlbFaultHistory = currentInstructionTraceSummary()
             firstTlbFaultTlbHistory = tlbDiagnosticSummary(fault.virtualAddress)
         }
+        if (firstTlbFaultContext == null) {
+            val instructionIsFaultingDataAccess = lastInstructionAddress == faultingPc
+            val instruction = if (instructionIsFaultingDataAccess) lastInstructionWord else null
+            val opcode = instruction?.ushr(26)?.and(0x3F)
+            val rs = instruction?.ushr(21)?.and(0x1F)
+            val rt = instruction?.ushr(16)?.and(0x1F)
+            val baseValue = rs?.let(::register)
+            val signedOffset = instruction?.let { (it shl 16 shr 16).toLong() }
+            val effective = if (baseValue != null && signedOffset != null) baseValue + signedOffset else null
+            firstTlbFaultContext = buildString {
+                append("TLB_FAULT_VADDR=0x").append(fault.virtualAddress.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+                append(",ACCESS=").append(fault.access)
+                append(",FAULT_PC=0x").append(faultingPc.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+                append(",FAULT_INSTRUCTION=").append(instruction?.let { "0x" + it.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0') } ?: "unavailable-fetch-fault")
+                append(",OPCODE=").append(opcode?.let { "0x" + it.toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0') } ?: "unknown")
+                if (rs != null && baseValue != null) {
+                    append(",RS=r").append(rs).append(":0x").append(baseValue.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+                }
+                if (rt != null) append(",RT=r").append(rt).append(":0x").append(register(rt).toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+                if (signedOffset != null) append(",SIGNED_IMMEDIATE=").append(signedOffset)
+                if (effective != null) append(",COMPUTED_EFFECTIVE_ADDRESS=0x").append(effective.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+                append(",LAST_EXECUTED_PC=0x").append(lastInstructionAddress?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "none")
+                append(",LAST_EXECUTED_INSTRUCTION=0x").append(lastInstructionWord.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+                append(",LAST_BRANCH_PC=0x").append(lastBranchInstructionAddress?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "none")
+                append(",LAST_BRANCH_INSTRUCTION=0x").append(lastBranchInstructionWord?.toUInt()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(8, '0') ?: "none")
+                append(",LAST_BRANCH_TARGET=0x").append(lastBranchTarget?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "none")
+                append(",INDIRECT_JUMP_SOURCE=").append(lastIndirectJumpRegister?.let { "r$it" } ?: "none")
+                append(",INDIRECT_JUMP_VALUE=0x").append(lastIndirectJumpValue?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "none")
+                append(",CP0_BEFORE_EXCEPTION={").append(cp0DiagnosticSummary()).append("}")
+                append(",TLB_BEFORE_EXCEPTION={").append(tlbDiagnosticSummary(fault.virtualAddress)).append("}")
+            }
+        }
         val oldStatus = cp0[12].toInt()
         val alreadyExl = (oldStatus and 0x2) != 0
         val virtual = fault.virtualAddress.toInt()
@@ -275,6 +309,10 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
 
     internal fun firstTlbFaultDiagnosticSummary(): String =
         firstTlbFaultTlbHistory ?: tlbDiagnosticSummary()
+
+    /** One bounded record of the instruction/address/CP0/TLB state at the first translation fault. */
+    internal fun firstTlbFaultContextSummary(): String =
+        firstTlbFaultContext ?: "no_tlb_fault_recorded"
 
     internal fun readCp0ForTest(index: Int): Long = cp0[index]
 
