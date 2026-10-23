@@ -804,7 +804,7 @@ class RspCoreTest {
         }
 
         assertEquals(0x2000, bus.readWord(N64SpMemory.DMEM_BASE))
-        assertEquals(0x6000, bus.readWord(N64SpMemory.DMEM_BASE + 4))
+        assertEquals(0x4000, bus.readWord(N64SpMemory.DMEM_BASE + 4))
     }
 
     private fun rType(rs: Int, rt: Int, rd: Int, funct: Int): Int =
