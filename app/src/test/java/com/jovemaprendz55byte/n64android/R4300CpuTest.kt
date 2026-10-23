@@ -115,6 +115,11 @@ class R4300CpuTest {
         assertEquals(2L, (cpu.readCp0ForTest(13) ushr 2) and 0x1F) // ExcCode=TLBL
         assertEquals(2L, cpu.readCp0ForTest(12) and 2L) // Status.EXL
         assertEquals(0xFFFF_FFFF_8000_0000UL.toLong(), cpu.pc) // TLB refill vector
+        val faultTrace = cpu.executionHistoryDiagnosticSummary()
+        org.junit.Assert.assertTrue(faultTrace.contains("0x0000000000000000=0x3C014000"))
+        org.junit.Assert.assertTrue(faultTrace.contains("0x0000000000000004=0x8C220000"))
+        cpu.step() // Execute one instruction from the exception vector.
+        assertEquals(faultTrace, cpu.executionHistoryDiagnosticSummary()) // Preserve the pre-fault trace.
     }
 
     @Test fun diagnosticSnapshotRecordsIndirectJumpSourceRegisterAndValue() {
