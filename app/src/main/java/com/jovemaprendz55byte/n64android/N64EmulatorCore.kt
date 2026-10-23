@@ -30,6 +30,7 @@ class N64EmulatorCore(
     private val bootSequence = N64BootSequence(memoryBus)
     private val pifBootSequence = N64PifBootSequence(memoryBus, cpu)
     private var lastBootPreflight: N64BootInitialization.Preflight? = null
+    private var bootIpl3CopyMatchedAtHandoff: Boolean? = null
     private var romLoaded = false
     private var executionStarted = false
     private var checksumFailureLoopAddress: Long? = null
@@ -118,6 +119,13 @@ class N64EmulatorCore(
         // CIC-6102's 0x3F checksum seed with 0x91 and recreates the checksum loop.
         // Keep this explicit as a diagnostic shortcut; it still bypasses PIF ROM.
         bootSequence.loadIpl3(rom)
+        // Capture the initial DMEM copy before IPL3 executes. The running IPL3 may
+        // legitimately reuse DMEM as scratch, so a post-execution mismatch alone
+        // cannot tell us whether the initial cartridge copy failed.
+        bootIpl3CopyMatchedAtHandoff = (0x40 until 0x1000).all { offset ->
+            (memoryBus.readByte(N64SpMemory.DMEM_BASE + offset).toInt() and 0xFF) ==
+                (rom[offset].toInt() and 0xFF)
+        }
         resetBootLoopDetector()
         executionStarted = true
     }
@@ -304,6 +312,8 @@ class N64EmulatorCore(
                     (rom[offset].toInt() and 0xFF)
             }
             append(", SP_DMEM_IPL3_COPY_MATCH=").append(dmemIpl3CopyMatches)
+            append(", SP_DMEM_IPL3_COPY_MATCH_AT_HANDOFF=")
+                .append(bootIpl3CopyMatchedAtHandoff ?: "not-started")
             append(", ROM_IPL3_0x750=")
             append(rom.copyOfRange(0x750, 0x760).joinToString("") {
                 (it.toInt() and 0xFF).toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
