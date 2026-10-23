@@ -30,6 +30,10 @@ internal class N64MemoryBus(
     private var lastRdramRegisterWriteAddress = 0L
     private var lastRdramRegisterWriteValue = 0
 
+    // Generic 32 KiB SRAM backing for PI Domain 2 Address 1 (0x05000000).
+    // The window mirrors the SRAM; EEPROM/FlashRAM protocols are not modeled here.
+    private val cartridgeSram = ByteArray(0x8000)
+
     private val rdram = ByteArray(rdramSize.also { size ->
         require(size > 0 && size % 4 == 0) {
             "RDRAM size must be a positive multiple of four bytes"
@@ -146,6 +150,7 @@ internal class N64MemoryBus(
         N64MemoryMap.Region.SP_DMEM, N64MemoryMap.Region.SP_IMEM ->
             spMemory.readByte(physicalAddress)
         N64MemoryMap.Region.CARTRIDGE_DOMAIN -> readCartridgeByte(physicalAddress)
+        N64MemoryMap.Region.CARTRIDGE_SRAM -> cartridgeSram[sramIndex(physicalAddress)]
         N64MemoryMap.Region.PIF -> {
             if (physicalAddress in N64PifRam.PIF_RAM_BASE until N64PifRam.PIF_RAM_END) {
                 pifRam.readByte(physicalAddress)
@@ -164,6 +169,7 @@ internal class N64MemoryBus(
             }
             N64MemoryMap.Region.SP_DMEM, N64MemoryMap.Region.SP_IMEM ->
                 spMemory.writeByte(physicalAddress, value)
+            N64MemoryMap.Region.CARTRIDGE_SRAM -> cartridgeSram[sramIndex(physicalAddress)] = value
             N64MemoryMap.Region.PIF -> {
                 if (physicalAddress in N64PifRam.PIF_RAM_BASE until N64PifRam.PIF_RAM_END) {
                     pifRam.writeByte(physicalAddress, value)
@@ -212,6 +218,12 @@ internal class N64MemoryBus(
             N64MemoryMap.Region.SI_REGISTERS -> readSiRegister(physicalAddress)
             N64MemoryMap.Region.RI_REGISTERS -> readRiRegister(physicalAddress)
             N64MemoryMap.Region.CARTRIDGE_DOMAIN -> readCartridgeWord(physicalAddress)
+            N64MemoryMap.Region.CARTRIDGE_SRAM -> {
+                ((readByte(physicalAddress).toInt() and 0xFF) shl 24) or
+                    ((readByte(physicalAddress + 1).toInt() and 0xFF) shl 16) or
+                    ((readByte(physicalAddress + 2).toInt() and 0xFF) shl 8) or
+                    (readByte(physicalAddress + 3).toInt() and 0xFF)
+            }
             N64MemoryMap.Region.PIF -> {
                 // PIF RAM is byte-addressable; compose CPU word reads in big-endian order.
                 // PIF boot ROM occupies the earlier part of the region and remains unsupported.
@@ -257,6 +269,12 @@ internal class N64MemoryBus(
             N64MemoryMap.Region.PI_REGISTERS -> writePiRegister(physicalAddress, value)
             N64MemoryMap.Region.SI_REGISTERS -> writeSiRegister(physicalAddress, value)
             N64MemoryMap.Region.RI_REGISTERS -> writeRiRegister(physicalAddress, value)
+            N64MemoryMap.Region.CARTRIDGE_SRAM -> {
+                writeByte(physicalAddress, (value ushr 24).toByte())
+                writeByte(physicalAddress + 1, (value ushr 16).toByte())
+                writeByte(physicalAddress + 2, (value ushr 8).toByte())
+                writeByte(physicalAddress + 3, value.toByte())
+            }
             N64MemoryMap.Region.PIF -> {
                 // Preserve byte semantics because writing PIF RAM's control byte can execute Joybus.
                 writeByte(physicalAddress, (value ushr 24).toByte())
@@ -696,6 +714,9 @@ internal class N64MemoryBus(
             if (value and setCommandBit != 0) spStatus = spStatus or statusBit
         }
     }
+
+    private fun sramIndex(address: Long): Int =
+        ((address - 0x0500_0000L).toInt() and (cartridgeSram.size - 1))
 
     private fun rdramIndex(address: Long): Int {
         require(address >= 0L && address < rdram.size.toLong()) {
