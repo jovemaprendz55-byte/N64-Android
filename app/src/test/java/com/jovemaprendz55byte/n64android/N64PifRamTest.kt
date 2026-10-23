@@ -105,16 +105,16 @@ class N64PifRamTest {
     @Test fun malformedJoybusRecordSetsErrorFlagAndClearsExecuteBit() {
         val pif = N64PifRam()
         val commandBuffer = ByteArray(N64PifRam.SIZE)
-        // txLength=3, but only one payload byte fits before the control byte.
-        commandBuffer[0] = 3
-        commandBuffer[1] = 4
+        // The requested response would run beyond PIF RAM's command area.
+        commandBuffer[0] = 1
+        commandBuffer[1] = 62
         commandBuffer[2] = 1
         commandBuffer[63] = 1
 
         pif.write64(commandBuffer)
         val response = pif.read64()
 
-        assertEquals(0x84, response[1].toInt() and 0xFF)
+        assertEquals(0xBE, response[1].toInt() and 0xFF)
         assertEquals(0, response[63].toInt() and 1)
     }
 
