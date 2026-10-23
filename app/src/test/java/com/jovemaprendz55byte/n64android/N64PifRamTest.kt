@@ -93,4 +93,20 @@ class N64PifRamTest {
         assertEquals(0x5A, bus.readByte(0xFF).toInt() and 0xFF)
         assertEquals(0, bus.readWord(N64MemoryBus.SI_STATUS) and 1)
     }
+    @Test fun resetClearsAllPifRamBytes() {
+        val pif = N64PifRam()
+        val bytes = ByteArray(N64PifRam.SIZE) { (it + 1).toByte() }
+        pif.write64(bytes)
+        pif.reset()
+
+        assertEquals(true, pif.read64().all { it == 0.toByte() })
+    }
+
+    @Test fun pifRamDmaRequiresExactly64Bytes() {
+        val pif = N64PifRam()
+        org.junit.Assert.assertThrows(IllegalArgumentException::class.java) {
+            pif.write64(ByteArray(N64PifRam.SIZE - 1))
+        }
+    }
+
 }
