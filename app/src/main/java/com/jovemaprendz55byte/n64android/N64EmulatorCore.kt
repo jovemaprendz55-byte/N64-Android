@@ -284,6 +284,9 @@ class N64EmulatorCore(
     /** Returns the full CPU snapshot, including all 31 general-purpose registers. */
     fun fullCpuDiagnosticSummary(): String = cpu.diagnosticSnapshot()
 
+    /** Returns CP0 state needed to diagnose CPU exceptions and TLB faults. */
+    fun cp0DiagnosticSummary(): String = cpu.cp0DiagnosticSummary()
+
     /** Returns the early instruction sequence that led into a repeated-PC loop. */
     fun executionHistoryDiagnosticSummary(): String = cpu.executionHistoryDiagnosticSummary()
 
