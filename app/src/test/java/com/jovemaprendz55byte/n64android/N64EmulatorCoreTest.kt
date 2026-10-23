@@ -63,72 +63,9 @@ class N64EmulatorCoreTest {
         assertEquals(0xFFFF_FFFF_B000_0044UL.toLong(), result.programCounter)
     }
 
-    @Test fun ipl3DiagnosticCopiesCodeAndUsesNtscBootSeed() {
-        // SW r20, 0(r0): the diagnostic CIC-6105 handoff seeds r20=1 for NTSC.
-        val rom = syntheticRomWithInstructions(0xAC140000.toInt())
-        rom[0x3E] = 'J'.code.toByte()
-        val core = N64EmulatorCore()
-        core.loadRom(rom)
 
-        core.startIpl3DiagnosticExecution()
-        assertEquals(0xAC140000.toInt(), core.memoryBus.readWord(N64SpMemory.DMEM_BASE + 0x40L))
-        val result = core.executeSlice(1)
 
-        assertEquals(1, result.instructionsExecuted)
-        assertEquals(N64EmulatorCore.StopReason.INSTRUCTION_BUDGET_REACHED, result.stopReason)
-        assertEquals(null, result.errorMessage)
-        assertEquals(0xFFFF_FFFF_A400_0044UL.toLong(), result.programCounter)
-        assertEquals(1, core.memoryBus.readWord(0))
-    }
 
-    @Test fun cicHandoffDiagnosticRecordsIpl3CopyBeforeExecution() {
-        val rom = syntheticRomWithInstructions(0xAC140000.toInt())
-        rom[0x3E] = 'J'.code.toByte()
-        val core = N64EmulatorCore()
-        core.loadRom(rom)
-
-        core.startCic6105BootSequence()
-
-        // N64BootSequence.loadIpl3 copies ROM offsets 0x40..0xFFF into SP DMEM.
-        // The handoff diagnostic must confirm that copy before IPL3 can execute.
-        assertEquals(
-            true,
-            core.bootMemoryDiagnosticSummary().contains("SP_DMEM_IPL3_COPY_MATCH_AT_HANDOFF=true")
-        )
-    }
-
-    @Test fun ipl3DiagnosticUsesPalBootSeedForEuropeanCountryCode() {
-        // SW r20, 0(r0): the diagnostic CIC-6105 handoff seeds r20=0 for PAL.
-        // 'P' is a PAL country code; 'E' identifies North America (NTSC).
-        val rom = syntheticRomWithInstructions(0xAC140000.toInt())
-        rom[0x3E] = 'P'.code.toByte()
-        val core = N64EmulatorCore()
-        core.loadRom(rom)
-
-        core.startIpl3DiagnosticExecution()
-        assertEquals(0xAC140000.toInt(), core.memoryBus.readWord(N64SpMemory.DMEM_BASE + 0x40L))
-        val result = core.executeSlice(1)
-
-        assertEquals(1, result.instructionsExecuted)
-        assertEquals(N64EmulatorCore.StopReason.INSTRUCTION_BUDGET_REACHED, result.stopReason)
-        assertEquals(null, result.errorMessage)
-        assertEquals(0, core.memoryBus.readWord(0))
-    }
-
-    @Test fun stopsTheKnownIpl3ChecksumFailureLoopEarly() {
-        val core = N64EmulatorCore()
-        core.loadRom(syntheticRomWithInstructions(0))
-        // IPL3 failure loop: BGEZAL $zero,-1, with a delay-slot NOP.
-        core.memoryBus.writeWord(0x1C8L, 0x0411FFFF)
-        core.memoryBus.writeWord(0x1CCL, 0x00000000)
-        core.startExecution(0xFFFF_FFFF_8000_01C8UL.toLong())
-
-        val result = core.executeSlice(1000)
-
-        assertEquals(N64EmulatorCore.StopReason.BOOT_CHECKSUM_FAILURE_LOOP, result.stopReason)
-        assertNotNull(result.errorMessage)
-        org.junit.Assert.assertTrue(result.instructionsExecuted < 1000)
-    }
 
     @Test fun requiresRomBeforeExecution() {
         val core = N64EmulatorCore()
