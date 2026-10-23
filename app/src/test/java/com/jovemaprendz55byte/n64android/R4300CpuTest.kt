@@ -2131,6 +2131,24 @@ class R4300CpuTest {
         assertEquals(true, cpu.isIpl3ChecksumFailureBranch())
     }
 
+    @Test fun cp0RandomAdvancesAndWrapsAcrossTlbSlots() {
+        val cpu = R4300Cpu()
+        val readRandomR1 = (0x10 shl 26) or (1 shl 16) or (1 shl 11) // MFC0 r1, Random
+        val readRandomR2 = (0x10 shl 26) or (2 shl 16) or (1 shl 11) // MFC0 r2, Random
+        cpu.loadBytes(0, words(readRandomR1, readRandomR2))
+
+        cpu.step()
+        cpu.step()
+
+        assertEquals(31L, cpu.register(1))
+        assertEquals(30L, cpu.register(2))
+
+        val wrapCpu = R4300Cpu()
+        wrapCpu.loadBytes(0, words(*IntArray(32) { readRandomR1 }))
+        repeat(32) { wrapCpu.step() }
+        assertEquals(31L, wrapCpu.readCp0ForTest(1))
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
