@@ -13,9 +13,15 @@ internal enum class TlbAccess { FETCH, LOAD, STORE }
 
 internal class TlbTranslationFault(
     val virtualAddress: Long,
-    val access: TlbAccess
+    val access: TlbAccess,
+    /** MIPS exception code: MOD=1, TLBL=2, TLBS=3. */
+    val exceptionCode: Int = if (access == TlbAccess.STORE) 3 else 2,
+    /** Only a true TLB miss uses the refill vector; invalid/modified entries use the general vector. */
+    val refillEligible: Boolean = true
 ) : IllegalArgumentException(
-    "Virtual address 0x%016X requires TLB translation; no valid matching R4300 TLB entry".format(virtualAddress)
+    "Virtual address 0x%016X requires TLB translation (access=%s, exceptionCode=%d)".format(
+        virtualAddress, access, exceptionCode
+    )
 )
 
 class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64MemoryBus) {
@@ -47,6 +53,8 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private val fcr = IntArray(32)
     private data class TlbEntry(var pageMask: Int = 0, var entryHi: Int = 0, var entryLo0: Int = 0, var entryLo1: Int = 0)
     private val tlb = Array(32) { TlbEntry() }
+    /** Recent TLB writes, including initialization writes before the faulting access. */
+    private val tlbWriteHistory = java.util.ArrayDeque<String>(64)
 
     var pc: Long = 0L
     var hi: Long = 0L
@@ -59,6 +67,9 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private var lastBranchInstructionAddress: Long? = null
     private var lastBranchInstructionWord: Int? = null
     private var lastBranchTarget: Long? = null
+    /** Source register/value for the most recent JR/JALR, to trace unexpected indirect targets. */
+    private var lastIndirectJumpRegister: Int? = null
+    private var lastIndirectJumpValue: Long? = null
     /** Address of the last instruction fetched successfully, for failure diagnostics. */
     private var lastInstructionAddress: Long? = null
     /** Last fetched instruction, retained so execution failures can be diagnosed. */
@@ -69,6 +80,16 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private val recentInstructions = java.util.ArrayDeque<String>(16)
     private val recentInstructionPcs = LongArray(64)
     private var recentInstructionPcIndex = 0
+    /** Exact rolling trace, frozen at the first TLB fault to preserve the path into it. */
+    private val instructionTracePcs = LongArray(32)
+    private val instructionTraceWords = IntArray(32)
+    private var instructionTraceIndex = 0
+    private var instructionTraceCount = 0
+    private var firstTlbFaultHistory: String? = null
+    /** Bounded first-fault context: origin instruction, effective address, CP0 and TLB before exception entry. */
+    private var firstTlbFaultContext: String? = null
+    /** TLB contents captured before software handles the first translation fault. */
+    private var firstTlbFaultTlbHistory: String? = null
     private var recentInstructionPcCount = 0
     private var frozenLoopTrace: String? = null
     private var totalSteps: Long = 0L
@@ -88,9 +109,30 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             (physical >= 0x0400_0000L && physical < 0x0400_1000L)
     }
 
-    /** Prefer the trace captured when execution first entered a repeated-PC loop. */
+    /** Exact instruction sequence immediately preceding the first TLB fault, if one occurred. */
     internal fun executionHistoryDiagnosticSummary(): String =
-        (frozenLoopTrace ?: recentInstructions.joinToString(" | ")).ifBlank { "sem historico" }
+        firstTlbFaultHistory ?: currentInstructionTraceSummary().ifBlank {
+            frozenLoopTrace ?: recentInstructions.joinToString(" | ").ifBlank { "sem historico" }
+        }
+
+    /** Most recent instructions, including exception-handler execution after the first TLB fault. */
+    internal fun currentExecutionTraceDiagnosticSummary(): String =
+        currentInstructionTraceSummary().ifBlank { "sem historico atual" }
+
+    /** Current live TLB state; unlike the first-fault snapshot, this includes later handler writes. */
+    internal fun currentTlbDiagnosticSummary(): String = tlbDiagnosticSummary()
+
+    private fun currentInstructionTraceSummary(): String {
+        if (instructionTraceCount == 0) return ""
+        val start = (instructionTraceIndex - instructionTraceCount + instructionTracePcs.size) % instructionTracePcs.size
+        return (0 until instructionTraceCount).joinToString(" | ") { offset ->
+            val index = (start + offset) % instructionTracePcs.size
+            "0x" + instructionTracePcs[index].toULong().toString(16)
+                .uppercase(java.util.Locale.ROOT).padStart(16, '0') +
+                "=0x" + instructionTraceWords[index].toUInt().toString(16)
+                .uppercase(java.util.Locale.ROOT).padStart(8, '0')
+        }
+    }
 
     /** Compact CPU state snapshot attached to ROM-test failures. */
     internal fun diagnosticSnapshot(): String = buildString {
@@ -107,6 +149,10 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         append("; CPU_MEMORY_PROBE_HISTORY=").append(cpuMemoryProbeHistory.joinToString(";"))
         append("; alvoUltimoSalto=")
         append(lastBranchTarget?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "nenhum")
+        append("; JR_JALR_SOURCE=")
+        append(lastIndirectJumpRegister?.let { "r$it" } ?: "nenhum")
+        append("; JR_JALR_VALUE=0x")
+        append(lastIndirectJumpValue?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "nenhum")
         append("; Instrucao=0x")
         append(lastInstructionWord.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
         append("; registradores:")
@@ -142,6 +188,44 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
      * the exception vector must install a real TLB entry before retrying.
      */
     internal fun handleTlbTranslationFault(fault: TlbTranslationFault, faultingPc: Long) {
+        if (firstTlbFaultHistory == null) {
+            firstTlbFaultHistory = currentInstructionTraceSummary()
+            firstTlbFaultTlbHistory = tlbDiagnosticSummary(fault.virtualAddress)
+        }
+        if (firstTlbFaultContext == null) {
+            val instructionIsFaultingDataAccess = lastInstructionAddress == faultingPc
+            val instruction = if (instructionIsFaultingDataAccess) lastInstructionWord else null
+            val opcode = instruction?.ushr(26)?.and(0x3F)
+            val rs = instruction?.ushr(21)?.and(0x1F)
+            val rt = instruction?.ushr(16)?.and(0x1F)
+            val baseValue = rs?.let(::register)
+            val signedOffset = instruction?.let { (it shl 16 shr 16).toLong() }
+            val effective = if (baseValue != null && signedOffset != null) baseValue + signedOffset else null
+            firstTlbFaultContext = buildString {
+                append("TLB_FAULT_VADDR=0x").append(fault.virtualAddress.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+                append(",ACCESS=").append(fault.access)
+                append(",EXCEPTION_CODE=").append(fault.exceptionCode)
+                append(",REFILL_ELIGIBLE=").append(fault.refillEligible)
+                append(",FAULT_PC=0x").append(faultingPc.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+                append(",FAULT_INSTRUCTION=").append(instruction?.let { "0x" + it.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0') } ?: "unavailable-fetch-fault")
+                append(",OPCODE=").append(opcode?.let { "0x" + it.toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0') } ?: "unknown")
+                if (rs != null && baseValue != null) {
+                    append(",RS=r").append(rs).append(":0x").append(baseValue.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+                }
+                if (rt != null) append(",RT=r").append(rt).append(":0x").append(register(rt).toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+                if (signedOffset != null) append(",SIGNED_IMMEDIATE=").append(signedOffset)
+                if (effective != null) append(",COMPUTED_EFFECTIVE_ADDRESS=0x").append(effective.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+                append(",LAST_EXECUTED_PC=0x").append(lastInstructionAddress?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "none")
+                append(",LAST_EXECUTED_INSTRUCTION=0x").append(lastInstructionWord.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
+                append(",LAST_BRANCH_PC=0x").append(lastBranchInstructionAddress?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "none")
+                append(",LAST_BRANCH_INSTRUCTION=0x").append(lastBranchInstructionWord?.toUInt()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(8, '0') ?: "none")
+                append(",LAST_BRANCH_TARGET=0x").append(lastBranchTarget?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "none")
+                append(",INDIRECT_JUMP_SOURCE=").append(lastIndirectJumpRegister?.let { "r$it" } ?: "none")
+                append(",INDIRECT_JUMP_VALUE=0x").append(lastIndirectJumpValue?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "none")
+                append(",CP0_BEFORE_EXCEPTION={").append(cp0DiagnosticSummary()).append("}")
+                append(",TLB_BEFORE_EXCEPTION={").append(tlbDiagnosticSummary(fault.virtualAddress)).append("}")
+            }
+        }
         val oldStatus = cp0[12].toInt()
         val alreadyExl = (oldStatus and 0x2) != 0
         val virtual = fault.virtualAddress.toInt()
@@ -150,19 +234,99 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         cp0[4] = ((cp0[4].toInt() and 0xFF80_000F.toInt()) or
             ((virtual ushr 9) and 0x007F_FFF0)).toLong() // Context.BadVPN2
         cp0[10] = ((virtual and 0xFFFF_E000.toInt()) or (cp0[10].toInt() and 0xFF)).toLong() // EntryHi
-        val exceptionCode = if (fault.access == TlbAccess.STORE) 3 else 2 // TLBS / TLBL
+        val exceptionCode = fault.exceptionCode // MOD / TLBL / TLBS
         cp0[13] = ((cp0[13].toInt() and 0xFFFF_FF83.toInt()) or (exceptionCode shl 2)).toLong()
         if (!alreadyExl) cp0[14] = faultingPc // EPC
         cp0[12] = (oldStatus or 0x2).toLong() // Status.EXL
 
         val exceptionVector = when {
             alreadyExl -> 0xFFFF_FFFF_8000_0180UL.toLong()
-            (oldStatus and (1 shl 22)) != 0 -> 0xFFFF_FFFF_BFC0_0200UL.toLong() // Status.BEV
-            else -> 0xFFFF_FFFF_8000_0000UL.toLong() // TLB refill vector
+            (oldStatus and (1 shl 22)) != 0 -> {
+                if (fault.refillEligible) 0xFFFF_FFFF_BFC0_0200UL.toLong()
+                else 0xFFFF_FFFF_BFC0_0380UL.toLong()
+            }
+            fault.refillEligible -> 0xFFFF_FFFF_8000_0000UL.toLong() // TLB refill vector
+            else -> 0xFFFF_FFFF_8000_0180UL.toLong() // invalid / modified general vector
         }
         pendingBranchTarget = null
         pc = exceptionVector
     }
+
+    /** Compact snapshot of CP0 registers relevant to boot and address exceptions. */
+    internal fun cp0DiagnosticSummary(): String = buildString {
+        fun reg(name: String, index: Int) {
+            append(name).append("=0x")
+                .append(cp0[index].toULong().toString(16)
+                    .uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+        }
+        reg("Status", 12)
+        append(", ")
+        reg("Cause", 13)
+        append(", ")
+        reg("EPC", 14)
+        append(", ")
+        reg("BadVAddr", 8)
+        append(", ")
+        reg("Context", 4)
+        append(", ")
+        reg("EntryHi", 10)
+        append(", ")
+        reg("EntryLo0", 2)
+        append(", ")
+        reg("EntryLo1", 3)
+        append(", ")
+        reg("Index", 0)
+        append(", ")
+        reg("Random", 1)
+    }
+
+    /**
+     * Reports non-empty TLB slots and whether any slot covers the faulting VPN.
+     * This is diagnostic only: it never creates or alters a translation.
+     */
+    internal fun tlbDiagnosticSummary(faultAddress: Long? = null): String {
+        val address = (faultAddress ?: cp0[8]).toInt()
+        val asid = cp0[10].toInt() and 0xFF
+        var matchingVpnCount = 0
+        var meaningfulEntryCount = 0
+        val entries = mutableListOf<String>()
+        tlb.forEachIndexed { index, entry ->
+            // Reset-valued HI=0x80000000 by itself is not a populated mapping.
+            val populated = entry.pageMask != 0 || entry.entryLo0 != 0 || entry.entryLo1 != 0 ||
+                (entry.entryHi != 0 && entry.entryHi != 0x8000_0000.toInt())
+            if (populated) {
+                meaningfulEntryCount++
+                val pairMask = entry.pageMask or 0x1FFF
+                val vpnMask = pairMask.inv()
+                val vpnMatches = (address and vpnMask) == (entry.entryHi and vpnMask)
+                val global = (entry.entryLo0 and 1) != 0 && (entry.entryLo1 and 1) != 0
+                val asidMatches = (entry.entryHi and 0xFF) == asid
+                val pageSize = (pairMask + 1) ushr 1
+                val odd = (address and pageSize) != 0
+                val selectedLo = if (odd) entry.entryLo1 else entry.entryLo0
+                val selectedValid = (selectedLo and 2) != 0
+                val selectedDirty = (selectedLo and 4) != 0
+                if (vpnMatches && (global || asidMatches)) matchingVpnCount++
+                entries += "TLB_ENTRY_$index=PM=0x%08X,HI=0x%08X,LO0=0x%08X,LO1=0x%08X,VPN_MATCH=%s,ASID_MATCH=%s,GLOBAL=%s,SELECTED=%s,VALID=%s,DIRTY=%s,WRITE_ALLOWED=%s".format(
+                    java.util.Locale.ROOT,
+                    entry.pageMask, entry.entryHi, entry.entryLo0, entry.entryLo1,
+                    vpnMatches, global || asidMatches, global, if (odd) "LO1" else "LO0",
+                    selectedValid, selectedDirty, selectedValid && selectedDirty
+                )
+            }
+        }
+        val writes = tlbWriteHistory.joinToString(";").ifBlank { "none" }
+        return "TLB_NONZERO_COUNT=$meaningfulEntryCount, TLB_WRITE_HISTORY=$writes, TLB_FAULT_ADDRESS=0x%08X, TLB_FAULT_MATCHING_VPN_COUNT=%d, TLB_ENTRIES=%s".format(
+            java.util.Locale.ROOT, address, matchingVpnCount, entries.joinToString(";").ifBlank { "none" }
+        )
+    }
+
+    internal fun firstTlbFaultDiagnosticSummary(): String =
+        firstTlbFaultTlbHistory ?: tlbDiagnosticSummary()
+
+    /** One bounded record of the instruction/address/CP0/TLB state at the first translation fault. */
+    internal fun firstTlbFaultContextSummary(): String =
+        firstTlbFaultContext ?: "no_tlb_fault_recorded"
 
     internal fun readCp0ForTest(index: Int): Long = cp0[index]
 
@@ -293,10 +457,20 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         lastBranchInstructionAddress = null
         lastBranchInstructionWord = null
         lastBranchTarget = null
+        lastIndirectJumpRegister = null
+        lastIndirectJumpValue = null
         recentInstructions.clear()
         recentInstructionPcs.fill(0L)
         recentInstructionPcIndex = 0
         recentInstructionPcCount = 0
+        instructionTracePcs.fill(0L)
+        instructionTraceWords.fill(0)
+        instructionTraceIndex = 0
+        instructionTraceCount = 0
+        firstTlbFaultHistory = null
+        firstTlbFaultContext = null
+        firstTlbFaultTlbHistory = null
+        tlbWriteHistory.clear()
         frozenLoopTrace = null
         totalSteps = 0L
     }
@@ -414,6 +588,10 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         val instruction = fetchInstruction(pc)
         lastInstructionAddress = instructionAddress
         lastInstructionWord = instruction
+        instructionTracePcs[instructionTraceIndex] = instructionAddress
+        instructionTraceWords[instructionTraceIndex] = instruction
+        instructionTraceIndex = (instructionTraceIndex + 1) % instructionTracePcs.size
+        if (instructionTraceCount < instructionTracePcs.size) instructionTraceCount++
         totalSteps++
         // Keep the fixed-size PC ring updated every instruction, but only
         // scan it at the existing 64-instruction diagnostic cadence. Scanning
@@ -511,9 +689,10 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                     0x08 -> { // TLBP: probe EntryHi; set Index.P on miss
                         val hiValue = cp0[10].toInt()
                         val asid = hiValue and 0xFF
-                        val vpnMask = (cp0[5].toInt() or 0x1FFF).inv()
                         val found = tlb.indexOfFirst { entry ->
-                            (entry.entryHi and vpnMask) == (hiValue and vpnMask) &&
+                            // TLBP compares against each candidate's own PageMask, not CP0.PageMask.
+                            val candidateVpnMask = (entry.pageMask or 0x1FFF).inv()
+                            (entry.entryHi and candidateVpnMask) == (hiValue and candidateVpnMask) &&
                                 (((entry.entryLo0 and 1) != 0 && (entry.entryLo1 and 1) != 0) ||
                                     (entry.entryHi and 0xFF) == asid)
                         }
@@ -538,10 +717,14 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                 0x07 -> writeRegister(rd, (b.toInt() shr (a.toInt() and 0x1F)).toLong()) // SRAV
                 0x08 -> {
                     if (a % 4L != 0L) throw IllegalArgumentException("JR target must be 4-byte aligned")
+                    lastIndirectJumpRegister = rs
+                    lastIndirectJumpValue = a
                     pendingBranchTarget = a
                 } // JR
                 0x09 -> {
                     if (a % 4L != 0L) throw IllegalArgumentException("JALR target must be 4-byte aligned")
+                    lastIndirectJumpRegister = rs
+                    lastIndirectJumpValue = a
                     writeRegister(rd, instructionAddress + 8L)
                     pendingBranchTarget = a
                 } // JALR
@@ -745,6 +928,18 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         // The instruction just executed was a delay-slot instruction.
         if (branchToApply != null) pc = branchToApply
         gpr[0] = 0L
+        advanceRandomTlbIndex()
+    }
+
+    /**
+     * CP0 Random advances once per executed instruction and wraps at Wired.
+     * TLBWR must not repeatedly overwrite the same slot because Random was
+     * left at its reset value for the lifetime of the emulated CPU.
+     */
+    private fun advanceRandomTlbIndex() {
+        val wired = (cp0[6].toInt() and 0x3F).coerceIn(0, 31)
+        val random = cp0[1].toInt() and 0x3F
+        cp0[1] = if (random <= wired) 31L else (random - 1).toLong()
     }
 
 
@@ -766,6 +961,14 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         entry.entryHi = cp0[10].toInt()
         entry.entryLo0 = cp0[2].toInt()
         entry.entryLo1 = cp0[3].toInt()
+        val event = "PC=0x%08X,INDEX=%d,RANDOM=0x%02X,WIRED=0x%02X,PM=0x%08X,HI=0x%08X,LO0=0x%08X,LO1=0x%08X".format(
+            java.util.Locale.ROOT,
+            (lastInstructionAddress ?: pc).toInt(), index,
+            cp0[1].toInt() and 0x3F, cp0[6].toInt() and 0x3F,
+            entry.pageMask, entry.entryHi, entry.entryLo0, entry.entryLo1
+        )
+        if (tlbWriteHistory.size == 64) tlbWriteHistory.removeFirst()
+        tlbWriteHistory.addLast(event)
     }
 
     /**
@@ -773,7 +976,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
      * for a miss/invalid half. This interpreter currently reports faults rather
      * than entering the architectural TLB exception vector.
      */
-    private fun translateTlbAddress(address: Long): Long? {
+    private fun translateTlbAddress(address: Long, access: TlbAccess): Long? {
         val virtual = address.toInt()
         val currentAsid = cp0[10].toInt() and 0xFF
         for (entry in tlb) {
@@ -786,7 +989,14 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             val pageSize = (pairMask + 1) ushr 1
             val odd = (virtual and pageSize) != 0
             val lo = if (odd) entry.entryLo1 else entry.entryLo0
-            if ((lo and 2) == 0) return null // EntryLo.V is clear
+            if ((lo and 2) == 0) {
+                // A matching entry with V=0 is an invalid exception, not a refill miss.
+                throw TlbTranslationFault(address, access, refillEligible = false)
+            }
+            if (access == TlbAccess.STORE && (lo and 4) == 0) {
+                // A valid, matching page without D raises TLB Modified (MOD), not TLBS.
+                throw TlbTranslationFault(address, access, exceptionCode = 1, refillEligible = false)
+            }
             val pfn = (lo ushr 6) and 0xFFFFF
             val physicalBase = (pfn.toLong() shl 12) and (pageSize - 1).inv().toLong()
             return physicalBase or (virtual.toLong() and (pageSize - 1).toLong())
@@ -812,7 +1022,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private fun resolveRamAddress(address: Long, access: TlbAccess = TlbAccess.LOAD): Int {
         val physicalAddress = N64Addressing.translateDirectMappedAddress(address)
             ?: if (address in 0L..0x1FFF_FFFFL) address
-            else translateTlbAddress(address) ?: throw TlbTranslationFault(address, access)
+            else translateTlbAddress(address, access) ?: throw TlbTranslationFault(address, access)
         val region = N64MemoryMap.regionOf(physicalAddress)
         require(region == N64MemoryMap.Region.RDRAM ||
             region == N64MemoryMap.Region.RDRAM_REGISTERS ||

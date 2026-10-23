@@ -20,6 +20,11 @@ class N64AddressingTest {
         assertEquals(0x1FFF_FFFFL, N64Addressing.translateDirectMappedAddress(0xBFFF_FFFFL))
     }
 
+    @Test fun bootFaultAddressRequiresRealTlbTranslation() {
+        assertNull(N64Addressing.translateDirectMappedAddress(0x7F00_0BD0L))
+        assertNull(N64Addressing.translateDirectMappedAddress(0xFFFF_FFFF_7F00_0BD0UL.toLong()))
+    }
+
     @Test fun refusesAddressesThatNeedTlbTranslation() {
         assertNull(N64Addressing.translateDirectMappedAddress(0x0000_1234L))
         assertNull(N64Addressing.translateDirectMappedAddress(0xC000_1234L))
