@@ -147,6 +147,9 @@ internal class N64MemoryBus(
         private const val MI_INTR_MASK_DP = 1 shl 5
     }
 
+    /** Reset volatile PIF RAM before a fresh console boot sequence. */
+    internal fun resetPifRam() = pifRam.reset()
+
     fun readByte(physicalAddress: Long): Byte = when (region(physicalAddress)) {
         N64MemoryMap.Region.RDRAM -> rdram[rdramIndex(physicalAddress)]
         N64MemoryMap.Region.SP_DMEM, N64MemoryMap.Region.SP_IMEM ->
