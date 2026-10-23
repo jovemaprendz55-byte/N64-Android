@@ -27,10 +27,6 @@ class N64EmulatorCore(
     internal val memoryBus = N64MemoryBus(controllerPort = controllerPort)
     private val cpu = R4300Cpu(memoryBus)
     private val rsp = RspCore(memoryBus)
-    private val pifBootSequence = N64PifBootCoordinator(memoryBus, cpu)
-    private var lastBootPreflight: N64BootInitialization.Preflight? = null
-    private var bootIpl3CopyMatchedAtHandoff: Boolean? = null
-    private var bootIpl3FirstMismatchAtHandoff: String? = null
     private var romLoaded = false
     private var executionStarted = false
     private var checksumFailureLoopAddress: Long? = null
@@ -76,9 +72,6 @@ class N64EmulatorCore(
     fun loadRom(normalizedRom: ByteArray) {
         cpu.loadCartridgeRom(normalizedRom)
         this.normalizedRom = normalizedRom.copyOf()
-        lastBootPreflight = null
-        bootIpl3CopyMatchedAtHandoff = null
-        bootIpl3FirstMismatchAtHandoff = null
         romLoaded = true
         executionStarted = false
     }
@@ -88,24 +81,7 @@ class N64EmulatorCore(
      * This does not emulate the PIF boot ROM firmware or identify/authenticate CICs.
      */
     internal fun startCic6105BootSequence(): N64PifBootSequence.BootHandoff {
-        require(romLoaded) { "Load a normalized ROM before execution" }
-        val rom = normalizedRom ?: throw IllegalStateException("No normalized ROM is retained")
-        lastBootPreflight = N64BootInitialization(memoryBus, cpu).prepareCic6105(rom)
-        // The preflight identifies CIC from IPL3 bytes. Preserve that choice:
-        // a 6102 cartridge must not be reset with the incompatible 6105 seed.
-        val handoff = when (lastBootPreflight?.detectedCic) {
-            "6102/7101" -> pifBootSequence.startCic6102(rom)
-            "6105/7105", null -> pifBootSequence.startCic6105(rom)
-            else -> throw IllegalStateException(
-                "CIC ${lastBootPreflight?.detectedCic} has no validated PIF-to-IPL3 handoff."
-            )
-        }
-        // Record the DMEM copy at the actual CIC-specific handoff, before IPL3
-        // runs and is free to reuse the scratch memory.
-        captureIpl3CopyMatchAtHandoff(rom)
-        resetBootLoopDetector()
-        executionStarted = true
-        return handoff
+        throw UnsupportedOperationException("IPL3/PIF boot was removed for a clean-room rebuild.")
     }
 
     /**
@@ -115,40 +91,10 @@ class N64EmulatorCore(
      * and does not initialize all hardware registers.
      */
     fun startIpl3DiagnosticExecution() {
-        require(romLoaded) { "Load a normalized ROM before execution" }
-        val rom = normalizedRom ?: throw IllegalStateException("No normalized ROM is retained")
-        // Preflight the RDRAM model, IPL3 payload, and ROM checksum before
-        // entering the diagnostic IPL3 path. A mismatch is logged, not patched.
-        lastBootPreflight = N64BootInitialization(memoryBus, cpu).prepareCic6105(rom)
-        // The preflight above already loaded IPL3 and selected the CPU handoff
-        // from the detected CIC. Do not reset to CIC-6105 here: doing so overwrites
-        // CIC-6102's 0x3F checksum seed with 0x91 and recreates the checksum loop.
-        // Keep this explicit as a diagnostic shortcut; it still bypasses PIF ROM.
-        // Preflight above already copied the full boot region into DMEM.
-        // Capture that initial copy before IPL3 executes. The running IPL3 may
-        // legitimately reuse DMEM as scratch, so a post-execution mismatch alone
-        // cannot tell us whether the initial cartridge copy failed.
-        captureIpl3CopyMatchAtHandoff(rom)
-        resetBootLoopDetector()
-        executionStarted = true
+        throw UnsupportedOperationException("IPL3/PIF boot was removed for a clean-room rebuild.")
     }
 
-    private fun captureIpl3CopyMatchAtHandoff(rom: ByteArray) {
-        var firstMismatch: String? = null
-        for (offset in 0 until 0x1000) {
-            val expected = rom[offset].toInt() and 0xFF
-            val actual = memoryBus.readByte(N64SpMemory.DMEM_BASE + offset).toInt() and 0xFF
-            if (expected != actual) {
-                firstMismatch = "offset=0x" +
-                    offset.toString(16).uppercase(java.util.Locale.ROOT).padStart(3, '0') +
-                    ",ROM=0x" + expected.toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0') +
-                    ",DMEM=0x" + actual.toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
-                break
-            }
-        }
-        bootIpl3FirstMismatchAtHandoff = firstMismatch
-        bootIpl3CopyMatchedAtHandoff = firstMismatch == null
-    }
+
 
     private fun resetBootLoopDetector() {
         checksumFailureLoopAddress = null
@@ -345,10 +291,6 @@ class N64EmulatorCore(
                     (rom[offset].toInt() and 0xFF)
             }
             append(", SP_DMEM_IPL3_COPY_MATCH=").append(dmemIpl3CopyMatches)
-            append(", SP_DMEM_IPL3_COPY_MATCH_AT_HANDOFF=")
-                .append(bootIpl3CopyMatchedAtHandoff ?: "not-started")
-            append(", SP_DMEM_BOOT_REGION_FIRST_MISMATCH_AT_HANDOFF=")
-                .append(bootIpl3FirstMismatchAtHandoff ?: if (bootIpl3CopyMatchedAtHandoff == true) "none" else "not-started")
             append(", ROM_IPL3_0x750=")
             append(rom.copyOfRange(0x750, 0x760).joinToString("") {
                 (it.toInt() and 0xFF).toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
@@ -367,14 +309,6 @@ class N64EmulatorCore(
                 append(", ROM_HOST_CRC_MATCH=").append(checksum.matchesHeader)
             } ?: append(", ROM_CIC_DETECTED=UNKNOWN_OR_SHORT_ROM")
 
-            append("; ")
-        }
-        lastBootPreflight?.let { preflight ->
-            append("BOOT_PREFLIGHT_RDRAM_READY=").append(preflight.rdramModelReady)
-            append(", RDRAM_CAPACITY=").append(preflight.rdramCapacityBytes)
-            append(", IPL3_BYTES=").append(preflight.ipl3Bytes)
-            append(", GAME_SEGMENT_BYTES=").append(preflight.gameSegmentBytes)
-            append(", BOOT_CHECKSUM_MATCH=").append(preflight.checksumMatches)
             append("; ")
         }
         append("RDRAM[0x1C8]=0x")
