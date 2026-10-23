@@ -114,6 +114,8 @@ class R4300CpuTest {
         assertEquals(4L, cpu.readCp0ForTest(14)) // EPC
         assertEquals(2L, (cpu.readCp0ForTest(13) ushr 2) and 0x1F) // ExcCode=TLBL
         assertEquals(2L, cpu.readCp0ForTest(12) and 2L) // Status.EXL
+        org.junit.Assert.assertTrue(cpu.firstTlbFaultDiagnosticSummary().contains("TLB_NONZERO_COUNT=0"))
+        org.junit.Assert.assertTrue(cpu.firstTlbFaultDiagnosticSummary().contains("TLB_FAULT_ADDRESS=0x40000000"))
         assertEquals(0xFFFF_FFFF_8000_0000UL.toLong(), cpu.pc) // TLB refill vector
         val faultTrace = cpu.executionHistoryDiagnosticSummary()
         org.junit.Assert.assertTrue(faultTrace.contains("0x0000000000000000=0x3C014000"))
