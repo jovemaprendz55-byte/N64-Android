@@ -330,6 +330,20 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
 
     internal fun readCp0ForTest(index: Int): Long = cp0[index]
 
+    /**
+     * Diagnostic-only virtual-to-physical translation. This never changes CPU/TLB
+     * state and returns null when the current TLB cannot translate the address.
+     */
+    internal fun diagnosticPhysicalAddress(address: Long): Long? {
+        N64Addressing.translateDirectMappedAddress(address)?.let { return it }
+        if (address in 0L..0x1FFF_FFFFL) return address
+        return try {
+            translateTlbAddress(address, TlbAccess.FETCH)
+        } catch (_: TlbTranslationFault) {
+            null
+        }
+    }
+
     internal fun piWriteDiagnosticSummary(): String =
         cpuPiWriteHistory.joinToString(";").ifBlank { "sem_escritas_PI_pela_CPU" }
 
