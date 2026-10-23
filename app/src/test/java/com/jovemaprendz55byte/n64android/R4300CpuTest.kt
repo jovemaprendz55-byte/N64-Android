@@ -93,6 +93,34 @@ class R4300CpuTest {
         assertEquals(0x12345678L, cpu.register(2))
     }
 
+    @Test fun storeToValidTlbPageWithoutDirtyBitRaisesModifiedException() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 4, 0x4000), // r4 = 0x40000000
+            iType(0x0D, 0, 1, 0x0082), // EntryLo: PFN=2, V=1, D=0
+            (0x10 shl 26) or (0x04 shl 21) or (4 shl 16) or (10 shl 11), // MTC0 r4, EntryHi
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (2 shl 11), // MTC0 r1, EntryLo0
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (3 shl 11), // MTC0 r1, EntryLo1
+            0x42000002, // TLBWI
+            iType(0x2B, 4, 0, 0) // SW r0, 0(r4): valid but clean page must MOD fault
+        ))
+        repeat(6) { cpu.step() }
+
+        try {
+            cpu.step()
+            throw AssertionError("Expected TLB Modified exception for store with D=0")
+        } catch (fault: TlbTranslationFault) {
+            assertEquals(0x40000000L, fault.virtualAddress)
+            assertEquals(TlbAccess.STORE, fault.access)
+            assertEquals(1, fault.exceptionCode)
+            cpu.handleTlbTranslationFault(fault, 24L)
+        }
+
+        assertEquals(1L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL) // ExcCode=MOD
+        assertEquals(0x40000000L, cpu.readCp0ForTest(8)) // BadVAddr
+        assertEquals(24L, cpu.readCp0ForTest(14)) // EPC
+    }
+
     @Test fun tlbMissEntersRefillExceptionAndRecordsFaultState() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
