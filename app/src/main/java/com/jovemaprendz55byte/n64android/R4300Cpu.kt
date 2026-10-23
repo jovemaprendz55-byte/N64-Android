@@ -72,6 +72,12 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private val recentInstructions = java.util.ArrayDeque<String>(16)
     private val recentInstructionPcs = LongArray(64)
     private var recentInstructionPcIndex = 0
+    /** Exact rolling trace, frozen at the first TLB fault to preserve the path into it. */
+    private val instructionTracePcs = LongArray(32)
+    private val instructionTraceWords = IntArray(32)
+    private var instructionTraceIndex = 0
+    private var instructionTraceCount = 0
+    private var firstTlbFaultHistory: String? = null
     private var recentInstructionPcCount = 0
     private var frozenLoopTrace: String? = null
     private var totalSteps: Long = 0L
@@ -91,9 +97,23 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             (physical >= 0x0400_0000L && physical < 0x0400_1000L)
     }
 
-    /** Prefer the trace captured when execution first entered a repeated-PC loop. */
+    /** Exact instruction sequence immediately preceding the first TLB fault, if one occurred. */
     internal fun executionHistoryDiagnosticSummary(): String =
-        (frozenLoopTrace ?: recentInstructions.joinToString(" | ")).ifBlank { "sem historico" }
+        firstTlbFaultHistory ?: currentInstructionTraceSummary().ifBlank {
+            frozenLoopTrace ?: recentInstructions.joinToString(" | ").ifBlank { "sem historico" }
+        }
+
+    private fun currentInstructionTraceSummary(): String {
+        if (instructionTraceCount == 0) return ""
+        val start = (instructionTraceIndex - instructionTraceCount + instructionTracePcs.size) % instructionTracePcs.size
+        return (0 until instructionTraceCount).joinToString(" | ") { offset ->
+            val index = (start + offset) % instructionTracePcs.size
+            "0x" + instructionTracePcs[index].toULong().toString(16)
+                .uppercase(java.util.Locale.ROOT).padStart(16, '0') +
+                "=0x" + instructionTraceWords[index].toUInt().toString(16)
+                .uppercase(java.util.Locale.ROOT).padStart(8, '0')
+        }
+    }
 
     /** Compact CPU state snapshot attached to ROM-test failures. */
     internal fun diagnosticSnapshot(): String = buildString {
@@ -149,6 +169,9 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
      * the exception vector must install a real TLB entry before retrying.
      */
     internal fun handleTlbTranslationFault(fault: TlbTranslationFault, faultingPc: Long) {
+        if (firstTlbFaultHistory == null) {
+            firstTlbFaultHistory = currentInstructionTraceSummary()
+        }
         val oldStatus = cp0[12].toInt()
         val alreadyExl = (oldStatus and 0x2) != 0
         val virtual = fault.virtualAddress.toInt()
@@ -334,6 +357,11 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         recentInstructionPcs.fill(0L)
         recentInstructionPcIndex = 0
         recentInstructionPcCount = 0
+        instructionTracePcs.fill(0L)
+        instructionTraceWords.fill(0)
+        instructionTraceIndex = 0
+        instructionTraceCount = 0
+        firstTlbFaultHistory = null
         frozenLoopTrace = null
         totalSteps = 0L
     }
@@ -451,6 +479,10 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         val instruction = fetchInstruction(pc)
         lastInstructionAddress = instructionAddress
         lastInstructionWord = instruction
+        instructionTracePcs[instructionTraceIndex] = instructionAddress
+        instructionTraceWords[instructionTraceIndex] = instruction
+        instructionTraceIndex = (instructionTraceIndex + 1) % instructionTracePcs.size
+        if (instructionTraceCount < instructionTracePcs.size) instructionTraceCount++
         totalSteps++
         // Keep the fixed-size PC ring updated every instruction, but only
         // scan it at the existing 64-instruction diagnostic cadence. Scanning
