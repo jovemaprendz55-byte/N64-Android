@@ -807,6 +807,45 @@ class RspCoreTest {
         assertEquals(0x4000, bus.readWord(N64SpMemory.DMEM_BASE + 4))
     }
 
+    @Test fun vectorMergeSelectsLanesUsingVcc() {
+        val bus = N64MemoryBus()
+        val rsp = RspCore(bus)
+        var pc = 0
+
+        // v1 lanes = 0x1100..0x1107; v2 lanes = 0x2200..0x2207.
+        for (lane in 0 until 8) {
+            bus.writeWord(N64SpMemory.IMEM_BASE + pc, iType(0x09, 0, 1, 0x1100 + lane))
+            pc += 4
+            bus.writeWord(N64SpMemory.IMEM_BASE + pc, cop2(4, 1, 1, lane * 2))
+            pc += 4
+            bus.writeWord(N64SpMemory.IMEM_BASE + pc, iType(0x09, 0, 2, 0x2200 + lane))
+            pc += 4
+            bus.writeWord(N64SpMemory.IMEM_BASE + pc, cop2(4, 2, 2, lane * 2))
+            pc += 4
+        }
+        bus.writeWord(N64SpMemory.IMEM_BASE + pc, iType(0x09, 0, 3, 0x55))
+        pc += 4
+        bus.writeWord(N64SpMemory.IMEM_BASE + pc, cop2(6, 3, 1, 0)) // CTC2 r3,VCC
+        pc += 4
+        bus.writeWord(N64SpMemory.IMEM_BASE + pc, vectorAlu(2, 1, 4, 0x27)) // VMRG
+        pc += 4
+        for (lane in 0 until 8) {
+            bus.writeWord(N64SpMemory.IMEM_BASE + pc, cop2(0, 5, 4, lane * 2))
+            pc += 4
+            bus.writeWord(N64SpMemory.IMEM_BASE + pc, iType(0x2B, 0, 5, lane * 4))
+            pc += 4
+        }
+
+        rsp.start()
+        repeat(pc / 4) { index ->
+            assertTrue("RSP stopped at VMRG instruction $index", rsp.step())
+        }
+        for (lane in 0 until 8) {
+            val expected = if ((0x55 ushr lane) and 1 != 0) 0x1100 + lane else 0x2200 + lane
+            assertEquals("VMRG lane $lane", expected, bus.readWord(N64SpMemory.DMEM_BASE + lane * 4))
+        }
+    }
+
     private fun rType(rs: Int, rt: Int, rd: Int, funct: Int): Int =
         (rs shl 21) or (rt shl 16) or (rd shl 11) or (funct and 63)
 
