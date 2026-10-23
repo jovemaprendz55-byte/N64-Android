@@ -316,7 +316,7 @@ class N64EmulatorCore(
         append("TLB_CURRENT_STATE=").append(cpu.currentTlbDiagnosticSummary()).append("; ")
         append("CPU_CURRENT_EXECUTION_TRACE=").append(cpu.currentExecutionTraceDiagnosticSummary()).append("; ")
         val rom = normalizedRom
-        if (rom != null && rom.size >= 0x1010) {
+        if (rom != null && rom.size >= 0x1000) {
             append("ROM_SIZE=0x")
             append(rom.size.toString(16).uppercase(java.util.Locale.ROOT))
             append(", ROM_HEADER_CRC=")
@@ -325,10 +325,14 @@ class N64EmulatorCore(
             })
             append(", ROM_COUNTRY=0x")
             append((rom[0x3E].toInt() and 0xFF).toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0'))
-            append(", ROM_BOOTCODE_0x1000=")
-            append(rom.copyOfRange(0x1000, 0x1010).joinToString("") {
-                (it.toInt() and 0xFF).toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
-            })
+            if (rom.size >= 0x1010) {
+                append(", ROM_BOOTCODE_0x1000=")
+                append(rom.copyOfRange(0x1000, 0x1010).joinToString("") {
+                    (it.toInt() and 0xFF).toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
+                })
+            } else {
+                append(", ROM_BOOTCODE_0x1000=unavailable-short-rom")
+            }
             append(", IPL3_START=")
             append(rom.copyOfRange(0x40, 0x50).joinToString("") {
                 (it.toInt() and 0xFF).toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
