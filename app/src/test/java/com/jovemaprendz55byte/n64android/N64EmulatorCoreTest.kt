@@ -147,6 +147,23 @@ class N64EmulatorCoreTest {
         org.junit.Assert.assertTrue(core.memoryBus.readWord(N64MemoryBus.SP_STATUS) and (1 shl 1) != 0)
     }
 
+    @Test fun diagnosticIpl3StartupCopiesBootImageIntoSpDmemAndExecutesIt() {
+        val rom = syntheticRomWithInstructions(0x2401002A, 0x24210001)
+        val core = N64EmulatorCore()
+        core.loadRom(rom)
+
+        core.startIpl3DiagnosticExecution()
+        val result = core.executeSlice(1)
+
+        assertEquals(1, result.instructionsExecuted)
+        assertEquals(0xFFFF_FFFF_A400_0044UL.toLong(), result.programCounter)
+        assertEquals(N64EmulatorCore.StopReason.INSTRUCTION_BUDGET_REACHED, result.stopReason)
+        assertEquals(0x24.toByte(), core.memoryBus.readByte(0x0400_0040L))
+        assertEquals(0x01.toByte(), core.memoryBus.readByte(0x0400_0041L))
+        assertEquals(0x00.toByte(), core.memoryBus.readByte(0x0400_0042L))
+        assertEquals(0x2A.toByte(), core.memoryBus.readByte(0x0400_0043L))
+    }
+
     private fun syntheticRomWithInstructions(vararg instructions: Int): ByteArray {
         val rom = ByteArray(0x1000)
         rom[0] = 0x80.toByte()
