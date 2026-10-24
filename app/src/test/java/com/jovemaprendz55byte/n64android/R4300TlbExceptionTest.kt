@@ -143,6 +143,29 @@ class R4300TlbExceptionTest {
         assertEquals(0x2L, cpu.readCp0ForTest(12) and 0x2L) // EXL remains set
     }
 
+    @Test fun instructionFetchFromInvalidTlbPageRaisesTlblAndUsesGeneralVector() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x4000), // r1 = virtual address 0x40000000
+            iType(0x09, 0, 2, 0x0058), // even page has V=0
+            iType(0x09, 0, 3, 0x005A), // odd page is valid
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11), // MTC0 EntryHi
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (2 shl 11), // MTC0 EntryLo0
+            (0x10 shl 26) or (0x04 shl 21) or (3 shl 16) or (3 shl 11), // MTC0 EntryLo1
+            0x42000002, // TLBWI
+            (1 shl 21) or 0x08, // JR r1
+            0, // branch delay slot
+            0 // fetch at invalid virtual address faults
+        ))
+
+        repeat(9) { cpu.step() }
+
+        assertEquals(2L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL) // TLBL
+        assertEquals(0x40000000L, cpu.readCp0ForTest(8)) // BadVAddr
+        assertEquals(0x40000000L, cpu.readCp0ForTest(14)) // EPC is faulting fetch PC
+        assertEquals(0xFFFF_FFFF_8000_0180UL.toLong(), cpu.pc) // invalid page uses general vector
+    }
+
     @Test fun instructionFetchTlbMissUsesRefillVectorAndRecordsFaultingPc() {
         val cpu = R4300Cpu()
         cpu.resetExecutionState(0x40000000L)
