@@ -846,7 +846,7 @@ class R4300CpuTest {
         assertEquals(-2147483647L, cpu.register(4))
     }
 
-    @Test fun addiRejectsSigned32BitOverflow() {
+    @Test fun addiOverflowRaisesMipsExceptionAndPreservesDestination() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
             iType(0x0F, 0, 1, 0x7FFF),
@@ -855,13 +855,12 @@ class R4300CpuTest {
         ))
         cpu.step()
         cpu.step()
-        try {
-            cpu.step()
-            throw AssertionError("Expected ADDI signed overflow to be detected")
-        } catch (_: ArithmeticException) {
-            // The simplified CPU reports overflow instead of modeling a MIPS exception.
-        }
+        cpu.step()
         assertEquals(0L, cpu.register(2))
+        assertEquals(8L, cpu.readCp0ForTest(14)) // EPC points to ADDI
+        assertEquals(12L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL) // ExcCode=Overflow
+        assertEquals(2L, cpu.readCp0ForTest(12) and 2L) // Status.EXL
+        assertEquals(0xFFFF_FFFF_8000_0180UL.toLong(), cpu.pc)
     }
 
     @Test fun addi64PerformsSignedAddition() {
@@ -1519,7 +1518,7 @@ class R4300CpuTest {
         assertEquals(0L, cpu.register(6))
     }
 
-    @Test fun dsubRejectsSigned64BitOverflow() {
+    @Test fun dsubOverflowRaisesMipsExceptionAndPreservesDestination() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
             iType(0x0F, 0, 3, 0x8000), // r3 = sign-extended 0x80000000
@@ -1527,42 +1526,39 @@ class R4300CpuTest {
             iType(0x19, 0, 2, 1),      // r2 = 1
             rType(3, 2, 4, 0, 0x2E)    // DSUB: Long.MIN_VALUE - 1 underflows
         ))
-        repeat(3) { cpu.step() }
-        try {
-            cpu.step()
-            throw AssertionError("Expected DSUB signed overflow to be detected")
-        } catch (_: ArithmeticException) {
-            // The simplified core detects overflow but does not model a MIPS exception.
-        }
+        repeat(4) { cpu.step() }
         assertEquals(0L, cpu.register(4))
+        assertEquals(12L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL)
+        assertEquals(12L, cpu.readCp0ForTest(14))
     }
 
-    @Test fun daddAndDaddiRejectSigned64BitOverflow() {
+    @Test fun daddOverflowRaisesMipsExceptionAndPreservesDestination() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
-            iType(0x0F, 0, 1, 0xFFFF), // r1 = -65536
-            iType(0x0D, 1, 1, 0xFFFF), // r1 = -1
-            rType(0, 1, 2, 1, 0x3A),   // DSRL r2, r1, 1 => Long.MAX_VALUE
-            iType(0x19, 0, 3, 1),      // r3 = 1
-            rType(2, 3, 4, 0, 0x2C),   // DADD Long.MAX_VALUE + 1 overflows
-            iType(0x18, 2, 5, 1)       // DADDI Long.MAX_VALUE + 1 overflows
+            iType(0x0F, 0, 1, 0xFFFF),
+            iType(0x0D, 1, 1, 0xFFFF),
+            rType(0, 1, 2, 1, 0x3A), // Long.MAX_VALUE
+            iType(0x19, 0, 3, 1),
+            rType(2, 3, 4, 0, 0x2C)
+        ))
+        repeat(5) { cpu.step() }
+        assertEquals(0L, cpu.register(4))
+        assertEquals(12L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL)
+        assertEquals(16L, cpu.readCp0ForTest(14))
+    }
+
+    @Test fun daddiOverflowRaisesMipsException() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0xFFFF),
+            iType(0x0D, 1, 1, 0xFFFF),
+            rType(0, 1, 2, 1, 0x3A), // Long.MAX_VALUE
+            iType(0x18, 2, 5, 1)
         ))
         repeat(4) { cpu.step() }
-
-        try {
-            cpu.step()
-            throw AssertionError("Expected DADD signed overflow to be detected")
-        } catch (_: ArithmeticException) {
-            // The simplified CPU reports overflow instead of modeling a MIPS exception.
-        }
-        try {
-            cpu.step()
-            throw AssertionError("Expected DADDI signed overflow to be detected")
-        } catch (_: ArithmeticException) {
-            // The simplified CPU reports overflow instead of modeling a MIPS exception.
-        }
-        assertEquals(0L, cpu.register(4))
         assertEquals(0L, cpu.register(5))
+        assertEquals(12L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL)
+        assertEquals(12L, cpu.readCp0ForTest(14))
     }
 
     @Test fun daddiuWrapsAcrossSigned64BitBoundaries() {
