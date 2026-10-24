@@ -368,6 +368,24 @@ class R4300TlbExceptionTest {
         assertEquals(0xFFFF_FFFF_8000_0000UL.toLong(), cpu.pc) // refill vector
     }
 
+    @Test fun tlbRefillMissWithBevSetUsesBootstrapRefillVector() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x4000), // r1 = unmapped virtual address 0x40000000
+            iType(0x0F, 0, 2, 0x0040), // r2 = Status.BEV (0x00400000)
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (12 shl 11), // MTC0 Status
+            iType(0x23, 1, 3, 0) // LW triggers a TLB refill miss
+        ))
+
+        repeat(4) { cpu.step() }
+
+        assertEquals(2L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL) // TLBL
+        assertEquals(0x40000000L, cpu.readCp0ForTest(8)) // BadVAddr
+        assertEquals(12L, cpu.readCp0ForTest(14)) // EPC is the faulting LW
+        assertEquals(0xFFFF_FFFFBFC0_0200UL.toLong(), cpu.pc) // BEV refill vector
+        assertEquals(0x00400002L, cpu.readCp0ForTest(12) and 0x00400002L) // BEV and EXL remain set
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
