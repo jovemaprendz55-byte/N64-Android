@@ -242,6 +242,26 @@ class R4300TlbExceptionTest {
         assertEquals(2L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL) // TLBL
     }
 
+    @Test fun mappedVirtualStoreAndLoadReachTranslatedPhysicalMemory() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x4000), // r1 = virtual address 0x40000000
+            iType(0x09, 0, 2, 0x005E), // PFN 1, cacheable, valid and dirty
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11), // MTC0 EntryHi
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (2 shl 11), // MTC0 EntryLo0
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (3 shl 11), // MTC0 EntryLo1
+            0x42000002, // TLBWI
+            iType(0x09, 0, 3, 0x1234), // r3 = test value
+            iType(0x2B, 1, 3, 0), // SW through virtual address -> physical 0x1000
+            iType(0x23, 1, 4, 0)  // LW through virtual address -> same value
+        ))
+
+        repeat(9) { cpu.step() }
+
+        assertEquals(0x1234L, cpu.register(4))
+        assertEquals(0x1234, cpu.readWord(0x1000))
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
