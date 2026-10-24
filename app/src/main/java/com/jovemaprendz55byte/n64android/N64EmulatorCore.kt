@@ -27,10 +27,6 @@ class N64EmulatorCore(
     internal val memoryBus = N64MemoryBus(controllerPort = controllerPort)
     private val cpu = R4300Cpu(memoryBus)
     private val rsp = RspCore(memoryBus)
-    private val bootSequence = N64BootSequence(memoryBus)
-    private val pifBootSequence = N64PifBootSequence(memoryBus, cpu)
-    private var lastBootPreflight: N64BootInitialization.Preflight? = null
-    private var bootIpl3CopyMatchedAtHandoff: Boolean? = null
     private var romLoaded = false
     private var executionStarted = false
     private var checksumFailureLoopAddress: Long? = null
@@ -81,50 +77,31 @@ class N64EmulatorCore(
     }
 
     /**
-     * Runs the diagnostic PIF-to-IPL3 handoff for the detected CIC where a register state is implemented.
-     * This does not emulate the PIF boot ROM firmware or identify/authenticate CICs.
-     */
-    internal fun startCic6105BootSequence(): N64PifBootSequence.BootHandoff {
-        require(romLoaded) { "Load a normalized ROM before execution" }
-        val rom = normalizedRom ?: throw IllegalStateException("No normalized ROM is retained")
-        lastBootPreflight = N64BootInitialization(memoryBus, cpu).prepareCic6105(rom)
-        // The preflight identifies CIC from IPL3 bytes. Preserve that choice:
-        // a 6102 cartridge must not be reset with the incompatible 6105 seed.
-        val handoff = when (lastBootPreflight?.detectedCic) {
-            "6102/7101" -> pifBootSequence.startCic6102(rom)
-            "6105/7105", null -> pifBootSequence.startCic6105(rom)
-            else -> throw IllegalStateException(
-                "CIC ${lastBootPreflight?.detectedCic} has no validated PIF-to-IPL3 handoff."
-            )
-        }
-        resetBootLoopDetector()
-        executionStarted = true
-        return handoff
-    }
-
-    /**
-     * Starts IPL3 at its hardware-style location for a diagnostic shortcut:
-     * copy the cartridge IPL3 image (ROM offset 0x40) into SP DMEM and enter
-     * through KSEG1 address 0xA4000040. This still bypasses the PIF boot ROM
-     * and does not initialize all hardware registers.
+     * Starts a diagnostic IPL3 handoff without loading a copyrighted PIF ROM.
+     *
+     * The cartridge boot image at ROM offset 0x40 is copied to SP DMEM at
+     * physical 0x04000040, then the CPU enters it through KSEG1 0xA4000040.
+     * This is a diagnostic shortcut, not a full PIF/CIC boot implementation:
+     * hardware initialization and CIC-specific register seeds remain incomplete.
      */
     fun startIpl3DiagnosticExecution() {
-        require(romLoaded) { "Load a normalized ROM before execution" }
-        val rom = normalizedRom ?: throw IllegalStateException("No normalized ROM is retained")
-        // Preflight the RDRAM model, IPL3 payload, and ROM checksum before
-        // entering the diagnostic IPL3 path. A mismatch is logged, not patched.
-        lastBootPreflight = N64BootInitialization(memoryBus, cpu).prepareCic6105(rom)
-        // The preflight above already loaded IPL3 and selected the CPU handoff
-        // from the detected CIC. Do not reset to CIC-6105 here: doing so overwrites
-        // CIC-6102's 0x3F checksum seed with 0x91 and recreates the checksum loop.
-        // Keep this explicit as a diagnostic shortcut; it still bypasses PIF ROM.
-        bootSequence.loadIpl3(rom)
-        // Capture the initial DMEM copy before IPL3 executes. The running IPL3 may
-        // legitimately reuse DMEM as scratch, so a post-execution mismatch alone
-        // cannot tell us whether the initial cartridge copy failed.
-        bootIpl3CopyMatchedAtHandoff = (0x40 until 0x1000).all { offset ->
-            (memoryBus.readByte(N64SpMemory.DMEM_BASE + offset).toInt() and 0xFF) ==
-                (rom[offset].toInt() and 0xFF)
+        require(romLoaded) { "Load a normalized ROM before starting IPL3" }
+        val rom = requireNotNull(normalizedRom) { "Normalized ROM is unavailable" }
+        require(rom.size >= 0x1000) { "ROM is too short to contain IPL3" }
+
+        // IPL3 occupies cartridge offsets 0x40..0xFFF and SP DMEM offsets
+        // 0x040..0xFFF. Leave the first 64 bytes of DMEM untouched.
+        for (offset in 0x40 until 0x1000) {
+            memoryBus.writeByte(0x0400_0000L + offset, rom[offset])
+        }
+
+        val ipl3EntryPoint = 0xFFFF_FFFF_A400_0040UL.toLong()
+        when (N64RomChecksum.detectCic(rom)) {
+            N64RomChecksum.CicType.CIC_6101,
+            N64RomChecksum.CicType.CIC_6102 -> cpu.resetForCic6102Diagnostic(ipl3EntryPoint)
+            N64RomChecksum.CicType.CIC_6105 -> cpu.resetForCic6105Diagnostic(ipl3EntryPoint)
+            // Do not guess undocumented register seeds for other CICs or unknown IPL3s.
+            else -> cpu.resetForCartridgeDiagnostic(ipl3EntryPoint)
         }
         resetBootLoopDetector()
         executionStarted = true
@@ -204,12 +181,6 @@ class N64EmulatorCore(
                     val delaySlot = checksumFailureLoopAddress!! + 4L
                     if (executedAddress != delaySlot) resetBootLoopDetector()
                 }
-            } catch (fault: TlbTranslationFault) {
-                // A TLB miss is a CPU exception, not a host-side emulator crash.
-                // The exception handler must establish a valid mapping; do not
-                // silently map the missing virtual page to arbitrary RAM.
-                cpu.handleTlbTranslationFault(fault, instructionAddress)
-                executed++
             } catch (error: Exception) {
                 executionStarted = false
                 return ExecutionResult(
@@ -284,13 +255,20 @@ class N64EmulatorCore(
     /** Returns the full CPU snapshot, including all 31 general-purpose registers. */
     fun fullCpuDiagnosticSummary(): String = cpu.diagnosticSnapshot()
 
+    /** Returns CP0 state needed to diagnose CPU exceptions and TLB faults. */
+    fun cp0DiagnosticSummary(): String = cpu.cp0DiagnosticSummary()
+
     /** Returns the early instruction sequence that led into a repeated-PC loop. */
     fun executionHistoryDiagnosticSummary(): String = cpu.executionHistoryDiagnosticSummary()
 
     /** Reads the stalled boot-code area and the memory address currently probed by the trace. */
     fun bootMemoryDiagnosticSummary(): String = buildString {
+        append("CP0_DIAGNOSTICS=").append(cpu.cp0DiagnosticSummary()).append("; ")
+        append("CPU_EXECUTION_HISTORY=").append(cpu.executionHistoryDiagnosticSummary()).append("; ")
+        append("TLB_IMPLEMENTATION=removed_for_clean_rebuild; ")
+        append("CPU_CURRENT_EXECUTION_TRACE=").append(cpu.currentExecutionTraceDiagnosticSummary()).append("; ")
         val rom = normalizedRom
-        if (rom != null && rom.size >= 0x1010) {
+        if (rom != null && rom.size >= 0x1000) {
             append("ROM_SIZE=0x")
             append(rom.size.toString(16).uppercase(java.util.Locale.ROOT))
             append(", ROM_HEADER_CRC=")
@@ -299,21 +277,23 @@ class N64EmulatorCore(
             })
             append(", ROM_COUNTRY=0x")
             append((rom[0x3E].toInt() and 0xFF).toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0'))
-            append(", ROM_BOOTCODE_0x1000=")
-            append(rom.copyOfRange(0x1000, 0x1010).joinToString("") {
-                (it.toInt() and 0xFF).toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
-            })
+            if (rom.size >= 0x1010) {
+                append(", ROM_BOOTCODE_0x1000=")
+                append(rom.copyOfRange(0x1000, 0x1010).joinToString("") {
+                    (it.toInt() and 0xFF).toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
+                })
+            } else {
+                append(", ROM_BOOTCODE_0x1000=unavailable-short-rom")
+            }
             append(", IPL3_START=")
             append(rom.copyOfRange(0x40, 0x50).joinToString("") {
                 (it.toInt() and 0xFF).toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
             })
-            val dmemIpl3CopyMatches = (0x40 until 0x1000).all { offset ->
+            val dmemIpl3CopyMatches = (0 until 0x1000).all { offset ->
                 (memoryBus.readByte(0x0400_0000L + offset).toInt() and 0xFF) ==
                     (rom[offset].toInt() and 0xFF)
             }
             append(", SP_DMEM_IPL3_COPY_MATCH=").append(dmemIpl3CopyMatches)
-            append(", SP_DMEM_IPL3_COPY_MATCH_AT_HANDOFF=")
-                .append(bootIpl3CopyMatchedAtHandoff ?: "not-started")
             append(", ROM_IPL3_0x750=")
             append(rom.copyOfRange(0x750, 0x760).joinToString("") {
                 (it.toInt() and 0xFF).toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
@@ -323,23 +303,23 @@ class N64EmulatorCore(
                 (memoryBus.readByte(0x0400_0750L + offset).toInt() and 0xFF)
                     .toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
             })
+            val detectedCic = N64RomChecksum.detectCic(rom)
+            append(", ROM_CIC_DETECTED=").append(detectedCic?.label ?: "UNKNOWN")
             N64RomChecksum.calculate(rom)?.let { checksum ->
-                append(", ROM_CIC_DETECTED=").append(checksum.cic.label)
                 append(", ROM_HOST_CRC1=")
                 append(checksum.crc1.toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
                 append(", ROM_HOST_CRC2=")
                 append(checksum.crc2.toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
                 append(", ROM_HOST_CRC_MATCH=").append(checksum.matchesHeader)
-            } ?: append(", ROM_CIC_DETECTED=UNKNOWN_OR_SHORT_ROM")
+                append(", ROM_CHECKSUM_STATUS=").append(if (checksum.matchesHeader) "MATCH" else "MISMATCH")
+            } ?: append(", ROM_CHECKSUM_STATUS=").append(
+                when {
+                    rom.size < 0x101000 -> "ROM_TOO_SHORT_FOR_HEADER_CHECKSUM"
+                    detectedCic == null -> "UNKNOWN_CIC"
+                    else -> "UNAVAILABLE"
+                }
+            )
 
-            append("; ")
-        }
-        lastBootPreflight?.let { preflight ->
-            append("BOOT_PREFLIGHT_RDRAM_READY=").append(preflight.rdramModelReady)
-            append(", RDRAM_CAPACITY=").append(preflight.rdramCapacityBytes)
-            append(", IPL3_BYTES=").append(preflight.ipl3Bytes)
-            append(", GAME_SEGMENT_BYTES=").append(preflight.gameSegmentBytes)
-            append(", BOOT_CHECKSUM_MATCH=").append(preflight.checksumMatches)
             append("; ")
         }
         append("RDRAM[0x1C8]=0x")
@@ -370,14 +350,15 @@ class N64EmulatorCore(
         append(", CPU_PI_WRITE_HISTORY=").append(cpu.piWriteDiagnosticSummary())
         append(", RDRAM_REG[0x03F08000]=0x")
         append(memoryBus.readWord(0x03F0_8000L).toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
-        // Instructions around current KSEG PC reveal what the CPU is waiting for.
-        val physicalPc = cpu.pc and 0x1FFF_FFFFL
+        // Diagnostic translation is limited to direct-mapped and physical addresses until the TLB is rebuilt.
+        val physicalPc = cpu.diagnosticPhysicalAddress(cpu.pc)
         append(", CPU_CODE_WINDOW_PC=0x")
         append(cpu.pc.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
+        append(", CPU_CODE_WINDOW_PHYSICAL=")
+        append(physicalPc?.let { "0x" + it.toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0') } ?: "UNMAPPED")
         append(", CPU_CODE_WINDOW=")
-        if (physicalPc < 0x0080_0000L && physicalPc % 4L == 0L) {
-            // Include the setup instructions before IPL3's failure branch so the
-            // register comparison can be traced back to its loads/calculations.
+        if (physicalPc != null && physicalPc < 0x0080_0000L && physicalPc % 4L == 0L) {
+            // Show physical memory around a directly translated PC.
             val start = (physicalPc - 0x48L).coerceAtLeast(0L)
             val end = (physicalPc + 0x20L).coerceAtMost(0x0080_0000L)
             var address = start
@@ -388,7 +369,7 @@ class N64EmulatorCore(
                 address += 4L
             }
         } else {
-            append("fora_da_RDRAM")
+            append("unmapped_or_outside_RDRAM")
         }
     }
 

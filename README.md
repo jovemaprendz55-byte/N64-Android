@@ -9,14 +9,14 @@ Aplicativo Android para desenvolver, de forma incremental, um emulador de Ninten
 - Ao selecionar uma ROM válida, o app converte seus bytes para a ordem big-endian Z64 e mantém a ROM normalizada em memória.
 - O app mostra título, formato original, tamanho e código de região quando disponível.
 - Existe uma base parcial de interpretador MIPS III/R4300 em Kotlin, com registradores, memória big-endian simplificada, reset do estado da CPU com preservação da RAM e um subconjunto de instruções aritméticas, multiplicação/divisão, HI/LO, carga/armazenamento, incluindo operações desalinhadas de 32/64 bits, comparação e desvio.
-- Endereços efetivos da CPU são validados antes da conversão para índice de memória, evitando truncamento indevido. ROM Z64 normalizada pode ser mapeada em modo somente leitura no domínio físico do cartucho e lida pelo barramento.
+- Endereços efetivos da CPU são validados antes da conversão para índice de memória, evitando truncamento indevido. A CPU mapeia KSEG0/KSEG1 diretamente e já possui uma primeira integração da TLB de 32 entradas, com páginas de 4 KiB, instruções TLBR/TLBWI/TLBWR/TLBP e exceções de miss, página inválida e modificação. ROM Z64 normalizada pode ser mapeada em modo somente leitura no domínio físico do cartucho e lida pelo barramento.
 - Testes unitários cobrem detecção de cabeçalho, normalização de byte order e parte do interpretador de CPU, incluindo operações de 64 bits, DADD/DSUB com detecção simplificada de overflow, deslocamentos variáveis de 32/64 bits, MOVZ/MOVN/SYNC, desvios com delay slot, instruções MULT/DMULT/DIV/DDIV com HI/LO e cargas/armazenamentos desalinhados. LDL/LDR/SDL/SDR também são comparados com referências independentes byte a byte em todos os oito offsets.
 - Foi adicionada uma representação imutável do controle N64 com bits dos botões, eixos analógicos assinados e serialização dos quatro bytes de resposta. A interface de toque compartilha esse estado com o núcleo e o PIF parcial responde aos comandos Joybus básicos do controle 0; isso ainda não garante entrada funcional em jogos comerciais.
 - Foi criado um banco inicial de registradores VI acessível pelo barramento de memória, com leitura de framebuffer RGBA5551/RGBA8888 a partir da RDRAM. A altura do quadro ainda é informada externamente; temporização, filtros do VI, RDP e sincronização não estão implementados.
 - O RSP parcial inclui deslocamentos escalares variáveis SLLV/SRLV/SRAV, multiplicação/divisão escalar com HI/LO (MULT/MULTU/DIV/DIVU, MFHI/MFLO/MTHI/MTLO), saltos com link JALR, BLTZAL e BGEZAL com slot de atraso, além de MOVZ/MOVN condicionais, transferências COP0, operações vetoriais básicas, BREAK e transferências vetoriais LBV/SBV (byte), LSV/SSV (short), LLV/SLV (4 bytes) e LDV/SDV (8 bytes). A ALU vetorial preserva cópias das origens para suportar alias entre origem/destino com swizzle; testes unitários cobrem esse caso e as transferências de memória implementadas. Ainda faltam as demais operações de memória vetorial e a execução completa de microcódigo/tarefas RSP.
 - Foi adicionada `N64GameSurfaceView`, uma camada Android para apresentar um framebuffer convertido na tela. Ela ainda não recebe quadros de um loop de jogo, portanto não representa renderização de jogos funcionando.
 
-**Importante:** ainda não executa jogos comerciais de Nintendo 64. A ROM Z64 já pode ser mapeada no barramento e o R4300 possui execução limitada por instruções para diagnóstico. O VI agora consegue copiar formatos simples de framebuffer da RDRAM, mas nenhum jogo gera esses quadros ainda. Faltam inicialização PIF/boot real, ciclo por quadro, integração dos controles com SI/PIF, muitas instruções, exceções, TLB, CP0/FPU, mapeamento completo de memória, RSP/RDP, áudio e salvamentos.
+**Importante:** ainda não executa jogos comerciais de Nintendo 64. A ROM Z64 já pode ser mapeada no barramento e o R4300 possui execução limitada por instruções para diagnóstico. O VI agora consegue copiar formatos simples de framebuffer da RDRAM, mas nenhum jogo gera esses quadros ainda. Faltam inicialização PIF/boot real, ciclo por quadro, integração completa dos controles com SI/PIF, muitas instruções, refinamento das exceções e do CP0, FPU, mapeamento completo de memória, RSP/RDP, áudio e salvamentos. A TLB atual é uma implementação inicial: suporta páginas de 4 KiB, não máscaras de página variáveis.
 
 ## Tecnologias
 
@@ -37,10 +37,10 @@ O APK de depuração será gerado em `app/build/outputs/apk/debug/app-debug.apk`
 
 ## Próximas etapas
 
-1. Ampliar a cobertura das instruções do R4300 e corrigir diferenças arquiteturais.
-2. Implementar exceções, CP0, TLB e um modelo de memória fiel ao N64.
-3. Conectar a ROM normalizada a um ciclo de execução seguro.
-4. Desenvolver RSP/RDP, gráficos, áudio, controles e salvamento.
+1. Ampliar a cobertura das instruções do R4300 e validar diferenças arquiteturais com testes de regressão.
+2. Refinar exceções/CP0 e ampliar a TLB para os formatos de página que faltam.
+3. Conectar a ROM normalizada a um ciclo de execução por quadro com orçamento de instruções e diagnóstico de travamentos.
+4. Completar o boot PIF, integrar SI/controles e avançar na execução de microcódigo RSP, RDP, gráficos, áudio e salvamentos.
 
 Use apenas ROMs que você tem direito de utilizar. Este projeto não inclui jogos nem BIOS proprietárias.
 

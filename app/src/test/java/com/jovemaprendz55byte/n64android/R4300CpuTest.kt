@@ -4,18 +4,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class R4300CpuTest {
-    @Test fun cic6102Ipl3DiagnosticUses6102SeedAndRegisterState() {
-        val cpu = R4300Cpu()
-        cpu.resetForCic6102Ipl3Diagnostic(0xFFFF_FFFF_A400_0040UL.toLong(), pal = false)
-
-        assertEquals(1L, cpu.register(1))
-        assertEquals(0x0EBDA536L, cpu.register(2))
-        assertEquals(0xFFFF_FFFF_C0F1_D859UL.toLong(), cpu.register(5))
-        assertEquals(0xFFFF_FFFF_A400_0040UL.toLong(), cpu.register(11))
-        assertEquals(0x3FL, cpu.register(22)) // CIC-6102 seed, not CIC-6105's 0x91
-        assertEquals(1L, cpu.register(20)) // NTSC
-        assertEquals(0xFFFF_FFFF_A400_1FF0UL.toLong(), cpu.register(29))
-    }
 
     @Test fun luiSignExtendsTheResultTo64Bits() {
         val cpu = R4300Cpu()
@@ -28,115 +16,34 @@ class R4300CpuTest {
         assertEquals(0xFFFF_FFFF_8006_0000UL.toLong(), cpu.register(1))
     }
 
-    @Test fun cic6105Ipl3DiagnosticUsesDocumentedNtscHandoffAndImemStub() {
-        val cpu = R4300Cpu()
-        cpu.resetForCic6105Ipl3Diagnostic(0xFFFF_FFFF_A400_0040UL.toLong(), pal = false)
-
-        assertEquals(0L, cpu.register(1)) // at
-        assertEquals(0xFFFF_FFFF_D173_1BE9UL.toLong(), cpu.register(2)) // v0
-        assertEquals(0xFFFF_FFFF_D173_1BE9UL.toLong(), cpu.register(3)) // v1
-        assertEquals(0x1BE9L, cpu.register(4)) // a0
-        assertEquals(0xFFFF_FFFF_F452_31E5UL.toLong(), cpu.register(5)) // a1
-        assertEquals(0xFFFF_FFFF_A400_1F0CUL.toLong(), cpu.register(6)) // a2
-        assertEquals(0xFFFF_FFFF_A400_1F08UL.toLong(), cpu.register(7)) // a3
-        assertEquals(0xC0L, cpu.register(8)) // t0
-        assertEquals(0L, cpu.register(9)) // t1
-        assertEquals(0x40L, cpu.register(10)) // t2
-        assertEquals(0xFFFF_FFFF_A400_0040UL.toLong(), cpu.register(11)) // t3: IPL3 entry
-        assertEquals(0xFFFF_FFFF_D133_0BC3UL.toLong(), cpu.register(12)) // t4
-        assertEquals(0xFFFF_FFFF_D133_0BC3UL.toLong(), cpu.register(13)) // t5
-        assertEquals(0x2561_3A26L, cpu.register(14)) // t6
-        assertEquals(0x2EA0_4317L, cpu.register(15)) // t7
-        assertEquals(0L, cpu.register(19)) // s3
-        assertEquals(1L, cpu.register(20)) // s4: NTSC
-        assertEquals(0L, cpu.register(21)) // s5: cold reset
-        assertEquals(0x91L, cpu.register(22)) // s6: CIC-6105 seed
-        assertEquals(6L, cpu.register(23)) // s7: IPL3 version
-        assertEquals(0xFFFF_FFFF_D73F_2993UL.toLong(), cpu.register(25)) // t9
-        assertEquals(0xFFFF_FFFF_A400_1FF0UL.toLong(), cpu.register(29))
-        assertEquals(0xFFFF_FFFF_A400_1554UL.toLong(), cpu.register(31))
-        assertEquals(0x3400_0000L, cpu.readCp0ForTest(12))
-        assertEquals(0x7006_E463L, cpu.readCp0ForTest(16))
-        assertEquals(0x3C0D_BFC0, cpu.readWord(0x0400_1000))
-        assertEquals(0x3C0B_B000, cpu.readWord(0x0400_101C))
-        assertEquals(0xFFFF_FFFF_A400_0040UL.toLong(), cpu.pc)
-    }
-
-    @Test fun cic6105Ipl3DiagnosticUsesPalTvTypeButSameCicSeed() {
-        val cpu = R4300Cpu()
-        cpu.resetForCic6105Ipl3Diagnostic(0xFFFF_FFFF_A400_0040UL.toLong(), pal = true)
-
-        assertEquals(0L, cpu.register(20))
-        assertEquals(0xFFFF_FFFF_A400_0040UL.toLong(), cpu.register(11))
-        assertEquals(0x40L, cpu.register(10))
-        assertEquals(0x91L, cpu.register(22))
-        assertEquals(6L, cpu.register(23))
-        assertEquals(0xFFFF_FFFF_A400_1554UL.toLong(), cpu.register(31))
-    }
 
 
-    @Test fun tlbwiInstallsEntryAndLoadsFromTranslatedVirtualAddress() {
-        val cpu = R4300Cpu()
-        cpu.writeWord(0x2000, 0x12345678)
-        fun mtc0(rt: Int, rd: Int) = (0x10 shl 26) or (0x04 shl 21) or (rt shl 16) or (rd shl 11)
-        val program = intArrayOf(
-            (0x0F shl 26) or (4 shl 16) or 0x4000, // LUI r4, 0x4000: virtual address
-            (0x09 shl 26) or (0 shl 21) or (1 shl 16) or 0x0087, // r1 = EntryLo V/D/G + PFN 2
-            mtc0(4, 10), // EntryHi = 0x40000000, ASID 0
-            mtc0(1, 2),  // EntryLo0 maps physical 0x2000
-            mtc0(1, 3),  // EntryLo1 maps physical 0x2000
-            0x42000002,  // TLBWI, Index defaults to 0
-            (0x23 shl 26) or (4 shl 21) or (2 shl 16) // LW r2, 0(r4)
-        )
-        cpu.loadBytes(0, words(*program))
-        repeat(program.size) { cpu.step() }
-        assertEquals(0x12345678L, cpu.register(2))
-    }
 
-    @Test fun tlbMissEntersRefillExceptionAndRecordsFaultState() {
+
+
+
+
+
+
+
+
+
+    @Test fun diagnosticSnapshotRecordsIndirectJumpSourceRegisterAndValue() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
-            iType(0x0F, 0, 1, 0x4000), // r1 = 0x40000000
-            iType(0x23, 1, 2, 0)       // LW causes a TLB load miss
-        ))
-        cpu.step()
-        try {
-            cpu.step()
-            throw AssertionError("Expected a TLB translation fault")
-        } catch (fault: TlbTranslationFault) {
-            assertEquals(0x40000000L, fault.virtualAddress)
-            assertEquals(TlbAccess.LOAD, fault.access)
-            cpu.handleTlbTranslationFault(fault, 4L)
-        }
-
-        assertEquals(0x40000000L, cpu.readCp0ForTest(8)) // BadVAddr
-        assertEquals(0x40000000L, cpu.readCp0ForTest(10) and 0xFFFF_E000L) // EntryHi.VPN2
-        assertEquals(4L, cpu.readCp0ForTest(14)) // EPC
-        assertEquals(2L, (cpu.readCp0ForTest(13) ushr 2) and 0x1F) // ExcCode=TLBL
-        assertEquals(2L, cpu.readCp0ForTest(12) and 2L) // Status.EXL
-        assertEquals(0xFFFF_FFFF_8000_0000UL.toLong(), cpu.pc) // TLB refill vector
-    }
-
-    @Test fun tlbRequiredAddressDiagnosticIncludesTheFaultingVirtualAddress() {
-        val cpu = R4300Cpu()
-        cpu.loadBytes(0, words(
-            iType(0x0F, 0, 1, 0x4000), // r1 = 0x40000000 (TLB-mapped KUSEG)
-            iType(0x23, 1, 2, 0)       // LW from an address requiring TLB translation
+            iType(0x0F, 0, 1, 0x8000), // r1 = 0xFFFFFFFF80000000
+            (1 shl 21) or 0x08         // JR r1
         ))
 
         cpu.step()
-        try {
-            cpu.step()
-            throw AssertionError("Expected TLB translation failure")
-        } catch (error: IllegalArgumentException) {
-            org.junit.Assert.assertTrue(
-                error.message.orEmpty().contains("40000000")
-            )
-            org.junit.Assert.assertTrue(
-                error.message.orEmpty().contains("requires TLB translation")
-            )
-        }
+        cpu.step()
+
+        val summary = cpu.diagnosticSnapshot()
+        org.junit.Assert.assertTrue(summary.contains("JR_JALR_SOURCE=r1"))
+        org.junit.Assert.assertTrue(summary.contains("JR_JALR_VALUE=0xFFFFFFFF80000000"))
     }
+
+
 
     @Test fun cpuLoadsAndStoresThroughRiRegisterRegion() {
         val cpu = R4300Cpu()
@@ -939,7 +846,97 @@ class R4300CpuTest {
         assertEquals(-2147483647L, cpu.register(4))
     }
 
-    @Test fun addiRejectsSigned32BitOverflow() {
+    @Test fun overflowInBranchDelaySlotSetsCauseBdAndBranchEpc() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x7FFF), // r1 = 0x7FFF0000
+            iType(0x0D, 1, 1, 0xFFFF), // r1 = 0x7FFFFFFF
+            iType(0x04, 0, 0, 1),      // BEQ -> address 16
+            iType(0x08, 1, 2, 1),      // delay slot: ADDI overflow
+            iType(0x09, 0, 3, 3)
+        ))
+        repeat(4) { cpu.step() }
+        assertEquals(0L, cpu.register(2))
+        assertEquals(8L, cpu.readCp0ForTest(14)) // EPC is branch address
+        assertEquals(1L, (cpu.readCp0ForTest(13) ushr 31) and 1L) // Cause.BD
+        assertEquals(12L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL)
+        assertEquals(0xFFFF_FFFF_8000_0180UL.toLong(), cpu.pc)
+    }
+
+    @Test fun unalignedLwRaisesAddressErrorAndRecordsVirtualBadVAddr() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x8000),
+            iType(0x09, 1, 1, 1),
+            iType(0x23, 1, 2, 0)
+        ))
+        repeat(3) { cpu.step() }
+        assertEquals(0L, cpu.register(2))
+        assertEquals(0xFFFF_FFFF_8000_0001UL.toLong(), cpu.readCp0ForTest(8))
+        assertEquals(4L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL)
+        assertEquals(8L, cpu.readCp0ForTest(14))
+        assertEquals(0xFFFF_FFFF_8000_0180UL.toLong(), cpu.pc)
+    }
+
+    @Test fun unalignedSwRaisesAddressStoreErrorBeforeWritingMemory() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 1),
+            iType(0x09, 0, 2, 0x1234),
+            iType(0x2B, 1, 2, 0)
+        ))
+        cpu.writeWord(0x100, 0x55667788)
+        repeat(3) { cpu.step() }
+        assertEquals(0x55667788, cpu.readWord(0x100))
+        assertEquals(1L, cpu.readCp0ForTest(8))
+        assertEquals(5L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL)
+        assertEquals(8L, cpu.readCp0ForTest(14))
+    }
+
+    @Test fun unalignedLoadInBranchDelaySlotSetsBdAndBranchEpc() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 1),
+            iType(0x04, 0, 0, 2),
+            iType(0x23, 1, 2, 0),
+            iType(0x09, 0, 3, 99)
+        ))
+        repeat(3) { cpu.step() }
+        assertEquals(4L, cpu.readCp0ForTest(14))
+        assertEquals(1L, (cpu.readCp0ForTest(13) ushr 31) and 1L)
+        assertEquals(4L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL)
+        assertEquals(1L, cpu.readCp0ForTest(8))
+        assertEquals(0L, cpu.register(2))
+        assertEquals(0xFFFF_FFFF_8000_0180UL.toLong(), cpu.pc)
+    }
+
+    @Test fun syscallRaisesArchitecturalException() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(rType(0, 0, 0, 0, 0x0C))) // SYSCALL
+        cpu.step()
+        assertEquals(0L, cpu.readCp0ForTest(14)) // EPC
+        assertEquals(8L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL) // ExcCode
+        assertEquals(2L, cpu.readCp0ForTest(12) and 2L) // EXL
+        assertEquals(0xFFFF_FFFF_8000_0180UL.toLong(), cpu.pc)
+    }
+
+    @Test fun breakInDelaySlotSetsCauseBdAndBranchEpc() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x04, 0, 0, 1), // BEQ r0, r0, target 8
+            rType(0, 0, 0, 0, 0x0D), // BREAK in delay slot
+            iType(0x09, 0, 1, 123)
+        ))
+        cpu.step()
+        cpu.step()
+        assertEquals(0L, cpu.register(1))
+        assertEquals(0L, cpu.readCp0ForTest(14)) // EPC points to branch
+        assertEquals(1L, (cpu.readCp0ForTest(13) ushr 31) and 1L) // Cause.BD
+        assertEquals(9L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL) // Breakpoint
+        assertEquals(0xFFFF_FFFF_8000_0180UL.toLong(), cpu.pc)
+    }
+
+    @Test fun addiOverflowRaisesMipsExceptionAndPreservesDestination() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
             iType(0x0F, 0, 1, 0x7FFF),
@@ -948,13 +945,12 @@ class R4300CpuTest {
         ))
         cpu.step()
         cpu.step()
-        try {
-            cpu.step()
-            throw AssertionError("Expected ADDI signed overflow to be detected")
-        } catch (_: ArithmeticException) {
-            // The simplified CPU reports overflow instead of modeling a MIPS exception.
-        }
+        cpu.step()
         assertEquals(0L, cpu.register(2))
+        assertEquals(8L, cpu.readCp0ForTest(14)) // EPC points to ADDI
+        assertEquals(12L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL) // ExcCode=Overflow
+        assertEquals(2L, cpu.readCp0ForTest(12) and 2L) // Status.EXL
+        assertEquals(0xFFFF_FFFF_8000_0180UL.toLong(), cpu.pc)
     }
 
     @Test fun addi64PerformsSignedAddition() {
@@ -1612,7 +1608,7 @@ class R4300CpuTest {
         assertEquals(0L, cpu.register(6))
     }
 
-    @Test fun dsubRejectsSigned64BitOverflow() {
+    @Test fun dsubOverflowRaisesMipsExceptionAndPreservesDestination() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
             iType(0x0F, 0, 3, 0x8000), // r3 = sign-extended 0x80000000
@@ -1620,42 +1616,39 @@ class R4300CpuTest {
             iType(0x19, 0, 2, 1),      // r2 = 1
             rType(3, 2, 4, 0, 0x2E)    // DSUB: Long.MIN_VALUE - 1 underflows
         ))
-        repeat(3) { cpu.step() }
-        try {
-            cpu.step()
-            throw AssertionError("Expected DSUB signed overflow to be detected")
-        } catch (_: ArithmeticException) {
-            // The simplified core detects overflow but does not model a MIPS exception.
-        }
+        repeat(4) { cpu.step() }
         assertEquals(0L, cpu.register(4))
+        assertEquals(12L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL)
+        assertEquals(12L, cpu.readCp0ForTest(14))
     }
 
-    @Test fun daddAndDaddiRejectSigned64BitOverflow() {
+    @Test fun daddOverflowRaisesMipsExceptionAndPreservesDestination() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
-            iType(0x0F, 0, 1, 0xFFFF), // r1 = -65536
-            iType(0x0D, 1, 1, 0xFFFF), // r1 = -1
-            rType(0, 1, 2, 1, 0x3A),   // DSRL r2, r1, 1 => Long.MAX_VALUE
-            iType(0x19, 0, 3, 1),      // r3 = 1
-            rType(2, 3, 4, 0, 0x2C),   // DADD Long.MAX_VALUE + 1 overflows
-            iType(0x18, 2, 5, 1)       // DADDI Long.MAX_VALUE + 1 overflows
+            iType(0x0F, 0, 1, 0xFFFF),
+            iType(0x0D, 1, 1, 0xFFFF),
+            rType(0, 1, 2, 1, 0x3A), // Long.MAX_VALUE
+            iType(0x19, 0, 3, 1),
+            rType(2, 3, 4, 0, 0x2C)
+        ))
+        repeat(5) { cpu.step() }
+        assertEquals(0L, cpu.register(4))
+        assertEquals(12L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL)
+        assertEquals(16L, cpu.readCp0ForTest(14))
+    }
+
+    @Test fun daddiOverflowRaisesMipsException() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0xFFFF),
+            iType(0x0D, 1, 1, 0xFFFF),
+            rType(0, 1, 2, 1, 0x3A), // Long.MAX_VALUE
+            iType(0x18, 2, 5, 1)
         ))
         repeat(4) { cpu.step() }
-
-        try {
-            cpu.step()
-            throw AssertionError("Expected DADD signed overflow to be detected")
-        } catch (_: ArithmeticException) {
-            // The simplified CPU reports overflow instead of modeling a MIPS exception.
-        }
-        try {
-            cpu.step()
-            throw AssertionError("Expected DADDI signed overflow to be detected")
-        } catch (_: ArithmeticException) {
-            // The simplified CPU reports overflow instead of modeling a MIPS exception.
-        }
-        assertEquals(0L, cpu.register(4))
         assertEquals(0L, cpu.register(5))
+        assertEquals(12L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL)
+        assertEquals(12L, cpu.readCp0ForTest(14))
     }
 
     @Test fun daddiuWrapsAcrossSigned64BitBoundaries() {
@@ -2064,6 +2057,93 @@ class R4300CpuTest {
         cpu.step()
 
         assertEquals(true, cpu.isIpl3ChecksumFailureBranch())
+    }
+
+
+    @Test fun tlbwiTlbpAndTlbrTransferTlbEntryThroughCp0() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x0040), // r1 = virtual pair 0x00400000
+            iType(0x0D, 1, 1, 7),      // ASID 7
+            iType(0x0F, 0, 2, 0x0000),
+            iType(0x0D, 2, 2, 0x48E7),  // PFN 0x123, cached, dirty, valid, global
+            iType(0x0F, 0, 3, 0x0001),
+            iType(0x0D, 3, 3, 0x1597),  // PFN 0x056? second page data
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11), // MTC0 r1, EntryHi
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (2 shl 11),  // MTC0 r2, EntryLo0
+            (0x10 shl 26) or (0x04 shl 21) or (3 shl 16) or (3 shl 11),  // MTC0 r3, EntryLo1
+            0x42000002, // TLBWI
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11), // MTC0 r1, EntryHi query
+            0x42000008, // TLBP
+            (0x10 shl 26) or (2 shl 16), // MFC0 r2, Index
+            0x42000001, // TLBR
+            (0x10 shl 26) or (4 shl 16) or (2 shl 11), // MFC0 r4, EntryLo0
+            (0x10 shl 26) or (5 shl 16) or (3 shl 11)  // MFC0 r5, EntryLo1
+        ))
+
+        repeat(16) { cpu.step() }
+
+        assertEquals(0L, cpu.register(2)) // TLBP found entry 0
+        assertEquals(0x48E7L, cpu.register(4))
+        assertEquals(0x11597L, cpu.register(5))
+    }
+
+    @Test fun tlbLoadMissRaisesArchitecturalTlbRefillException() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x4000), // r1 = unmapped virtual address 0x40000000
+            iType(0x23, 1, 2, 0)       // LW must raise TLBL on TLB miss
+        ))
+
+        cpu.step()
+        cpu.step()
+
+        assertEquals(2L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL) // ExcCode = TLBL
+        assertEquals(0x40000000L, cpu.readCp0ForTest(8)) // BadVAddr
+        assertEquals(4L, cpu.readCp0ForTest(14)) // EPC is the faulting LW instruction address
+        assertEquals(0xFFFF_FFFF_8000_0000UL.toLong(), cpu.pc) // TLB refill vector
+        assertEquals(0x40000000L, cpu.readCp0ForTest(10) and 0xFFFF_E000L)
+    }
+
+    @Test fun tlbStoreToCleanPageRaisesModificationException() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x4000), // r1 = virtual pair 0x40000000
+            iType(0x09, 0, 2, 0x005B), // PFN 1, valid, but not dirty
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11), // MTC0 EntryHi
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (2 shl 11), // MTC0 EntryLo0
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (3 shl 11), // MTC0 EntryLo1
+            0x42000002, // TLBWI
+            iType(0x2B, 1, 0, 0)       // SW must raise Mod
+        ))
+
+        repeat(7) { cpu.step() }
+
+        assertEquals(1L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL) // ExcCode = Mod
+        assertEquals(0x40000000L, cpu.readCp0ForTest(8))
+        assertEquals(24L, cpu.readCp0ForTest(14))
+        assertEquals(0xFFFF_FFFF_8000_0180UL.toLong(), cpu.pc) // general vector
+    }
+
+    @Test fun tlbMappedVirtualAddressCanStoreAndLoadRdram() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x4000), // EntryHi VPN2 = 0x40000000
+            iType(0x0D, 1, 1, 7),      // ASID = 7
+            iType(0x09, 0, 2, 0x005F), // PFN 1, cached, dirty, valid, global
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11), // MTC0 EntryHi
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (2 shl 11),  // MTC0 EntryLo0
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (3 shl 11),  // MTC0 EntryLo1
+            0x42000002, // TLBWI
+            iType(0x0F, 0, 4, 0x4000), // r4 = virtual address 0x40000000
+            iType(0x09, 0, 5, 0x1234),
+            iType(0x2B, 4, 5, 0),      // SW through TLB
+            iType(0x23, 4, 6, 0)       // LW through TLB
+        ))
+
+        repeat(11) { cpu.step() }
+
+        assertEquals(0x1234L, cpu.register(6))
     }
 
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =

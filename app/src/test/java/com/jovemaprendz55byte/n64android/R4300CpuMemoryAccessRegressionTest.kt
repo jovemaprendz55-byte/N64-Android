@@ -1,0 +1,118 @@
+package com.jovemaprendz55byte.n64android
+
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+/** Regression tests for integer loads/stores through the CPU memory bus. */
+class R4300CpuMemoryAccessRegressionTest {
+
+    @Test
+    fun byteHalfwordAndWordStoresRoundTripInBigEndianOrder() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 0x100),  // r1 = data base
+            iType(0x0D, 0, 2, 0x80A5), // r2 = 0x80A5
+            iType(0x28, 1, 2, 0),      // SB r2, 0(r1)
+            iType(0x29, 1, 2, 2),      // SH r2, 2(r1)
+            iType(0x2B, 1, 2, 4),      // SW r2, 4(r1)
+            iType(0x24, 1, 3, 0),      // LBU r3, 0(r1)
+            iType(0x25, 1, 4, 2),      // LHU r4, 2(r1)
+            iType(0x23, 1, 5, 4)       // LW r5, 4(r1)
+        ))
+
+        repeat(8) { cpu.step() }
+
+        assertEquals(0xA5L, cpu.register(3))
+        assertEquals(0x80A5L, cpu.register(4))
+        assertEquals(0x80A5L, cpu.register(5))
+        assertEquals(0xA5.toByte(), cpu.readByte(0x100))
+        assertEquals(0x80.toByte(), cpu.readByte(0x102))
+        assertEquals(0xA5.toByte(), cpu.readByte(0x103))
+        assertEquals(0x000080A5, cpu.readWord(0x104))
+    }
+
+    @Test
+    fun halfwordAndWordLoadsRejectMisalignedAddresses() {
+        val halfwordCpu = R4300Cpu()
+        halfwordCpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 0x101), // r1 = misaligned address
+            iType(0x21, 1, 2, 0)      // LH r2, 0(r1)
+        ))
+        halfwordCpu.loadBytes(0x100, byteArrayOf(0x12, 0x34, 0x56, 0x78))
+        halfwordCpu.step()
+        halfwordCpu.step()
+        assertEquals(4L, (halfwordCpu.readCp0ForTest(13) ushr 2) and 0x1FL) // AdEL
+        assertEquals(0x101L, halfwordCpu.readCp0ForTest(8)) // BadVAddr
+
+        val wordCpu = R4300Cpu()
+        wordCpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 0x102), // r1 = misaligned address
+            iType(0x23, 1, 2, 0)      // LW r2, 0(r1)
+        ))
+        wordCpu.loadBytes(0x100, byteArrayOf(0x12, 0x34, 0x56, 0x78))
+        wordCpu.step()
+        wordCpu.step()
+        assertEquals(4L, (wordCpu.readCp0ForTest(13) ushr 2) and 0x1FL) // AdEL
+        assertEquals(0x102L, wordCpu.readCp0ForTest(8)) // BadVAddr
+    }
+
+    @Test
+    fun doublewordLoadAndStoreRoundTripInBigEndianOrder() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 0x100),    // base = 0x100
+            iType(0x19, 0, 2, -2),       // r2 = 0xFFFFFFFFFFFFFFFE
+            iType(0x3F, 1, 2, 0),        // SD r2, 0(r1)
+            iType(0x37, 1, 3, 0)         // LD r3, 0(r1)
+        ))
+
+        repeat(4) { cpu.step() }
+
+        assertEquals(-2L, cpu.register(3))
+        for (offset in 0 until 7) {
+            assertEquals(0xFF.toByte(), cpu.readByte(0x100 + offset))
+        }
+        assertEquals(0xFE.toByte(), cpu.readByte(0x107))
+    }
+
+    @Test
+    fun doublewordLoadsAndStoresRejectMisalignedAddresses() {
+        val loadCpu = R4300Cpu()
+        loadCpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 0x101),    // misaligned base
+            iType(0x37, 1, 2, 0)         // LD r2, 0(r1)
+        ))
+        loadCpu.loadBytes(0x100, ByteArray(8))
+        loadCpu.step()
+        loadCpu.step()
+        assertEquals(4L, (loadCpu.readCp0ForTest(13) ushr 2) and 0x1FL) // AdEL
+        assertEquals(0x101L, loadCpu.readCp0ForTest(8)) // BadVAddr
+
+        val storeCpu = R4300Cpu()
+        storeCpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 0x101),    // misaligned base
+            iType(0x19, 0, 2, 42),       // r2 = 42
+            iType(0x3F, 1, 2, 0)         // SD r2, 0(r1)
+        ))
+        storeCpu.step()
+        storeCpu.step()
+        storeCpu.step()
+        assertEquals(5L, (storeCpu.readCp0ForTest(13) ushr 2) and 0x1FL) // AdES
+        assertEquals(0x101L, storeCpu.readCp0ForTest(8)) // BadVAddr
+    }
+
+    private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
+        (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
+
+    private fun words(vararg instructions: Int): ByteArray {
+        val bytes = ByteArray(instructions.size * 4)
+        instructions.forEachIndexed { index, instruction ->
+            val offset = index * 4
+            bytes[offset] = (instruction ushr 24).toByte()
+            bytes[offset + 1] = (instruction ushr 16).toByte()
+            bytes[offset + 2] = (instruction ushr 8).toByte()
+            bytes[offset + 3] = instruction.toByte()
+        }
+        return bytes
+    }
+}

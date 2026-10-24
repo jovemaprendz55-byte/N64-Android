@@ -5,18 +5,12 @@ import java.math.BigInteger
 /**
  * Small, testable MIPS III/R4300 interpreter foundation.
  *
- * This remains a partial CPU core: exceptions, TLB/FPU, caches, and N64
- * peripherals are not implemented. Implemented RDRAM and SP DMEM/IMEM accesses
+ * This remains a partial CPU core: overflow exceptions are modeled, while
+ * other exceptions, TLB/FPU, caches, and many N64 peripherals remain incomplete.
+ * Implemented RDRAM and SP DMEM/IMEM accesses
  * are routed through the physical memory bus.
  */
-internal enum class TlbAccess { FETCH, LOAD, STORE }
-
-internal class TlbTranslationFault(
-    val virtualAddress: Long,
-    val access: TlbAccess
-) : IllegalArgumentException(
-    "Virtual address 0x%016X requires TLB translation; no valid matching R4300 TLB entry".format(virtualAddress)
-)
+internal enum class MemoryAccess { FETCH, LOAD, STORE }
 
 class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64MemoryBus) {
     constructor(memorySize: Int = DEFAULT_RDRAM_SIZE) : this(memorySize, N64MemoryBus(memorySize))
@@ -39,14 +33,13 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private val cpuMemoryProbeHistory = mutableListOf<String>()
     /** CPU-side stores that launch PI DMA, including the issuing instruction PC. */
     private val cpuPiWriteHistory = mutableListOf<String>()
-    // CP0 register file and the R4300's 32-entry software-managed TLB.
+    // CP0 register file and isolated 32-entry R4300 TLB.
     private val cp0 = LongArray(32)
+    private val tlb = R4300Tlb()
     // COP1 floating-point registers and control registers. The current core
     // implements register transfers first; arithmetic/exception semantics remain partial.
     private val fpr = LongArray(32)
     private val fcr = IntArray(32)
-    private data class TlbEntry(var pageMask: Int = 0, var entryHi: Int = 0, var entryLo0: Int = 0, var entryLo1: Int = 0)
-    private val tlb = Array(32) { TlbEntry() }
 
     var pc: Long = 0L
     var hi: Long = 0L
@@ -59,6 +52,9 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private var lastBranchInstructionAddress: Long? = null
     private var lastBranchInstructionWord: Int? = null
     private var lastBranchTarget: Long? = null
+    /** Source register/value for the most recent JR/JALR, to trace unexpected indirect targets. */
+    private var lastIndirectJumpRegister: Int? = null
+    private var lastIndirectJumpValue: Long? = null
     /** Address of the last instruction fetched successfully, for failure diagnostics. */
     private var lastInstructionAddress: Long? = null
     /** Last fetched instruction, retained so execution failures can be diagnosed. */
@@ -72,6 +68,12 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private var recentInstructionPcCount = 0
     private var frozenLoopTrace: String? = null
     private var totalSteps: Long = 0L
+    private var exceptionTakenThisStep = false
+    private var currentInstructionAddress = 0L
+    private var currentInstructionInDelaySlot = false
+
+    /** Internal control flow: a TLB fault has already entered the architectural exception vector. */
+    private class TlbExceptionHandled : RuntimeException()
 
     internal val lastExecutedInstructionAddress: Long?
         get() = lastInstructionAddress
@@ -88,9 +90,11 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             (physical >= 0x0400_0000L && physical < 0x0400_1000L)
     }
 
-    /** Prefer the trace captured when execution first entered a repeated-PC loop. */
-    internal fun executionHistoryDiagnosticSummary(): String =
-        (frozenLoopTrace ?: recentInstructions.joinToString(" | ")).ifBlank { "sem historico" }
+    internal fun executionHistoryDiagnosticSummary(): String = frozenLoopTrace ?: recentInstructions.joinToString(" | ").ifBlank { "sem historico" }
+
+    internal fun currentExecutionTraceDiagnosticSummary(): String = recentInstructions.joinToString(" | ").ifBlank { "sem historico atual" }
+
+
 
     /** Compact CPU state snapshot attached to ROM-test failures. */
     internal fun diagnosticSnapshot(): String = buildString {
@@ -107,6 +111,10 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         append("; CPU_MEMORY_PROBE_HISTORY=").append(cpuMemoryProbeHistory.joinToString(";"))
         append("; alvoUltimoSalto=")
         append(lastBranchTarget?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "nenhum")
+        append("; JR_JALR_SOURCE=")
+        append(lastIndirectJumpRegister?.let { "r$it" } ?: "nenhum")
+        append("; JR_JALR_VALUE=0x")
+        append(lastIndirectJumpValue?.toULong()?.toString(16)?.uppercase(java.util.Locale.ROOT)?.padStart(16, '0') ?: "nenhum")
         append("; Instrucao=0x")
         append(lastInstructionWord.toUInt().toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
         append("; registradores:")
@@ -136,35 +144,43 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         append(", SP=0x").append(register(29).toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0'))
     }
 
-    /**
-     * Enters the architectural TLB-refill exception path after an address
-     * translation miss. The core does not synthesize a mapping: software at
-     * the exception vector must install a real TLB entry before retrying.
-     */
-    internal fun handleTlbTranslationFault(fault: TlbTranslationFault, faultingPc: Long) {
-        val oldStatus = cp0[12].toInt()
-        val alreadyExl = (oldStatus and 0x2) != 0
-        val virtual = fault.virtualAddress.toInt()
-
-        cp0[8] = fault.virtualAddress // BadVAddr
-        cp0[4] = ((cp0[4].toInt() and 0xFF80_000F.toInt()) or
-            ((virtual ushr 9) and 0x007F_FFF0)).toLong() // Context.BadVPN2
-        cp0[10] = ((virtual and 0xFFFF_E000.toInt()) or (cp0[10].toInt() and 0xFF)).toLong() // EntryHi
-        val exceptionCode = if (fault.access == TlbAccess.STORE) 3 else 2 // TLBS / TLBL
-        cp0[13] = ((cp0[13].toInt() and 0xFFFF_FF83.toInt()) or (exceptionCode shl 2)).toLong()
-        if (!alreadyExl) cp0[14] = faultingPc // EPC
-        cp0[12] = (oldStatus or 0x2).toLong() // Status.EXL
-
-        val exceptionVector = when {
-            alreadyExl -> 0xFFFF_FFFF_8000_0180UL.toLong()
-            (oldStatus and (1 shl 22)) != 0 -> 0xFFFF_FFFF_BFC0_0200UL.toLong() // Status.BEV
-            else -> 0xFFFF_FFFF_8000_0000UL.toLong() // TLB refill vector
+    /** Compact snapshot of CP0 registers relevant to boot and address exceptions. */
+    internal fun cp0DiagnosticSummary(): String = buildString {
+        fun reg(name: String, index: Int) {
+            append(name).append("=0x")
+                .append(cp0[index].toULong().toString(16)
+                    .uppercase(java.util.Locale.ROOT).padStart(16, '0'))
         }
-        pendingBranchTarget = null
-        pc = exceptionVector
+        reg("Status", 12)
+        append(", ")
+        reg("Cause", 13)
+        append(", ")
+        reg("EPC", 14)
+        append(", ")
+        reg("BadVAddr", 8)
+        append(", ")
+        reg("Context", 4)
+        append(", ")
+        reg("EntryHi", 10)
+        append(", ")
+        reg("EntryLo0", 2)
+        append(", ")
+        reg("EntryLo1", 3)
+        append(", ")
+        reg("Index", 0)
+        append(", ")
+        reg("Random", 1)
     }
 
     internal fun readCp0ForTest(index: Int): Long = cp0[index]
+
+    /**
+     * Diagnostic-only translation for direct-mapped and physical addresses. TLB support is pending.
+     */
+    internal fun diagnosticPhysicalAddress(address: Long): Long? =
+        N64Addressing.translateDirectMappedAddress(address)
+            ?: address.takeIf { it in 0L..0x1FFF_FFFFL }
+
 
     internal fun piWriteDiagnosticSummary(): String =
         cpuPiWriteHistory.joinToString(";").ifBlank { "sem_escritas_PI_pela_CPU" }
@@ -282,8 +298,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         fpr.fill(0L)
         fcr.fill(0)
         cp0.fill(0L)
-        tlb.forEach { it.pageMask = 0; it.entryHi = 0; it.entryLo0 = 0; it.entryLo1 = 0 }
-        cp0[1] = 31L // Random starts at the last TLB slot
+        tlb.reset()
         hi = 0L
         lo = 0L
         pc = entryPoint
@@ -293,6 +308,8 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         lastBranchInstructionAddress = null
         lastBranchInstructionWord = null
         lastBranchTarget = null
+        lastIndirectJumpRegister = null
+        lastIndirectJumpValue = null
         recentInstructions.clear()
         recentInstructionPcs.fill(0L)
         recentInstructionPcIndex = 0
@@ -312,106 +329,66 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     }
 
     /**
-     * Approximate the documented CIC-NUS-6102/7101 IPL3 handoff used by
-     * common retail cartridges. This is still an HLE diagnostic shortcut,
-     * not execution of the console's PIF boot ROM.
+     * Supplies the documented common CIC-6102/7101 IPL3 entry register state.
+     * This HLE handoff skips the PIF ROM and is intended for diagnostics only.
      */
-    internal fun resetForCic6102Ipl3Diagnostic(entryPoint: Long, pal: Boolean) {
+    internal fun resetForCic6102Diagnostic(entryPoint: Long) {
         resetExecutionState(entryPoint)
-
-        // Register values follow the published Project64-derived R4300 boot
-        // state for CIC-6102. In particular s6 MUST be 0x3F, not 0x91 (6105).
-        gpr[1] = 1L
-        gpr[2] = 0x0EBDA536L
-        gpr[3] = 0x0EBDA536L
-        gpr[4] = 0xA536L
+        gpr[2] = 0x0000_0000_0EBD_A536L
+        gpr[3] = 0x0000_0000_0EBD_A536L
+        gpr[4] = 0x0000_0000_0000_A536L
         gpr[5] = 0xFFFF_FFFF_C0F1_D859UL.toLong()
-        gpr[6] = 0xFFFF_FFFF_A400_1F0CUL.toLong()
-        gpr[7] = 0xFFFF_FFFF_A400_1F08UL.toLong()
+        gpr[6] = 0xFFFF_FFFFA400_1F0CUL.toLong()
+        gpr[7] = 0xFFFF_FFFFA400_1F08UL.toLong()
         gpr[8] = 0xC0L
-        gpr[9] = 0L
         gpr[10] = 0x40L
-        gpr[11] = 0xFFFF_FFFF_A400_0040UL.toLong()
+        gpr[11] = 0xFFFF_FFFFA400_0040UL.toLong()
         gpr[12] = 0xFFFF_FFFF_ED10_D0B3UL.toLong()
         gpr[13] = 0x1402_A4CCL
         gpr[14] = 0x2DE1_08EAL
         gpr[15] = 0x3103_E121L
-        gpr[19] = 0L // s3: cartridge boot
-        gpr[20] = if (pal) 0L else 1L // s4: PAL=0, NTSC=1
-        gpr[21] = 0L // s5: cold reset
-        gpr[22] = 0x3FL // s6: CIC-6102 checksum seed
-        gpr[23] = 0L // s7: legacy IPL2 version
-        gpr[24] = 3L
-        gpr[25] = 0xFFFF_FFFF_9DEB_B54FUL.toLong()
-        gpr[29] = 0xFFFF_FFFF_A400_1FF0UL.toLong()
-        gpr[31] = 0xFFFF_FFFF_A400_1550UL.toLong()
-
-        cp0[12] = 0x3400_0000L // Status
-        cp0[16] = 0x0006_E463L // Config
+        gpr[22] = 0x3FL
+        gpr[23] = 0x6L
+        gpr[29] = 0xFFFF_FFFFA400_1FF0UL.toLong()
+        gpr[31] = 0xFFFF_FFFFA400_1550UL.toLong()
     }
 
     /**
-     * Approximate the register handoff from the PIF/ IPL2 boot path for a
-     * CIC-NUS-6105 cartridge before entering its IPL3 image in SP DMEM.
-     * This is not a substitute for executing the PIF boot ROM or validating
-     * the cartridge CIC checksum; it supplies the known 6105 NTSC/PAL seeds.
+     * Supplies the commonly documented CIC-6105 IPL3 entry seeds.
+     * This remains an HLE diagnostic shortcut, not a full PIF/CIC execution.
      */
-    internal fun resetForCic6105Ipl3Diagnostic(entryPoint: Long, pal: Boolean) {
+    internal fun resetForCic6105Diagnostic(entryPoint: Long) {
         resetExecutionState(entryPoint)
-
-        // CIC-6105 IPL2 handoff values, cross-checked against the documented
-        // PIF/boot register setup used by N64 IPL3 implementations.
-        // IPL3 depends on these values while descrambling itself and checking
-        // the first MiB of the cartridge; plausible-looking partial seeds fail.
-        gpr[1] = 0L // at
-        gpr[2] = 0xFFFF_FFFF_D173_1BE9UL.toLong() // v0
-        gpr[3] = 0xFFFF_FFFF_D173_1BE9UL.toLong() // v1
-        gpr[4] = 0x1BE9L // a0
-        gpr[5] = 0xFFFF_FFFF_F452_31E5UL.toLong() // a1
-        gpr[6] = 0xFFFF_FFFF_A400_1F0CUL.toLong() // a2
-        gpr[7] = 0xFFFF_FFFF_A400_1F08UL.toLong() // a3
-        gpr[8] = 0xC0L // t0
-        gpr[9] = 0L // t1
-        gpr[10] = 0x40L // t2
-        gpr[11] = 0xFFFF_FFFF_A400_0040UL.toLong() // t3: IPL3 entry in SP DMEM
-        gpr[12] = 0xFFFF_FFFF_D133_0BC3UL.toLong() // t4
-        gpr[13] = 0xFFFF_FFFF_D133_0BC3UL.toLong() // t5
-        gpr[14] = 0x2561_3A26L // t6
-        gpr[15] = 0x2EA0_4317L // t7
-        gpr[16] = 0L // s0
-        gpr[17] = 0L // s1
-        gpr[18] = 0L // s2
-        gpr[19] = 0L // s3: cartridge boot
-        gpr[20] = if (pal) 0L else 1L // s4: PAL=0, NTSC=1
-        gpr[21] = 0L // s5: cold reset
-        gpr[22] = 0x91L // s6: CIC-NUS-6105 checksum seed
-        gpr[23] = 6L // s7: IPL3 version
-        gpr[24] = 0L // t8
-        gpr[25] = 0xFFFF_FFFF_D73F_2993UL.toLong() // t9
-        gpr[26] = 0L // k0
-        gpr[27] = 0L // k1
-        gpr[28] = 0L // gp
-        gpr[29] = 0xFFFF_FFFF_A400_1FF0UL.toLong() // sp
-        gpr[30] = 0L // s8
-        gpr[31] = 0xFFFF_FFFF_A400_1554UL.toLong() // ra
-
-        // PIF boot ROM's CP0 state and the eight-word IPL2 stub required by
-        // CIC x105. IPL3 itself was copied into SP DMEM by the caller.
-        cp0[12] = 0x3400_0000L // Status
-        cp0[16] = 0x7006_E463L // Config
-        val ipl2ImemStub = intArrayOf(
-            0x3C0D_BFC0, 0x8DA8_07FCL.toInt(), 0x25AD_07C0, 0x3108_0080,
-            0x5500_FFFC, 0x3C0D_BFC0, 0x8DA8_0024L.toInt(), 0x3C0B_B000
-        )
-        for (index in ipl2ImemStub.indices) {
-            memoryBus.writeWord(0x0400_1000L + index * 4L, ipl2ImemStub[index])
-        }
+        gpr[2] = 0x0000_0000_49A5_EE96L
+        gpr[3] = 0x5L
+        gpr[4] = 0x1L
+        gpr[5] = 0xFFFF_FFFF_C959_73D5UL.toLong()
+        gpr[6] = 0xFFFF_FFFFA400_1F0CUL.toLong()
+        gpr[7] = 0xFFFF_FFFFA400_1F08UL.toLong()
+        gpr[8] = 0xC0L
+        gpr[10] = 0x40L
+        gpr[11] = 0xFFFF_FFFFA400_0040UL.toLong()
+        gpr[12] = 0xFFFF_FFFF_EE10_D0B3UL.toLong()
+        gpr[13] = 0x1402_A4CCL
+        gpr[14] = 0x2DE1_08EAL
+        gpr[15] = 0x3103_E121L
+        gpr[22] = 0x3FL
+        gpr[23] = 0x6L
+        gpr[29] = 0xFFFF_FFFFA400_1FF0UL.toLong()
+        gpr[31] = 0xFFFF_FFFFA400_1550UL.toLong()
     }
 
     /** Executes one instruction; branches take effect after their delay slot. */
     fun step() {
+        exceptionTakenThisStep = false
         val instructionAddress = pc
-        val instruction = fetchInstruction(pc)
+        currentInstructionAddress = instructionAddress
+        currentInstructionInDelaySlot = pendingBranchTarget != null
+        val instruction = try {
+            fetchInstruction(pc)
+        } catch (_: TlbExceptionHandled) {
+            return
+        }
         lastInstructionAddress = instructionAddress
         lastInstructionWord = instruction
         totalSteps++
@@ -449,6 +426,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         pc += 4L
 
         val branchToApply = pendingBranchTarget
+        currentInstructionInDelaySlot = branchToApply != null
         pendingBranchTarget = null
 
         val opcode = instruction ushr 26
@@ -499,29 +477,28 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                     }
                 } // MTC0: honor Cause's writable-bit mask
                 0x10 -> when (funct) {
-                    0x01 -> { // TLBR: copy the indexed TLB entry into CP0
-                        val entry = tlb[cp0[0].toInt() and 31]
-                        cp0[5] = entry.pageMask.toLong()
-                        cp0[10] = entry.entryHi.toLong()
-                        cp0[2] = entry.entryLo0.toLong()
-                        cp0[3] = entry.entryLo1.toLong()
+                    0x01 -> { // TLBR
+                        val index = (cp0[0].toInt() and 0x1F).coerceIn(0, tlb.size - 1)
+                        val entry = tlb.read(index)
+                        cp0[5] = entry.pageMask
+                        cp0[10] = entry.entryHi
+                        cp0[2] = entry.entryLo0
+                        cp0[3] = entry.entryLo1
                     }
-                    0x02 -> writeTlbEntry(cp0[0].toInt() and 31) // TLBWI
-                    0x06 -> writeTlbEntry(cp0[1].toInt() and 31) // TLBWR
-                    0x08 -> { // TLBP: probe EntryHi; set Index.P on miss
-                        val hiValue = cp0[10].toInt()
-                        val asid = hiValue and 0xFF
-                        val vpnMask = (cp0[5].toInt() or 0x1FFF).inv()
-                        val found = tlb.indexOfFirst { entry ->
-                            (entry.entryHi and vpnMask) == (hiValue and vpnMask) &&
-                                (((entry.entryLo0 and 1) != 0 && (entry.entryLo1 and 1) != 0) ||
-                                    (entry.entryHi and 0xFF) == asid)
-                        }
-                        cp0[0] = if (found >= 0) found.toLong() else 0x8000_0000L
+                    0x02 -> { // TLBWI
+                        val index = (cp0[0].toInt() and 0x1F).coerceIn(0, tlb.size - 1)
+                        tlb.write(index, R4300Tlb.Entry(cp0[10], cp0[2], cp0[3], cp0[5]))
+                    }
+                    0x06 -> { // TLBWR: use the current Random register as replacement slot.
+                        val index = (cp0[1].toInt() and 0x1F).coerceIn(0, tlb.size - 1)
+                        tlb.write(index, R4300Tlb.Entry(cp0[10], cp0[2], cp0[3], cp0[5]))
+                    }
+                    0x08 -> { // TLBP
+                        val index = tlb.probe(cp0[10])
+                        cp0[0] = if (index == -1) 0x8000_0000L else index.toLong()
                     }
                     0x18 -> {
-                        // ERET: return to EPC and clear Status.EXL. Exception
-                        // entry itself is not modeled by this simplified core.
+                        // ERET: return to EPC and clear Status.EXL.
                         pc = cp0[14]
                         cp0[12] = cp0[12] and 0xFFFF_FFFDL
                     }
@@ -538,15 +515,21 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                 0x07 -> writeRegister(rd, (b.toInt() shr (a.toInt() and 0x1F)).toLong()) // SRAV
                 0x08 -> {
                     if (a % 4L != 0L) throw IllegalArgumentException("JR target must be 4-byte aligned")
+                    lastIndirectJumpRegister = rs
+                    lastIndirectJumpValue = a
                     pendingBranchTarget = a
                 } // JR
                 0x09 -> {
                     if (a % 4L != 0L) throw IllegalArgumentException("JALR target must be 4-byte aligned")
+                    lastIndirectJumpRegister = rs
+                    lastIndirectJumpValue = a
                     writeRegister(rd, instructionAddress + 8L)
                     pendingBranchTarget = a
                 } // JALR
                 0x0A -> if (b == 0L) writeRegister(rd, a) // MOVZ: move rs when rt is zero
                 0x0B -> if (b != 0L) writeRegister(rd, a) // MOVN: move rs when rt is nonzero
+                0x0C -> raiseException(8) // SYSCALL
+                0x0D -> raiseException(9) // BREAK
                 0x0F -> Unit // SYNC: no concurrent memory model in this simplified core
                 0x10 -> writeRegister(rd, hi) // MFHI
                 0x11 -> hi = a // MTHI
@@ -618,9 +601,9 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                         hi = (unsignedDividend % unsignedDivisor).toLong()
                     }
                 } // DIVU
-                0x20 -> writeRegister(rd, Math.addExact(a.toInt(), b.toInt()).toLong()) // ADD
+                0x20 -> writeRegister(rd, addSigned32(a.toInt(), b.toInt())) // ADD: overflow raises MIPS exception
                 0x21 -> writeRegister(rd, (a.toInt() + b.toInt()).toLong()) // ADDU
-                0x22 -> writeRegister(rd, Math.subtractExact(a.toInt(), b.toInt()).toLong()) // SUB
+                0x22 -> writeRegister(rd, subtractSigned32(a.toInt(), b.toInt())) // SUB: overflow raises MIPS exception
                 0x23 -> writeRegister(rd, (a.toInt() - b.toInt()).toLong()) // SUBU: 32-bit wrapping subtraction
                 0x24 -> writeRegister(rd, a and b) // AND
                 0x25 -> writeRegister(rd, a or b) // OR
@@ -628,9 +611,9 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                 0x27 -> writeRegister(rd, (a or b).inv()) // NOR
                 0x2A -> writeRegister(rd, if (a < b) 1L else 0L) // SLT
                 0x2B -> writeRegister(rd, if (java.lang.Long.compareUnsigned(a, b) < 0) 1L else 0L) // SLTU
-                0x2C -> writeRegister(rd, Math.addExact(a, b)) // DADD (overflow detection; exception model is simplified)
+                0x2C -> writeRegister(rd, addSigned64(a, b)) // DADD
                 0x2D -> writeRegister(rd, a + b) // DADDU
-                0x2E -> writeRegister(rd, Math.subtractExact(a, b)) // DSUB (overflow detection; exception model is simplified)
+                0x2E -> writeRegister(rd, subtractSigned64(a, b)) // DSUB
                 0x2F -> writeRegister(rd, a - b) // DSUBU
                 0x38 -> writeRegister(rd, b shl shift) // DSLL
                 0x3A -> writeRegister(rd, b ushr shift) // DSRL
@@ -676,7 +659,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             0x15 -> if (a != b) pendingBranchTarget = pc + (signedImmediate shl 2) else pc += 4L // BNEL
             0x16 -> if (a <= 0L) pendingBranchTarget = pc + (signedImmediate shl 2) else pc += 4L // BLEZL
             0x17 -> if (a > 0L) pendingBranchTarget = pc + (signedImmediate shl 2) else pc += 4L // BGTZL
-            0x08 -> writeRegister(rt, Math.addExact(a.toInt(), signedImmediate.toInt()).toLong()) // ADDI
+            0x08 -> writeRegister(rt, addSigned32(a.toInt(), signedImmediate.toInt())) // ADDI
             0x09 -> writeRegister(rt, (a.toInt() + signedImmediate.toInt()).toLong()) // ADDIU
             0x0A -> writeRegister(rt, if (a < signedImmediate) 1L else 0L) // SLTI
             0x0B -> writeRegister(rt, if (java.lang.Long.compareUnsigned(a, signedImmediate) < 0) 1L else 0L) // SLTIU
@@ -686,30 +669,42 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             0x0F -> writeRegister(rt, (immediate shl 16).toInt().toLong()) // LUI sign-extends the 32-bit result on MIPS III
             0x04 -> if (a == b) pendingBranchTarget = pc + (signedImmediate shl 2) // BEQ
             0x05 -> if (a != b) pendingBranchTarget = pc + (signedImmediate shl 2) // BNE
-            0x18 -> writeRegister(rt, Math.addExact(a, signedImmediate)) // DADDI
+            0x18 -> writeRegister(rt, addSigned64(a, signedImmediate)) // DADDI
             0x19 -> writeRegister(rt, a + signedImmediate) // DADDIU
             0x1A -> writeRegister(rt, loadDoublewordLeft(effectiveAddress(a, signedImmediate), b)) // LDL
             0x1B -> writeRegister(rt, loadDoublewordRight(effectiveAddress(a, signedImmediate), b)) // LDR
             0x22 -> writeRegister(rt, loadWordLeft(effectiveAddress(a, signedImmediate), b.toInt()).toLong()) // LWL
             0x20 -> writeRegister(rt, readByte(effectiveAddress(a, signedImmediate)).toLong()) // LB
-            0x21 -> writeRegister(rt, readHalf(effectiveAddress(a, signedImmediate)).toLong()) // LH
+            0x21 -> {
+                val address = alignedEffectiveAddress(a, signedImmediate, 2, 4) ?: return
+                writeRegister(rt, readHalf(address).toLong()) // LH
+            }
             0x23 -> {
-                val address = effectiveAddress(a, signedImmediate)
+                val address = alignedEffectiveAddress(a, signedImmediate, 4, 4) ?: return
                 val value = readWord(address)
                 recordCpuMemoryProbe("LW", instructionAddress, address, value)
                 writeRegister(rt, value.toLong())
             }
             0x26 -> writeRegister(rt, loadWordRight(effectiveAddress(a, signedImmediate), b.toInt()).toLong()) // LWR
-            0x27 -> writeRegister(rt, Integer.toUnsignedLong(readWord(effectiveAddress(a, signedImmediate)))) // LWU
+            0x27 -> {
+                val address = alignedEffectiveAddress(a, signedImmediate, 4, 4) ?: return
+                writeRegister(rt, Integer.toUnsignedLong(readWord(address))) // LWU
+            }
             0x24 -> writeRegister(rt, readByte(effectiveAddress(a, signedImmediate)).toLong() and 0xFFL) // LBU
-            0x25 -> writeRegister(rt, readHalf(effectiveAddress(a, signedImmediate)).toLong() and 0xFFFFL) // LHU
-            0x2C -> storeDoublewordLeft(effectiveAddress(a, signedImmediate, TlbAccess.STORE), b) // SDL
-            0x2D -> storeDoublewordRight(effectiveAddress(a, signedImmediate, TlbAccess.STORE), b) // SDR
-            0x2A -> storeWordLeft(effectiveAddress(a, signedImmediate, TlbAccess.STORE), b.toInt()) // SWL
-            0x28 -> writeByte(effectiveAddress(a, signedImmediate, TlbAccess.STORE), b.toByte()) // SB
-            0x29 -> writeHalf(effectiveAddress(a, signedImmediate, TlbAccess.STORE), b.toShort()) // SH
+            0x25 -> {
+                val address = alignedEffectiveAddress(a, signedImmediate, 2, 4) ?: return
+                writeRegister(rt, readHalf(address).toLong() and 0xFFFFL) // LHU
+            }
+            0x2C -> storeDoublewordLeft(effectiveAddress(a, signedImmediate, MemoryAccess.STORE), b) // SDL
+            0x2D -> storeDoublewordRight(effectiveAddress(a, signedImmediate, MemoryAccess.STORE), b) // SDR
+            0x2A -> storeWordLeft(effectiveAddress(a, signedImmediate, MemoryAccess.STORE), b.toInt()) // SWL
+            0x28 -> writeByte(effectiveAddress(a, signedImmediate, MemoryAccess.STORE), b.toByte()) // SB
+            0x29 -> {
+                val address = alignedEffectiveAddress(a, signedImmediate, 2, 5, MemoryAccess.STORE) ?: return
+                writeHalf(address, b.toShort()) // SH
+            }
             0x2B -> {
-                val address = effectiveAddress(a, signedImmediate, TlbAccess.STORE)
+                val address = alignedEffectiveAddress(a, signedImmediate, 4, 5, MemoryAccess.STORE) ?: return
                 val value = b.toInt()
                 recordCpuMemoryProbe("SW", instructionAddress, address, value)
                 if (address in 0x0460_0000..0x0460_000CL) {
@@ -725,11 +720,17 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                 }
                 writeWord(address, value)
             }
-            0x2E -> storeWordRight(effectiveAddress(a, signedImmediate, TlbAccess.STORE), b.toInt()) // SWR
+            0x2E -> storeWordRight(effectiveAddress(a, signedImmediate, MemoryAccess.STORE), b.toInt()) // SWR
             0x2F -> Unit // CACHE: ignored because this interpreter has no modeled caches
             0x33 -> Unit // PREF: prefetch hint has no effect in this interpreter
-            0x37 -> writeRegister(rt, readLong(effectiveAddress(a, signedImmediate))) // LD
-            0x3F -> writeLong(effectiveAddress(a, signedImmediate, TlbAccess.STORE), b) // SD
+            0x37 -> {
+                val address = alignedEffectiveAddress(a, signedImmediate, 8, 4) ?: return
+                writeRegister(rt, readLong(address)) // LD
+            }
+            0x3F -> {
+                val address = alignedEffectiveAddress(a, signedImmediate, 8, 5, MemoryAccess.STORE) ?: return
+                writeLong(address, b) // SD
+            }
             0x02 -> pendingBranchTarget = jumpTarget(instruction, pc) // J
             else -> unsupported(instruction, instructionAddress)
         }
@@ -743,10 +744,93 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         }
 
         // The instruction just executed was a delay-slot instruction.
-        if (branchToApply != null) pc = branchToApply
+        if (!exceptionTakenThisStep && branchToApply != null) pc = branchToApply
         gpr[0] = 0L
     }
 
+
+
+    /** Signed arithmetic overflow is an architectural MIPS exception, not a host-language crash. */
+    private fun addSigned32(left: Int, right: Int): Long = try {
+        Math.addExact(left, right).toLong()
+    } catch (_: ArithmeticException) {
+        raiseException(12)
+        0L
+    }
+
+    private fun subtractSigned32(left: Int, right: Int): Long = try {
+        Math.subtractExact(left, right).toLong()
+    } catch (_: ArithmeticException) {
+        raiseException(12)
+        0L
+    }
+
+    private fun addSigned64(left: Long, right: Long): Long = try {
+        Math.addExact(left, right)
+    } catch (_: ArithmeticException) {
+        raiseException(12)
+        0L
+    }
+
+    private fun subtractSigned64(left: Long, right: Long): Long = try {
+        Math.subtractExact(left, right)
+    } catch (_: ArithmeticException) {
+        raiseException(12)
+        0L
+    }
+
+    /**
+     * Raises a MIPS exception. EXL prevents nested exceptions from replacing the
+     * original EPC. Delay-slot exceptions set Cause.BD and point EPC at the branch.
+     */
+    private fun raiseException(exceptionCode: Int, tlbRefill: Boolean = false) {
+        exceptionTakenThisStep = true
+        val status = cp0[12].toInt()
+        val alreadyInException = (status and 0x2) != 0
+        if (!alreadyInException) {
+            val cause = cp0[13].toInt() and 0x7FFF_FF83
+            val branchDelayBit = if (currentInstructionInDelaySlot) (1 shl 31) else 0
+            cp0[13] = (cause or (exceptionCode shl 2) or branchDelayBit).toLong()
+            cp0[14] = if (currentInstructionInDelaySlot) {
+                lastBranchInstructionAddress ?: currentInstructionAddress
+            } else {
+                currentInstructionAddress
+            }
+            cp0[12] = (status or 0x2).toLong() // Status.EXL
+        }
+        pendingBranchTarget = null
+        val bootstrapVector = (status and (1 shl 22)) != 0
+        pc = when {
+            tlbRefill && !alreadyInException && bootstrapVector -> 0xFFFF_FFFFBFC0_0200UL.toLong()
+            tlbRefill && !alreadyInException -> 0xFFFF_FFFF_8000_0000UL.toLong()
+            bootstrapVector -> 0xFFFF_FFFFBFC0_0380UL.toLong()
+            else -> 0xFFFF_FFFF_8000_0180UL.toLong()
+        }
+    }
+
+    /**
+     * Checks architectural alignment using the original virtual address before translation.
+     * AdEL (4) is used for loads and AdES (5) for stores.
+     */
+    private fun alignedEffectiveAddress(
+        base: Long,
+        offset: Long,
+        alignment: Int,
+        exceptionCode: Int,
+        access: MemoryAccess = MemoryAccess.LOAD
+    ): Int? {
+        val virtualAddress = base + offset
+        if ((virtualAddress and (alignment - 1).toLong()) != 0L) {
+            cp0[8] = virtualAddress // BadVAddr records the virtual, not translated, address.
+            raiseException(exceptionCode)
+            return null
+        }
+        return try {
+            effectiveAddress(base, offset, access)
+        } catch (_: TlbExceptionHandled) {
+            null
+        }
+    }
 
     /**
      * Builds a MIPS J/JAL target from the low 32-bit virtual PC.
@@ -758,61 +842,47 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         return target32.toLong()
     }
 
-    /** Writes CP0 PageMask/EntryHi/EntryLo values into one software-managed TLB slot. */
-    private fun writeTlbEntry(index: Int) {
-        val entry = tlb[index]
-        // EntryHi's VPN and ASID are stored as a 32-bit architectural value.
-        entry.pageMask = cp0[5].toInt() and 0x01FF_E000
-        entry.entryHi = cp0[10].toInt()
-        entry.entryLo0 = cp0[2].toInt()
-        entry.entryLo1 = cp0[3].toInt()
-    }
 
-    /**
-     * Translate a TLB-mapped virtual address using paired pages. Returns null
-     * for a miss/invalid half. This interpreter currently reports faults rather
-     * than entering the architectural TLB exception vector.
-     */
-    private fun translateTlbAddress(address: Long): Long? {
-        val virtual = address.toInt()
-        val currentAsid = cp0[10].toInt() and 0xFF
-        for (entry in tlb) {
-            val pairMask = entry.pageMask or 0x1FFF
-            val vpnMask = pairMask.inv()
-            val global = (entry.entryLo0 and 1) != 0 && (entry.entryLo1 and 1) != 0
-            if ((virtual and vpnMask) != (entry.entryHi and vpnMask)) continue
-            if (!global && (entry.entryHi and 0xFF) != currentAsid) continue
 
-            val pageSize = (pairMask + 1) ushr 1
-            val odd = (virtual and pageSize) != 0
-            val lo = if (odd) entry.entryLo1 else entry.entryLo0
-            if ((lo and 2) == 0) return null // EntryLo.V is clear
-            val pfn = (lo ushr 6) and 0xFFFFF
-            val physicalBase = (pfn.toLong() shl 12) and (pageSize - 1).inv().toLong()
-            return physicalBase or (virtual.toLong() and (pageSize - 1).toLong())
-        }
-        return null
-    }
-
-    /** Fetches through the physical bus after direct-mapped KSEG0/KSEG1 translation. */
+    /** Fetches through the physical bus after virtual-to-physical address translation. */
     private fun fetchInstruction(address: Long): Int {
         require(address % 4L == 0L) {
             "Instruction fetch must be 4-byte aligned"
         }
-        return readWord(resolveRamAddress(address, TlbAccess.FETCH))
+        return readWord(resolveRamAddress(address, MemoryAccess.FETCH))
     }
 
     /**
-     * Resolves an address into a physical region supported by the bus.
-     *
-     * Low physical addresses remain available for tests. KSEG0/KSEG1 virtual
-     * addresses are translated to physical addresses; TLB-mapped segments and
-     * unsupported device/cart regions are rejected. RDRAM mirrors are not modeled.
+     * Resolves a virtual address into a physical region supported by the bus.
+     * Low physical addresses remain available for tests; KSEG0/KSEG1 are
+     * direct-mapped, while other 32-bit virtual addresses use the R4300 TLB.
+     * TLB faults update CP0 exception state and transfer control to the appropriate vector.
      */
-    private fun resolveRamAddress(address: Long, access: TlbAccess = TlbAccess.LOAD): Int {
+    private fun resolveRamAddress(address: Long, access: MemoryAccess = MemoryAccess.LOAD): Int {
         val physicalAddress = N64Addressing.translateDirectMappedAddress(address)
-            ?: if (address in 0L..0x1FFF_FFFFL) address
-            else translateTlbAddress(address) ?: throw TlbTranslationFault(address, access)
+            ?: if (address in 0L..0x1FFF_FFFFL) {
+                address
+            } else {
+                require(address == address.toInt().toLong()) {
+                    "Virtual address 0x${address.toULong().toString(16)} is not a canonical sign-extended 32-bit R4300 address"
+                }
+                try {
+                    tlb.translate(address, (cp0[10] and 0xFFL).toInt(), store = access == MemoryAccess.STORE)
+                        .physicalAddress
+                } catch (fault: R4300Tlb.TranslationException) {
+                    cp0[8] = address // BadVAddr is always the original virtual address.
+                    cp0[4] = (cp0[4] and 0xFF80_0000L) or
+                        (((address ushr 9) and 0x007F_FFF0L)) // Context.BadVPN2
+                    cp0[10] = (address and 0xFFFF_E000L) or (cp0[10] and 0xFFL) // EntryHi VPN2 + current ASID
+                    val exceptionCode = when (fault.fault) {
+                        R4300Tlb.Fault.MODIFICATION -> 1
+                        R4300Tlb.Fault.INVALID, R4300Tlb.Fault.MISS ->
+                            if (access == MemoryAccess.STORE) 3 else 2
+                    }
+                    raiseException(exceptionCode, tlbRefill = fault.fault == R4300Tlb.Fault.MISS)
+                    throw TlbExceptionHandled()
+                }
+            }
         val region = N64MemoryMap.regionOf(physicalAddress)
         require(region == N64MemoryMap.Region.RDRAM ||
             region == N64MemoryMap.Region.RDRAM_REGISTERS ||
@@ -849,7 +919,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     }
 
     /** Computes an effective address and resolves supported direct-mapped segments. */
-    private fun effectiveAddress(base: Long, offset: Long, access: TlbAccess = TlbAccess.LOAD): Int {
+    private fun effectiveAddress(base: Long, offset: Long, access: MemoryAccess = MemoryAccess.LOAD): Int {
         val address = try {
             Math.addExact(base, offset)
         } catch (error: ArithmeticException) {
@@ -858,7 +928,6 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         return try {
             resolveRamAddress(address, access)
         } catch (error: IllegalArgumentException) {
-            if (error is TlbTranslationFault) throw error
             throw IllegalArgumentException(
                 "Falha ao resolver endereco efetivo: base=0x" +
                     base.toULong().toString(16).uppercase(java.util.Locale.ROOT).padStart(16, '0') +
@@ -957,7 +1026,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         else BigInteger.valueOf(value and Long.MAX_VALUE).setBit(63)
 
     private fun writeRegister(index: Int, value: Long) {
-        if (index != 0) gpr[index] = value
+        if (!exceptionTakenThisStep && index != 0) gpr[index] = value
     }
 
     private fun unsupported(instruction: Int, address: Long): Nothing =

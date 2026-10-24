@@ -63,55 +63,36 @@ class N64EmulatorCoreTest {
         assertEquals(0xFFFF_FFFF_B000_0044UL.toLong(), result.programCounter)
     }
 
-    @Test fun ipl3DiagnosticCopiesCodeAndUsesNtscBootSeed() {
-        // SW r20, 0(r0): the diagnostic CIC-6105 handoff seeds r20=1 for NTSC.
-        val rom = syntheticRomWithInstructions(0xAC140000.toInt())
-        rom[0x3E] = 'J'.code.toByte()
-        val core = N64EmulatorCore()
-        core.loadRom(rom)
 
-        core.startIpl3DiagnosticExecution()
-        assertEquals(0xAC140000.toInt(), core.memoryBus.readWord(N64SpMemory.DMEM_BASE + 0x40L))
-        val result = core.executeSlice(1)
 
-        assertEquals(1, result.instructionsExecuted)
-        assertEquals(N64EmulatorCore.StopReason.INSTRUCTION_BUDGET_REACHED, result.stopReason)
-        assertEquals(null, result.errorMessage)
-        assertEquals(0xFFFF_FFFF_A400_0044UL.toLong(), result.programCounter)
-        assertEquals(1, core.memoryBus.readWord(0))
+
+
+    @Test fun cic6102DiagnosticSeedsExpectedIpl3Registers() {
+        val cpu = R4300Cpu()
+        val entry = 0xFFFF_FFFF_A400_0040UL.toLong()
+
+        cpu.resetForCic6102Diagnostic(entry)
+
+        assertEquals(entry, cpu.pc)
+        assertEquals(0x0EBD_A536L, cpu.register(2))
+        assertEquals(0xFFFF_FFFF_C0F1_D859UL.toLong(), cpu.register(5))
+        assertEquals(0xFFFF_FFFFA400_0040UL.toLong(), cpu.register(11))
+        assertEquals(0xFFFF_FFFFA400_1FF0UL.toLong(), cpu.register(29))
+        assertEquals(0xFFFF_FFFFA400_1550UL.toLong(), cpu.register(31))
     }
 
-    @Test fun ipl3DiagnosticUsesPalBootSeedForEuropeanCountryCode() {
-        // SW r20, 0(r0): the diagnostic CIC-6105 handoff seeds r20=0 for PAL.
-        // 'P' is a PAL country code; 'E' identifies North America (NTSC).
-        val rom = syntheticRomWithInstructions(0xAC140000.toInt())
-        rom[0x3E] = 'P'.code.toByte()
-        val core = N64EmulatorCore()
-        core.loadRom(rom)
+    @Test fun cic6105DiagnosticSeedsExpectedIpl3Registers() {
+        val cpu = R4300Cpu()
+        val entry = 0xFFFF_FFFF_A400_0040UL.toLong()
 
-        core.startIpl3DiagnosticExecution()
-        assertEquals(0xAC140000.toInt(), core.memoryBus.readWord(N64SpMemory.DMEM_BASE + 0x40L))
-        val result = core.executeSlice(1)
+        cpu.resetForCic6105Diagnostic(entry)
 
-        assertEquals(1, result.instructionsExecuted)
-        assertEquals(N64EmulatorCore.StopReason.INSTRUCTION_BUDGET_REACHED, result.stopReason)
-        assertEquals(null, result.errorMessage)
-        assertEquals(0, core.memoryBus.readWord(0))
-    }
-
-    @Test fun stopsTheKnownIpl3ChecksumFailureLoopEarly() {
-        val core = N64EmulatorCore()
-        core.loadRom(syntheticRomWithInstructions(0))
-        // IPL3 failure loop: BGEZAL $zero,-1, with a delay-slot NOP.
-        core.memoryBus.writeWord(0x1C8L, 0x0411FFFF)
-        core.memoryBus.writeWord(0x1CCL, 0x00000000)
-        core.startExecution(0xFFFF_FFFF_8000_01C8UL.toLong())
-
-        val result = core.executeSlice(1000)
-
-        assertEquals(N64EmulatorCore.StopReason.BOOT_CHECKSUM_FAILURE_LOOP, result.stopReason)
-        assertNotNull(result.errorMessage)
-        org.junit.Assert.assertTrue(result.instructionsExecuted < 1000)
+        assertEquals(entry, cpu.pc)
+        assertEquals(0x49A5_EE96L, cpu.register(2))
+        assertEquals(5L, cpu.register(3))
+        assertEquals(0xFFFF_FFFF_C959_73D5UL.toLong(), cpu.register(5))
+        assertEquals(0xFFFF_FFFF_EE10_D0B3UL.toLong(), cpu.register(12))
+        assertEquals(0xFFFF_FFFFA400_1FF0UL.toLong(), cpu.register(29))
     }
 
     @Test fun requiresRomBeforeExecution() {
@@ -192,6 +173,33 @@ class N64EmulatorCoreTest {
         // BREAK must have run automatically after the CPU released SP from HALT.
         org.junit.Assert.assertTrue(core.memoryBus.isSpHalted())
         org.junit.Assert.assertTrue(core.memoryBus.readWord(N64MemoryBus.SP_STATUS) and (1 shl 1) != 0)
+    }
+
+    @Test fun diagnosticIpl3StartupCopiesBootImageIntoSpDmemAndExecutesIt() {
+        val rom = syntheticRomWithInstructions(0x2401002A, 0x24210001)
+        val core = N64EmulatorCore()
+        core.loadRom(rom)
+
+        core.startIpl3DiagnosticExecution()
+        val result = core.executeSlice(1)
+
+        assertEquals(1, result.instructionsExecuted)
+        assertEquals(0xFFFF_FFFF_A400_0044UL.toLong(), result.programCounter)
+        assertEquals(N64EmulatorCore.StopReason.INSTRUCTION_BUDGET_REACHED, result.stopReason)
+        assertEquals(0x24.toByte(), core.memoryBus.readByte(0x0400_0040L))
+        assertEquals(0x01.toByte(), core.memoryBus.readByte(0x0400_0041L))
+        assertEquals(0x00.toByte(), core.memoryBus.readByte(0x0400_0042L))
+        assertEquals(0x2A.toByte(), core.memoryBus.readByte(0x0400_0043L))
+    }
+
+    @Test fun bootDiagnosticsDistinguishUnknownCicFromUnavailableChecksum() {
+        val core = N64EmulatorCore()
+        core.loadRom(syntheticRomWithInstructions(0x00000000))
+
+        val summary = core.bootMemoryDiagnosticSummary()
+
+        org.junit.Assert.assertTrue(summary.contains("ROM_CIC_DETECTED=UNKNOWN"))
+        org.junit.Assert.assertTrue(summary.contains("ROM_CHECKSUM_STATUS=ROM_TOO_SHORT_FOR_HEADER_CHECKSUM"))
     }
 
     private fun syntheticRomWithInstructions(vararg instructions: Int): ByteArray {
