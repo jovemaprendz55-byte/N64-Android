@@ -714,21 +714,21 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private fun subtractSigned32(left: Int, right: Int): Long = try {
         Math.subtractExact(left, right).toLong()
     } catch (_: ArithmeticException) {
-        raiseOverflowException()
+        raiseException(12)
         0L
     }
 
     private fun addSigned64(left: Long, right: Long): Long = try {
         Math.addExact(left, right)
     } catch (_: ArithmeticException) {
-        raiseOverflowException()
+        raiseException(12)
         0L
     }
 
     private fun subtractSigned64(left: Long, right: Long): Long = try {
         Math.subtractExact(left, right)
     } catch (_: ArithmeticException) {
-        raiseOverflowException()
+        raiseException(12)
         0L
     }
 
