@@ -33,8 +33,9 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private val cpuMemoryProbeHistory = mutableListOf<String>()
     /** CPU-side stores that launch PI DMA, including the issuing instruction PC. */
     private val cpuPiWriteHistory = mutableListOf<String>()
-    // CP0 register file; TLB instruction support is removed for clean rebuild.
+    // CP0 register file and isolated 32-entry R4300 TLB.
     private val cp0 = LongArray(32)
+    private val tlb = R4300Tlb()
     // COP1 floating-point registers and control registers. The current core
     // implements register transfers first; arithmetic/exception semantics remain partial.
     private val fpr = LongArray(32)
@@ -294,6 +295,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         fpr.fill(0L)
         fcr.fill(0)
         cp0.fill(0L)
+        tlb.reset()
         hi = 0L
         lo = 0L
         pc = entryPoint
@@ -467,7 +469,26 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                     }
                 } // MTC0: honor Cause's writable-bit mask
                 0x10 -> when (funct) {
-                    0x01, 0x02, 0x06, 0x08 -> unsupported(instruction, instructionAddress) // TLB implementation intentionally removed
+                    0x01 -> { // TLBR
+                        val index = (cp0[0].toInt() and 0x1F).coerceIn(0, tlb.size - 1)
+                        val entry = tlb.read(index)
+                        cp0[5] = entry.pageMask
+                        cp0[10] = entry.entryHi
+                        cp0[2] = entry.entryLo0
+                        cp0[3] = entry.entryLo1
+                    }
+                    0x02 -> { // TLBWI
+                        val index = (cp0[0].toInt() and 0x1F).coerceIn(0, tlb.size - 1)
+                        tlb.write(index, R4300Tlb.Entry(cp0[10], cp0[2], cp0[3], cp0[5]))
+                    }
+                    0x06 -> { // TLBWR: use the current Random register as replacement slot.
+                        val index = (cp0[1].toInt() and 0x1F).coerceIn(0, tlb.size - 1)
+                        tlb.write(index, R4300Tlb.Entry(cp0[10], cp0[2], cp0[3], cp0[5]))
+                    }
+                    0x08 -> { // TLBP
+                        val index = tlb.probe(cp0[10])
+                        cp0[0] = if (index == -1) 0x8000_0000L else index.toLong()
+                    }
                     0x18 -> {
                         // ERET: return to EPC and clear Status.EXL.
                         pc = cp0[14]
