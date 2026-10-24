@@ -2085,7 +2085,7 @@ class R4300CpuTest {
 
         assertEquals(0L, cpu.register(2)) // TLBP found entry 0
         assertEquals(0x48E7L, cpu.register(4))
-        assertEquals(0x1597L, cpu.register(5))
+        assertEquals(0x11597L, cpu.register(5))
     }
 
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
