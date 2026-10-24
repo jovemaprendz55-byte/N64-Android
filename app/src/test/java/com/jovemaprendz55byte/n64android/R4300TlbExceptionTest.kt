@@ -104,6 +104,8 @@ class R4300TlbExceptionTest {
         assertEquals(4L, cpu.readCp0ForTest(14)) // EPC is the faulting load
         assertEquals(0xFFFF_FFFF_8000_0000UL.toLong(), cpu.pc) // TLB refill vector
         assertEquals(0x2L, cpu.readCp0ForTest(12) and 0x2L) // Status.EXL
+        assertEquals(0x40000000L, cpu.readCp0ForTest(10) and 0xFFFF_E000L) // EntryHi.VPN2 updated
+        assertEquals(0x00200000L, cpu.readCp0ForTest(4) and 0x007F_FFF0L) // Context.BadVPN2 updated
     }
 
     @Test fun storeTlbMissRaisesTlbsAndUsesRefillVector() {
