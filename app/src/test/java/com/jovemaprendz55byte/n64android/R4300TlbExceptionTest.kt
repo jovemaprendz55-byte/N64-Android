@@ -159,6 +159,34 @@ class R4300TlbExceptionTest {
         assertEquals(0xFFFF_FFFF_8000_0000UL.toLong(), cpu.pc) // TLB refill vector
     }
 
+    @Test fun tlbpFindsMatchingEntryAndTlbrRestoresEntryRegisters() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x4000), // r1 = 0x40000000
+            iType(0x0D, 1, 1, 3),      // r1 = EntryHi with ASID 3
+            iType(0x09, 0, 2, 0x005A), // valid even page
+            iType(0x09, 0, 3, 0x0062), // valid odd page
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11), // MTC0 EntryHi
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (2 shl 11),  // MTC0 EntryLo0
+            (0x10 shl 26) or (0x04 shl 21) or (3 shl 16) or (3 shl 11),  // MTC0 EntryLo1
+            0x42000002, // TLBWI at Index 0
+            iType(0x0F, 0, 4, 0x5000), // r4 = 0x50000000
+            iType(0x0D, 4, 4, 4),      // different VPN2 and ASID
+            (0x10 shl 26) or (0x04 shl 21) or (4 shl 16) or (10 shl 11), // MTC0 EntryHi
+            0x42000008, // TLBP must miss
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11), // restore matching EntryHi
+            0x42000008, // TLBP must find index 0
+            (0x10 shl 26) or 0x00000001 // TLBR
+        ))
+
+        repeat(15) { cpu.step() }
+
+        assertEquals(0L, cpu.readCp0ForTest(0)) // Index = matching slot 0
+        assertEquals(0x40000003L, cpu.readCp0ForTest(10)) // TLBR restored EntryHi + ASID
+        assertEquals(0x5AL, cpu.readCp0ForTest(2)) // TLBR restored EntryLo0
+        assertEquals(0x62L, cpu.readCp0ForTest(3)) // TLBR restored EntryLo1
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
