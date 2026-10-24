@@ -846,6 +846,23 @@ class R4300CpuTest {
         assertEquals(-2147483647L, cpu.register(4))
     }
 
+    @Test fun overflowInBranchDelaySlotSetsCauseBdAndBranchEpc() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x7FFF), // r1 = 0x7FFF0000
+            iType(0x0D, 1, 1, 0xFFFF), // r1 = 0x7FFFFFFF
+            iType(0x04, 0, 0, 1),      // BEQ -> address 16
+            iType(0x08, 1, 2, 1),      // delay slot: ADDI overflow
+            iType(0x09, 0, 3, 3)
+        ))
+        repeat(4) { cpu.step() }
+        assertEquals(0L, cpu.register(2))
+        assertEquals(8L, cpu.readCp0ForTest(14)) // EPC is branch address
+        assertEquals(1L, (cpu.readCp0ForTest(13) ushr 31) and 1L) // Cause.BD
+        assertEquals(12L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL)
+        assertEquals(0xFFFF_FFFF_8000_0180UL.toLong(), cpu.pc)
+    }
+
     @Test fun addiOverflowRaisesMipsExceptionAndPreservesDestination() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
