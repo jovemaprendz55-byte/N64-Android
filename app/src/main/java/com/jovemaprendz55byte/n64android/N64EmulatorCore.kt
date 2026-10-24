@@ -95,7 +95,14 @@ class N64EmulatorCore(
             memoryBus.writeByte(0x0400_0000L + offset, rom[offset])
         }
 
-        cpu.resetForCartridgeDiagnostic(0xFFFF_FFFF_A400_0040UL.toLong())
+        val ipl3EntryPoint = 0xFFFF_FFFF_A400_0040UL.toLong()
+        when (N64RomChecksum.detectCic(rom)) {
+            N64RomChecksum.CicType.CIC_6101,
+            N64RomChecksum.CicType.CIC_6102 -> cpu.resetForCic6102Diagnostic(ipl3EntryPoint)
+            N64RomChecksum.CicType.CIC_6105 -> cpu.resetForCic6105Diagnostic(ipl3EntryPoint)
+            // Do not guess undocumented register seeds for other CICs or unknown IPL3s.
+            else -> cpu.resetForCartridgeDiagnostic(ipl3EntryPoint)
+        }
         resetBootLoopDetector()
         executionStarted = true
     }
