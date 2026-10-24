@@ -350,6 +350,24 @@ class R4300TlbExceptionTest {
         assertEquals(0, cpu.readWord(0x1004)) // even-page physical location untouched
     }
 
+    @Test fun instructionFetchTlbMissAfterBranchDelaySlotDoesNotSetCauseBd() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x4000), // r1 = unmapped virtual target 0x40000000
+            (1 shl 21) or 0x08,         // JR r1
+            0                           // delay slot completes before target fetch
+        ))
+
+        repeat(4) { cpu.step() }
+
+        val cause = cpu.readCp0ForTest(13)
+        assertEquals(2L, (cause ushr 2) and 0x1FL) // instruction-fetch TLBL
+        assertEquals(0L, (cause ushr 31) and 1L) // target fetch is not a delay-slot exception
+        assertEquals(0x40000000L, cpu.readCp0ForTest(8)) // BadVAddr is target PC
+        assertEquals(0x40000000L, cpu.readCp0ForTest(14)) // EPC is the faulting target PC
+        assertEquals(0xFFFF_FFFF_8000_0000UL.toLong(), cpu.pc) // refill vector
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
