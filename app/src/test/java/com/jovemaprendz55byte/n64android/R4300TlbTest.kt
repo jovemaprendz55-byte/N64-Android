@@ -107,6 +107,18 @@ class R4300TlbTest {
         assertFault(R4300Tlb.Fault.MISS) { tlb.translate(0x1800_1000L, 5) }
     }
 
+    @Test fun probeMatchesGlobalEntryAcrossDifferentAsids() {
+        val tlb = R4300Tlb()
+        tlb.write(7, R4300Tlb.Entry(
+            R4300Tlb.entryHi(0x1A00_0000L, 3),
+            R4300Tlb.entryLo(0x70, global = true),
+            R4300Tlb.entryLo(0x71, global = true)
+        ))
+
+        assertEquals(7, tlb.probe(R4300Tlb.entryHi(0x1A00_0000L, 99)))
+        assertEquals(-1, tlb.probe(R4300Tlb.entryHi(0x1A00_2000L, 99)))
+    }
+
     private fun assertFault(expected: R4300Tlb.Fault, action: () -> Unit) {
         try {
             action()
