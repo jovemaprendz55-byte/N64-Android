@@ -24,6 +24,23 @@ class R4300TlbExceptionTest {
         assertEquals(0xFFFF_FFFF_8000_0180UL.toLong(), cpu.pc) // invalid is not a refill miss
     }
 
+    @Test fun loadTlbMissRaisesTlblAndUsesRefillVector() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x4000), // r1 = unmapped virtual address 0x40000000
+            iType(0x23, 1, 2, 0)       // LW must raise TLBL on TLB miss
+        ))
+
+        cpu.step()
+        cpu.step()
+
+        assertEquals(2L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL) // TLBL
+        assertEquals(0x40000000L, cpu.readCp0ForTest(8)) // BadVAddr
+        assertEquals(4L, cpu.readCp0ForTest(14)) // EPC is the faulting load
+        assertEquals(0xFFFF_FFFF_8000_0000UL.toLong(), cpu.pc) // TLB refill vector
+        assertEquals(0x2L, cpu.readCp0ForTest(12) and 0x2L) // Status.EXL
+    }
+
     @Test fun storeTlbMissRaisesTlbsAndUsesRefillVector() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
