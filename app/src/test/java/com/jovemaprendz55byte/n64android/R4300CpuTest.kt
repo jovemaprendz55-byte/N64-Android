@@ -863,6 +863,53 @@ class R4300CpuTest {
         assertEquals(0xFFFF_FFFF_8000_0180UL.toLong(), cpu.pc)
     }
 
+    @Test fun unalignedLwRaisesAddressErrorAndRecordsVirtualBadVAddr() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x8000),
+            iType(0x09, 1, 1, 1),
+            iType(0x23, 1, 2, 0)
+        ))
+        repeat(3) { cpu.step() }
+        assertEquals(0L, cpu.register(2))
+        assertEquals(0xFFFF_FFFF_8000_0001UL.toLong(), cpu.readCp0ForTest(8))
+        assertEquals(4L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL)
+        assertEquals(8L, cpu.readCp0ForTest(14))
+        assertEquals(0xFFFF_FFFF_8000_0180UL.toLong(), cpu.pc)
+    }
+
+    @Test fun unalignedSwRaisesAddressStoreErrorBeforeWritingMemory() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 1),
+            iType(0x09, 0, 2, 0x1234),
+            iType(0x2B, 1, 2, 0)
+        ))
+        cpu.writeWord(0x100, 0x55667788)
+        repeat(3) { cpu.step() }
+        assertEquals(0x55667788, cpu.readWord(0x100))
+        assertEquals(1L, cpu.readCp0ForTest(8))
+        assertEquals(5L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL)
+        assertEquals(8L, cpu.readCp0ForTest(14))
+    }
+
+    @Test fun unalignedLoadInBranchDelaySlotSetsBdAndBranchEpc() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x09, 0, 1, 1),
+            iType(0x04, 0, 0, 2),
+            iType(0x23, 1, 2, 0),
+            iType(0x09, 0, 3, 99)
+        ))
+        repeat(3) { cpu.step() }
+        assertEquals(4L, cpu.readCp0ForTest(14))
+        assertEquals(1L, (cpu.readCp0ForTest(13) ushr 31) and 1L)
+        assertEquals(4L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL)
+        assertEquals(1L, cpu.readCp0ForTest(8))
+        assertEquals(0L, cpu.register(2))
+        assertEquals(0xFFFF_FFFF_8000_0180UL.toLong(), cpu.pc)
+    }
+
     @Test fun syscallRaisesArchitecturalException() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(rType(0, 0, 0, 0, 0x0C))) // SYSCALL
