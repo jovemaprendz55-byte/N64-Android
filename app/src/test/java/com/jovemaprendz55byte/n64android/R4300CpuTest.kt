@@ -2060,6 +2060,34 @@ class R4300CpuTest {
     }
 
 
+    @Test fun tlbwiTlbpAndTlbrTransferTlbEntryThroughCp0() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x0040), // r1 = virtual pair 0x00400000
+            iType(0x0D, 1, 1, 7),      // ASID 7
+            iType(0x0F, 0, 2, 0x0000),
+            iType(0x0D, 2, 2, 0x48E7),  // PFN 0x123, cached, dirty, valid, global
+            iType(0x0F, 0, 3, 0x0001),
+            iType(0x0D, 3, 3, 0x1597),  // PFN 0x056? second page data
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11), // MTC0 r1, EntryHi
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (2 shl 11),  // MTC0 r2, EntryLo0
+            (0x10 shl 26) or (0x04 shl 21) or (3 shl 16) or (3 shl 11),  // MTC0 r3, EntryLo1
+            0x42000002, // TLBWI
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11), // MTC0 r1, EntryHi query
+            0x42000008, // TLBP
+            (0x10 shl 26) or (2 shl 16), // MFC0 r2, Index
+            0x42000001, // TLBR
+            (0x10 shl 26) or (4 shl 16) or (2 shl 11), // MFC0 r4, EntryLo0
+            (0x10 shl 26) or (5 shl 16) or (3 shl 11)  // MFC0 r5, EntryLo1
+        ))
+
+        repeat(16) { cpu.step() }
+
+        assertEquals(0L, cpu.register(2)) // TLBP found entry 0
+        assertEquals(0x48E7L, cpu.register(4))
+        assertEquals(0x1597L, cpu.register(5))
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
