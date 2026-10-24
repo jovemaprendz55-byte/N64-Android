@@ -66,6 +66,9 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private var recentInstructionPcCount = 0
     private var frozenLoopTrace: String? = null
     private var totalSteps: Long = 0L
+    private var exceptionTakenThisStep = false
+    private var currentInstructionAddress = 0L
+    private var currentInstructionInDelaySlot = false
 
     internal val lastExecutedInstructionAddress: Long?
         get() = lastInstructionAddress
@@ -371,7 +374,9 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
 
     /** Executes one instruction; branches take effect after their delay slot. */
     fun step() {
+        exceptionTakenThisStep = false
         val instructionAddress = pc
+        currentInstructionAddress = instructionAddress
         val instruction = fetchInstruction(pc)
         lastInstructionAddress = instructionAddress
         lastInstructionWord = instruction
@@ -410,6 +415,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         pc += 4L
 
         val branchToApply = pendingBranchTarget
+        currentInstructionInDelaySlot = branchToApply != null
         pendingBranchTarget = null
 
         val opcode = instruction ushr 26
@@ -564,9 +570,9 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                         hi = (unsignedDividend % unsignedDivisor).toLong()
                     }
                 } // DIVU
-                0x20 -> writeRegister(rd, Math.addExact(a.toInt(), b.toInt()).toLong()) // ADD
+                0x20 -> writeRegister(rd, addSigned32(a.toInt(), b.toInt())) // ADD: overflow raises MIPS exception
                 0x21 -> writeRegister(rd, (a.toInt() + b.toInt()).toLong()) // ADDU
-                0x22 -> writeRegister(rd, Math.subtractExact(a.toInt(), b.toInt()).toLong()) // SUB
+                0x22 -> writeRegister(rd, subtractSigned32(a.toInt(), b.toInt())) // SUB: overflow raises MIPS exception
                 0x23 -> writeRegister(rd, (a.toInt() - b.toInt()).toLong()) // SUBU: 32-bit wrapping subtraction
                 0x24 -> writeRegister(rd, a and b) // AND
                 0x25 -> writeRegister(rd, a or b) // OR
@@ -574,9 +580,9 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                 0x27 -> writeRegister(rd, (a or b).inv()) // NOR
                 0x2A -> writeRegister(rd, if (a < b) 1L else 0L) // SLT
                 0x2B -> writeRegister(rd, if (java.lang.Long.compareUnsigned(a, b) < 0) 1L else 0L) // SLTU
-                0x2C -> writeRegister(rd, Math.addExact(a, b)) // DADD (overflow detection; exception model is simplified)
+                0x2C -> writeRegister(rd, addSigned64(a, b)) // DADD
                 0x2D -> writeRegister(rd, a + b) // DADDU
-                0x2E -> writeRegister(rd, Math.subtractExact(a, b)) // DSUB (overflow detection; exception model is simplified)
+                0x2E -> writeRegister(rd, subtractSigned64(a, b)) // DSUB
                 0x2F -> writeRegister(rd, a - b) // DSUBU
                 0x38 -> writeRegister(rd, b shl shift) // DSLL
                 0x3A -> writeRegister(rd, b ushr shift) // DSRL
@@ -622,7 +628,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             0x15 -> if (a != b) pendingBranchTarget = pc + (signedImmediate shl 2) else pc += 4L // BNEL
             0x16 -> if (a <= 0L) pendingBranchTarget = pc + (signedImmediate shl 2) else pc += 4L // BLEZL
             0x17 -> if (a > 0L) pendingBranchTarget = pc + (signedImmediate shl 2) else pc += 4L // BGTZL
-            0x08 -> writeRegister(rt, Math.addExact(a.toInt(), signedImmediate.toInt()).toLong()) // ADDI
+            0x08 -> writeRegister(rt, addSigned32(a.toInt(), signedImmediate.toInt())) // ADDI
             0x09 -> writeRegister(rt, (a.toInt() + signedImmediate.toInt()).toLong()) // ADDIU
             0x0A -> writeRegister(rt, if (a < signedImmediate) 1L else 0L) // SLTI
             0x0B -> writeRegister(rt, if (java.lang.Long.compareUnsigned(a, signedImmediate) < 0) 1L else 0L) // SLTIU
@@ -632,7 +638,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             0x0F -> writeRegister(rt, (immediate shl 16).toInt().toLong()) // LUI sign-extends the 32-bit result on MIPS III
             0x04 -> if (a == b) pendingBranchTarget = pc + (signedImmediate shl 2) // BEQ
             0x05 -> if (a != b) pendingBranchTarget = pc + (signedImmediate shl 2) // BNE
-            0x18 -> writeRegister(rt, Math.addExact(a, signedImmediate)) // DADDI
+            0x18 -> writeRegister(rt, addSigned64(a, signedImmediate)) // DADDI
             0x19 -> writeRegister(rt, a + signedImmediate) // DADDIU
             0x1A -> writeRegister(rt, loadDoublewordLeft(effectiveAddress(a, signedImmediate), b)) // LDL
             0x1B -> writeRegister(rt, loadDoublewordRight(effectiveAddress(a, signedImmediate), b)) // LDR
@@ -689,11 +695,67 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         }
 
         // The instruction just executed was a delay-slot instruction.
-        if (branchToApply != null) pc = branchToApply
+        if (!exceptionTakenThisStep && branchToApply != null) pc = branchToApply
         gpr[0] = 0L
     }
 
 
+
+    /** Signed arithmetic overflow is an architectural MIPS exception, not a host-language crash. */
+    private fun addSigned32(left: Int, right: Int): Long = try {
+        Math.addExact(left, right).toLong()
+    } catch (_: ArithmeticException) {
+        raiseOverflowException()
+        0L
+    }
+
+    private fun subtractSigned32(left: Int, right: Int): Long = try {
+        Math.subtractExact(left, right).toLong()
+    } catch (_: ArithmeticException) {
+        raiseOverflowException()
+        0L
+    }
+
+    private fun addSigned64(left: Long, right: Long): Long = try {
+        Math.addExact(left, right)
+    } catch (_: ArithmeticException) {
+        raiseOverflowException()
+        0L
+    }
+
+    private fun subtractSigned64(left: Long, right: Long): Long = try {
+        Math.subtractExact(left, right)
+    } catch (_: ArithmeticException) {
+        raiseOverflowException()
+        0L
+    }
+
+    /**
+     * MIPS ExcCode 12 (Overflow). EXL prevents nested exceptions from replacing
+     * the original EPC. Delay-slot exceptions set Cause.BD and point EPC at the branch.
+     */
+    private fun raiseOverflowException() {
+        exceptionTakenThisStep = true
+        val status = cp0[12].toInt()
+        val alreadyInException = (status and 0x2) != 0
+        if (!alreadyInException) {
+            val cause = cp0[13].toInt() and 0x7FFF_FF83
+            val branchDelayBit = if (currentInstructionInDelaySlot) (1 shl 31) else 0
+            cp0[13] = (cause or (12 shl 2) or branchDelayBit).toLong()
+            cp0[14] = if (currentInstructionInDelaySlot) {
+                lastBranchInstructionAddress ?: currentInstructionAddress
+            } else {
+                currentInstructionAddress
+            }
+            cp0[12] = (status or 0x2).toLong() // Status.EXL
+        }
+        pendingBranchTarget = null
+        pc = if ((status and (1 shl 22)) != 0) {
+            0xFFFF_FFFFBFC0_0380UL.toLong() // BEV=1 bootstrap exception vector
+        } else {
+            0xFFFF_FFFF_8000_0180UL.toLong() // general exception vector
+        }
+    }
 
     /**
      * Builds a MIPS J/JAL target from the low 32-bit virtual PC.
