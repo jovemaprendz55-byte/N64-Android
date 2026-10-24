@@ -320,17 +320,54 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     }
 
     /**
-     * Approximate the documented CIC-NUS-6102/7101 IPL3 handoff used by
-     * common retail cartridges. This is still an HLE diagnostic shortcut,
-     * not execution of the console's PIF boot ROM.
+     * Supplies the documented common CIC-6102/7101 IPL3 entry register state.
+     * This HLE handoff skips the PIF ROM and is intended for diagnostics only.
      */
+    internal fun resetForCic6102Diagnostic(entryPoint: Long) {
+        resetExecutionState(entryPoint)
+        gpr[2] = 0x0000_0000_0EBD_A536L
+        gpr[3] = 0x0000_0000_0EBD_A536L
+        gpr[4] = 0x0000_0000_0000_A536L
+        gpr[5] = 0xFFFF_FFFF_C0F1_D859UL.toLong()
+        gpr[6] = 0xFFFF_FFFFA400_1F0CUL.toLong()
+        gpr[7] = 0xFFFF_FFFFA400_1F08UL.toLong()
+        gpr[8] = 0xC0L
+        gpr[10] = 0x40L
+        gpr[11] = 0xFFFF_FFFFA400_0040UL.toLong()
+        gpr[12] = 0xFFFF_FFFF_ED10_D0B3UL.toLong()
+        gpr[13] = 0x1402_A4CCL
+        gpr[14] = 0x2DE1_08EAL
+        gpr[15] = 0x3103_E121L
+        gpr[22] = 0x3FL
+        gpr[23] = 0x6L
+        gpr[29] = 0xFFFF_FFFFA400_1FF0UL.toLong()
+        gpr[31] = 0xFFFF_FFFFA400_1550UL.toLong()
+    }
 
     /**
-     * Approximate the register handoff from the PIF/ IPL2 boot path for a
-     * CIC-NUS-6105 cartridge before entering its IPL3 image in SP DMEM.
-     * This is not a substitute for executing the PIF boot ROM or validating
-     * the cartridge CIC checksum; it supplies the known 6105 NTSC/PAL seeds.
+     * Supplies the commonly documented CIC-6105 IPL3 entry seeds.
+     * This remains an HLE diagnostic shortcut, not a full PIF/CIC execution.
      */
+    internal fun resetForCic6105Diagnostic(entryPoint: Long) {
+        resetExecutionState(entryPoint)
+        gpr[2] = 0x0000_0000_49A5_EE96L
+        gpr[3] = 0x5L
+        gpr[4] = 0x1L
+        gpr[5] = 0xFFFF_FFFF_C959_73D5UL.toLong()
+        gpr[6] = 0xFFFF_FFFFA400_1F0CUL.toLong()
+        gpr[7] = 0xFFFF_FFFFA400_1F08UL.toLong()
+        gpr[8] = 0xC0L
+        gpr[10] = 0x40L
+        gpr[11] = 0xFFFF_FFFFA400_0040UL.toLong()
+        gpr[12] = 0xFFFF_FFFF_EE10_D0B3UL.toLong()
+        gpr[13] = 0x1402_A4CCL
+        gpr[14] = 0x2DE1_08EAL
+        gpr[15] = 0x3103_E121L
+        gpr[22] = 0x3FL
+        gpr[23] = 0x6L
+        gpr[29] = 0xFFFF_FFFFA400_1FF0UL.toLong()
+        gpr[31] = 0xFFFF_FFFFA400_1550UL.toLong()
+    }
 
     /** Executes one instruction; branches take effect after their delay slot. */
     fun step() {
