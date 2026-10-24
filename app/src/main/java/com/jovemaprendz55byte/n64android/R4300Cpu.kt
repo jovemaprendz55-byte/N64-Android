@@ -5,8 +5,9 @@ import java.math.BigInteger
 /**
  * Small, testable MIPS III/R4300 interpreter foundation.
  *
- * This remains a partial CPU core: exceptions, TLB/FPU, caches, and N64
- * peripherals are not implemented. Implemented RDRAM and SP DMEM/IMEM accesses
+ * This remains a partial CPU core: overflow exceptions are modeled, while
+ * other exceptions, TLB/FPU, caches, and many N64 peripherals remain incomplete.
+ * Implemented RDRAM and SP DMEM/IMEM accesses
  * are routed through the physical memory bus.
  */
 internal enum class MemoryAccess { FETCH, LOAD, STORE }
@@ -468,8 +469,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                 0x10 -> when (funct) {
                     0x01, 0x02, 0x06, 0x08 -> unsupported(instruction, instructionAddress) // TLB implementation intentionally removed
                     0x18 -> {
-                        // ERET: return to EPC and clear Status.EXL. Exception
-                        // entry itself is not modeled by this simplified core.
+                        // ERET: return to EPC and clear Status.EXL.
                         pc = cp0[14]
                         cp0[12] = cp0[12] and 0xFFFF_FFFDL
                     }
