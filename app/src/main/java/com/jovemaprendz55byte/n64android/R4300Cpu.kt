@@ -72,6 +72,9 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private var currentInstructionAddress = 0L
     private var currentInstructionInDelaySlot = false
 
+    /** Internal control flow: a TLB fault has already entered the architectural exception vector. */
+    private class TlbExceptionHandled : RuntimeException()
+
     internal val lastExecutedInstructionAddress: Long?
         get() = lastInstructionAddress
 
@@ -380,7 +383,12 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         exceptionTakenThisStep = false
         val instructionAddress = pc
         currentInstructionAddress = instructionAddress
-        val instruction = fetchInstruction(pc)
+        currentInstructionInDelaySlot = pendingBranchTarget != null
+        val instruction = try {
+            fetchInstruction(pc)
+        } catch (_: TlbExceptionHandled) {
+            return
+        }
         lastInstructionAddress = instructionAddress
         lastInstructionWord = instruction
         totalSteps++
@@ -775,7 +783,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
      * Raises a MIPS exception. EXL prevents nested exceptions from replacing the
      * original EPC. Delay-slot exceptions set Cause.BD and point EPC at the branch.
      */
-    private fun raiseException(exceptionCode: Int) {
+    private fun raiseException(exceptionCode: Int, tlbRefill: Boolean = false) {
         exceptionTakenThisStep = true
         val status = cp0[12].toInt()
         val alreadyInException = (status and 0x2) != 0
@@ -791,10 +799,12 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             cp0[12] = (status or 0x2).toLong() // Status.EXL
         }
         pendingBranchTarget = null
-        pc = if ((status and (1 shl 22)) != 0) {
-            0xFFFF_FFFFBFC0_0380UL.toLong() // BEV=1 bootstrap exception vector
-        } else {
-            0xFFFF_FFFF_8000_0180UL.toLong() // general exception vector
+        val bootstrapVector = (status and (1 shl 22)) != 0
+        pc = when {
+            tlbRefill && !alreadyInException && bootstrapVector -> 0xFFFF_FFFFBFC0_0200UL.toLong()
+            tlbRefill && !alreadyInException -> 0xFFFF_FFFF_8000_0000UL.toLong()
+            bootstrapVector -> 0xFFFF_FFFFBFC0_0380UL.toLong()
+            else -> 0xFFFF_FFFF_8000_0180UL.toLong()
         }
     }
 
@@ -842,8 +852,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
      * Resolves a virtual address into a physical region supported by the bus.
      * Low physical addresses remain available for tests; KSEG0/KSEG1 are
      * direct-mapped, while other 32-bit virtual addresses use the R4300 TLB.
-     * TLB miss/invalid/modification exceptions are not yet wired into the CPU
-     * exception path, so those faults remain explicit failures for now.
+     * TLB faults update CP0 exception state and transfer control to the appropriate vector.
      */
     private fun resolveRamAddress(address: Long, access: MemoryAccess = MemoryAccess.LOAD): Int {
         val physicalAddress = N64Addressing.translateDirectMappedAddress(address)
@@ -854,8 +863,17 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                     tlb.translate(address, (cp0[10] and 0xFFL).toInt(), store = access == MemoryAccess.STORE)
                         .physicalAddress
                 } catch (fault: R4300Tlb.TranslationException) {
-                    cp0[8] = address
-                    throw IllegalArgumentException(fault.message ?: "TLB translation failed", fault)
+                    cp0[8] = address // BadVAddr is always the original virtual address.
+                    cp0[4] = (cp0[4] and 0xFF80_0000L) or
+                        (((address ushr 9) and 0x007F_FFF0L)) // Context.BadVPN2
+                    cp0[10] = (address and 0xFFFF_E000L) or (cp0[10] and 0xFFL) // EntryHi VPN2 + current ASID
+                    val exceptionCode = when (fault.fault) {
+                        R4300Tlb.Fault.MODIFICATION -> 1
+                        R4300Tlb.Fault.INVALID, R4300Tlb.Fault.MISS ->
+                            if (access == MemoryAccess.STORE) 3 else 2
+                    }
+                    raiseException(exceptionCode, tlbRefill = fault.fault == R4300Tlb.Fault.MISS)
+                    throw TlbExceptionHandled()
                 }
             }
         val region = N64MemoryMap.regionOf(physicalAddress)
