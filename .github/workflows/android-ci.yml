@@ -1,4 +1,5 @@
 name: Android build and unit tests
+run-name: N64 Android — CPU/TLB validation (${{ github.event.pull_request.head.ref || github.ref_name }})
 
 on:
   push:
@@ -10,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  cpu-tlb-tests-and-debug-apk:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -27,7 +28,7 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Run unit tests and build debug APK
+      - name: Validate CPU/TLB tests and build debug APK
         run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
 
       - name: Upload debug APK
