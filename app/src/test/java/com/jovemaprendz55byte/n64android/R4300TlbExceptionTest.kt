@@ -187,6 +187,19 @@ class R4300TlbExceptionTest {
         assertEquals(0x62L, cpu.readCp0ForTest(3)) // TLBR restored EntryLo1
     }
 
+    @Test fun tlbpMissSetsProbeFailureBitInIndex() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x4000), // EntryHi VPN2 for an unmapped address
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11), // MTC0 EntryHi
+            0x42000008 // TLBP: no matching entry
+        ))
+
+        repeat(3) { cpu.step() }
+
+        assertEquals(0x80000000L, cpu.readCp0ForTest(0) and 0x80000000L)
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
