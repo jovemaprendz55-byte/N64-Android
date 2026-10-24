@@ -143,6 +143,29 @@ class R4300TlbExceptionTest {
         assertEquals(0x2L, cpu.readCp0ForTest(12) and 0x2L) // EXL remains set
     }
 
+    @Test fun instructionFetchFromMappedTlbPageExecutesTranslatedPhysicalInstruction() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x4000), // r1 = virtual target 0x40000000
+            iType(0x09, 0, 2, 0x005E), // PFN 1, valid and dirty
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11), // MTC0 EntryHi
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (2 shl 11), // MTC0 EntryLo0
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (3 shl 11), // MTC0 EntryLo1
+            0x42000002, // TLBWI maps virtual page to physical 0x1000
+            (1 shl 21) or 0x08, // JR r1
+            0 // branch delay slot
+        ))
+        cpu.loadBytes(0x1000, words(
+            iType(0x09, 0, 6, 0x1234) // instruction fetched through TLB must set r6
+        ))
+
+        repeat(9) { cpu.step() }
+
+        assertEquals(0x1234L, cpu.register(6))
+        assertEquals(0L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL) // no TLB exception
+        assertEquals(0x40000004L, cpu.pc) // execution advanced in mapped virtual space
+    }
+
     @Test fun instructionFetchFromInvalidTlbPageRaisesTlblAndUsesGeneralVector() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
