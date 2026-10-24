@@ -67,6 +67,34 @@ class N64EmulatorCoreTest {
 
 
 
+    @Test fun cic6102DiagnosticSeedsExpectedIpl3Registers() {
+        val cpu = R4300Cpu()
+        val entry = 0xFFFF_FFFF_A400_0040UL.toLong()
+
+        cpu.resetForCic6102Diagnostic(entry)
+
+        assertEquals(entry, cpu.pc)
+        assertEquals(0x0EBD_A536L, cpu.register(2))
+        assertEquals(0xFFFF_FFFF_C0F1_D859UL.toLong(), cpu.register(5))
+        assertEquals(0xFFFF_FFFFA400_0040UL.toLong(), cpu.register(11))
+        assertEquals(0xFFFF_FFFFA400_1FF0UL.toLong(), cpu.register(29))
+        assertEquals(0xFFFF_FFFFA400_1550UL.toLong(), cpu.register(31))
+    }
+
+    @Test fun cic6105DiagnosticSeedsExpectedIpl3Registers() {
+        val cpu = R4300Cpu()
+        val entry = 0xFFFF_FFFF_A400_0040UL.toLong()
+
+        cpu.resetForCic6105Diagnostic(entry)
+
+        assertEquals(entry, cpu.pc)
+        assertEquals(0x49A5_EE96L, cpu.register(2))
+        assertEquals(5L, cpu.register(3))
+        assertEquals(0xFFFF_FFFF_C959_73D5UL.toLong(), cpu.register(5))
+        assertEquals(0xFFFF_FFFF_EE10_D0B3UL.toLong(), cpu.register(12))
+        assertEquals(0xFFFF_FFFFA400_1FF0UL.toLong(), cpu.register(29))
+    }
+
     @Test fun requiresRomBeforeExecution() {
         val core = N64EmulatorCore()
         try {
