@@ -646,24 +646,36 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             0x1B -> writeRegister(rt, loadDoublewordRight(effectiveAddress(a, signedImmediate), b)) // LDR
             0x22 -> writeRegister(rt, loadWordLeft(effectiveAddress(a, signedImmediate), b.toInt()).toLong()) // LWL
             0x20 -> writeRegister(rt, readByte(effectiveAddress(a, signedImmediate)).toLong()) // LB
-            0x21 -> writeRegister(rt, readHalf(effectiveAddress(a, signedImmediate)).toLong()) // LH
+            0x21 -> {
+                val address = alignedEffectiveAddress(a, signedImmediate, 2, 4) ?: return
+                writeRegister(rt, readHalf(address).toLong()) // LH
+            }
             0x23 -> {
-                val address = effectiveAddress(a, signedImmediate)
+                val address = alignedEffectiveAddress(a, signedImmediate, 4, 4) ?: return
                 val value = readWord(address)
                 recordCpuMemoryProbe("LW", instructionAddress, address, value)
                 writeRegister(rt, value.toLong())
             }
             0x26 -> writeRegister(rt, loadWordRight(effectiveAddress(a, signedImmediate), b.toInt()).toLong()) // LWR
-            0x27 -> writeRegister(rt, Integer.toUnsignedLong(readWord(effectiveAddress(a, signedImmediate)))) // LWU
+            0x27 -> {
+                val address = alignedEffectiveAddress(a, signedImmediate, 4, 4) ?: return
+                writeRegister(rt, Integer.toUnsignedLong(readWord(address))) // LWU
+            }
             0x24 -> writeRegister(rt, readByte(effectiveAddress(a, signedImmediate)).toLong() and 0xFFL) // LBU
-            0x25 -> writeRegister(rt, readHalf(effectiveAddress(a, signedImmediate)).toLong() and 0xFFFFL) // LHU
+            0x25 -> {
+                val address = alignedEffectiveAddress(a, signedImmediate, 2, 4) ?: return
+                writeRegister(rt, readHalf(address).toLong() and 0xFFFFL) // LHU
+            }
             0x2C -> storeDoublewordLeft(effectiveAddress(a, signedImmediate, MemoryAccess.STORE), b) // SDL
             0x2D -> storeDoublewordRight(effectiveAddress(a, signedImmediate, MemoryAccess.STORE), b) // SDR
             0x2A -> storeWordLeft(effectiveAddress(a, signedImmediate, MemoryAccess.STORE), b.toInt()) // SWL
             0x28 -> writeByte(effectiveAddress(a, signedImmediate, MemoryAccess.STORE), b.toByte()) // SB
-            0x29 -> writeHalf(effectiveAddress(a, signedImmediate, MemoryAccess.STORE), b.toShort()) // SH
+            0x29 -> {
+                val address = alignedEffectiveAddress(a, signedImmediate, 2, 5, MemoryAccess.STORE) ?: return
+                writeHalf(address, b.toShort()) // SH
+            }
             0x2B -> {
-                val address = effectiveAddress(a, signedImmediate, MemoryAccess.STORE)
+                val address = alignedEffectiveAddress(a, signedImmediate, 4, 5, MemoryAccess.STORE) ?: return
                 val value = b.toInt()
                 recordCpuMemoryProbe("SW", instructionAddress, address, value)
                 if (address in 0x0460_0000..0x0460_000CL) {
@@ -682,8 +694,14 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             0x2E -> storeWordRight(effectiveAddress(a, signedImmediate, MemoryAccess.STORE), b.toInt()) // SWR
             0x2F -> Unit // CACHE: ignored because this interpreter has no modeled caches
             0x33 -> Unit // PREF: prefetch hint has no effect in this interpreter
-            0x37 -> writeRegister(rt, readLong(effectiveAddress(a, signedImmediate))) // LD
-            0x3F -> writeLong(effectiveAddress(a, signedImmediate, MemoryAccess.STORE), b) // SD
+            0x37 -> {
+                val address = alignedEffectiveAddress(a, signedImmediate, 8, 4) ?: return
+                writeRegister(rt, readLong(address)) // LD
+            }
+            0x3F -> {
+                val address = alignedEffectiveAddress(a, signedImmediate, 8, 5, MemoryAccess.STORE) ?: return
+                writeLong(address, b) // SD
+            }
             0x02 -> pendingBranchTarget = jumpTarget(instruction, pc) // J
             else -> unsupported(instruction, instructionAddress)
         }
@@ -733,8 +751,8 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     }
 
     /**
-     * MIPS ExcCode 12 (Overflow). EXL prevents nested exceptions from replacing
-     * the original EPC. Delay-slot exceptions set Cause.BD and point EPC at the branch.
+     * Raises a MIPS exception. EXL prevents nested exceptions from replacing the
+     * original EPC. Delay-slot exceptions set Cause.BD and point EPC at the branch.
      */
     private fun raiseException(exceptionCode: Int) {
         exceptionTakenThisStep = true
@@ -757,6 +775,26 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         } else {
             0xFFFF_FFFF_8000_0180UL.toLong() // general exception vector
         }
+    }
+
+    /**
+     * Checks architectural alignment using the original virtual address before translation.
+     * AdEL (4) is used for loads and AdES (5) for stores.
+     */
+    private fun alignedEffectiveAddress(
+        base: Long,
+        offset: Long,
+        alignment: Int,
+        exceptionCode: Int,
+        access: MemoryAccess = MemoryAccess.LOAD
+    ): Int? {
+        val virtualAddress = base + offset
+        if ((virtualAddress and (alignment - 1).toLong()) != 0L) {
+            cp0[8] = virtualAddress // BadVAddr records the virtual, not translated, address.
+            raiseException(exceptionCode)
+            return null
+        }
+        return effectiveAddress(base, offset, access)
     }
 
     /**
