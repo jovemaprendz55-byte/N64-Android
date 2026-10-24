@@ -8,7 +8,7 @@ class R4300TlbExceptionTest {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
             iType(0x0F, 0, 1, 0x4000), // r1 = virtual address 0x40000000
-            iType(0x09, 0, 2, 0x0059), // PFN 1, cacheable, V=1, D=0
+            iType(0x09, 0, 2, 0x005A), // PFN 1, cacheable, V=1, D=0
             (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11), // MTC0 EntryHi
             (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (2 shl 11), // MTC0 EntryLo0
             (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (3 shl 11), // MTC0 EntryLo1
