@@ -158,7 +158,7 @@ class R4300TlbExceptionTest {
             0 // fetch at invalid virtual address faults
         ))
 
-        repeat(9) { cpu.step() }
+        repeat(10) { cpu.step() }
 
         assertEquals(2L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL) // TLBL
         assertEquals(0x40000000L, cpu.readCp0ForTest(8)) // BadVAddr
