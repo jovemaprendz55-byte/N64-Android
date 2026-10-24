@@ -386,6 +386,27 @@ class R4300TlbExceptionTest {
         assertEquals(0x00400002L, cpu.readCp0ForTest(12) and 0x00400002L) // BEV and EXL remain set
     }
 
+    @Test fun tlbpMissesWhenVpnMatchesButAsidDiffersForNonGlobalEntry() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x4000), // r1 = VPN2 for 0x40000000
+            iType(0x0D, 1, 1, 3),      // EntryHi ASID = 3
+            iType(0x09, 0, 2, 0x005A), // valid, non-global even page
+            iType(0x09, 0, 3, 0x0062), // valid, non-global odd page
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11), // MTC0 EntryHi
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (2 shl 11), // MTC0 EntryLo0
+            (0x10 shl 26) or (0x04 shl 21) or (3 shl 16) or (3 shl 11), // MTC0 EntryLo1
+            0x42000002, // TLBWI
+            iType(0x0D, 1, 1, 4),      // same VPN2, different ASID = 4
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11), // MTC0 EntryHi
+            0x42000008 // TLBP must miss because ASID differs
+        ))
+
+        repeat(11) { cpu.step() }
+
+        assertEquals(0x80000000L, cpu.readCp0ForTest(0) and 0x80000000L) // probe failure bit
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
