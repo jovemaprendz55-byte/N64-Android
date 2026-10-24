@@ -77,6 +77,36 @@ class R4300TlbTest {
         } catch (_: IllegalArgumentException) { }
     }
 
+    @Test fun translationRequiresMatchingAsidUnlessBothHalvesAreGlobal() {
+        val tlb = R4300Tlb()
+        tlb.write(0, R4300Tlb.Entry(
+            R4300Tlb.entryHi(0x1000_0000L, 4),
+            R4300Tlb.entryLo(0x40), R4300Tlb.entryLo(0x41)
+        ))
+
+        assertFault(R4300Tlb.Fault.MISS) { tlb.translate(0x1000_0000L, 5) }
+
+        tlb.write(1, R4300Tlb.Entry(
+            R4300Tlb.entryHi(0x1000_0000L, 4),
+            R4300Tlb.entryLo(0x50, global = true),
+            R4300Tlb.entryLo(0x51, global = true)
+        ))
+        assertEquals(0x0005_0000L, tlb.translate(0x1000_0000L, 5).physicalAddress)
+        assertEquals(0x0005_1000L, tlb.translate(0x1000_1000L, 5).physicalAddress)
+    }
+
+    @Test fun entryIsNotGlobalWhenOnlyOnePageHalfHasGlobalBit() {
+        val tlb = R4300Tlb()
+        tlb.write(0, R4300Tlb.Entry(
+            R4300Tlb.entryHi(0x1800_0000L, 4),
+            R4300Tlb.entryLo(0x60, global = true),
+            R4300Tlb.entryLo(0x61, global = false)
+        ))
+
+        assertFault(R4300Tlb.Fault.MISS) { tlb.translate(0x1800_0000L, 5) }
+        assertFault(R4300Tlb.Fault.MISS) { tlb.translate(0x1800_1000L, 5) }
+    }
+
     private fun assertFault(expected: R4300Tlb.Fault, action: () -> Unit) {
         try {
             action()
