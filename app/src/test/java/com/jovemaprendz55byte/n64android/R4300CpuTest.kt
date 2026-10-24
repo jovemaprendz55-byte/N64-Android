@@ -2100,7 +2100,7 @@ class R4300CpuTest {
 
         assertEquals(2L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL) // ExcCode = TLBL
         assertEquals(0x00400000L, cpu.readCp0ForTest(8)) // BadVAddr
-        assertEquals(0x00400000L, cpu.readCp0ForTest(14)) // EPC
+        assertEquals(4L, cpu.readCp0ForTest(14)) // EPC is the faulting LW instruction address
         assertEquals(0xFFFF_FFFF_8000_0000UL.toLong(), cpu.pc) // TLB refill vector
         assertEquals(0x00400000L, cpu.readCp0ForTest(10) and 0xFFFF_E000L)
     }
