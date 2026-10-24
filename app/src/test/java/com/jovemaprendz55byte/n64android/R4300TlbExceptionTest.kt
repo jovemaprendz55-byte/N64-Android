@@ -223,6 +223,25 @@ class R4300TlbExceptionTest {
         assertEquals(5L, cpu.readCp0ForTest(0)) // Index identifies the selected TLB slot
     }
 
+    @Test fun tlbMissPreservesEntryHiAsidAndContextPteBase() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x4000), // r1 = 0x40000000
+            iType(0x0D, 1, 1, 0x0035), // EntryHi ASID = 0x35
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11), // MTC0 EntryHi
+            iType(0x0F, 0, 4, 0xA800), // Context PTEBase = 0xA8000000
+            (0x10 shl 26) or (0x04 shl 21) or (4 shl 16) or (4 shl 11), // MTC0 Context
+            iType(0x0F, 0, 2, 0x4000), // r2 = faulting address 0x40000000
+            iType(0x23, 2, 3, 0)       // LW triggers TLB miss
+        ))
+
+        repeat(7) { cpu.step() }
+
+        assertEquals(0x40000035L, cpu.readCp0ForTest(10)) // VPN2 changes, ASID survives
+        assertEquals(0xA8200000L, cpu.readCp0ForTest(4)) // PTEBase survives; BadVPN2 is updated
+        assertEquals(2L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL) // TLBL
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
