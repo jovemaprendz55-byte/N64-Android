@@ -37,6 +37,29 @@ class R4300TlbExceptionTest {
         assertEquals(0x2L, cpu.readCp0ForTest(12) and 0x2L) // Status.EXL
     }
 
+
+    @Test fun tlbMissInBranchDelaySlotSetsCauseBdAndBranchEpc() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x4000), // r1 = unmapped virtual address 0x40000000
+            (0x02 shl 26) or 8,         // J 0x20; next instruction is its delay slot
+            iType(0x23, 1, 2, 0),       // LW in delay slot raises TLBL
+            0,                         // branch target delay-independent placeholder
+            0, 0, 0, 0
+        ))
+
+        cpu.step() // LUI
+        cpu.step() // J
+        cpu.step() // delay-slot LW faults
+
+        val cause = cpu.readCp0ForTest(13)
+        assertEquals(2L, (cause ushr 2) and 0x1FL) // TLBL
+        assertEquals(1L, (cause ushr 31) and 1L) // Cause.BD
+        assertEquals(4L, cpu.readCp0ForTest(14)) // EPC points to branch, not delay slot
+        assertEquals(0x40000000L, cpu.readCp0ForTest(8)) // BadVAddr is faulting load address
+        assertEquals(0xFFFF_FFFF_8000_0000UL.toLong(), cpu.pc) // TLB refill vector
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
