@@ -825,7 +825,11 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             raiseException(exceptionCode)
             return null
         }
-        return effectiveAddress(base, offset, access)
+        return try {
+            effectiveAddress(base, offset, access)
+        } catch (_: TlbExceptionHandled) {
+            null
+        }
     }
 
     /**
