@@ -125,6 +125,24 @@ class R4300TlbExceptionTest {
         assertEquals(0x2L, cpu.readCp0ForTest(12) and 0x2L) // Status.EXL
     }
 
+    @Test fun tlbMissWhileExlIsSetUsesGeneralVectorAndPreservesOriginalExceptionState() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x4000), // r1 = unmapped virtual address 0x40000000
+            iType(0x09, 0, 2, 2),      // r2 = Status.EXL
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (12 shl 11), // MTC0 Status
+            iType(0x23, 1, 3, 0)       // nested TLB miss while already in exception level
+        ))
+
+        repeat(4) { cpu.step() }
+
+        assertEquals(0L, cpu.readCp0ForTest(13)) // nested exception does not replace Cause
+        assertEquals(0L, cpu.readCp0ForTest(14)) // nested exception does not replace EPC
+        assertEquals(0x40000000L, cpu.readCp0ForTest(8)) // BadVAddr still records fault address
+        assertEquals(0xFFFF_FFFF_8000_0180UL.toLong(), cpu.pc) // nested TLB miss uses general vector
+        assertEquals(0x2L, cpu.readCp0ForTest(12) and 0x2L) // EXL remains set
+    }
+
     @Test fun instructionFetchTlbMissUsesRefillVectorAndRecordsFaultingPc() {
         val cpu = R4300Cpu()
         cpu.resetExecutionState(0x40000000L)
