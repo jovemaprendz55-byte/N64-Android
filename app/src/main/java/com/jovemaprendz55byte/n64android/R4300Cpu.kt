@@ -499,6 +499,8 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
                 } // JALR
                 0x0A -> if (b == 0L) writeRegister(rd, a) // MOVZ: move rs when rt is zero
                 0x0B -> if (b != 0L) writeRegister(rd, a) // MOVN: move rs when rt is nonzero
+                0x0C -> raiseException(8) // SYSCALL
+                0x0D -> raiseException(9) // BREAK
                 0x0F -> Unit // SYNC: no concurrent memory model in this simplified core
                 0x10 -> writeRegister(rd, hi) // MFHI
                 0x11 -> hi = a // MTHI
@@ -705,7 +707,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     private fun addSigned32(left: Int, right: Int): Long = try {
         Math.addExact(left, right).toLong()
     } catch (_: ArithmeticException) {
-        raiseOverflowException()
+        raiseException(12)
         0L
     }
 
@@ -734,14 +736,14 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
      * MIPS ExcCode 12 (Overflow). EXL prevents nested exceptions from replacing
      * the original EPC. Delay-slot exceptions set Cause.BD and point EPC at the branch.
      */
-    private fun raiseOverflowException() {
+    private fun raiseException(exceptionCode: Int) {
         exceptionTakenThisStep = true
         val status = cp0[12].toInt()
         val alreadyInException = (status and 0x2) != 0
         if (!alreadyInException) {
             val cause = cp0[13].toInt() and 0x7FFF_FF83
             val branchDelayBit = if (currentInstructionInDelaySlot) (1 shl 31) else 0
-            cp0[13] = (cause or (12 shl 2) or branchDelayBit).toLong()
+            cp0[13] = (cause or (exceptionCode shl 2) or branchDelayBit).toLong()
             cp0[14] = if (currentInstructionInDelaySlot) {
                 lastBranchInstructionAddress ?: currentInstructionAddress
             } else {
