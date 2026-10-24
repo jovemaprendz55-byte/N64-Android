@@ -830,7 +830,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
 
 
 
-    /** Fetches through the physical bus after direct-mapped KSEG0/KSEG1 translation. */
+    /** Fetches through the physical bus after virtual-to-physical address translation. */
     private fun fetchInstruction(address: Long): Int {
         require(address % 4L == 0L) {
             "Instruction fetch must be 4-byte aligned"
@@ -839,16 +839,25 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
     }
 
     /**
-     * Resolves an address into a physical region supported by the bus.
-     *
-     * Low physical addresses remain available for tests. KSEG0/KSEG1 virtual
-     * addresses are translated to physical addresses; TLB-mapped segments and
-     * unsupported device/cart regions are rejected. RDRAM mirrors are not modeled.
+     * Resolves a virtual address into a physical region supported by the bus.
+     * Low physical addresses remain available for tests; KSEG0/KSEG1 are
+     * direct-mapped, while other 32-bit virtual addresses use the R4300 TLB.
+     * TLB miss/invalid/modification exceptions are not yet wired into the CPU
+     * exception path, so those faults remain explicit failures for now.
      */
     private fun resolveRamAddress(address: Long, access: MemoryAccess = MemoryAccess.LOAD): Int {
         val physicalAddress = N64Addressing.translateDirectMappedAddress(address)
-            ?: if (address in 0L..0x1FFF_FFFFL) address
-            else throw IllegalArgumentException("TLB-backed virtual address 0x${address.toULong().toString(16)} is unsupported while TLB is rebuilt")
+            ?: if (address in 0L..0x1FFF_FFFFL) {
+                address
+            } else {
+                try {
+                    tlb.translate(address, (cp0[10] and 0xFFL).toInt(), store = access == MemoryAccess.STORE)
+                        .physicalAddress
+                } catch (fault: R4300Tlb.TranslationException) {
+                    cp0[8] = address
+                    throw IllegalArgumentException(fault.message ?: "TLB translation failed", fault)
+                }
+            }
         val region = N64MemoryMap.regionOf(physicalAddress)
         require(region == N64MemoryMap.Region.RDRAM ||
             region == N64MemoryMap.Region.RDRAM_REGISTERS ||
