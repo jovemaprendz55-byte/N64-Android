@@ -262,6 +262,29 @@ class R4300TlbExceptionTest {
         assertEquals(0x1234, cpu.readWord(0x1000))
     }
 
+    @Test fun mappedVirtualStoreAndLoadUseOddTlbPage() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x4000), // r1 = base virtual address
+            iType(0x09, 1, 1, 0x1000), // r1 = 0x40001000, odd page
+            iType(0x09, 0, 2, 0x005E), // PFN 1, valid and dirty
+            iType(0x09, 0, 3, 0x009E), // PFN 2, valid and dirty
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11), // MTC0 EntryHi
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (2 shl 11), // MTC0 EntryLo0
+            (0x10 shl 26) or (0x04 shl 21) or (3 shl 16) or (3 shl 11), // MTC0 EntryLo1
+            0x42000002, // TLBWI
+            iType(0x09, 0, 4, 0x5678), // r4 = test value
+            iType(0x2B, 1, 4, 0), // SW odd virtual page -> physical 0x2000
+            iType(0x23, 1, 5, 0)  // LW from odd virtual page
+        ))
+
+        repeat(11) { cpu.step() }
+
+        assertEquals(0x5678L, cpu.register(5))
+        assertEquals(0x5678, cpu.readWord(0x2000))
+        assertEquals(0, cpu.readWord(0x1000)) // even-page physical location untouched
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
