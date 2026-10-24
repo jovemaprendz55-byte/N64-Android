@@ -4,6 +4,27 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class R4300TlbExceptionTest {
+    @Test fun storeToCleanTlbPageRaisesModificationException() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x4000), // r1 = virtual address 0x40000000
+            iType(0x09, 0, 2, 0x0059), // PFN 1, cacheable, V=1, D=0
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11), // MTC0 EntryHi
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (2 shl 11), // MTC0 EntryLo0
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (3 shl 11), // MTC0 EntryLo1
+            0x42000002, // TLBWI
+            iType(0x2B, 1, 2, 0) // SW to valid but read-only page
+        ))
+
+        repeat(7) { cpu.step() }
+
+        assertEquals(1L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL) // MOD
+        assertEquals(0x40000000L, cpu.readCp0ForTest(8)) // BadVAddr
+        assertEquals(24L, cpu.readCp0ForTest(14)) // faulting SW
+        assertEquals(0xFFFF_FFFF_8000_0180UL.toLong(), cpu.pc) // modification uses general vector
+        assertEquals(0x2L, cpu.readCp0ForTest(12) and 0x2L) // Status.EXL
+    }
+
     @Test fun invalidStorePageRaisesTlbsAndUsesGeneralTlbExceptionVector() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
