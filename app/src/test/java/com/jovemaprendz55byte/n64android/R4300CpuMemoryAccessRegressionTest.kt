@@ -1,7 +1,6 @@
 package com.jovemaprendz55byte.n64android
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertThrows
 import org.junit.Test
 
 /** Regression tests for integer loads/stores through the CPU memory bus. */
@@ -41,7 +40,9 @@ class R4300CpuMemoryAccessRegressionTest {
         ))
         halfwordCpu.loadBytes(0x100, byteArrayOf(0x12, 0x34, 0x56, 0x78))
         halfwordCpu.step()
-        assertThrows(IllegalArgumentException::class.java) { halfwordCpu.step() }
+        halfwordCpu.step()
+        assertEquals(4L, (halfwordCpu.readCp0ForTest(13) ushr 2) and 0x1FL) // AdEL
+        assertEquals(0x101L, halfwordCpu.readCp0ForTest(8)) // BadVAddr
 
         val wordCpu = R4300Cpu()
         wordCpu.loadBytes(0, words(
@@ -50,7 +51,9 @@ class R4300CpuMemoryAccessRegressionTest {
         ))
         wordCpu.loadBytes(0x100, byteArrayOf(0x12, 0x34, 0x56, 0x78))
         wordCpu.step()
-        assertThrows(IllegalArgumentException::class.java) { wordCpu.step() }
+        wordCpu.step()
+        assertEquals(4L, (wordCpu.readCp0ForTest(13) ushr 2) and 0x1FL) // AdEL
+        assertEquals(0x102L, wordCpu.readCp0ForTest(8)) // BadVAddr
     }
 
     @Test
@@ -81,7 +84,9 @@ class R4300CpuMemoryAccessRegressionTest {
         ))
         loadCpu.loadBytes(0x100, ByteArray(8))
         loadCpu.step()
-        assertThrows(IllegalArgumentException::class.java) { loadCpu.step() }
+        loadCpu.step()
+        assertEquals(4L, (loadCpu.readCp0ForTest(13) ushr 2) and 0x1FL) // AdEL
+        assertEquals(0x101L, loadCpu.readCp0ForTest(8)) // BadVAddr
 
         val storeCpu = R4300Cpu()
         storeCpu.loadBytes(0, words(
@@ -91,7 +96,9 @@ class R4300CpuMemoryAccessRegressionTest {
         ))
         storeCpu.step()
         storeCpu.step()
-        assertThrows(IllegalArgumentException::class.java) { storeCpu.step() }
+        storeCpu.step()
+        assertEquals(5L, (storeCpu.readCp0ForTest(13) ushr 2) and 0x1FL) // AdES
+        assertEquals(0x101L, storeCpu.readCp0ForTest(8)) // BadVAddr
     }
 
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
