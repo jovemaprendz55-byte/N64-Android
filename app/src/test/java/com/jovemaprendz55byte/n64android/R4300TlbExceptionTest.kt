@@ -4,6 +4,29 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class R4300TlbExceptionTest {
+    @Test fun tlbModificationInBranchDelaySlotSetsCauseBdAndBranchEpc() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x4000), // r1 = virtual address 0x40000000
+            iType(0x09, 0, 2, 0x005A), // valid, clean TLB page
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11), // MTC0 EntryHi
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (2 shl 11), // MTC0 EntryLo0
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (3 shl 11), // MTC0 EntryLo1
+            0x42000002, // TLBWI
+            (0x02 shl 26) or 8, // J 0x20
+            iType(0x2B, 1, 2, 0) // SW in delay slot raises MOD
+        ))
+
+        repeat(8) { cpu.step() }
+
+        val cause = cpu.readCp0ForTest(13)
+        assertEquals(1L, (cause ushr 2) and 0x1FL) // MOD
+        assertEquals(1L, (cause ushr 31) and 1L) // Cause.BD
+        assertEquals(24L, cpu.readCp0ForTest(14)) // EPC points to the branch
+        assertEquals(0x40000000L, cpu.readCp0ForTest(8)) // BadVAddr is faulting store address
+        assertEquals(0xFFFF_FFFF_8000_0180UL.toLong(), cpu.pc) // general exception vector
+    }
+
     @Test fun storeToCleanTlbPageRaisesModificationException() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
