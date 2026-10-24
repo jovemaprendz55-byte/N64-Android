@@ -24,6 +24,19 @@ class R4300TlbExceptionTest {
         assertEquals(0xFFFF_FFFF_8000_0180UL.toLong(), cpu.pc) // invalid is not a refill miss
     }
 
+    @Test fun instructionFetchTlbMissUsesRefillVectorAndRecordsFaultingPc() {
+        val cpu = R4300Cpu()
+        cpu.resetExecutionState(0x40000000L)
+
+        cpu.step()
+
+        assertEquals(2L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL) // TLBL
+        assertEquals(0x40000000L, cpu.readCp0ForTest(8)) // BadVAddr
+        assertEquals(0x40000000L, cpu.readCp0ForTest(14)) // EPC is fetch PC
+        assertEquals(0xFFFF_FFFF_8000_0000UL.toLong(), cpu.pc) // refill vector
+        assertEquals(0x2L, cpu.readCp0ForTest(12) and 0x2L) // Status.EXL
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
