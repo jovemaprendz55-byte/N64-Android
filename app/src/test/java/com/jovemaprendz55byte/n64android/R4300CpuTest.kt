@@ -2088,6 +2088,28 @@ class R4300CpuTest {
         assertEquals(0x11597L, cpu.register(5))
     }
 
+    @Test fun tlbMappedVirtualAddressCanStoreAndLoadRdram() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x0040), // EntryHi VPN2 = 0x00400000
+            iType(0x0D, 1, 1, 7),      // ASID = 7
+            iType(0x09, 0, 2, 0x005F), // PFN 1, cached, dirty, valid, global
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11), // MTC0 EntryHi
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (2 shl 11),  // MTC0 EntryLo0
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (3 shl 11),  // MTC0 EntryLo1
+            0x42000002, // TLBWI
+            iType(0x0F, 0, 4, 0x0040), // r4 = virtual address 0x00400000
+            iType(0x09, 0, 5, 0x1234),
+            iType(0x2B, 4, 5, 0),      // SW through TLB
+            iType(0x23, 4, 6, 0)       // LW through TLB
+        ))
+
+        repeat(11) { cpu.step() }
+
+        assertEquals(0x1234L, cpu.register(6))
+        assertEquals(0x1234, cpu.readWord(0x1000))
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
