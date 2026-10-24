@@ -40,6 +40,8 @@ internal class R4300Tlb(
 
     private val entries = arrayOfNulls<Entry>(entryCount)
 
+    val size: Int get() = entries.size
+
     fun reset() {
         entries.fill(null)
     }
