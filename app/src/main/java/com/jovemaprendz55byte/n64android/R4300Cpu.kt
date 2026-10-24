@@ -931,7 +931,7 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
         else BigInteger.valueOf(value and Long.MAX_VALUE).setBit(63)
 
     private fun writeRegister(index: Int, value: Long) {
-        if (index != 0) gpr[index] = value
+        if (!exceptionTakenThisStep && index != 0) gpr[index] = value
     }
 
     private fun unsupported(instruction: Int, address: Long): Nothing =
