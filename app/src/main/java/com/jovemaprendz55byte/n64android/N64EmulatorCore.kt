@@ -303,14 +303,22 @@ class N64EmulatorCore(
                 (memoryBus.readByte(0x0400_0750L + offset).toInt() and 0xFF)
                     .toString(16).uppercase(java.util.Locale.ROOT).padStart(2, '0')
             })
+            val detectedCic = N64RomChecksum.detectCic(rom)
+            append(", ROM_CIC_DETECTED=").append(detectedCic?.label ?: "UNKNOWN")
             N64RomChecksum.calculate(rom)?.let { checksum ->
-                append(", ROM_CIC_DETECTED=").append(checksum.cic.label)
                 append(", ROM_HOST_CRC1=")
                 append(checksum.crc1.toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
                 append(", ROM_HOST_CRC2=")
                 append(checksum.crc2.toString(16).uppercase(java.util.Locale.ROOT).padStart(8, '0'))
                 append(", ROM_HOST_CRC_MATCH=").append(checksum.matchesHeader)
-            } ?: append(", ROM_CIC_DETECTED=UNKNOWN_OR_SHORT_ROM")
+                append(", ROM_CHECKSUM_STATUS=").append(if (checksum.matchesHeader) "MATCH" else "MISMATCH")
+            } ?: append(", ROM_CHECKSUM_STATUS=").append(
+                when {
+                    rom.size < 0x101000 -> "ROM_TOO_SHORT_FOR_HEADER_CHECKSUM"
+                    detectedCic == null -> "UNKNOWN_CIC"
+                    else -> "UNAVAILABLE"
+                }
+            )
 
             append("; ")
         }
