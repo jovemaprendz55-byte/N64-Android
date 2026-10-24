@@ -863,6 +863,32 @@ class R4300CpuTest {
         assertEquals(0xFFFF_FFFF_8000_0180UL.toLong(), cpu.pc)
     }
 
+    @Test fun syscallRaisesArchitecturalException() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(rType(0, 0, 0, 0, 0x0C))) // SYSCALL
+        cpu.step()
+        assertEquals(0L, cpu.readCp0ForTest(14)) // EPC
+        assertEquals(8L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL) // ExcCode
+        assertEquals(2L, cpu.readCp0ForTest(12) and 2L) // EXL
+        assertEquals(0xFFFF_FFFF_8000_0180UL.toLong(), cpu.pc)
+    }
+
+    @Test fun breakInDelaySlotSetsCauseBdAndBranchEpc() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x04, 0, 0, 1), // BEQ r0, r0, target 8
+            rType(0, 0, 0, 0, 0x0D), // BREAK in delay slot
+            iType(0x09, 0, 1, 123)
+        ))
+        cpu.step()
+        cpu.step()
+        assertEquals(0L, cpu.register(1))
+        assertEquals(0L, cpu.readCp0ForTest(14)) // EPC points to branch
+        assertEquals(1L, (cpu.readCp0ForTest(13) ushr 31) and 1L) // Cause.BD
+        assertEquals(9L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL) // Breakpoint
+        assertEquals(0xFFFF_FFFF_8000_0180UL.toLong(), cpu.pc)
+    }
+
     @Test fun addiOverflowRaisesMipsExceptionAndPreservesDestination() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
