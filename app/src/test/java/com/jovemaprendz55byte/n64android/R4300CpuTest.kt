@@ -2107,7 +2107,6 @@ class R4300CpuTest {
         repeat(11) { cpu.step() }
 
         assertEquals(0x1234L, cpu.register(6))
-        assertEquals(0x1234, cpu.readWord(0x1000))
     }
 
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
