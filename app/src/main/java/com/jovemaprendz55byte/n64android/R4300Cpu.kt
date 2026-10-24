@@ -859,6 +859,9 @@ class R4300Cpu private constructor(memorySize: Int, internal val memoryBus: N64M
             ?: if (address in 0L..0x1FFF_FFFFL) {
                 address
             } else {
+                require(address == address.toInt().toLong()) {
+                    "Virtual address 0x${address.toULong().toString(16)} is not a canonical sign-extended 32-bit R4300 address"
+                }
                 try {
                     tlb.translate(address, (cp0[10] and 0xFFL).toInt(), store = access == MemoryAccess.STORE)
                         .physicalAddress
