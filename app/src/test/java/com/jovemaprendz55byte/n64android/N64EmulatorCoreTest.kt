@@ -192,6 +192,16 @@ class N64EmulatorCoreTest {
         assertEquals(0x2A.toByte(), core.memoryBus.readByte(0x0400_0043L))
     }
 
+    @Test fun bootDiagnosticsDistinguishUnknownCicFromUnavailableChecksum() {
+        val core = N64EmulatorCore()
+        core.loadRom(syntheticRomWithInstructions(0x00000000))
+
+        val summary = core.bootMemoryDiagnosticSummary()
+
+        org.junit.Assert.assertTrue(summary.contains("ROM_CIC_DETECTED=UNKNOWN"))
+        org.junit.Assert.assertTrue(summary.contains("ROM_CHECKSUM_STATUS=ROM_TOO_SHORT_FOR_HEADER_CHECKSUM"))
+    }
+
     private fun syntheticRomWithInstructions(vararg instructions: Int): ByteArray {
         val rom = ByteArray(0x1000)
         rom[0] = 0x80.toByte()
