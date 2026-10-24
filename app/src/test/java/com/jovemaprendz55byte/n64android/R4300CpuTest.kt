@@ -2088,6 +2088,43 @@ class R4300CpuTest {
         assertEquals(0x11597L, cpu.register(5))
     }
 
+    @Test fun tlbLoadMissRaisesArchitecturalTlbRefillException() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x0040), // r1 = unmapped virtual address 0x00400000
+            iType(0x23, 1, 2, 0)       // LW must raise TLBL on TLB miss
+        ))
+
+        cpu.step()
+        cpu.step()
+
+        assertEquals(2L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL) // ExcCode = TLBL
+        assertEquals(0x00400000L, cpu.readCp0ForTest(8)) // BadVAddr
+        assertEquals(0x00400000L, cpu.readCp0ForTest(14)) // EPC
+        assertEquals(0xFFFF_FFFF_8000_0000UL.toLong(), cpu.pc) // TLB refill vector
+        assertEquals(0x00400000L, cpu.readCp0ForTest(10) and 0xFFFF_E000L)
+    }
+
+    @Test fun tlbStoreToCleanPageRaisesModificationException() {
+        val cpu = R4300Cpu()
+        cpu.loadBytes(0, words(
+            iType(0x0F, 0, 1, 0x0040), // r1 = virtual pair 0x00400000
+            iType(0x09, 0, 2, 0x005B), // PFN 1, valid, but not dirty
+            (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11), // MTC0 EntryHi
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (2 shl 11), // MTC0 EntryLo0
+            (0x10 shl 26) or (0x04 shl 21) or (2 shl 16) or (3 shl 11), // MTC0 EntryLo1
+            0x42000002, // TLBWI
+            iType(0x2B, 1, 0, 0)       // SW must raise Mod
+        ))
+
+        repeat(7) { cpu.step() }
+
+        assertEquals(1L, (cpu.readCp0ForTest(13) ushr 2) and 0x1FL) // ExcCode = Mod
+        assertEquals(0x00400000L, cpu.readCp0ForTest(8))
+        assertEquals(24L, cpu.readCp0ForTest(14))
+        assertEquals(0xFFFF_FFFF_8000_0180UL.toLong(), cpu.pc) // general vector
+    }
+
     @Test fun tlbMappedVirtualAddressCanStoreAndLoadRdram() {
         val cpu = R4300Cpu()
         cpu.loadBytes(0, words(
