@@ -2054,4 +2054,27 @@ class R4300CpuTest {
         assertEquals(0L, cpu.cop0[13] and (0x1FL shl 2)) // No exception was raised.
     }
 
+
+    @Test fun loadsByteSignExtendsNegativeValueThroughValidOddTlbPage() {
+        val memory = N64Memory(8192)
+        memory.write32(0, iType(0x20, 1, 2, 0)) // lb $v0, 0($at)
+        memory.write8(0x1000, 0xE7)
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0x00400000L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
+        ))
+        cpu.gpr[1] = 0x00401000L
+        cpu.setProgramCounter(0x00400000L)
+
+        cpu.step()
+
+        assertEquals(0xFFFFFFFFFFFFFFE7UL.toLong(), cpu.gpr[2])
+        assertEquals(0x00400004L, cpu.pc)
+        assertEquals(0L, cpu.cop0[13] and (0x1FL shl 2)) // No exception was raised.
+    }
+
 }
