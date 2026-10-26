@@ -13,6 +13,7 @@ import java.io.IOException
 
 class MainActivity : Activity() {
     private lateinit var status: TextView
+    private var cartridgeBus: N64Bus? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,9 +82,17 @@ class MainActivity : Activity() {
             return
         }
         when (val result = N64RomLoader.load(bytes)) {
-            is RomLoadResult.Success -> status.text =
-                "ROM reconhecida: ${result.rom.byteSize} bytes\nFormato: ${result.rom.format}\nCPU, boot e vídeo ainda não executam jogos."
-            is RomLoadResult.Failure -> status.text = result.reason
+            is RomLoadResult.Success -> {
+                cartridgeBus = N64Bus(cartridgeRom = result.rom.bytes)
+                status.text = "ROM carregada no barramento: ${result.rom.byteSize} bytes" +
+                    "\nFormato: ${result.rom.format}" +
+                    "\nEndereço físico: 0x10000000" +
+                    "\nCPU, boot, DMA e vídeo ainda não executam jogos."
+            }
+            is RomLoadResult.Failure -> {
+                cartridgeBus = null
+                status.text = result.reason
+            }
         }
     }
 
