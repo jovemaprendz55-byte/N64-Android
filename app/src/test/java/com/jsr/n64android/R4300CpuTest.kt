@@ -666,6 +666,43 @@ class R4300CpuTest {
         assertEquals(0x2L, cpu.cop0[12] and 0x2L) // EXL
     }
 
+    @Test fun tlbMissPreservesAsidAndUpdatesContextBadVpn2() {
+        val memory = N64Memory(4096)
+        val cpu = R4300Cpu(memory)
+        val faultAddress = 0x00412000L
+        val asid = 0x5AL
+        val contextPteBase = 0xA5800000L
+        cpu.tlbEnabled = true
+        cpu.cop0[10] = asid
+        cpu.cop0[4] = contextPteBase
+        cpu.setProgramCounter(faultAddress)
+
+        cpu.step()
+
+        assertEquals(asid, cpu.cop0[10] and 0xFFL) // EntryHi.ASID survives VPN2 update
+        assertEquals(faultAddress and 0xFFFFE000L, cpu.cop0[10] and 0xFFFFE000L)
+        assertEquals(
+            contextPteBase or ((faultAddress ushr 9) and 0x007FFFF0L),
+            cpu.cop0[4]
+        ) // Context.BadVPN2 changes while PTEBase is preserved
+    }
+
+    @Test fun tlbFaultWhileExlSetPreservesEpcAndUsesGeneralVector() {
+        val memory = N64Memory(4096)
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        cpu.cop0[12] = 0x2L // Status.EXL is already set
+        cpu.cop0[14] = 0x12345678L // EPC must not be overwritten
+        cpu.setProgramCounter(0x00400000L)
+
+        cpu.step()
+
+        assertEquals(0x12345678L, cpu.cop0[14]) // EPC preserved while EXL is set
+        assertEquals(2L shl 2, cpu.cop0[13] and (0x1FL shl 2)) // Cause.TLBL
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc) // No refill vector with EXL set
+        assertEquals(0x2L, cpu.cop0[12] and 0x2L) // EXL remains set
+    }
+
     private fun cop0Co(funct: Int): Int = (0x10 shl 26) or (0x10 shl 21) or funct
 
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
