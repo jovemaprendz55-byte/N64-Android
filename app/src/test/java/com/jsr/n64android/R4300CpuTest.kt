@@ -1873,4 +1873,33 @@ class R4300CpuTest {
         assertEquals((1L shl 22) or 0x2L, cpu.cop0[12] and ((1L shl 22) or 0x2L))
     }
 
+
+
+    @Test fun tlbMissInstructionFetchInDelaySlotWithBevAndExlUsesBootGeneralVectorAndPreservesEpc() {
+        val memory = N64Memory(8192)
+        memory.write32(0x1FFC, iType(0x04, 0, 0, 2)) // Branch at the last word of the mapped pair.
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        val previousEpc = 0x12345678L
+        cpu.cop0[12] = (1L shl 22) or 0x2L // BEV and EXL are already set.
+        cpu.cop0[14] = previousEpc
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
+        ))
+        cpu.setProgramCounter(0x1FFCL)
+
+        cpu.step() // Branch executes while EXL is already set.
+        cpu.step() // Delay-slot instruction fetch misses in the TLB.
+
+        assertEquals(0x2000L, cpu.cop0[8]) // BadVAddr is the delay-slot fetch address.
+        assertEquals(previousEpc, cpu.cop0[14]) // Nested exception preserves the original EPC.
+        assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD still identifies the delay slot.
+        assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBL.
+        assertEquals(0xFFFFFFFFBFC00380UL.toLong(), cpu.pc) // BEV + EXL selects boot general vector.
+        assertEquals((1L shl 22) or 0x2L, cpu.cop0[12] and ((1L shl 22) or 0x2L))
+    }
+
 }
