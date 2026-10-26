@@ -250,7 +250,7 @@ class R4300CpuTest {
 
     @Test fun cop0MoveFromAndMoveToTransferSignExtended32BitValues() {
         val memory = N64Memory(32)
-        memory.write32(0, rType(0, 1, 12, 0x00) or (0x10 shl 26) or (1 shl 16)) // mtc0 $t0, Status
+        memory.write32(0, (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (12 shl 11)) // mtc0 $t0, Status
         memory.write32(4, (0x10 shl 26) or (2 shl 16) or (12 shl 11)) // mfc0 $v0, Status
         val cpu = R4300Cpu(memory)
         cpu.setProgramCounter(0)
