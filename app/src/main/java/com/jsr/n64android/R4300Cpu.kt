@@ -58,6 +58,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 0x3C -> gpr[rd] = gpr[rt] shl (shamt + 32) // DSLL32
                 0x3E -> gpr[rd] = gpr[rt] ushr (shamt + 32) // DSRL32
                 0x3F -> gpr[rd] = gpr[rt] shr (shamt + 32) // DSRA32
+                0x0A -> if (gpr[rt] == 0L) gpr[rd] = gpr[rs] // MOVZ
+                0x0B -> if (gpr[rt] != 0L) gpr[rd] = gpr[rs] // MOVN
                 0x08 -> delayedTarget = gpr[rs]
                 0x09 -> { gpr[rd] = nextSequential + 4L; delayedTarget = gpr[rs] }
                 0x21 -> gpr[rd] = (gpr[rs].toInt() + gpr[rt].toInt()).toLong()
