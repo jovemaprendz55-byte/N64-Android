@@ -1019,6 +1019,93 @@ class R4300CpuTest {
         assertEquals(0L, cpu.cop0[13])
     }
 
+    @Test fun ldlAndLdrMergeBytesCorrectlyAtEveryDoublewordOffset() {
+        val memoryBytes = intArrayOf(0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88)
+        val originalRegister = intArrayOf(0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11)
+
+        fun packWord(bytes: IntArray, start: Int): Int =
+            (bytes[start] shl 24) or (bytes[start + 1] shl 16) or
+                (bytes[start + 2] shl 8) or bytes[start + 3]
+
+        for (offset in 0..7) {
+            val leftMemory = N64Memory(64)
+            leftMemory.write32(0, iType(0x1A, 1, 2, 0)) // ldl $v0, 0($at)
+            leftMemory.write32(32, packWord(memoryBytes, 0))
+            leftMemory.write32(36, packWord(memoryBytes, 4))
+            val leftCpu = R4300Cpu(leftMemory)
+            leftCpu.gpr[1] = (32 + offset).toLong()
+            leftCpu.gpr[2] = 0xAABBCCDDEEFF0011UL.toLong()
+            leftCpu.setProgramCounter(0)
+            leftCpu.step()
+
+            val expectedLeft = originalRegister.copyOf()
+            for (i in 0 until 8 - offset) expectedLeft[i] = memoryBytes[offset + i]
+            val expectedLeftValue = (expectedLeft[0].toLong() shl 56) or
+                (expectedLeft[1].toLong() shl 48) or (expectedLeft[2].toLong() shl 40) or
+                (expectedLeft[3].toLong() shl 32) or (expectedLeft[4].toLong() shl 24) or
+                (expectedLeft[5].toLong() shl 16) or (expectedLeft[6].toLong() shl 8) or
+                expectedLeft[7].toLong()
+            assertEquals("LDL offset $offset", expectedLeftValue, leftCpu.gpr[2])
+
+            val rightMemory = N64Memory(64)
+            rightMemory.write32(0, iType(0x1B, 1, 2, 0)) // ldr $v0, 0($at)
+            rightMemory.write32(32, packWord(memoryBytes, 0))
+            rightMemory.write32(36, packWord(memoryBytes, 4))
+            val rightCpu = R4300Cpu(rightMemory)
+            rightCpu.gpr[1] = (32 + offset).toLong()
+            rightCpu.gpr[2] = 0xAABBCCDDEEFF0011UL.toLong()
+            rightCpu.setProgramCounter(0)
+            rightCpu.step()
+
+            val expectedRight = originalRegister.copyOf()
+            for (i in 0..offset) expectedRight[7 - offset + i] = memoryBytes[i]
+            val expectedRightValue = (expectedRight[0].toLong() shl 56) or
+                (expectedRight[1].toLong() shl 48) or (expectedRight[2].toLong() shl 40) or
+                (expectedRight[3].toLong() shl 32) or (expectedRight[4].toLong() shl 24) or
+                (expectedRight[5].toLong() shl 16) or (expectedRight[6].toLong() shl 8) or
+                expectedRight[7].toLong()
+            assertEquals("LDR offset $offset", expectedRightValue, rightCpu.gpr[2])
+        }
+    }
+
+    @Test fun lwlAndLwrMergeBytesCorrectlyAtEveryWordOffset() {
+        val memoryBytes = intArrayOf(0x11, 0x22, 0x33, 0x44)
+        val originalRegister = intArrayOf(0xAA, 0xBB, 0xCC, 0xDD)
+
+        fun packWord(bytes: IntArray): Int =
+            (bytes[0] shl 24) or (bytes[1] shl 16) or (bytes[2] shl 8) or bytes[3]
+
+        fun signedWord(bytes: IntArray): Long = packWord(bytes).toLong()
+
+        for (offset in 0..3) {
+            val leftMemory = N64Memory(64)
+            leftMemory.write32(0, iType(0x22, 1, 2, 0)) // lwl $v0, 0($at)
+            leftMemory.write32(32, packWord(memoryBytes))
+            val leftCpu = R4300Cpu(leftMemory)
+            leftCpu.gpr[1] = (32 + offset).toLong()
+            leftCpu.gpr[2] = 0xAABBCCDDL
+            leftCpu.setProgramCounter(0)
+            leftCpu.step()
+
+            val expectedLeft = originalRegister.copyOf()
+            for (i in 0 until 4 - offset) expectedLeft[i] = memoryBytes[offset + i]
+            assertEquals("LWL offset $offset", signedWord(expectedLeft).toInt().toLong(), leftCpu.gpr[2])
+
+            val rightMemory = N64Memory(64)
+            rightMemory.write32(0, iType(0x26, 1, 2, 0)) // lwr $v0, 0($at)
+            rightMemory.write32(32, packWord(memoryBytes))
+            val rightCpu = R4300Cpu(rightMemory)
+            rightCpu.gpr[1] = (32 + offset).toLong()
+            rightCpu.gpr[2] = 0xAABBCCDDL
+            rightCpu.setProgramCounter(0)
+            rightCpu.step()
+
+            val expectedRight = originalRegister.copyOf()
+            for (i in 0..offset) expectedRight[3 - offset + i] = memoryBytes[i]
+            assertEquals("LWR offset $offset", signedWord(expectedRight).toInt().toLong(), rightCpu.gpr[2])
+        }
+    }
+
     @Test fun sdlAndSdrPreserveBytesCorrectlyAtEveryDoublewordOffset() {
         val registerBytes = intArrayOf(0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88)
         val initialBytes = intArrayOf(0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11)
