@@ -188,7 +188,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     0x10 -> { // COP0 CO-format operations
                         when (funct) {
                             0x01 -> { // TLBR: copy indexed TLB entry into COP0 registers
-                                val index = (cop0[0].toInt() and 0x3F)
+                                val index = (cop0[0].toInt() and 0x1F)
                                 val entry = try {
                                     tlb.read(index)
                                 } catch (_: IllegalStateException) {
@@ -204,7 +204,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                                     cop0[3] = encodeEntryLo(entry.oddPage)
                                 }
                             }
-                            0x02 -> writeTlbEntry((cop0[0].toInt() and 0x3F)) // TLBWI
+                            0x02 -> writeTlbEntry((cop0[0].toInt() and 0x1F)) // TLBWI
                             0x06 -> writeTlbEntry((cop0[1].toInt() and 0x1F)) // TLBWR
                             0x08 -> { // TLBP: probe VPN2 and ASID
                                 val hit = tlb.probe(cop0[10], (cop0[10].toInt() and 0xFF))
