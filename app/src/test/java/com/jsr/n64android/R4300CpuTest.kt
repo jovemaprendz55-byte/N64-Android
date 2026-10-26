@@ -2844,4 +2844,29 @@ class R4300CpuTest {
         assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc) // TLB refill vector.
         assertEquals(0xFEDCBA9876543210UL.toLong(), cpu.gpr[2]) // Destination unchanged.
     }
+
+
+    @Test fun tlbMissWordStoreInBranchDelaySlotSetsBdAndPreservesMemory() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x04, 0, 0, 2)) // beq $zero, $zero, target
+        memory.write32(4, iType(0x2B, 1, 2, 0)) // sw $v0, 0($at) in delay slot
+        memory.write32(16, 0x12345678)
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        val faultAddress = 0x00801000L // No TLB entry matches this virtual page pair.
+        cpu.gpr[1] = faultAddress
+        cpu.gpr[2] = 0xCAFEBABEL
+        // Execute the branch and delay slot from KSEG0, which bypasses the TLB.
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
+
+        cpu.step() // Schedule the branch delay slot.
+        cpu.step() // SW faults because the TLB lookup misses.
+
+        assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr.
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.cop0[14]) // EPC points to branch.
+        assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD.
+        assertEquals(3L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBS.
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc) // TLB refill vector.
+        assertEquals(0x12345678L, memory.read32(16).toLong() and 0xFFFFFFFFL)
+    }
 }
