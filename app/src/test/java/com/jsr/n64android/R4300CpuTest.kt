@@ -2362,4 +2362,29 @@ class R4300CpuTest {
         assertEquals(0x13579BDFL, cpu.gpr[2]) // Destination remains unchanged.
     }
 
+
+    @Test fun halfwordLoadMissRaisesTlbRefillExceptionWithoutChangingDestination() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x21, 1, 2, 0)) // lh $v0, 0($at)
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
+        ))
+        val faultAddress = 0x00401234L
+        cpu.gpr[1] = faultAddress
+        cpu.gpr[2] = 0x13579BDFL
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr.
+        assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBL.
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc) // TLB refill vector.
+        assertEquals(0x13579BDFL, cpu.gpr[2]) // Destination remains unchanged.
+    }
+
 }
