@@ -768,4 +768,28 @@ class R4300CpuTest {
         assertEquals(1L shl 31, cpu.cop0[0]) // One G bit is insufficient; probe misses.
     }
 
+
+    @Test fun tlbwiAndTlbrUseOnlyFiveBitIndexField() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop0Co(0x02)) // TLBWI
+        memory.write32(4, cop0Co(0x01)) // TLBR
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.cop0[0] = (1L shl 31) or 0x20L or 5L // P and reserved bit must not affect index.
+        cpu.cop0[10] = 0x00600009L
+        cpu.cop0[2] = (3L shl 6) or 0x6L
+        cpu.cop0[3] = (4L shl 6) or 0x6L
+
+        cpu.step() // TLBWI must write entry 5, not throw for index 37.
+        cpu.cop0[0] = 0x20L or 5L
+        cpu.cop0[10] = 0L
+        cpu.cop0[2] = 0L
+        cpu.cop0[3] = 0L
+        cpu.step() // TLBR must read entry 5 despite reserved Index bits.
+
+        assertEquals(0x00600009L, cpu.cop0[10])
+        assertEquals((3L shl 6) or 0x6L, cpu.cop0[2])
+        assertEquals((4L shl 6) or 0x6L, cpu.cop0[3])
+    }
+
 }
