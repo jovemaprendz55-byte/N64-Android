@@ -386,8 +386,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 val offset = (address and 3L).toInt()
                 val physical = physicalAddress(aligned, R4300Tlb.Access.WRITE)
                 val oldWord = memory.read32(physical)
-                val shift = offset * 8
-                val preserveMask = if (shift == 0) 0 else (-1 shl (32 - shift))
+                val shift = (3 - offset) * 8
+                val preserveMask = if (shift == 0) 0 else (-1 ushr (32 - shift))
                 memory.write32(physical, (oldWord and preserveMask) or (gpr[rt].toInt() ushr shift))
             }
             0x2E -> { // SWR: store right-side bytes into a big-endian aligned word.
@@ -396,9 +396,10 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 val offset = (address and 3L).toInt()
                 val physical = physicalAddress(aligned, R4300Tlb.Access.WRITE)
                 val oldWord = memory.read32(physical)
-                val shift = (3 - offset) * 8
-                val preserveMask = if (shift == 0) 0 else (-1 ushr (32 - shift))
-                memory.write32(physical, (oldWord and preserveMask) or (gpr[rt].toInt() shl shift))
+                val shift = offset * 8
+                val preserveMask = if (shift == 0) 0 else (-1 shl (32 - shift))
+                val valueMask = if (shift == 0) -1 else (0xFFFFFFFF.toInt() ushr shift)
+                memory.write32(physical, (oldWord and preserveMask) or (gpr[rt].toInt() and valueMask))
             }
             0x28 -> memory.write8(physicalAddress(gpr[rs] + immediate, R4300Tlb.Access.WRITE), gpr[rt].toInt())
             0x29 -> {
