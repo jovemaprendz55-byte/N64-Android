@@ -68,4 +68,26 @@ class R4300TlbTest {
             ))
         }
     }
+
+    @Test fun probeRequiresMatchingAsidUnlessBothPagesAreGlobal() {
+        val tlb = R4300Tlb()
+        tlb.write(4, R4300Tlb.Entry(
+            0x00400000L, 7,
+            R4300Tlb.Page(1, valid = true, dirty = true, global = true),
+            R4300Tlb.Page(2, valid = true, dirty = true, global = false)
+        ))
+
+        // One G bit is insufficient: ASID must still match.
+        assertEquals(null, tlb.probe(0x00400000L, 8))
+        assertEquals(4, tlb.probe(0x00400000L, 7))
+
+        tlb.write(4, R4300Tlb.Entry(
+            0x00400000L, 7,
+            R4300Tlb.Page(1, valid = true, dirty = true, global = true),
+            R4300Tlb.Page(2, valid = true, dirty = true, global = true)
+        ))
+        assertEquals(4, tlb.probe(0x00401000L, 8))
+        assertEquals(null, tlb.probe(0x00600000L, 7))
+    }
+
 }
