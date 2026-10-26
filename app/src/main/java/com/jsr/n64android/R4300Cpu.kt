@@ -42,8 +42,18 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         pendingDelaySlotBranchAddress = null
     }
 
-    /** Executes one instruction. Branches and jumps take effect after the delay slot. */
+    /** Executes one instruction and converts address-translation faults into architectural COP0 exceptions. */
     fun step() {
+        val branchAddressForFault = pendingDelaySlotBranchAddress
+        try {
+            stepInstruction()
+        } catch (fault: R4300Tlb.TlbFault) {
+            enterTlbException(fault, branchAddressForFault)
+        }
+    }
+
+    /** Branches and jumps take effect after the delay slot. */
+    private fun stepInstruction() {
         val instructionAddress = pc
         val instruction = memory.read32(physicalAddress(instructionAddress, R4300Tlb.Access.FETCH))
         val targetFromPreviousBranch = delayedTarget
@@ -357,6 +367,31 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         if (branchAddress != null) cause = cause or branchDelayBit
         cop0[13] = cause
         cop0[12] = status or 0x2L // Set EXL.
+    }
+
+    private fun enterTlbException(fault: R4300Tlb.TlbFault, branchAddress: Long?) {
+        val status = cop0[12]
+        val wasExl = (status and 0x2L) != 0L
+        val badAddress = fault.virtualAddress and 0xFFFFFFFFL
+        cop0[8] = badAddress // BadVAddr
+        cop0[4] = (cop0[4] and 0xFF800000L) or ((badAddress ushr 9) and 0x007FFFF0L)
+        cop0[10] = (badAddress and R4300Tlb.PAGE_PAIR_MASK) or (cop0[10] and 0xFFL)
+
+        val code = when (fault.kind) {
+            R4300Tlb.FaultKind.MODIFIED -> 1
+            R4300Tlb.FaultKind.MISS, R4300Tlb.FaultKind.INVALID ->
+                if (fault.access == R4300Tlb.Access.WRITE) 3 else 2
+        }
+        enterException(pc, code, branchAddress)
+
+        val boot = (cop0[12] and (1L shl 22)) != 0L
+        pc = if (fault.kind == R4300Tlb.FaultKind.MISS && !wasExl) {
+            if (boot) 0xFFFFFFFFBFC00200UL.toLong() else 0xFFFFFFFF80000000UL.toLong()
+        } else {
+            if (boot) 0xFFFFFFFFBFC00380UL.toLong() else 0xFFFFFFFF80000180UL.toLong()
+        }
+        delayedTarget = null
+        pendingDelaySlotBranchAddress = null
     }
 
     private fun exceptionVector(): Long {
