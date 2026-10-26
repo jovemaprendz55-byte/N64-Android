@@ -1902,4 +1902,26 @@ class R4300CpuTest {
         assertEquals((1L shl 22) or 0x2L, cpu.cop0[12] and ((1L shl 22) or 0x2L))
     }
 
+
+
+    @Test fun executesInstructionFetchedThroughValidOddTlbPage() {
+        val memory = N64Memory(8192)
+        memory.write32(0x1000, iType(0x09, 0, 2, 42)) // addiu $v0, $zero, 42 at physical odd-page frame.
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0x00400000L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
+        ))
+        cpu.setProgramCounter(0x00401000L)
+
+        cpu.step()
+
+        assertEquals(42L, cpu.gpr[2]) // Instruction was fetched and executed from the odd mapped page.
+        assertEquals(0x00401004L, cpu.pc) // PC advances in the virtual address space.
+        assertEquals(0L, cpu.cop0[13] and (0x1FL shl 2)) // No exception was raised.
+    }
+
 }
