@@ -919,6 +919,74 @@ class R4300CpuTest {
     }
 
 
+    @Test fun ldlMergesBigEndianLeftDoublewordWithoutAlignmentFault() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x1A, 1, 2, 0)) // ldl $v0, 0($at)
+        memory.write32(32, 0x11223344)
+        memory.write32(36, 0x55667788)
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = 33L
+        cpu.gpr[2] = 0xAABBCCDDEEFF0011UL.toLong()
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0x2233445566778811L, cpu.gpr[2])
+        assertEquals(4L, cpu.pc)
+        assertEquals(0L, cpu.cop0[13])
+    }
+
+    @Test fun ldrMergesBigEndianRightDoublewordWithoutAlignmentFault() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x1B, 1, 2, 0)) // ldr $v0, 0($at)
+        memory.write32(32, 0x11223344)
+        memory.write32(36, 0x55667788)
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = 33L
+        cpu.gpr[2] = 0xAABBCCDDEEFF0011UL.toLong()
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0xAABBCCDDEEFF1122UL.toLong(), cpu.gpr[2])
+        assertEquals(4L, cpu.pc)
+        assertEquals(0L, cpu.cop0[13])
+    }
+
+    @Test fun sdlMergesBigEndianLeftDoublewordIntoMemory() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x2C, 1, 2, 0)) // sdl $v0, 0($at)
+        memory.write32(32, 0xAABBCCDD.toInt())
+        memory.write32(36, 0xEEFF0011.toInt())
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = 33L
+        cpu.gpr[2] = 0x1122334455667788L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0x1122CCDDL, memory.read32(32).toLong() and 0xFFFFFFFFL)
+        assertEquals(0xEEFF0011L, memory.read32(36).toLong() and 0xFFFFFFFFL)
+        assertEquals(4L, cpu.pc)
+    }
+
+    @Test fun sdrMergesBigEndianRightDoublewordIntoMemory() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x2D, 1, 2, 0)) // sdr $v0, 0($at)
+        memory.write32(32, 0xAABBCCDD.toInt())
+        memory.write32(36, 0xEEFF0011.toInt())
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = 33L
+        cpu.gpr[2] = 0x1122334455667788L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0xAA223344L, memory.read32(32).toLong() and 0xFFFFFFFFL)
+        assertEquals(0x55667788L, memory.read32(36).toLong() and 0xFFFFFFFFL)
+        assertEquals(4L, cpu.pc)
+    }
+
     @Test fun lwlMergesBigEndianLeftBytesWithoutAlignmentFault() {
         val memory = N64Memory(64)
         memory.write32(0, iType(0x22, 1, 2, 0)) // lwl $v0, 0($at)
