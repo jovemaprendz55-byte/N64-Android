@@ -1,0 +1,71 @@
+package com.jsr.n64android
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
+import org.junit.Test
+
+class R4300TlbTest {
+    @Test fun translatesEvenAndOddFourKiBPages() {
+        val tlb = R4300Tlb()
+        tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0x00400000L,
+            asid = 3,
+            evenPage = R4300Tlb.Page(0x123, valid = true, dirty = true),
+            oddPage = R4300Tlb.Page(0x456, valid = true, dirty = true)
+        ))
+
+        assertEquals(0x00123034, tlb.translate(0x00400034L, 3, R4300Tlb.Access.READ))
+        assertEquals(0x00456078, tlb.translate(0x00401078L, 3, R4300Tlb.Access.FETCH))
+    }
+
+    @Test fun mismatchedAsidCausesMissUnlessEntryIsGlobal() {
+        val tlb = R4300Tlb()
+        tlb.write(0, R4300Tlb.Entry(
+            0x10000L, 7,
+            R4300Tlb.Page(1, true, true),
+            R4300Tlb.Page(2, true, true)
+        ))
+        assertThrows(R4300Tlb.TlbFault::class.java) {
+            tlb.translate(0x10000L, 8, R4300Tlb.Access.READ)
+        }
+
+        tlb.write(0, R4300Tlb.Entry(
+            0x10000L, 7,
+            R4300Tlb.Page(1, true, true, global = true),
+            R4300Tlb.Page(2, true, true, global = true)
+        ))
+        assertEquals(0x1000, tlb.translate(0x10000L, 8, R4300Tlb.Access.READ))
+    }
+
+    @Test fun invalidPageAndReadOnlyPageRaiseDistinctFaults() {
+        val tlb = R4300Tlb()
+        tlb.write(0, R4300Tlb.Entry(
+            0x20000L, 1,
+            R4300Tlb.Page(3, valid = false, dirty = true),
+            R4300Tlb.Page(4, valid = true, dirty = false)
+        ))
+
+        val invalid = assertThrows(R4300Tlb.TlbFault::class.java) {
+            tlb.translate(0x20010L, 1, R4300Tlb.Access.READ)
+        }
+        assertEquals(R4300Tlb.FaultKind.INVALID, invalid.kind)
+
+        val modified = assertThrows(R4300Tlb.TlbFault::class.java) {
+            tlb.translate(0x21010L, 1, R4300Tlb.Access.WRITE)
+        }
+        assertEquals(R4300Tlb.FaultKind.MODIFIED, modified.kind)
+        assertEquals(0x21010L, modified.virtualAddress)
+    }
+
+    @Test fun validatesIndexAndPagePairAlignment() {
+        val tlb = R4300Tlb()
+        assertThrows(IllegalArgumentException::class.java) { tlb.read(32) }
+        assertThrows(IllegalArgumentException::class.java) {
+            tlb.write(0, R4300Tlb.Entry(
+                0x1000L, 0,
+                R4300Tlb.Page(0, true, true),
+                R4300Tlb.Page(1, true, true)
+            ))
+        }
+    }
+}
