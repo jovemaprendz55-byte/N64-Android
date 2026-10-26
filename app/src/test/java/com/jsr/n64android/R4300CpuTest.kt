@@ -2645,13 +2645,14 @@ class R4300CpuTest {
         ))
         cpu.gpr[1] = faultAddress
         cpu.gpr[2] = 0x13579BDFL
-        cpu.setProgramCounter(0)
+        // Run the test instructions from KSEG0 so instruction fetch bypasses the TLB.
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
 
         cpu.step() // Execute branch and establish the delay slot.
         cpu.step() // Load faults on the invalid odd TLB page.
 
         assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr.
-        assertEquals(0L, cpu.cop0[14]) // EPC points to the branch.
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.cop0[14]) // EPC points to the branch.
         assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD.
         assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBL.
         assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc) // General vector, not refill.
