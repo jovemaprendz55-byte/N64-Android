@@ -2,8 +2,8 @@ package com.jsr.n64android
 
 /**
  * First executable R4300 subset for bring-up and unit tests.
- * This is not a complete MIPS III/R4300 implementation: exceptions, COP0/TLB,
- * remaining MIPS III instructions, exceptions, COP0/TLB, cache operations and full N64 devices remain unimplemented.
+ * This is not a complete MIPS III/R4300 implementation: remaining instructions,
+ * exceptions, COP0/TLB, cache operations and full N64 devices remain unimplemented.
  */
 class R4300Cpu(private val memory: N64AddressSpace) {
     val gpr: LongArray = LongArray(32)
@@ -45,9 +45,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 0x00 -> if (instruction != 0) gpr[rd] = (gpr[rt].toInt() shl shamt).toLong()
                 0x02 -> gpr[rd] = (gpr[rt].toInt() ushr shamt).toLong()
                 0x03 -> gpr[rd] = (gpr[rt].toInt() shr shamt).toLong()
-                0x14 -> gpr[rd] = gpr[rt] shl (shamt + 32) // DSLL32
-                0x16 -> gpr[rd] = gpr[rt] ushr (shamt + 32) // DSRL32
-                0x17 -> gpr[rd] = gpr[rt] shr (shamt + 32) // DSRA32
+                0x14 -> gpr[rd] = gpr[rt] shl (gpr[rs].toInt() and 0x3F) // DSLLV
+                0x16 -> gpr[rd] = gpr[rt] ushr (gpr[rs].toInt() and 0x3F) // DSRLV
+                0x17 -> gpr[rd] = gpr[rt] shr (gpr[rs].toInt() and 0x3F) // DSRAV
                 0x2C -> gpr[rd] = gpr[rs] + gpr[rt] // DADD
                 0x2D -> gpr[rd] = gpr[rs] + gpr[rt] // DADDU
                 0x2E -> gpr[rd] = gpr[rs] - gpr[rt] // DSUB
@@ -55,6 +55,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 0x38 -> gpr[rd] = gpr[rt] shl shamt // DSLL
                 0x3A -> gpr[rd] = gpr[rt] ushr shamt // DSRL
                 0x3B -> gpr[rd] = gpr[rt] shr shamt // DSRA
+                0x3C -> gpr[rd] = gpr[rt] shl (shamt + 32) // DSLL32
+                0x3E -> gpr[rd] = gpr[rt] ushr (shamt + 32) // DSRL32
+                0x3F -> gpr[rd] = gpr[rt] shr (shamt + 32) // DSRA32
                 0x08 -> delayedTarget = gpr[rs]
                 0x09 -> { gpr[rd] = nextSequential + 4L; delayedTarget = gpr[rs] }
                 0x21 -> gpr[rd] = (gpr[rs].toInt() + gpr[rt].toInt()).toLong()
