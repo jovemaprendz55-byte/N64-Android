@@ -338,7 +338,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     private fun decodeEntryLo(value: Long): R4300Tlb.Page {
         val raw = value and 0xFFFFFFFFL
         return R4300Tlb.Page(
-            physicalFrameNumber = ((raw ushr 6) and 0xFFFFFL).toInt(),
+            physicalFrameNumber = ((raw ushr 6) and 0xFFFFFFL).toInt(),
             valid = (raw and 0x2L) != 0L,
             dirty = (raw and 0x4L) != 0L,
             global = (raw and 0x1L) != 0L
