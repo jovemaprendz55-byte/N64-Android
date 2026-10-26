@@ -2265,4 +2265,22 @@ class R4300CpuTest {
         assertEquals(0x12345678L, memory.read32(0x3000).toLong() and 0xFFFFFFFFL)
     }
 
+
+    @Test fun halfwordStoreToOddAddressRaisesAddressStoreErrorWithoutWritingMemory() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x29, 1, 2, 1)) // sh $v0, 1($at) is misaligned.
+        memory.write32(16, 0x12345678)
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = 16L
+        cpu.gpr[2] = 0xABCDL
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(17L, cpu.cop0[8]) // BadVAddr records the unaligned address.
+        assertEquals(5L, (cpu.cop0[13] ushr 2) and 0x1FL) // AdES.
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+        assertEquals(0x12345678L, memory.read32(16).toLong() and 0xFFFFFFFFL)
+    }
+
 }
