@@ -333,6 +333,30 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             0x0D -> gpr[rt] = gpr[rs] or unsignedImmediate.toLong()
             0x0E -> gpr[rt] = gpr[rs] xor unsignedImmediate.toLong()
             0x0F -> gpr[rt] = (unsignedImmediate shl 16).toInt().toLong()
+            0x1A -> { // LDL: merge left-side bytes from a big-endian aligned doubleword.
+                val address = gpr[rs] + immediate
+                val aligned = address and -8L
+                val offset = (address and 7L).toInt()
+                val physical = physicalAddress(aligned, R4300Tlb.Access.READ)
+                val high = memory.read32(physical).toLong() shl 32
+                val low = memory.read32(physical + 4).toLong() and 0xFFFFFFFFL
+                val doubleword = high or low
+                val shift = offset * 8
+                val preserveMask = if (shift == 0) 0L else (-1L ushr (64 - shift))
+                gpr[rt] = (gpr[rt] and preserveMask) or (doubleword shl shift)
+            }
+            0x1B -> { // LDR: merge right-side bytes from a big-endian aligned doubleword.
+                val address = gpr[rs] + immediate
+                val aligned = address and -8L
+                val offset = (address and 7L).toInt()
+                val physical = physicalAddress(aligned, R4300Tlb.Access.READ)
+                val high = memory.read32(physical).toLong() shl 32
+                val low = memory.read32(physical + 4).toLong() and 0xFFFFFFFFL
+                val doubleword = high or low
+                val shift = (7 - offset) * 8
+                val preserveMask = if (shift == 0) 0L else (-1L shl (64 - shift))
+                gpr[rt] = (gpr[rt] and preserveMask) or (doubleword ushr shift)
+            }
             0x22 -> { // LWL: merge left-side bytes from a big-endian aligned word.
                 val address = gpr[rs] + immediate
                 val aligned = address and -4L
@@ -379,6 +403,35 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 val high = memory.read32(physicalAddress(address, R4300Tlb.Access.READ)).toLong()
                 val low = memory.read32(physicalAddress(address + 4L, R4300Tlb.Access.READ)).toLong() and 0xFFFFFFFFL
                 gpr[rt] = (high shl 32) or low
+            }
+            0x2C -> { // SDL: store left-side bytes into a big-endian aligned doubleword.
+                val address = gpr[rs] + immediate
+                val aligned = address and -8L
+                val offset = (address and 7L).toInt()
+                val physical = physicalAddress(aligned, R4300Tlb.Access.WRITE)
+                val oldHigh = memory.read32(physical)
+                val oldLow = memory.read32(physical + 4)
+                val oldDoubleword = (oldHigh.toLong() shl 32) or (oldLow.toLong() and 0xFFFFFFFFL)
+                val shift = (7 - offset) * 8
+                val valueMask = if (shift == 0) -1L else (-1L shl (64 - shift))
+                val merged = (oldDoubleword and valueMask.inv()) or (gpr[rt] and valueMask)
+                memory.write32(physical, (merged ushr 32).toInt())
+                memory.write32(physical + 4, merged.toInt())
+            }
+            0x2D -> { // SDR: store right-side bytes into a big-endian aligned doubleword.
+                val address = gpr[rs] + immediate
+                val aligned = address and -8L
+                val offset = (address and 7L).toInt()
+                val physical = physicalAddress(aligned, R4300Tlb.Access.WRITE)
+                val oldHigh = memory.read32(physical)
+                val oldLow = memory.read32(physical + 4)
+                val oldDoubleword = (oldHigh.toLong() shl 32) or (oldLow.toLong() and 0xFFFFFFFFL)
+                val shift = offset * 8
+                val preserveMask = if (shift == 0) 0L else (-1L shl (64 - shift))
+                val valueMask = if (shift == 0) -1L else (-1L ushr shift)
+                val merged = (oldDoubleword and preserveMask) or (gpr[rt] and valueMask)
+                memory.write32(physical, (merged ushr 32).toInt())
+                memory.write32(physical + 4, merged.toInt())
             }
             0x2A -> { // SWL: store left-side bytes into a big-endian aligned word.
                 val address = gpr[rs] + immediate
