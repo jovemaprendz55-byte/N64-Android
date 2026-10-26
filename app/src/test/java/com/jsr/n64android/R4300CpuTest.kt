@@ -2387,4 +2387,30 @@ class R4300CpuTest {
         assertEquals(0x13579BDFL, cpu.gpr[2]) // Destination remains unchanged.
     }
 
+
+    @Test fun misalignedHalfwordLoadRaisesAddressErrorBeforeTlbTranslationAndPreservesDestination() {
+        val memory = N64Memory(8192)
+        memory.write32(0, iType(0x21, 1, 2, 1)) // lh $v0, 1($at): unaligned.
+        memory.write32(0x1000, 0x12345678)
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0x00400000L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
+        ))
+        cpu.gpr[1] = 0x00801000L // Effective address is unaligned and unmapped.
+        cpu.gpr[2] = 0x13579BDFL
+        cpu.setProgramCounter(0x00400000L) // Fetch through the mapped instruction page.
+
+        cpu.step()
+
+        assertEquals(0x00801001L, cpu.cop0[8]) // BadVAddr keeps the effective address.
+        assertEquals(4L, (cpu.cop0[13] ushr 2) and 0x1FL) // AdEL precedes the TLB miss.
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+        assertEquals(0x13579BDFL, cpu.gpr[2]) // Faulting load must not modify its destination.
+        assertEquals(0x12345678L, memory.read32(0x1000).toLong() and 0xFFFFFFFFL)
+    }
+
 }
