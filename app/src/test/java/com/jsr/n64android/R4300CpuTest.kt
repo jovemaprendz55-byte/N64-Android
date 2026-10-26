@@ -1681,4 +1681,39 @@ class R4300CpuTest {
         assertEquals((1L shl 22) or 0x2L, cpu.cop0[12] and ((1L shl 22) or 0x2L))
     }
 
+
+    @Test fun tlbInvalidPageInDelaySlotWithBevUsesBootGeneralVectorAndSetsBranchMetadata() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x04, 0, 0, 2)) // beq $zero, $zero, target
+        memory.write32(4, iType(0x23, 1, 2, 0)) // lw $v0, 0($at) in delay slot
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        cpu.cop0[12] = 1L shl 22 // BEV selects boot exception vectors.
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
+        ))
+        val faultAddress = 0x00401234L
+        cpu.tlb.write(1, R4300Tlb.Entry(
+            virtualPagePairBase = faultAddress and R4300Tlb.PAGE_PAIR_MASK,
+            asid = 0,
+            evenPage = R4300Tlb.Page(2, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(3, valid = false, dirty = true, global = true)
+        ))
+        cpu.gpr[1] = faultAddress
+        cpu.setProgramCounter(0)
+
+        cpu.step() // Execute branch and establish the delay slot.
+        cpu.step() // Load hits an invalid TLB page in the delay slot.
+
+        assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr.
+        assertEquals(0L, cpu.cop0[14]) // EPC identifies the branch instruction.
+        assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD.
+        assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBL.
+        assertEquals(0xFFFFFFFFBFC00380UL.toLong(), cpu.pc) // Boot general vector, not refill.
+        assertEquals((1L shl 22) or 0x2L, cpu.cop0[12] and ((1L shl 22) or 0x2L))
+    }
+
 }
