@@ -455,6 +455,30 @@ class R4300CpuTest {
         assertEquals(0x00400008L, cpu.pc)
     }
 
+    @Test fun cop0TlbwiTlbrAndTlbpRoundTripEntry() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop0Co(0x02)) // TLBWI
+        memory.write32(4, cop0Co(0x01)) // TLBR
+        memory.write32(8, cop0Co(0x08)) // TLBP
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.cop0[0] = 3L // Index
+        cpu.cop0[10] = 0x00400005L // EntryHi: VPN2 + ASID 5
+        cpu.cop0[2] = (1L shl 6) or 0x6L // PFN 1, valid, dirty
+        cpu.cop0[3] = (2L shl 6) or 0x2L // PFN 2, valid, read-only
+        cpu.step() // TLBWI
+        cpu.cop0[10] = 0L
+        cpu.cop0[2] = 0L
+        cpu.cop0[3] = 0L
+        cpu.step() // TLBR
+        assertEquals(0x00400005L, cpu.cop0[10])
+        assertEquals((1L shl 6) or 0x6L, cpu.cop0[2])
+        assertEquals((2L shl 6) or 0x2L, cpu.cop0[3])
+        cpu.cop0[10] = 0x00400005L
+        cpu.step() // TLBP
+        assertEquals(3L, cpu.cop0[0])
+    }
+
     @Test fun cpuTlbTranslationRejectsWritesToCleanPages() {
         val memory = N64Memory(0x3000)
         memory.write32(0, iType(0x2B, 1, 2, 0)) // sw $v0, 0($t0)
@@ -477,6 +501,8 @@ class R4300CpuTest {
         assertEquals(R4300Tlb.FaultKind.MODIFIED, fault.kind)
         assertEquals(0, memory.read32(0x1000))
     }
+
+    private fun cop0Co(funct: Int): Int = (0x10 shl 26) or (0x10 shl 21) or funct
 
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
