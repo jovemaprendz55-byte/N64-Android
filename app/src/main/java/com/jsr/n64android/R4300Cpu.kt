@@ -5,7 +5,7 @@ import java.math.BigInteger
 /**
  * First executable R4300 subset for bring-up and unit tests.
  * This is not a complete MIPS III/R4300 implementation: remaining instructions,
- * full delay-slot exception semantics, COP0/TLB, cache operations and full N64 devices remain unimplemented.
+ * full delay-slot exception semantics, complete COP0/TLB exception delivery, cache operations and full N64 devices remain unimplemented.
  */
 class R4300Cpu(private val memory: N64AddressSpace) {
     val gpr: LongArray = LongArray(32)
@@ -15,6 +15,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         private set
     /** Basic COP0 storage with initial syscall/break exception and ERET handling. */
     val cop0: LongArray = LongArray(32)
+    /** Initial 32-entry TLB model; opt-in until architectural TLB exceptions are wired. */
+    val tlb: R4300Tlb = R4300Tlb()
+    var tlbEnabled: Boolean = false
     var pc: Long = RESET_VECTOR
         private set
     private var delayedTarget: Long? = null
@@ -25,6 +28,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         hi = 0L
         lo = 0L
         cop0.fill(0L)
+        tlb.clear()
+        tlbEnabled = false
         pc = RESET_VECTOR
         delayedTarget = null
         pendingDelaySlotBranchAddress = null
@@ -40,7 +45,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     /** Executes one instruction. Branches and jumps take effect after the delay slot. */
     fun step() {
         val instructionAddress = pc
-        val instruction = memory.read32(physicalAddress(instructionAddress))
+        val instruction = memory.read32(physicalAddress(instructionAddress, R4300Tlb.Access.FETCH))
         val targetFromPreviousBranch = delayedTarget
         val branchAddressForCurrentInstruction = pendingDelaySlotBranchAddress
         delayedTarget = null
@@ -233,12 +238,12 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             0x0D -> gpr[rt] = gpr[rs] or unsignedImmediate.toLong()
             0x0E -> gpr[rt] = gpr[rs] xor unsignedImmediate.toLong()
             0x0F -> gpr[rt] = (unsignedImmediate shl 16).toInt().toLong()
-            0x20 -> gpr[rt] = memory.read8(physicalAddress(gpr[rs] + immediate)).toByte().toLong()
+            0x20 -> gpr[rt] = memory.read8(physicalAddress(gpr[rs] + immediate, R4300Tlb.Access.READ)).toByte().toLong()
             0x24 -> gpr[rt] = memory.read8(physicalAddress(gpr[rs] + immediate)).toLong()
             0x21 -> {
                 val address = gpr[rs] + immediate
                 requireAligned(address, 2)
-                gpr[rt] = memory.read16(physicalAddress(address)).toShort().toLong()
+                gpr[rt] = memory.read16(physicalAddress(address, R4300Tlb.Access.READ)).toShort().toLong()
             }
             0x25 -> {
                 val address = gpr[rs] + immediate
@@ -259,7 +264,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 val address = gpr[rs] + immediate
                 requireAligned(address, 8)
                 val high = memory.read32(physicalAddress(address)).toLong()
-                val low = memory.read32(physicalAddress(address + 4L)).toLong() and 0xFFFFFFFFL
+                val low = memory.read32(physicalAddress(address + 4L, R4300Tlb.Access.READ)).toLong() and 0xFFFFFFFFL
                 gpr[rt] = (high shl 32) or low
             }
             0x28 -> memory.write8(physicalAddress(gpr[rs] + immediate), gpr[rt].toInt())
@@ -320,14 +325,20 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         }
     }
 
-    private fun physicalAddress(address: Long): Int {
+    private fun physicalAddress(
+        address: Long,
+        access: R4300Tlb.Access = R4300Tlb.Access.READ
+    ): Int {
         // Treat sign-extended 32-bit virtual addresses as 32-bit N64 addresses.
         val virtual32 = address and 0xFFFFFFFFL
         val segment = (virtual32 ushr 29) and 0x7L
         val physical = if (segment == 4L || segment == 5L) {
-            virtual32 and 0x1FFFFFFFL // KSEG0/KSEG1 direct-mapped segments
+            virtual32 and 0x1FFFFFFFL // KSEG0/KSEG1 bypass the TLB.
+        } else if (tlbEnabled) {
+            tlb.translate(virtual32, (cop0[10].toInt() and 0xFF), access)
+                .toLong() and 0xFFFFFFFFL
         } else {
-            virtual32
+            virtual32 // Compatibility mode for current unit tests and early bring-up.
         }
         require(physical <= Int.MAX_VALUE.toLong()) {
             "Address cannot be represented by this initial RAM bus: 0x${address.toString(16)}"
