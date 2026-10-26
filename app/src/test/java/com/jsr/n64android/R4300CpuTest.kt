@@ -946,7 +946,7 @@ class R4300CpuTest {
 
         cpu.step()
 
-        assertEquals(0xAABB1122L, cpu.gpr[2])
+        assertEquals(0xAABB1122.toInt().toLong(), cpu.gpr[2])
         assertEquals(4L, cpu.pc)
         assertEquals(0L, cpu.cop0[13])
     }
@@ -962,7 +962,7 @@ class R4300CpuTest {
 
         cpu.step()
 
-        assertEquals(0xAA112233L, memory.read32(32).toLong() and 0xFFFFFFFFL)
+        assertEquals(0x1122CCDDL, memory.read32(32).toLong() and 0xFFFFFFFFL)
         assertEquals(4L, cpu.pc)
     }
 
@@ -977,7 +977,7 @@ class R4300CpuTest {
 
         cpu.step()
 
-        assertEquals(0x3344CCDDL, memory.read32(32).toLong() and 0xFFFFFFFFL)
+        assertEquals(0xAA223344L, memory.read32(32).toLong() and 0xFFFFFFFFL)
         assertEquals(4L, cpu.pc)
     }
 
