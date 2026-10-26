@@ -169,8 +169,26 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 }
                 0x08 -> { pendingDelaySlotBranchAddress = instructionAddress; delayedTarget = gpr[rs] }
                 0x09 -> { gpr[rd] = nextSequential + 4L; pendingDelaySlotBranchAddress = instructionAddress; delayedTarget = gpr[rs] }
-                0x21 -> gpr[rd] = (gpr[rs].toInt() + gpr[rt].toInt()).toLong()
-                0x23 -> gpr[rd] = (gpr[rs].toInt() - gpr[rt].toInt()).toLong()
+                0x20 -> { // ADD: signed 32-bit addition traps on overflow.
+                    val result = gpr[rs].toInt().toLong() + gpr[rt].toInt().toLong()
+                    if (result !in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()) {
+                        enterException(instructionAddress, 12, branchAddressForCurrentInstruction)
+                        directPc = exceptionVector()
+                    } else {
+                        gpr[rd] = result.toInt().toLong()
+                    }
+                }
+                0x21 -> gpr[rd] = (gpr[rs].toInt() + gpr[rt].toInt()).toLong() // ADDU wraps without trapping.
+                0x22 -> { // SUB: signed 32-bit subtraction traps on overflow.
+                    val result = gpr[rs].toInt().toLong() - gpr[rt].toInt().toLong()
+                    if (result !in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()) {
+                        enterException(instructionAddress, 12, branchAddressForCurrentInstruction)
+                        directPc = exceptionVector()
+                    } else {
+                        gpr[rd] = result.toInt().toLong()
+                    }
+                }
+                0x23 -> gpr[rd] = (gpr[rs].toInt() - gpr[rt].toInt()).toLong() // SUBU wraps without trapping.
                 0x24 -> gpr[rd] = (gpr[rs].toInt() and gpr[rt].toInt()).toLong()
                 0x25 -> gpr[rd] = (gpr[rs].toInt() or gpr[rt].toInt()).toLong()
                 0x26 -> gpr[rd] = (gpr[rs].toInt() xor gpr[rt].toInt()).toLong()
@@ -265,8 +283,16 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 pendingDelaySlotBranchAddress = instructionAddress
                 if (takeBranch) delayedTarget = nextSequential + (immediate.toLong() shl 2)
             }
-            0x08 -> gpr[rt] = (gpr[rs].toInt() + immediate).toLong() // ADDI (overflow exceptions not modeled)
-            0x09 -> gpr[rt] = (gpr[rs].toInt() + immediate).toLong()
+            0x08 -> { // ADDI: signed 32-bit addition traps on overflow.
+                val result = gpr[rs].toInt().toLong() + immediate.toLong()
+                if (result !in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()) {
+                    enterException(instructionAddress, 12, branchAddressForCurrentInstruction)
+                    directPc = exceptionVector()
+                } else {
+                    gpr[rt] = result.toInt().toLong()
+                }
+            }
+            0x09 -> gpr[rt] = (gpr[rs].toInt() + immediate).toLong() // ADDIU wraps without trapping.
             0x18 -> gpr[rt] = gpr[rs] + immediate.toLong() // DADDI (overflow exceptions not modeled)
             0x19 -> gpr[rt] = gpr[rs] + immediate.toLong() // DADDIU
             0x0A -> gpr[rt] = if (gpr[rs] < immediate.toLong()) 1L else 0L // SLTI
