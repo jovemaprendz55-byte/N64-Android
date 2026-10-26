@@ -36,7 +36,8 @@ class R4300Tlb(private val entryCount: Int = ENTRY_COUNT) {
 
     class TlbFault(
         val kind: FaultKind,
-        val virtualAddress: Long
+        val virtualAddress: Long,
+        val access: Access
     ) : RuntimeException("R4300 TLB $kind fault at 0x${virtualAddress.toString(16)}")
 
     private val entries = arrayOfNulls<Entry>(entryCount)
@@ -80,11 +81,11 @@ class R4300Tlb(private val entryCount: Int = ENTRY_COUNT) {
 
         val entry = entries.firstOrNull {
             it != null && it.virtualPagePairBase == pairBase && (it.asid == asid || it.evenPage.global && it.oddPage.global)
-        } ?: throw TlbFault(FaultKind.MISS, virtualAddress)
+        } ?: throw TlbFault(FaultKind.MISS, virtualAddress, access)
 
         val page = if (odd) entry.oddPage else entry.evenPage
-        if (!page.valid) throw TlbFault(FaultKind.INVALID, virtualAddress)
-        if (access == Access.WRITE && !page.dirty) throw TlbFault(FaultKind.MODIFIED, virtualAddress)
+        if (!page.valid) throw TlbFault(FaultKind.INVALID, virtualAddress, access)
+        if (access == Access.WRITE && !page.dirty) throw TlbFault(FaultKind.MODIFIED, virtualAddress, access)
 
         val physical = (page.physicalFrameNumber.toLong() shl PAGE_SHIFT) or offset
         return physical.toInt()
