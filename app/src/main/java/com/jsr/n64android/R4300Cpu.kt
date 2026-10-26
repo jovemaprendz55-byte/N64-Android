@@ -45,6 +45,16 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 0x00 -> if (instruction != 0) gpr[rd] = (gpr[rt].toInt() shl shamt).toLong()
                 0x02 -> gpr[rd] = (gpr[rt].toInt() ushr shamt).toLong()
                 0x03 -> gpr[rd] = (gpr[rt].toInt() shr shamt).toLong()
+                0x14 -> gpr[rd] = gpr[rt] shl (shamt + 32) // DSLL32
+                0x16 -> gpr[rd] = gpr[rt] ushr (shamt + 32) // DSRL32
+                0x17 -> gpr[rd] = gpr[rt] shr (shamt + 32) // DSRA32
+                0x2C -> gpr[rd] = gpr[rs] + gpr[rt] // DADD
+                0x2D -> gpr[rd] = gpr[rs] + gpr[rt] // DADDU
+                0x2E -> gpr[rd] = gpr[rs] - gpr[rt] // DSUB
+                0x2F -> gpr[rd] = gpr[rs] - gpr[rt] // DSUBU
+                0x38 -> gpr[rd] = gpr[rt] shl shamt // DSLL
+                0x3A -> gpr[rd] = gpr[rt] ushr shamt // DSRL
+                0x3B -> gpr[rd] = gpr[rt] shr shamt // DSRA
                 0x08 -> delayedTarget = gpr[rs]
                 0x09 -> { gpr[rd] = nextSequential + 4L; delayedTarget = gpr[rs] }
                 0x21 -> gpr[rd] = (gpr[rs].toInt() + gpr[rt].toInt()).toLong()
@@ -85,7 +95,10 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 }
                 if (takeBranch) delayedTarget = nextSequential + (immediate.toLong() shl 2)
             }
+            0x08 -> gpr[rt] = gpr[rs] + immediate.toLong() // ADDI (overflow exceptions not modeled)
             0x09 -> gpr[rt] = (gpr[rs].toInt() + immediate).toLong()
+            0x18 -> gpr[rt] = gpr[rs] + immediate.toLong() // DADDI (overflow exceptions not modeled)
+            0x19 -> gpr[rt] = gpr[rs] + immediate.toLong() // DADDIU
             0x0A -> gpr[rt] = if (gpr[rs] < immediate.toLong()) 1L else 0L // SLTI
             0x0B -> gpr[rt] = if (java.lang.Long.compareUnsigned(gpr[rs], immediate.toLong()) < 0) 1L else 0L // SLTIU
             0x0C -> gpr[rt] = gpr[rs] and unsignedImmediate.toLong()
