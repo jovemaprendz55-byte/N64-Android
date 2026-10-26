@@ -527,7 +527,8 @@ class R4300CpuTest {
         memory.write32(4, iType(0x2B, 8, 0, 0)) // sw $zero, 0($t0)
         cpu.cop0[12] = 1L shl 22 // Status.BEV
         cpu.tlbEnabled = true
-        cpu.setProgramCounter(0)
+        // Execute the test program from KSEG0 so instruction fetch bypasses the TLB.
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
 
         cpu.step()
         cpu.step()
