@@ -401,6 +401,7 @@ class R4300CpuTest {
     @Test fun breakUsesBootVectorWhenBevIsSetAndPreservesEpcWhenAlreadyExl() {
         val memory = N64Memory(0x400)
         memory.write32(0, rType(0, 0, 0, 0x0D)) // break
+        memory.write32(4, rType(0, 0, 0, 0x0D)) // break again while EXL is already set
         val cpu = R4300Cpu(memory)
         cpu.setProgramCounter(0)
         cpu.cop0[12] = 1L shl 22 // BEV
