@@ -1406,7 +1406,7 @@ class R4300CpuTest {
             virtualPagePairBase = faultAddress and R4300Tlb.PAGE_PAIR_MASK,
             asid = 0,
             evenPage = R4300Tlb.Page(2, valid = true, dirty = false, global = true),
-            oddPage = R4300Tlb.Page(3, valid = true, dirty = true, global = true)
+            oddPage = R4300Tlb.Page(3, valid = true, dirty = false, global = true)
         ))
         cpu.gpr[1] = faultAddress
         cpu.gpr[2] = 0x12345678L
