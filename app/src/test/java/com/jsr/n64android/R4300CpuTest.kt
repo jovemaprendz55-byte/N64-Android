@@ -110,6 +110,26 @@ class R4300CpuTest {
         assertEquals(0xFFFFFFFFB0000004UL.toLong(), cpu.pc)
     }
 
+    @Test fun piDmaCopiesCartridgeBytesIntoRdram() {
+        val bus = N64Bus(cartridgeRom = byteArrayOf(0x80.toByte(), 0x37, 0x12, 0x40, 1, 2, 3, 4))
+        bus.write32(N64Bus.PI_DRAM_ADDR_REG, 0x100)
+        bus.write32(N64Bus.PI_CART_ADDR_REG, N64Bus.CARTRIDGE_ROM_BASE)
+        // PI_RD_LEN is length minus one, so 3 requests four bytes.
+        bus.write32(N64Bus.PI_RD_LEN_REG, 3)
+        assertEquals(0x80371240.toInt(), bus.read32(0x100))
+        assertEquals(0x104, bus.read32(N64Bus.PI_DRAM_ADDR_REG))
+        assertEquals(N64Bus.CARTRIDGE_ROM_BASE + 4, bus.read32(N64Bus.PI_CART_ADDR_REG))
+    }
+
+    @Test fun piDmaRejectsReadsOutsideCartridgeImage() {
+        val bus = N64Bus(cartridgeRom = byteArrayOf(1, 2, 3, 4))
+        bus.write32(N64Bus.PI_DRAM_ADDR_REG, 0)
+        bus.write32(N64Bus.PI_CART_ADDR_REG, N64Bus.CARTRIDGE_ROM_BASE + 2)
+        assertThrows(IllegalArgumentException::class.java) {
+            bus.write32(N64Bus.PI_RD_LEN_REG, 2)
+        }
+    }
+
     @Test fun cartridgeRomIsReadOnlyAndOutOfRangeReadsFailClearly() {
         val bus = N64Bus(cartridgeRom = byteArrayOf(1, 2, 3, 4))
         assertThrows(UnsupportedOperationException::class.java) {
