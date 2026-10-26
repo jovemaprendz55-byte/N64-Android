@@ -718,7 +718,7 @@ class R4300CpuTest {
         assertEquals(2L shl 2, cpu.cop0[13] and (0x1FL shl 2)) // ExcCode replaced with TLBL
     }
 
-    @Test fun tlbEntryLoPreservesFull24BitPfn() {
+    @Test fun tlbEntryLoIgnoresReservedBitsAbove20BitPfn() {
         val memory = N64Memory(64)
         memory.write32(0, cop0Co(0x02)) // TLBWI
         memory.write32(4, cop0Co(0x01)) // TLBR
@@ -736,8 +736,8 @@ class R4300CpuTest {
         cpu.cop0[3] = 0L
         cpu.step() // TLBR
 
-        assertEquals(evenEntryLo, cpu.cop0[2])
-        assertEquals(oddEntryLo, cpu.cop0[3])
+        assertEquals(((0xABCDE1L and 0xFFFFFL) shl 6) or 0x6L, cpu.cop0[2])
+        assertEquals(((0xFEDCBAL and 0xFFFFFL) shl 6) or 0x6L, cpu.cop0[3])
     }
 
     private fun cop0Co(funct: Int): Int = (0x10 shl 26) or (0x10 shl 21) or funct
