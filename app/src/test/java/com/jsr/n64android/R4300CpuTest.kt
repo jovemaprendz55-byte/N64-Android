@@ -1821,4 +1821,30 @@ class R4300CpuTest {
         assertEquals(0L, memory.read32(8).toLong()) // Faulting store must not modify memory.
     }
 
+
+    @Test fun tlbInvalidInstructionFetchInDelaySlotWithBevUsesBootGeneralVectorAndSetsBranchMetadata() {
+        val memory = N64Memory(8192)
+        memory.write32(0x0FFC, iType(0x04, 0, 0, 2)) // Branch at the last word of the even page.
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        cpu.cop0[12] = 1L shl 22 // BEV selects boot exception vectors.
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(1, valid = false, dirty = true, global = true)
+        ))
+        cpu.setProgramCounter(0x0FFCL)
+
+        cpu.step() // Branch executes; the delay-slot fetch is on the invalid odd page.
+        cpu.step() // Instruction fetch faults before the delay-slot instruction can execute.
+
+        assertEquals(0x1000L, cpu.cop0[8]) // BadVAddr is the delay-slot fetch address.
+        assertEquals(0x0FFCL, cpu.cop0[14]) // EPC identifies the branch instruction.
+        assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD.
+        assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBL.
+        assertEquals(0xFFFFFFFFBFC00380UL.toLong(), cpu.pc) // Invalid page uses boot general vector.
+        assertEquals((1L shl 22) or 0x2L, cpu.cop0[12] and ((1L shl 22) or 0x2L))
+    }
+
 }
