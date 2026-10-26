@@ -2896,7 +2896,6 @@ class R4300CpuTest {
         assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc) // General exception vector.
         assertEquals(0x12345678L, memory.read32(0x1000).toLong() and 0xFFFFFFFFL)
     }
-}
 
     @Test fun tlbModifiedWordStoreInBranchDelaySlotSetsBdAndPreservesMemory() {
         val memory = N64Memory(8192)
