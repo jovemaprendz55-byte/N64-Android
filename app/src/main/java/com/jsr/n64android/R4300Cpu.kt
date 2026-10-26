@@ -57,19 +57,37 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 0x2B -> gpr[rd] = if (java.lang.Long.compareUnsigned(gpr[rs], gpr[rt]) < 0) 1L else 0L
                 else -> throw UnsupportedOperationException("R4300 SPECIAL funct 0x${funct.toString(16)} at 0x${instructionAddress.toString(16)}")
             }
+            0x01 -> {
+                val takeBranch = when (rt) {
+                    0x00, 0x10 -> gpr[rs] < 0L // BLTZ / BLTZAL
+                    0x01, 0x11 -> gpr[rs] >= 0L // BGEZ / BGEZAL
+                    else -> throw UnsupportedOperationException(
+                        "R4300 REGIMM rt=0x${rt.toString(16)} at 0x${instructionAddress.toString(16)}"
+                    )
+                }
+                if (takeBranch) {
+                    if (rt == 0x10 || rt == 0x11) gpr[31] = nextSequential + 4L
+                    delayedTarget = nextSequential + (immediate.toLong() shl 2)
+                }
+            }
             0x02, 0x03 -> {
                 val jumpAddress = (nextSequential and -0x10000000L) or
                     ((instruction.toLong() and 0x03FFFFFFL) shl 2)
                 if (opcode == 0x03) gpr[31] = nextSequential + 4L
                 delayedTarget = jumpAddress
             }
-            0x04, 0x05 -> {
-                val equal = gpr[rs] == gpr[rt]
-                if ((opcode == 0x04 && equal) || (opcode == 0x05 && !equal)) {
-                    delayedTarget = nextSequential + (immediate.toLong() shl 2)
+            0x04, 0x05, 0x06, 0x07 -> {
+                val takeBranch = when (opcode) {
+                    0x04 -> gpr[rs] == gpr[rt] // BEQ
+                    0x05 -> gpr[rs] != gpr[rt] // BNE
+                    0x06 -> rt == 0 && gpr[rs] <= 0L // BLEZ
+                    else -> rt == 0 && gpr[rs] > 0L // BGTZ
                 }
+                if (takeBranch) delayedTarget = nextSequential + (immediate.toLong() shl 2)
             }
             0x09 -> gpr[rt] = (gpr[rs].toInt() + immediate).toLong()
+            0x0A -> gpr[rt] = if (gpr[rs] < immediate.toLong()) 1L else 0L // SLTI
+            0x0B -> gpr[rt] = if (java.lang.Long.compareUnsigned(gpr[rs], immediate.toLong()) < 0) 1L else 0L // SLTIU
             0x0C -> gpr[rt] = gpr[rs] and unsignedImmediate.toLong()
             0x0D -> gpr[rt] = gpr[rs] or unsignedImmediate.toLong()
             0x0E -> gpr[rt] = gpr[rs] xor unsignedImmediate.toLong()
