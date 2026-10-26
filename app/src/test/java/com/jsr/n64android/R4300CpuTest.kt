@@ -477,14 +477,17 @@ class R4300CpuTest {
         assertTrue(error.message!!.contains("beyond the loaded ROM size"))
     }
 
-    @Test fun rejectsUnalignedInstructionAndWordAccesses() {
+    @Test fun rejectsUnalignedInstructionFetchButRaisesArchitecturalExceptionForWordLoad() {
         val memory = N64Memory(64)
         memory.write32(0, iType(0x23, 1, 2, 0))
         val cpu = R4300Cpu(memory)
         assertThrows(IllegalArgumentException::class.java) { cpu.setProgramCounter(2) }
         cpu.setProgramCounter(0)
         cpu.gpr[1] = 1
-        assertThrows(IllegalArgumentException::class.java) { cpu.step() }
+        cpu.step()
+        assertEquals(4L, (cpu.cop0[13] ushr 2) and 0x1FL) // AdEL
+        assertEquals(1L, cpu.cop0[8]) // BadVAddr
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
     }
 
     @Test fun syscallSetsCauseEpcExlAndJumpsToGeneralExceptionVector() {
