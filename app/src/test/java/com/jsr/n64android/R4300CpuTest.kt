@@ -149,6 +149,24 @@ class R4300CpuTest {
         assertEquals(-0x40000000L, cpu.gpr[5])
     }
 
+    @Test fun movzAndMovnOnlyWriteWhenTheirConditionsMatch() {
+        val memory = N64Memory(32)
+        memory.write32(0, rType(1, 2, 3, 0x0A)) // movz $v1, $t0, $t1
+        memory.write32(4, rType(4, 5, 6, 0x0B)) // movn $a2, $a0, $a1
+        memory.write32(8, rType(1, 5, 7, 0x0A)) // movz $a3, $t0, $a1 (must not write)
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 0x123456789ABCDEFL
+        cpu.gpr[2] = 0L
+        cpu.gpr[4] = -0x1234L
+        cpu.gpr[5] = 1L
+        cpu.gpr[7] = 99L
+        repeat(3) { cpu.step() }
+        assertEquals(0x123456789ABCDEFL, cpu.gpr[3])
+        assertEquals(-0x1234L, cpu.gpr[6])
+        assertEquals(99L, cpu.gpr[7])
+    }
+
     @Test fun loadsAndStoresDoublewordsAndZeroExtendsLwu() {
         val memory = N64Memory(64)
         memory.write32(0, iType(0x3F, 1, 2, 0)) // sd $t1, 0($t0)
