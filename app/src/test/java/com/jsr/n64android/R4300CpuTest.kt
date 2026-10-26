@@ -12,11 +12,7 @@ class R4300CpuTest {
         memory.write32(8, iType(0x09, 0, 0, 99))
         val cpu = R4300Cpu(memory)
         cpu.setProgramCounter(0)
-
-        cpu.step()
-        cpu.step()
-        cpu.step()
-
+        repeat(3) { cpu.step() }
         assertEquals(7L, cpu.gpr[1])
         assertEquals(4L, cpu.gpr[2])
         assertEquals(0L, cpu.gpr[0])
@@ -30,7 +26,6 @@ class R4300CpuTest {
         memory.write32(8, iType(0x09, 0, 2, 8))
         memory.write32(12, iType(0x09, 0, 3, 9))
         memory.write32(16, iType(0x09, 0, 4, 10))
-
         val cpu = R4300Cpu(memory)
         cpu.setProgramCounter(0)
         repeat(3) { cpu.step() }
@@ -55,6 +50,30 @@ class R4300CpuTest {
         assertEquals(0x12345678, memory.read32(32))
     }
 
+    @Test fun mapsSignExtendedKseg0AndKseg1Addresses() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x09, 0, 1, 11))
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0xFFFFFFFF80000000L)
+        cpu.step()
+        assertEquals(11L, cpu.gpr[1])
+        assertEquals(0xFFFFFFFF80000004L, cpu.pc)
+        cpu.setProgramCounter(0xFFFFFFFFA0000000L)
+        cpu.step()
+        assertEquals(11L, cpu.gpr[1])
+    }
+
+    @Test fun sltuComparesFullUnsigned64BitRegisters() {
+        val memory = N64Memory(16)
+        memory.write32(0, rType(1, 2, 3, 0x2B))
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 0L
+        cpu.gpr[2] = Long.MIN_VALUE
+        cpu.step()
+        assertEquals(1L, cpu.gpr[3])
+    }
+
     @Test fun rejectsUnalignedInstructionAndWordAccesses() {
         val memory = N64Memory(64)
         memory.write32(0, iType(0x23, 1, 2, 0))
@@ -67,4 +86,7 @@ class R4300CpuTest {
 
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
+
+    private fun rType(rs: Int, rt: Int, rd: Int, funct: Int): Int =
+        (rs shl 21) or (rt shl 16) or (rd shl 11) or funct
 }

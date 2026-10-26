@@ -3,7 +3,7 @@ package com.jsr.n64android
 /**
  * First executable R4300 subset for bring-up and unit tests.
  * This is not a complete MIPS III/R4300 implementation: exceptions, COP0/TLB,
- * 64-bit instructions, cache operations and the full N64 bus remain unimplemented.
+ * 64-bit instruction families, cache operations and the full N64 bus remain unimplemented.
  */
 class R4300Cpu(private val memory: N64Memory) {
     val gpr: LongArray = LongArray(32)
@@ -52,11 +52,9 @@ class R4300Cpu(private val memory: N64Memory) {
                 0x24 -> gpr[rd] = (gpr[rs].toInt() and gpr[rt].toInt()).toLong()
                 0x25 -> gpr[rd] = (gpr[rs].toInt() or gpr[rt].toInt()).toLong()
                 0x26 -> gpr[rd] = (gpr[rs].toInt() xor gpr[rt].toInt()).toLong()
-                0x27 -> gpr[rs].toInt().let { left ->
-                    gpr[rd] = (left or gpr[rt].toInt()).inv().toLong()
-                }
-                0x2A -> gpr[rd] = if (gpr[rs].toInt() < gpr[rt].toInt()) 1L else 0L
-                0x2B -> gpr[rd] = if (gpr[rs].toInt().toUInt() < gpr[rt].toInt().toUInt()) 1L else 0L
+                0x27 -> gpr[rd] = (gpr[rs].toInt() or gpr[rt].toInt()).inv().toLong()
+                0x2A -> gpr[rd] = if (gpr[rs] < gpr[rt]) 1L else 0L
+                0x2B -> gpr[rd] = if (java.lang.Long.compareUnsigned(gpr[rs], gpr[rt]) < 0) 1L else 0L
                 else -> throw UnsupportedOperationException("R4300 SPECIAL funct 0x${funct.toString(16)} at 0x${instructionAddress.toString(16)}")
             }
             0x02, 0x03 -> {
@@ -72,10 +70,10 @@ class R4300Cpu(private val memory: N64Memory) {
                 }
             }
             0x09 -> gpr[rt] = (gpr[rs].toInt() + immediate).toLong()
-            0x0C -> gpr[rt] = (gpr[rs].toInt() and unsignedImmediate).toLong()
-            0x0D -> gpr[rt] = (gpr[rs].toInt() or unsignedImmediate).toLong()
-            0x0E -> gpr[rt] = (gpr[rs].toInt() xor unsignedImmediate).toLong()
-            0x0F -> gpr[rt] = (unsignedImmediate shl 16).toLong()
+            0x0C -> gpr[rt] = gpr[rs] and unsignedImmediate.toLong()
+            0x0D -> gpr[rt] = gpr[rs] or unsignedImmediate.toLong()
+            0x0E -> gpr[rt] = gpr[rs] xor unsignedImmediate.toLong()
+            0x0F -> gpr[rt] = (unsignedImmediate shl 16).toInt().toLong()
             0x20 -> gpr[rt] = memory.read8(physicalAddress(gpr[rs] + immediate)).toByte().toLong()
             0x24 -> gpr[rt] = memory.read8(physicalAddress(gpr[rs] + immediate)).toLong()
             0x21 -> {
@@ -118,11 +116,15 @@ class R4300Cpu(private val memory: N64Memory) {
     }
 
     private fun physicalAddress(address: Long): Int {
-        // KSEG0/KSEG1 are directly mapped to physical addresses on the N64.
-        val physical = if (((address ushr 29) and 0x7L) in 4L..5L) {
-            address and 0x1FFFFFFFL
-        } else address
-        require(physical >= 0L && physical <= Int.MAX_VALUE.toLong()) {
+        // Treat sign-extended 32-bit virtual addresses as 32-bit N64 addresses.
+        val virtual32 = address and 0xFFFFFFFFL
+        val segment = (virtual32 ushr 29) and 0x7L
+        val physical = if (segment == 4L || segment == 5L) {
+            virtual32 and 0x1FFFFFFFL // KSEG0/KSEG1 direct-mapped segments
+        } else {
+            virtual32
+        }
+        require(physical <= Int.MAX_VALUE.toLong()) {
             "Address cannot be represented by this initial RAM bus: 0x${address.toString(16)}"
         }
         return physical.toInt()
