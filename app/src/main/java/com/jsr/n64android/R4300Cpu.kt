@@ -387,8 +387,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 val physical = physicalAddress(aligned, R4300Tlb.Access.WRITE)
                 val oldWord = memory.read32(physical)
                 val shift = (3 - offset) * 8
-                val preserveMask = if (shift == 0) 0 else (-1 ushr (32 - shift))
-                memory.write32(physical, (oldWord and preserveMask) or (gpr[rt].toInt() ushr shift))
+                val valueMask = if (shift == 0) -1 else (-1 shl (32 - shift))
+                val preserveMask = valueMask.inv()
+                memory.write32(physical, (oldWord and preserveMask) or (gpr[rt].toInt() and valueMask))
             }
             0x2E -> { // SWR: store right-side bytes into a big-endian aligned word.
                 val address = gpr[rs] + immediate
