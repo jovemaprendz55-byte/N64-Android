@@ -703,6 +703,21 @@ class R4300CpuTest {
         assertEquals(0x2L, cpu.cop0[12] and 0x2L) // EXL remains set
     }
 
+    @Test fun tlbExceptionPreservesPendingInterruptBitsAndClearsStaleBd() {
+        val memory = N64Memory(4096)
+        val cpu = R4300Cpu(memory)
+        val pendingInterruptBits = 0x0000A500L // Cause.IP and other unrelated bits
+        cpu.cop0[13] = pendingInterruptBits or (1L shl 31) or (9L shl 2)
+        cpu.tlbEnabled = true
+        cpu.setProgramCounter(0x00400000L)
+
+        cpu.step()
+
+        assertEquals(pendingInterruptBits, cpu.cop0[13] and 0x0000FF00L)
+        assertEquals(0L, (cpu.cop0[13] ushr 31) and 1L) // Not a delay-slot exception
+        assertEquals(2L shl 2, cpu.cop0[13] and (0x1FL shl 2)) // ExcCode replaced with TLBL
+    }
+
     private fun cop0Co(funct: Int): Int = (0x10 shl 26) or (0x10 shl 21) or funct
 
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
