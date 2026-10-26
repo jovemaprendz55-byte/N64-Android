@@ -477,8 +477,9 @@ class R4300CpuTest {
             evenPage = R4300Tlb.Page(0, valid = true, dirty = true),
             oddPage = R4300Tlb.Page(0, valid = true, dirty = true)
         ))
-        cpu.step()
-        assertEquals(0xCAFEBABE.toInt(), memory.read32(0x1000))
+        val fault = assertThrows(R4300Tlb.TlbFault::class.java) { cpu.step() }
+        assertEquals(R4300Tlb.FaultKind.MODIFIED, fault.kind)
+        assertEquals(0, memory.read32(0x1000))
     }
 
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
