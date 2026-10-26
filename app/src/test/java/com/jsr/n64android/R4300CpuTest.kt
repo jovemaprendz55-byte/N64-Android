@@ -739,4 +739,33 @@ class R4300CpuTest {
         assertEquals(1L shl 31, cpu.cop0[0])
     }
 
+
+    @Test fun cpuTlbpUsesBothGlobalBitsWhenMatchingDifferentAsid() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop0Co(0x08)) // TLBP
+        val cpu = R4300Cpu(memory)
+        cpu.tlb.write(6, R4300Tlb.Entry(
+            virtualPagePairBase = 0x00400000L,
+            asid = 7,
+            evenPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(2, valid = true, dirty = true, global = true)
+        ))
+        cpu.cop0[10] = 0x00400005L // ASID 5 differs, but both G bits allow a match.
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+        assertEquals(6L, cpu.cop0[0]) // Hit returns the matching index with P cleared.
+
+        cpu.tlb.write(6, R4300Tlb.Entry(
+            virtualPagePairBase = 0x00400000L,
+            asid = 7,
+            evenPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(2, valid = true, dirty = true, global = false)
+        ))
+        cpu.cop0[0] = 3L
+        cpu.setProgramCounter(0)
+        cpu.step()
+        assertEquals(1L shl 31, cpu.cop0[0]) // One G bit is insufficient; probe misses.
+    }
+
 }
