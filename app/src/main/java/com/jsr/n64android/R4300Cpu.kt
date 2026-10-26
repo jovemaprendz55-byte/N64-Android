@@ -95,7 +95,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 }
                 if (takeBranch) delayedTarget = nextSequential + (immediate.toLong() shl 2)
             }
-            0x08 -> gpr[rt] = gpr[rs] + immediate.toLong() // ADDI (overflow exceptions not modeled)
+            0x08 -> gpr[rt] = (gpr[rs].toInt() + immediate).toLong() // ADDI (overflow exceptions not modeled)
             0x09 -> gpr[rt] = (gpr[rs].toInt() + immediate).toLong()
             0x18 -> gpr[rt] = gpr[rs] + immediate.toLong() // DADDI (overflow exceptions not modeled)
             0x19 -> gpr[rt] = gpr[rs] + immediate.toLong() // DADDIU
