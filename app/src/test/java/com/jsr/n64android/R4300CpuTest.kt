@@ -207,6 +207,47 @@ class R4300CpuTest {
         assertEquals(1L, cpu.gpr[6])
     }
 
+    @Test fun signedDoublewordMultiplyAndDivideUpdateHiLo() {
+        val memory = N64Memory(64)
+        memory.write32(0, rType(1, 2, 0, 0x1C)) // dmult
+        memory.write32(4, rType(0, 0, 3, 0x12)) // mflo
+        memory.write32(8, rType(0, 0, 4, 0x10)) // mfhi
+        memory.write32(12, rType(1, 2, 0, 0x1E)) // ddiv
+        memory.write32(16, rType(0, 0, 5, 0x12)) // mflo
+        memory.write32(20, rType(0, 0, 6, 0x10)) // mfhi
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = Long.MIN_VALUE
+        cpu.gpr[2] = 2L
+        repeat(3) { cpu.step() }
+        assertEquals(0L, cpu.gpr[3])
+        assertEquals(-1L, cpu.gpr[4])
+        cpu.gpr[1] = -17L
+        cpu.gpr[2] = 5L
+        repeat(3) { cpu.step() }
+        assertEquals(-3L, cpu.gpr[5])
+        assertEquals(-2L, cpu.gpr[6])
+    }
+
+    @Test fun unsignedDoublewordMultiplyAndDivideHandleHighBit() {
+        val memory = N64Memory(64)
+        memory.write32(0, rType(1, 2, 0, 0x1D)) // dmultu
+        memory.write32(4, rType(0, 0, 3, 0x12)) // mflo
+        memory.write32(8, rType(0, 0, 4, 0x10)) // mfhi
+        memory.write32(12, rType(1, 2, 0, 0x1F)) // ddivu
+        memory.write32(16, rType(0, 0, 5, 0x12)) // mflo
+        memory.write32(20, rType(0, 0, 6, 0x10)) // mfhi
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = -1L // unsigned 2^64-1
+        cpu.gpr[2] = 2L
+        repeat(6) { cpu.step() }
+        assertEquals(-2L, cpu.gpr[3]) // low 64 bits of (2^64-1)*2
+        assertEquals(1L, cpu.gpr[4])
+        assertEquals(0x7FFFFFFFFFFFFFFFL, cpu.gpr[5])
+        assertEquals(1L, cpu.gpr[6])
+    }
+
     @Test fun loadsAndStoresDoublewordsAndZeroExtendsLwu() {
         val memory = N64Memory(64)
         memory.write32(0, iType(0x3F, 1, 2, 0)) // sd $t1, 0($t0)
