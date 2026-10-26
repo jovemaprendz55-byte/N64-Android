@@ -49,6 +49,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             stepInstruction()
         } catch (fault: R4300Tlb.TlbFault) {
             enterTlbException(fault, branchAddressForFault)
+        } catch (fault: AddressFault) {
+            enterAddressException(fault, branchAddressForFault)
         }
     }
 
@@ -363,12 +365,12 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             0x28 -> memory.write8(physicalAddress(gpr[rs] + immediate, R4300Tlb.Access.WRITE), gpr[rt].toInt())
             0x29 -> {
                 val address = gpr[rs] + immediate
-                requireAligned(address, 2)
+                requireAligned(address, 2, store = true)
                 memory.write16(physicalAddress(address, R4300Tlb.Access.WRITE), gpr[rt].toInt())
             }
             0x2B -> {
                 val address = gpr[rs] + immediate
-                requireAligned(address, 4)
+                requireAligned(address, 4, store = true)
                 memory.write32(physicalAddress(address, R4300Tlb.Access.WRITE), gpr[rt].toInt())
             }
             0x3F -> { // SD: store a big-endian doubleword
@@ -464,9 +466,19 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         return if (value >= 0L) signed else signed.add(BigInteger.ONE.shiftLeft(64))
     }
 
-    private fun requireAligned(address: Long, alignment: Int) {
-        require((address and (alignment - 1).toLong()) == 0L) {
-            "Unaligned $alignment-byte memory access at 0x${address.toString(16)}."
+    private class AddressFault(val virtualAddress: Long, val store: Boolean) : RuntimeException()
+
+    private fun enterAddressException(fault: AddressFault, branchAddress: Long?) {
+        cop0[8] = fault.virtualAddress and 0xFFFFFFFFL // BadVAddr
+        enterException(pc, if (fault.store) 5 else 4, branchAddress) // AdES / AdEL
+        pc = exceptionVector()
+        delayedTarget = null
+        pendingDelaySlotBranchAddress = null
+    }
+
+    private fun requireAligned(address: Long, alignment: Int, store: Boolean = false) {
+        if ((address and (alignment - 1).toLong()) != 0L) {
+            throw AddressFault(address, store)
         }
     }
 
