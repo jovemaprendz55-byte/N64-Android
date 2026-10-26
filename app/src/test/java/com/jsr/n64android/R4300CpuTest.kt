@@ -1,14 +1,15 @@
 package com.jsr.n64android
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class R4300CpuTest {
     @Test fun executesAddiuAndKeepsZeroRegisterImmutable() {
         val memory = N64Memory(64)
-        memory.write32(0, iType(0x09, 0, 1, 7)) // addiu r1,r0,7
-        memory.write32(4, iType(0x09, 1, 2, -3)) // addiu r2,r1,-3
-        memory.write32(8, iType(0x09, 0, 0, 99)) // writes to r0 are discarded
+        memory.write32(0, iType(0x09, 0, 1, 7))
+        memory.write32(4, iType(0x09, 1, 2, -3))
+        memory.write32(8, iType(0x09, 0, 0, 99))
         val cpu = R4300Cpu(memory)
         cpu.setProgramCounter(0)
 
@@ -24,11 +25,11 @@ class R4300CpuTest {
 
     @Test fun branchExecutesDelaySlotBeforeTakingTarget() {
         val memory = N64Memory(64)
-        memory.write32(0, iType(0x09, 0, 1, 5)) // addiu r1,r0,5
-        memory.write32(4, iType(0x04, 1, 1, 2)) // beq r1,r1,+2 -> address 16
-        memory.write32(8, iType(0x09, 0, 2, 8)) // delay slot
-        memory.write32(12, iType(0x09, 0, 3, 9)) // skipped
-        memory.write32(16, iType(0x09, 0, 4, 10)) // branch target
+        memory.write32(0, iType(0x09, 0, 1, 5))
+        memory.write32(4, iType(0x04, 1, 1, 2))
+        memory.write32(8, iType(0x09, 0, 2, 8))
+        memory.write32(12, iType(0x09, 0, 3, 9))
+        memory.write32(16, iType(0x09, 0, 4, 10))
 
         val cpu = R4300Cpu(memory)
         cpu.setProgramCounter(0)
@@ -52,6 +53,16 @@ class R4300CpuTest {
         repeat(5) { cpu.step() }
         assertEquals(0x12345678L, cpu.gpr[3])
         assertEquals(0x12345678, memory.read32(32))
+    }
+
+    @Test fun rejectsUnalignedInstructionAndWordAccesses() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x23, 1, 2, 0))
+        val cpu = R4300Cpu(memory)
+        assertThrows(IllegalArgumentException::class.java) { cpu.setProgramCounter(2) }
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 1
+        assertThrows(IllegalArgumentException::class.java) { cpu.step() }
     }
 
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =

@@ -21,6 +21,11 @@ class N64RomLoaderTest {
         assertTrue(N64RomLoader.load(ByteArray(0x40)) is RomLoadResult.Failure)
     }
 
+    @Test fun rejectsNonWordAlignedRomSize() {
+        val bytes = romWithHeader(0x80, 0x37, 0x12, 0x40) + byteArrayOf(1)
+        assertTrue(N64RomLoader.load(bytes) is RomLoadResult.Failure)
+    }
+
     @Test fun normalizesV64HalfwordOrder() {
         val result = N64RomLoader.load(romWithHeader(0x37, 0x80, 0x40, 0x12)) as RomLoadResult.Success
         assertEquals(0x80.toByte(), result.rom.bytes[0])

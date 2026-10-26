@@ -18,6 +18,7 @@ class R4300Cpu(private val memory: N64Memory) {
     }
 
     fun setProgramCounter(address: Long) {
+        require(address and 0x3L == 0L) { "Instruction address must be 4-byte aligned." }
         pc = address
         delayedTarget = null
     }
@@ -41,17 +42,19 @@ class R4300Cpu(private val memory: N64Memory) {
 
         when (opcode) {
             0 -> when (funct) {
-                0x00 -> if (instruction != 0) gpr[rd] = (gpr[rt].toInt() shl shamt).toLong() // SLL
-                0x02 -> gpr[rd] = (gpr[rt].toInt() ushr shamt).toLong() // SRL
-                0x03 -> gpr[rd] = (gpr[rt].toInt() shr shamt).toLong() // SRA
-                0x08 -> delayedTarget = gpr[rs] // JR
-                0x09 -> { gpr[rd] = nextSequential + 4L; delayedTarget = gpr[rs] } // JALR
-                0x21 -> gpr[rd] = (gpr[rs].toInt() + gpr[rt].toInt()).toLong() // ADDU
-                0x23 -> gpr[rd] = (gpr[rs].toInt() - gpr[rt].toInt()).toLong() // SUBU
+                0x00 -> if (instruction != 0) gpr[rd] = (gpr[rt].toInt() shl shamt).toLong()
+                0x02 -> gpr[rd] = (gpr[rt].toInt() ushr shamt).toLong()
+                0x03 -> gpr[rd] = (gpr[rt].toInt() shr shamt).toLong()
+                0x08 -> delayedTarget = gpr[rs]
+                0x09 -> { gpr[rd] = nextSequential + 4L; delayedTarget = gpr[rs] }
+                0x21 -> gpr[rd] = (gpr[rs].toInt() + gpr[rt].toInt()).toLong()
+                0x23 -> gpr[rd] = (gpr[rs].toInt() - gpr[rt].toInt()).toLong()
                 0x24 -> gpr[rd] = (gpr[rs].toInt() and gpr[rt].toInt()).toLong()
                 0x25 -> gpr[rd] = (gpr[rs].toInt() or gpr[rt].toInt()).toLong()
                 0x26 -> gpr[rd] = (gpr[rs].toInt() xor gpr[rt].toInt()).toLong()
-                0x27 -> gpr[rd] = (gpr[rs].toInt() or gpr[rt].toInt()).inv().toLong()
+                0x27 -> gpr[rs].toInt().let { left ->
+                    gpr[rd] = (left or gpr[rt].toInt()).inv().toLong()
+                }
                 0x2A -> gpr[rd] = if (gpr[rs].toInt() < gpr[rt].toInt()) 1L else 0L
                 0x2B -> gpr[rd] = if (gpr[rs].toInt().toUInt() < gpr[rt].toInt().toUInt()) 1L else 0L
                 else -> throw UnsupportedOperationException("R4300 SPECIAL funct 0x${funct.toString(16)} at 0x${instructionAddress.toString(16)}")
@@ -68,19 +71,39 @@ class R4300Cpu(private val memory: N64Memory) {
                     delayedTarget = nextSequential + (immediate.toLong() shl 2)
                 }
             }
-            0x09 -> gpr[rt] = (gpr[rs].toInt() + immediate).toLong() // ADDIU
+            0x09 -> gpr[rt] = (gpr[rs].toInt() + immediate).toLong()
             0x0C -> gpr[rt] = (gpr[rs].toInt() and unsignedImmediate).toLong()
             0x0D -> gpr[rt] = (gpr[rs].toInt() or unsignedImmediate).toLong()
             0x0E -> gpr[rt] = (gpr[rs].toInt() xor unsignedImmediate).toLong()
-            0x0F -> gpr[rt] = (unsignedImmediate shl 16).toLong() // LUI
+            0x0F -> gpr[rt] = (unsignedImmediate shl 16).toLong()
             0x20 -> gpr[rt] = memory.read8(physicalAddress(gpr[rs] + immediate)).toByte().toLong()
             0x24 -> gpr[rt] = memory.read8(physicalAddress(gpr[rs] + immediate)).toLong()
-            0x21 -> gpr[rt] = memory.read16(physicalAddress(gpr[rs] + immediate)).toShort().toLong()
-            0x25 -> gpr[rt] = memory.read16(physicalAddress(gpr[rs] + immediate)).toLong()
-            0x23 -> gpr[rt] = memory.read32(physicalAddress(gpr[rs] + immediate)).toLong()
+            0x21 -> {
+                val address = gpr[rs] + immediate
+                requireAligned(address, 2)
+                gpr[rt] = memory.read16(physicalAddress(address)).toShort().toLong()
+            }
+            0x25 -> {
+                val address = gpr[rs] + immediate
+                requireAligned(address, 2)
+                gpr[rt] = memory.read16(physicalAddress(address)).toLong()
+            }
+            0x23 -> {
+                val address = gpr[rs] + immediate
+                requireAligned(address, 4)
+                gpr[rt] = memory.read32(physicalAddress(address)).toLong()
+            }
             0x28 -> memory.write8(physicalAddress(gpr[rs] + immediate), gpr[rt].toInt())
-            0x29 -> memory.write16(physicalAddress(gpr[rs] + immediate), gpr[rt].toInt())
-            0x2B -> memory.write32(physicalAddress(gpr[rs] + immediate), gpr[rt].toInt())
+            0x29 -> {
+                val address = gpr[rs] + immediate
+                requireAligned(address, 2)
+                memory.write16(physicalAddress(address), gpr[rt].toInt())
+            }
+            0x2B -> {
+                val address = gpr[rs] + immediate
+                requireAligned(address, 4)
+                memory.write32(physicalAddress(address), gpr[rt].toInt())
+            }
             else -> throw UnsupportedOperationException("R4300 opcode 0x${opcode.toString(16)} at 0x${instructionAddress.toString(16)}")
         }
 
@@ -88,10 +111,16 @@ class R4300Cpu(private val memory: N64Memory) {
         gpr[0] = 0L
     }
 
+    private fun requireAligned(address: Long, alignment: Int) {
+        require((address and (alignment - 1).toLong()) == 0L) {
+            "Unaligned $alignment-byte memory access at 0x${address.toString(16)}."
+        }
+    }
+
     private fun physicalAddress(address: Long): Int {
         // KSEG0/KSEG1 are directly mapped to physical addresses on the N64.
         val physical = if (((address ushr 29) and 0x7L) in 4L..5L) {
-            (address and 0x1FFFFFFFL)
+            address and 0x1FFFFFFFL
         } else address
         require(physical >= 0L && physical <= Int.MAX_VALUE.toLong()) {
             "Address cannot be represented by this initial RAM bus: 0x${address.toString(16)}"

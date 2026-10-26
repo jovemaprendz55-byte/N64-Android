@@ -20,9 +20,18 @@ class N64MemoryTest {
         assertEquals(0, memory.read32(0))
     }
 
-    @Test fun rejectsOutOfRangeAccess() {
+    @Test fun rejectsOutOfRangeAccessWithoutPartialWrite() {
         val memory = N64Memory(4)
+        memory.write8(3, 0x55)
         assertThrows(IllegalArgumentException::class.java) { memory.read8(4) }
         assertThrows(IllegalArgumentException::class.java) { memory.write16(3, 0x1234) }
+        assertThrows(IllegalArgumentException::class.java) { memory.write32(1, 0x12345678) }
+        assertEquals(0x55, memory.read8(3))
+    }
+
+    @Test fun rejectsNegativeAndOverflowingRanges() {
+        val memory = N64Memory(8)
+        assertThrows(IllegalArgumentException::class.java) { memory.read32(-1) }
+        assertThrows(IllegalArgumentException::class.java) { memory.read16(Int.MAX_VALUE) }
     }
 }

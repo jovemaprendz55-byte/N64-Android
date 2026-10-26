@@ -8,6 +8,8 @@ import android.view.Gravity
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import java.io.ByteArrayOutputStream
+import java.io.IOException
 
 class MainActivity : Activity() {
     private lateinit var status: TextView
@@ -53,7 +55,24 @@ class MainActivity : Activity() {
         if (requestCode != REQUEST_ROM || resultCode != RESULT_OK) return
         val uri: Uri = data?.data ?: return
         val bytes = try {
-            contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            contentResolver.openInputStream(uri)?.use { input ->
+                val output = ByteArrayOutputStream()
+                val buffer = ByteArray(8192)
+                var total = 0
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    total += count
+                    if (total > N64RomLoader.MAX_ROM_SIZE_BYTES) {
+                        throw IOException("ROM maior que o limite suportado de 64 MiB.")
+                    }
+                    output.write(buffer, 0, count)
+                }
+                output.toByteArray()
+            }
+        } catch (error: IOException) {
+            status.text = error.message ?: "Erro ao ler o arquivo selecionado."
+            return
         } catch (_: Exception) {
             null
         }
