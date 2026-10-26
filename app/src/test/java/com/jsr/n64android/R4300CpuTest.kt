@@ -1362,4 +1362,87 @@ class R4300CpuTest {
         assertEquals(4L, cpu.pc)
     }
 
+
+    @Test fun tlbLoadMissUpdatesCop0MetadataAndUsesRefillVector() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x23, 1, 2, 0)) // lw $v0, 0($at)
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
+        ))
+        val faultAddress = 0x00401234L
+        cpu.gpr[1] = faultAddress
+        cpu.cop0[10] = 0x5AL // Preserve current ASID while recording VPN2.
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr
+        assertEquals((faultAddress and R4300Tlb.PAGE_PAIR_MASK) or 0x5AL, cpu.cop0[10]) // EntryHi
+        assertEquals((faultAddress ushr 9) and 0x007FFFF0L, cpu.cop0[4] and 0x007FFFF0L) // Context.BadVPN2
+        assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBL
+        assertEquals(0L, cpu.cop0[14]) // EPC
+        assertEquals(0x2L, cpu.cop0[12] and 0x2L) // EXL
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc) // TLB refill vector
+    }
+
+    @Test fun tlbStoreToCleanPageRaisesModifiedAndUsesGeneralVector() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x2B, 1, 2, 0)) // sw $v0, 0($at)
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
+        ))
+        val faultAddress = 0x00401234L
+        cpu.tlb.write(1, R4300Tlb.Entry(
+            virtualPagePairBase = faultAddress and R4300Tlb.PAGE_PAIR_MASK,
+            asid = 0,
+            evenPage = R4300Tlb.Page(2, valid = true, dirty = false, global = true),
+            oddPage = R4300Tlb.Page(3, valid = true, dirty = true, global = true)
+        ))
+        cpu.gpr[1] = faultAddress
+        cpu.gpr[2] = 0x12345678L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(faultAddress, cpu.cop0[8])
+        assertEquals(1L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLB Modified
+        assertEquals(0L, cpu.cop0[14])
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+        assertEquals(0L, memory.read32(8).toLong()) // No store occurred at mapped frame 2.
+    }
+
+    @Test fun tlbFaultInBranchDelaySlotSetsCauseBdAndBranchAddressAsEpc() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x04, 0, 0, 2)) // beq $zero, $zero, target
+        memory.write32(4, iType(0x23, 1, 2, 0)) // lw $v0, 0($at) in delay slot
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
+        ))
+        cpu.gpr[1] = 0x00401234L
+        cpu.setProgramCounter(0)
+
+        cpu.step() // Branch establishes a delay slot.
+        cpu.step() // The data access faults in the delay slot.
+
+        assertEquals(0L, cpu.cop0[14]) // EPC identifies the branch, not the delay-slot load.
+        assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD
+        assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBL
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc)
+    }
+
 }
