@@ -1543,4 +1543,24 @@ class R4300CpuTest {
         assertEquals(0x2L, cpu.cop0[12] and 0x2L) // EXL is set.
     }
 
+
+    @Test fun tlbMissWhileExlIsSetPreservesPreviousEpcAndUsesGeneralVector() {
+        val memory = N64Memory(64)
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        val faultAddress = 0x00400000L
+        val previousEpc = 0x12345678L
+        cpu.cop0[12] = 0x2L // EXL already set.
+        cpu.cop0[14] = previousEpc
+        cpu.setProgramCounter(faultAddress)
+
+        cpu.step()
+
+        assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr still records the new fault.
+        assertEquals(previousEpc, cpu.cop0[14]) // EPC is not overwritten while EXL is set.
+        assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBL.
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc) // Nested exception uses general vector.
+        assertEquals(0x2L, cpu.cop0[12] and 0x2L) // EXL remains set.
+    }
+
 }
