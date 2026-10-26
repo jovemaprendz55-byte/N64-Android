@@ -2607,4 +2607,26 @@ class R4300CpuTest {
         assertEquals(0x13579BDFL, cpu.gpr[2]) // Destination remains unchanged.
     }
 
+
+    @Test fun misalignedWordStoreInBranchDelaySlotSetsBadVAddrEpcAndCauseBd() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x04, 0, 0, 2)) // beq $zero, $zero, target
+        memory.write32(4, iType(0x2B, 1, 2, 0)) // sw $v0, 0($at) in the delay slot.
+        memory.write32(16, 0x12345678)
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = 1L // Misaligned address.
+        cpu.gpr[2] = 0xCAFEBABEL
+        cpu.setProgramCounter(0)
+
+        cpu.step() // Execute branch and schedule the delay slot.
+        cpu.step() // The delay-slot store raises AdES.
+
+        assertEquals(1L, cpu.cop0[8]) // BadVAddr is the effective store address.
+        assertEquals(0L, cpu.cop0[14]) // EPC points back to the branch.
+        assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD.
+        assertEquals(5L, (cpu.cop0[13] ushr 2) and 0x1FL) // AdES.
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+        assertEquals(0x12345678L, memory.read32(16).toLong() and 0xFFFFFFFFL)
+    }
+
 }
