@@ -1019,6 +1019,70 @@ class R4300CpuTest {
         assertEquals(0L, cpu.cop0[13])
     }
 
+    @Test fun sdlAtOffsetZeroStoresOnlyTheMostSignificantByte() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x2C, 1, 2, 0)) // sdl $v0, 0($at)
+        memory.write32(32, 0xAABBCCDD.toInt())
+        memory.write32(36, 0xEEFF0011.toInt())
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = 32L
+        cpu.gpr[2] = 0x1122334455667788L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0x11BBCCDDL, memory.read32(32).toLong() and 0xFFFFFFFFL)
+        assertEquals(0xEEFF0011L, memory.read32(36).toLong() and 0xFFFFFFFFL)
+    }
+
+    @Test fun sdlAtOffsetSevenStoresTheEntireDoubleword() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x2C, 1, 2, 0)) // sdl $v0, 0($at)
+        memory.write32(32, 0xAABBCCDD.toInt())
+        memory.write32(36, 0xEEFF0011.toInt())
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = 39L
+        cpu.gpr[2] = 0x1122334455667788L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0x11223344L, memory.read32(32).toLong() and 0xFFFFFFFFL)
+        assertEquals(0x55667788L, memory.read32(36).toLong() and 0xFFFFFFFFL)
+    }
+
+    @Test fun sdrAtOffsetZeroStoresTheEntireDoubleword() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x2D, 1, 2, 0)) // sdr $v0, 0($at)
+        memory.write32(32, 0xAABBCCDD.toInt())
+        memory.write32(36, 0xEEFF0011.toInt())
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = 32L
+        cpu.gpr[2] = 0x1122334455667788L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0x11223344L, memory.read32(32).toLong() and 0xFFFFFFFFL)
+        assertEquals(0x55667788L, memory.read32(36).toLong() and 0xFFFFFFFFL)
+    }
+
+    @Test fun sdrAtOffsetSevenStoresOnlyTheLeastSignificantByte() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x2D, 1, 2, 0)) // sdr $v0, 0($at)
+        memory.write32(32, 0xAABBCCDD.toInt())
+        memory.write32(36, 0xEEFF0011.toInt())
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = 39L
+        cpu.gpr[2] = 0x1122334455667788L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0xAABBCCDDL, memory.read32(32).toLong() and 0xFFFFFFFFL)
+        assertEquals(0xEEFF0088L, memory.read32(36).toLong() and 0xFFFFFFFFL)
+    }
+
     @Test fun swlAtOffsetZeroStoresOnlyTheMostSignificantByte() {
         val memory = N64Memory(64)
         memory.write32(0, iType(0x2A, 1, 2, 0)) // swl $v0, 0($at)
