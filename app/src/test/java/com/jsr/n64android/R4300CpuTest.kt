@@ -2560,4 +2560,30 @@ class R4300CpuTest {
         assertEquals(0x12345678L, memory.read32(0x1000).toLong() and 0xFFFFFFFFL)
     }
 
+
+    @Test fun misalignedWordStoreRaisesAddressErrorBeforeTlbTranslationAndPreservesMemory() {
+        val memory = N64Memory(8192)
+        memory.write32(0, iType(0x2B, 1, 2, 1)) // sw $v0, 1($at): unaligned.
+        memory.write32(0x1000, 0x12345678)
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0x00400000L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
+        ))
+        cpu.gpr[1] = 0x00801000L // Effective address is unaligned and unmapped.
+        cpu.gpr[2] = 0xCAFEBABEL
+        cpu.setProgramCounter(0x00400000L) // Fetch through the mapped instruction page.
+
+        cpu.step()
+
+        assertEquals(0x00801001L, cpu.cop0[8]) // BadVAddr records the effective address.
+        assertEquals(5L, (cpu.cop0[13] ushr 2) and 0x1FL) // AdES precedes the TLB miss.
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+        assertEquals(0xCAFEBABEL, cpu.gpr[2]) // Source register is preserved.
+        assertEquals(0x12345678L, memory.read32(0x1000).toLong() and 0xFFFFFFFFL)
+    }
+
 }
