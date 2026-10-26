@@ -425,7 +425,7 @@ class R4300CpuTest {
         cpu.setProgramCounter(0)
         cpu.step()
         cpu.step()
-        assertEquals(0L, cpu.cop0[14]) // EPC points to the branch, not the delay slot
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.cop0[14]) // EPC points to the branch in KSEG0, not the delay slot
         assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD
         assertEquals(8L, (cpu.cop0[13] ushr 2) and 0x1FL) // Syscall ExcCode
         assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
