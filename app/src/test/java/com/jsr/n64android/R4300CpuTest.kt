@@ -6,6 +6,48 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class R4300CpuTest {
+    @Test fun daddSigned64BitOverflowRaisesExceptionButDadduWraps() {
+        val memory = N64Memory(64)
+        memory.write32(0, rType(1, 2, 3, 0x2C)) // dadd $v1, $at, $v0
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = Long.MAX_VALUE
+        cpu.gpr[2] = 1L
+        cpu.gpr[3] = 99L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(12L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(99L, cpu.gpr[3])
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+
+        val wrappingMemory = N64Memory(64)
+        wrappingMemory.write32(0, rType(1, 2, 3, 0x2D)) // daddu does not trap
+        val wrappingCpu = R4300Cpu(wrappingMemory)
+        wrappingCpu.gpr[1] = Long.MAX_VALUE
+        wrappingCpu.gpr[2] = 1L
+        wrappingCpu.setProgramCounter(0)
+        wrappingCpu.step()
+        assertEquals(Long.MIN_VALUE, wrappingCpu.gpr[3])
+        assertEquals(0L, wrappingCpu.cop0[12] and 0x2L)
+    }
+
+    @Test fun dsubSigned64BitOverflowRaisesException() {
+        val memory = N64Memory(64)
+        memory.write32(0, rType(1, 2, 3, 0x2E)) // dsub $v1, $at, $v0
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = Long.MIN_VALUE
+        cpu.gpr[2] = 1L
+        cpu.gpr[3] = 55L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(12L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(55L, cpu.gpr[3])
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+    }
+
     @Test fun addiOverflowRaisesOverflowExceptionWithoutWritingDestination() {
         val memory = N64Memory(64)
         memory.write32(0, iType(0x08, 1, 2, 1)) // addi $v0, $at, 1
