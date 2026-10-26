@@ -13,6 +13,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         private set
     var lo: Long = 0L
         private set
+    /** Basic 32-bit COP0 register storage; exception and privilege semantics are not modeled yet. */
+    val cop0: LongArray = LongArray(32)
     var pc: Long = RESET_VECTOR
         private set
     private var delayedTarget: Long? = null
@@ -21,6 +23,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         gpr.fill(0L)
         hi = 0L
         lo = 0L
+        cop0.fill(0L)
         pc = RESET_VECTOR
         delayedTarget = null
     }
@@ -146,6 +149,17 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 0x2A -> gpr[rd] = if (gpr[rs] < gpr[rt]) 1L else 0L
                 0x2B -> gpr[rd] = if (java.lang.Long.compareUnsigned(gpr[rs], gpr[rt]) < 0) 1L else 0L
                 else -> throw UnsupportedOperationException("R4300 SPECIAL funct 0x${funct.toString(16)} at 0x${instructionAddress.toString(16)}")
+            }
+            0x10 -> { // COP0: minimal MFC0/MTC0 register transfers
+                val copRs = rs
+                val copRd = (instruction ushr 11) and 0x1F
+                when (copRs) {
+                    0x00 -> gpr[rt] = cop0[copRd].toInt().toLong() // MFC0 sign-extends 32-bit value
+                    0x04 -> cop0[copRd] = gpr[rt].toInt().toLong() // MTC0 writes low 32 bits
+                    else -> throw UnsupportedOperationException(
+                        "R4300 COP0 rs=0x${copRs.toString(16)} at 0x${instructionAddress.toString(16)}"
+                    )
+                }
             }
             0x01 -> {
                 val takeBranch = when (rt) {
