@@ -497,9 +497,44 @@ class R4300CpuTest {
         // Fetch the test instruction through KSEG0, which bypasses the TLB.
         // This isolates the expected MODIFIED fault to the data store under test.
         cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
-        val fault = assertThrows(R4300Tlb.TlbFault::class.java) { cpu.step() }
-        assertEquals(R4300Tlb.FaultKind.MODIFIED, fault.kind)
+        cpu.step()
+        assertEquals(0x00400000L, cpu.cop0[8]) // BadVAddr
+        assertEquals(1L shl 2, cpu.cop0[13] and (0x1FL shl 2)) // Cause.Mod
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
         assertEquals(0, memory.read32(0x1000))
+    }
+
+    @Test fun tlbMissUpdatesCop0FaultRegistersAndUsesRefillVector() {
+        val memory = N64Memory(4096)
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        cpu.setProgramCounter(0x00400000L)
+
+        cpu.step()
+
+        assertEquals(0x00400000L, cpu.cop0[8]) // BadVAddr
+        assertEquals(0x00400000L, cpu.cop0[10] and 0xFFFFE000L) // EntryHi.VPN2
+        assertEquals(2L shl 2, cpu.cop0[13] and (0x1FL shl 2)) // Cause.TLBL
+        assertEquals(0x00400000L, cpu.cop0[14]) // EPC
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc)
+        assertEquals(0x2L, cpu.cop0[12] and 0x2L) // EXL
+    }
+
+    @Test fun tlbStoreMissUsesStoreExceptionCodeAndBootRefillVector() {
+        val memory = N64Memory(4096)
+        val cpu = R4300Cpu(memory)
+        memory.write32(0, iType(0x0F, 0, 8, 0x0040)) // lui $t0, 0x0040
+        memory.write32(4, iType(0x2B, 8, 0, 0)) // sw $zero, 0($t0)
+        cpu.cop0[12] = 1L shl 22 // Status.BEV
+        cpu.tlbEnabled = true
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+        cpu.step()
+
+        assertEquals(0x00400000L, cpu.cop0[8])
+        assertEquals(3L shl 2, cpu.cop0[13] and (0x1FL shl 2)) // Cause.TLBS
+        assertEquals(0xFFFFFFFFBFC00200UL.toLong(), cpu.pc)
     }
 
     private fun cop0Co(funct: Int): Int = (0x10 shl 26) or (0x10 shl 21) or funct
