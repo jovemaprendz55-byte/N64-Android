@@ -13,7 +13,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         private set
     var lo: Long = 0L
         private set
-    /** Basic 32-bit COP0 register storage; exception and privilege semantics are not modeled yet. */
+    /** Basic COP0 storage with initial syscall/break exception and ERET handling. */
     val cop0: LongArray = LongArray(32)
     var pc: Long = RESET_VECTOR
         private set
@@ -138,6 +138,14 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                         lo = result[0].toLong()
                         hi = result[1].toLong()
                     } // Division by zero has architecturally unpredictable results.
+                }
+                0x0C -> { // SYSCALL: initial synchronous exception handling
+                    enterException(instructionAddress, 8)
+                    directPc = exceptionVector()
+                }
+                0x0D -> { // BREAK: initial synchronous exception handling
+                    enterException(instructionAddress, 9)
+                    directPc = exceptionVector()
                 }
                 0x08 -> delayedTarget = gpr[rs]
                 0x09 -> { gpr[rd] = nextSequential + 4L; delayedTarget = gpr[rs] }
@@ -266,8 +274,26 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             else -> throw UnsupportedOperationException("R4300 opcode 0x${opcode.toString(16)} at 0x${instructionAddress.toString(16)}")
         }
 
-        pc = targetFromPreviousBranch ?: directPc ?: nextSequential
+        pc = directPc ?: targetFromPreviousBranch ?: nextSequential
         gpr[0] = 0L
+    }
+
+    private fun enterException(instructionAddress: Long, exceptionCode: Int) {
+        val status = cop0[12]
+        if ((status and 0x2L) == 0L) {
+            cop0[14] = instructionAddress // EPC; branch-delay-slot EPC/BD is not modeled yet.
+        }
+        cop0[13] = (cop0[13] and (0x1FL shl 2).inv()) or (exceptionCode.toLong() shl 2)
+        cop0[12] = status or 0x2L // Set EXL.
+    }
+
+    private fun exceptionVector(): Long {
+        // Status.BEV (bit 22) selects the boot exception vector.
+        return if ((cop0[12] and (1L shl 22)) != 0L) {
+            0xFFFFFFFFBFC00380UL.toLong()
+        } else {
+            0xFFFFFFFF80000180UL.toLong()
+        }
     }
 
     private fun unsignedBigInteger(value: Long): BigInteger {
