@@ -281,8 +281,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             0x3F -> { // SD: store a big-endian doubleword
                 val address = gpr[rs] + immediate
                 requireAligned(address, 8)
-                memory.write32(physicalAddress(address, R4300Tlb.Access.READ), (gpr[rt] ushr 32).toInt())
-                memory.write32(physicalAddress(address + 4L), gpr[rt].toInt())
+                memory.write32(physicalAddress(address, R4300Tlb.Access.WRITE), (gpr[rt] ushr 32).toInt())
+                memory.write32(physicalAddress(address + 4L, R4300Tlb.Access.WRITE), gpr[rt].toInt())
             }
             else -> throw UnsupportedOperationException("R4300 opcode 0x${opcode.toString(16)} at 0x${instructionAddress.toString(16)}")
         }
