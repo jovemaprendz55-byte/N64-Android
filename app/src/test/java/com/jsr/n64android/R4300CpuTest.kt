@@ -417,6 +417,20 @@ class R4300CpuTest {
         assertEquals(0x44L, cpu.cop0[14]) // EPC remains unchanged while EXL is set
     }
 
+    @Test fun syscallInBranchDelaySlotSetsCauseBdAndBranchEpc() {
+        val memory = N64Memory(0x200)
+        memory.write32(0, iType(0x04, 0, 0, 2)) // beq $zero, $zero, target
+        memory.write32(4, rType(0, 0, 0, 0x0C)) // syscall in delay slot
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.step()
+        cpu.step()
+        assertEquals(0L, cpu.cop0[14]) // EPC points to the branch, not the delay slot
+        assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD
+        assertEquals(8L, (cpu.cop0[13] ushr 2) and 0x1FL) // Syscall ExcCode
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
