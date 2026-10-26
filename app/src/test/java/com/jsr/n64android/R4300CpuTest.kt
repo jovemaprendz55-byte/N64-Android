@@ -75,6 +75,39 @@ class R4300CpuTest {
         assertEquals(1L, cpu.gpr[3])
     }
 
+    @Test fun immediateComparisonsUseSignedAndUnsignedSemantics() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x0A, 1, 2, -1)) // slti $v0, $t0, -1
+        memory.write32(4, iType(0x0B, 1, 3, -1)) // sltiu $v1, $t0, 0xffffffffffffffff
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = -2L
+        cpu.step()
+        cpu.step()
+        assertEquals(1L, cpu.gpr[2])
+        assertEquals(1L, cpu.gpr[3])
+    }
+
+    @Test fun blezAndBltzTakeBranchesAfterDelaySlot() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x06, 1, 0, 2)) // blez $t0, target at 12
+        memory.write32(4, iType(0x09, 0, 2, 7)) // delay slot
+        memory.write32(8, iType(0x09, 0, 3, 8)) // skipped
+        memory.write32(12, iType(0x01, 1, 0, 1)) // bltz $t0, target at 20
+        memory.write32(16, iType(0x09, 0, 4, 9)) // delay slot
+        memory.write32(20, iType(0x09, 0, 5, 10))
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = -1L
+        repeat(4) { cpu.step() }
+        assertEquals(7L, cpu.gpr[2])
+        assertEquals(0L, cpu.gpr[3])
+        assertEquals(9L, cpu.gpr[4])
+        assertEquals(20L, cpu.pc)
+        cpu.step()
+        assertEquals(10L, cpu.gpr[5])
+    }
+
     @Test fun resetVectorReportsMissingPifRomInsteadOfOutOfBoundsRam() {
         val cpu = R4300Cpu(N64Bus())
         val error = assertThrows(UnsupportedOperationException::class.java) { cpu.step() }
