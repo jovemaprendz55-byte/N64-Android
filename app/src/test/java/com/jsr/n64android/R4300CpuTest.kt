@@ -108,6 +108,31 @@ class R4300CpuTest {
         assertEquals(10L, cpu.gpr[5])
     }
 
+    @Test fun doublewordArithmeticAndShiftsPreserveHighBits() {
+        val memory = N64Memory(64)
+        memory.write32(0, rType(1, 2, 3, 0x2D)) // daddu $v1, $t0, $t1
+        memory.write32(4, rType(0, 3, 4, 0x38) or (4 shl 6)) // dsll $a0, $v1, 4
+        memory.write32(8, iType(0x19, 4, 5, 1)) // daddiu $a1, $a0, 1
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 0x0000000100000000L
+        cpu.gpr[2] = 3L
+        repeat(3) { cpu.step() }
+        assertEquals(0x0000000100000003L, cpu.gpr[3])
+        assertEquals(0x0000001000000030L, cpu.gpr[4])
+        assertEquals(0x0000001000000031L, cpu.gpr[5])
+    }
+
+    @Test fun doublewordLogicalRightShiftFillsWithZeros() {
+        val memory = N64Memory(16)
+        memory.write32(0, rType(0, 1, 2, 0x3A) or (8 shl 6)) // dsrl $v0, $t0, 8
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 0x8000000000000000UL.toLong()
+        cpu.step()
+        assertEquals(0x0080000000000000L, cpu.gpr[2])
+    }
+
     @Test fun resetVectorReportsMissingPifRomInsteadOfOutOfBoundsRam() {
         val cpu = R4300Cpu(N64Bus())
         val error = assertThrows(UnsupportedOperationException::class.java) { cpu.step() }
