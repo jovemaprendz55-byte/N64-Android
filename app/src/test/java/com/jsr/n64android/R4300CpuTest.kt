@@ -1563,4 +1563,31 @@ class R4300CpuTest {
         assertEquals(0x2L, cpu.cop0[12] and 0x2L) // EXL remains set.
     }
 
+
+    @Test fun tlbInvalidStoreUsesStoreExceptionCodeAndGeneralVector() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x2B, 1, 2, 0)) // sw $v0, 0($at)
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        val faultAddress = 0x00401234L
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = faultAddress and R4300Tlb.PAGE_PAIR_MASK,
+            asid = 0,
+            evenPage = R4300Tlb.Page(4, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(5, valid = false, dirty = true, global = true)
+        ))
+        cpu.gpr[1] = faultAddress
+        cpu.gpr[2] = 0x12345678L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr.
+        assertEquals(3L, (cpu.cop0[13] ushr 2) and 0x1FL) // Invalid store reports TLBS.
+        assertEquals(0L, cpu.cop0[14]) // EPC points to the store instruction.
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc) // Invalid page uses general vector.
+        assertEquals(0x2L, cpu.cop0[12] and 0x2L) // EXL set.
+        assertEquals(0L, memory.read32(8).toLong()) // Faulting store did not write memory.
+    }
+
 }
