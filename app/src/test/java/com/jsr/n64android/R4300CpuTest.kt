@@ -1520,4 +1520,27 @@ class R4300CpuTest {
         assertEquals(0x2L, cpu.cop0[12] and 0x2L) // EXL is set.
     }
 
+
+    @Test fun tlbInstructionFetchInvalidPageUsesGeneralExceptionVector() {
+        val memory = N64Memory(64)
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        val faultAddress = 0x00400000L
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = faultAddress and R4300Tlb.PAGE_PAIR_MASK,
+            asid = 0,
+            evenPage = R4300Tlb.Page(4, valid = false, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(5, valid = true, dirty = true, global = true)
+        ))
+        cpu.setProgramCounter(faultAddress)
+
+        cpu.step()
+
+        assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr records the invalid fetch address.
+        assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // Invalid instruction fetch is TLBL.
+        assertEquals(faultAddress, cpu.cop0[14]) // EPC points to the faulting instruction.
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc) // Invalid entries use the general vector.
+        assertEquals(0x2L, cpu.cop0[12] and 0x2L) // EXL is set.
+    }
+
 }
