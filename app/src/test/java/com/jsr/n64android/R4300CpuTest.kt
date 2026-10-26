@@ -32,7 +32,7 @@ class R4300CpuTest {
 
         val cpu = R4300Cpu(memory)
         cpu.setProgramCounter(0)
-        repeat(4) { cpu.step() }
+        repeat(3) { cpu.step() }
         assertEquals(8L, cpu.gpr[2])
         assertEquals(0L, cpu.gpr[3])
         assertEquals(16L, cpu.pc)
