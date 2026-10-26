@@ -5,7 +5,7 @@ package com.jsr.n64android
  * This is not a complete MIPS III/R4300 implementation: exceptions, COP0/TLB,
  * 64-bit instruction families, cache operations and the full N64 bus remain unimplemented.
  */
-class R4300Cpu(private val memory: N64Memory) {
+class R4300Cpu(private val memory: N64AddressSpace) {
     val gpr: LongArray = LongArray(32)
     var pc: Long = RESET_VECTOR
         private set
