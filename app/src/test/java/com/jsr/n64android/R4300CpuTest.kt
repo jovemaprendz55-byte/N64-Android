@@ -942,7 +942,7 @@ class R4300CpuTest {
 
         assertEquals(Long.MIN_VALUE, cpu.gpr[2])
         assertEquals(0L, cpu.cop0[12] and 0x2L)
-        assertEquals(0L, cpu.pc)
+        assertEquals(4L, cpu.pc)
     }
 
 }
