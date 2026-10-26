@@ -133,6 +133,22 @@ class R4300CpuTest {
         assertEquals(0x0080000000000000L, cpu.gpr[2])
     }
 
+    @Test fun loadsAndStoresDoublewordsAndZeroExtendsLwu() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x3F, 1, 2, 0)) // sd $t1, 0($t0)
+        memory.write32(4, iType(0x37, 1, 3, 0)) // ld $v1, 0($t0)
+        memory.write32(8, iType(0x27, 1, 4, 0)) // lwu $a0, 0($t0)
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 32L
+        cpu.gpr[2] = 0xFEDCBA9876543210UL.toLong()
+        repeat(3) { cpu.step() }
+        assertEquals(0xFEDCBA98.toInt(), memory.read32(32))
+        assertEquals(0x76543210, memory.read32(36))
+        assertEquals(0xFEDCBA9876543210UL.toLong(), cpu.gpr[3])
+        assertEquals(0xFEDCBA98L, cpu.gpr[4])
+    }
+
     @Test fun resetVectorReportsMissingPifRomInsteadOfOutOfBoundsRam() {
         val cpu = R4300Cpu(N64Bus())
         val error = assertThrows(UnsupportedOperationException::class.java) { cpu.step() }
