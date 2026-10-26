@@ -1979,7 +1979,7 @@ class R4300CpuTest {
 
         cpu.step()
 
-        assertEquals(0x89ABCDEFu.toLong(), memory.read32(0x1000).toLong())
+        assertEquals(0x89ABCDEFu.toLong(), memory.read32(0x1000).toUInt().toLong())
         assertEquals(4L, cpu.pc)
         assertEquals(0L, cpu.cop0[13] and (0x1FL shl 2)) // No exception was raised.
     }
