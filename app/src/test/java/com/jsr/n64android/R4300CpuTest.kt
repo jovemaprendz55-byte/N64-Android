@@ -538,6 +538,65 @@ class R4300CpuTest {
         assertEquals(0xFFFFFFFFBFC00200UL.toLong(), cpu.pc)
     }
 
+
+    @Test fun tlbLoadMissUsesLoadExceptionCodeAndRefillVector() {
+        val memory = N64Memory(4096)
+        memory.write32(0, iType(0x0F, 0, 8, 0x0040)) // lui $t0, 0x0040
+        memory.write32(4, iType(0x23, 8, 2, 0)) // lw $v0, 0($t0)
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
+
+        cpu.step()
+        cpu.step()
+
+        assertEquals(0x00400000L, cpu.cop0[8]) // BadVAddr
+        assertEquals(2L shl 2, cpu.cop0[13] and (0x1FL shl 2)) // Cause.TLBL
+        assertEquals(0xFFFFFFFF80000004UL.toLong(), cpu.cop0[14]) // EPC is the faulting load
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc) // TLB refill vector
+    }
+
+    @Test fun invalidTlbLoadUsesGeneralExceptionVector() {
+        val memory = N64Memory(4096)
+        memory.write32(0, iType(0x23, 8, 2, 0)) // lw $v0, 0($t0)
+        val cpu = R4300Cpu(memory)
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0x00400000L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(1, valid = false, dirty = true),
+            oddPage = R4300Tlb.Page(2, valid = true, dirty = true)
+        ))
+        cpu.tlbEnabled = true
+        cpu.gpr[8] = 0x00400000L
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
+
+        cpu.step()
+
+        assertEquals(0x00400000L, cpu.cop0[8]) // BadVAddr
+        assertEquals(2L shl 2, cpu.cop0[13] and (0x1FL shl 2)) // Cause.TLBL
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.cop0[14]) // EPC
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc) // Invalid entry uses general vector
+    }
+
+    @Test fun tlbLoadMissInBranchDelaySlotSetsBdAndBranchEpc() {
+        val memory = N64Memory(4096)
+        memory.write32(0, iType(0x04, 0, 0, 2)) // beq $zero, $zero, target
+        memory.write32(4, iType(0x23, 8, 2, 0)) // lw $v0, 0($t0) in delay slot
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        cpu.gpr[8] = 0x00400000L
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
+
+        cpu.step()
+        cpu.step()
+
+        assertEquals(0x00400000L, cpu.cop0[8]) // BadVAddr
+        assertEquals(0L, cpu.cop0[14]) // EPC points to the branch
+        assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD
+        assertEquals(2L shl 2, cpu.cop0[13] and (0x1FL shl 2)) // Cause.TLBL
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc) // TLB refill vector
+    }
+
     private fun cop0Co(funct: Int): Int = (0x10 shl 26) or (0x10 shl 21) or funct
 
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
