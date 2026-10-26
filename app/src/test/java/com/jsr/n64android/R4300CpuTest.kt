@@ -1019,6 +1019,47 @@ class R4300CpuTest {
         assertEquals(0L, cpu.cop0[13])
     }
 
+    @Test fun sdlAndSdrPreserveBytesCorrectlyAtEveryDoublewordOffset() {
+        val registerBytes = intArrayOf(0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88)
+        val initialBytes = intArrayOf(0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11)
+
+        fun packWord(bytes: IntArray, start: Int): Int =
+            (bytes[start] shl 24) or (bytes[start + 1] shl 16) or
+                (bytes[start + 2] shl 8) or bytes[start + 3]
+
+        for (offset in 0..7) {
+            val leftMemory = N64Memory(64)
+            leftMemory.write32(0, iType(0x2C, 1, 2, 0)) // sdl $v0, 0($at)
+            leftMemory.write32(32, packWord(initialBytes, 0))
+            leftMemory.write32(36, packWord(initialBytes, 4))
+            val leftCpu = R4300Cpu(leftMemory)
+            leftCpu.gpr[1] = (32 + offset).toLong()
+            leftCpu.gpr[2] = 0x1122334455667788L
+            leftCpu.setProgramCounter(0)
+            leftCpu.step()
+
+            val expectedLeft = initialBytes.copyOf()
+            for (i in 0..offset) expectedLeft[i] = registerBytes[i]
+            assertEquals("SDL offset $offset high word", packWord(expectedLeft, 0), leftMemory.read32(32))
+            assertEquals("SDL offset $offset low word", packWord(expectedLeft, 4), leftMemory.read32(36))
+
+            val rightMemory = N64Memory(64)
+            rightMemory.write32(0, iType(0x2D, 1, 2, 0)) // sdr $v0, 0($at)
+            rightMemory.write32(32, packWord(initialBytes, 0))
+            rightMemory.write32(36, packWord(initialBytes, 4))
+            val rightCpu = R4300Cpu(rightMemory)
+            rightCpu.gpr[1] = (32 + offset).toLong()
+            rightCpu.gpr[2] = 0x1122334455667788L
+            rightCpu.setProgramCounter(0)
+            rightCpu.step()
+
+            val expectedRight = initialBytes.copyOf()
+            for (i in offset..7) expectedRight[i] = registerBytes[i]
+            assertEquals("SDR offset $offset high word", packWord(expectedRight, 0), rightMemory.read32(32))
+            assertEquals("SDR offset $offset low word", packWord(expectedRight, 4), rightMemory.read32(36))
+        }
+    }
+
     @Test fun sdlAtOffsetZeroStoresOnlyTheMostSignificantByte() {
         val memory = N64Memory(64)
         memory.write32(0, iType(0x2C, 1, 2, 0)) // sdl $v0, 0($at)
