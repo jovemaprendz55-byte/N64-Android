@@ -57,6 +57,53 @@ class R4300TlbTest {
         assertEquals(0x21010L, modified.virtualAddress)
     }
 
+    @Test fun preservesPageOffsetsAtBothFourKiBBoundaries() {
+        val tlb = R4300Tlb()
+        tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0x12000L,
+            asid = 2,
+            evenPage = R4300Tlb.Page(0xABCDE, valid = true, dirty = true),
+            oddPage = R4300Tlb.Page(0x12345, valid = true, dirty = true)
+        ))
+
+        assertEquals(0xABCDE000.toInt(), tlb.translate(0x12000L, 2, R4300Tlb.Access.READ))
+        assertEquals(0xABCDEFFF.toInt(), tlb.translate(0x12FFFL, 2, R4300Tlb.Access.READ))
+        assertEquals(0x12345000, tlb.translate(0x13000L, 2, R4300Tlb.Access.READ))
+        assertEquals(0x12345FFF, tlb.translate(0x13FFFL, 2, R4300Tlb.Access.READ))
+    }
+
+    @Test fun highestPhysicalFramePreservesUnsignedAddressBits() {
+        val tlb = R4300Tlb()
+        tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0x20000L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(0xFFFFF, valid = true, dirty = true),
+            oddPage = R4300Tlb.Page(0, valid = true, dirty = true)
+        ))
+
+        assertEquals(-1, tlb.translate(0x20FFFL, 0, R4300Tlb.Access.READ))
+    }
+
+    @Test fun clearRemovesEntriesAndSubsequentTranslationMisses() {
+        val tlb = R4300Tlb()
+        tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0x40000L,
+            asid = 1,
+            evenPage = R4300Tlb.Page(1, valid = true, dirty = true),
+            oddPage = R4300Tlb.Page(2, valid = true, dirty = true)
+        ))
+        assertEquals(0x1000, tlb.translate(0x40000L, 1, R4300Tlb.Access.READ))
+
+        tlb.clear()
+
+        val fault = assertThrows(R4300Tlb.TlbFault::class.java) {
+            tlb.translate(0x40000L, 1, R4300Tlb.Access.READ)
+        }
+        assertEquals(R4300Tlb.FaultKind.MISS, fault.kind)
+        assertEquals(0x40000L, fault.virtualAddress)
+        assertEquals(R4300Tlb.Access.READ, fault.access)
+    }
+
     @Test fun validatesIndexAndPagePairAlignment() {
         val tlb = R4300Tlb()
         assertThrows(IllegalArgumentException::class.java) { tlb.read(32) }
