@@ -1106,6 +1106,36 @@ class R4300CpuTest {
         }
     }
 
+    @Test fun swlAndSwrStoreBytesCorrectlyAtEveryWordOffset() {
+        val registerBytes = intArrayOf(0x11, 0x22, 0x33, 0x44)
+        val initialBytes = intArrayOf(0xAA, 0xBB, 0xCC, 0xDD)
+
+        fun packWord(bytes: IntArray): Int =
+            (bytes[0] shl 24) or (bytes[1] shl 16) or (bytes[2] shl 8) or bytes[3]
+
+        fun assertStore(opcode: Int, offset: Int, expected: IntArray, label: String) {
+            val memory = N64Memory(64)
+            memory.write32(0, iType(opcode, 1, 2, 0))
+            memory.write32(32, packWord(initialBytes))
+            val cpu = R4300Cpu(memory)
+            cpu.gpr[1] = (32 + offset).toLong()
+            cpu.gpr[2] = 0x11223344L
+            cpu.setProgramCounter(0)
+            cpu.step()
+            assertEquals("$label offset $offset", packWord(expected), memory.read32(32))
+        }
+
+        for (offset in 0..3) {
+            val expectedLeft = initialBytes.copyOf()
+            for (i in 0..offset) expectedLeft[i] = registerBytes[i]
+            assertStore(0x2A, offset, expectedLeft, "SWL")
+
+            val expectedRight = initialBytes.copyOf()
+            for (i in 0..offset) expectedRight[i] = registerBytes[3 - offset + i]
+            assertStore(0x2E, offset, expectedRight, "SWR")
+        }
+    }
+
     @Test fun sdlAndSdrPreserveBytesCorrectlyAtEveryDoublewordOffset() {
         val registerBytes = intArrayOf(0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88)
         val initialBytes = intArrayOf(0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11)
