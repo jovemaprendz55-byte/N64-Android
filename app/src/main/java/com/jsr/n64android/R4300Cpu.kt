@@ -177,6 +177,33 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     0x04 -> cop0[copRd] = gpr[rt].toInt().toLong() // MTC0 writes low 32 bits
                     0x10 -> { // COP0 CO-format operations
                         when (funct) {
+                            0x01 -> { // TLBR: copy indexed TLB entry into COP0 registers
+                                val index = (cop0[0].toInt() and 0x3F)
+                                val entry = try {
+                                    tlb.read(index)
+                                } catch (_: IllegalStateException) {
+                                    null // An uninitialized model entry reads as invalid/zero.
+                                }
+                                if (entry == null) {
+                                    cop0[10] = 0L
+                                    cop0[2] = 0L
+                                    cop0[3] = 0L
+                                } else {
+                                    cop0[10] = (entry.virtualPagePairBase or entry.asid.toLong()) and 0xFFFFFFFFL
+                                    cop0[2] = encodeEntryLo(entry.evenPage)
+                                    cop0[3] = encodeEntryLo(entry.oddPage)
+                                }
+                            }
+                            0x02 -> writeTlbEntry((cop0[0].toInt() and 0x3F)) // TLBWI
+                            0x06 -> writeTlbEntry((cop0[1].toInt() and 0x1F)) // TLBWR
+                            0x08 -> { // TLBP: probe VPN2 and ASID
+                                val hit = tlb.probe(cop0[10], (cop0[10].toInt() and 0xFF))
+                                cop0[0] = if (hit == null) {
+                                    1L shl 31
+                                } else {
+                                    hit.toLong()
+                                }
+                            }
                             0x18 -> { // ERET
                                 val status = cop0[12]
                                 if ((status and 0x4L) != 0L) {
@@ -289,6 +316,33 @@ class R4300Cpu(private val memory: N64AddressSpace) {
 
         pc = directPc ?: targetFromPreviousBranch ?: nextSequential
         gpr[0] = 0L
+    }
+
+    private fun encodeEntryLo(page: R4300Tlb.Page): Long {
+        return (page.physicalFrameNumber.toLong() shl 6) or
+            (if (page.dirty) 0x4L else 0L) or
+            (if (page.valid) 0x2L else 0L) or
+            (if (page.global) 0x1L else 0L)
+    }
+
+    private fun decodeEntryLo(value: Long): R4300Tlb.Page {
+        val raw = value and 0xFFFFFFFFL
+        return R4300Tlb.Page(
+            physicalFrameNumber = ((raw ushr 6) and 0xFFFFFL).toInt(),
+            valid = (raw and 0x2L) != 0L,
+            dirty = (raw and 0x4L) != 0L,
+            global = (raw and 0x1L) != 0L
+        )
+    }
+
+    private fun writeTlbEntry(index: Int) {
+        val entryHi = cop0[10] and 0xFFFFFFFFL
+        tlb.write(index, R4300Tlb.Entry(
+            virtualPagePairBase = entryHi and R4300Tlb.PAGE_PAIR_MASK,
+            asid = (entryHi and 0xFFL).toInt(),
+            evenPage = decodeEntryLo(cop0[2]),
+            oddPage = decodeEntryLo(cop0[3])
+        ))
     }
 
     private fun enterException(instructionAddress: Long, exceptionCode: Int, branchAddress: Long?) {
