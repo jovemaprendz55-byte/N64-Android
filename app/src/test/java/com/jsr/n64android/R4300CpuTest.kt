@@ -915,6 +915,40 @@ class R4300CpuTest {
         assertEquals((4L shl 6) or 0x6L, cpu.cop0[3])
     }
 
+
+    @Test fun unalignedWordLoadRaisesAddressErrorAndPreservesDestination() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x23, 1, 2, 0)) // lw $v0, 0($at)
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = 1L
+        cpu.gpr[2] = 0x1234L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(4L, (cpu.cop0[13] ushr 2) and 0x1FL) // AdEL
+        assertEquals(1L, cpu.cop0[8]) // BadVAddr
+        assertEquals(0x1234L, cpu.gpr[2])
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+    }
+
+    @Test fun unalignedWordStoreRaisesAddressStoreErrorWithoutWritingMemory() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x2B, 1, 2, 0)) // sw $v0, 0($at)
+        memory.write32(4, 0x11223344)
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = 5L
+        cpu.gpr[2] = 0x55667788L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(5L, (cpu.cop0[13] ushr 2) and 0x1FL) // AdES
+        assertEquals(5L, cpu.cop0[8]) // BadVAddr
+        assertEquals(0x11223344L, memory.read32(4).toLong() and 0xFFFFFFFFL)
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+    }
+
     @Test fun daddiSigned64BitOverflowRaisesExceptionWithoutWritingDestination() {
         val memory = N64Memory(64)
         memory.write32(0, iType(0x18, 1, 2, 1)) // daddi $v0, $at, 1
