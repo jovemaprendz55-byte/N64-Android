@@ -270,6 +270,30 @@ class R4300CpuTest {
         assertEquals(R4300Cpu.RESET_VECTOR, cpu.pc)
     }
 
+    @Test fun eretReturnsToEpcAndClearsExl() {
+        val memory = N64Memory(16)
+        memory.write32(0, (0x10 shl 26) or (0x10 shl 21) or 0x18) // eret
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.cop0[12] = 0x2L
+        cpu.cop0[14] = 0x100L
+        cpu.step()
+        assertEquals(0x100L, cpu.pc)
+        assertEquals(0L, cpu.cop0[12] and 0x2L)
+    }
+
+    @Test fun eretUsesErrorEpcAndClearsErlWhenErrorLevelIsSet() {
+        val memory = N64Memory(16)
+        memory.write32(0, (0x10 shl 26) or (0x10 shl 21) or 0x18) // eret
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.cop0[12] = 0x4L
+        cpu.cop0[30] = 0x200L
+        cpu.step()
+        assertEquals(0x200L, cpu.pc)
+        assertEquals(0L, cpu.cop0[12] and 0x4L)
+    }
+
     @Test fun loadsAndStoresDoublewordsAndZeroExtendsLwu() {
         val memory = N64Memory(64)
         memory.write32(0, iType(0x3F, 1, 2, 0)) // sd $t1, 0($t0)
