@@ -90,7 +90,7 @@ class R4300Cpu(private val memory: N64Memory) {
 
     private fun physicalAddress(address: Long): Int {
         // KSEG0/KSEG1 are directly mapped to physical addresses on the N64.
-        val physical = if ((address ushr 29) and 0x7L in 4L..5L) {
+        val physical = if (((address ushr 29) and 0x7L) in 4L..5L) {
             (address and 0x1FFFFFFFL)
         } else address
         require(physical >= 0L && physical <= Int.MAX_VALUE.toLong()) {
