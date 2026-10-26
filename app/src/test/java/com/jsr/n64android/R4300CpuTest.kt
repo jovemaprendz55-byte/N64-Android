@@ -425,7 +425,7 @@ class R4300CpuTest {
         cpu.setProgramCounter(0)
         cpu.step()
         cpu.step()
-        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.cop0[14]) // EPC points to the branch in KSEG0 at address zero, not the delay slot
+        assertEquals(0L, cpu.cop0[14]) // EPC points to branch address zero
         assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD
         assertEquals(8L, (cpu.cop0[13] ushr 2) and 0x1FL) // Syscall ExcCode
         assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
@@ -591,7 +591,7 @@ class R4300CpuTest {
         cpu.step()
 
         assertEquals(0x00400000L, cpu.cop0[8]) // BadVAddr
-        assertEquals(0L, cpu.cop0[14]) // EPC points to the branch
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.cop0[14]) // EPC points to branch in KSEG0
         assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD
         assertEquals(2L shl 2, cpu.cop0[13] and (0x1FL shl 2)) // Cause.TLBL
         assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc) // TLB refill vector
