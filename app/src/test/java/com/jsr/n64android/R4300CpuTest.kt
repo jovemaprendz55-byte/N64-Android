@@ -2629,4 +2629,33 @@ class R4300CpuTest {
         assertEquals(0x12345678L, memory.read32(16).toLong() and 0xFFFFFFFFL)
     }
 
+
+    @Test fun tlbInvalidWordLoadInBranchDelaySlotUsesGeneralVectorAndPreservesDestination() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x04, 0, 0, 2)) // beq $zero, $zero, target
+        memory.write32(4, iType(0x23, 1, 2, 0)) // lw $v0, 0($at) in delay slot
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        val faultAddress = 0x00401234L
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = faultAddress and R4300Tlb.PAGE_PAIR_MASK,
+            asid = 0,
+            evenPage = R4300Tlb.Page(2, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(3, valid = false, dirty = true, global = true)
+        ))
+        cpu.gpr[1] = faultAddress
+        cpu.gpr[2] = 0x13579BDFL
+        cpu.setProgramCounter(0)
+
+        cpu.step() // Execute branch and establish the delay slot.
+        cpu.step() // Load faults on the invalid odd TLB page.
+
+        assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr.
+        assertEquals(0L, cpu.cop0[14]) // EPC points to the branch.
+        assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD.
+        assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBL.
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc) // General vector, not refill.
+        assertEquals(0x13579BDFL, cpu.gpr[2]) // Destination remains unchanged.
+    }
+
 }
