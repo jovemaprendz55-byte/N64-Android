@@ -24,6 +24,6 @@ class R4300Cpu {
     }
 
     companion object {
-        const val RESET_VECTOR: Long = 0xFFFFFFFFBFC00000uL.toLong()
+        const val RESET_VECTOR: Long = -0x40400000L
     }
 }
