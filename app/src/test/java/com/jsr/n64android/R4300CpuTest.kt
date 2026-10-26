@@ -1019,6 +1019,34 @@ class R4300CpuTest {
         assertEquals(0L, cpu.cop0[13])
     }
 
+    @Test fun swlAtOffsetZeroStoresOnlyTheMostSignificantByte() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x2A, 1, 2, 0)) // swl $v0, 0($at)
+        memory.write32(32, 0xAABBCCDD.toInt())
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = 32L
+        cpu.gpr[2] = 0x11223344L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0x11BBCCDDL, memory.read32(32).toLong() and 0xFFFFFFFFL)
+    }
+
+    @Test fun swlAtOffsetThreeStoresTheEntireWord() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x2A, 1, 2, 0)) // swl $v0, 0($at)
+        memory.write32(32, 0xAABBCCDD.toInt())
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = 35L
+        cpu.gpr[2] = 0x11223344L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0x11223344L, memory.read32(32).toLong() and 0xFFFFFFFFL)
+    }
+
     @Test fun swlMergesBigEndianLeftBytesIntoMemory() {
         val memory = N64Memory(64)
         memory.write32(0, iType(0x2A, 1, 2, 0)) // swl $v0, 0($at)
