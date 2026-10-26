@@ -59,6 +59,18 @@ class R4300Tlb(private val entryCount: Int = ENTRY_COUNT) {
         return entries[index] ?: throw IllegalStateException("TLB entry $index is not initialized.")
     }
 
+    /** Returns the matching entry index, or null when VPN2/ASID probing misses. */
+    fun probe(virtualAddress: Long, asid: Int): Int? {
+        require(asid in 0..0xFF) { "ASID must fit in 8 bits." }
+        val address = virtualAddress and 0xFFFFFFFFL
+        val pairBase = address and PAGE_PAIR_MASK
+        return entries.indices.firstOrNull { index ->
+            val entry = entries[index]
+            entry != null && entry.virtualPagePairBase == pairBase &&
+                (entry.asid == asid || (entry.evenPage.global && entry.oddPage.global))
+        }
+    }
+
     fun translate(virtualAddress: Long, asid: Int, access: Access): Int {
         require(asid in 0..0xFF) { "ASID must fit in 8 bits." }
         val address = virtualAddress and 0xFFFFFFFFL
