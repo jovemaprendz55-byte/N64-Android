@@ -80,10 +80,30 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 0x14 -> gpr[rd] = gpr[rt] shl (gpr[rs].toInt() and 0x3F) // DSLLV
                 0x16 -> gpr[rd] = gpr[rt] ushr (gpr[rs].toInt() and 0x3F) // DSRLV
                 0x17 -> gpr[rd] = gpr[rt] shr (gpr[rs].toInt() and 0x3F) // DSRAV
-                0x2C -> gpr[rd] = gpr[rs] + gpr[rt] // DADD
-                0x2D -> gpr[rd] = gpr[rs] + gpr[rt] // DADDU
-                0x2E -> gpr[rd] = gpr[rs] - gpr[rt] // DSUB
-                0x2F -> gpr[rd] = gpr[rs] - gpr[rt] // DSUBU
+                0x2C -> { // DADD: signed 64-bit addition traps on overflow.
+                    val left = gpr[rs]
+                    val right = gpr[rt]
+                    val result = left + right
+                    if (((left xor result) and (right xor result)) < 0L) {
+                        enterException(instructionAddress, 12, branchAddressForCurrentInstruction)
+                        directPc = exceptionVector()
+                    } else {
+                        gpr[rd] = result
+                    }
+                }
+                0x2D -> gpr[rd] = gpr[rs] + gpr[rt] // DADDU wraps without trapping.
+                0x2E -> { // DSUB: signed 64-bit subtraction traps on overflow.
+                    val left = gpr[rs]
+                    val right = gpr[rt]
+                    val result = left - right
+                    if (((left xor right) and (left xor result)) < 0L) {
+                        enterException(instructionAddress, 12, branchAddressForCurrentInstruction)
+                        directPc = exceptionVector()
+                    } else {
+                        gpr[rd] = result
+                    }
+                }
+                0x2F -> gpr[rd] = gpr[rs] - gpr[rt] // DSUBU wraps without trapping.
                 0x38 -> gpr[rd] = gpr[rt] shl shamt // DSLL
                 0x3A -> gpr[rd] = gpr[rt] ushr shamt // DSRL
                 0x3B -> gpr[rd] = gpr[rt] shr shamt // DSRA
