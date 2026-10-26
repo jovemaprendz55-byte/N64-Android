@@ -431,6 +431,56 @@ class R4300CpuTest {
         assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
     }
 
+
+    @Test fun cpuUsesTlbForInstructionFetchAndDataLoadWhenEnabled() {
+        val memory = N64Memory(0x3000)
+        memory.write32(0x1000, iType(0x09, 0, 8, 42)) // addiu $t0, $zero, 42
+        memory.write32(0x1004, iType(0x23, 9, 2, 0)) // lw $v0, 0($t1)
+        memory.write32(0x2000, 0x12345678)
+        val cpu = R4300Cpu(memory)
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0x00400000L,
+            asid = 5,
+            evenPage = R4300Tlb.Page(1, valid = true, dirty = true),
+            oddPage = R4300Tlb.Page(2, valid = true, dirty = true)
+        ))
+        cpu.cop0[10] = 5L // EntryHi ASID
+        cpu.tlbEnabled = true
+        cpu.setProgramCounter(0x00400000L)
+        cpu.gpr[9] = 0x00401000L
+        cpu.step()
+        cpu.step()
+        assertEquals(42L, cpu.gpr[8])
+        assertEquals(0x12345678L, cpu.gpr[2])
+        assertEquals(0x00400008L, cpu.pc)
+    }
+
+    @Test fun cpuTlbTranslationRejectsWritesToCleanPages() {
+        val memory = N64Memory(0x3000)
+        memory.write32(0, iType(0x2B, 1, 2, 0)) // sw $v0, 0($t0)
+        val cpu = R4300Cpu(memory)
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0x00400000L,
+            asid = 1,
+            evenPage = R4300Tlb.Page(1, valid = true, dirty = false),
+            oddPage = R4300Tlb.Page(2, valid = true, dirty = true)
+        ))
+        cpu.cop0[10] = 1L
+        cpu.tlbEnabled = true
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 0x00400000L
+        cpu.gpr[2] = 0xCAFEBABEL
+        // Instruction fetch from address zero is translated too, so map page zero.
+        cpu.tlb.write(1, R4300Tlb.Entry(
+            virtualPagePairBase = 0L,
+            asid = 1,
+            evenPage = R4300Tlb.Page(0, valid = true, dirty = true),
+            oddPage = R4300Tlb.Page(0, valid = true, dirty = true)
+        ))
+        cpu.step()
+        assertEquals(0xCAFEBABE.toInt(), memory.read32(0x1000))
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
