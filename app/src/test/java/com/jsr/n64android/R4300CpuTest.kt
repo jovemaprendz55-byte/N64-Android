@@ -248,6 +248,28 @@ class R4300CpuTest {
         assertEquals(1L, cpu.gpr[6])
     }
 
+    @Test fun cop0MoveFromAndMoveToTransferSignExtended32BitValues() {
+        val memory = N64Memory(32)
+        memory.write32(0, rType(0, 1, 12, 0x00) or (0x10 shl 26) or (1 shl 16)) // mtc0 $t0, Status
+        memory.write32(4, (0x10 shl 26) or (2 shl 16) or (12 shl 11)) // mfc0 $v0, Status
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 0xFFFFFFFF80000001UL.toLong()
+        cpu.step()
+        assertEquals(-0x7FFFFFFFL, cpu.cop0[12])
+        cpu.step()
+        assertEquals(-0x7FFFFFFFL, cpu.gpr[2])
+    }
+
+    @Test fun resetClearsCop0RegisterStorage() {
+        val memory = N64Memory(16)
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 0x1234L
+        cpu.reset()
+        assertEquals(0L, cpu.cop0[12])
+        assertEquals(R4300Cpu.RESET_VECTOR, cpu.pc)
+    }
+
     @Test fun loadsAndStoresDoublewordsAndZeroExtendsLwu() {
         val memory = N64Memory(64)
         memory.write32(0, iType(0x3F, 1, 2, 0)) // sd $t1, 0($t0)
