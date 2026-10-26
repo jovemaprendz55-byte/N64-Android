@@ -413,7 +413,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 val oldLow = memory.read32(physical + 4)
                 val oldDoubleword = (oldHigh.toLong() shl 32) or (oldLow.toLong() and 0xFFFFFFFFL)
                 val shift = (7 - offset) * 8
-                val valueMask = if (shift == 0) -1L else (-1L shl (64 - shift))
+                val valueMask = -1L shl shift
                 val merged = (oldDoubleword and valueMask.inv()) or (gpr[rt] and valueMask)
                 memory.write32(physical, (merged ushr 32).toInt())
                 memory.write32(physical + 4, merged.toInt())
