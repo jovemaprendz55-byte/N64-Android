@@ -597,6 +597,36 @@ class R4300CpuTest {
         assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc) // TLB refill vector
     }
 
+    @Test fun eretWithExlSetReturnsToEpcAndClearsExl() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop0Co(0x18)) // ERET
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.cop0[12] = 0x2L // Status.EXL
+        cpu.cop0[14] = 0x20L // EPC
+
+        cpu.step()
+
+        assertEquals(0x20L, cpu.pc)
+        assertEquals(0L, cpu.cop0[12] and 0x2L) // EXL cleared
+    }
+
+    @Test fun eretWithErlSetReturnsToErrorEpcAndClearsErl() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop0Co(0x18)) // ERET
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.cop0[12] = 0x6L // Status.ERL and Status.EXL
+        cpu.cop0[30] = 0x24L // ErrorEPC
+        cpu.cop0[14] = 0x30L // EPC must not win while ERL is set
+
+        cpu.step()
+
+        assertEquals(0x24L, cpu.pc)
+        assertEquals(0L, cpu.cop0[12] and 0x4L) // ERL cleared
+        assertEquals(0x2L, cpu.cop0[12] and 0x2L) // EXL remains unchanged
+    }
+
     private fun cop0Co(funct: Int): Int = (0x10 shl 26) or (0x10 shl 21) or funct
 
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
