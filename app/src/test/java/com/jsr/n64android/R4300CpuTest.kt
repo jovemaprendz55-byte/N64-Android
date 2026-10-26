@@ -6,6 +6,65 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class R4300CpuTest {
+    @Test fun addiOverflowRaisesOverflowExceptionWithoutWritingDestination() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x08, 1, 2, 1)) // addi $v0, $at, 1
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = Int.MAX_VALUE.toLong()
+        cpu.gpr[2] = 123L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(12L, (cpu.cop0[13] ushr 2) and 0x1FL) // ExcCode = Overflow
+        assertEquals(0L, cpu.cop0[14]) // EPC points to ADDI
+        assertEquals(123L, cpu.gpr[2]) // Destination is unchanged
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+        assertEquals(0x2L, cpu.cop0[12] and 0x2L) // EXL set
+    }
+
+    @Test fun addSignedOverflowRaisesExceptionButAdduWraps() {
+        val memory = N64Memory(64)
+        memory.write32(0, rType(1, 2, 3, 0x20)) // add $v1, $at, $v0
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = Int.MAX_VALUE.toLong()
+        cpu.gpr[2] = 1L
+        cpu.gpr[3] = 99L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(12L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(99L, cpu.gpr[3])
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+
+        val wrappingMemory = N64Memory(64)
+        wrappingMemory.write32(0, rType(1, 2, 3, 0x21)) // addu does not trap
+        val wrappingCpu = R4300Cpu(wrappingMemory)
+        wrappingCpu.gpr[1] = Int.MAX_VALUE.toLong()
+        wrappingCpu.gpr[2] = 1L
+        wrappingCpu.setProgramCounter(0)
+        wrappingCpu.step()
+        assertEquals(Int.MIN_VALUE.toLong(), wrappingCpu.gpr[3])
+        assertEquals(0L, wrappingCpu.cop0[12] and 0x2L)
+    }
+
+    @Test fun subSignedOverflowRaisesOverflowException() {
+        val memory = N64Memory(64)
+        memory.write32(0, rType(1, 2, 3, 0x22)) // sub $v1, $at, $v0
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = Int.MIN_VALUE.toLong()
+        cpu.gpr[2] = 1L
+        cpu.gpr[3] = 77L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(12L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(77L, cpu.gpr[3])
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+    }
+
     @Test fun executesAddiuAndKeepsZeroRegisterImmutable() {
         val memory = N64Memory(64)
         memory.write32(0, iType(0x09, 0, 1, 7))
