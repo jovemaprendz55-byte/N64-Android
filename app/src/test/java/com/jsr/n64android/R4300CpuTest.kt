@@ -470,13 +470,9 @@ class R4300CpuTest {
         cpu.setProgramCounter(0)
         cpu.gpr[1] = 0x00400000L
         cpu.gpr[2] = 0xCAFEBABEL
-        // Instruction fetch from address zero is translated too, so map page zero.
-        cpu.tlb.write(1, R4300Tlb.Entry(
-            virtualPagePairBase = 0L,
-            asid = 1,
-            evenPage = R4300Tlb.Page(0, valid = true, dirty = true),
-            oddPage = R4300Tlb.Page(0, valid = true, dirty = true)
-        ))
+        // Fetch the test instruction through KSEG0, which bypasses the TLB.
+        // This isolates the expected MODIFIED fault to the data store under test.
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
         val fault = assertThrows(R4300Tlb.TlbFault::class.java) { cpu.step() }
         assertEquals(R4300Tlb.FaultKind.MODIFIED, fault.kind)
         assertEquals(0, memory.read32(0x1000))
