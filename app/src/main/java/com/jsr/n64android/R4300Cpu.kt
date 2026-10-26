@@ -7,12 +7,18 @@ package com.jsr.n64android
  */
 class R4300Cpu(private val memory: N64AddressSpace) {
     val gpr: LongArray = LongArray(32)
+    var hi: Long = 0L
+        private set
+    var lo: Long = 0L
+        private set
     var pc: Long = RESET_VECTOR
         private set
     private var delayedTarget: Long? = null
 
     fun reset() {
         gpr.fill(0L)
+        hi = 0L
+        lo = 0L
         pc = RESET_VECTOR
         delayedTarget = null
     }
@@ -60,6 +66,46 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 0x3F -> gpr[rd] = gpr[rt] shr (shamt + 32) // DSRA32
                 0x0A -> if (gpr[rt] == 0L) gpr[rd] = gpr[rs] // MOVZ
                 0x0B -> if (gpr[rt] != 0L) gpr[rd] = gpr[rs] // MOVN
+                0x10 -> gpr[rd] = hi // MFHI
+                0x11 -> hi = gpr[rs] // MTHI
+                0x12 -> gpr[rd] = lo // MFLO
+                0x13 -> lo = gpr[rs] // MTLO
+                0x18 -> {
+                    val product = gpr[rs].toInt().toLong() * gpr[rt].toInt().toLong()
+                    lo = product.toInt().toLong()
+                    hi = (product shr 32).toInt().toLong()
+                }
+                0x19 -> {
+                    val left = gpr[rs].toInt().toLong() and 0xFFFFFFFFL
+                    val right = gpr[rt].toInt().toLong() and 0xFFFFFFFFL
+                    val product = left * right
+                    lo = product.toInt().toLong() and 0xFFFFFFFFL
+                    hi = (product ushr 32) and 0xFFFFFFFFL
+                }
+                0x1A -> {
+                    val dividend = gpr[rs].toInt()
+                    val divisor = gpr[rt].toInt()
+                    if (divisor != 0) {
+                        val quotient = if (dividend == Int.MIN_VALUE && divisor == -1) Int.MIN_VALUE else dividend / divisor
+                        val remainder = if (dividend == Int.MIN_VALUE && divisor == -1) 0 else dividend % divisor
+                        lo = quotient.toLong()
+                        hi = remainder.toLong()
+                    } else {
+                        lo = if (dividend < 0) 1L else -1L
+                        hi = dividend.toLong()
+                    }
+                }
+                0x1B -> {
+                    val dividend = gpr[rs].toInt().toLong() and 0xFFFFFFFFL
+                    val divisor = gpr[rt].toInt().toLong() and 0xFFFFFFFFL
+                    if (divisor != 0L) {
+                        lo = (dividend / divisor) and 0xFFFFFFFFL
+                        hi = (dividend % divisor) and 0xFFFFFFFFL
+                    } else {
+                        lo = 0xFFFFFFFFL
+                        hi = dividend
+                    }
+                }
                 0x08 -> delayedTarget = gpr[rs]
                 0x09 -> { gpr[rd] = nextSequential + 4L; delayedTarget = gpr[rs] }
                 0x21 -> gpr[rd] = (gpr[rs].toInt() + gpr[rt].toInt()).toLong()
