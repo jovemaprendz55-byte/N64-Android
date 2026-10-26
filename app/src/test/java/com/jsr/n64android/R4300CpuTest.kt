@@ -1597,4 +1597,37 @@ class R4300CpuTest {
         assertEquals(0L, memory.read32(8).toLong()) // Faulting store did not write memory.
     }
 
+
+    @Test fun tlbMissAndInvalidPageUseBootVectorsWhenBevIsSet() {
+        val missMemory = N64Memory(64)
+        val missCpu = R4300Cpu(missMemory)
+        missCpu.tlbEnabled = true
+        missCpu.cop0[12] = 1L shl 22 // Status.BEV selects boot exception vectors.
+        val missAddress = 0x00400000L
+        missCpu.setProgramCounter(missAddress)
+
+        missCpu.step()
+
+        assertEquals(missAddress, missCpu.cop0[8]) // BadVAddr.
+        assertEquals(0xFFFFFFFFBFC00200UL.toLong(), missCpu.pc) // Boot TLB refill vector.
+
+        val invalidMemory = N64Memory(64)
+        val invalidCpu = R4300Cpu(invalidMemory)
+        invalidCpu.tlbEnabled = true
+        invalidCpu.cop0[12] = 1L shl 22
+        val invalidAddress = 0x00600000L
+        invalidCpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = invalidAddress and R4300Tlb.PAGE_PAIR_MASK,
+            asid = 0,
+            evenPage = R4300Tlb.Page(4, valid = false, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(5, valid = true, dirty = true, global = true)
+        ))
+        invalidCpu.setProgramCounter(invalidAddress)
+
+        invalidCpu.step()
+
+        assertEquals(invalidAddress, invalidCpu.cop0[8]) // BadVAddr.
+        assertEquals(0xFFFFFFFFBFC00380UL.toLong(), invalidCpu.pc) // Boot general vector.
+    }
+
 }
