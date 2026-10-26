@@ -1954,4 +1954,34 @@ class R4300CpuTest {
         assertEquals(0L, cpu.cop0[13] and (0x1FL shl 2)) // No exception was raised.
     }
 
+
+    @Test fun storesWordThroughValidOddTlbPage() {
+        val memory = N64Memory(8192)
+        memory.write32(0, iType(0x2B, 1, 2, 0)) // sw $v0, 0($at)
+        memory.write32(0x1000, 0)
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
+        ))
+        cpu.tlb.write(1, R4300Tlb.Entry(
+            virtualPagePairBase = 0x00400000L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(2, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
+        ))
+        cpu.gpr[1] = 0x00401000L
+        cpu.gpr[2] = 0x89ABCDEFu.toLong()
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0x89ABCDEFu.toLong(), memory.read32(0x1000).toLong())
+        assertEquals(4L, cpu.pc)
+        assertEquals(0L, cpu.cop0[13] and (0x1FL shl 2)) // No exception was raised.
+    }
+
 }
