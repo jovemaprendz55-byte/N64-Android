@@ -98,6 +98,18 @@ class R4300CpuTest {
         assertEquals(0x11223344, bus.read32(N64Bus.CARTRIDGE_ROM_BASE + 4))
     }
 
+    @Test fun cpuCanFetchAndExecuteInstructionFromMappedCartridgeWindow() {
+        // addiu $t0, $zero, 42 — instruction bytes are stored big-endian in the ROM.
+        val cartridge = byteArrayOf(0x24, 0x08, 0x00, 0x2A)
+        val bus = N64Bus(cartridgeRom = cartridge)
+        val cpu = R4300Cpu(bus)
+        // KSEG1 virtual address B0000000 maps to physical cartridge address 10000000.
+        cpu.setProgramCounter(0xFFFFFFFFB0000000UL.toLong())
+        cpu.step()
+        assertEquals(42L, cpu.gpr[8])
+        assertEquals(0xFFFFFFFFB0000004UL.toLong(), cpu.pc)
+    }
+
     @Test fun cartridgeRomIsReadOnlyAndOutOfRangeReadsFailClearly() {
         val bus = N64Bus(cartridgeRom = byteArrayOf(1, 2, 3, 4))
         assertThrows(UnsupportedOperationException::class.java) {
