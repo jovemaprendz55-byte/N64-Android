@@ -1998,12 +1998,12 @@ class R4300CpuTest {
             oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
         ))
         cpu.gpr[1] = 0x00401000L
-        cpu.setProgramCounter(0)
+        cpu.setProgramCounter(0x00400000L) // Fetch LW through the mapped even page.
 
         cpu.step()
 
         assertEquals(0xFFFFFFFF80000001UL.toLong(), cpu.gpr[2])
-        assertEquals(4L, cpu.pc)
+        assertEquals(0x00400004L, cpu.pc)
         assertEquals(0L, cpu.cop0[13] and (0x1FL shl 2)) // No exception was raised.
     }
 
