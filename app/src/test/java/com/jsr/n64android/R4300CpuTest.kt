@@ -1445,4 +1445,36 @@ class R4300CpuTest {
         assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc)
     }
 
+
+    @Test fun tlbInvalidLoadUsesGeneralVectorInsteadOfRefillVector() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x23, 1, 2, 0)) // lw $v0, 0($at)
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
+        ))
+        val faultAddress = 0x00401234L
+        cpu.tlb.write(1, R4300Tlb.Entry(
+            virtualPagePairBase = faultAddress and R4300Tlb.PAGE_PAIR_MASK,
+            asid = 0,
+            evenPage = R4300Tlb.Page(2, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(3, valid = false, dirty = true, global = true)
+        ))
+        cpu.gpr[1] = faultAddress
+        cpu.gpr[2] = 0xCAFEBABEL
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr
+        assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBL
+        assertEquals(0L, cpu.cop0[14]) // EPC
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+        assertEquals(0xCAFEBABEL, cpu.gpr[2]) // Faulting load must not modify the target register.
+    }
+
 }
