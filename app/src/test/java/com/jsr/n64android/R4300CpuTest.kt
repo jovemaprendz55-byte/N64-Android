@@ -2331,4 +2331,35 @@ class R4300CpuTest {
         assertEquals(0L, cpu.cop0[13] and (0x1FL shl 2)) // No exception was raised.
     }
 
+
+    @Test fun halfwordLoadFromInvalidOddTlbPageRaisesLoadExceptionWithoutChangingDestination() {
+        val memory = N64Memory(8192)
+        memory.write32(0, iType(0x21, 1, 2, 0)) // lh $v0, 0($at)
+        memory.write16(0x1000, 0xF234)
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
+        ))
+        cpu.tlb.write(1, R4300Tlb.Entry(
+            virtualPagePairBase = 0x00400000L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(2, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(1, valid = false, dirty = true, global = true)
+        ))
+        cpu.gpr[1] = 0x00401000L
+        cpu.gpr[2] = 0x13579BDFL
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0x00401000L, cpu.cop0[8]) // BadVAddr.
+        assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBL.
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc) // General exception vector.
+        assertEquals(0x13579BDFL, cpu.gpr[2]) // Destination remains unchanged.
+    }
+
 }
