@@ -3,7 +3,7 @@ package com.jsr.n64android
 /**
  * First executable R4300 subset for bring-up and unit tests.
  * This is not a complete MIPS III/R4300 implementation: exceptions, COP0/TLB,
- * 64-bit instruction families, cache operations and the full N64 bus remain unimplemented.
+ * remaining MIPS III instructions, exceptions, COP0/TLB, cache operations and full N64 devices remain unimplemented.
  */
 class R4300Cpu(private val memory: N64AddressSpace) {
     val gpr: LongArray = LongArray(32)
@@ -122,6 +122,18 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 requireAligned(address, 4)
                 gpr[rt] = memory.read32(physicalAddress(address)).toLong()
             }
+            0x27 -> { // LWU: load a word and zero-extend to 64 bits
+                val address = gpr[rs] + immediate
+                requireAligned(address, 4)
+                gpr[rt] = memory.read32(physicalAddress(address)).toLong() and 0xFFFFFFFFL
+            }
+            0x37 -> { // LD: load a big-endian doubleword
+                val address = gpr[rs] + immediate
+                requireAligned(address, 8)
+                val high = memory.read32(physicalAddress(address)).toLong()
+                val low = memory.read32(physicalAddress(address + 4L)).toLong() and 0xFFFFFFFFL
+                gpr[rt] = (high shl 32) or low
+            }
             0x28 -> memory.write8(physicalAddress(gpr[rs] + immediate), gpr[rt].toInt())
             0x29 -> {
                 val address = gpr[rs] + immediate
@@ -132,6 +144,12 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 val address = gpr[rs] + immediate
                 requireAligned(address, 4)
                 memory.write32(physicalAddress(address), gpr[rt].toInt())
+            }
+            0x3F -> { // SD: store a big-endian doubleword
+                val address = gpr[rs] + immediate
+                requireAligned(address, 8)
+                memory.write32(physicalAddress(address), (gpr[rt] ushr 32).toInt())
+                memory.write32(physicalAddress(address + 4L), gpr[rt].toInt())
             }
             else -> throw UnsupportedOperationException("R4300 opcode 0x${opcode.toString(16)} at 0x${instructionAddress.toString(16)}")
         }
