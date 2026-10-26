@@ -1,5 +1,7 @@
 package com.jsr.n64android
 
+import java.math.BigInteger
+
 /**
  * First executable R4300 subset for bring-up and unit tests.
  * This is not a complete MIPS III/R4300 implementation: remaining instructions,
@@ -106,6 +108,33 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                         hi = dividend
                     }
                 }
+                0x1C -> { // DMULT: signed 64-bit product, split into HI/LO
+                    val product = BigInteger.valueOf(gpr[rs]).multiply(BigInteger.valueOf(gpr[rt]))
+                    lo = product.toLong()
+                    hi = product.shiftRight(64).toLong()
+                }
+                0x1D -> { // DMULTU: unsigned 64-bit product, split into HI/LO
+                    val product = unsignedBigInteger(gpr[rs]).multiply(unsignedBigInteger(gpr[rt]))
+                    lo = product.toLong()
+                    hi = product.shiftRight(64).toLong()
+                }
+                0x1E -> { // DDIV: signed 64-bit quotient/remainder
+                    val dividend = gpr[rs]
+                    val divisor = gpr[rt]
+                    if (divisor != 0L) {
+                        lo = dividend / divisor
+                        hi = dividend % divisor
+                    } // Division by zero has architecturally unpredictable results.
+                }
+                0x1F -> { // DDIVU: unsigned 64-bit quotient/remainder
+                    val dividend = unsignedBigInteger(gpr[rs])
+                    val divisor = unsignedBigInteger(gpr[rt])
+                    if (divisor != BigInteger.ZERO) {
+                        val result = dividend.divideAndRemainder(divisor)
+                        lo = result[0].toLong()
+                        hi = result[1].toLong()
+                    } // Division by zero has architecturally unpredictable results.
+                }
                 0x08 -> delayedTarget = gpr[rs]
                 0x09 -> { gpr[rd] = nextSequential + 4L; delayedTarget = gpr[rs] }
                 0x21 -> gpr[rd] = (gpr[rs].toInt() + gpr[rt].toInt()).toLong()
@@ -207,6 +236,11 @@ class R4300Cpu(private val memory: N64AddressSpace) {
 
         pc = targetFromPreviousBranch ?: nextSequential
         gpr[0] = 0L
+    }
+
+    private fun unsignedBigInteger(value: Long): BigInteger {
+        val signed = BigInteger.valueOf(value)
+        return if (value >= 0L) signed else signed.add(BigInteger.ONE.shiftLeft(64))
     }
 
     private fun requireAligned(address: Long, alignment: Int) {
