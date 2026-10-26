@@ -1131,7 +1131,7 @@ class R4300CpuTest {
             assertStore(0x2A, offset, expectedLeft, "SWL")
 
             val expectedRight = initialBytes.copyOf()
-            for (i in 0..offset) expectedRight[i] = registerBytes[3 - offset + i]
+            for (i in offset..3) expectedRight[i] = registerBytes[i]
             assertStore(0x2E, offset, expectedRight, "SWR")
         }
     }
