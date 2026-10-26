@@ -386,6 +386,36 @@ class R4300CpuTest {
         assertThrows(IllegalArgumentException::class.java) { cpu.step() }
     }
 
+    @Test fun syscallSetsCauseEpcExlAndJumpsToGeneralExceptionVector() {
+        val memory = N64Memory(0x200)
+        memory.write32(0, rType(0, 0, 0, 0x0C)) // syscall
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.step()
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+        assertEquals(0L, cpu.cop0[14]) // EPC
+        assertEquals(8L, (cpu.cop0[13] ushr 2) and 0x1FL) // ExcCode = Syscall
+        assertEquals(0x2L, cpu.cop0[12] and 0x2L) // EXL set
+    }
+
+    @Test fun breakUsesBootVectorWhenBevIsSetAndPreservesEpcWhenAlreadyExl() {
+        val memory = N64Memory(0x400)
+        memory.write32(0, rType(0, 0, 0, 0x0D)) // break
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.cop0[12] = 1L shl 22 // BEV
+        cpu.cop0[14] = 0x44L
+        cpu.step()
+        assertEquals(0xFFFFFFFFBFC00380UL.toLong(), cpu.pc)
+        assertEquals(0L, cpu.cop0[14])
+        assertEquals(9L, (cpu.cop0[13] ushr 2) and 0x1FL) // ExcCode = Break
+        cpu.setProgramCounter(4)
+        cpu.cop0[12] = (1L shl 22) or 0x2L
+        cpu.cop0[14] = 0x44L
+        cpu.step()
+        assertEquals(0x44L, cpu.cop0[14]) // EPC remains unchanged while EXL is set
+    }
+
     private fun iType(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
