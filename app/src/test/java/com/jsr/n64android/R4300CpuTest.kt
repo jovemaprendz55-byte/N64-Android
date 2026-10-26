@@ -2,6 +2,7 @@ package com.jsr.n64android
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class R4300CpuTest {
@@ -77,7 +78,7 @@ class R4300CpuTest {
     @Test fun resetVectorReportsMissingPifRomInsteadOfOutOfBoundsRam() {
         val cpu = R4300Cpu(N64Bus())
         val error = assertThrows(UnsupportedOperationException::class.java) { cpu.step() }
-        assertEquals(true, error.message!!.contains("PIF boot ROM is not loaded"))
+        assertTrue(error.message!!.contains("PIF boot ROM is not loaded"))
     }
 
     @Test fun busReadsPifRomWhenExplicitlyProvided() {
@@ -88,6 +89,24 @@ class R4300CpuTest {
         pif[3] = 0x78
         val bus = N64Bus(pifRom = pif)
         assertEquals(0x12345678, bus.read32(N64Bus.PIF_ROM_BASE))
+    }
+
+    @Test fun busMapsCartridgeRomAtPhysicalBase() {
+        val cart = byteArrayOf(0x80.toByte(), 0x37, 0x12, 0x40, 0x11, 0x22, 0x33, 0x44)
+        val bus = N64Bus(cartridgeRom = cart)
+        assertEquals(0x80371240.toInt(), bus.read32(N64Bus.CARTRIDGE_ROM_BASE))
+        assertEquals(0x11223344, bus.read32(N64Bus.CARTRIDGE_ROM_BASE + 4))
+    }
+
+    @Test fun cartridgeRomIsReadOnlyAndOutOfRangeReadsFailClearly() {
+        val bus = N64Bus(cartridgeRom = byteArrayOf(1, 2, 3, 4))
+        assertThrows(UnsupportedOperationException::class.java) {
+            bus.write8(N64Bus.CARTRIDGE_ROM_BASE, 0)
+        }
+        val error = assertThrows(UnsupportedOperationException::class.java) {
+            bus.read8(N64Bus.CARTRIDGE_ROM_BASE + 4)
+        }
+        assertTrue(error.message!!.contains("beyond the loaded ROM size"))
     }
 
     @Test fun rejectsUnalignedInstructionAndWordAccesses() {
