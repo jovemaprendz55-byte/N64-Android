@@ -919,6 +919,68 @@ class R4300CpuTest {
     }
 
 
+    @Test fun lwlMergesBigEndianLeftBytesWithoutAlignmentFault() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x22, 1, 2, 0)) // lwl $v0, 0($at)
+        memory.write32(32, 0x11223344)
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = 33L // Offset 1 within the aligned word at address 32.
+        cpu.gpr[2] = 0xAABBCCDDL
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0x223344DDL, cpu.gpr[2])
+        assertEquals(4L, cpu.pc)
+        assertEquals(0L, cpu.cop0[13])
+    }
+
+    @Test fun lwrMergesBigEndianRightBytesWithoutAlignmentFault() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x26, 1, 2, 0)) // lwr $v0, 0($at)
+        memory.write32(32, 0x11223344)
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = 33L
+        cpu.gpr[2] = 0xAABBCCDDL
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0xAABB1122L, cpu.gpr[2])
+        assertEquals(4L, cpu.pc)
+        assertEquals(0L, cpu.cop0[13])
+    }
+
+    @Test fun swlMergesBigEndianLeftBytesIntoMemory() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x2A, 1, 2, 0)) // swl $v0, 0($at)
+        memory.write32(32, 0xAABBCCDD.toInt())
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = 33L
+        cpu.gpr[2] = 0x11223344L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0xAA112233L, memory.read32(32).toLong() and 0xFFFFFFFFL)
+        assertEquals(4L, cpu.pc)
+    }
+
+    @Test fun swrMergesBigEndianRightBytesIntoMemory() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x2E, 1, 2, 0)) // swr $v0, 0($at)
+        memory.write32(32, 0xAABBCCDD.toInt())
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = 33L
+        cpu.gpr[2] = 0x11223344L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0x3344CCDDL, memory.read32(32).toLong() and 0xFFFFFFFFL)
+        assertEquals(4L, cpu.pc)
+    }
+
     @Test fun unalignedWordLoadRaisesAddressErrorAndPreservesDestination() {
         val memory = N64Memory(64)
         memory.write32(0, iType(0x23, 1, 2, 0)) // lw $v0, 0($at)
