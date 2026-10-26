@@ -1569,8 +1569,15 @@ class R4300CpuTest {
         memory.write32(0, iType(0x2B, 1, 2, 0)) // sw $v0, 0($at)
         val cpu = R4300Cpu(memory)
         cpu.tlbEnabled = true
-        val faultAddress = 0x00401234L
+        // Map the instruction-fetch page so execution reaches the store.
         cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
+        ))
+        val faultAddress = 0x00401234L
+        cpu.tlb.write(1, R4300Tlb.Entry(
             virtualPagePairBase = faultAddress and R4300Tlb.PAGE_PAIR_MASK,
             asid = 0,
             evenPage = R4300Tlb.Page(4, valid = true, dirty = true, global = true),
