@@ -1503,4 +1503,21 @@ class R4300CpuTest {
         assertEquals(0L, memory.read32(8).toLong()) // Faulting store did not write memory.
     }
 
+
+    @Test fun tlbInstructionFetchMissUsesLoadMissExceptionAndRefillVector() {
+        val memory = N64Memory(64)
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        val faultAddress = 0x00400000L
+        cpu.setProgramCounter(faultAddress)
+
+        cpu.step()
+
+        assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr records the instruction address.
+        assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // Instruction-fetch miss is TLBL.
+        assertEquals(faultAddress, cpu.cop0[14]) // EPC points to the faulting instruction.
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc) // TLB refill vector.
+        assertEquals(0x2L, cpu.cop0[12] and 0x2L) // EXL is set.
+    }
+
 }
