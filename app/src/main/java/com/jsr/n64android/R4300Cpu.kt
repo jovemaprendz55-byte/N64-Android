@@ -313,8 +313,18 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 }
             }
             0x09 -> gpr[rt] = (gpr[rs].toInt() + immediate).toLong() // ADDIU wraps without trapping.
-            0x18 -> gpr[rt] = gpr[rs] + immediate.toLong() // DADDI (overflow exceptions not modeled)
-            0x19 -> gpr[rt] = gpr[rs] + immediate.toLong() // DADDIU
+            0x18 -> { // DADDI: signed 64-bit addition traps on overflow.
+                val left = gpr[rs]
+                val right = immediate.toLong()
+                val result = left + right
+                if (((left xor result) and (right xor result)) < 0L) {
+                    enterException(instructionAddress, 12, branchAddressForCurrentInstruction)
+                    directPc = exceptionVector()
+                } else {
+                    gpr[rt] = result
+                }
+            }
+            0x19 -> gpr[rt] = gpr[rs] + immediate.toLong() // DADDIU wraps without trapping.
             0x0A -> gpr[rt] = if (gpr[rs] < immediate.toLong()) 1L else 0L // SLTI
             0x0B -> gpr[rt] = if (java.lang.Long.compareUnsigned(gpr[rs], immediate.toLong()) < 0) 1L else 0L // SLTIU
             0x0C -> gpr[rt] = gpr[rs] and unsignedImmediate.toLong()
