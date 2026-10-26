@@ -1630,4 +1630,25 @@ class R4300CpuTest {
         assertEquals(0xFFFFFFFFBFC00380UL.toLong(), invalidCpu.pc) // Boot general vector.
     }
 
+
+
+    @Test fun tlbMissWithBevAndExlSetUsesBootGeneralVectorAndPreservesEpc() {
+        val memory = N64Memory(64)
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        val faultAddress = 0x00800000L
+        val previousEpc = 0x12345678L
+        cpu.cop0[12] = (1L shl 22) or 0x2L // BEV and EXL already set.
+        cpu.cop0[14] = previousEpc
+        cpu.setProgramCounter(faultAddress)
+
+        cpu.step()
+
+        assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr records the new fault.
+        assertEquals(previousEpc, cpu.cop0[14]) // Nested exception preserves EPC.
+        assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBL.
+        assertEquals(0xFFFFFFFFBFC00380UL.toLong(), cpu.pc) // BEV + EXL uses boot general vector.
+        assertEquals((1L shl 22) or 0x2L, cpu.cop0[12] and ((1L shl 22) or 0x2L))
+    }
+
 }
