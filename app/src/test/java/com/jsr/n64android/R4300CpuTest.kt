@@ -725,4 +725,18 @@ class R4300CpuTest {
 
     private fun rType(rs: Int, rt: Int, rd: Int, funct: Int): Int =
         (rs shl 21) or (rt shl 16) or (rd shl 11) or funct
+
+    @Test fun tlbpSetsProbeFailureBitAndClearsIndexOnMiss() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop0Co(0x08)) // TLBP
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.cop0[0] = 7L
+        cpu.cop0[10] = 0x00400005L // No matching VPN2/ASID entry
+
+        cpu.step()
+
+        assertEquals(1L shl 31, cpu.cop0[0])
+    }
+
 }
