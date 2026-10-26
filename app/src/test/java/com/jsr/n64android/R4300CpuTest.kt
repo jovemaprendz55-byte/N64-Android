@@ -74,6 +74,22 @@ class R4300CpuTest {
         assertEquals(1L, cpu.gpr[3])
     }
 
+    @Test fun resetVectorReportsMissingPifRomInsteadOfOutOfBoundsRam() {
+        val cpu = R4300Cpu(N64Bus())
+        val error = assertThrows(UnsupportedOperationException::class.java) { cpu.step() }
+        assertEquals(true, error.message!!.contains("PIF boot ROM is not loaded"))
+    }
+
+    @Test fun busReadsPifRomWhenExplicitlyProvided() {
+        val pif = ByteArray(N64Bus.PIF_ROM_SIZE)
+        pif[0] = 0x12
+        pif[1] = 0x34
+        pif[2] = 0x56
+        pif[3] = 0x78
+        val bus = N64Bus(pifRom = pif)
+        assertEquals(0x12345678, bus.read32(N64Bus.PIF_ROM_BASE))
+    }
+
     @Test fun rejectsUnalignedInstructionAndWordAccesses() {
         val memory = N64Memory(64)
         memory.write32(0, iType(0x23, 1, 2, 0))
