@@ -915,4 +915,34 @@ class R4300CpuTest {
         assertEquals((4L shl 6) or 0x6L, cpu.cop0[3])
     }
 
+    @Test fun daddiSigned64BitOverflowRaisesExceptionWithoutWritingDestination() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x18, 1, 2, 1)) // daddi $v0, $at, 1
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = Long.MAX_VALUE
+        cpu.gpr[2] = 123L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(12L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(0L, cpu.cop0[14])
+        assertEquals(123L, cpu.gpr[2])
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+    }
+
+    @Test fun daddiuWrapsOnSigned64BitOverflowWithoutException() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x19, 1, 2, 1)) // daddiu $v0, $at, 1
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = Long.MAX_VALUE
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(Long.MIN_VALUE, cpu.gpr[2])
+        assertEquals(0L, cpu.cop0[12] and 0x2L)
+        assertEquals(0L, cpu.pc)
+    }
+
 }
