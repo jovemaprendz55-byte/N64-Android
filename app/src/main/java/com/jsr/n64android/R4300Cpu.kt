@@ -440,7 +440,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 val physical = physicalAddress(aligned, R4300Tlb.Access.WRITE)
                 val oldWord = memory.read32(physical)
                 val shift = (3 - offset) * 8
-                val valueMask = if (shift == 0) -1 else (-1 shl (32 - shift))
+                val valueMask = -1 shl (24 - offset * 8)
                 val preserveMask = valueMask.inv()
                 memory.write32(physical, (oldWord and preserveMask) or (gpr[rt].toInt() and valueMask))
             }
