@@ -239,7 +239,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             0x0E -> gpr[rt] = gpr[rs] xor unsignedImmediate.toLong()
             0x0F -> gpr[rt] = (unsignedImmediate shl 16).toInt().toLong()
             0x20 -> gpr[rt] = memory.read8(physicalAddress(gpr[rs] + immediate, R4300Tlb.Access.READ)).toByte().toLong()
-            0x24 -> gpr[rt] = memory.read8(physicalAddress(gpr[rs] + immediate)).toLong()
+            0x24 -> gpr[rt] = memory.read8(physicalAddress(gpr[rs] + immediate, R4300Tlb.Access.READ)).toLong()
             0x21 -> {
                 val address = gpr[rs] + immediate
                 requireAligned(address, 2)
@@ -248,40 +248,40 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             0x25 -> {
                 val address = gpr[rs] + immediate
                 requireAligned(address, 2)
-                gpr[rt] = memory.read16(physicalAddress(address)).toLong()
+                gpr[rt] = memory.read16(physicalAddress(address, R4300Tlb.Access.READ)).toLong()
             }
             0x23 -> {
                 val address = gpr[rs] + immediate
                 requireAligned(address, 4)
-                gpr[rt] = memory.read32(physicalAddress(address)).toLong()
+                gpr[rt] = memory.read32(physicalAddress(address, R4300Tlb.Access.READ)).toLong()
             }
             0x27 -> { // LWU: load a word and zero-extend to 64 bits
                 val address = gpr[rs] + immediate
                 requireAligned(address, 4)
-                gpr[rt] = memory.read32(physicalAddress(address)).toLong() and 0xFFFFFFFFL
+                gpr[rt] = memory.read32(physicalAddress(address, R4300Tlb.Access.READ)).toLong() and 0xFFFFFFFFL
             }
             0x37 -> { // LD: load a big-endian doubleword
                 val address = gpr[rs] + immediate
                 requireAligned(address, 8)
-                val high = memory.read32(physicalAddress(address)).toLong()
+                val high = memory.read32(physicalAddress(address, R4300Tlb.Access.READ)).toLong()
                 val low = memory.read32(physicalAddress(address + 4L, R4300Tlb.Access.READ)).toLong() and 0xFFFFFFFFL
                 gpr[rt] = (high shl 32) or low
             }
-            0x28 -> memory.write8(physicalAddress(gpr[rs] + immediate), gpr[rt].toInt())
+            0x28 -> memory.write8(physicalAddress(gpr[rs] + immediate, R4300Tlb.Access.WRITE), gpr[rt].toInt())
             0x29 -> {
                 val address = gpr[rs] + immediate
                 requireAligned(address, 2)
-                memory.write16(physicalAddress(address), gpr[rt].toInt())
+                memory.write16(physicalAddress(address, R4300Tlb.Access.WRITE), gpr[rt].toInt())
             }
             0x2B -> {
                 val address = gpr[rs] + immediate
                 requireAligned(address, 4)
-                memory.write32(physicalAddress(address), gpr[rt].toInt())
+                memory.write32(physicalAddress(address, R4300Tlb.Access.WRITE), gpr[rt].toInt())
             }
             0x3F -> { // SD: store a big-endian doubleword
                 val address = gpr[rs] + immediate
                 requireAligned(address, 8)
-                memory.write32(physicalAddress(address), (gpr[rt] ushr 32).toInt())
+                memory.write32(physicalAddress(address, R4300Tlb.Access.READ), (gpr[rt] ushr 32).toInt())
                 memory.write32(physicalAddress(address + 4L), gpr[rt].toInt())
             }
             else -> throw UnsupportedOperationException("R4300 opcode 0x${opcode.toString(16)} at 0x${instructionAddress.toString(16)}")
