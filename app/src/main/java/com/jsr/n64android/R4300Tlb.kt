@@ -27,7 +27,7 @@ class R4300Tlb(private val entryCount: Int = ENTRY_COUNT) {
     ) {
         init {
             require(physicalFrameNumber >= 0) { "Physical frame number must be non-negative." }
-            require(physicalFrameNumber <= MAX_PFN) { "Physical frame number exceeds the 24-bit R4300 PFN field." }
+            require(physicalFrameNumber <= MAX_PFN) { "Physical frame number exceeds the 20-bit R4300 PFN field." }
         }
     }
 
@@ -97,6 +97,6 @@ class R4300Tlb(private val entryCount: Int = ENTRY_COUNT) {
         const val PAGE_SIZE = 1 shl PAGE_SHIFT
         const val PAGE_OFFSET_MASK = PAGE_SIZE.toLong() - 1L
         const val PAGE_PAIR_MASK = -0x2000L
-        const val MAX_PFN = 0xFFFFFF
+        const val MAX_PFN = 0xFFFFF
     }
 }
