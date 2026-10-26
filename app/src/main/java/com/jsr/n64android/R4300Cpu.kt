@@ -50,6 +50,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         val immediate = instruction.toShort().toInt()
         val unsignedImmediate = instruction and 0xFFFF
         val nextSequential = instructionAddress + 4L
+        var directPc: Long? = null
 
         when (opcode) {
             0 -> when (funct) {
@@ -156,6 +157,23 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 when (copRs) {
                     0x00 -> gpr[rt] = cop0[copRd].toInt().toLong() // MFC0 sign-extends 32-bit value
                     0x04 -> cop0[copRd] = gpr[rt].toInt().toLong() // MTC0 writes low 32 bits
+                    0x10 -> { // COP0 CO-format operations
+                        when (funct) {
+                            0x18 -> { // ERET
+                                val status = cop0[12]
+                                if ((status and 0x4L) != 0L) {
+                                    cop0[12] = status and 0x4L.inv() // clear ERL
+                                    directPc = cop0[30] // ErrorEPC
+                                } else {
+                                    cop0[12] = status and 0x2L.inv() // clear EXL
+                                    directPc = cop0[14] // EPC
+                                }
+                            }
+                            else -> throw UnsupportedOperationException(
+                                "R4300 COP0 CO funct=0x${funct.toString(16)} at 0x${instructionAddress.toString(16)}"
+                            )
+                        }
+                    }
                     else -> throw UnsupportedOperationException(
                         "R4300 COP0 rs=0x${copRs.toString(16)} at 0x${instructionAddress.toString(16)}"
                     )
@@ -248,7 +266,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             else -> throw UnsupportedOperationException("R4300 opcode 0x${opcode.toString(16)} at 0x${instructionAddress.toString(16)}")
         }
 
-        pc = targetFromPreviousBranch ?: nextSequential
+        pc = targetFromPreviousBranch ?: directPc ?: nextSequential
         gpr[0] = 0L
     }
 
