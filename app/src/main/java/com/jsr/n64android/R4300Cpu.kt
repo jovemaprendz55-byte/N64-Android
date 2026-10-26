@@ -5,7 +5,7 @@ import java.math.BigInteger
 /**
  * First executable R4300 subset for bring-up and unit tests.
  * This is not a complete MIPS III/R4300 implementation: remaining instructions,
- * exceptions, COP0/TLB, cache operations and full N64 devices remain unimplemented.
+ * full delay-slot exception semantics, COP0/TLB, cache operations and full N64 devices remain unimplemented.
  */
 class R4300Cpu(private val memory: N64AddressSpace) {
     val gpr: LongArray = LongArray(32)
@@ -18,6 +18,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     var pc: Long = RESET_VECTOR
         private set
     private var delayedTarget: Long? = null
+    private var pendingDelaySlotBranchAddress: Long? = null
 
     fun reset() {
         gpr.fill(0L)
@@ -26,12 +27,14 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         cop0.fill(0L)
         pc = RESET_VECTOR
         delayedTarget = null
+        pendingDelaySlotBranchAddress = null
     }
 
     fun setProgramCounter(address: Long) {
         require(address and 0x3L == 0L) { "Instruction address must be 4-byte aligned." }
         pc = address
         delayedTarget = null
+        pendingDelaySlotBranchAddress = null
     }
 
     /** Executes one instruction. Branches and jumps take effect after the delay slot. */
@@ -39,7 +42,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         val instructionAddress = pc
         val instruction = memory.read32(physicalAddress(instructionAddress))
         val targetFromPreviousBranch = delayedTarget
+        val branchAddressForCurrentInstruction = pendingDelaySlotBranchAddress
         delayedTarget = null
+        pendingDelaySlotBranchAddress = null
 
         val opcode = instruction ushr 26
         val rs = (instruction ushr 21) and 0x1F
@@ -140,15 +145,15 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     } // Division by zero has architecturally unpredictable results.
                 }
                 0x0C -> { // SYSCALL: initial synchronous exception handling
-                    enterException(instructionAddress, 8)
+                    enterException(instructionAddress, 8, branchAddressForCurrentInstruction)
                     directPc = exceptionVector()
                 }
                 0x0D -> { // BREAK: initial synchronous exception handling
-                    enterException(instructionAddress, 9)
+                    enterException(instructionAddress, 9, branchAddressForCurrentInstruction)
                     directPc = exceptionVector()
                 }
-                0x08 -> delayedTarget = gpr[rs]
-                0x09 -> { gpr[rd] = nextSequential + 4L; delayedTarget = gpr[rs] }
+                0x08 -> { pendingDelaySlotBranchAddress = instructionAddress; delayedTarget = gpr[rs] }
+                0x09 -> { gpr[rd] = nextSequential + 4L; pendingDelaySlotBranchAddress = instructionAddress; delayedTarget = gpr[rs] }
                 0x21 -> gpr[rd] = (gpr[rs].toInt() + gpr[rt].toInt()).toLong()
                 0x23 -> gpr[rd] = (gpr[rs].toInt() - gpr[rt].toInt()).toLong()
                 0x24 -> gpr[rd] = (gpr[rs].toInt() and gpr[rt].toInt()).toLong()
@@ -195,6 +200,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                         "R4300 REGIMM rt=0x${rt.toString(16)} at 0x${instructionAddress.toString(16)}"
                     )
                 }
+                pendingDelaySlotBranchAddress = instructionAddress
                 if (takeBranch) {
                     if (rt == 0x10 || rt == 0x11) gpr[31] = nextSequential + 4L
                     delayedTarget = nextSequential + (immediate.toLong() shl 2)
@@ -204,6 +210,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 val jumpAddress = (nextSequential and -0x10000000L) or
                     ((instruction.toLong() and 0x03FFFFFFL) shl 2)
                 if (opcode == 0x03) gpr[31] = nextSequential + 4L
+                pendingDelaySlotBranchAddress = instructionAddress
                 delayedTarget = jumpAddress
             }
             0x04, 0x05, 0x06, 0x07 -> {
@@ -213,6 +220,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     0x06 -> rt == 0 && gpr[rs] <= 0L // BLEZ
                     else -> rt == 0 && gpr[rs] > 0L // BGTZ
                 }
+                pendingDelaySlotBranchAddress = instructionAddress
                 if (takeBranch) delayedTarget = nextSequential + (immediate.toLong() shl 2)
             }
             0x08 -> gpr[rt] = (gpr[rs].toInt() + immediate).toLong() // ADDI (overflow exceptions not modeled)
@@ -278,12 +286,17 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         gpr[0] = 0L
     }
 
-    private fun enterException(instructionAddress: Long, exceptionCode: Int) {
+    private fun enterException(instructionAddress: Long, exceptionCode: Int, branchAddress: Long?) {
         val status = cop0[12]
         if ((status and 0x2L) == 0L) {
-            cop0[14] = instructionAddress // EPC; branch-delay-slot EPC/BD is not modeled yet.
+            cop0[14] = branchAddress ?: instructionAddress
         }
-        cop0[13] = (cop0[13] and (0x1FL shl 2).inv()) or (exceptionCode.toLong() shl 2)
+        val branchDelayBit = 1L shl 31
+        val exceptionCodeMask = 0x1FL shl 2
+        var cause = cop0[13] and branchDelayBit.inv() and exceptionCodeMask.inv()
+        cause = cause or (exceptionCode.toLong() shl 2)
+        if (branchAddress != null) cause = cause or branchDelayBit
+        cop0[13] = cause
         cop0[12] = status or 0x2L // Set EXL.
     }
 
