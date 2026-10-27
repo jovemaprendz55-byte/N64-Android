@@ -54,7 +54,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             enterTlbException(fault, branchAddressForFault)
         } catch (fault: AddressFault) {
             enterAddressException(fault, branchAddressForFault)
-        } catch (_: UnsupportedOperationException) {
+        } catch (_: ReservedInstructionFault) {
             // Unsupported encodings raise the architectural Reserved Instruction exception (RI).
             enterException(pc, 10, branchAddressForFault)
             pc = exceptionVector()
@@ -226,7 +226,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 0x27 -> gpr[rd] = (gpr[rs].toInt() or gpr[rt].toInt()).inv().toLong()
                 0x2A -> gpr[rd] = if (gpr[rs] < gpr[rt]) 1L else 0L
                 0x2B -> gpr[rd] = if (java.lang.Long.compareUnsigned(gpr[rs], gpr[rt]) < 0) 1L else 0L
-                else -> throw UnsupportedOperationException("R4300 SPECIAL funct 0x${funct.toString(16)} at 0x${instructionAddress.toString(16)}")
+                else -> throw ReservedInstructionFault("R4300 SPECIAL funct 0x${funct.toString(16)} at 0x${instructionAddress.toString(16)}")
             }
             0x10 -> { // COP0: minimal MFC0/MTC0 register transfers
                 val copRs = rs
@@ -301,12 +301,12 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                                     directPc = cop0[14] // EPC
                                 }
                             }
-                            else -> throw UnsupportedOperationException(
+                            else -> throw ReservedInstructionFault(
                                 "R4300 COP0 CO funct=0x${funct.toString(16)} at 0x${instructionAddress.toString(16)}"
                             )
                         }
                     }
-                    else -> throw UnsupportedOperationException(
+                    else -> throw ReservedInstructionFault(
                         "R4300 COP0 rs=0x${copRs.toString(16)} at 0x${instructionAddress.toString(16)}"
                     )
                 }
@@ -315,7 +315,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 val takeBranch = when (rt) {
                     0x00, 0x10 -> gpr[rs] < 0L // BLTZ / BLTZAL
                     0x01, 0x11 -> gpr[rs] >= 0L // BGEZ / BGEZAL
-                    else -> throw UnsupportedOperationException(
+                    else -> throw ReservedInstructionFault(
                         "R4300 REGIMM rt=0x${rt.toString(16)} at 0x${instructionAddress.toString(16)}"
                     )
                 }
@@ -509,7 +509,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 memory.write32(physicalAddress(address, R4300Tlb.Access.WRITE), (gpr[rt] ushr 32).toInt())
                 memory.write32(physicalAddress(address + 4L, R4300Tlb.Access.WRITE), gpr[rt].toInt())
             }
-            else -> throw UnsupportedOperationException("R4300 opcode 0x${opcode.toString(16)} at 0x${instructionAddress.toString(16)}")
+            else -> throw ReservedInstructionFault("R4300 opcode 0x${opcode.toString(16)} at 0x${instructionAddress.toString(16)}")
         }
 
         pc = directPc ?: targetFromPreviousBranch ?: nextSequential
@@ -602,6 +602,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         val signed = BigInteger.valueOf(value)
         return if (value >= 0L) signed else signed.add(BigInteger.ONE.shiftLeft(64))
     }
+
+    private class ReservedInstructionFault(message: String) : RuntimeException(message)
 
     private class AddressFault(val virtualAddress: Long, val store: Boolean) : RuntimeException()
 
