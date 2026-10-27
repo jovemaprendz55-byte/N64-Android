@@ -8,7 +8,7 @@ class N64BusPiRegisterTest {
     fun piDramAddressRegisterKeepsOnlyLow24Bits() {
         val bus = N64Bus(ram = N64Memory(8 * 1024), cartridgeRom = byteArrayOf(0x11))
 
-        bus.write32(N64Bus.PI_DRAM_ADDR_REG, 0xAB123456)
+        bus.write32(N64Bus.PI_DRAM_ADDR_REG, 0xAB123456.toInt())
 
         assertEquals(0x00123456, bus.read32(N64Bus.PI_DRAM_ADDR_REG))
     }
