@@ -1536,6 +1536,7 @@ class R4300CpuTest {
 
 
     @Test fun tlbStoreMissUsesStoreMissCodeAndRefillVector() {
+        val asid = 0x24L
         val memory = N64Memory(64)
         memory.write32(0, iType(0x2B, 1, 2, 0)) // sw $v0, 0($at)
         val cpu = R4300Cpu(memory)
@@ -1547,6 +1548,7 @@ class R4300CpuTest {
             oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
         ))
         val faultAddress = 0x00601234L
+        cpu.cop0[10] = asid
         cpu.gpr[1] = faultAddress
         cpu.gpr[2] = 0x12345678L
         cpu.setProgramCounter(0)
@@ -1554,6 +1556,8 @@ class R4300CpuTest {
         cpu.step()
 
         assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr
+        assertEquals((faultAddress ushr 9) and 0x007FFFF0L, cpu.cop0[4]) // Context.BadVPN2.
+        assertEquals((faultAddress and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves ASID.
         assertEquals(3L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBS
         assertEquals(0L, cpu.cop0[14]) // EPC
         assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc) // Refill vector
@@ -1564,6 +1568,8 @@ class R4300CpuTest {
     @Test fun tlbInstructionFetchMissUsesLoadMissExceptionAndRefillVector() {
         val memory = N64Memory(64)
         val cpu = R4300Cpu(memory)
+        val asid = 0x25L
+        cpu.cop0[10] = asid
         cpu.tlbEnabled = true
         val faultAddress = 0x00400000L
         cpu.setProgramCounter(faultAddress)
@@ -1571,6 +1577,8 @@ class R4300CpuTest {
         cpu.step()
 
         assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr records the instruction address.
+        assertEquals((faultAddress ushr 9) and 0x007FFFF0L, cpu.cop0[4]) // Context.BadVPN2.
+        assertEquals((faultAddress and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves ASID.
         assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // Instruction-fetch miss is TLBL.
         assertEquals(faultAddress, cpu.cop0[14]) // EPC points to the faulting instruction.
         assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc) // TLB refill vector.
