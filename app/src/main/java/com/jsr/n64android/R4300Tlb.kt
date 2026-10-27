@@ -52,7 +52,11 @@ class R4300Tlb(private val entryCount: Int = ENTRY_COUNT) {
             "TLB virtual pair base must be aligned to 8 KiB."
         }
         require(entry.asid in 0..0xFF) { "ASID must fit in 8 bits." }
-        entries[index] = entry
+        // TLB lookup normalizes virtual addresses to 32 bits, so store VPN2 in
+        // the same representation even when callers pass sign-extended N64 addresses.
+        entries[index] = entry.copy(
+            virtualPagePairBase = entry.virtualPagePairBase and 0xFFFFFFFFL
+        )
     }
 
     fun read(index: Int): Entry {
