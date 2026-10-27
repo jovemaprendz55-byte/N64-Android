@@ -3431,4 +3431,19 @@ class R4300CpuTest {
         assertEquals(0x2000, cpu.tlb.translate(0x00201000L, 0x7F, R4300Tlb.Access.WRITE))
     }
 
+
+    @Test fun cop0WritingWiredResetsRandomToThirtyOne() {
+        val memory = N64Memory(32)
+        memory.write32(0, (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (6 shl 11)) // MTC0 $t0, Wired
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 0x25L // Wired is five bits, so this writes 5.
+        cpu.cop0[1] = 9L // Random must be reset by the Wired write.
+
+        cpu.step()
+
+        assertEquals(5L, cpu.cop0[6])
+        assertEquals(31L, cpu.cop0[1])
+    }
+
 }
