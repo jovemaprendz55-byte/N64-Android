@@ -28,14 +28,14 @@ class R4300SpImemIntegrationTest {
         val base = N64Bus.SP_IMEM_BASE
         // addiu $t0, $zero, 1
         bus.write32(base, (0x09 shl 26) or (8 shl 16) or 1)
-        // beq $t0, $t0, +2: branch target is base + 12
+        // beq $t0, $t0, +2: branch target is base + 16
         bus.write32(base + 4, (0x04 shl 26) or (8 shl 21) or (8 shl 16) or 2)
         // Delay slot: addiu $t1, $zero, 7
         bus.write32(base + 8, (0x09 shl 26) or (9 shl 16) or 7)
         // Must be skipped: addiu $t2, $zero, 9
-        bus.write32(base + 12 - 4, (0x09 shl 26) or (10 shl 16) or 9)
+        bus.write32(base + 12, (0x09 shl 26) or (10 shl 16) or 9)
         // Target: addiu $t3, $zero, 10
-        bus.write32(base + 12, (0x09 shl 26) or (11 shl 16) or 10)
+        bus.write32(base + 16, (0x09 shl 26) or (11 shl 16) or 10)
 
         val cpu = R4300Cpu(bus)
         cpu.setProgramCounter(0xA4001000L)
@@ -45,5 +45,5 @@ class R4300SpImemIntegrationTest {
         assertEquals(7L, cpu.gpr[9])
         assertEquals(0L, cpu.gpr[10])
         assertEquals(10L, cpu.gpr[11])
-        assertEquals(0xA4001010L, cpu.pc)
+        assertEquals(0xA4001014L, cpu.pc)
     }
