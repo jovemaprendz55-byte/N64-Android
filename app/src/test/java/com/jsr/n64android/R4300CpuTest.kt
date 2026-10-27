@@ -3552,4 +3552,29 @@ class R4300CpuTest {
         assertEquals(0L, cpu.cop0[13])
     }
 
+
+    @Test fun cop0Mtc0EntryLoClearsReservedHighBits() {
+        val memory = N64Memory(32)
+        memory.write32(0, (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (2 shl 11)) // MTC0 $t0, EntryLo0
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 0xFFFFFFFFL
+
+        cpu.step()
+
+        assertEquals(0x03FFFFFFL, cpu.cop0[2])
+    }
+
+    @Test fun cop0Mtc0EntryLoPreservesPfnAndFlags() {
+        val memory = N64Memory(32)
+        memory.write32(0, (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (3 shl 11)) // MTC0 $t0, EntryLo1
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 0xFC12345FL
+
+        cpu.step()
+
+        assertEquals(0x0012345FL, cpu.cop0[3])
+    }
+
 }
