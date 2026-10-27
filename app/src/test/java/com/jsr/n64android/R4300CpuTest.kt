@@ -3726,6 +3726,38 @@ class R4300CpuTest {
         assertEquals(0x5678L, cpu.gpr[3])
         assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
     }
+    @Test fun malformedMovzEncodingRaisesReservedInstructionException() {
+        val memory = N64Memory(32)
+        memory.write32(0, rType(1, 2, 3, 0x0A) or (1 shl 6)) // MOVZ requires shamt=0.
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 123L
+        cpu.gpr[2] = 0L
+        cpu.gpr[3] = 456L
+
+        cpu.step()
+
+        assertEquals(10L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(456L, cpu.gpr[3])
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+    }
+
+    @Test fun malformedMovnEncodingRaisesReservedInstructionException() {
+        val memory = N64Memory(32)
+        memory.write32(0, rType(1, 2, 3, 0x0B) or (1 shl 6)) // MOVN requires shamt=0.
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 123L
+        cpu.gpr[2] = 1L
+        cpu.gpr[3] = 456L
+
+        cpu.step()
+
+        assertEquals(10L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(456L, cpu.gpr[3])
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+    }
+
     @Test fun unsupportedInstructionRaisesReservedInstructionException() {
         val memory = N64Memory(32)
         memory.write32(0, 0x7C000000.toInt()) // Reserved/unsupported primary opcode.
