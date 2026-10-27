@@ -79,8 +79,14 @@ class MainActivity : Activity() {
         var executed = 0
         var stopReason = "Limite de 32 passos alcançado."
         try {
-            repeat(32) {
+            for (stepIndex in 0 until 32) {
                 val pc = cpu.pc
+                // Stop at the normal exception vector instead of reading zero-filled RDRAM
+                // as if it were useful IPL3 code. Capture COP0 state for the next diagnosis.
+                if (stepIndex > 0 && pc == 0xFFFFFFFF80000180UL.toLong()) {
+                    stopReason = "CPU entrou no vetor de exceção 0xFFFFFFFF80000180; interrompido para evitar rastrear RAM zerada."
+                    break
+                }
                 val physical = (pc and 0xFFFFFFFFL) and 0x1FFFFFFFL
                 val instruction = bus.read32(physical.toInt())
                 trace.append("PC=0x").append(pc.toULong().toString(16).uppercase().padStart(16, '0'))
@@ -96,6 +102,10 @@ class MainActivity : Activity() {
             "\nPassos executados: $executed" +
             "\nPC final: 0x${cpu.pc.toULong().toString(16).uppercase()}" +
             "\nMotivo: $stopReason" +
+            "\nCOP0 Status: 0x${cpu.cop0[12].toULong().toString(16).uppercase()}" +
+            "\nCOP0 Cause: 0x${cpu.cop0[13].toULong().toString(16).uppercase()}" +
+            "\nCOP0 EPC: 0x${cpu.cop0[14].toULong().toString(16).uppercase()}" +
+            "\nCOP0 BadVAddr: 0x${cpu.cop0[8].toULong().toString(16).uppercase()}" +
             "\n\nIsto NÃO é o boot real do jogo. O IPL3 foi executado diretamente como teste; PIF/CIC e dispositivos ainda faltam." +
             "\n\nRASTRO DE INSTRUÇÕES:\n" + trace.toString()
         showRomDiagnosticPage(status.text.toString())
