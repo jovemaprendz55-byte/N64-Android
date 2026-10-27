@@ -2481,6 +2481,7 @@ class R4300CpuTest {
 
 
     @Test fun halfwordLoadMissRaisesTlbRefillExceptionWithoutChangingDestination() {
+        val asid = 0x29L
         val memory = N64Memory(64)
         memory.write32(0, iType(0x21, 1, 2, 0)) // lh $v0, 0($at)
         val cpu = R4300Cpu(memory)
@@ -2492,6 +2493,7 @@ class R4300CpuTest {
             oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
         ))
         val faultAddress = 0x00401234L
+        cpu.cop0[10] = asid
         cpu.gpr[1] = faultAddress
         cpu.gpr[2] = 0x13579BDFL
         cpu.setProgramCounter(0)
@@ -2499,6 +2501,8 @@ class R4300CpuTest {
         cpu.step()
 
         assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr.
+        assertEquals((faultAddress ushr 9) and 0x007FFFF0L, cpu.cop0[4]) // Context.BadVPN2.
+        assertEquals((faultAddress and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves ASID.
         assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBL.
         assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc) // TLB refill vector.
         assertEquals(0x13579BDFL, cpu.gpr[2]) // Destination remains unchanged.
@@ -2640,6 +2644,7 @@ class R4300CpuTest {
 
 
     @Test fun wordLoadMissRaisesTlbRefillExceptionWithoutChangingDestination() {
+        val asid = 0x2AL
         val memory = N64Memory(64)
         memory.write32(0, iType(0x23, 1, 2, 0)) // lw $v0, 0($at)
         val cpu = R4300Cpu(memory)
@@ -2651,6 +2656,7 @@ class R4300CpuTest {
             oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
         ))
         val faultAddress = 0x00401234L
+        cpu.cop0[10] = asid
         cpu.gpr[1] = faultAddress
         cpu.gpr[2] = 0x13579BDFL
         cpu.setProgramCounter(0)
@@ -2658,6 +2664,8 @@ class R4300CpuTest {
         cpu.step()
 
         assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr.
+        assertEquals((faultAddress ushr 9) and 0x007FFFF0L, cpu.cop0[4]) // Context.BadVPN2.
+        assertEquals((faultAddress and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves ASID.
         assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBL.
         assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc) // TLB refill vector.
         assertEquals(0x13579BDFL, cpu.gpr[2]) // Destination remains unchanged.
