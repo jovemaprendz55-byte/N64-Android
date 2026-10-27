@@ -98,6 +98,15 @@ class MainActivity : Activity() {
                 if (trace.size > 80) trace.removeFirst()
                 cpu.step()
                 executed++
+                // Detect the exception vector immediately after the instruction that enters it.
+                // This preserves the useful IPL3 trace and COP0 state instead of tracing zero-filled RAM.
+                if (cpu.pc == 0xFFFFFFFF80000180UL.toLong() ||
+                    cpu.pc == 0xFFFFFFFF80000000UL.toLong() ||
+                    cpu.pc == 0xFFFFFFFFBFC00380UL.toLong() ||
+                    cpu.pc == 0xFFFFFFFFBFC00200UL.toLong()) {
+                    stopReason = "CPU saltou/entrou no vetor de exceção/boot 0x${cpu.pc.toULong().toString(16).uppercase()}; interrompido imediatamente para preservar o rastro que levou até ele."
+                    break
+                }
             }
         } catch (error: Exception) {
             stopReason = "Parou em erro/área não implementada: ${error.message ?: error.javaClass.simpleName}"
