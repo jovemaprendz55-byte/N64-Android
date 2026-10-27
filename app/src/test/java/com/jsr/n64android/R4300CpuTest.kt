@@ -3500,4 +3500,29 @@ class R4300CpuTest {
         assertEquals(0x12L, cpu.cop0[0])
     }
 
+
+    @Test fun cop0Mtc0EntryHiClearsReservedBits() {
+        val memory = N64Memory(32)
+        memory.write32(0, (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11)) // MTC0 $t0, EntryHi
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 0xFFFFFFFFL // Reserved bits [12:8] must read as zero.
+
+        cpu.step()
+
+        assertEquals(0xFFFFE0FFL, cpu.cop0[10])
+    }
+
+    @Test fun cop0Mtc0EntryHiPreservesVpn2AndAsid() {
+        val memory = N64Memory(32)
+        memory.write32(0, (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (10 shl 11)) // MTC0 $t0, EntryHi
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 0x12345AFFL // VPN2 plus ASID, with reserved bits set in [12:8].
+
+        cpu.step()
+
+        assertEquals(0x123440FFL, cpu.cop0[10])
+    }
+
 }
