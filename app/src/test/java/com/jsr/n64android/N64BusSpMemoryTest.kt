@@ -9,7 +9,7 @@ class N64BusSpMemoryTest {
         val bus = N64Bus(ram = N64Memory(8 * 1024))
 
         bus.write32(N64Bus.SP_DMEM_BASE, 0x12345678)
-        bus.write32(N64Bus.SP_IMEM_BASE, 0xA1B2C3D4)
+        bus.write32(N64Bus.SP_IMEM_BASE, 0xA1B2C3D4.toInt())
 
         assertEquals(0x12345678, bus.read32(N64Bus.SP_DMEM_BASE))
         assertEquals(0xA1B2C3D4.toInt(), bus.read32(N64Bus.SP_IMEM_BASE))
