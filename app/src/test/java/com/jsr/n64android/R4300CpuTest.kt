@@ -3446,4 +3446,32 @@ class R4300CpuTest {
         assertEquals(31L, cpu.cop0[1])
     }
 
+    @Test fun cop0RandomCountsDownWithinWiredReplacementRange() {
+        val memory = N64Memory(32)
+        memory.write32(0, 0) // NOP.
+        memory.write32(4, 0) // NOP.
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.cop0[6] = 5L // Wired reserves entries 0 through 4.
+        cpu.cop0[1] = 9L
+
+        cpu.step()
+        assertEquals(8L, cpu.cop0[1])
+        cpu.step()
+        assertEquals(7L, cpu.cop0[1])
+    }
+
+    @Test fun cop0RandomWrapsToThirtyOneAtWiredBoundary() {
+        val memory = N64Memory(32)
+        memory.write32(0, 0) // NOP.
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.cop0[6] = 5L
+        cpu.cop0[1] = 5L
+
+        cpu.step()
+
+        assertEquals(31L, cpu.cop0[1])
+    }
+
 }
