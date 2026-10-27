@@ -109,9 +109,18 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     if (shamt != 0) throw ReservedInstructionFault("R4300 SRAV has nonzero shamt at 0x${instructionAddress.toString(16)}")
                     gpr[rd] = (gpr[rt].toInt() shr (gpr[rs].toInt() and 0x1F)).toLong()
                 }
-                0x14 -> gpr[rd] = gpr[rt] shl (gpr[rs].toInt() and 0x3F) // DSLLV
-                0x16 -> gpr[rd] = gpr[rt] ushr (gpr[rs].toInt() and 0x3F) // DSRLV
-                0x17 -> gpr[rd] = gpr[rt] shr (gpr[rs].toInt() and 0x3F) // DSRAV
+                0x14 -> { // DSLLV
+                    if (shamt != 0) throw ReservedInstructionFault("R4300 DSLLV has nonzero shamt at 0x${instructionAddress.toString(16)}")
+                    gpr[rd] = gpr[rt] shl (gpr[rs].toInt() and 0x3F)
+                }
+                0x16 -> {
+                    if (shamt != 0) throw ReservedInstructionFault("R4300 DSRLV has nonzero shamt at 0x${instructionAddress.toString(16)}")
+                    gpr[rd] = gpr[rt] ushr (gpr[rs].toInt() and 0x3F)
+                }
+                0x17 -> {
+                    if (shamt != 0) throw ReservedInstructionFault("R4300 DSRAV has nonzero shamt at 0x${instructionAddress.toString(16)}")
+                    gpr[rd] = gpr[rt] shr (gpr[rs].toInt() and 0x3F)
+                }
                 0x2C -> { // DADD: signed 64-bit addition traps on overflow.
                     val left = gpr[rs]
                     val right = gpr[rt]
@@ -136,12 +145,30 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     }
                 }
                 0x2F -> gpr[rd] = gpr[rs] - gpr[rt] // DSUBU wraps without trapping.
-                0x38 -> gpr[rd] = gpr[rt] shl shamt // DSLL
-                0x3A -> gpr[rd] = gpr[rt] ushr shamt // DSRL
-                0x3B -> gpr[rd] = gpr[rt] shr shamt // DSRA
-                0x3C -> gpr[rd] = gpr[rt] shl (shamt + 32) // DSLL32
-                0x3E -> gpr[rd] = gpr[rt] ushr (shamt + 32) // DSRL32
-                0x3F -> gpr[rd] = gpr[rt] shr (shamt + 32) // DSRA32
+                0x38 -> {
+                    if (rs != 0) throw ReservedInstructionFault("R4300 DSLL has nonzero rs at 0x${instructionAddress.toString(16)}")
+                    gpr[rd] = gpr[rt] shl shamt
+                }
+                0x3A -> {
+                    if (rs != 0) throw ReservedInstructionFault("R4300 DSRL has nonzero rs at 0x${instructionAddress.toString(16)}")
+                    gpr[rd] = gpr[rt] ushr shamt
+                }
+                0x3B -> {
+                    if (rs != 0) throw ReservedInstructionFault("R4300 DSRA has nonzero rs at 0x${instructionAddress.toString(16)}")
+                    gpr[rd] = gpr[rt] shr shamt
+                }
+                0x3C -> {
+                    if (rs != 0) throw ReservedInstructionFault("R4300 DSLL32 has nonzero rs at 0x${instructionAddress.toString(16)}")
+                    gpr[rd] = gpr[rt] shl (shamt + 32)
+                }
+                0x3E -> {
+                    if (rs != 0) throw ReservedInstructionFault("R4300 DSRL32 has nonzero rs at 0x${instructionAddress.toString(16)}")
+                    gpr[rd] = gpr[rt] ushr (shamt + 32)
+                }
+                0x3F -> {
+                    if (rs != 0) throw ReservedInstructionFault("R4300 DSRA32 has nonzero rs at 0x${instructionAddress.toString(16)}")
+                    gpr[rd] = gpr[rt] shr (shamt + 32)
+                }
                 0x0A -> if (gpr[rt] == 0L) gpr[rd] = gpr[rs] // MOVZ
                 0x0B -> if (gpr[rt] != 0L) gpr[rd] = gpr[rs] // MOVN
                 0x10 -> gpr[rd] = hi // MFHI
