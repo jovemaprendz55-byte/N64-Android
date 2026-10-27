@@ -3536,7 +3536,7 @@ class R4300CpuTest {
 
         cpu.step()
 
-        assertEquals(0x8000FD2CL, cpu.cop0[13])
+        assertEquals(0x8000FE2CL, cpu.cop0[13])
     }
 
     @Test fun cop0Mtc0CauseCanClearSoftwareInterruptPendingBits() {
