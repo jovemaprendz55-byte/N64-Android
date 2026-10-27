@@ -3525,4 +3525,31 @@ class R4300CpuTest {
         assertEquals(0x123440FFL, cpu.cop0[10])
     }
 
+
+    @Test fun cop0Mtc0CauseOnlyWritesSoftwareInterruptPendingBits() {
+        val memory = N64Memory(32)
+        memory.write32(0, (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (13 shl 11)) // MTC0 $t0, Cause
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.cop0[13] = 0x8000FF2CL // BD, hardware IP bits and exception code already present.
+        cpu.gpr[1] = 0x0000AAB3L // Attempts to alter read-only fields and sets IP[1:0].
+
+        cpu.step()
+
+        assertEquals(0x8000FD2CL, cpu.cop0[13])
+    }
+
+    @Test fun cop0Mtc0CauseCanClearSoftwareInterruptPendingBits() {
+        val memory = N64Memory(32)
+        memory.write32(0, (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (13 shl 11)) // MTC0 $t0, Cause
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.cop0[13] = 0x00000300L
+        cpu.gpr[1] = 0L
+
+        cpu.step()
+
+        assertEquals(0L, cpu.cop0[13])
+    }
+
 }
