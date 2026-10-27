@@ -3117,18 +3117,21 @@ class R4300CpuTest {
         val memory = N64Memory(64)
         memory.write32(0, iType(0x23, 1, 2, 0)) // lw $v0, 0($at)
         val cpu = R4300Cpu(memory)
+        val faultAddress = 0x00402004L
+        val asid = 0x2FL
+        val pteBase = 0x12000000L
         cpu.tlbEnabled = true
-        cpu.gpr[1] = 0x00402004L
-        cpu.cop0[4] = 0x12000000L // Preserve the Context register's PTEBase field.
-        cpu.cop0[10] = 7L // EntryHi ASID
+        cpu.gpr[1] = faultAddress
+        cpu.cop0[4] = pteBase // Preserve the Context register's PTEBase field.
+        cpu.cop0[10] = asid // EntryHi ASID before the miss.
         // Fetch the instruction through KSEG0 so only the data access misses in the TLB.
         cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
 
         cpu.step()
 
-        assertEquals(0x00402004L, cpu.cop0[8]) // BadVAddr
-        assertEquals(0x12000000L or ((0x00402004L ushr 9) and 0x007FFFF0L), cpu.cop0[4]) // Context
-        assertEquals(0x00402007L, cpu.cop0[10]) // EntryHi VPN2 + preserved ASID
+        assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr
+        assertEquals(pteBase or ((faultAddress ushr 9) and 0x007FFFF0L), cpu.cop0[4]) // Context.BadVPN2 + PTEBase
+        assertEquals((faultAddress and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi VPN2 + preserved ASID
         assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBL
         assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.cop0[14]) // EPC points to the load
         assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc) // TLB refill vector
