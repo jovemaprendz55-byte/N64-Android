@@ -11,6 +11,7 @@ import android.view.Gravity
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import android.text.method.ScrollingMovementMethod
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -19,6 +20,7 @@ class MainActivity : Activity() {
     private lateinit var status: TextView
     private var cartridgeBus: N64Bus? = null
     private var romTraceButton: Button? = null
+    private var copyRomDiagnosticButton: Button? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,7 +52,7 @@ class MainActivity : Activity() {
             setOnClickListener { runRomInstructionDiagnostic() }
             isEnabled = false
         }
-        val layout = LinearLayout(this).apply {
+        copyRomDiagnosticButton = Button(this).apply {\n            text = "Copiar diagnóstico parcial da ROM"\n            isEnabled = false\n            setOnClickListener {\n                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager\n                clipboard.setPrimaryClip(ClipData.newPlainText("N64 Android diagnóstico parcial da ROM", status.text))\n                Toast.makeText(this@MainActivity, "Diagnóstico copiado. Volte ao chat e cole aqui.", Toast.LENGTH_LONG).show()\n            }\n        }\n        val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setPadding(24, 24, 24, 24)
@@ -62,8 +64,7 @@ class MainActivity : Activity() {
             addView(status)
             addView(chooseRom)
             addView(cpuDiagnostic)
-            addView(romTraceButton)
-            addView(copyLogs)
+            addView(romTraceButton)\n            addView(copyRomDiagnosticButton)\n            addView(copyLogs)
         }
         setContentView(layout)
     }
@@ -99,7 +100,7 @@ class MainActivity : Activity() {
         } catch (error: Exception) {
             stopReason = "Parou em erro/área não implementada: ${error.message ?: error.javaClass.simpleName}"
         }
-        status.text = "DIAGNÓSTICO PARCIAL DA ROM" +
+        copyRomDiagnosticButton?.isEnabled = true\n        status.text = "DIAGNÓSTICO PARCIAL DA ROM" +
             "\nPassos executados: $executed" +
             "\nPC final: 0x${cpu.pc.toULong().toString(16).uppercase()}" +
             "\nMotivo: $stopReason" +
