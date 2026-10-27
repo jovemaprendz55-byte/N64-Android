@@ -22,6 +22,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         private set
     private var delayedTarget: Long? = null
     private var pendingDelaySlotBranchAddress: Long? = null
+    private var randomResetByWiredWrite = false
 
     fun reset() {
         gpr.fill(0L)
@@ -45,8 +46,10 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     /** Executes one instruction and converts address-translation faults into architectural COP0 exceptions. */
     fun step() {
         val branchAddressForFault = pendingDelaySlotBranchAddress
+        randomResetByWiredWrite = false
         try {
             stepInstruction()
+            if (!randomResetByWiredWrite) advanceRandomRegister()
         } catch (fault: R4300Tlb.TlbFault) {
             enterTlbException(fault, branchAddressForFault)
         } catch (fault: AddressFault) {
@@ -229,6 +232,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                         if (copRd == 6) { // Wired: five-bit value; writing it resets Random to 31.
                             cop0[6] = value and 0x1FL
                             cop0[1] = 31L
+                            randomResetByWiredWrite = true
                         } else {
                             cop0[copRd] = value
                         }
@@ -485,6 +489,13 @@ class R4300Cpu(private val memory: N64AddressSpace) {
 
         pc = directPc ?: targetFromPreviousBranch ?: nextSequential
         gpr[0] = 0L
+    }
+
+    /** Random cycles down through the replaceable TLB indices [Wired, 31]. */
+    private fun advanceRandomRegister() {
+        val wired = (cop0[6] and 0x1FL).toInt()
+        val random = (cop0[1] and 0x1FL).toInt()
+        cop0[1] = if (random <= wired) 31L else (random - 1).toLong()
     }
 
     private fun encodeEntryLo(page: R4300Tlb.Page): Long {
