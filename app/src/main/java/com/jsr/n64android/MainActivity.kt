@@ -2,6 +2,9 @@ package com.jsr.n64android
 
 import android.app.Activity
 import android.content.Intent
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
@@ -25,6 +28,14 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
             setPadding(24, 24, 24, 24)
             movementMethod = ScrollingMovementMethod()
+        }
+        val copyLogs = Button(this).apply {
+            text = "Copiar logs para enviar"
+            setOnClickListener {
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("N64 Android diagnóstico", status.text))
+                status.text = status.text.toString() + "\n\n[Logs copiados. Volte ao chat e cole aqui.]"
+            }
         }
         val chooseRom = Button(this).apply {
             text = "Selecionar ROM (.z64 / .v64 / .n64)"
@@ -52,6 +63,7 @@ class MainActivity : Activity() {
             addView(chooseRom)
             addView(cpuDiagnostic)
             addView(romTraceButton)
+            addView(copyLogs)
         }
         setContentView(layout)
     }
