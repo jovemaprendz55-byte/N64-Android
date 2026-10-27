@@ -3337,4 +3337,28 @@ class R4300CpuTest {
         assertEquals(11L, cpu.cop0[0] and 0x1FL) // Index remains unchanged.
     }
 
+
+    @Test fun cop0TlbpClearsProbeFailureAfterSubsequentHit() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop0Co(0x08)) // TLBP
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.cop0[0] = 9L
+        cpu.cop0[10] = 0x00400005L
+
+        cpu.step()
+        assertEquals(1L shl 31, cpu.cop0[0]) // First probe misses.
+
+        cpu.tlb.write(9, R4300Tlb.Entry(
+            virtualPagePairBase = 0x00400000L,
+            asid = 5,
+            evenPage = R4300Tlb.Page(0x123, valid = true, dirty = true),
+            oddPage = R4300Tlb.Page(0x234, valid = true, dirty = true)
+        ))
+        cpu.setProgramCounter(0)
+        cpu.step()
+
+        assertEquals(9L, cpu.cop0[0]) // Successful probe clears P and returns the matching index.
+    }
+
 }
