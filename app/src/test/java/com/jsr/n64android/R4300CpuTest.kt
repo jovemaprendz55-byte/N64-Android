@@ -3639,6 +3639,36 @@ class R4300CpuTest {
         assertEquals(0xB00L, cpu.cop0[15])
     }
 
+    @Test fun malformedFixedShiftEncodingRaisesReservedInstructionException() {
+        val memory = N64Memory(32)
+        memory.write32(0, rType(1, 2, 3, 0x00)) // SLL with reserved rs field nonzero.
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[2] = 0x1234L
+        cpu.gpr[3] = 0x5678L
+
+        cpu.step()
+
+        assertEquals(10L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(0L, cpu.gpr[3]) // Invalid instruction must not modify its destination.
+        assertEquals(0L, cpu.cop0[14])
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+    }
+
+    @Test fun malformedVariableShiftEncodingRaisesReservedInstructionException() {
+        val memory = N64Memory(32)
+        memory.write32(0, rType(1, 2, 3, 0x04) or (1 shl 6)) // SLLV requires shamt=0.
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[2] = 0x1234L
+
+        cpu.step()
+
+        assertEquals(10L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(0L, cpu.gpr[3])
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+    }
+
     @Test fun unsupportedInstructionRaisesReservedInstructionException() {
         val memory = N64Memory(32)
         memory.write32(0, 0x7C000000.toInt()) // Reserved/unsupported primary opcode.
