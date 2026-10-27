@@ -3006,6 +3006,8 @@ class R4300CpuTest {
         cpu.tlbEnabled = true
         val asid = 0x2BL
         val faultAddress = 0x00801000L // No TLB entry matches this virtual page pair.
+        val pteBase = 0x2C000000L
+        cpu.cop0[4] = pteBase
         cpu.cop0[10] = asid
         cpu.gpr[1] = faultAddress
         cpu.gpr[2] = 0xFEDCBA9876543210UL.toLong()
@@ -3019,7 +3021,7 @@ class R4300CpuTest {
         assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.cop0[14]) // EPC points to branch.
         assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD.
         assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBL.
-        assertEquals((faultAddress ushr 9) and 0x007FFFF0L, cpu.cop0[4]) // Context.BadVPN2.
+        assertEquals(pteBase or ((faultAddress ushr 9) and 0x007FFFF0L), cpu.cop0[4]) // Context preserves PTEBase and updates BadVPN2.
         assertEquals((faultAddress and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves ASID.
         assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc) // TLB refill vector.
         assertEquals(0xFEDCBA9876543210UL.toLong(), cpu.gpr[2]) // Destination unchanged.
