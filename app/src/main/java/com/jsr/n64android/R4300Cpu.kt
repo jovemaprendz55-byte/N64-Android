@@ -416,11 +416,14 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 delayedTarget = jumpAddress
             }
             0x04, 0x05, 0x06, 0x07 -> {
+                if ((opcode == 0x06 || opcode == 0x07) && rt != 0) {
+                    throw ReservedInstructionFault("Malformed BLEZ/BGTZ reserved rt field")
+                }
                 val takeBranch = when (opcode) {
                     0x04 -> gpr[rs] == gpr[rt] // BEQ
                     0x05 -> gpr[rs] != gpr[rt] // BNE
-                    0x06 -> rt == 0 && gpr[rs] <= 0L // BLEZ
-                    else -> rt == 0 && gpr[rs] > 0L // BGTZ
+                    0x06 -> gpr[rs] <= 0L // BLEZ
+                    else -> gpr[rs] > 0L // BGTZ
                 }
                 pendingDelaySlotBranchAddress = instructionAddress
                 if (takeBranch) delayedTarget = nextSequential + (immediate.toLong() shl 2)
