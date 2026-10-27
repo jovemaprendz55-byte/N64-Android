@@ -12,6 +12,9 @@ class N64Bus(
     cartridgeRom: ByteArray? = null
 ) : N64AddressSpace {
     private val pif = pifRom?.copyOf()
+    // SP scratch memories used during early boot: 4 KiB DMEM and 4 KiB IMEM.
+    private val spDmem = ByteArray(SP_MEM_SIZE)
+    private val spImem = ByteArray(SP_MEM_SIZE)
     private val cartridge = cartridgeRom?.copyOf()
     private var piDramAddress = 0
     private var piCartAddress = CARTRIDGE_ROM_BASE
@@ -32,6 +35,12 @@ class N64Bus(
     override fun read8(address: Int): Int {
         require(address >= 0) { "Negative physical address: 0x${address.toUInt().toString(16)}" }
         if (address < ram.size) return ram.read8(address)
+        if (address in SP_DMEM_BASE until SP_DMEM_BASE + SP_MEM_SIZE) {
+            return spDmem[address - SP_DMEM_BASE].toInt() and 0xFF
+        }
+        if (address in SP_IMEM_BASE until SP_IMEM_BASE + SP_MEM_SIZE) {
+            return spImem[address - SP_IMEM_BASE].toInt() and 0xFF
+        }
 
         if (address >= CARTRIDGE_ROM_BASE && address < PIF_ROM_BASE) {
             val image = cartridge ?: throw UnsupportedOperationException(
@@ -78,6 +87,14 @@ class N64Bus(
         require(address >= 0) { "Negative physical address." }
         if (address < ram.size) {
             ram.write8(address, value)
+            return
+        }
+        if (address in SP_DMEM_BASE until SP_DMEM_BASE + SP_MEM_SIZE) {
+            spDmem[address - SP_DMEM_BASE] = value.toByte()
+            return
+        }
+        if (address in SP_IMEM_BASE until SP_IMEM_BASE + SP_MEM_SIZE) {
+            spImem[address - SP_IMEM_BASE] = value.toByte()
             return
         }
         if ((address >= CARTRIDGE_ROM_BASE && address < PIF_ROM_BASE) ||
@@ -143,6 +160,9 @@ class N64Bus(
     }
 
     companion object {
+        const val SP_DMEM_BASE = 0x04000000
+        const val SP_IMEM_BASE = 0x04001000
+        const val SP_MEM_SIZE = 0x1000
         const val CARTRIDGE_ROM_BASE = 0x10000000
         const val MAX_CARTRIDGE_ROM_SIZE = 64 * 1024 * 1024
         const val PIF_ROM_BASE = 0x1FC00000
