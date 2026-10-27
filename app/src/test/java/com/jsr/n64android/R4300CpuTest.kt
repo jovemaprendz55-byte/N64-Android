@@ -3993,7 +3993,7 @@ class R4300CpuTest {
         )
         for ((opcode, rsValue, rtValue) in cases) {
             val memory = N64Memory(32)
-            memory.write32(0, iType(opcode, 1, 2, 2))
+            memory.write32(0, iType(opcode, 1, if (opcode == 0x15) 2 else 0, 2))
             memory.write32(4, iType(0x09, 0, 3, 7)) // Must be annulled.
             memory.write32(8, iType(0x09, 0, 4, 9))
             val cpu = R4300Cpu(memory)
@@ -4018,7 +4018,7 @@ class R4300CpuTest {
         )
         for ((opcode, rsValue, rtValue) in cases) {
             val memory = N64Memory(32)
-            memory.write32(0, iType(opcode, 1, 2, 2))
+            memory.write32(0, iType(opcode, 1, if (opcode == 0x15) 2 else 0, 2))
             memory.write32(4, iType(0x09, 0, 3, 7)) // Delay slot must execute.
             memory.write32(8, iType(0x09, 0, 4, 8)) // Must be skipped.
             memory.write32(12, iType(0x09, 0, 5, 10)) // Branch target.
