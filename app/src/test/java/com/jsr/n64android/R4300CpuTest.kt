@@ -683,11 +683,13 @@ class R4300CpuTest {
     @Test fun tlbLoadMissUsesLoadExceptionCodeAndRefillVector() {
         val asid = 0x22L
         val faultAddress = 0x00400000L
+        val pteBase = 0x2E000000L
         val memory = N64Memory(4096)
         memory.write32(0, iType(0x0F, 0, 8, 0x0040)) // lui $t0, 0x0040
         memory.write32(4, iType(0x23, 8, 2, 0)) // lw $v0, 0($t0)
         val cpu = R4300Cpu(memory)
         cpu.cop0[10] = asid
+        cpu.cop0[4] = pteBase
         cpu.tlbEnabled = true
         cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
 
@@ -695,7 +697,7 @@ class R4300CpuTest {
         cpu.step()
 
         assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr
-        assertEquals((faultAddress ushr 9) and 0x007FFFF0L, cpu.cop0[4]) // Context.BadVPN2.
+        assertEquals(pteBase or ((faultAddress ushr 9) and 0x007FFFF0L), cpu.cop0[4]) // Context preserves PTEBase and updates BadVPN2.
         assertEquals((faultAddress and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves ASID.
         assertEquals(2L shl 2, cpu.cop0[13] and (0x1FL shl 2)) // Cause.TLBL
         assertEquals(0xFFFFFFFF80000004UL.toLong(), cpu.cop0[14]) // EPC is the faulting load
