@@ -20,7 +20,7 @@ class MainActivity : Activity() {
     private lateinit var status: TextView
     private var cartridgeBus: N64Bus? = null
     private var romTraceButton: Button? = null
-    private var copyRomDiagnosticButton: Button? = null
+    private lateinit var mainLayout: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,14 +30,6 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
             setPadding(24, 24, 24, 24)
             movementMethod = ScrollingMovementMethod()
-        }
-        val copyLogs = Button(this).apply {
-            text = "Copiar logs para enviar"
-            setOnClickListener {
-                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                clipboard.setPrimaryClip(ClipData.newPlainText("N64 Android diagnóstico", status.text))
-                status.text = status.text.toString() + "\n\n[Logs copiados. Volte ao chat e cole aqui.]"
-            }
         }
         val chooseRom = Button(this).apply {
             text = "Selecionar ROM (.z64 / .v64 / .n64)"
@@ -52,16 +44,7 @@ class MainActivity : Activity() {
             setOnClickListener { runRomInstructionDiagnostic() }
             isEnabled = false
         }
-        copyRomDiagnosticButton = Button(this).apply {
-            text = "Copiar diagnóstico parcial da ROM"
-            isEnabled = false
-            setOnClickListener {
-                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                clipboard.setPrimaryClip(ClipData.newPlainText("N64 Android diagnóstico parcial da ROM", status.text))
-                Toast.makeText(this@MainActivity, "Diagnóstico copiado. Volte ao chat e cole aqui.", Toast.LENGTH_LONG).show()
-            }
-        }
-        val layout = LinearLayout(this).apply {
+        mainLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setPadding(24, 24, 24, 24)
@@ -74,10 +57,8 @@ class MainActivity : Activity() {
             addView(chooseRom)
             addView(cpuDiagnostic)
             addView(romTraceButton)
-            addView(copyRomDiagnosticButton)
-            addView(copyLogs)
         }
-        setContentView(layout)
+        setContentView(mainLayout)
     }
 
     /**
@@ -111,13 +92,43 @@ class MainActivity : Activity() {
         } catch (error: Exception) {
             stopReason = "Parou em erro/área não implementada: ${error.message ?: error.javaClass.simpleName}"
         }
-        copyRomDiagnosticButton?.isEnabled = true
         status.text = "DIAGNÓSTICO PARCIAL DA ROM" +
             "\nPassos executados: $executed" +
             "\nPC final: 0x${cpu.pc.toULong().toString(16).uppercase()}" +
             "\nMotivo: $stopReason" +
             "\n\nIsto NÃO é o boot real do jogo. O IPL3 foi executado diretamente como teste; PIF/CIC e dispositivos ainda faltam." +
             "\n\nRASTRO DE INSTRUÇÕES:\n" + trace.toString()
+        showRomDiagnosticPage(status.text.toString())
+    }
+
+
+    private fun showRomDiagnosticPage(diagnostic: String) {
+        val diagnosticText = TextView(this).apply {
+            text = diagnostic
+            textSize = 14f
+            setPadding(24, 24, 24, 24)
+            movementMethod = ScrollingMovementMethod()
+        }
+        val copyButton = Button(this).apply {
+            text = "Copiar logs deste diagnóstico"
+            setOnClickListener {
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("N64 Android diagnóstico parcial da ROM", diagnosticText.text))
+                Toast.makeText(this@MainActivity, "Logs copiados. Volte ao chat e cole aqui.", Toast.LENGTH_LONG).show()
+            }
+        }
+        val backButton = Button(this).apply {
+            text = "Voltar ao menu"
+            setOnClickListener { setContentView(mainLayout) }
+        }
+        val page = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(16, 16, 16, 16)
+            addView(diagnosticText, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+            addView(copyButton)
+            addView(backButton)
+        }
+        setContentView(page)
     }
 
     private fun runCpuDiagnostic() {
