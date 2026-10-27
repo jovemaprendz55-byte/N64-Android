@@ -3074,16 +3074,22 @@ class R4300CpuTest {
         val memory = N64Memory(64)
         memory.write32(0, iType(0x23, 1, 2, 0)) // lw $v0, 0($at)
         val cpu = R4300Cpu(memory)
-        cpu.tlbEnabled = true
         val faultAddress = 0x00801000L // No TLB entry matches this address.
+        val asid = 0x30L
+        val pteBase = 0x14000000L
+        cpu.tlbEnabled = true
         cpu.gpr[1] = faultAddress
         cpu.gpr[2] = 0x13579BDFL
+        cpu.cop0[4] = pteBase
+        cpu.cop0[10] = asid
         cpu.cop0[12] = 1L shl 22 // Status.BEV selects boot exception vectors.
         cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
 
         cpu.step()
 
         assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr.
+        assertEquals(pteBase or ((faultAddress ushr 9) and 0x007FFFF0L), cpu.cop0[4]) // Context.BadVPN2 + PTEBase.
+        assertEquals((faultAddress and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi VPN2 + preserved ASID.
         assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.cop0[14]) // EPC.
         assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBL.
         assertEquals(1L, (cpu.cop0[12] ushr 1) and 1L) // EXL is set.
