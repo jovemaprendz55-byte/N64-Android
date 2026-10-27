@@ -1792,7 +1792,7 @@ class R4300CpuTest {
         ))
         cpu.tlb.write(1, R4300Tlb.Entry(
             virtualPagePairBase = faultAddress and R4300Tlb.PAGE_PAIR_MASK,
-            asid = asid,
+            asid = asid.toInt(),
             evenPage = R4300Tlb.Page(2, valid = true, dirty = true, global = false),
             oddPage = R4300Tlb.Page(3, valid = false, dirty = true, global = false)
         ))
