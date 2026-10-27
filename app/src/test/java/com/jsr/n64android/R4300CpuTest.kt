@@ -362,6 +362,22 @@ class R4300CpuTest {
         assertEquals(-0x7FFFFFFFL, cpu.gpr[2])
     }
 
+    @Test fun resetCancelsPendingBranchTarget() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x04, 0, 0, 3)) // beq $zero, $zero, target 16
+        memory.write32(8, iType(0x09, 0, 1, 1)) // addiu $at, $zero, 1
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+
+        cpu.step() // The branch target is pending until its delay slot executes.
+        cpu.reset()
+        cpu.setProgramCounter(8)
+        cpu.step()
+
+        assertEquals(1L, cpu.gpr[1])
+        assertEquals(12L, cpu.pc) // A stale target would incorrectly jump to 16.
+    }
+
     @Test fun resetClearsCop0RegisterStorageAndDisablesAndClearsTlb() {
         val memory = N64Memory(16)
         val cpu = R4300Cpu(memory)
