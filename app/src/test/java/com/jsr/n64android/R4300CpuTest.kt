@@ -3641,7 +3641,7 @@ class R4300CpuTest {
 
     @Test fun unsupportedInstructionRaisesReservedInstructionException() {
         val memory = N64Memory(32)
-        memory.write32(0, 0xFC000000.toInt()) // Reserved/unsupported primary opcode.
+        memory.write32(0, 0x7C000000.toInt()) // Reserved/unsupported primary opcode.
         val cpu = R4300Cpu(memory)
         cpu.setProgramCounter(0)
 
@@ -3656,7 +3656,7 @@ class R4300CpuTest {
     @Test fun unsupportedInstructionInBranchDelaySlotSetsBdAndBranchEpc() {
         val memory = N64Memory(32)
         memory.write32(0, iType(0x04, 0, 0, 2)) // beq $zero, $zero, target
-        memory.write32(4, 0xFC000000.toInt()) // Unsupported opcode in delay slot.
+        memory.write32(4, 0x7C000000.toInt()) // Unsupported opcode in delay slot.
         val cpu = R4300Cpu(memory)
         cpu.setProgramCounter(0)
 
