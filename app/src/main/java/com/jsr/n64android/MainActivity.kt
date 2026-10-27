@@ -79,9 +79,9 @@ class MainActivity : Activity() {
         // KSEG1 cartridge mapping. This deliberately does not emulate PIF/CIC boot.
         cpu.setProgramCounter(0xFFFFFFFFB0000040UL.toLong())
         var executed = 0
-        var stopReason = "Limite de 3000 passos alcançado."
+        var stopReason = "Limite de 10000 passos alcançado."
         try {
-            for (stepIndex in 0 until 3000) {
+            for (stepIndex in 0 until 10000) {
                 val pc = cpu.pc
                 // Stop at the normal exception vector instead of reading zero-filled RDRAM
                 // as if it were useful IPL3 code. Capture COP0 state for the next diagnosis.
