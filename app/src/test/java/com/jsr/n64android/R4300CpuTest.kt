@@ -3613,7 +3613,7 @@ class R4300CpuTest {
         cpu.cop0[1] = 17L
         cpu.gpr[1] = 3L
         cpu.step()
-        assertEquals(17L, cpu.cop0[1])
+        assertEquals(16L, cpu.cop0[1]) // Random advances once after the instruction; the written value 3 is ignored.
     }
 
 
