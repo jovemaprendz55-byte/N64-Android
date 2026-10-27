@@ -135,8 +135,18 @@ class MainActivity : Activity() {
                         bus.read32(address).toUInt().toString(16).uppercase().padStart(8, '0')
                 }
         }
+        val spDmemDump = (0x04000740..0x0400077C step 4).joinToString("\n") { address ->
+            "SP_DMEM[0x" + address.toString(16).uppercase().padStart(8, '0') + "]: 0x" +
+                bus.read32(address).toUInt().toString(16).uppercase().padStart(8, '0')
+        }
+        val spImemDump = (0x04001000..0x0400103C step 4).joinToString("\n") { address ->
+            "SP_IMEM[0x" + address.toString(16).uppercase().padStart(8, '0') + "]: 0x" +
+                bus.read32(address).toUInt().toString(16).uppercase().padStart(8, '0')
+        }
         status.append("\n\nTODOS OS REGISTRADORES GPR NO PONTO DE PARADA:\n" + registerDump)
         status.append("\n\nRDRAM NOS ENDEREÇOS DE INTERESSE:\n" + ramDump)
+        status.append("\n\nSP DMEM PERTO DA ORIGEM DE CÓPIA (0xA4000774):\n" + spDmemDump)
+        status.append("\n\nSP IMEM AMOSTRA:\n" + spImemDump)
         showRomDiagnosticPage(status.text.toString())
     }
 
