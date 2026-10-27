@@ -585,6 +585,10 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 val valueMask = if (shift == 0) -1 else (0xFFFFFFFF.toInt() ushr shift)
                 memory.write32(physical, (oldWord and preserveMask) or (gpr[rt].toInt() and valueMask))
             }
+            0x2F -> {
+                // CACHE: this early core has no modeled cache hierarchy.
+                // Treat cache maintenance as a no-op for bring-up, not as accurate cache emulation.
+            }
             0x28 -> memory.write8(physicalAddress(gpr[rs] + immediate, R4300Tlb.Access.WRITE), gpr[rt].toInt())
             0x29 -> {
                 val address = gpr[rs] + immediate
