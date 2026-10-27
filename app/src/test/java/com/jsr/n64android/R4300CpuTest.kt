@@ -1692,7 +1692,7 @@ class R4300CpuTest {
         assertEquals((faultAddress ushr 9) and 0x007FFFF0L, cpu.cop0[4]) // Context.BadVPN2.
         assertEquals((faultAddress and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves ASID.
         assertEquals(3L, (cpu.cop0[13] ushr 2) and 0x1FL) // Invalid store reports TLBS.
-        assertEquals(-0x80000000L, cpu.cop0[14]) // EPC points to the store instruction.
+        assertEquals(0L, cpu.cop0[14]) // EPC points to the store instruction at PC 0.
         assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc) // Invalid page uses general vector.
         assertEquals(0x2L, cpu.cop0[12] and 0x2L) // EXL set.
         assertEquals(0L, memory.read32(8).toLong()) // Faulting store did not write memory.
@@ -3913,7 +3913,7 @@ class R4300CpuTest {
         cpu.step()
 
         assertEquals(0x00400000L, cpu.cop0[8]) // BadVAddr
-        assertEquals(0L, cpu.cop0[14]) // EPC points to the store instruction.
+        assertEquals(-0x80000000L, cpu.cop0[14]) // EPC points to the store instruction.
         assertEquals(0L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD is clear.
         assertEquals(1L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLB Modified.
         assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc) // Modified uses general exception vector.
