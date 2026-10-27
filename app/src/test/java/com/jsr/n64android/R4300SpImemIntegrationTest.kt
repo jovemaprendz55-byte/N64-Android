@@ -20,7 +20,6 @@ class R4300SpImemIntegrationTest {
         assertEquals(43L, cpu.gpr[9])
         assertEquals(0xA4001008L, cpu.pc)
     }
-}
 
     @Test
     fun branchFromSpImemExecutesDelaySlotAndSkipsFallthroughInstruction() {
@@ -47,3 +46,4 @@ class R4300SpImemIntegrationTest {
         assertEquals(10L, cpu.gpr[11])
         assertEquals(0xA4001014L, cpu.pc)
     }
+}
