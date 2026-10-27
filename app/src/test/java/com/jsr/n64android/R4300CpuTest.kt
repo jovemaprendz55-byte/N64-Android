@@ -3375,13 +3375,13 @@ class R4300CpuTest {
         cpu.cop0[3] = (0x456L shl 6) or 0x2L
 
         cpu.step() // TLBWR.
+        assertEquals(3L, cpu.cop0[0]) // TLBWR must not change Index.
         cpu.cop0[0] = 7L // Read back the selected entry.
         cpu.cop0[10] = 0L
         cpu.cop0[2] = 0L
         cpu.cop0[3] = 0L
         cpu.step() // TLBR.
 
-        assertEquals(3L, cpu.cop0[1 - 1]) // Index register remains unchanged by TLBWR.
         assertEquals(0x0080002AL, cpu.cop0[10])
         assertEquals((0x345L shl 6) or 0x6L, cpu.cop0[2])
         assertEquals((0x456L shl 6) or 0x2L, cpu.cop0[3])
