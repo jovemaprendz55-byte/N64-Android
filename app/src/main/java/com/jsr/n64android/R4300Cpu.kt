@@ -246,8 +246,17 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     enterException(instructionAddress, 9, branchAddressForCurrentInstruction)
                     directPc = exceptionVector()
                 }
-                0x08 -> { pendingDelaySlotBranchAddress = instructionAddress; delayedTarget = gpr[rs] }
-                0x09 -> { gpr[rd] = nextSequential + 4L; pendingDelaySlotBranchAddress = instructionAddress; delayedTarget = gpr[rs] }
+                0x08 -> { // JR: rt, rd and shamt are reserved.
+                    if (rt != 0 || rd != 0 || shamt != 0) throw ReservedInstructionFault("Malformed JR reserved fields")
+                    pendingDelaySlotBranchAddress = instructionAddress
+                    delayedTarget = gpr[rs]
+                }
+                0x09 -> { // JALR: rt and shamt are reserved; rd selects the link register.
+                    if (rt != 0 || shamt != 0) throw ReservedInstructionFault("Malformed JALR reserved fields")
+                    gpr[rd] = nextSequential + 4L
+                    pendingDelaySlotBranchAddress = instructionAddress
+                    delayedTarget = gpr[rs]
+                }
                 0x20 -> { // ADD: signed 32-bit addition traps on overflow.
                     val result = gpr[rs].toInt().toLong() + gpr[rt].toInt().toLong()
                     if (result !in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()) {
