@@ -415,18 +415,25 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 pendingDelaySlotBranchAddress = instructionAddress
                 delayedTarget = jumpAddress
             }
-            0x04, 0x05, 0x06, 0x07 -> {
-                if ((opcode == 0x06 || opcode == 0x07) && rt != 0) {
+            0x04, 0x05, 0x06, 0x07, 0x14, 0x15, 0x16, 0x17 -> {
+                val branchLikely = opcode >= 0x14
+                val baseOpcode = if (branchLikely) opcode - 0x10 else opcode
+                if ((baseOpcode == 0x06 || baseOpcode == 0x07) && rt != 0) {
                     throw ReservedInstructionFault("Malformed BLEZ/BGTZ reserved rt field")
                 }
-                val takeBranch = when (opcode) {
-                    0x04 -> gpr[rs] == gpr[rt] // BEQ
-                    0x05 -> gpr[rs] != gpr[rt] // BNE
-                    0x06 -> gpr[rs] <= 0L // BLEZ
-                    else -> gpr[rs] > 0L // BGTZ
+                val takeBranch = when (baseOpcode) {
+                    0x04 -> gpr[rs] == gpr[rt] // BEQ / BEQL
+                    0x05 -> gpr[rs] != gpr[rt] // BNE / BNEL
+                    0x06 -> gpr[rs] <= 0L // BLEZ / BLEZL
+                    else -> gpr[rs] > 0L // BGTZ / BGTZL
                 }
-                pendingDelaySlotBranchAddress = instructionAddress
-                if (takeBranch) delayedTarget = nextSequential + (immediate.toLong() shl 2)
+                if (branchLikely && !takeBranch) {
+                    // A not-taken branch-likely annuls its delay-slot instruction.
+                    directPc = instructionAddress + 8L
+                } else {
+                    pendingDelaySlotBranchAddress = instructionAddress
+                    if (takeBranch) delayedTarget = nextSequential + (immediate.toLong() shl 2)
+                }
             }
             0x08 -> { // ADDI: signed 32-bit addition traps on overflow.
                 val result = gpr[rs].toInt().toLong() + immediate.toLong()
