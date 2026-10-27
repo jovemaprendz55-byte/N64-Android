@@ -3318,4 +3318,23 @@ class R4300CpuTest {
         assertEquals((0x234L shl 6) or 0x6L, cpu.cop0[3])
     }
 
+
+    @Test fun cop0TlbrClearsEntryRegistersForUninitializedIndex() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop0Co(0x01)) // TLBR
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[0] = 11L // Index selects an unwritten entry.
+        cpu.cop0[10] = 0x00600025L
+        cpu.cop0[2] = 0x00012347L
+        cpu.cop0[3] = 0x00023456L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0L, cpu.cop0[10]) // EntryHi is cleared for an uninitialized entry.
+        assertEquals(0L, cpu.cop0[2]) // EntryLo0 is cleared.
+        assertEquals(0L, cpu.cop0[3]) // EntryLo1 is cleared.
+        assertEquals(11L, cpu.cop0[0] and 0x1FL) // Index remains unchanged.
+    }
+
 }
