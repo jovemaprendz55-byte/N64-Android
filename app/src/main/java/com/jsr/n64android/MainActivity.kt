@@ -123,10 +123,12 @@ class MainActivity : Activity() {
         when (val result = N64RomLoader.load(bytes)) {
             is RomLoadResult.Success -> {
                 cartridgeBus = N64Bus(cartridgeRom = result.rom.bytes)
+                val info = N64RomInspector.inspect(result.rom.bytes)
                 status.text = "ROM carregada no barramento: ${result.rom.byteSize} bytes" +
                     "\nFormato: ${result.rom.format}" +
                     "\nEndereço físico: 0x10000000" +
-                    "\nCPU, boot, DMA e vídeo ainda não executam jogos."
+                    "\n\n" + info.toDisplayText() +
+                    "\n\nDiagnóstico do cabeçalho concluído. O jogo ainda não foi inicializado: faltam boot PIF/CIC e integração completa do núcleo."
             }
             is RomLoadResult.Failure -> {
                 cartridgeBus = null
