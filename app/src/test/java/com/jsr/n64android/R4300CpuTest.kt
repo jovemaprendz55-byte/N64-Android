@@ -1674,14 +1674,21 @@ class R4300CpuTest {
     @Test fun tlbMissAndInvalidPageUseBootVectorsWhenBevIsSet() {
         val missMemory = N64Memory(64)
         val missCpu = R4300Cpu(missMemory)
-        missCpu.tlbEnabled = true
-        missCpu.cop0[12] = 1L shl 22 // Status.BEV selects boot exception vectors.
         val missAddress = 0x00400000L
+        val missAsid = 0x31L
+        val pteBase = 0x16000000L
+        missCpu.tlbEnabled = true
+        missCpu.cop0[4] = pteBase
+        missCpu.cop0[10] = missAsid
+        missCpu.cop0[12] = 1L shl 22 // Status.BEV selects boot exception vectors.
         missCpu.setProgramCounter(missAddress)
 
         missCpu.step()
 
         assertEquals(missAddress, missCpu.cop0[8]) // BadVAddr.
+        assertEquals(pteBase or ((missAddress ushr 9) and 0x007FFFF0L), missCpu.cop0[4]) // Context.BadVPN2 + PTEBase.
+        assertEquals((missAddress and R4300Tlb.PAGE_PAIR_MASK) or missAsid, missCpu.cop0[10]) // EntryHi preserves ASID.
+        assertEquals(2L, (missCpu.cop0[13] ushr 2) and 0x1FL) // TLBL.
         assertEquals(0xFFFFFFFFBFC00200UL.toLong(), missCpu.pc) // Boot TLB refill vector.
 
         val invalidMemory = N64Memory(64)
