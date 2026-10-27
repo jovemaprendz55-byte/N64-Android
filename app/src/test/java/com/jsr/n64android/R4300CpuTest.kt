@@ -3845,4 +3845,25 @@ class R4300CpuTest {
         assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
     }
 
+
+    @Test fun tlbStoreMissInBranchDelaySlotSetsStoreCodeBadVAddrAndBranchEpc() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x04, 0, 0, 2)) // beq $zero, $zero, target
+        memory.write32(4, iType(0x2B, 1, 2, 0)) // sw $v0, 0($at): unmapped TLB address
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        cpu.gpr[1] = 0x00400000L
+        cpu.gpr[2] = 0x12345678L
+        cpu.setProgramCounter(-0x80000000L)
+
+        cpu.step() // branch; delay slot executes next
+        cpu.step() // TLB store miss in the delay slot
+
+        assertEquals(0x00400000L, cpu.cop0[8]) // BadVAddr
+        assertEquals(-0x80000000L, cpu.cop0[14]) // EPC points to branch
+        assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD
+        assertEquals(3L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLB store miss
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc) // TLB refill vector
+    }
+
 }
