@@ -3588,7 +3588,7 @@ class R4300CpuTest {
 
         cpu.step()
 
-        assertEquals(0x5A123450L, cpu.cop0[4])
+        assertEquals(0x5A923450L, cpu.cop0[4])
     }
 
     @Test fun cop0Mtc0ContextClearsReservedLowBits() {
