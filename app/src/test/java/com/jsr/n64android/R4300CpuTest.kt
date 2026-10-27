@@ -3474,4 +3474,30 @@ class R4300CpuTest {
         assertEquals(31L, cpu.cop0[1])
     }
 
+    @Test fun cop0Mtc0IndexCannotClearProbeFailureBit() {
+        val memory = N64Memory(32)
+        memory.write32(0, (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (0 shl 11)) // MTC0 $t0, Index
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.cop0[0] = 1L shl 31
+        cpu.gpr[1] = 0x1BL // Index 27, but attempted write of P=0.
+
+        cpu.step()
+
+        assertEquals((1L shl 31) or 0x1BL, cpu.cop0[0])
+    }
+
+    @Test fun cop0Mtc0IndexCannotSetProbeFailureBit() {
+        val memory = N64Memory(32)
+        memory.write32(0, (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (0 shl 11)) // MTC0 $t0, Index
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.cop0[0] = 4L
+        cpu.gpr[1] = (1L shl 31) or 0x12L // Index 18, but attempted write of P=1.
+
+        cpu.step()
+
+        assertEquals(0x12L, cpu.cop0[0])
+    }
+
 }
