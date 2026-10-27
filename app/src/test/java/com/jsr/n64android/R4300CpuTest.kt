@@ -657,11 +657,14 @@ class R4300CpuTest {
     }
 
     @Test fun tlbStoreMissUsesStoreExceptionCodeAndBootRefillVector() {
+        val asid = 0x21L
+        val faultAddress = 0x00400000L
         val memory = N64Memory(4096)
         val cpu = R4300Cpu(memory)
         memory.write32(0, iType(0x0F, 0, 8, 0x0040)) // lui $t0, 0x0040
         memory.write32(4, iType(0x2B, 8, 0, 0)) // sw $zero, 0($t0)
         cpu.cop0[12] = 1L shl 22 // Status.BEV
+        cpu.cop0[10] = asid
         cpu.tlbEnabled = true
         // Execute the test program from KSEG0 so instruction fetch bypasses the TLB.
         cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
@@ -669,24 +672,31 @@ class R4300CpuTest {
         cpu.step()
         cpu.step()
 
-        assertEquals(0x00400000L, cpu.cop0[8])
+        assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr.
+        assertEquals((faultAddress ushr 9) and 0x007FFFF0L, cpu.cop0[4]) // Context.BadVPN2.
+        assertEquals((faultAddress and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves ASID.
         assertEquals(3L shl 2, cpu.cop0[13] and (0x1FL shl 2)) // Cause.TLBS
         assertEquals(0xFFFFFFFFBFC00200UL.toLong(), cpu.pc)
     }
 
 
     @Test fun tlbLoadMissUsesLoadExceptionCodeAndRefillVector() {
+        val asid = 0x22L
+        val faultAddress = 0x00400000L
         val memory = N64Memory(4096)
         memory.write32(0, iType(0x0F, 0, 8, 0x0040)) // lui $t0, 0x0040
         memory.write32(4, iType(0x23, 8, 2, 0)) // lw $v0, 0($t0)
         val cpu = R4300Cpu(memory)
+        cpu.cop0[10] = asid
         cpu.tlbEnabled = true
         cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
 
         cpu.step()
         cpu.step()
 
-        assertEquals(0x00400000L, cpu.cop0[8]) // BadVAddr
+        assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr
+        assertEquals((faultAddress ushr 9) and 0x007FFFF0L, cpu.cop0[4]) // Context.BadVPN2.
+        assertEquals((faultAddress and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves ASID.
         assertEquals(2L shl 2, cpu.cop0[13] and (0x1FL shl 2)) // Cause.TLBL
         assertEquals(0xFFFFFFFF80000004UL.toLong(), cpu.cop0[14]) // EPC is the faulting load
         assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc) // TLB refill vector
@@ -774,16 +784,21 @@ class R4300CpuTest {
     }
 
     @Test fun tlbMissDuringInstructionFetchUsesLoadMissRefillVector() {
+        val asid = 0x23L
+        val faultAddress = 0x00400000L
         val memory = N64Memory(4096)
         val cpu = R4300Cpu(memory)
+        cpu.cop0[10] = asid
         cpu.tlbEnabled = true
         cpu.setProgramCounter(0x00400000L)
 
         cpu.step()
 
-        assertEquals(0x00400000L, cpu.cop0[8]) // BadVAddr
+        assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr
+        assertEquals((faultAddress ushr 9) and 0x007FFFF0L, cpu.cop0[4]) // Context.BadVPN2.
+        assertEquals((faultAddress and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves ASID.
         assertEquals(2L shl 2, cpu.cop0[13] and (0x1FL shl 2)) // Cause.TLBL
-        assertEquals(0x00400000L, cpu.cop0[14]) // EPC is the faulting fetch
+        assertEquals(faultAddress, cpu.cop0[14]) // EPC is the faulting fetch
         assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc) // TLB refill vector
         assertEquals(0x2L, cpu.cop0[12] and 0x2L) // EXL
     }
