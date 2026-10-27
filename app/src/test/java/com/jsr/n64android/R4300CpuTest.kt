@@ -3032,6 +3032,10 @@ class R4300CpuTest {
         val cpu = R4300Cpu(memory)
         cpu.tlbEnabled = true
         val faultAddress = 0x00801000L // No TLB entry matches this virtual page pair.
+        val asid = 0x3AL
+        val pteBase = 0x28000000L
+        cpu.cop0[10] = asid
+        cpu.cop0[4] = pteBase
         cpu.gpr[1] = faultAddress
         cpu.gpr[2] = 0xCAFEBABEL
         // Execute the branch and delay slot from KSEG0, which bypasses the TLB.
@@ -3041,6 +3045,8 @@ class R4300CpuTest {
         cpu.step() // SW faults because the TLB lookup misses.
 
         assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr.
+        assertEquals(pteBase or ((faultAddress ushr 9) and 0x007FFFF0L), cpu.cop0[4]) // Context preserves PTEBase and updates BadVPN2.
+        assertEquals((faultAddress and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves active ASID.
         assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.cop0[14]) // EPC points to branch.
         assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD.
         assertEquals(3L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBS.
