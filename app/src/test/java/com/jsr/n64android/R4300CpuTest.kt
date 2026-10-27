@@ -2921,6 +2921,9 @@ class R4300CpuTest {
         cpu.step()
 
         assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr.
+        assertEquals((faultAddress ushr 9) and 0x007FFFF0L, cpu.cop0[4]) // Context.BadVPN2.
+        assertEquals(faultAddress and R4300Tlb.PAGE_PAIR_MASK, cpu.cop0[10]) // EntryHi.VPN2 and preserved ASID.
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.cop0[14]) // EPC points to the store.
         assertEquals(1L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLB Modified.
         assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc) // General exception vector.
         assertEquals(0x12345678L, memory.read32(0x1000).toLong() and 0xFFFFFFFFL)
