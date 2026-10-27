@@ -71,13 +71,25 @@ class MainActivity : Activity() {
             status.text = "Selecione uma ROM primeiro."
             return
         }
-        // Keep enough execution budget to finish the IPL3 cache-line loop,
-        // while retaining only the last 80 instructions so copied logs stay readable.
+        // IPL3 is stored in the cartridge image at offset 0x40, but real N64
+        // boot executes it from SP scratch memory. Stage the 0xFC0-byte bootcode
+        // into SP DMEM at physical 0x04000040 before running the diagnostic.
+        // This models only the copy/staging step; it is NOT a full PIF/CIC boot.
+        val ipl3Length = 0xFC0
+        try {
+            for (offset in 0 until ipl3Length) {
+                val byteValue = bus.read8(0x10000040 + offset)
+                bus.write8(0x04000040 + offset, byteValue)
+            }
+        } catch (error: Exception) {
+            status.text = "Não foi possível preparar IPL3 na SP DMEM: ${error.message ?: error.javaClass.simpleName}"
+            return
+        }
+        // Keep enough execution budget to finish the IPL3 copy loop, while
+        // retaining only the last 80 instructions so copied logs stay readable.
         val trace = ArrayDeque<String>()
         val cpu = R4300Cpu(bus)
-        // Diagnostic only: execute the first cartridge IPL3 words through the
-        // KSEG1 cartridge mapping. This deliberately does not emulate PIF/CIC boot.
-        cpu.setProgramCounter(0xFFFFFFFFB0000040UL.toLong())
+        cpu.setProgramCounter(0xFFFFFFFFA4000040UL.toLong())
         var executed = 0
         var stopReason = "Limite de 10000 passos alcançado."
         try {
