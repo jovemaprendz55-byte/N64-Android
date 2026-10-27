@@ -3577,4 +3577,31 @@ class R4300CpuTest {
         assertEquals(0x0012345FL, cpu.cop0[3])
     }
 
+
+    @Test fun cop0Mtc0ContextWritesPteBaseAndPreservesHardwareBadVpn2() {
+        val memory = N64Memory(32)
+        memory.write32(0, (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (4 shl 11)) // MTC0 $t0, Context
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.cop0[4] = 0xA5123450L // Existing PTEBase and hardware-maintained BadVPN2.
+        cpu.gpr[1] = 0x5ABCDEFFL
+
+        cpu.step()
+
+        assertEquals(0x5A123450L, cpu.cop0[4])
+    }
+
+    @Test fun cop0Mtc0ContextClearsReservedLowBits() {
+        val memory = N64Memory(32)
+        memory.write32(0, (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (4 shl 11)) // MTC0 $t0, Context
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.cop0[4] = 0L
+        cpu.gpr[1] = 0xFFFFFFFFL
+
+        cpu.step()
+
+        assertEquals(0xFF800000L, cpu.cop0[4])
+    }
+
 }
