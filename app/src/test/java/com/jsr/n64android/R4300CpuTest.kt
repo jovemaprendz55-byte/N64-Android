@@ -3650,7 +3650,7 @@ class R4300CpuTest {
         cpu.step()
 
         assertEquals(10L, (cpu.cop0[13] ushr 2) and 0x1FL)
-        assertEquals(0L, cpu.gpr[3]) // Invalid instruction must not modify its destination.
+        assertEquals(0x5678L, cpu.gpr[3]) // Invalid instruction must not modify its destination.
         assertEquals(0L, cpu.cop0[14])
         assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
     }
