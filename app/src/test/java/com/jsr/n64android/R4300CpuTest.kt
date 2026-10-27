@@ -1504,6 +1504,7 @@ class R4300CpuTest {
 
 
     @Test fun tlbInvalidLoadUsesGeneralVectorInsteadOfRefillVector() {
+        val asid = 0x26L
         val memory = N64Memory(64)
         memory.write32(0, iType(0x23, 1, 2, 0)) // lw $v0, 0($at)
         val cpu = R4300Cpu(memory)
@@ -1523,11 +1524,14 @@ class R4300CpuTest {
         ))
         cpu.gpr[1] = faultAddress
         cpu.gpr[2] = 0xCAFEBABEL
+        cpu.cop0[10] = asid
         cpu.setProgramCounter(0)
 
         cpu.step()
 
         assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr
+        assertEquals((faultAddress ushr 9) and 0x007FFFF0L, cpu.cop0[4]) // Context.BadVPN2.
+        assertEquals((faultAddress and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves ASID.
         assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBL
         assertEquals(0L, cpu.cop0[14]) // EPC
         assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
