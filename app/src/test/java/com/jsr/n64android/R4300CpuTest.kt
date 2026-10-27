@@ -1744,6 +1744,8 @@ class R4300CpuTest {
             oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
         ))
         val faultAddress = 0x00401234L
+        val asid = 0x28L
+        cpu.cop0[10] = asid
         cpu.gpr[1] = faultAddress
         cpu.setProgramCounter(0)
 
@@ -1751,6 +1753,8 @@ class R4300CpuTest {
         cpu.step() // Load faults in the delay slot.
 
         assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr.
+        assertEquals((faultAddress ushr 9) and 0x007FFFF0L, cpu.cop0[4]) // Context.BadVPN2.
+        assertEquals((faultAddress and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves ASID.
         assertEquals(0L, cpu.cop0[14]) // EPC identifies the branch instruction.
         assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD.
         assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBL.
