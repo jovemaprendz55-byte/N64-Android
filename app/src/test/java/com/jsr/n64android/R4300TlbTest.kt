@@ -137,4 +137,19 @@ class R4300TlbTest {
         assertEquals(null, tlb.probe(0x00600000L, 7))
     }
 
+    @Test fun normalizesSignExtendedVirtualPairBase() {
+        val tlb = R4300Tlb()
+        val signExtendedBase = 0xFFFFFFFF80000000UL.toLong()
+        tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = signExtendedBase,
+            asid = 7,
+            evenPage = R4300Tlb.Page(0x12345, valid = true, dirty = true),
+            oddPage = R4300Tlb.Page(0x23456, valid = true, dirty = true)
+        ))
+
+        assertEquals(0, tlb.probe(signExtendedBase, 7))
+        assertEquals(0x12345000, tlb.translate(signExtendedBase, 7, R4300Tlb.Access.READ))
+        assertEquals(0x23456000, tlb.translate(signExtendedBase + 0x1000L, 7, R4300Tlb.Access.READ))
+    }
+
 }
