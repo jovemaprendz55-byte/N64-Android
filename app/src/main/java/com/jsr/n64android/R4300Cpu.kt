@@ -85,9 +85,30 @@ class R4300Cpu(private val memory: N64AddressSpace) {
 
         when (opcode) {
             0 -> when (funct) {
-                0x00 -> if (instruction != 0) gpr[rd] = (gpr[rt].toInt() shl shamt).toLong()
-                0x02 -> gpr[rd] = (gpr[rt].toInt() ushr shamt).toLong()
-                0x03 -> gpr[rd] = (gpr[rt].toInt() shr shamt).toLong()
+                0x00 -> { // SLL; rs is reserved and must be zero.
+                    if (rs != 0) throw ReservedInstructionFault("R4300 SLL has nonzero rs at 0x${instructionAddress.toString(16)}")
+                    if (instruction != 0) gpr[rd] = (gpr[rt].toInt() shl shamt).toLong()
+                }
+                0x02 -> {
+                    if (rs != 0) throw ReservedInstructionFault("R4300 SRL has nonzero rs at 0x${instructionAddress.toString(16)}")
+                    gpr[rd] = (gpr[rt].toInt() ushr shamt).toLong()
+                }
+                0x03 -> {
+                    if (rs != 0) throw ReservedInstructionFault("R4300 SRA has nonzero rs at 0x${instructionAddress.toString(16)}")
+                    gpr[rd] = (gpr[rt].toInt() shr shamt).toLong()
+                }
+                0x04 -> {
+                    if (shamt != 0) throw ReservedInstructionFault("R4300 SLLV has nonzero shamt at 0x${instructionAddress.toString(16)}")
+                    gpr[rd] = (gpr[rt].toInt() shl (gpr[rs].toInt() and 0x1F)).toLong()
+                }
+                0x06 -> {
+                    if (shamt != 0) throw ReservedInstructionFault("R4300 SRLV has nonzero shamt at 0x${instructionAddress.toString(16)}")
+                    gpr[rd] = (gpr[rt].toInt() ushr (gpr[rs].toInt() and 0x1F)).toLong()
+                }
+                0x07 -> {
+                    if (shamt != 0) throw ReservedInstructionFault("R4300 SRAV has nonzero shamt at 0x${instructionAddress.toString(16)}")
+                    gpr[rd] = (gpr[rt].toInt() shr (gpr[rs].toInt() and 0x1F)).toLong()
+                }
                 0x14 -> gpr[rd] = gpr[rt] shl (gpr[rs].toInt() and 0x3F) // DSLLV
                 0x16 -> gpr[rd] = gpr[rt] ushr (gpr[rs].toInt() and 0x3F) // DSRLV
                 0x17 -> gpr[rd] = gpr[rt] shr (gpr[rs].toInt() and 0x3F) // DSRAV
