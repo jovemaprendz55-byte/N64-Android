@@ -3639,4 +3639,34 @@ class R4300CpuTest {
         assertEquals(0xB00L, cpu.cop0[15])
     }
 
+    @Test fun unsupportedInstructionRaisesReservedInstructionException() {
+        val memory = N64Memory(32)
+        memory.write32(0, 0xFC000000.toInt()) // Reserved/unsupported primary opcode.
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(10L, (cpu.cop0[13] ushr 2) and 0x1FL) // ExcCode = Reserved Instruction.
+        assertEquals(0L, cpu.cop0[14]) // EPC points to the faulting instruction.
+        assertEquals(0x2L, cpu.cop0[12] and 0x2L) // EXL is set.
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+    }
+
+    @Test fun unsupportedInstructionInBranchDelaySlotSetsBdAndBranchEpc() {
+        val memory = N64Memory(32)
+        memory.write32(0, iType(0x04, 0, 0, 2)) // beq $zero, $zero, target
+        memory.write32(4, 0xFC000000.toInt()) // Unsupported opcode in delay slot.
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+        cpu.step()
+
+        assertEquals(10L, (cpu.cop0[13] ushr 2) and 0x1FL) // Reserved Instruction.
+        assertEquals(0L, cpu.cop0[14]) // EPC points to the branch, not the delay slot.
+        assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD is set.
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+    }
+
 }
