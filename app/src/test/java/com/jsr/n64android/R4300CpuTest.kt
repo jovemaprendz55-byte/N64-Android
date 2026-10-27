@@ -2402,6 +2402,8 @@ class R4300CpuTest {
         memory.write16(0x1000, 0xF234)
         val cpu = R4300Cpu(memory)
         cpu.tlbEnabled = true
+        val asid = 0x1AL
+        cpu.cop0[10] = asid
         cpu.tlb.write(0, R4300Tlb.Entry(
             virtualPagePairBase = 0L,
             asid = 0,
@@ -2410,17 +2412,20 @@ class R4300CpuTest {
         ))
         cpu.tlb.write(1, R4300Tlb.Entry(
             virtualPagePairBase = 0x00400000L,
-            asid = 0,
-            evenPage = R4300Tlb.Page(2, valid = true, dirty = true, global = true),
-            oddPage = R4300Tlb.Page(1, valid = false, dirty = true, global = true)
+            asid = asid.toInt(),
+            evenPage = R4300Tlb.Page(2, valid = true, dirty = true, global = false),
+            oddPage = R4300Tlb.Page(1, valid = false, dirty = true, global = false)
         ))
-        cpu.gpr[1] = 0x00401000L
+        val faultAddress = 0x00401000L
+        cpu.gpr[1] = faultAddress
         cpu.gpr[2] = 0x13579BDFL
         cpu.setProgramCounter(0)
 
         cpu.step()
 
-        assertEquals(0x00401000L, cpu.cop0[8]) // BadVAddr.
+        assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr.
+        assertEquals((faultAddress ushr 9) and 0x007FFFF0L, cpu.cop0[4]) // Context.BadVPN2.
+        assertEquals((faultAddress and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves ASID.
         assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBL.
         assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc) // General exception vector.
         assertEquals(0x13579BDFL, cpu.gpr[2]) // Destination remains unchanged.
