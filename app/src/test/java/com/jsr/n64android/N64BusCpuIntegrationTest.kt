@@ -1,7 +1,6 @@
 package com.jsr.n64android
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class N64BusCpuIntegrationTest {
@@ -45,14 +44,16 @@ class N64BusCpuIntegrationTest {
     }
 
     @Test
-    fun cartridgeFetchPastEndIsReportedAsCpuAddressException() {
+    fun cartridgeFetchPastEndFailsExplicitlyAtUnmappedBusBoundary() {
         val bus = N64Bus(ram = N64Memory(8 * 1024), cartridgeRom = byteArrayOf(0, 0, 0, 0))
         val cpu = R4300Cpu(bus)
         cpu.setProgramCounter(0xFFFFFFFFB0000004UL.toLong())
 
-        cpu.step()
-
-        assertEquals(4L, (cpu.cop0[13] ushr 2) and 0x1FL)
-        assertEquals(0xFFFFFFFFB0000004UL.toLong(), cpu.cop0[14])
+        try {
+            cpu.step()
+            throw AssertionError("Expected an unmapped cartridge read to fail explicitly.")
+        } catch (error: UnsupportedOperationException) {
+            assertEquals("Cartridge read is beyond the loaded ROM size at 0x10000004.", error.message)
+        }
     }
 }
