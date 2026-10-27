@@ -2170,6 +2170,8 @@ class R4300CpuTest {
         memory.write32(0x1000, 0x12345678)
         val cpu = R4300Cpu(memory)
         cpu.tlbEnabled = true
+        val asid = 0x26L
+        cpu.cop0[10] = asid
         cpu.tlb.write(0, R4300Tlb.Entry(
             virtualPagePairBase = 0L,
             asid = 0,
@@ -2178,9 +2180,9 @@ class R4300CpuTest {
         ))
         cpu.tlb.write(1, R4300Tlb.Entry(
             virtualPagePairBase = 0x00400000L,
-            asid = 0,
-            evenPage = R4300Tlb.Page(2, valid = true, dirty = true, global = true),
-            oddPage = R4300Tlb.Page(1, valid = false, dirty = true, global = true)
+            asid = asid.toInt(),
+            evenPage = R4300Tlb.Page(2, valid = true, dirty = true, global = false),
+            oddPage = R4300Tlb.Page(1, valid = false, dirty = true, global = false)
         ))
         val faultAddress = 0x00401001L
         cpu.gpr[1] = 0x00401000L
@@ -2190,6 +2192,8 @@ class R4300CpuTest {
         cpu.step()
 
         assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr.
+        assertEquals((faultAddress ushr 9) and 0x007FFFF0L, cpu.cop0[4]) // Context.BadVPN2.
+        assertEquals((faultAddress and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves ASID.
         assertEquals(3L, (cpu.cop0[13] ushr 2) and 0x1FL) // Invalid store reports TLBS.
         assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc) // General exception vector.
         assertEquals(0x12345678L, memory.read32(0x1000).toLong() and 0xFFFFFFFFL)
@@ -2264,6 +2268,8 @@ class R4300CpuTest {
         memory.write32(0x1000, 0x12345678)
         val cpu = R4300Cpu(memory)
         cpu.tlbEnabled = true
+        val asid = 0x27L
+        cpu.cop0[10] = asid
         cpu.tlb.write(0, R4300Tlb.Entry(
             virtualPagePairBase = 0L,
             asid = 0,
@@ -2272,9 +2278,9 @@ class R4300CpuTest {
         ))
         cpu.tlb.write(1, R4300Tlb.Entry(
             virtualPagePairBase = 0x00400000L,
-            asid = 0,
-            evenPage = R4300Tlb.Page(2, valid = true, dirty = true, global = true),
-            oddPage = R4300Tlb.Page(1, valid = false, dirty = true, global = true)
+            asid = asid.toInt(),
+            evenPage = R4300Tlb.Page(2, valid = true, dirty = true, global = false),
+            oddPage = R4300Tlb.Page(1, valid = false, dirty = true, global = false)
         ))
         val faultAddress = 0x00401002L
         cpu.gpr[1] = 0x00401000L
@@ -2284,6 +2290,8 @@ class R4300CpuTest {
         cpu.step()
 
         assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr.
+        assertEquals((faultAddress ushr 9) and 0x007FFFF0L, cpu.cop0[4]) // Context.BadVPN2.
+        assertEquals((faultAddress and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves ASID.
         assertEquals(3L, (cpu.cop0[13] ushr 2) and 0x1FL) // Invalid store reports TLBS.
         assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc) // General exception vector.
         assertEquals(0x12345678L, memory.read32(0x1000).toLong() and 0xFFFFFFFFL)
