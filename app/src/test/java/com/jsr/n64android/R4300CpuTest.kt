@@ -642,13 +642,15 @@ class R4300CpuTest {
         val cpu = R4300Cpu(memory)
         cpu.tlbEnabled = true
         val asid = 0x1FL
+        val pteBase = 0x30000000L
+        cpu.cop0[4] = pteBase
         cpu.cop0[10] = asid
         cpu.setProgramCounter(0x00400000L)
 
         cpu.step()
 
         assertEquals(0x00400000L, cpu.cop0[8]) // BadVAddr
-        assertEquals((0x00400000L ushr 9) and 0x007FFFF0L, cpu.cop0[4]) // Context.BadVPN2
+        assertEquals(pteBase or ((0x00400000L ushr 9) and 0x007FFFF0L), cpu.cop0[4]) // Context preserves PTEBase and updates BadVPN2
         assertEquals((0x00400000L and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi.VPN2 and preserved ASID
         assertEquals(2L shl 2, cpu.cop0[13] and (0x1FL shl 2)) // Cause.TLBL
         assertEquals(0x00400000L, cpu.cop0[14]) // EPC
