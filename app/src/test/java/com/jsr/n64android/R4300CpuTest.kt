@@ -2907,11 +2907,13 @@ class R4300CpuTest {
         val cpu = R4300Cpu(memory)
         cpu.tlbEnabled = true
         val faultAddress = 0x00801000L
+        val asid = 0x5AL
+        cpu.cop0[10] = asid
         cpu.tlb.write(0, R4300Tlb.Entry(
             virtualPagePairBase = 0x00800000L,
-            asid = 0,
-            evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
-            oddPage = R4300Tlb.Page(1, valid = true, dirty = false, global = true)
+            asid = asid.toInt(),
+            evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = false),
+            oddPage = R4300Tlb.Page(1, valid = true, dirty = false, global = false)
         ))
         cpu.gpr[1] = faultAddress
         cpu.gpr[2] = 0xCAFEBABEL
@@ -2922,7 +2924,7 @@ class R4300CpuTest {
 
         assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr.
         assertEquals((faultAddress ushr 9) and 0x007FFFF0L, cpu.cop0[4]) // Context.BadVPN2.
-        assertEquals(faultAddress and R4300Tlb.PAGE_PAIR_MASK, cpu.cop0[10]) // EntryHi.VPN2 and preserved ASID.
+        assertEquals((faultAddress and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves ASID.
         assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.cop0[14]) // EPC points to the store.
         assertEquals(1L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLB Modified.
         assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc) // General exception vector.
