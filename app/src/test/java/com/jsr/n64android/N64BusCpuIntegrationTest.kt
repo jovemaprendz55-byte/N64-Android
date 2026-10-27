@@ -56,4 +56,30 @@ class N64BusCpuIntegrationTest {
             assertEquals("Cartridge read is beyond the loaded ROM size at 0x10000004.", error.message)
         }
     }
+    @Test
+    fun cpuExecutesCartridgeCodeAfterPiDmaCopiesItIntoRdram() {
+        // addiu $t0, $zero, 42; addiu $t1, $t0, 1, encoded big-endian.
+        val first = (0x09 shl 26) or (8 shl 16) or 42
+        val second = (0x09 shl 26) or (8 shl 21) or (9 shl 16) or 1
+        val rom = byteArrayOf(
+            (first ushr 24).toByte(), (first ushr 16).toByte(),
+            (first ushr 8).toByte(), first.toByte(),
+            (second ushr 24).toByte(), (second ushr 16).toByte(),
+            (second ushr 8).toByte(), second.toByte()
+        )
+        val bus = N64Bus(ram = N64Memory(8 * 1024), cartridgeRom = rom)
+        bus.write32(N64Bus.PI_DRAM_ADDR_REG, 0x100)
+        bus.write32(N64Bus.PI_CART_ADDR_REG, N64Bus.CARTRIDGE_ROM_BASE)
+        bus.write32(N64Bus.PI_RD_LEN_REG, rom.size - 1)
+
+        val cpu = R4300Cpu(bus)
+        cpu.setProgramCounter(0xFFFFFFFF80000100UL.toLong())
+        cpu.step()
+        cpu.step()
+
+        assertEquals(42L, cpu.gpr[8])
+        assertEquals(43L, cpu.gpr[9])
+        assertEquals(0xFFFFFFFF80000108UL.toLong(), cpu.pc)
+    }
+
 }
