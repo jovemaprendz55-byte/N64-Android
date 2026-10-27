@@ -2926,4 +2926,25 @@ class R4300CpuTest {
         assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc) // General exception vector.
         assertEquals(0x12345678L, memory.read32(0x1000).toLong() and 0xFFFFFFFFL)
     }
+
+    @Test fun tlbMissWithBootExceptionVectorsEnabledUsesBootRefillVector() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x23, 1, 2, 0)) // lw $v0, 0($at)
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        val faultAddress = 0x00801000L // No TLB entry matches this address.
+        cpu.gpr[1] = faultAddress
+        cpu.gpr[2] = 0x13579BDFL
+        cpu.cop0[12] = 1L shl 22 // Status.BEV selects boot exception vectors.
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
+
+        cpu.step()
+
+        assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr.
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.cop0[14]) // EPC.
+        assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBL.
+        assertEquals(1L, (cpu.cop0[12] ushr 1) and 1L) // EXL is set.
+        assertEquals(0xFFFFFFFFBFC00200UL.toLong(), cpu.pc) // Boot TLB refill vector.
+        assertEquals(0x13579BDFL, cpu.gpr[2]) // Failed load preserves destination.
+    }
 }
