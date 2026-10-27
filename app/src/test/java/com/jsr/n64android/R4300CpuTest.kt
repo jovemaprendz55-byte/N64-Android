@@ -362,13 +362,26 @@ class R4300CpuTest {
         assertEquals(-0x7FFFFFFFL, cpu.gpr[2])
     }
 
-    @Test fun resetClearsCop0RegisterStorage() {
+    @Test fun resetClearsCop0RegisterStorageAndDisablesAndClearsTlb() {
         val memory = N64Memory(16)
         val cpu = R4300Cpu(memory)
         cpu.cop0[12] = 0x1234L
+        cpu.tlbEnabled = true
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
+        ))
+
         cpu.reset()
+
         assertEquals(0L, cpu.cop0[12])
         assertEquals(R4300Cpu.RESET_VECTOR, cpu.pc)
+        assertEquals(false, cpu.tlbEnabled)
+        assertThrows(R4300Tlb.TlbFault::class.java) {
+            cpu.tlb.translate(0L, 0, R4300Tlb.Access.READ)
+        }
     }
 
     @Test fun eretReturnsToEpcAndClearsExl() {
