@@ -3984,4 +3984,55 @@ class R4300CpuTest {
         assertEquals(10L, cpu.gpr[4])
         assertEquals(16L, cpu.pc)
     }
+
+    @Test fun remainingBranchLikelyOpcodesAnnulDelaySlotWhenNotTaken() {
+        val cases = listOf(
+            Triple(0x15, 1L, 1L), // BNEL: equal registers, so not taken.
+            Triple(0x16, 1L, 0L), // BLEZL: positive value, so not taken.
+            Triple(0x17, 0L, 0L)  // BGTZL: zero is not greater than zero.
+        )
+        for ((opcode, rsValue, rtValue) in cases) {
+            val memory = N64Memory(32)
+            memory.write32(0, iType(opcode, 1, 2, 2))
+            memory.write32(4, iType(0x09, 0, 3, 7)) // Must be annulled.
+            memory.write32(8, iType(0x09, 0, 4, 9))
+            val cpu = R4300Cpu(memory)
+            cpu.setProgramCounter(0)
+            cpu.gpr[1] = rsValue
+            cpu.gpr[2] = rtValue
+
+            cpu.step()
+            cpu.step()
+
+            assertEquals("opcode 0x${opcode.toString(16)} delay slot", 0L, cpu.gpr[3])
+            assertEquals("opcode 0x${opcode.toString(16)} sequential instruction", 9L, cpu.gpr[4])
+            assertEquals("opcode 0x${opcode.toString(16)} PC", 12L, cpu.pc)
+        }
+    }
+
+    @Test fun remainingBranchLikelyOpcodesExecuteDelaySlotWhenTaken() {
+        val cases = listOf(
+            Triple(0x15, 1L, 2L), // BNEL: registers differ.
+            Triple(0x16, 0L, 0L), // BLEZL: zero is <= zero.
+            Triple(0x17, 1L, 0L)  // BGTZL: positive value.
+        )
+        for ((opcode, rsValue, rtValue) in cases) {
+            val memory = N64Memory(32)
+            memory.write32(0, iType(opcode, 1, 2, 2))
+            memory.write32(4, iType(0x09, 0, 3, 7)) // Delay slot must execute.
+            memory.write32(8, iType(0x09, 0, 4, 8)) // Must be skipped.
+            memory.write32(12, iType(0x09, 0, 5, 10)) // Branch target.
+            val cpu = R4300Cpu(memory)
+            cpu.setProgramCounter(0)
+            cpu.gpr[1] = rsValue
+            cpu.gpr[2] = rtValue
+
+            repeat(3) { cpu.step() }
+
+            assertEquals("opcode 0x${opcode.toString(16)} delay slot", 7L, cpu.gpr[3])
+            assertEquals("opcode 0x${opcode.toString(16)} fall-through", 0L, cpu.gpr[4])
+            assertEquals("opcode 0x${opcode.toString(16)} target", 10L, cpu.gpr[5])
+        }
+    }
+
 }
