@@ -1896,7 +1896,12 @@ class R4300CpuTest {
         memory.write32(0, iType(0x04, 0, 0, 2)) // beq $zero, $zero, target
         memory.write32(4, iType(0x2B, 1, 2, 0)) // sw $v0, 0($at) in delay slot
         val cpu = R4300Cpu(memory)
+        val asid = 0x35L
+        val faultAddress = 0x00401234L
+        val pteBase = 0x1E000000L
         cpu.tlbEnabled = true
+        cpu.cop0[4] = pteBase
+        cpu.cop0[10] = asid
         cpu.cop0[12] = 1L shl 22 // BEV selects boot exception vectors.
         cpu.tlb.write(0, R4300Tlb.Entry(
             virtualPagePairBase = 0L,
@@ -1904,12 +1909,11 @@ class R4300CpuTest {
             evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
             oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
         ))
-        val faultAddress = 0x00401234L
         cpu.tlb.write(1, R4300Tlb.Entry(
             virtualPagePairBase = faultAddress and R4300Tlb.PAGE_PAIR_MASK,
-            asid = 0,
-            evenPage = R4300Tlb.Page(2, valid = true, dirty = true, global = true),
-            oddPage = R4300Tlb.Page(3, valid = true, dirty = false, global = true)
+            asid = asid.toInt(),
+            evenPage = R4300Tlb.Page(2, valid = true, dirty = true, global = false),
+            oddPage = R4300Tlb.Page(3, valid = true, dirty = false, global = false)
         ))
         cpu.gpr[1] = faultAddress
         cpu.gpr[2] = 0x12345678L
@@ -1919,6 +1923,8 @@ class R4300CpuTest {
         cpu.step() // Store triggers TLB Modified in the delay slot.
 
         assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr.
+        assertEquals(pteBase or ((faultAddress ushr 9) and 0x007FFFF0L), cpu.cop0[4]) // Context.BadVPN2 + PTEBase.
+        assertEquals((faultAddress and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves ASID.
         assertEquals(0L, cpu.cop0[14]) // EPC identifies the branch instruction.
         assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD.
         assertEquals(1L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLB Modified.
