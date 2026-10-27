@@ -3,9 +3,10 @@ package com.jsr.n64android
 /**
  * Initial R4300 TLB model for 4 KiB pages.
  *
- * This deliberately models the 32-entry paired-page lookup separately from the CPU.
- * CPU integration, variable PageMask values, wired/random replacement and full COP0
- * exception delivery are not implemented yet.
+ * This models the 32-entry, fixed-4-KiB paired-page lookup separately from the CPU.
+ * The CPU now integrates lookup faults and basic COP0 TLB operations. Variable PageMask
+ * values and larger page sizes remain unsupported; replacement behavior is implemented
+ * in the CPU at a basic level and is not a cycle-accurate hardware model.
  */
 class R4300Tlb(private val entryCount: Int = ENTRY_COUNT) {
     init {
