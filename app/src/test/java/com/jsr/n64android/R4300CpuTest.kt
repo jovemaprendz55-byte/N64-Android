@@ -2976,4 +2976,26 @@ class R4300CpuTest {
         assertEquals(0xFFFFFFFFBFC00200UL.toLong(), cpu.pc) // Boot TLB refill vector.
         assertEquals(0x13579BDFL, cpu.gpr[2]) // Failed load preserves destination.
     }
+    @Test fun cpuTranslatesSignExtendedVirtualAddressThroughTlb() {
+        val memory = N64Memory(8192)
+        memory.write32(0, iType(0x23, 1, 2, 0)) // lw $v0, 0($at)
+        memory.write32(0x1000, 0x76543210)
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        val signExtendedBase = 0xFFFFFFFF40000000UL.toLong()
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = signExtendedBase,
+            asid = 0,
+            evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
+        ))
+        cpu.gpr[1] = signExtendedBase + 0x1000L
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
+
+        cpu.step()
+
+        assertEquals(0x76543210L, cpu.gpr[2])
+        assertEquals(0L, cpu.cop0[13] and (0x1FL shl 2)) // No TLB exception.
+    }
+
 }
