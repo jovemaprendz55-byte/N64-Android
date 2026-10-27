@@ -3949,4 +3949,39 @@ class R4300CpuTest {
         assertEquals(0x13579BDF, memory.read32(8)) // Faulting store must not change memory.
     }
 
+
+    @Test fun branchLikelyNotTakenAnnulsDelaySlot() {
+        val memory = N64Memory(32)
+        memory.write32(0, iType(0x14, 1, 0, 2)) // beql $at, $zero, target
+        memory.write32(4, iType(0x09, 0, 2, 7)) // annulled delay slot
+        memory.write32(8, iType(0x09, 0, 3, 9)) // sequential instruction
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 1L
+
+        cpu.step()
+        cpu.step()
+
+        assertEquals(0L, cpu.gpr[2])
+        assertEquals(9L, cpu.gpr[3])
+        assertEquals(12L, cpu.pc)
+    }
+
+    @Test fun branchLikelyTakenExecutesDelaySlotBeforeTarget() {
+        val memory = N64Memory(32)
+        memory.write32(0, iType(0x14, 1, 1, 2)) // beql $at, $at, target at 12
+        memory.write32(4, iType(0x09, 0, 2, 7)) // delay slot
+        memory.write32(8, iType(0x09, 0, 3, 8)) // skipped
+        memory.write32(12, iType(0x09, 0, 4, 10)) // target
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 1L
+
+        repeat(3) { cpu.step() }
+
+        assertEquals(7L, cpu.gpr[2])
+        assertEquals(0L, cpu.gpr[3])
+        assertEquals(10L, cpu.gpr[4])
+        assertEquals(16L, cpu.pc)
+    }
 }
