@@ -1715,10 +1715,12 @@ class R4300CpuTest {
     @Test fun tlbMissWithBevAndExlSetUsesBootGeneralVectorAndPreservesEpc() {
         val memory = N64Memory(64)
         val cpu = R4300Cpu(memory)
-        val asid = 0x27L
-        cpu.tlbEnabled = true
+        val asid = 0x32L
         val faultAddress = 0x00800000L
         val previousEpc = 0x12345678L
+        val pteBase = 0x18000000L
+        cpu.tlbEnabled = true
+        cpu.cop0[4] = pteBase
         cpu.cop0[12] = (1L shl 22) or 0x2L // BEV and EXL already set.
         cpu.cop0[10] = asid
         cpu.cop0[14] = previousEpc
@@ -1727,7 +1729,7 @@ class R4300CpuTest {
         cpu.step()
 
         assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr records the new fault.
-        assertEquals((faultAddress ushr 9) and 0x007FFFF0L, cpu.cop0[4]) // Context.BadVPN2.
+        assertEquals(pteBase or ((faultAddress ushr 9) and 0x007FFFF0L), cpu.cop0[4]) // Context.BadVPN2 preserves PTEBase.
         assertEquals((faultAddress and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves ASID.
         assertEquals(previousEpc, cpu.cop0[14]) // Nested exception preserves EPC.
         assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBL.
