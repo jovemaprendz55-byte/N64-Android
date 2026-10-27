@@ -693,22 +693,28 @@ class R4300CpuTest {
         val memory = N64Memory(4096)
         memory.write32(0, iType(0x23, 8, 2, 0)) // lw $v0, 0($t0)
         val cpu = R4300Cpu(memory)
+        val asid = 0x1EL
+        cpu.cop0[10] = asid
         cpu.tlb.write(0, R4300Tlb.Entry(
             virtualPagePairBase = 0x00400000L,
-            asid = 0,
+            asid = asid.toInt(),
             evenPage = R4300Tlb.Page(1, valid = false, dirty = true),
             oddPage = R4300Tlb.Page(2, valid = true, dirty = true)
         ))
         cpu.tlbEnabled = true
         cpu.gpr[8] = 0x00400000L
+        cpu.gpr[2] = 0x12345678L
         cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
 
         cpu.step()
 
         assertEquals(0x00400000L, cpu.cop0[8]) // BadVAddr
+        assertEquals((0x00400000L ushr 9) and 0x007FFFF0L, cpu.cop0[4]) // Context.BadVPN2
+        assertEquals((0x00400000L and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves ASID
         assertEquals(2L shl 2, cpu.cop0[13] and (0x1FL shl 2)) // Cause.TLBL
         assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.cop0[14]) // EPC
         assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc) // Invalid entry uses general vector
+        assertEquals(0x12345678L, cpu.gpr[2]) // Faulting load preserves destination
     }
 
     @Test fun tlbLoadMissInBranchDelaySlotSetsBdAndBranchEpc() {
