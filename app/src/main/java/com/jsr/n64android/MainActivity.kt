@@ -15,6 +15,7 @@ import java.io.IOException
 class MainActivity : Activity() {
     private lateinit var status: TextView
     private var cartridgeBus: N64Bus? = null
+    private var romTraceButton: Button? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,11 +34,10 @@ class MainActivity : Activity() {
             text = "Executar teste interno da CPU"
             setOnClickListener { runCpuDiagnostic() }
         }
-        val romTrace = Button(this).apply {
+        romTraceButton = Button(this).apply {
             text = "Executar diagnóstico de instruções da ROM"
             setOnClickListener { runRomInstructionDiagnostic() }
             isEnabled = false
-            tag = "romTraceButton"
         }
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -51,7 +51,7 @@ class MainActivity : Activity() {
             addView(status)
             addView(chooseRom)
             addView(cpuDiagnostic)
-            addView(romTrace)
+            addView(romTraceButton)
         }
         setContentView(layout)
     }
@@ -167,7 +167,7 @@ class MainActivity : Activity() {
         when (val result = N64RomLoader.load(bytes)) {
             is RomLoadResult.Success -> {
                 cartridgeBus = N64Bus(cartridgeRom = result.rom.bytes)
-                findViewByTag<Button>("romTraceButton")?.isEnabled = true
+                romTraceButton?.isEnabled = true
                 val info = N64RomInspector.inspect(result.rom.bytes)
                 status.text = "ROM carregada no barramento: ${result.rom.byteSize} bytes" +
                     "\nFormato: ${result.rom.format}" +
@@ -177,7 +177,7 @@ class MainActivity : Activity() {
             }
             is RomLoadResult.Failure -> {
                 cartridgeBus = null
-                findViewByTag<Button>("romTraceButton")?.isEnabled = false
+                romTraceButton?.isEnabled = false
                 status.text = result.reason
             }
         }
