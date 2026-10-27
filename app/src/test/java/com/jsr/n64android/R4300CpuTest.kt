@@ -3616,4 +3616,27 @@ class R4300CpuTest {
         assertEquals(17L, cpu.cop0[1])
     }
 
+
+    @Test fun cop0Mtc0BadVAddrIgnoresWrites() {
+        val memory = N64Memory(32)
+        memory.write32(0, (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (8 shl 11))
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.cop0[8] = 0x12345678L
+        cpu.gpr[1] = 0xFFFFFFFFL
+        cpu.step()
+        assertEquals(0x12345678L, cpu.cop0[8])
+    }
+
+    @Test fun cop0Mtc0PrIdIgnoresWrites() {
+        val memory = N64Memory(32)
+        memory.write32(0, (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (15 shl 11))
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.cop0[15] = 0xB00L
+        cpu.gpr[1] = 0xFFFFFFFFL
+        cpu.step()
+        assertEquals(0xB00L, cpu.cop0[15])
+    }
+
 }
