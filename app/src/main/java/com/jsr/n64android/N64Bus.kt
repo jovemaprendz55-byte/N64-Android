@@ -19,6 +19,8 @@ class N64Bus(
     private var piDramAddress = 0
     private var piCartAddress = CARTRIDGE_ROM_BASE
     private var piStatus = 0
+    // Minimal RI register state; these values are placeholders, not full RDRAM timing emulation.
+    private val riRegisters = IntArray(RI_REGISTER_COUNT).also { it[RI_SELECT_OFFSET / 4] = RI_SELECT_RESET }
 
     init {
         require(pif == null || pif.size == PIF_ROM_SIZE) {
@@ -78,6 +80,7 @@ class N64Bus(
             PI_CART_ADDR_REG -> return piCartAddress
             PI_RD_LEN_REG, PI_WR_LEN_REG -> return 0
             PI_STATUS_REG -> return piStatus
+            in RI_REG_BASE until RI_REG_BASE + RI_REG_SIZE -> return riRegisters[(address - RI_REG_BASE) / 4]
         }
         return (read8(address) shl 24) or (read8(address + 1) shl 16) or
             (read8(address + 2) shl 8) or read8(address + 3)
@@ -123,6 +126,10 @@ class N64Bus(
                 "PI RAM-to-cartridge DMA is unsupported because cartridge ROM is read-only."
             )
             PI_STATUS_REG -> { piStatus = piStatus and (value.inv() and 0x3); return }
+            in RI_REG_BASE until RI_REG_BASE + RI_REG_SIZE -> {
+                riRegisters[(address - RI_REG_BASE) / 4] = value
+                return
+            }
         }
         write8(address, value ushr 24)
         write8(address + 1, value ushr 16)
@@ -174,5 +181,10 @@ class N64Bus(
         const val PI_WR_LEN_REG = PI_REG_BASE + 0x0C
         const val PI_STATUS_REG = PI_REG_BASE + 0x10
         const val PI_STATUS_DMA_BUSY = 0x01
+        const val RI_REG_BASE = 0x04700000
+        const val RI_REG_SIZE = 0x20
+        const val RI_SELECT_OFFSET = 0x0C
+        const val RI_SELECT_RESET = 0x00000014
+        const val RI_REGISTER_COUNT = RI_REG_SIZE / 4
     }
 }
