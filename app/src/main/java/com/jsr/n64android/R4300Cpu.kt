@@ -233,6 +233,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                             0 -> { // Index.P is read-only; only the low five index bits are writable.
                                 cop0[0] = (cop0[0] and (1L shl 31)) or (value and 0x1FL)
                             }
+                            1, 8, 15 -> { // Random, BadVAddr and PRId are read-only.
+                                // MTC0 writes to these registers have no effect.
+                            }
                             4 -> { // Context: PTEBase is writable; BadVPN2 is hardware-maintained.
                                 cop0[4] = (cop0[4] and 0x007FFFF0L) or (value and 0xFF800000L)
                             }
