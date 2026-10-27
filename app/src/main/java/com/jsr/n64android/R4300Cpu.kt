@@ -238,6 +238,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                                 cop0[1] = 31L
                                 randomResetByWiredWrite = true
                             }
+                            10 -> { // EntryHi: VPN2 [31:13] and ASID [7:0] are writable.
+                                cop0[10] = value and 0xFFFFE0FFL
+                            }
                             else -> cop0[copRd] = value
                         }
                     }
