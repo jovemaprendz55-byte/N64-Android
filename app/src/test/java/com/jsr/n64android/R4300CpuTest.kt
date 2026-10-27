@@ -3295,4 +3295,27 @@ class R4300CpuTest {
         assertEquals(0x12345678L, memory.read32(0x1000).toLong() and 0xFFFFFFFFL) // Failed store leaves memory unchanged.
     }
 
+
+    @Test fun cop0TlbwiTlbrPreservesGlobalBitsForBothPages() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop0Co(0x02)) // TLBWI
+        memory.write32(4, cop0Co(0x01)) // TLBR
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.cop0[0] = 5L
+        cpu.cop0[10] = 0x00600009L // VPN2 and ASID.
+        cpu.cop0[2] = (0x123L shl 6) or 0x7L // PFN, dirty, valid, global.
+        cpu.cop0[3] = (0x234L shl 6) or 0x6L // PFN, dirty, valid, not global.
+
+        cpu.step() // TLBWI.
+        cpu.cop0[10] = 0L
+        cpu.cop0[2] = 0L
+        cpu.cop0[3] = 0L
+        cpu.step() // TLBR.
+
+        assertEquals(0x00600009L, cpu.cop0[10])
+        assertEquals((0x123L shl 6) or 0x7L, cpu.cop0[2])
+        assertEquals((0x234L shl 6) or 0x6L, cpu.cop0[3])
+    }
+
 }
