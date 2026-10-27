@@ -224,7 +224,15 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 val copRd = (instruction ushr 11) and 0x1F
                 when (copRs) {
                     0x00 -> gpr[rt] = cop0[copRd].toInt().toLong() // MFC0 sign-extends 32-bit value
-                    0x04 -> cop0[copRd] = gpr[rt].toInt().toLong() // MTC0 writes low 32 bits
+                    0x04 -> { // MTC0 writes low 32 bits.
+                        val value = gpr[rt].toInt().toLong()
+                        if (copRd == 6) { // Wired: five-bit value; writing it resets Random to 31.
+                            cop0[6] = value and 0x1FL
+                            cop0[1] = 31L
+                        } else {
+                            cop0[copRd] = value
+                        }
+                    }
                     0x10 -> { // COP0 CO-format operations
                         when (funct) {
                             0x01 -> { // TLBR: copy indexed TLB entry into COP0 registers
