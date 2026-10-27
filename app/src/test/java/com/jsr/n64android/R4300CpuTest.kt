@@ -362,6 +362,24 @@ class R4300CpuTest {
         assertEquals(-0x7FFFFFFFL, cpu.gpr[2])
     }
 
+    @Test fun tlbMissInBranchDelaySlotSetsBranchDelayAndEpc() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x04, 0, 0, 2)) // beq $zero, $zero, target
+        memory.write32(4, iType(0x23, 1, 2, 0)) // lw $v0, 0($at): unmapped TLB address
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        cpu.gpr[1] = 0x00400000L
+        cpu.setProgramCounter(-0x80000000L)
+
+        cpu.step() // branch; delay slot executes next
+        cpu.step() // TLB miss in the delay slot
+
+        assertEquals(-0x80000000L, cpu.cop0[14]) // EPC points to branch, not delay slot
+        assertEquals(1L shl 31, cpu.cop0[13] and (1L shl 31)) // Cause.BD
+        assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLB load/fetch miss
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc) // refill vector
+    }
+
     @Test fun resetCancelsPendingBranchTarget() {
         val memory = N64Memory(64)
         memory.write32(0, iType(0x04, 0, 0, 3)) // beq $zero, $zero, target 16
