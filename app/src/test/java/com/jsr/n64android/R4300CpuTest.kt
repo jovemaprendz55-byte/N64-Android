@@ -3780,6 +3780,23 @@ class R4300CpuTest {
         assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
     }
 
+    @Test fun signedAddOverflowRaisesArithmeticExceptionWithoutWritingDestination() {
+        val memory = N64Memory(32)
+        memory.write32(0, rType(1, 2, 3, 0x20)) // ADD
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = Int.MAX_VALUE.toLong()
+        cpu.gpr[2] = 1L
+        cpu.gpr[3] = 456L
+
+        cpu.step()
+
+        assertEquals(12L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(456L, cpu.gpr[3])
+        assertEquals(0L, cpu.cop0[14])
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+    }
+
     @Test fun unsupportedInstructionRaisesReservedInstructionException() {
         val memory = N64Memory(32)
         memory.write32(0, 0x7C000000.toInt()) // Reserved/unsupported primary opcode.
