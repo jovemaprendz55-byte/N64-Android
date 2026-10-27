@@ -3604,4 +3604,16 @@ class R4300CpuTest {
         assertEquals(0xFF800000L, cpu.cop0[4])
     }
 
+
+    @Test fun cop0Mtc0RandomIgnoresWrites() {
+        val memory = N64Memory(32)
+        memory.write32(0, (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (1 shl 11))
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.cop0[1] = 17L
+        cpu.gpr[1] = 3L
+        cpu.step()
+        assertEquals(17L, cpu.cop0[1])
+    }
+
 }
