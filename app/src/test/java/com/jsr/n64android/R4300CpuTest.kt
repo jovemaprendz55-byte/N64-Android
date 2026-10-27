@@ -59,7 +59,7 @@ class R4300CpuTest {
         cpu.step()
 
         assertEquals(12L, (cpu.cop0[13] ushr 2) and 0x1FL) // ExcCode = Overflow
-        assertEquals(0L, cpu.cop0[14]) // EPC points to ADDI
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.cop0[14]) // EPC points to the load points to ADDI
         assertEquals(123L, cpu.gpr[2]) // Destination is unchanged
         assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
         assertEquals(0x2L, cpu.cop0[12] and 0x2L) // EXL set
@@ -3007,7 +3007,8 @@ class R4300CpuTest {
         cpu.gpr[1] = 0x00402004L
         cpu.cop0[4] = 0x12000000L // Preserve the Context register's PTEBase field.
         cpu.cop0[10] = 7L // EntryHi ASID
-        cpu.setProgramCounter(0)
+        // Fetch the instruction through KSEG0 so only the data access misses in the TLB.
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
 
         cpu.step()
 
