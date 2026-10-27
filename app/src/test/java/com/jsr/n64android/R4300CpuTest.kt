@@ -3387,4 +3387,30 @@ class R4300CpuTest {
         assertEquals((0x456L shl 6) or 0x2L, cpu.cop0[3])
     }
 
+
+    @Test fun cop0TlbwrMasksRandomRegisterToFiveBitIndex() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop0Co(0x06)) // TLBWR
+        memory.write32(4, cop0Co(0x01)) // TLBR
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.cop0[0] = 12L // Distinct Index value.
+        cpu.cop0[1] = 0x27L // Low five bits select entry 7.
+        cpu.cop0[10] = 0x00A00011L
+        cpu.cop0[2] = (0x111L shl 6) or 0x6L
+        cpu.cop0[3] = (0x222L shl 6) or 0x6L
+
+        cpu.step() // TLBWR must mask Random to five bits.
+        assertEquals(12L, cpu.cop0[0])
+        cpu.cop0[0] = 7L
+        cpu.cop0[10] = 0L
+        cpu.cop0[2] = 0L
+        cpu.cop0[3] = 0L
+        cpu.step() // TLBR reads entry 7.
+
+        assertEquals(0x00A00011L, cpu.cop0[10])
+        assertEquals((0x111L shl 6) or 0x6L, cpu.cop0[2])
+        assertEquals((0x222L shl 6) or 0x6L, cpu.cop0[3])
+    }
+
 }
