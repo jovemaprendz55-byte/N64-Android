@@ -171,16 +171,30 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 }
                 0x0A -> if (gpr[rt] == 0L) gpr[rd] = gpr[rs] // MOVZ
                 0x0B -> if (gpr[rt] != 0L) gpr[rd] = gpr[rs] // MOVN
-                0x10 -> gpr[rd] = hi // MFHI
-                0x11 -> hi = gpr[rs] // MTHI
-                0x12 -> gpr[rd] = lo // MFLO
-                0x13 -> lo = gpr[rs] // MTLO
+                0x10 -> { // MFHI
+                    if (rs != 0 || rt != 0 || shamt != 0) throw ReservedInstructionFault("Malformed MFHI reserved fields")
+                    gpr[rd] = hi
+                }
+                0x11 -> { // MTHI
+                    if (rt != 0 || rd != 0 || shamt != 0) throw ReservedInstructionFault("Malformed MTHI reserved fields")
+                    hi = gpr[rs]
+                }
+                0x12 -> { // MFLO
+                    if (rs != 0 || rt != 0 || shamt != 0) throw ReservedInstructionFault("Malformed MFLO reserved fields")
+                    gpr[rd] = lo
+                }
+                0x13 -> { // MTLO
+                    if (rt != 0 || rd != 0 || shamt != 0) throw ReservedInstructionFault("Malformed MTLO reserved fields")
+                    lo = gpr[rs]
+                }
                 0x18 -> {
+                    if (rd != 0 || shamt != 0) throw ReservedInstructionFault("Malformed MULT reserved fields")
                     val product = gpr[rs].toInt().toLong() * gpr[rt].toInt().toLong()
                     lo = product.toInt().toLong()
                     hi = (product shr 32).toInt().toLong()
                 }
                 0x19 -> {
+                    if (rd != 0 || shamt != 0) throw ReservedInstructionFault("Malformed MULTU reserved fields")
                     val left = gpr[rs].toInt().toLong() and 0xFFFFFFFFL
                     val right = gpr[rt].toInt().toLong() and 0xFFFFFFFFL
                     val product = left * right
@@ -188,6 +202,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     hi = (product ushr 32) and 0xFFFFFFFFL
                 }
                 0x1A -> {
+                    if (rd != 0 || shamt != 0) throw ReservedInstructionFault("Malformed DIV reserved fields")
                     val dividend = gpr[rs].toInt()
                     val divisor = gpr[rt].toInt()
                     if (divisor != 0) {
@@ -201,6 +216,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     }
                 }
                 0x1B -> {
+                    if (rd != 0 || shamt != 0) throw ReservedInstructionFault("Malformed DIVU reserved fields")
                     val dividend = gpr[rs].toInt().toLong() and 0xFFFFFFFFL
                     val divisor = gpr[rt].toInt().toLong() and 0xFFFFFFFFL
                     if (divisor != 0L) {
@@ -212,16 +228,19 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     }
                 }
                 0x1C -> { // DMULT: signed 64-bit product, split into HI/LO
+                    if (rd != 0 || shamt != 0) throw ReservedInstructionFault("Malformed DMULT reserved fields")
                     val product = BigInteger.valueOf(gpr[rs]).multiply(BigInteger.valueOf(gpr[rt]))
                     lo = product.toLong()
                     hi = product.shiftRight(64).toLong()
                 }
                 0x1D -> { // DMULTU: unsigned 64-bit product, split into HI/LO
+                    if (rd != 0 || shamt != 0) throw ReservedInstructionFault("Malformed DMULTU reserved fields")
                     val product = unsignedBigInteger(gpr[rs]).multiply(unsignedBigInteger(gpr[rt]))
                     lo = product.toLong()
                     hi = product.shiftRight(64).toLong()
                 }
                 0x1E -> { // DDIV: signed 64-bit quotient/remainder
+                    if (rd != 0 || shamt != 0) throw ReservedInstructionFault("Malformed DDIV reserved fields")
                     val dividend = gpr[rs]
                     val divisor = gpr[rt]
                     if (divisor != 0L) {
@@ -230,6 +249,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     } // Division by zero has architecturally unpredictable results.
                 }
                 0x1F -> { // DDIVU: unsigned 64-bit quotient/remainder
+                    if (rd != 0 || shamt != 0) throw ReservedInstructionFault("Malformed DDIVU reserved fields")
                     val dividend = unsignedBigInteger(gpr[rs])
                     val divisor = unsignedBigInteger(gpr[rt])
                     if (divisor != BigInteger.ZERO) {
