@@ -3413,4 +3413,22 @@ class R4300CpuTest {
         assertEquals((0x222L shl 6) or 0x6L, cpu.cop0[3])
     }
 
+
+    @Test fun cop0TlbwrPreservesBothGlobalBitsForAsidIndependentProbe() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop0Co(0x06)) // TLBWR
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.cop0[1] = 6L // Random selects entry 6.
+        cpu.cop0[10] = 0x0020002AL // VPN2 and ASID 0x2A.
+        cpu.cop0[2] = (1L shl 6) or 0x7L // Both valid/dirty/global bits set.
+        cpu.cop0[3] = (2L shl 6) or 0x7L
+
+        cpu.step()
+
+        assertEquals(6, cpu.tlb.probe(0x00200000L, 0x7F))
+        assertEquals(0x1000, cpu.tlb.translate(0x00200000L, 0x7F, R4300Tlb.Access.READ))
+        assertEquals(0x2000, cpu.tlb.translate(0x00201000L, 0x7F, R4300Tlb.Access.WRITE))
+    }
+
 }
