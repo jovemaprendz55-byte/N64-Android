@@ -1777,7 +1777,12 @@ class R4300CpuTest {
         memory.write32(0, iType(0x04, 0, 0, 2)) // beq $zero, $zero, target
         memory.write32(4, iType(0x23, 1, 2, 0)) // lw $v0, 0($at) in delay slot
         val cpu = R4300Cpu(memory)
+        val asid = 0x33L
+        val faultAddress = 0x00401234L
+        val pteBase = 0x1A000000L
         cpu.tlbEnabled = true
+        cpu.cop0[4] = pteBase
+        cpu.cop0[10] = asid
         cpu.cop0[12] = 1L shl 22 // BEV selects boot exception vectors.
         cpu.tlb.write(0, R4300Tlb.Entry(
             virtualPagePairBase = 0L,
@@ -1785,12 +1790,11 @@ class R4300CpuTest {
             evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
             oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
         ))
-        val faultAddress = 0x00401234L
         cpu.tlb.write(1, R4300Tlb.Entry(
             virtualPagePairBase = faultAddress and R4300Tlb.PAGE_PAIR_MASK,
-            asid = 0,
-            evenPage = R4300Tlb.Page(2, valid = true, dirty = true, global = true),
-            oddPage = R4300Tlb.Page(3, valid = false, dirty = true, global = true)
+            asid = asid,
+            evenPage = R4300Tlb.Page(2, valid = true, dirty = true, global = false),
+            oddPage = R4300Tlb.Page(3, valid = false, dirty = true, global = false)
         ))
         cpu.gpr[1] = faultAddress
         cpu.setProgramCounter(0)
@@ -1799,6 +1803,8 @@ class R4300CpuTest {
         cpu.step() // Load hits an invalid TLB page in the delay slot.
 
         assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr.
+        assertEquals(pteBase or ((faultAddress ushr 9) and 0x007FFFF0L), cpu.cop0[4]) // Context.BadVPN2 + PTEBase.
+        assertEquals((faultAddress and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves ASID.
         assertEquals(0L, cpu.cop0[14]) // EPC identifies the branch instruction.
         assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD.
         assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBL.
