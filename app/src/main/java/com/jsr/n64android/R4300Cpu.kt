@@ -169,8 +169,14 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     if (rs != 0) throw ReservedInstructionFault("R4300 DSRA32 has nonzero rs at 0x${instructionAddress.toString(16)}")
                     gpr[rd] = gpr[rt] shr (shamt + 32)
                 }
-                0x0A -> if (gpr[rt] == 0L) gpr[rd] = gpr[rs] // MOVZ
-                0x0B -> if (gpr[rt] != 0L) gpr[rd] = gpr[rs] // MOVN
+                0x0A -> { // MOVZ
+                    if (shamt != 0) throw ReservedInstructionFault("Malformed MOVZ reserved fields")
+                    if (gpr[rt] == 0L) gpr[rd] = gpr[rs]
+                }
+                0x0B -> { // MOVN
+                    if (shamt != 0) throw ReservedInstructionFault("Malformed MOVN reserved fields")
+                    if (gpr[rt] != 0L) gpr[rd] = gpr[rs]
+                }
                 0x10 -> { // MFHI
                     if (rs != 0 || rt != 0 || shamt != 0) throw ReservedInstructionFault("Malformed MFHI reserved fields")
                     gpr[rd] = hi
