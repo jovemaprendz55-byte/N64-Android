@@ -3758,6 +3758,28 @@ class R4300CpuTest {
         assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
     }
 
+    @Test fun malformedBlezReservedRtRaisesReservedInstructionException() {
+        val memory = N64Memory(32)
+        memory.write32(0, iType(0x06, 1, 2, 1)) // BLEZ requires rt=0.
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 0L
+        cpu.step()
+        assertEquals(10L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+    }
+
+    @Test fun malformedBgtzReservedRtRaisesReservedInstructionException() {
+        val memory = N64Memory(32)
+        memory.write32(0, iType(0x07, 1, 2, 1)) // BGTZ requires rt=0.
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 1L
+        cpu.step()
+        assertEquals(10L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+    }
+
     @Test fun unsupportedInstructionRaisesReservedInstructionException() {
         val memory = N64Memory(32)
         memory.write32(0, 0x7C000000.toInt()) // Reserved/unsupported primary opcode.
