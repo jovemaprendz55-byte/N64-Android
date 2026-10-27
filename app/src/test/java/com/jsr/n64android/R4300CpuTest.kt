@@ -1972,14 +1972,16 @@ class R4300CpuTest {
         memory.write32(0x1FFC, iType(0x04, 0, 0, 2)) // Branch at the last word of the mapped pair.
         val cpu = R4300Cpu(memory)
         cpu.tlbEnabled = true
-        val asid = 0x2CL
+        val asid = 0x37L
+        val pteBase = 0x22000000L
         cpu.cop0[10] = asid
+        cpu.cop0[4] = pteBase
         cpu.cop0[12] = 1L shl 22 // BEV selects boot exception vectors.
         cpu.tlb.write(0, R4300Tlb.Entry(
             virtualPagePairBase = 0L,
-            asid = 0,
-            evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
-            oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
+            asid = asid.toInt(),
+            evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = false),
+            oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = false)
         ))
         cpu.setProgramCounter(0x1FFCL)
 
@@ -1987,8 +1989,8 @@ class R4300CpuTest {
         cpu.step() // Instruction fetch misses in the TLB during the delay slot.
 
         assertEquals(0x2000L, cpu.cop0[8]) // BadVAddr is the delay-slot fetch address.
-        assertEquals((0x2000L ushr 9) and 0x007FFFF0L, cpu.cop0[4]) // Context.BadVPN2.
-        assertEquals((0x2000L and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves ASID.
+        assertEquals(pteBase or ((0x2000L ushr 9) and 0x007FFFF0L), cpu.cop0[4]) // Context preserves PTEBase and updates BadVPN2.
+        assertEquals((0x2000L and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves the active ASID.
         assertEquals(0x1FFCL, cpu.cop0[14]) // EPC identifies the branch instruction.
         assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD.
         assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBL.
