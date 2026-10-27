@@ -54,6 +54,12 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             enterTlbException(fault, branchAddressForFault)
         } catch (fault: AddressFault) {
             enterAddressException(fault, branchAddressForFault)
+        } catch (_: UnsupportedOperationException) {
+            // Unsupported encodings raise the architectural Reserved Instruction exception (RI).
+            enterException(pc, 10, branchAddressForFault)
+            pc = exceptionVector()
+            delayedTarget = null
+            pendingDelaySlotBranchAddress = null
         }
     }
 
