@@ -152,4 +152,30 @@ class R4300TlbTest {
         assertEquals(0x23456000, tlb.translate(signExtendedBase + 0x1000L, 7, R4300Tlb.Access.READ))
     }
 
+
+    @Test fun translationRequiresBothGlobalBitsWhenAsidDiffers() {
+        val tlb = R4300Tlb()
+        tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0x00400000L,
+            asid = 7,
+            evenPage = R4300Tlb.Page(0x123, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(0x456, valid = true, dirty = true, global = false)
+        ))
+
+        val fault = assertThrows(R4300Tlb.TlbFault::class.java) {
+            tlb.translate(0x00400000L, 8, R4300Tlb.Access.READ)
+        }
+        assertEquals(R4300Tlb.FaultKind.MISS, fault.kind)
+
+        tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0x00400000L,
+            asid = 7,
+            evenPage = R4300Tlb.Page(0x123, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(0x456, valid = true, dirty = true, global = true)
+        ))
+
+        assertEquals(0x00123000, tlb.translate(0x00400000L, 8, R4300Tlb.Access.READ))
+        assertEquals(0x00456000, tlb.translate(0x00401000L, 8, R4300Tlb.Access.READ))
+    }
+
 }
