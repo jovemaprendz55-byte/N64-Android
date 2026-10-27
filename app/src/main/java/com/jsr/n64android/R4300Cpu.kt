@@ -233,6 +233,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                             0 -> { // Index.P is read-only; only the low five index bits are writable.
                                 cop0[0] = (cop0[0] and (1L shl 31)) or (value and 0x1FL)
                             }
+                            4 -> { // Context: PTEBase is writable; BadVPN2 is hardware-maintained.
+                                cop0[4] = (cop0[4] and 0x007FFFF0L) or (value and 0xFF800000L)
+                            }
                             6 -> { // Wired: five-bit value; writing it resets Random to 31.
                                 cop0[6] = value and 0x1FL
                                 cop0[1] = 31L
