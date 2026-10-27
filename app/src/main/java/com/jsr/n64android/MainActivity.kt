@@ -71,15 +71,17 @@ class MainActivity : Activity() {
             status.text = "Selecione uma ROM primeiro."
             return
         }
-        val trace = StringBuilder()
+        // Keep enough execution budget to finish the IPL3 cache-line loop,
+        // while retaining only the last 80 instructions so copied logs stay readable.
+        val trace = ArrayDeque<String>()
         val cpu = R4300Cpu(bus)
         // Diagnostic only: execute the first cartridge IPL3 words through the
         // KSEG1 cartridge mapping. This deliberately does not emulate PIF/CIC boot.
         cpu.setProgramCounter(0xFFFFFFFFB0000040UL.toLong())
         var executed = 0
-        var stopReason = "Limite de 32 passos alcançado."
+        var stopReason = "Limite de 3000 passos alcançado."
         try {
-            for (stepIndex in 0 until 32) {
+            for (stepIndex in 0 until 3000) {
                 val pc = cpu.pc
                 // Stop at the normal exception vector instead of reading zero-filled RDRAM
                 // as if it were useful IPL3 code. Capture COP0 state for the next diagnosis.
@@ -89,9 +91,11 @@ class MainActivity : Activity() {
                 }
                 val physical = (pc and 0xFFFFFFFFL) and 0x1FFFFFFFL
                 val instruction = bus.read32(physical.toInt())
-                trace.append("PC=0x").append(pc.toULong().toString(16).uppercase().padStart(16, '0'))
-                    .append("  INST=0x").append(instruction.toUInt().toString(16).uppercase().padStart(8, '0'))
-                    .appendLine()
+                trace.addLast(
+                    "PC=0x" + pc.toULong().toString(16).uppercase().padStart(16, '0') +
+                    "  INST=0x" + instruction.toUInt().toString(16).uppercase().padStart(8, '0')
+                )
+                if (trace.size > 80) trace.removeFirst()
                 cpu.step()
                 executed++
             }
@@ -107,7 +111,7 @@ class MainActivity : Activity() {
             "\nCOP0 EPC: 0x${cpu.cop0[14].toULong().toString(16).uppercase()}" +
             "\nCOP0 BadVAddr: 0x${cpu.cop0[8].toULong().toString(16).uppercase()}" +
             "\n\nIsto NÃO é o boot real do jogo. O IPL3 foi executado diretamente como teste; PIF/CIC e dispositivos ainda faltam." +
-            "\n\nRASTRO DE INSTRUÇÕES:\n" + trace.toString()
+            "\n\nRASTRO DAS ÚLTIMAS INSTRUÇÕES (máximo 80):\n" + trace.joinToString("\n")
         showRomDiagnosticPage(status.text.toString())
     }
 
