@@ -726,6 +726,8 @@ class R4300CpuTest {
         memory.write32(4, iType(0x23, 8, 2, 0)) // lw $v0, 0($t0) in delay slot
         val cpu = R4300Cpu(memory)
         cpu.tlbEnabled = true
+        val asid = 0x20L
+        cpu.cop0[10] = asid
         cpu.gpr[8] = 0x00400000L
         cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
 
@@ -733,6 +735,8 @@ class R4300CpuTest {
         cpu.step()
 
         assertEquals(0x00400000L, cpu.cop0[8]) // BadVAddr
+        assertEquals((0x00400000L ushr 9) and 0x007FFFF0L, cpu.cop0[4]) // Context.BadVPN2
+        assertEquals((0x00400000L and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves ASID
         assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.cop0[14]) // EPC points to branch in KSEG0
         assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD
         assertEquals(2L shl 2, cpu.cop0[13] and (0x1FL shl 2)) // Cause.TLBL
