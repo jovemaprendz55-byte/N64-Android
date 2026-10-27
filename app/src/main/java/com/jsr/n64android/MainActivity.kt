@@ -104,7 +104,7 @@ class MainActivity : Activity() {
                     cpu.pc == 0xFFFFFFFF80000000UL.toLong() ||
                     cpu.pc == 0xFFFFFFFFBFC00380UL.toLong() ||
                     cpu.pc == 0xFFFFFFFFBFC00200UL.toLong()) {
-                    stopReason = "CPU saltou/entrou no vetor de exceção/boot 0x${cpu.pc.toULong().toString(16).uppercase()}; interrompido imediatamente para preservar o rastro que levou até ele."
+                    stopReason = "CPU chegou a endereço de exceção/transferência 0x${cpu.pc.toULong().toString(16).uppercase()}; interrompido imediatamente para preservar o rastro que levou até ele."
                     break
                 }
             }
@@ -121,6 +121,15 @@ class MainActivity : Activity() {
             "\nCOP0 BadVAddr: 0x${cpu.cop0[8].toULong().toString(16).uppercase()}" +
             "\n\nIsto NÃO é o boot real do jogo. O IPL3 foi executado diretamente como teste; PIF/CIC e dispositivos ainda faltam." +
             "\n\nRASTRO DAS ÚLTIMAS INSTRUÇÕES (máximo 80):\n" + trace.joinToString("\n")
+        val registerDump = listOf(8, 9, 11, 12, 13, 14, 15, 29, 31).joinToString("\n") { index ->
+            "GPR[$index]: 0x" + cpu.gpr[index].toULong().toString(16).uppercase().padStart(16, '0')
+        }
+        val ramDump = (0 until 16 step 4).joinToString("\n") { address ->
+            "RDRAM[0x" + address.toString(16).uppercase().padStart(4, '0') + "]: 0x" +
+                bus.read32(address).toUInt().toString(16).uppercase().padStart(8, '0')
+        }
+        status.append("\n\nREGISTRADORES NO PONTO DE PARADA:\n" + registerDump)
+        status.append("\n\nPRIMEIROS 16 BYTES DA RDRAM:\n" + ramDump)
         showRomDiagnosticPage(status.text.toString())
     }
 
