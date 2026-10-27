@@ -8,6 +8,7 @@ import android.view.Gravity
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.text.method.ScrollingMovementMethod
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 
@@ -22,6 +23,7 @@ class MainActivity : Activity() {
             textSize = 16f
             gravity = Gravity.CENTER
             setPadding(24, 24, 24, 24)
+            movementMethod = ScrollingMovementMethod()
         }
         val chooseRom = Button(this).apply {
             text = "Selecionar ROM (.z64 / .v64 / .n64)"
@@ -30,6 +32,12 @@ class MainActivity : Activity() {
         val cpuDiagnostic = Button(this).apply {
             text = "Executar teste interno da CPU"
             setOnClickListener { runCpuDiagnostic() }
+        }
+        val romTrace = Button(this).apply {
+            text = "Executar diagnóstico de instruções da ROM"
+            setOnClickListener { runRomInstructionDiagnostic() }
+            isEnabled = false
+            tag = "romTraceButton"
         }
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -43,6 +51,7 @@ class MainActivity : Activity() {
             addView(status)
             addView(chooseRom)
             addView(cpuDiagnostic)
+            addView(romTrace)
         }
         setContentView(layout)
     }
@@ -51,6 +60,41 @@ class MainActivity : Activity() {
      * Runs a known instruction sequence on the real R4300Cpu implementation.
      * This is an internal CPU test, not a claim that the selected game boots.
      */
+    private fun runRomInstructionDiagnostic() {
+        val bus = cartridgeBus
+        if (bus == null) {
+            status.text = "Selecione uma ROM primeiro."
+            return
+        }
+        val trace = StringBuilder()
+        val cpu = R4300Cpu(bus)
+        // Diagnostic only: execute the first cartridge IPL3 words through the
+        // KSEG1 cartridge mapping. This deliberately does not emulate PIF/CIC boot.
+        cpu.setProgramCounter(0xFFFFFFFFB0000040UL.toLong())
+        var executed = 0
+        var stopReason = "Limite de 32 passos alcançado."
+        try {
+            repeat(32) {
+                val pc = cpu.pc
+                val physical = (pc and 0xFFFFFFFFL) and 0x1FFFFFFFL
+                val instruction = bus.read32(physical.toInt())
+                trace.append("PC=0x").append(pc.toULong().toString(16).uppercase().padStart(16, '0'))
+                    .append("  INST=0x").append(instruction.toUInt().toString(16).uppercase().padStart(8, '0'))
+                    .appendLine()
+                cpu.step()
+                executed++
+            }
+        } catch (error: Exception) {
+            stopReason = "Parou em erro/área não implementada: ${error.message ?: error.javaClass.simpleName}"
+        }
+        status.text = "DIAGNÓSTICO PARCIAL DA ROM" +
+            "\nPassos executados: $executed" +
+            "\nPC final: 0x${cpu.pc.toULong().toString(16).uppercase()}" +
+            "\nMotivo: $stopReason" +
+            "\n\nIsto NÃO é o boot real do jogo. O IPL3 foi executado diretamente como teste; PIF/CIC e dispositivos ainda faltam." +
+            "\n\nRASTRO DE INSTRUÇÕES:\n" + trace.toString()
+    }
+
     private fun runCpuDiagnostic() {
         try {
             val testMemory = N64Memory(64)
@@ -123,6 +167,7 @@ class MainActivity : Activity() {
         when (val result = N64RomLoader.load(bytes)) {
             is RomLoadResult.Success -> {
                 cartridgeBus = N64Bus(cartridgeRom = result.rom.bytes)
+                findViewByTag<Button>("romTraceButton")?.isEnabled = true
                 val info = N64RomInspector.inspect(result.rom.bytes)
                 status.text = "ROM carregada no barramento: ${result.rom.byteSize} bytes" +
                     "\nFormato: ${result.rom.format}" +
@@ -132,6 +177,7 @@ class MainActivity : Activity() {
             }
             is RomLoadResult.Failure -> {
                 cartridgeBus = null
+                findViewByTag<Button>("romTraceButton")?.isEnabled = false
                 status.text = result.reason
             }
         }
