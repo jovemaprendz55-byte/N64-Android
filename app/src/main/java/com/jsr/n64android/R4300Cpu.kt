@@ -229,12 +229,16 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     0x00 -> gpr[rt] = cop0[copRd].toInt().toLong() // MFC0 sign-extends 32-bit value
                     0x04 -> { // MTC0 writes low 32 bits.
                         val value = gpr[rt].toInt().toLong()
-                        if (copRd == 6) { // Wired: five-bit value; writing it resets Random to 31.
-                            cop0[6] = value and 0x1FL
-                            cop0[1] = 31L
-                            randomResetByWiredWrite = true
-                        } else {
-                            cop0[copRd] = value
+                        when (copRd) {
+                            0 -> { // Index.P is read-only; only the low five index bits are writable.
+                                cop0[0] = (cop0[0] and (1L shl 31)) or (value and 0x1FL)
+                            }
+                            6 -> { // Wired: five-bit value; writing it resets Random to 31.
+                                cop0[6] = value and 0x1FL
+                                cop0[1] = 31L
+                                randomResetByWiredWrite = true
+                            }
+                            else -> cop0[copRd] = value
                         }
                     }
                     0x10 -> { // COP0 CO-format operations
