@@ -3048,6 +3048,8 @@ class R4300CpuTest {
         val pteBase = 0x28000000L
         cpu.cop0[10] = asid
         cpu.cop0[4] = pteBase
+        val pendingInterruptBits = 0x0000A500L
+        cpu.cop0[13] = pendingInterruptBits
         cpu.gpr[1] = faultAddress
         cpu.gpr[2] = 0xCAFEBABEL
         // Execute the branch and delay slot from KSEG0, which bypasses the TLB.
@@ -3062,6 +3064,7 @@ class R4300CpuTest {
         assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.cop0[14]) // EPC points to branch.
         assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD.
         assertEquals(3L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBS.
+        assertEquals(pendingInterruptBits, cpu.cop0[13] and 0x0000FF00L) // Pending interrupt bits are preserved.
         assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc) // TLB refill vector.
         assertEquals(0x12345678L, memory.read32(16).toLong() and 0xFFFFFFFFL)
     }
