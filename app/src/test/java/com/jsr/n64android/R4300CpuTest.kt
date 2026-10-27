@@ -3892,4 +3892,32 @@ class R4300CpuTest {
         assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc) // Invalid uses general vector, not refill vector
     }
 
+
+
+    @Test fun tlbModifiedStoreRaisesModificationExceptionWithoutWritingMemory() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x2B, 1, 2, 0)) // sw $v0, 0($at)
+        memory.write32(4, 0x13579BDF)
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        cpu.gpr[1] = 0x00400000L
+        cpu.gpr[2] = 0x2468ACE0L
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0x00400000L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(1, valid = true, dirty = false),
+            oddPage = R4300Tlb.Page(2, valid = true, dirty = true)
+        ))
+        cpu.setProgramCounter(-0x80000000L)
+
+        cpu.step()
+
+        assertEquals(0x00400000L, cpu.cop0[8]) // BadVAddr
+        assertEquals(0L, cpu.cop0[14]) // EPC points to the store instruction.
+        assertEquals(0L, (cpu.cop0[13] ushr 31) and 1L) // Cause.BD is clear.
+        assertEquals(1L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLB Modified.
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc) // Modified uses general exception vector.
+        assertEquals(0x13579BDF, memory.read32(4)) // Faulting store must not change memory.
+    }
+
 }
