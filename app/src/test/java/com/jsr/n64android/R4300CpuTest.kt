@@ -3229,4 +3229,38 @@ class R4300CpuTest {
         assertEquals(0x12345678L, memory.read32(16).toLong() and 0xFFFFFFFFL)
     }
 
+
+    @Test fun tlbInvalidWordStoreRaisesStoreExceptionAndPreservesMemory() {
+        val memory = N64Memory(8192)
+        memory.write32(0, iType(0x2B, 1, 2, 0)) // sw $v0, 0($at)
+        memory.write32(0x1000, 0x12345678)
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        val faultAddress = 0x00401000L
+        val asid = 0x35L
+        val pteBase = 0x1A000000L
+        cpu.cop0[4] = pteBase
+        cpu.cop0[10] = asid
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = faultAddress and R4300Tlb.PAGE_PAIR_MASK,
+            asid = asid.toInt(),
+            evenPage = R4300Tlb.Page(2, valid = true, dirty = true, global = false),
+            oddPage = R4300Tlb.Page(3, valid = false, dirty = true, global = false)
+        ))
+        cpu.gpr[1] = faultAddress
+        cpu.gpr[2] = 0xCAFEBABEL
+        // Fetch the instruction through KSEG0 so only the data access uses the TLB.
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
+
+        cpu.step() // SW faults because the matching odd TLB page is invalid.
+
+        assertEquals(faultAddress, cpu.cop0[8]) // BadVAddr.
+        assertEquals(pteBase or ((faultAddress ushr 9) and 0x007FFFF0L), cpu.cop0[4]) // Context preserves PTEBase and updates BadVPN2.
+        assertEquals((faultAddress and R4300Tlb.PAGE_PAIR_MASK) or asid, cpu.cop0[10]) // EntryHi preserves ASID.
+        assertEquals(3L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLBS, not TLB Modified.
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.cop0[14]) // EPC points to the store.
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc) // Invalid TLB entry uses general vector, not refill.
+        assertEquals(0x12345678L, memory.read32(0x1000).toLong() and 0xFFFFFFFFL) // Failed store leaves memory unchanged.
+    }
+
 }
