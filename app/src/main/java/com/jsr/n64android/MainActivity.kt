@@ -88,6 +88,9 @@ class MainActivity : Activity() {
         // Keep enough execution budget to finish the IPL3 copy loop, while
         // retaining only the last 80 instructions so copied logs stay readable.
         val trace = ArrayDeque<String>()
+        // Keep a compact register timeline around the observed IPL3 copy loop.
+        // The final register dump alone cannot explain why a branch repeats.
+        val loopCheckpoints = ArrayDeque<String>()
         val cpu = R4300Cpu(bus)
         cpu.setProgramCounter(0xFFFFFFFFA4000040UL.toLong())
         var executed = 0
@@ -95,6 +98,19 @@ class MainActivity : Activity() {
         try {
             for (stepIndex in 0 until 10000) {
                 val pc = cpu.pc
+                if (pc in 0xFFFFFFFFA4000498UL.toLong()..0xFFFFFFFFA40004B0UL.toLong()) {
+                    loopCheckpoints.addLast(
+                        "PC=0x" + pc.toULong().toString(16).uppercase() +
+                        " t0=0x" + cpu.gpr[8].toULong().toString(16).uppercase() +
+                        " t1=0x" + cpu.gpr[9].toULong().toString(16).uppercase() +
+                        " t2=0x" + cpu.gpr[10].toULong().toString(16).uppercase() +
+                        " t3=0x" + cpu.gpr[11].toULong().toString(16).uppercase() +
+                        " at=0x" + cpu.gpr[1].toULong().toString(16).uppercase() +
+                        " t5=0x" + cpu.gpr[13].toULong().toString(16).uppercase() +
+                        " RDRAM[02B4]=0x" + bus.read32(0x02B4).toUInt().toString(16).uppercase()
+                    )
+                    if (loopCheckpoints.size > 24) loopCheckpoints.removeFirst()
+                }
                 // Stop at the normal exception vector instead of reading zero-filled RDRAM
                 // as if it were useful IPL3 code. Capture COP0 state for the next diagnosis.
                 if (stepIndex > 0 && pc == 0xFFFFFFFF80000180UL.toLong()) {
@@ -155,6 +171,8 @@ class MainActivity : Activity() {
             "SP_IMEM[0x" + address.toString(16).uppercase().padStart(8, '0') + "]: 0x" +
                 bus.read32(address).toUInt().toString(16).uppercase().padStart(8, '0')
         }
+        status.append("\n\nLINHA DO TEMPO DO LOOP IPL3 (registradores antes da instrução):\n" +
+            if (loopCheckpoints.isEmpty()) "O PC não passou pelo intervalo monitorado." else loopCheckpoints.joinToString("\n"))
         status.append("\n\nTODOS OS REGISTRADORES GPR NO PONTO DE PARADA:\n" + registerDump)
         status.append("\n\nRDRAM NOS ENDEREÇOS DE INTERESSE:\n" + ramDump)
         status.append("\n\nSP DMEM PERTO DA ORIGEM DE CÓPIA (0xA4000774):\n" + spDmemDump)
