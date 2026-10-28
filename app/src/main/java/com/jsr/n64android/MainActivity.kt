@@ -301,6 +301,12 @@ class MainActivity : Activity() {
         diagnostic += "\n\nRDRAM NOS ENDEREÇOS DE INTERESSE:\n" + ramDump
         diagnostic += "\n\nSP DMEM PERTO DA ORIGEM DE CÓPIA (0xA4000774):\n" + spDmemDump
         diagnostic += "\n\nSP IMEM AMOSTRA:\n" + spImemDump
+        diagnostic += "\n\nREGISTRADORES PI APÓS O DIAGNÓSTICO:\n" +
+            "PI_DRAM_ADDR: 0x" + bus.read32(N64Bus.PI_DRAM_ADDR_REG).toUInt().toString(16).uppercase().padStart(8, '0') + "\n" +
+            "PI_CART_ADDR: 0x" + bus.read32(N64Bus.PI_CART_ADDR_REG).toUInt().toString(16).uppercase().padStart(8, '0') + "\n" +
+            "PI_STATUS: 0x" + bus.read32(N64Bus.PI_STATUS_REG).toUInt().toString(16).uppercase().padStart(8, '0') + "\n" +
+            "PI_RD_LEN readback: 0x" + bus.read32(N64Bus.PI_RD_LEN_REG).toUInt().toString(16).uppercase().padStart(8, '0') + "\n" +
+            "PI_WR_LEN readback: 0x" + bus.read32(N64Bus.PI_WR_LEN_REG).toUInt().toString(16).uppercase().padStart(8, '0')
         runOnUiThread {
             romTraceButton?.isEnabled = true
             showRomDiagnosticPage(diagnostic)
