@@ -121,8 +121,10 @@ class N64Bus(
         when (address) {
             PI_DRAM_ADDR_REG -> { piDramAddress = value and 0x00FFFFFF; return }
             PI_CART_ADDR_REG -> { piCartAddress = value; return }
-            PI_RD_LEN_REG -> { dmaCartridgeToRam((value and 0x00FFFFFF) + 1); return }
-            PI_WR_LEN_REG -> { dmaRdramToCartridge((value and 0x00FFFFFF) + 1); return }
+            // PI DMA direction is named from RDRAM's point of view:
+            // WR_LEN writes cartridge data into RDRAM; RD_LEN reads RDRAM data to the cartridge.
+            PI_RD_LEN_REG -> { dmaRdramToCartridge((value and 0x00FFFFFF) + 1); return }
+            PI_WR_LEN_REG -> { dmaCartridgeToRam((value and 0x00FFFFFF) + 1); return }
             PI_STATUS_REG -> { piStatus = piStatus and (value.inv() and 0x3); return }
             in RI_REG_BASE until RI_REG_BASE + RI_REG_SIZE -> {
                 riRegisters[(address - RI_REG_BASE) / 4] = value
@@ -135,7 +137,7 @@ class N64Bus(
         write8(address + 3, value)
     }
 
-    /** Simplified PI DMA read from cartridge ROM into RDRAM, without timing or interrupts. */
+    /** Simplified PI WR_LEN DMA from cartridge ROM into RDRAM, without timing or interrupts. */
     private fun dmaCartridgeToRam(length: Int) {
         val image = cartridge ?: throw UnsupportedOperationException(
             "PI DMA requested but cartridge ROM is not loaded."
@@ -159,10 +161,10 @@ class N64Bus(
     }
 
     /**
-     * Minimal PI write-DMA behavior for a read-only cartridge ROM.
+     * Minimal PI RD_LEN DMA behavior for a read-only cartridge ROM.
      *
-     * The PI still consumes the DMA request and advances its address registers,
-     * but writes targeting the ROM window do not modify the loaded ROM image.
+     * The PI consumes the RDRAM-to-cartridge request and advances its address registers,
+     * but reads targeting the ROM window do not modify the loaded ROM image.
      * Writable cartridge devices (SRAM/Flash) are not implemented by this bus.
      */
     private fun dmaRdramToCartridge(length: Int) {
