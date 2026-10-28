@@ -125,7 +125,13 @@ class MainActivity : Activity() {
         cpu.gpr[29] = 0xFFFFFFFFA07FFFE0UL.toLong()
         cpu.setProgramCounter(0xFFFFFFFFA4000040UL.toLong())
         var executed = 0
-        // The BNE at 0x8000018C compares t0 with ra (0x00100000), not with t1.
+        // Detect a tight two-PC loop early instead of spending millions of steps
+        // repeatedly executing a branch and its delay slot. Keep the full trace
+        // and register dump so the first stable loop can be diagnosed.
+        var previousPc = Long.MIN_VALUE
+        var twoStepsAgoPc = Long.MIN_VALUE
+        var repeatedTwoPcVisits = 0
+        // The BNE at 0x8000018C compares t0 with ra (0x00100000), not with t1).
         // t0 advances by four bytes, so this routine can need about 262,144 iterations
         // (~5.2 million instructions) before reaching its end. Keep a bounded 6M-step test.
         val maxSteps = 6_000_000
@@ -133,6 +139,17 @@ class MainActivity : Activity() {
         try {
             for (stepIndex in 0 until maxSteps) {
                 val pc = cpu.pc
+                if (pc == twoStepsAgoPc && pc != previousPc) {
+                    repeatedTwoPcVisits++
+                } else {
+                    repeatedTwoPcVisits = 0
+                }
+                if (repeatedTwoPcVisits >= 4096) {
+                    stopReason = "Ciclo repetitivo de dois PCs detectado em torno de 0x${pc.toULong().toString(16).uppercase()}; interrompido após confirmar repetição estável."
+                    break
+                }
+                twoStepsAgoPc = previousPc
+                previousPc = pc
                 val inIpl3Loop = pc in 0xFFFFFFFFA4000498UL.toLong()..0xFFFFFFFFA40004B8UL.toLong()
                 val inPostHandoffLoop = pc in 0xFFFFFFFF80000130UL.toLong()..0xFFFFFFFF80000190UL.toLong()
                 if ((inIpl3Loop || inPostHandoffLoop) && stepIndex % 4096 == 0) {
