@@ -92,6 +92,11 @@ class MainActivity : Activity() {
         // The final register dump alone cannot explain why a branch repeats.
         val loopCheckpoints = ArrayDeque<String>()
         val cpu = R4300Cpu(bus)
+        // This is an artificial IPL3 diagnostic, not a real PIF/CIC boot.
+        // The R4300 reset state leaves GPR[29] at zero; the copied routine later
+        // uses the stack, so seed SP to the top of the installed 8 MiB RDRAM.
+        // KSEG1 0xA07FFFE0 maps to physical RDRAM 0x007FFFE0.
+        cpu.gpr[29] = 0xFFFFFFFFA07FFFE0UL.toLong()
         cpu.setProgramCounter(0xFFFFFFFFA4000040UL.toLong())
         var executed = 0
         var stopReason = "Limite de 10000 passos alcançado."
