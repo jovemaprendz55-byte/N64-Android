@@ -71,6 +71,14 @@ class MainActivity : Activity() {
             status.text = "Selecione uma ROM primeiro."
             return
         }
+        romTraceButton?.isEnabled = false
+        status.text = "Executando diagnóstico em segundo plano. Aguarde; a tela continuará responsiva."
+        Thread {
+            runRomInstructionDiagnosticWorker(bus)
+        }.start()
+    }
+
+    private fun runRomInstructionDiagnosticWorker(bus: N64Bus) {
         // IPL3 is stored in the cartridge image at offset 0x40, but real N64
         // boot executes it from SP scratch memory. Stage the 0xFC0-byte bootcode
         // into SP DMEM at physical 0x04000040 before running the diagnostic.
@@ -82,7 +90,10 @@ class MainActivity : Activity() {
                 bus.write8(0x04000040 + offset, byteValue)
             }
         } catch (error: Exception) {
-            status.text = "Não foi possível preparar IPL3 na SP DMEM: ${error.message ?: error.javaClass.simpleName}"
+            runOnUiThread {
+                status.text = "Não foi possível preparar IPL3 na SP DMEM: ${error.message ?: error.javaClass.simpleName}"
+                romTraceButton?.isEnabled = true
+            }
             return
         }
         // Keep enough execution budget to finish the IPL3 copy loop, while
@@ -154,7 +165,7 @@ class MainActivity : Activity() {
         } catch (error: Exception) {
             stopReason = "Parou em erro/área não implementada: ${error.message ?: error.javaClass.simpleName}"
         }
-        status.text = "DIAGNÓSTICO PARCIAL DA ROM" +
+        var diagnostic = "DIAGNÓSTICO PARCIAL DA ROM" +
             "\nPassos executados: $executed" +
             "\nPC final: 0x${cpu.pc.toULong().toString(16).uppercase()}" +
             "\nMotivo: $stopReason" +
@@ -186,13 +197,16 @@ class MainActivity : Activity() {
             "SP_IMEM[0x" + address.toString(16).uppercase().padStart(8, '0') + "]: 0x" +
                 bus.read32(address).toUInt().toString(16).uppercase().padStart(8, '0')
         }
-        status.append("\n\nLINHA DO TEMPO DO LOOP IPL3 (registradores antes da instrução):\n" +
-            if (loopCheckpoints.isEmpty()) "O PC não passou pelo intervalo monitorado." else loopCheckpoints.joinToString("\n"))
-        status.append("\n\nTODOS OS REGISTRADORES GPR NO PONTO DE PARADA:\n" + registerDump)
-        status.append("\n\nRDRAM NOS ENDEREÇOS DE INTERESSE:\n" + ramDump)
-        status.append("\n\nSP DMEM PERTO DA ORIGEM DE CÓPIA (0xA4000774):\n" + spDmemDump)
-        status.append("\n\nSP IMEM AMOSTRA:\n" + spImemDump)
-        showRomDiagnosticPage(status.text.toString())
+        diagnostic += "\n\nLINHA DO TEMPO DO LOOP IPL3 (registradores antes da instrução):\n" +
+            if (loopCheckpoints.isEmpty()) "O PC não passou pelo intervalo monitorado." else loopCheckpoints.joinToString("\n")
+        diagnostic += "\n\nTODOS OS REGISTRADORES GPR NO PONTO DE PARADA:\n" + registerDump
+        diagnostic += "\n\nRDRAM NOS ENDEREÇOS DE INTERESSE:\n" + ramDump
+        diagnostic += "\n\nSP DMEM PERTO DA ORIGEM DE CÓPIA (0xA4000774):\n" + spDmemDump
+        diagnostic += "\n\nSP IMEM AMOSTRA:\n" + spImemDump
+        runOnUiThread {
+            romTraceButton?.isEnabled = true
+            showRomDiagnosticPage(diagnostic)
+        }
     }
 
 
