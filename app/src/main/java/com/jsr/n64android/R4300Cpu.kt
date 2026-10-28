@@ -308,7 +308,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 0x26 -> gpr[rd] = (gpr[rs].toInt() xor gpr[rt].toInt()).toLong()
                 0x27 -> gpr[rd] = (gpr[rs].toInt() or gpr[rt].toInt()).inv().toLong()
                 0x2A -> gpr[rd] = if (gpr[rs] < gpr[rt]) 1L else 0L
-                0x2B -> gpr[rd] = if (java.lang.Long.compareUnsigned(gpr[rs], gpr[rt]) < 0) 1L else 0L
+                0x2B -> gpr[rd] = if (java.lang.Integer.compareUnsigned(gpr[rs].toInt(), gpr[rt].toInt()) < 0) 1L else 0L // SLTU compares the low 32 bits as unsigned.
                 else -> throw ReservedInstructionFault("R4300 SPECIAL funct 0x${funct.toString(16)} at 0x${instructionAddress.toString(16)}")
             }
             0x10 -> { // COP0: minimal MFC0/MTC0 register transfers
@@ -458,7 +458,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             }
             0x19 -> gpr[rt] = gpr[rs] + immediate.toLong() // DADDIU wraps without trapping.
             0x0A -> gpr[rt] = if (gpr[rs] < immediate.toLong()) 1L else 0L // SLTI
-            0x0B -> gpr[rt] = if (java.lang.Long.compareUnsigned(gpr[rs], immediate.toLong()) < 0) 1L else 0L // SLTIU
+            0x0B -> gpr[rt] = if (java.lang.Integer.compareUnsigned(gpr[rs].toInt(), immediate) < 0) 1L else 0L // SLTIU compares against the sign-extended 16-bit immediate as a 32-bit unsigned value.
             0x0C -> gpr[rt] = gpr[rs] and unsignedImmediate.toLong()
             0x0D -> gpr[rt] = gpr[rs] or unsignedImmediate.toLong()
             0x0E -> gpr[rt] = gpr[rs] xor unsignedImmediate.toLong()
