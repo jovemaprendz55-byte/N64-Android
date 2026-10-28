@@ -276,16 +276,22 @@ class MainActivity : Activity() {
                 }
                 cpu.step()
                 executed++
-                recentInstructionTrace.addLast(
-                    "step=$stepIndex PC=0x" + pc.toULong().toString(16).uppercase().padStart(16, '0') +
-                    " INST=0x" + instruction.toUInt().toString(16).uppercase().padStart(8, '0') +
-                    " NEXT_PC=0x" + cpu.pc.toULong().toString(16).uppercase().padStart(16, '0') +
-                    " t0=0x" + cpu.gpr[8].toULong().toString(16).uppercase() +
-                    " t1=0x" + cpu.gpr[9].toULong().toString(16).uppercase() +
-                    " t2=0x" + cpu.gpr[10].toULong().toString(16).uppercase() +
-                    " t3=0x" + cpu.gpr[11].toULong().toString(16).uppercase() +
-                    " ra=0x" + cpu.gpr[31].toULong().toString(16).uppercase()
-                )
+                // Building a long diagnostic string after EVERY instruction creates
+                // millions of temporary objects on mid-range phones. Keep this bounded
+                // trace sampled (the separate early-stop reason preserves the failing PC).
+                if (stepIndex % 256 == 0 || stepIndex >= maxSteps - 80) {
+                    recentInstructionTrace.addLast(
+                        "step=$stepIndex PC=0x" + pc.toULong().toString(16).uppercase().padStart(16, '0') +
+                        " INST=0x" + instruction.toUInt().toString(16).uppercase().padStart(8, '0') +
+                        " NEXT_PC=0x" + cpu.pc.toULong().toString(16).uppercase().padStart(16, '0') +
+                        " t0=0x" + cpu.gpr[8].toULong().toString(16).uppercase() +
+                        " t1=0x" + cpu.gpr[9].toULong().toString(16).uppercase() +
+                        " t2=0x" + cpu.gpr[10].toULong().toString(16).uppercase() +
+                        " t3=0x" + cpu.gpr[11].toULong().toString(16).uppercase() +
+                        " ra=0x" + cpu.gpr[31].toULong().toString(16).uppercase()
+                    )
+                    if (recentInstructionTrace.size > 80) recentInstructionTrace.removeFirst()
+                }
                 if (recentInstructionTrace.size > 80) recentInstructionTrace.removeFirst()
                 // Stop at a vector only when the CPU actually recorded exception entry.
                 // This avoids false positives when ordinary sequential execution reaches 0x80000180.
