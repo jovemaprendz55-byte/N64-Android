@@ -18,6 +18,17 @@ class N64BusSpMemoryTest {
     }
 
     @Test
+    fun spStatusRegisterAcceptsControlCommands() {
+        val bus = N64Bus(ram = N64Memory(8 * 1024))
+
+        assertEquals(N64Bus.SP_STATUS_HALT, bus.read32(N64Bus.SP_STATUS_REG))
+        bus.write32(N64Bus.SP_STATUS_REG, N64Bus.SP_STATUS_CMD_CLR_HALT)
+        assertEquals(0, bus.read32(N64Bus.SP_STATUS_REG))
+        bus.write32(N64Bus.SP_STATUS_REG, N64Bus.SP_STATUS_CMD_SET_HALT)
+        assertEquals(N64Bus.SP_STATUS_HALT, bus.read32(N64Bus.SP_STATUS_REG))
+    }
+
+    @Test
     fun spScratchMemoryLastByteIsAccessible() {
         val bus = N64Bus(ram = N64Memory(8 * 1024))
         val lastDmemByte = N64Bus.SP_DMEM_BASE + N64Bus.SP_MEM_SIZE - 1
