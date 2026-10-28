@@ -14,11 +14,11 @@ class N64BusSpDmaTest {
         bus.write32(N64Bus.SP_DRAM_ADDR_REG, 0x100)
         bus.write32(N64Bus.SP_RD_LEN_REG, 3)
 
-        assertEquals(0x12345678, bus.read32(N64Bus.SP_DMEM_BASE + 0x20))
-        assertEquals(0x24, bus.read32(N64Bus.SP_MEM_ADDR_REG))
-        assertEquals(0x104, bus.read32(N64Bus.SP_DRAM_ADDR_REG))
-        assertEquals(0, bus.read32(N64Bus.SP_DMA_BUSY_REG))
-        assertEquals(0, bus.read32(N64Bus.SP_DMA_FULL_REG))
+        assertEquals(0x12345678L, bus.read32(N64Bus.SP_DMEM_BASE + 0x20))
+        assertEquals(0x24L, bus.read32(N64Bus.SP_MEM_ADDR_REG))
+        assertEquals(0x104L, bus.read32(N64Bus.SP_DRAM_ADDR_REG))
+        assertEquals(0L, bus.read32(N64Bus.SP_DMA_BUSY_REG))
+        assertEquals(0L, bus.read32(N64Bus.SP_DMA_FULL_REG))
     }
 
     @Test
@@ -32,8 +32,8 @@ class N64BusSpDmaTest {
         bus.write32(N64Bus.SP_WR_LEN_REG, 3)
 
         assertEquals(0x89ABCDEF.toInt(), ram.read32(0x200))
-        assertEquals(0x1044, bus.read32(N64Bus.SP_MEM_ADDR_REG))
-        assertEquals(0x204, bus.read32(N64Bus.SP_DRAM_ADDR_REG))
+        assertEquals(0x1044L, bus.read32(N64Bus.SP_MEM_ADDR_REG))
+        assertEquals(0x204L, bus.read32(N64Bus.SP_DRAM_ADDR_REG))
     }
 
     @Test
@@ -46,8 +46,8 @@ class N64BusSpDmaTest {
         bus.write32(N64Bus.SP_DRAM_ADDR_REG, 0xFFC)
         bus.write32(N64Bus.SP_RD_LEN_REG, 7)
 
-        assertEquals(0xCAFEBABE.toInt(), bus.read32(N64Bus.SP_DMEM_BASE + 0xFFC))
-        assertEquals(0, bus.read32(N64Bus.SP_DMEM_BASE))
-        assertEquals(0x004, bus.read32(N64Bus.SP_MEM_ADDR_REG))
+        assertEquals(0xCAFEBABEL, bus.read32(N64Bus.SP_DMEM_BASE + 0xFFC))
+        assertEquals(0L, bus.read32(N64Bus.SP_DMEM_BASE))
+        assertEquals(0x004L, bus.read32(N64Bus.SP_MEM_ADDR_REG))
     }
 }
