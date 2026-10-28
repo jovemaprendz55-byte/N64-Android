@@ -129,10 +129,9 @@ class MainActivity : Activity() {
                 // Detect the exception vector immediately after the instruction that enters it.
                 // This preserves the useful IPL3 trace and COP0 state instead of tracing zero-filled RAM.
                 if (cpu.pc == 0xFFFFFFFF80000180UL.toLong() ||
-                    cpu.pc == 0xFFFFFFFF80000000UL.toLong() ||
                     cpu.pc == 0xFFFFFFFFBFC00380UL.toLong() ||
                     cpu.pc == 0xFFFFFFFFBFC00200UL.toLong()) {
-                    stopReason = "CPU chegou a endereço de exceção/transferência 0x${cpu.pc.toULong().toString(16).uppercase()}; interrompido imediatamente para preservar o rastro que levou até ele."
+                    stopReason = "CPU entrou em vetor de exceção/boot ROM 0x${cpu.pc.toULong().toString(16).uppercase()}; interrompido para preservar o rastro."
                     break
                 }
             }
