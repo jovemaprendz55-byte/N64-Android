@@ -19,6 +19,8 @@ class N64Bus(
     private var piDramAddress = 0
     private var piCartAddress = CARTRIDGE_ROM_BASE
     private var piStatus = 0
+    // RSP program counter register (SP_PC); the RSP core itself is not yet emulated.
+    private var spPc = 0
     // Minimal RI register state; these values are placeholders, not full RDRAM timing emulation.
     private val riRegisters = IntArray(RI_REGISTER_COUNT).also { it[RI_SELECT_OFFSET / 4] = RI_SELECT_RESET }
 
@@ -101,6 +103,7 @@ class N64Bus(
     override fun read32(address: Int): Int {
         requireAligned(address, 4)
         when (address) {
+            SP_PC_REG -> return spPc
             PI_DRAM_ADDR_REG -> return piDramAddress
             PI_CART_ADDR_REG -> return piCartAddress
             PI_RD_LEN_REG, PI_WR_LEN_REG -> return 0
@@ -144,6 +147,7 @@ class N64Bus(
     override fun write32(address: Int, value: Int) {
         requireAligned(address, 4)
         when (address) {
+            SP_PC_REG -> { spPc = value and SP_PC_MASK; return }
             PI_DRAM_ADDR_REG -> { piDramAddress = value and 0x00FFFFFF; return }
             PI_CART_ADDR_REG -> { piCartAddress = value; return }
             // PI DMA direction is named from RDRAM's point of view:
@@ -217,6 +221,8 @@ class N64Bus(
         const val SP_DMEM_BASE = 0x04000000
         const val SP_IMEM_BASE = 0x04001000
         const val SP_MEM_SIZE = 0x1000
+        const val SP_PC_REG = 0x04080000
+        const val SP_PC_MASK = 0x00001FFC
         const val CARTRIDGE_ROM_BASE = 0x10000000
         const val MAX_CARTRIDGE_ROM_SIZE = 64 * 1024 * 1024
         const val PIF_ROM_BASE = 0x1FC00000
