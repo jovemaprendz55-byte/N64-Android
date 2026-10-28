@@ -99,11 +99,17 @@ class MainActivity : Activity() {
         cpu.gpr[29] = 0xFFFFFFFFA07FFFE0UL.toLong()
         cpu.setProgramCounter(0xFFFFFFFFA4000040UL.toLong())
         var executed = 0
-        var stopReason = "Limite de 10000 passos alcançado."
+        // The post-handoff routine appears to process a range ending at 0x00100000.
+        // 10,000 instructions only samples the first few hundred bytes and stops too early.
+        // Keep the diagnostic bounded while allowing the loop to make meaningful progress.
+        val maxSteps = 6_000_000
+        var stopReason = "Limite de $maxSteps passos alcançado."
         try {
-            for (stepIndex in 0 until 10000) {
+            for (stepIndex in 0 until maxSteps) {
                 val pc = cpu.pc
-                if (pc in 0xFFFFFFFFA4000498UL.toLong()..0xFFFFFFFFA40004B8UL.toLong()) {
+                val inIpl3Loop = pc in 0xFFFFFFFFA4000498UL.toLong()..0xFFFFFFFFA40004B8UL.toLong()
+                val inPostHandoffLoop = pc in 0xFFFFFFFF80000130UL.toLong()..0xFFFFFFFF80000190UL.toLong()
+                if (inIpl3Loop || inPostHandoffLoop) {
                     // Include the instruction word as well as the pre-instruction register state.
                     // The previous window stopped at 0x4B0 and could hide the final branch/jump
                     // sequence at 0x4B4/0x4B8 that determines whether the loop exits.
