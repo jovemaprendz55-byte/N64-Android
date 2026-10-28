@@ -41,6 +41,17 @@ class N64BusPiRegisterTest {
     }
 
     @Test
+    fun spPcRegisterIsMappedAndKeepsAlignedRSPAddressBits() {
+        val bus = N64Bus()
+
+        bus.write32(N64Bus.SP_PC_REG, 0x1234)
+        assertEquals(0x1234, bus.read32(N64Bus.SP_PC_REG))
+
+        bus.write32(N64Bus.SP_PC_REG, 0xFFFFFFFF.toInt())
+        assertEquals(N64Bus.SP_PC_MASK, bus.read32(N64Bus.SP_PC_REG))
+    }
+
+    @Test
     fun piDramAddressRegisterKeepsOnlyLow24Bits() {
         val bus = N64Bus(ram = N64Memory(8 * 1024), cartridgeRom = byteArrayOf(0x11))
 
