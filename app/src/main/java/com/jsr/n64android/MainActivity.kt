@@ -121,15 +121,15 @@ class MainActivity : Activity() {
         // The post-handoff routine appears to process a range ending at 0x00100000.
         // 10,000 instructions only samples the first few hundred bytes and stops too early.
         // Keep the diagnostic bounded while allowing the loop to make meaningful progress.
-        val maxSteps = 6_000_000
-        var stopReason = "Limite de $maxSteps passos alcançado."
+        val maxSteps = 300_000
+        var stopReason = "Limite de $maxSteps passos alcançado (rastro amostrado a cada 256 instruções)."
         try {
             for (stepIndex in 0 until maxSteps) {
                 val pc = cpu.pc
                 val inIpl3Loop = pc in 0xFFFFFFFFA4000498UL.toLong()..0xFFFFFFFFA40004B8UL.toLong()
                 val inPostHandoffLoop = pc in 0xFFFFFFFF80000130UL.toLong()..0xFFFFFFFF80000190UL.toLong()
-                if (inIpl3Loop || inPostHandoffLoop) {
-                    // Include the instruction word as well as the pre-instruction register state.
+                if ((inIpl3Loop || inPostHandoffLoop) && stepIndex % 4096 == 0) {
+                    // Sample loop state periodically to avoid millions of temporary strings/allocations.
                     // The previous window stopped at 0x4B0 and could hide the final branch/jump
                     // sequence at 0x4B4/0x4B8 that determines whether the loop exits.
                     val physicalPc = ((pc and 0xFFFFFFFFL) and 0x1FFFFFFFL).toInt()
@@ -152,11 +152,19 @@ class MainActivity : Activity() {
                 // A real exception entry must set Status.EXL before we classify this as a vector.
                 val physical = (pc and 0xFFFFFFFFL) and 0x1FFFFFFFL
                 val instruction = bus.read32(physical.toInt())
-                trace.addLast(
-                    "PC=0x" + pc.toULong().toString(16).uppercase().padStart(16, '0') +
-                    "  INST=0x" + instruction.toUInt().toString(16).uppercase().padStart(8, '0')
-                )
-                if (trace.size > 80) trace.removeFirst()
+                // Sampling prevents heavy allocation churn during long diagnostics on Android phones.
+                if (stepIndex % 256 == 0 || stepIndex >= maxSteps - 80) {
+                    trace.addLast(
+                        "step=$stepIndex PC=0x" + pc.toULong().toString(16).uppercase().padStart(16, '0') +
+                        "  INST=0x" + instruction.toUInt().toString(16).uppercase().padStart(8, '0')
+                    )
+                    if (trace.size > 80) trace.removeFirst()
+                }
+                if (stepIndex > 0 && stepIndex % 50000 == 0) {
+                    runOnUiThread {
+                        status.text = "Diagnóstico em andamento: $stepIndex / $maxSteps instruções. ROM mantida carregada."
+                    }
+                }
                 cpu.step()
                 executed++
                 // Stop at a vector only when the CPU actually recorded exception entry.
