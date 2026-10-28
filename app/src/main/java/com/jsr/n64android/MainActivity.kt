@@ -117,6 +117,9 @@ class MainActivity : Activity() {
         // Capture the first pass through the suspected post-handoff loop, not only
         // periodic samples thousands of instructions later.
         val firstLoopTrace = ArrayDeque<String>()
+        // Capture the first entry into the IPL3 terminal/error path before its self-loop overwrites context.
+        val terminalPathTrace = ArrayDeque<String>()
+        var terminalPathCaptureStarted = false
         val cpu = R4300Cpu(bus)
         // This is an artificial IPL3 diagnostic, not a real PIF/CIC boot.
         // The R4300 reset state leaves GPR[29] at zero; the copied routine later
@@ -213,6 +216,19 @@ class MainActivity : Activity() {
                         " s2=0x" + cpu.gpr[18].toULong().toString(16).uppercase()
                     )
                 }
+                // Capture only the first few instructions around 0x800001C0, where this ROM
+                // currently enters a stable branch loop, so the report preserves its cause.
+                if (pc in 0xFFFFFFFF800001C0UL.toLong()..0xFFFFFFFF800001D0UL.toLong() && terminalPathTrace.size < 32) {
+                    terminalPathCaptureStarted = true
+                    terminalPathTrace.addLast(
+                        "step=$stepIndex PC=0x" + pc.toULong().toString(16).uppercase().padStart(16, '0') +
+                        " INST=0x" + instruction.toUInt().toString(16).uppercase().padStart(8, '0') +
+                        " v0=0x" + cpu.gpr[2].toULong().toString(16).uppercase() +
+                        " ra=0x" + cpu.gpr[31].toULong().toString(16).uppercase() +
+                        " t0=0x" + cpu.gpr[8].toULong().toString(16).uppercase() +
+                        " t1=0x" + cpu.gpr[9].toULong().toString(16).uppercase()
+                    )
+                }
                 // Sampling prevents heavy allocation churn during long diagnostics on Android phones.
                 if (stepIndex % 256 == 0 || stepIndex >= maxSteps - 80) {
                     trace.addLast(
@@ -258,7 +274,7 @@ class MainActivity : Activity() {
         }
         // The observed IPL3 loop uses KSEG1 address 0xA00002B4 as a destination.
         // Its physical address is 0x000002B4, so dumping only RDRAM[0..15] misses it.
-        val ramRanges = listOf(0x0000..0x003C, 0x02A0..0x02E0, 0x1000..0x103C)
+        val ramRanges = listOf(0x0000..0x003C, 0x02A0..0x02E0, 0x0400..0x0440, 0x1000..0x103C)
         val ramDump = ramRanges.joinToString("\n\n") { range ->
             "RDRAM RANGE 0x" + range.first.toString(16).uppercase().padStart(4, '0') +
                 "..0x" + range.last.toString(16).uppercase().padStart(4, '0') + "\n" +
@@ -277,6 +293,8 @@ class MainActivity : Activity() {
         }
         diagnostic += "\n\nPRIMEIRAS INSTRUÇÕES APÓS A TRANSFERÊNCIA PARA KSEG0 (máximo 64):\n" +
             if (handoffTrace.isEmpty()) "O PC não passou pela região KSEG0 monitorada." else handoffTrace.joinToString("\n")
+        diagnostic += "\n\nPRIMEIRA ENTRADA NO CAMINHO TERMINAL (máximo 32):\n" +
+            if (terminalPathTrace.isEmpty()) "O PC não passou pelo intervalo 0x800001C0..0x800001D0." else terminalPathTrace.joinToString("\n")
         diagnostic += "\n\nLINHA DO TEMPO DO LOOP IPL3 (registradores antes da instrução):\n" +
             if (loopCheckpoints.isEmpty()) "O PC não passou pelo intervalo monitorado." else loopCheckpoints.joinToString("\n")
         diagnostic += "\n\nTODOS OS REGISTRADORES GPR NO PONTO DE PARADA:\n" + registerDump
