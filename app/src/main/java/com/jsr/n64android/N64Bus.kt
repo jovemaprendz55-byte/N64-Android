@@ -31,6 +31,11 @@ class N64Bus(
     private var miInterruptMask = 0
     // Minimal RI register state; these values are placeholders, not full RDRAM timing emulation.
     private val riRegisters = IntArray(RI_REGISTER_COUNT).also { it[RI_SELECT_OFFSET / 4] = RI_SELECT_RESET }
+    // SI registers are mapped for IPL3 boot progress; PIF RAM DMA and controller protocol remain partial.
+    private var siDramAddress = 0
+    private var siPifReadAddress = 0
+    private var siPifWriteAddress = 0
+    private var siStatus = 0
 
     /**
      * Identifies a small supported subset of Nintendo CIC variants from the IPL3 word sum.
@@ -127,6 +132,10 @@ class N64Bus(
             MI_INTR_REG -> return 0 // No device currently raises MI interrupt lines.
             MI_INTR_MASK_REG -> return miInterruptMask
             in RI_REG_BASE until RI_REG_BASE + RI_REG_SIZE -> return riRegisters[(address - RI_REG_BASE) / 4]
+            SI_DRAM_ADDR_REG -> return siDramAddress
+            SI_PIF_ADDR_RD64B_REG -> return siPifReadAddress
+            SI_PIF_ADDR_WR64B_REG -> return siPifWriteAddress
+            SI_STATUS_REG -> return siStatus
         }
         return (read8(address) shl 24) or (read8(address + 1) shl 16) or
             (read8(address + 2) shl 8) or read8(address + 3)
@@ -185,6 +194,10 @@ class N64Bus(
                 riRegisters[(address - RI_REG_BASE) / 4] = value
                 return
             }
+            SI_DRAM_ADDR_REG -> { siDramAddress = value and 0x00FFFFFF; return }
+            SI_PIF_ADDR_RD64B_REG -> { siPifReadAddress = value and 0x1FFFFFFF; return }
+            SI_PIF_ADDR_WR64B_REG -> { siPifWriteAddress = value and 0x1FFFFFFF; return }
+            SI_STATUS_REG -> { if ((value and SI_STATUS_INTERRUPT) != 0) siStatus = siStatus and SI_STATUS_INTERRUPT.inv(); return }
         }
         write8(address, value ushr 24)
         write8(address + 1, value ushr 16)
@@ -390,5 +403,11 @@ class N64Bus(
         const val RI_SELECT_OFFSET = 0x0C
         const val RI_SELECT_RESET = 0x00000014
         const val RI_REGISTER_COUNT = RI_REG_SIZE / 4
+        const val SI_REG_BASE = 0x04800000
+        const val SI_DRAM_ADDR_REG = SI_REG_BASE
+        const val SI_PIF_ADDR_RD64B_REG = SI_REG_BASE + 0x04
+        const val SI_PIF_ADDR_WR64B_REG = SI_REG_BASE + 0x10
+        const val SI_STATUS_REG = SI_REG_BASE + 0x18
+        const val SI_STATUS_INTERRUPT = 1 shl 12
     }
 }
