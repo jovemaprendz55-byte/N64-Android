@@ -120,7 +120,18 @@ class MainActivity : Activity() {
         // Capture the first entry into the IPL3 terminal/error path before its self-loop overwrites context.
         val terminalPathTrace = ArrayDeque<String>()
         var terminalPathCaptureStarted = false
+        val cicSeed = bus.detectCicSeed()
+        if (cicSeed == null) {
+            runOnUiThread {
+                status.text = "CIC/seed do IPL3 não identificado. O diagnóstico foi interrompido para evitar um falso erro de checksum; por enquanto, só CIC 6102/7101 e 6105/7105 são reconhecidos."
+                romTraceButton?.isEnabled = cartridgeBus != null
+            }
+            return
+        }
         val cpu = R4300Cpu(bus)
+        // PIF/CIC normally supplies the seed in s6 ($22). This diagnostic skips
+        // the real PIF boot, so derive that seed from the IPL3 signature instead.
+        cpu.gpr[22] = cicSeed.toLong()
         // This is an artificial IPL3 diagnostic, not a real PIF/CIC boot.
         // The R4300 reset state leaves GPR[29] at zero; the copied routine later
         // uses the stack, so seed SP to the top of the installed 8 MiB RDRAM.
