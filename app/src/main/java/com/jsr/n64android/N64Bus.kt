@@ -21,7 +21,9 @@ class N64Bus(
     private var piStatus = 0
     // RSP program counter register (SP_PC); the RSP core itself is not yet emulated.
     private var spPc = 0
-    // Minimal SP control/status state; the RSP execution and DMA engines remain unimplemented.
+    // SP DMA registers. Transfers are synchronous; RSP execution and DMA timing are not modeled.
+    private var spMemAddress = 0
+    private var spDramAddress = 0
     private var spStatus = SP_STATUS_HALT
     private var spSemaphore = 0
     // Minimal MIPS Interface state. Interrupt sources are not yet driven by emulated devices.
@@ -109,6 +111,8 @@ class N64Bus(
     override fun read32(address: Int): Int {
         requireAligned(address, 4)
         when (address) {
+            SP_MEM_ADDR_REG -> return spMemAddress
+            SP_DRAM_ADDR_REG -> return spDramAddress
             SP_PC_REG -> return spPc
             SP_STATUS_REG -> return spStatus
             SP_DMA_FULL_REG -> return 0
@@ -161,6 +165,10 @@ class N64Bus(
     override fun write32(address: Int, value: Int) {
         requireAligned(address, 4)
         when (address) {
+            SP_MEM_ADDR_REG -> { spMemAddress = value and SP_MEM_ADDR_MASK; return }
+            SP_DRAM_ADDR_REG -> { spDramAddress = value and 0x00FFFFFF; return }
+            SP_RD_LEN_REG -> { dmaRdramToSp(value); return }
+            SP_WR_LEN_REG -> { dmaSpToRdram(value); return }
             SP_PC_REG -> { spPc = value and SP_PC_MASK; return }
             SP_STATUS_REG -> { writeSpStatusCommand(value); return }
             SP_SEMAPHORE_REG -> { spSemaphore = 1; return }
@@ -229,6 +237,48 @@ class N64Bus(
         piStatus = piStatus and PI_STATUS_DMA_BUSY.inv()
     }
 
+    /**
+     * Executes the SP read-length DMA: RDRAM -> SP DMEM/IMEM.
+     * Length/count/skip fields follow the hardware register layout; timing and interrupts are omitted.
+     */
+    private fun dmaRdramToSp(command: Int) = transferSpDma(command, toSp = true)
+
+    /** Executes the SP write-length DMA: SP DMEM/IMEM -> RDRAM. */
+    private fun dmaSpToRdram(command: Int) = transferSpDma(command, toSp = false)
+
+    private fun transferSpDma(command: Int, toSp: Boolean) {
+        val blockLength = (command and 0xFFF) + 1
+        val blockCount = ((command ushr 12) and 0xFF) + 1
+        val dramSkip = (command ushr 20) and 0xFFF
+        val memorySelect = spMemAddress and 0x1000
+        var memoryOffset = spMemAddress and 0xFFF
+        var dramAddress = spDramAddress and 0x00FFFFFF
+
+        require(blockLength > 0 && blockCount > 0) { "Invalid SP DMA length/count." }
+        for (block in 0 until blockCount) {
+            require(dramAddress >= 0 && dramAddress <= ram.size - blockLength) {
+                "SP DMA RDRAM range is invalid: address=0x${dramAddress.toString(16)}, length=$blockLength."
+            }
+            for (index in 0 until blockLength) {
+                val spAddress = memoryOffset and 0xFFF
+                val spValue = if (toSp) ram.read8(dramAddress + index) else {
+                    val memory = if (memorySelect == 0) spDmem else spImem
+                    memory[spAddress].toInt() and 0xFF
+                }
+                if (toSp) {
+                    val memory = if (memorySelect == 0) spDmem else spImem
+                    memory[spAddress] = spValue.toByte()
+                } else {
+                    ram.write8(dramAddress + index, spValue)
+                }
+                memoryOffset = (memoryOffset + 1) and 0xFFF
+            }
+            dramAddress += blockLength + dramSkip
+        }
+        spMemAddress = memorySelect or memoryOffset
+        spDramAddress = dramAddress and 0x00FFFFFF
+    }
+
     /** Applies MI_INIT_MODE write-one command bits; reset and device side effects remain partial. */
     private fun writeMiInitModeCommand(command: Int) {
         if ((command and MI_INIT_MODE_CLR_INIT) != 0) miInitMode = miInitMode and MI_INIT_MODE_INIT.inv()
@@ -283,6 +333,7 @@ class N64Bus(
         const val SP_MEM_SIZE = 0x1000
         const val SP_REG_BASE = 0x04040000
         const val SP_MEM_ADDR_REG = SP_REG_BASE
+        const val SP_MEM_ADDR_MASK = 0x00001FFF
         const val SP_DRAM_ADDR_REG = SP_REG_BASE + 0x04
         const val SP_RD_LEN_REG = SP_REG_BASE + 0x08
         const val SP_WR_LEN_REG = SP_REG_BASE + 0x0C
