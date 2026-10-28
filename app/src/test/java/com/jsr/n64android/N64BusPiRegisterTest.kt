@@ -5,6 +5,42 @@ import org.junit.Test
 
 class N64BusPiRegisterTest {
     @Test
+    fun detectsCic6102SeedFromIpl3Checksum() {
+        val bus = N64Bus(cartridgeRom = romWithIpl3WordSum(0xD057C85244L))
+
+        assertEquals(0x3F, bus.detectCicSeed())
+    }
+
+    @Test
+    fun detectsCic6105SeedFromIpl3Checksum() {
+        val bus = N64Bus(cartridgeRom = romWithIpl3WordSum(0x11A49F60E96L))
+
+        assertEquals(0x91, bus.detectCicSeed())
+    }
+
+    @Test
+    fun unknownIpl3ChecksumDoesNotGuessCicSeed() {
+        val bus = N64Bus(cartridgeRom = ByteArray(0x1000))
+
+        assertEquals(null, bus.detectCicSeed())
+    }
+
+    private fun romWithIpl3WordSum(targetSum: Long): ByteArray {
+        val rom = ByteArray(0x1000)
+        var remaining = targetSum
+        for (offset in 0x40 until 0x1000 step 4) {
+            val word = minOf(remaining, 0xFFFFFFFFL)
+            rom[offset] = (word ushr 24).toByte()
+            rom[offset + 1] = (word ushr 16).toByte()
+            rom[offset + 2] = (word ushr 8).toByte()
+            rom[offset + 3] = word.toByte()
+            remaining -= word
+        }
+        assertEquals(0L, remaining)
+        return rom
+    }
+
+    @Test
     fun piDramAddressRegisterKeepsOnlyLow24Bits() {
         val bus = N64Bus(ram = N64Memory(8 * 1024), cartridgeRom = byteArrayOf(0x11))
 
