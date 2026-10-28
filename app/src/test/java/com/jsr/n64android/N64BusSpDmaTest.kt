@@ -56,6 +56,25 @@ class N64BusSpDmaTest {
     }
 
     @Test
+    fun spWriteLengthHonorsBlockCountAndDramSkip() {
+        val ram = N64Memory(8 * 1024)
+        val bus = N64Bus(ram = ram)
+        bus.write32(N64Bus.SP_IMEM_BASE + 0x40, 0x11223344)
+        bus.write32(N64Bus.SP_IMEM_BASE + 0x44, 0x55667788)
+
+        bus.write32(N64Bus.SP_MEM_ADDR_REG, 0x1040)
+        bus.write32(N64Bus.SP_DRAM_ADDR_REG, 0x100)
+        // Two 4-byte blocks; skip 4 bytes in RDRAM between blocks.
+        bus.write32(N64Bus.SP_WR_LEN_REG, (4 shl 20) or (1 shl 12) or 3)
+
+        assertEquals(0x11223344, ram.read32(0x100))
+        assertEquals(0, ram.read32(0x104))
+        assertEquals(0x55667788, ram.read32(0x108))
+        assertEquals(0x1048, bus.read32(N64Bus.SP_MEM_ADDR_REG))
+        assertEquals(0x110, bus.read32(N64Bus.SP_DRAM_ADDR_REG))
+    }
+
+    @Test
     fun spDmaWrapsWithinSelectedFourKiBMemory() {
         val ram = N64Memory(8 * 1024)
         ram.write32(0xFFC, 0xCAFEBABE.toInt())
