@@ -14,7 +14,7 @@ class N64BusMiRegisterTest {
 
         // Clear SP and DP; set VI.
         bus.write32(N64Bus.MI_INTR_MASK_REG, (1 shl 0) or (1 shl 10) or (1 shl 7))
-        assertEquals((1 shl 2) or (1 shl 3) or (1 shl 5), bus.read32(N64Bus.MI_INTR_MASK_REG))
+        assertEquals((1 shl 2) or (1 shl 3), bus.read32(N64Bus.MI_INTR_MASK_REG))
     }
 
     @Test
