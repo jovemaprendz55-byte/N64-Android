@@ -16,8 +16,8 @@ class N64BusDmaTest {
 
         bus.write32(N64Bus.PI_DRAM_ADDR_REG, 0x100)
         bus.write32(N64Bus.PI_CART_ADDR_REG, N64Bus.CARTRIDGE_ROM_BASE)
-        // PI_RD_LEN is length minus one: writing 3 requests four bytes.
-        bus.write32(N64Bus.PI_RD_LEN_REG, 3)
+        // PI_WR_LEN is length minus one: writing 3 requests four bytes.
+        bus.write32(N64Bus.PI_WR_LEN_REG, 3)
 
         assertEquals(0x80, bus.read8(0x100))
         assertEquals(0x37, bus.read8(0x101))
@@ -37,7 +37,7 @@ class N64BusDmaTest {
         bus.write32(N64Bus.PI_CART_ADDR_REG, N64Bus.CARTRIDGE_ROM_BASE + 2)
 
         try {
-            bus.write32(N64Bus.PI_RD_LEN_REG, 3)
+            bus.write32(N64Bus.PI_WR_LEN_REG, 3)
             throw AssertionError("Expected PI DMA beyond the ROM to fail.")
         } catch (error: IllegalArgumentException) {
             assertEquals(
@@ -57,7 +57,7 @@ class N64BusDmaTest {
         bus.write32(N64Bus.PI_CART_ADDR_REG, N64Bus.CARTRIDGE_ROM_BASE)
 
         try {
-            bus.write32(N64Bus.PI_RD_LEN_REG, 3)
+            bus.write32(N64Bus.PI_WR_LEN_REG, 3)
             throw AssertionError("Expected PI DMA outside RDRAM to fail.")
         } catch (error: IllegalArgumentException) {
             assertTrue(error.message!!.contains("destination is outside installed RDRAM"))
@@ -74,7 +74,7 @@ class N64BusDmaTest {
         bus.write32(N64Bus.PI_CART_ADDR_REG, N64Bus.CARTRIDGE_ROM_BASE - 4)
 
         try {
-            bus.write32(N64Bus.PI_RD_LEN_REG, 3)
+            bus.write32(N64Bus.PI_WR_LEN_REG, 3)
             throw AssertionError("Expected PI DMA source outside cartridge window to fail.")
         } catch (error: IllegalArgumentException) {
             assertTrue(error.message!!.contains("source is not in the cartridge ROM window"))
