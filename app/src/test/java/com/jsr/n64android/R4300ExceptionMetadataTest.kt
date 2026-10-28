@@ -18,6 +18,7 @@ class R4300ExceptionMetadataTest {
         cpu.step() // Store misses in the delay slot.
 
         assertEquals(0xFFFFFFFF80000004UL.toLong(), cpu.lastExceptionInstructionAddress)
+        assertEquals(((0x2B shl 26) or (1 shl 21) or (2 shl 16)), cpu.lastExceptionInstructionWord)
         assertEquals(3, cpu.lastExceptionCode) // TLB store miss.
         assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.lastExceptionBranchAddress)
         assertEquals(0x00400000L, cpu.cop0[8]) // BadVAddr.
