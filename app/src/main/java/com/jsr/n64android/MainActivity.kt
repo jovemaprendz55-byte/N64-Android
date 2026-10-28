@@ -122,12 +122,9 @@ class MainActivity : Activity() {
                     )
                     if (loopCheckpoints.size > 24) loopCheckpoints.removeFirst()
                 }
-                // Stop at the normal exception vector instead of reading zero-filled RDRAM
-                // as if it were useful IPL3 code. Capture COP0 state for the next diagnosis.
-                if (stepIndex > 0 && pc == 0xFFFFFFFF80000180UL.toLong()) {
-                    stopReason = "CPU entrou no vetor de exceção 0xFFFFFFFF80000180; interrompido para evitar rastrear RAM zerada."
-                    break
-                }
+                // Do not stop merely because PC equals 0x80000180: the previous
+                // diagnostic reached it sequentially from 0x8000017C, while COP0 stayed zero.
+                // A real exception entry must set Status.EXL before we classify this as a vector.
                 val physical = (pc and 0xFFFFFFFFL) and 0x1FFFFFFFL
                 val instruction = bus.read32(physical.toInt())
                 trace.addLast(
@@ -137,12 +134,14 @@ class MainActivity : Activity() {
                 if (trace.size > 80) trace.removeFirst()
                 cpu.step()
                 executed++
-                // Detect the exception vector immediately after the instruction that enters it.
-                // This preserves the useful IPL3 trace and COP0 state instead of tracing zero-filled RAM.
-                if (cpu.pc == 0xFFFFFFFF80000180UL.toLong() ||
+                // Stop at a vector only when the CPU actually recorded exception entry.
+                // This avoids false positives when ordinary sequential execution reaches 0x80000180.
+                val enteredException = (cpu.cop0[12] and 0x2L) != 0L
+                val atExceptionVector = cpu.pc == 0xFFFFFFFF80000180UL.toLong() ||
                     cpu.pc == 0xFFFFFFFFBFC00380UL.toLong() ||
-                    cpu.pc == 0xFFFFFFFFBFC00200UL.toLong()) {
-                    stopReason = "CPU entrou em vetor de exceção/boot ROM 0x${cpu.pc.toULong().toString(16).uppercase()}; interrompido para preservar o rastro."
+                    cpu.pc == 0xFFFFFFFFBFC00200UL.toLong()
+                if (enteredException && atExceptionVector) {
+                    stopReason = "CPU registrou entrada em vetor de exceção 0x${cpu.pc.toULong().toString(16).uppercase()}; interrompido para preservar o rastro."
                     break
                 }
             }
