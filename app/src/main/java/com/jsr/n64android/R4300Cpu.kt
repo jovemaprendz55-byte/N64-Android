@@ -20,6 +20,13 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     var tlbEnabled: Boolean = false
     var pc: Long = RESET_VECTOR
         private set
+    /** Metadata for the most recently delivered architectural exception, used by ROM diagnostics. */
+    var lastExceptionInstructionAddress: Long? = null
+        private set
+    var lastExceptionCode: Int? = null
+        private set
+    var lastExceptionBranchAddress: Long? = null
+        private set
     private var delayedTarget: Long? = null
     private var pendingDelaySlotBranchAddress: Long? = null
     private var randomResetByWiredWrite = false
@@ -32,6 +39,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         tlb.clear()
         tlbEnabled = false
         pc = RESET_VECTOR
+        lastExceptionInstructionAddress = null
+        lastExceptionCode = null
+        lastExceptionBranchAddress = null
         delayedTarget = null
         pendingDelaySlotBranchAddress = null
     }
@@ -648,6 +658,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     }
 
     private fun enterException(instructionAddress: Long, exceptionCode: Int, branchAddress: Long?) {
+        lastExceptionInstructionAddress = instructionAddress
+        lastExceptionCode = exceptionCode
+        lastExceptionBranchAddress = branchAddress
         val status = cop0[12]
         if ((status and 0x2L) == 0L) {
             cop0[14] = branchAddress ?: instructionAddress
