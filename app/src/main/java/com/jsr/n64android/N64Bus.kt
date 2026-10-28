@@ -24,6 +24,9 @@ class N64Bus(
     // Minimal SP control/status state; the RSP execution and DMA engines remain unimplemented.
     private var spStatus = SP_STATUS_HALT
     private var spSemaphore = 0
+    // Minimal MIPS Interface state. Interrupt sources are not yet driven by emulated devices.
+    private var miInitMode = 0
+    private var miInterruptMask = 0
     // Minimal RI register state; these values are placeholders, not full RDRAM timing emulation.
     private val riRegisters = IntArray(RI_REGISTER_COUNT).also { it[RI_SELECT_OFFSET / 4] = RI_SELECT_RESET }
 
@@ -115,6 +118,10 @@ class N64Bus(
             PI_CART_ADDR_REG -> return piCartAddress
             PI_RD_LEN_REG, PI_WR_LEN_REG -> return 0
             PI_STATUS_REG -> return piStatus
+            MI_INIT_MODE_REG -> return miInitMode
+            MI_VERSION_REG -> return MI_VERSION_VALUE
+            MI_INTR_REG -> return 0 // No device currently raises MI interrupt lines.
+            MI_INTR_MASK_REG -> return miInterruptMask
             in RI_REG_BASE until RI_REG_BASE + RI_REG_SIZE -> return riRegisters[(address - RI_REG_BASE) / 4]
         }
         return (read8(address) shl 24) or (read8(address + 1) shl 16) or
@@ -164,6 +171,8 @@ class N64Bus(
             PI_RD_LEN_REG -> { dmaRdramToCartridge((value and 0x00FFFFFF) + 1); return }
             PI_WR_LEN_REG -> { dmaCartridgeToRam((value and 0x00FFFFFF) + 1); return }
             PI_STATUS_REG -> { piStatus = piStatus and (value.inv() and 0x3); return }
+            MI_INIT_MODE_REG -> { writeMiInitModeCommand(value); return }
+            MI_INTR_MASK_REG -> { writeMiInterruptMaskCommand(value); return }
             in RI_REG_BASE until RI_REG_BASE + RI_REG_SIZE -> {
                 riRegisters[(address - RI_REG_BASE) / 4] = value
                 return
@@ -218,6 +227,28 @@ class N64Bus(
         piDramAddress = (piDramAddress + length) and 0x00FFFFFF
         piCartAddress += length
         piStatus = piStatus and PI_STATUS_DMA_BUSY.inv()
+    }
+
+    /** Applies MI_INIT_MODE write-one command bits; reset and device side effects remain partial. */
+    private fun writeMiInitModeCommand(command: Int) {
+        if ((command and MI_INIT_MODE_CLR_INIT) != 0) miInitMode = miInitMode and MI_INIT_MODE_INIT.inv()
+        if ((command and MI_INIT_MODE_SET_INIT) != 0) miInitMode = miInitMode or MI_INIT_MODE_INIT
+        if ((command and MI_INIT_MODE_CLR_EBUS) != 0) miInitMode = miInitMode and MI_INIT_MODE_EBUS.inv()
+        if ((command and MI_INIT_MODE_SET_EBUS) != 0) miInitMode = miInitMode or MI_INIT_MODE_EBUS
+        if ((command and MI_INIT_MODE_CLR_DP_INTR) != 0) miInitMode = miInitMode and MI_INIT_MODE_DP_INTR.inv()
+        if ((command and MI_INIT_MODE_CLR_RDRAM_REG) != 0) miInitMode = miInitMode and MI_INIT_MODE_RDRAM_REG.inv()
+        if ((command and MI_INIT_MODE_SET_RDRAM_REG) != 0) miInitMode = miInitMode or MI_INIT_MODE_RDRAM_REG
+    }
+
+    /** MI_INTR_MASK uses paired clear/set command bits for SP, SI, AI, VI, PI and DP. */
+    private fun writeMiInterruptMaskCommand(command: Int) {
+        for (source in 0 until 6) {
+            val clearCommand = 1 shl (source * 2)
+            val setCommand = 1 shl (source * 2 + 1)
+            val maskBit = 1 shl source
+            if ((command and clearCommand) != 0) miInterruptMask = miInterruptMask and maskBit.inv()
+            if ((command and setCommand) != 0) miInterruptMask = miInterruptMask or maskBit
+        }
     }
 
     /** Applies the SP_STATUS write-one command bits to the readable status bits. */
@@ -286,6 +317,23 @@ class N64Bus(
         const val PI_WR_LEN_REG = PI_REG_BASE + 0x0C
         const val PI_STATUS_REG = PI_REG_BASE + 0x10
         const val PI_STATUS_DMA_BUSY = 0x01
+        const val MI_REG_BASE = 0x04300000
+        const val MI_INIT_MODE_REG = MI_REG_BASE
+        const val MI_VERSION_REG = MI_REG_BASE + 0x04
+        const val MI_INTR_REG = MI_REG_BASE + 0x08
+        const val MI_INTR_MASK_REG = MI_REG_BASE + 0x0C
+        const val MI_VERSION_VALUE = 0x02020102
+        const val MI_INIT_MODE_INIT = 1 shl 7
+        const val MI_INIT_MODE_EBUS = 1 shl 8
+        const val MI_INIT_MODE_DP_INTR = 1 shl 11
+        const val MI_INIT_MODE_RDRAM_REG = 1 shl 12
+        const val MI_INIT_MODE_CLR_INIT = 1 shl 0
+        const val MI_INIT_MODE_SET_INIT = 1 shl 1
+        const val MI_INIT_MODE_CLR_EBUS = 1 shl 2
+        const val MI_INIT_MODE_SET_EBUS = 1 shl 3
+        const val MI_INIT_MODE_CLR_DP_INTR = 1 shl 4
+        const val MI_INIT_MODE_CLR_RDRAM_REG = 1 shl 6
+        const val MI_INIT_MODE_SET_RDRAM_REG = 1 shl 7
         const val RI_REG_BASE = 0x04700000
         const val RI_REG_SIZE = 0x20
         const val RI_SELECT_OFFSET = 0x0C
