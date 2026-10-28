@@ -36,6 +36,11 @@ class N64Bus(
     private var siPifReadAddress = 0
     private var siPifWriteAddress = 0
     private var siStatus = 0
+    // Minimal Audio Interface register model; audio DMA playback/timing is not emulated.
+    private var aiDramAddress = 0
+    private var aiControl = 0
+    private var aiDacRate = 0
+    private var aiBitRate = 0
 
     /**
      * Identifies a small supported subset of Nintendo CIC variants from the IPL3 word sum.
@@ -136,6 +141,12 @@ class N64Bus(
             SI_PIF_ADDR_RD64B_REG -> return siPifReadAddress
             SI_PIF_ADDR_WR64B_REG -> return siPifWriteAddress
             SI_STATUS_REG -> return siStatus
+            AI_DRAM_ADDR_REG -> return aiDramAddress
+            AI_LEN_REG -> return 0 // Audio queue is treated as immediately drained.
+            AI_CONTROL_REG -> return aiControl
+            AI_STATUS_REG -> return 0 // No queued audio and no modeled AI interrupt.
+            AI_DACRATE_REG -> return aiDacRate
+            AI_BITRATE_REG -> return aiBitRate
         }
         return (read8(address) shl 24) or (read8(address + 1) shl 16) or
             (read8(address + 2) shl 8) or read8(address + 3)
@@ -198,6 +209,12 @@ class N64Bus(
             SI_PIF_ADDR_RD64B_REG -> { siPifReadAddress = value and 0x1FFFFFFF; return }
             SI_PIF_ADDR_WR64B_REG -> { siPifWriteAddress = value and 0x1FFFFFFF; return }
             SI_STATUS_REG -> { if ((value and SI_STATUS_INTERRUPT) != 0) siStatus = siStatus and SI_STATUS_INTERRUPT.inv(); return }
+            AI_DRAM_ADDR_REG -> { aiDramAddress = value and 0x00FFFFFF; return }
+            AI_LEN_REG -> { return } // Consume the request without audio DMA or timing.
+            AI_CONTROL_REG -> { aiControl = value and 1; return }
+            AI_STATUS_REG -> { return } // Write clears the AI interrupt; interrupts are not yet modeled.
+            AI_DACRATE_REG -> { aiDacRate = value and 0x3FFF; return }
+            AI_BITRATE_REG -> { aiBitRate = value and 0xF; return }
         }
         write8(address, value ushr 24)
         write8(address + 1, value ushr 16)
@@ -409,5 +426,12 @@ class N64Bus(
         const val SI_PIF_ADDR_WR64B_REG = SI_REG_BASE + 0x10
         const val SI_STATUS_REG = SI_REG_BASE + 0x18
         const val SI_STATUS_INTERRUPT = 1 shl 12
+        const val AI_REG_BASE = 0x04500000
+        const val AI_DRAM_ADDR_REG = AI_REG_BASE
+        const val AI_LEN_REG = AI_REG_BASE + 0x04
+        const val AI_CONTROL_REG = AI_REG_BASE + 0x08
+        const val AI_STATUS_REG = AI_REG_BASE + 0x0C
+        const val AI_DACRATE_REG = AI_REG_BASE + 0x10
+        const val AI_BITRATE_REG = AI_REG_BASE + 0x14
     }
 }
