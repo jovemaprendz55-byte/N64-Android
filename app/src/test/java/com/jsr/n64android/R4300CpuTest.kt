@@ -4035,4 +4035,22 @@ class R4300CpuTest {
         }
     }
 
+
+    @Test fun kseg0Address80000000IsAValidJumpTargetNotAnExceptionVector() {
+        val memory = N64Memory(64)
+        // jr $at; nop. The target is the canonical 64-bit KSEG0 address 0xFFFFFFFF80000000.
+        memory.write32(0, (1 shl 21) or 0x08)
+        memory.write32(4, 0)
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 0xFFFFFFFF80000000UL.toLong()
+
+        cpu.step() // JR schedules the target; its delay slot remains at address 4.
+        assertEquals(4L, cpu.pc)
+        cpu.step() // The delay slot completes the jump.
+
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc)
+        assertEquals(0L, (cpu.cop0[13] ushr 2) and 0x1FL) // No exception code was raised.
+        assertEquals(0L, cpu.cop0[12] and 0x2L) // EXL remains clear.
+    }
 }
