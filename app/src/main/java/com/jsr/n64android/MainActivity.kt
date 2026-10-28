@@ -172,6 +172,19 @@ class MainActivity : Activity() {
                 }
                 twoStepsAgoPc = previousPc
                 previousPc = pc
+
+                // This diagnostic currently reads instruction bytes directly from the
+                // physical bus before cpu.step(). Stop as soon as execution leaves the
+                // directly mapped KSEG0/KSEG1 windows, instead of spending millions of
+                // steps or reporting a misleading "unmapped physical read" for KUSEG.
+                // The CPU's real TLB-backed instruction fetch still needs integration.
+                val virtual32 = pc and 0xFFFFFFFFL
+                val segment = (virtual32 ushr 29) and 0x7L
+                if (segment != 4L && segment != 5L) {
+                    stopReason = "Diagnóstico rápido interrompido: PC virtual 0x${pc.toULong().toString(16).uppercase()} saiu de KSEG0/KSEG1. A leitura de instruções pela TLB ainda não está integrada ao rastreador; nenhum endereço físico foi inventado."
+                    break
+                }
+
                 val inIpl3Loop = pc in 0xFFFFFFFFA4000498UL.toLong()..0xFFFFFFFFA40004B8UL.toLong()
                 val inPostHandoffLoop = pc in 0xFFFFFFFF80000130UL.toLong()..0xFFFFFFFF80000190UL.toLong()
                 if ((inIpl3Loop || inPostHandoffLoop) && stepIndex % 4096 == 0) {
