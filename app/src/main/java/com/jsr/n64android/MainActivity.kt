@@ -309,6 +309,9 @@ class MainActivity : Activity() {
             "\nCOP0 Cause: 0x${cpu.cop0[13].toULong().toString(16).uppercase()}" +
             "\nCOP0 EPC: 0x${cpu.cop0[14].toULong().toString(16).uppercase()}" +
             "\nCOP0 BadVAddr: 0x${cpu.cop0[8].toULong().toString(16).uppercase()}" +
+            "\nÚltima exceção registrada: código=" + (cpu.lastExceptionCode?.toString() ?: "nenhuma") +
+            " PC=0x" + (cpu.lastExceptionInstructionAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A") +
+            " delay-slot da branch=0x" + (cpu.lastExceptionBranchAddress?.toULong()?.toString(16)?.uppercase() ?: "não") +
             "\n\nIsto NÃO é o boot real do jogo. O IPL3 foi executado diretamente como teste; PIF/CIC e dispositivos ainda faltam." +
             "\n\nPRIMEIRA PASSAGEM PELO LOOP KSEG0 (máximo 48):\n" + firstLoopTrace.joinToString("\n") +
             "\n\nRASTRO DAS ÚLTIMAS INSTRUÇÕES EXECUTADAS (máximo 80, sem amostragem):\n" + recentInstructionTrace.joinToString("\n") +
