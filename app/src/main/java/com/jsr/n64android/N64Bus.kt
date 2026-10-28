@@ -22,6 +22,31 @@ class N64Bus(
     // Minimal RI register state; these values are placeholders, not full RDRAM timing emulation.
     private val riRegisters = IntArray(RI_REGISTER_COUNT).also { it[RI_SELECT_OFFSET / 4] = RI_SELECT_RESET }
 
+    /**
+     * Identifies a small supported subset of Nintendo CIC variants from the IPL3 word sum.
+     * The sum covers ROM offsets 0x40..0xFFF as unsigned big-endian 32-bit words.
+     * Returns the seed IPL3 expects in GPR[22] ($s6), or null when not recognized.
+     */
+    fun detectCicSeed(): Int? {
+        val image = cartridge ?: return null
+        if (image.size < 0x1000) return null
+
+        var checksum = 0L
+        for (offset in 0x40 until 0x1000 step 4) {
+            val word = ((image[offset].toLong() and 0xFFL) shl 24) or
+                ((image[offset + 1].toLong() and 0xFFL) shl 16) or
+                ((image[offset + 2].toLong() and 0xFFL) shl 8) or
+                (image[offset + 3].toLong() and 0xFFL)
+            checksum += word
+        }
+
+        return when (checksum) {
+            0xD057C85244L -> 0x3F // CIC-NUS-6102 / 7101, used by GoldenEye 007 (USA).
+            0x11A49F60E96L -> 0x91 // CIC-NUS-6105 / 7105.
+            else -> null
+        }
+    }
+
     init {
         require(pif == null || pif.size == PIF_ROM_SIZE) {
             "PIF ROM must be exactly $PIF_ROM_SIZE bytes."
