@@ -314,7 +314,7 @@ class MainActivity : Activity() {
             " delay-slot da branch=0x" + (cpu.lastExceptionBranchAddress?.toULong()?.toString(16)?.uppercase() ?: "não") +
             "\n\nIsto NÃO é o boot real do jogo. O IPL3 foi executado diretamente como teste; PIF/CIC e dispositivos ainda faltam." +
             "\n\nPRIMEIRA PASSAGEM PELO LOOP KSEG0 (máximo 48):\n" + firstLoopTrace.joinToString("\n") +
-            "\n\nRASTRO DAS ÚLTIMAS INSTRUÇÕES EXECUTADAS (máximo 80, sem amostragem):\n" + recentInstructionTrace.joinToString("\n") +
+            "\n\nRASTRO RECENTE AMOSTRADO (máximo 80 entradas, a cada 256 instruções):\n" + recentInstructionTrace.joinToString("\n") +
             "\n\nRASTRO AMOSTRADO DAS ÚLTIMAS INSTRUÇÕES (máximo 80):\n" + trace.joinToString("\n")
         val registerDump = (1..31).joinToString("\n") { index ->
             "GPR[$index]: 0x" + cpu.gpr[index].toULong().toString(16).uppercase().padStart(16, '0')
