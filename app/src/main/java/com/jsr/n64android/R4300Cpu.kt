@@ -718,6 +718,10 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         }
     }
 
+    /** Translate a virtual instruction address for diagnostics using the same TLB rules as CPU fetch. */
+    fun readInstructionForDiagnostic(address: Long): Int =
+        memory.read32(physicalAddress(address, R4300Tlb.Access.FETCH))
+
     private fun physicalAddress(
         address: Long,
         access: R4300Tlb.Access = R4300Tlb.Access.READ
