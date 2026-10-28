@@ -30,17 +30,21 @@ class N64BusPiRegisterTest {
     }
 
     @Test
-    fun piWriteDmaFailsExplicitlyWhileCartridgeIsReadOnly() {
-        val bus = N64Bus(ram = N64Memory(8 * 1024), cartridgeRom = byteArrayOf(0x12, 0x34))
+    fun piWriteDmaToReadOnlyRomIsIgnoredAndAdvancesAddressRegisters() {
+        val ram = N64Memory(8 * 1024)
+        ram.write32(0x100, 0x11223344)
+        val bus = N64Bus(ram = ram, cartridgeRom = byteArrayOf(0x12, 0x34))
 
-        try {
-            bus.write32(N64Bus.PI_WR_LEN_REG, 0)
-            throw AssertionError("Expected PI RAM-to-cartridge DMA to be unsupported.")
-        } catch (error: UnsupportedOperationException) {
-            assertEquals(
-                "PI RAM-to-cartridge DMA is unsupported because cartridge ROM is read-only.",
-                error.message
-            )
-        }
+        bus.write32(N64Bus.PI_DRAM_ADDR_REG, 0x100)
+        bus.write32(N64Bus.PI_CART_ADDR_REG, N64Bus.CARTRIDGE_ROM_BASE)
+        // PI_WR_LEN is length minus one: writing 3 requests four bytes.
+        bus.write32(N64Bus.PI_WR_LEN_REG, 3)
+
+        assertEquals(0x104, bus.read32(N64Bus.PI_DRAM_ADDR_REG))
+        assertEquals(N64Bus.CARTRIDGE_ROM_BASE + 4, bus.read32(N64Bus.PI_CART_ADDR_REG))
+        assertEquals(0, bus.read32(N64Bus.PI_WR_LEN_REG))
+        assertEquals(0x11223344, ram.read32(0x100))
+        assertEquals(0x12, bus.read8(N64Bus.CARTRIDGE_ROM_BASE))
+        assertEquals(0x34, bus.read8(N64Bus.CARTRIDGE_ROM_BASE + 1))
     }
 }
