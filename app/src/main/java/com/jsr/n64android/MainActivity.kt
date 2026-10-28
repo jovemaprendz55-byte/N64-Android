@@ -98,16 +98,22 @@ class MainActivity : Activity() {
         try {
             for (stepIndex in 0 until 10000) {
                 val pc = cpu.pc
-                if (pc in 0xFFFFFFFFA4000498UL.toLong()..0xFFFFFFFFA40004B0UL.toLong()) {
+                if (pc in 0xFFFFFFFFA4000498UL.toLong()..0xFFFFFFFFA40004B8UL.toLong()) {
+                    // Include the instruction word as well as the pre-instruction register state.
+                    // The previous window stopped at 0x4B0 and could hide the final branch/jump
+                    // sequence at 0x4B4/0x4B8 that determines whether the loop exits.
+                    val physicalPc = ((pc and 0xFFFFFFFFL) and 0x1FFFFFFFL).toInt()
+                    val loopInstruction = bus.read32(physicalPc).toUInt().toString(16).uppercase().padStart(8, '0')
                     loopCheckpoints.addLast(
-                        "PC=0x" + pc.toULong().toString(16).uppercase() +
+                        "PC=0x" + pc.toULong().toString(16).uppercase().padStart(16, '0') +
+                        " INST=0x" + loopInstruction +
                         " t0=0x" + cpu.gpr[8].toULong().toString(16).uppercase() +
                         " t1=0x" + cpu.gpr[9].toULong().toString(16).uppercase() +
                         " t2=0x" + cpu.gpr[10].toULong().toString(16).uppercase() +
                         " t3=0x" + cpu.gpr[11].toULong().toString(16).uppercase() +
                         " at=0x" + cpu.gpr[1].toULong().toString(16).uppercase() +
                         " t5=0x" + cpu.gpr[13].toULong().toString(16).uppercase() +
-                        " RDRAM[02B4]=0x" + bus.read32(0x02B4).toUInt().toString(16).uppercase()
+                        " RDRAM[02B4]=0x" + bus.read32(0x02B4).toUInt().toString(16).uppercase().padStart(8, '0')
                     )
                     if (loopCheckpoints.size > 24) loopCheckpoints.removeFirst()
                 }
