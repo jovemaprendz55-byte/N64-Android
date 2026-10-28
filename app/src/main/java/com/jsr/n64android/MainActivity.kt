@@ -107,6 +107,9 @@ class MainActivity : Activity() {
         // Keep enough execution budget to finish the IPL3 copy loop, while
         // retaining only the last 80 instructions so copied logs stay readable.
         val trace = ArrayDeque<String>()
+        // Preserve every recent executed instruction, including the instruction that
+        // produced an invalid next PC. The periodic trace alone can miss abrupt jumps.
+        val recentInstructionTrace = ArrayDeque<String>()
         // Keep a compact register timeline around the observed IPL3 copy loop.
         // The final register dump alone cannot explain why a branch repeats.
         val loopCheckpoints = ArrayDeque<String>()
@@ -255,6 +258,17 @@ class MainActivity : Activity() {
                 }
                 cpu.step()
                 executed++
+                recentInstructionTrace.addLast(
+                    "step=$stepIndex PC=0x" + pc.toULong().toString(16).uppercase().padStart(16, '0') +
+                    " INST=0x" + instruction.toUInt().toString(16).uppercase().padStart(8, '0') +
+                    " NEXT_PC=0x" + cpu.pc.toULong().toString(16).uppercase().padStart(16, '0') +
+                    " t0=0x" + cpu.gpr[8].toULong().toString(16).uppercase() +
+                    " t1=0x" + cpu.gpr[9].toULong().toString(16).uppercase() +
+                    " t2=0x" + cpu.gpr[10].toULong().toString(16).uppercase() +
+                    " t3=0x" + cpu.gpr[11].toULong().toString(16).uppercase() +
+                    " ra=0x" + cpu.gpr[31].toULong().toString(16).uppercase()
+                )
+                if (recentInstructionTrace.size > 80) recentInstructionTrace.removeFirst()
                 // Stop at a vector only when the CPU actually recorded exception entry.
                 // This avoids false positives when ordinary sequential execution reaches 0x80000180.
                 val enteredException = (cpu.cop0[12] and 0x2L) != 0L
@@ -279,7 +293,8 @@ class MainActivity : Activity() {
             "\nCOP0 BadVAddr: 0x${cpu.cop0[8].toULong().toString(16).uppercase()}" +
             "\n\nIsto NÃO é o boot real do jogo. O IPL3 foi executado diretamente como teste; PIF/CIC e dispositivos ainda faltam." +
             "\n\nPRIMEIRA PASSAGEM PELO LOOP KSEG0 (máximo 48):\n" + firstLoopTrace.joinToString("\n") +
-            "\n\nRASTRO DAS ÚLTIMAS INSTRUÇÕES (máximo 80):\n" + trace.joinToString("\n")
+            "\n\nRASTRO DAS ÚLTIMAS INSTRUÇÕES EXECUTADAS (máximo 80, sem amostragem):\n" + recentInstructionTrace.joinToString("\n") +
+            "\n\nRASTRO AMOSTRADO DAS ÚLTIMAS INSTRUÇÕES (máximo 80):\n" + trace.joinToString("\n")
         val registerDump = (1..31).joinToString("\n") { index ->
             "GPR[$index]: 0x" + cpu.gpr[index].toULong().toString(16).uppercase().padStart(16, '0')
         }
