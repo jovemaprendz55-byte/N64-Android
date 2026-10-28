@@ -47,7 +47,7 @@ class N64BusSpDmaTest {
         bus.write32(N64Bus.SP_MEM_ADDR_REG, 0x20)
         bus.write32(N64Bus.SP_DRAM_ADDR_REG, 0x100)
         // Two 4-byte blocks; skip 4 bytes in RDRAM between blocks.
-        bus.write32(N64Bus.SP_RD_LEN_REG, (1 shl 20) or (1 shl 12) or 3)
+        bus.write32(N64Bus.SP_RD_LEN_REG, (4 shl 20) or (1 shl 12) or 3)
 
         assertEquals(0x11223344, bus.read32(N64Bus.SP_DMEM_BASE + 0x20))
         assertEquals(0x99AABBCC.toInt(), bus.read32(N64Bus.SP_DMEM_BASE + 0x24))
