@@ -13,8 +13,8 @@ class N64BusDmaLengthTest {
         bus.write32(N64Bus.PI_DRAM_ADDR_REG, 0x200)
         bus.write32(N64Bus.PI_CART_ADDR_REG, N64Bus.CARTRIDGE_ROM_BASE)
 
-        // PI_RD_LEN encodes byte count minus one, so zero means one byte.
-        bus.write32(N64Bus.PI_RD_LEN_REG, 0)
+        // PI_WR_LEN encodes byte count minus one, so zero means one byte.
+        bus.write32(N64Bus.PI_WR_LEN_REG, 0)
 
         assertEquals(0xA5, bus.read8(0x200))
         assertEquals(0, bus.read8(0x201))
@@ -30,8 +30,8 @@ class N64BusDmaLengthTest {
         )
         bus.write32(N64Bus.PI_DRAM_ADDR_REG, 0x300)
         bus.write32(N64Bus.PI_CART_ADDR_REG, N64Bus.CARTRIDGE_ROM_BASE)
-        bus.write32(N64Bus.PI_RD_LEN_REG, 0)
-        bus.write32(N64Bus.PI_RD_LEN_REG, 0)
+        bus.write32(N64Bus.PI_WR_LEN_REG, 0)
+        bus.write32(N64Bus.PI_WR_LEN_REG, 0)
 
         assertEquals(0x10, bus.read8(0x300))
         assertEquals(0x20, bus.read8(0x301))
