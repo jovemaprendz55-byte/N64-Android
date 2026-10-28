@@ -132,6 +132,11 @@ class MainActivity : Activity() {
             return
         }
         val cpu = R4300Cpu(bus)
+        // A real R4300 translates KUSEG addresses through the TLB. Keep the CPU's
+        // compatibility fallback for isolated unit tests, but do not use it when
+        // executing a cartridge diagnostic: otherwise a jump to 0x70000510 is
+        // incorrectly treated as a physical bus address instead of a virtual one.
+        cpu.tlbEnabled = true
         // PIF/CIC normally supplies the seed in s6 ($22). This diagnostic skips
         // the real PIF boot, so derive that seed from the IPL3 signature instead.
         cpu.gpr[22] = cicSeed.toLong()
