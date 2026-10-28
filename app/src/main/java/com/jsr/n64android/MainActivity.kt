@@ -125,10 +125,10 @@ class MainActivity : Activity() {
         cpu.gpr[29] = 0xFFFFFFFFA07FFFE0UL.toLong()
         cpu.setProgramCounter(0xFFFFFFFFA4000040UL.toLong())
         var executed = 0
-        // The post-handoff routine appears to process a range ending at 0x00100000.
-        // 10,000 instructions only samples the first few hundred bytes and stops too early.
-        // Keep the diagnostic bounded while allowing the loop to make meaningful progress.
-        val maxSteps = 300_000
+        // The BNE at 0x8000018C compares t0 with ra (0x00100000), not with t1.
+        // t0 advances by four bytes, so this routine can need about 262,144 iterations
+        // (~5.2 million instructions) before reaching its end. Keep a bounded 6M-step test.
+        val maxSteps = 6_000_000
         var stopReason = "Limite de $maxSteps passos alcançado (rastro amostrado a cada 256 instruções)."
         try {
             for (stepIndex in 0 until maxSteps) {
