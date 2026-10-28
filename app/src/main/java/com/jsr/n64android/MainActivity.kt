@@ -110,6 +110,10 @@ class MainActivity : Activity() {
         // Keep a compact register timeline around the observed IPL3 copy loop.
         // The final register dump alone cannot explain why a branch repeats.
         val loopCheckpoints = ArrayDeque<String>()
+        // Preserve the first instructions after IPL3 hands control to the game.
+        // The end-of-run trace alone can hide the transition into the looping routine.
+        val handoffTrace = ArrayDeque<String>()
+        var handoffTraceCount = 0
         val cpu = R4300Cpu(bus)
         // This is an artificial IPL3 diagnostic, not a real PIF/CIC boot.
         // The R4300 reset state leaves GPR[29] at zero; the copied routine later
@@ -152,6 +156,20 @@ class MainActivity : Activity() {
                 // A real exception entry must set Status.EXL before we classify this as a vector.
                 val physical = (pc and 0xFFFFFFFFL) and 0x1FFFFFFFL
                 val instruction = bus.read32(physical.toInt())
+                // Capture the initial KSEG0 handoff path, with a strict allocation cap.
+                if (pc in 0xFFFFFFFF80000000UL.toLong()..0xFFFFFFFF8000012CUL.toLong() &&
+                    handoffTraceCount < 64
+                ) {
+                    handoffTrace.addLast(
+                        "step=$stepIndex PC=0x" + pc.toULong().toString(16).uppercase().padStart(16, '0') +
+                        " INST=0x" + instruction.toUInt().toString(16).uppercase().padStart(8, '0') +
+                        " t0=0x" + cpu.gpr[8].toULong().toString(16).uppercase() +
+                        " t1=0x" + cpu.gpr[9].toULong().toString(16).uppercase() +
+                        " t2=0x" + cpu.gpr[10].toULong().toString(16).uppercase() +
+                        " t3=0x" + cpu.gpr[11].toULong().toString(16).uppercase()
+                    )
+                    handoffTraceCount++
+                }
                 // Sampling prevents heavy allocation churn during long diagnostics on Android phones.
                 if (stepIndex % 256 == 0 || stepIndex >= maxSteps - 80) {
                     trace.addLast(
@@ -213,6 +231,8 @@ class MainActivity : Activity() {
             "SP_IMEM[0x" + address.toString(16).uppercase().padStart(8, '0') + "]: 0x" +
                 bus.read32(address).toUInt().toString(16).uppercase().padStart(8, '0')
         }
+        diagnostic += "\n\nPRIMEIRAS INSTRUÇÕES APÓS A TRANSFERÊNCIA PARA KSEG0 (máximo 64):\n" +
+            if (handoffTrace.isEmpty()) "O PC não passou pela região KSEG0 monitorada." else handoffTrace.joinToString("\n")
         diagnostic += "\n\nLINHA DO TEMPO DO LOOP IPL3 (registradores antes da instrução):\n" +
             if (loopCheckpoints.isEmpty()) "O PC não passou pelo intervalo monitorado." else loopCheckpoints.joinToString("\n")
         diagnostic += "\n\nTODOS OS REGISTRADORES GPR NO PONTO DE PARADA:\n" + registerDump
