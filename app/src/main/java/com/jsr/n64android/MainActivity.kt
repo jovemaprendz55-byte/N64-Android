@@ -73,9 +73,17 @@ class MainActivity : Activity() {
         }
         romTraceButton?.isEnabled = false
         status.text = "Executando diagnóstico em segundo plano. Aguarde; a tela continuará responsiva."
-        Thread {
-            runRomInstructionDiagnosticWorker(bus)
-        }.start()
+        Thread({
+            try {
+                runRomInstructionDiagnosticWorker(bus)
+            } catch (error: Throwable) {
+                val message = "Falha no diagnóstico: ${error.javaClass.simpleName}: ${error.message ?: "sem detalhes"}"
+                runOnUiThread {
+                    status.text = message + "\nA ROM permanece selecionada se o processo não tiver sido reiniciado."
+                    romTraceButton?.isEnabled = cartridgeBus != null
+                }
+            }
+        }, "N64-ROM-Diagnostic").start()
     }
 
     private fun runRomInstructionDiagnosticWorker(bus: N64Bus) {
