@@ -122,9 +122,7 @@ class N64Bus(
             PI_DRAM_ADDR_REG -> { piDramAddress = value and 0x00FFFFFF; return }
             PI_CART_ADDR_REG -> { piCartAddress = value; return }
             PI_RD_LEN_REG -> { dmaCartridgeToRam((value and 0x00FFFFFF) + 1); return }
-            PI_WR_LEN_REG -> throw UnsupportedOperationException(
-                "PI RAM-to-cartridge DMA is unsupported because cartridge ROM is read-only."
-            )
+            PI_WR_LEN_REG -> { dmaRdramToCartridge((value and 0x00FFFFFF) + 1); return }
             PI_STATUS_REG -> { piStatus = piStatus and (value.inv() and 0x3); return }
             in RI_REG_BASE until RI_REG_BASE + RI_REG_SIZE -> {
                 riRegisters[(address - RI_REG_BASE) / 4] = value
@@ -155,6 +153,28 @@ class N64Bus(
         for (index in 0 until length) {
             ram.write8(piDramAddress + index, image[offset + index].toInt() and 0xFF)
         }
+        piDramAddress = (piDramAddress + length) and 0x00FFFFFF
+        piCartAddress += length
+        piStatus = piStatus and PI_STATUS_DMA_BUSY.inv()
+    }
+
+    /**
+     * Minimal PI write-DMA behavior for a read-only cartridge ROM.
+     *
+     * The PI still consumes the DMA request and advances its address registers,
+     * but writes targeting the ROM window do not modify the loaded ROM image.
+     * Writable cartridge devices (SRAM/Flash) are not implemented by this bus.
+     */
+    private fun dmaRdramToCartridge(length: Int) {
+        require(length > 0 && piDramAddress <= ram.size - length) {
+            "PI write DMA source is outside installed RDRAM: address=0x${piDramAddress.toString(16)}, length=$length."
+        }
+        require(piCartAddress >= CARTRIDGE_ROM_BASE && piCartAddress < PIF_ROM_BASE) {
+            "PI write DMA destination is outside the read-only cartridge ROM window: 0x${piCartAddress.toString(16)}."
+        }
+        // A ROM cannot be changed by this DMA direction. Model the transfer as
+        // ignored writes rather than aborting CPU execution; save-device writes
+        // need a separate writable cartridge-device implementation.
         piDramAddress = (piDramAddress + length) and 0x00FFFFFF
         piCartAddress += length
         piStatus = piStatus and PI_STATUS_DMA_BUSY.inv()
