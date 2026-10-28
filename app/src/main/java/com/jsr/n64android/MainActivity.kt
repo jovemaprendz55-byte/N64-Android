@@ -173,16 +173,27 @@ class MainActivity : Activity() {
                 twoStepsAgoPc = previousPc
                 previousPc = pc
 
-                // Fetch through the CPU's real virtual-to-physical translation. If the
-                // TLB misses, let cpu.step() deliver the architectural exception instead
-                // of prematurely stopping the diagnostic or inventing a physical address.
-                val instruction = try {
-                    cpu.readInstructionForDiagnostic(pc)
-                } catch (_: R4300Tlb.TlbFault) {
-                    0 // cpu.step() repeats the fetch and records the proper TLB exception.
-                }
                 val inIpl3Loop = pc in 0xFFFFFFFFA4000498UL.toLong()..0xFFFFFFFFA40004B8UL.toLong()
                 val inPostHandoffLoop = pc in 0xFFFFFFFF80000130UL.toLong()..0xFFFFFFFF80000190UL.toLong()
+                // Most instructions are not included in the bounded report. Avoid fetching
+                // each one twice (once for logging and again inside cpu.step()), which made
+                // multi-million-step diagnostics unnecessarily slow on phones. The CPU still
+                // performs the authoritative fetch and raises any architectural TLB exception.
+                val needsInstructionForTrace =
+                    ((inIpl3Loop || inPostHandoffLoop) && stepIndex % 4096 == 0) ||
+                    (pc in 0xFFFFFFFF80000000UL.toLong()..0xFFFFFFFF8000012CUL.toLong() && handoffTraceCount < 64) ||
+                    (inPostHandoffLoop && firstLoopTrace.size < 48) ||
+                    (pc in 0xFFFFFFFF800001C0UL.toLong()..0xFFFFFFFF800001D0UL.toLong() && terminalPathTrace.size < 32) ||
+                    stepIndex % 256 == 0 || stepIndex >= maxSteps - 80
+                val instruction = if (needsInstructionForTrace) {
+                    try {
+                        cpu.readInstructionForDiagnostic(pc)
+                    } catch (_: R4300Tlb.TlbFault) {
+                        0 // cpu.step() records the architectural TLB exception below.
+                    }
+                } else {
+                    0
+                }
                 if ((inIpl3Loop || inPostHandoffLoop) && stepIndex % 4096 == 0) {
                     // Sample loop state periodically to avoid millions of temporary strings/allocations.
                     // The previous window stopped at 0x4B0 and could hide the final branch/jump
