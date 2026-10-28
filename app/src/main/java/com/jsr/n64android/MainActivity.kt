@@ -298,14 +298,15 @@ class MainActivity : Activity() {
                     if (recentInstructionTrace.size > 80) recentInstructionTrace.removeFirst()
                 }
                 if (recentInstructionTrace.size > 80) recentInstructionTrace.removeFirst()
-                // Stop at a vector only when the CPU actually recorded exception entry.
-                // This avoids false positives when ordinary sequential execution reaches 0x80000180.
-                val enteredException = (cpu.cop0[12] and 0x2L) != 0L
-                val atExceptionVector = cpu.pc == 0xFFFFFFFF80000180UL.toLong() ||
-                    cpu.pc == 0xFFFFFFFFBFC00380UL.toLong() ||
-                    cpu.pc == 0xFFFFFFFFBFC00200UL.toLong()
-                if (enteredException && atExceptionVector) {
-                    stopReason = "CPU registrou entrada em vetor de exceção 0x${cpu.pc.toULong().toString(16).uppercase()}; interrompido para preservar o rastro."
+                // Stop on the first architectural exception, not after executing the
+                // exception handler. Continuing at the vector can run millions of instructions
+                // and overwrite the useful fault context on slower phones.
+                if (cpu.lastExceptionCode != null) {
+                    val faultPc = cpu.lastExceptionInstructionAddress
+                        ?.toULong()?.toString(16)?.uppercase() ?: "N/A"
+                    val faultWord = cpu.lastExceptionInstructionWord
+                        ?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"
+                    stopReason = "Primeira exceção arquitetural registrada; parada imediata para preservar a falha: código=${cpu.lastExceptionCode}, PC=0x$faultPc, INST=0x$faultWord."
                     break
                 }
             }
