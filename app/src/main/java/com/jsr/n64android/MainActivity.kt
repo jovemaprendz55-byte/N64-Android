@@ -313,12 +313,28 @@ class MainActivity : Activity() {
         } catch (error: Exception) {
             stopReason = "Parou em erro/área não implementada: ${error.message ?: error.javaClass.simpleName}"
         }
+        val causeValue = cpu.cop0[13]
+        val causeCode = ((causeValue ushr 2) and 0x1FL).toInt()
+        val causeName = when (causeCode) {
+            1 -> "TLB Modified"
+            2 -> "TLB Load/Fetch Miss ou Invalid"
+            3 -> "TLB Store Miss ou Invalid"
+            4 -> "Address Error Load/Fetch"
+            5 -> "Address Error Store"
+            8 -> "Syscall"
+            9 -> "Breakpoint"
+            10 -> "Reserved Instruction"
+            12 -> "Arithmetic Overflow"
+            else -> "Exceção MIPS código $causeCode"
+        }
+        val branchDelay = (causeValue and 0x80000000L) != 0L
         var diagnostic = "DIAGNÓSTICO PARCIAL DA ROM" +
             "\nPassos executados: $executed" +
             "\nPC final: 0x${cpu.pc.toULong().toString(16).uppercase()}" +
             "\nMotivo: $stopReason" +
             "\nCOP0 Status: 0x${cpu.cop0[12].toULong().toString(16).uppercase()}" +
             "\nCOP0 Cause: 0x${cpu.cop0[13].toULong().toString(16).uppercase()}" +
+            "\nCause decodificado: $causeName; BD (delay slot)=$branchDelay; ExcCode=$causeCode" +
             "\nCOP0 EPC: 0x${cpu.cop0[14].toULong().toString(16).uppercase()}" +
             "\nCOP0 BadVAddr: 0x${cpu.cop0[8].toULong().toString(16).uppercase()}" +
             "\nÚltima exceção registrada: código=" + (cpu.lastExceptionCode?.toString() ?: "nenhuma") +
