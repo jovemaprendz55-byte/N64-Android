@@ -27,6 +27,10 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         private set
     var lastExceptionBranchAddress: Long? = null
         private set
+    /** Instruction word fetched at the most recently delivered exception, if fetch succeeded. */
+    var lastExceptionInstructionWord: Int? = null
+        private set
+    private var instructionWordForCurrentStep: Int? = null
     private var delayedTarget: Long? = null
     private var pendingDelaySlotBranchAddress: Long? = null
     private var randomResetByWiredWrite = false
@@ -42,6 +46,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         lastExceptionInstructionAddress = null
         lastExceptionCode = null
         lastExceptionBranchAddress = null
+        lastExceptionInstructionWord = null
+        instructionWordForCurrentStep = null
         delayedTarget = null
         pendingDelaySlotBranchAddress = null
     }
@@ -55,6 +61,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
 
     /** Executes one instruction and converts address-translation faults into architectural COP0 exceptions. */
     fun step() {
+        instructionWordForCurrentStep = null
         val branchAddressForFault = pendingDelaySlotBranchAddress
         randomResetByWiredWrite = false
         try {
@@ -77,6 +84,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     private fun stepInstruction() {
         val instructionAddress = pc
         val instruction = memory.read32(physicalAddress(instructionAddress, R4300Tlb.Access.FETCH))
+        instructionWordForCurrentStep = instruction
         val targetFromPreviousBranch = delayedTarget
         val branchAddressForCurrentInstruction = pendingDelaySlotBranchAddress
         delayedTarget = null
@@ -661,6 +669,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         lastExceptionInstructionAddress = instructionAddress
         lastExceptionCode = exceptionCode
         lastExceptionBranchAddress = branchAddress
+        lastExceptionInstructionWord = instructionWordForCurrentStep
         val status = cop0[12]
         if ((status and 0x2L) == 0L) {
             cop0[14] = branchAddress ?: instructionAddress
