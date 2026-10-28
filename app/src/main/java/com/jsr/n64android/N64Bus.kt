@@ -21,6 +21,9 @@ class N64Bus(
     private var piStatus = 0
     // RSP program counter register (SP_PC); the RSP core itself is not yet emulated.
     private var spPc = 0
+    // Minimal SP control/status state; the RSP execution and DMA engines remain unimplemented.
+    private var spStatus = SP_STATUS_HALT
+    private var spSemaphore = 0
     // Minimal RI register state; these values are placeholders, not full RDRAM timing emulation.
     private val riRegisters = IntArray(RI_REGISTER_COUNT).also { it[RI_SELECT_OFFSET / 4] = RI_SELECT_RESET }
 
@@ -104,6 +107,10 @@ class N64Bus(
         requireAligned(address, 4)
         when (address) {
             SP_PC_REG -> return spPc
+            SP_STATUS_REG -> return spStatus
+            SP_DMA_FULL_REG -> return 0
+            SP_DMA_BUSY_REG -> return 0
+            SP_SEMAPHORE_REG -> return spSemaphore
             PI_DRAM_ADDR_REG -> return piDramAddress
             PI_CART_ADDR_REG -> return piCartAddress
             PI_RD_LEN_REG, PI_WR_LEN_REG -> return 0
@@ -148,6 +155,8 @@ class N64Bus(
         requireAligned(address, 4)
         when (address) {
             SP_PC_REG -> { spPc = value and SP_PC_MASK; return }
+            SP_STATUS_REG -> { writeSpStatusCommand(value); return }
+            SP_SEMAPHORE_REG -> { spSemaphore = 1; return }
             PI_DRAM_ADDR_REG -> { piDramAddress = value and 0x00FFFFFF; return }
             PI_CART_ADDR_REG -> { piCartAddress = value; return }
             // PI DMA direction is named from RDRAM's point of view:
@@ -211,6 +220,26 @@ class N64Bus(
         piStatus = piStatus and PI_STATUS_DMA_BUSY.inv()
     }
 
+    /** Applies the SP_STATUS write-one command bits to the readable status bits. */
+    private fun writeSpStatusCommand(command: Int) {
+        if ((command and SP_STATUS_CMD_CLR_HALT) != 0) spStatus = spStatus and SP_STATUS_HALT.inv()
+        if ((command and SP_STATUS_CMD_SET_HALT) != 0) spStatus = spStatus or SP_STATUS_HALT
+        if ((command and SP_STATUS_CMD_CLR_BROKE) != 0) spStatus = spStatus and SP_STATUS_BROKE.inv()
+        if ((command and SP_STATUS_CMD_CLR_INTR) != 0) spStatus = spStatus and SP_STATUS_INTR.inv()
+        if ((command and SP_STATUS_CMD_SET_INTR) != 0) spStatus = spStatus or SP_STATUS_INTR
+        if ((command and SP_STATUS_CMD_CLR_SSTEP) != 0) spStatus = spStatus and SP_STATUS_SSTEP.inv()
+        if ((command and SP_STATUS_CMD_SET_SSTEP) != 0) spStatus = spStatus or SP_STATUS_SSTEP
+        if ((command and SP_STATUS_CMD_CLR_INTR_BREAK) != 0) spStatus = spStatus and SP_STATUS_INTR_BREAK.inv()
+        if ((command and SP_STATUS_CMD_SET_INTR_BREAK) != 0) spStatus = spStatus or SP_STATUS_INTR_BREAK
+        for (signal in 0 until 8) {
+            val clearCommand = 1 shl (9 + signal * 2)
+            val setCommand = 1 shl (10 + signal * 2)
+            val signalBit = 1 shl (7 + signal)
+            if ((command and clearCommand) != 0) spStatus = spStatus and signalBit.inv()
+            if ((command and setCommand) != 0) spStatus = spStatus or signalBit
+        }
+    }
+
     private fun requireAligned(address: Int, alignment: Int) {
         require(address >= 0 && (address and (alignment - 1)) == 0) {
             "Physical address must be $alignment-byte aligned: 0x${address.toString(16)}."
@@ -221,6 +250,29 @@ class N64Bus(
         const val SP_DMEM_BASE = 0x04000000
         const val SP_IMEM_BASE = 0x04001000
         const val SP_MEM_SIZE = 0x1000
+        const val SP_REG_BASE = 0x04040000
+        const val SP_MEM_ADDR_REG = SP_REG_BASE
+        const val SP_DRAM_ADDR_REG = SP_REG_BASE + 0x04
+        const val SP_RD_LEN_REG = SP_REG_BASE + 0x08
+        const val SP_WR_LEN_REG = SP_REG_BASE + 0x0C
+        const val SP_STATUS_REG = SP_REG_BASE + 0x10
+        const val SP_DMA_FULL_REG = SP_REG_BASE + 0x14
+        const val SP_DMA_BUSY_REG = SP_REG_BASE + 0x18
+        const val SP_SEMAPHORE_REG = SP_REG_BASE + 0x1C
+        const val SP_STATUS_HALT = 1 shl 0
+        const val SP_STATUS_BROKE = 1 shl 1
+        const val SP_STATUS_INTR = 1 shl 2
+        const val SP_STATUS_SSTEP = 1 shl 5
+        const val SP_STATUS_INTR_BREAK = 1 shl 6
+        const val SP_STATUS_CMD_CLR_HALT = 1 shl 0
+        const val SP_STATUS_CMD_SET_HALT = 1 shl 1
+        const val SP_STATUS_CMD_CLR_BROKE = 1 shl 2
+        const val SP_STATUS_CMD_CLR_INTR = 1 shl 3
+        const val SP_STATUS_CMD_SET_INTR = 1 shl 4
+        const val SP_STATUS_CMD_CLR_SSTEP = 1 shl 5
+        const val SP_STATUS_CMD_SET_SSTEP = 1 shl 6
+        const val SP_STATUS_CMD_CLR_INTR_BREAK = 1 shl 7
+        const val SP_STATUS_CMD_SET_INTR_BREAK = 1 shl 8
         const val SP_PC_REG = 0x04080000
         const val SP_PC_MASK = 0x00001FFC
         const val CARTRIDGE_ROM_BASE = 0x10000000
