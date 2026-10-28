@@ -19,7 +19,7 @@ class R4300DiagnosticFetchTest {
             R4300Tlb.Entry(
                 virtualPagePairBase = 0x2000L,
                 asid = 0,
-                evenPage = R4300Tlb.Page(physicalFrameNumber = 0, valid = true, dirty = true),
+                evenPage = R4300Tlb.Page(physicalFrameNumber = 1, valid = true, dirty = true),
                 oddPage = R4300Tlb.Page(physicalFrameNumber = 1, valid = true, dirty = true)
             )
         )
