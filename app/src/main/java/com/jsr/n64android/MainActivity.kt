@@ -114,6 +114,9 @@ class MainActivity : Activity() {
         // The end-of-run trace alone can hide the transition into the looping routine.
         val handoffTrace = ArrayDeque<String>()
         var handoffTraceCount = 0
+        // Capture the first pass through the suspected post-handoff loop, not only
+        // periodic samples thousands of instructions later.
+        val firstLoopTrace = ArrayDeque<String>()
         val cpu = R4300Cpu(bus)
         // This is an artificial IPL3 diagnostic, not a real PIF/CIC boot.
         // The R4300 reset state leaves GPR[29] at zero; the copied routine later
@@ -170,6 +173,29 @@ class MainActivity : Activity() {
                     )
                     handoffTraceCount++
                 }
+                if (inPostHandoffLoop && firstLoopTrace.size < 48) {
+                    firstLoopTrace.addLast(
+                        "step=$stepIndex PC=0x" + pc.toULong().toString(16).uppercase().padStart(16, '0') +
+                        " INST=0x" + instruction.toUInt().toString(16).uppercase().padStart(8, '0') +
+                        " v0=0x" + cpu.gpr[2].toULong().toString(16).uppercase() +
+                        " at=0x" + cpu.gpr[1].toULong().toString(16).uppercase() +
+                        " a0=0x" + cpu.gpr[4].toULong().toString(16).uppercase() +
+                        " a1=0x" + cpu.gpr[5].toULong().toString(16).uppercase() +
+                        " a2=0x" + cpu.gpr[6].toULong().toString(16).uppercase() +
+                        " a3=0x" + cpu.gpr[7].toULong().toString(16).uppercase() +
+                        " t0=0x" + cpu.gpr[8].toULong().toString(16).uppercase() +
+                        " t1=0x" + cpu.gpr[9].toULong().toString(16).uppercase() +
+                        " t2=0x" + cpu.gpr[10].toULong().toString(16).uppercase() +
+                        " t3=0x" + cpu.gpr[11].toULong().toString(16).uppercase() +
+                        " t4=0x" + cpu.gpr[12].toULong().toString(16).uppercase() +
+                        " t5=0x" + cpu.gpr[13].toULong().toString(16).uppercase() +
+                        " t6=0x" + cpu.gpr[14].toULong().toString(16).uppercase() +
+                        " t7=0x" + cpu.gpr[15].toULong().toString(16).uppercase() +
+                        " s0=0x" + cpu.gpr[16].toULong().toString(16).uppercase() +
+                        " s1=0x" + cpu.gpr[17].toULong().toString(16).uppercase() +
+                        " s2=0x" + cpu.gpr[18].toULong().toString(16).uppercase()
+                    )
+                }
                 // Sampling prevents heavy allocation churn during long diagnostics on Android phones.
                 if (stepIndex % 256 == 0 || stepIndex >= maxSteps - 80) {
                     trace.addLast(
@@ -208,6 +234,7 @@ class MainActivity : Activity() {
             "\nCOP0 EPC: 0x${cpu.cop0[14].toULong().toString(16).uppercase()}" +
             "\nCOP0 BadVAddr: 0x${cpu.cop0[8].toULong().toString(16).uppercase()}" +
             "\n\nIsto NÃO é o boot real do jogo. O IPL3 foi executado diretamente como teste; PIF/CIC e dispositivos ainda faltam." +
+            "\n\nPRIMEIRA PASSAGEM PELO LOOP KSEG0 (máximo 48):\n" + firstLoopTrace.joinToString("\n") +
             "\n\nRASTRO DAS ÚLTIMAS INSTRUÇÕES (máximo 80):\n" + trace.joinToString("\n")
         val registerDump = (1..31).joinToString("\n") { index ->
             "GPR[$index]: 0x" + cpu.gpr[index].toULong().toString(16).uppercase().padStart(16, '0')
