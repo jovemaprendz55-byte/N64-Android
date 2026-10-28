@@ -70,7 +70,7 @@ class N64BusCpuIntegrationTest {
         val bus = N64Bus(ram = N64Memory(8 * 1024), cartridgeRom = rom)
         bus.write32(N64Bus.PI_DRAM_ADDR_REG, 0x100)
         bus.write32(N64Bus.PI_CART_ADDR_REG, N64Bus.CARTRIDGE_ROM_BASE)
-        bus.write32(N64Bus.PI_RD_LEN_REG, rom.size - 1)
+        bus.write32(N64Bus.PI_WR_LEN_REG, rom.size - 1)
 
         val cpu = R4300Cpu(bus)
         cpu.setProgramCounter(0xFFFFFFFF80000100UL.toLong())
