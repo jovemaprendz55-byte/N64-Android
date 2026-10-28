@@ -25,7 +25,7 @@ class N64BusSpDmaTest {
     fun spWriteLengthCopiesImemIntoRdram() {
         val ram = N64Memory(8 * 1024)
         val bus = N64Bus(ram = ram)
-        bus.write32(N64Bus.SP_IMEM_BASE + 0x40, 0x89ABCDEF)
+        bus.write32(N64Bus.SP_IMEM_BASE + 0x40, 0x89ABCDEF.toInt())
 
         bus.write32(N64Bus.SP_MEM_ADDR_REG, 0x1040)
         bus.write32(N64Bus.SP_DRAM_ADDR_REG, 0x200)
