@@ -8,7 +8,7 @@ class R4300DiagnosticFetchTest {
     @Test
     fun diagnosticInstructionFetchUsesTlbForKusegAddress() {
         val memory = N64Memory(0x3000)
-        val expectedInstruction = 0x2402002AL // addiu v0, zero, 42
+        val expectedInstruction = 0x2402002A // addiu v0, zero, 42
         memory.write32(0x1000, expectedInstruction)
 
         val cpu = R4300Cpu(memory)
