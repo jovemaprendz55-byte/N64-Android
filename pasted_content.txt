@@ -8,6 +8,7 @@ Cause decodificado: TLB Load/Fetch Miss ou Invalid; BD (delay slot)=false; ExcCo
 COP0 EPC: 0x7F000BD0
 COP0 BadVAddr: 0x7F000BD0
 Tipo de acesso da exceção: FETCH
+Estado TLB no endereço da falha: TLB entry=1 VPN2=0x70000000 ASID=0x0 PageMask=0x7FE000 page=even PFN=0x0 valid=true dirty=true global=true
 Última exceção registrada: código=2 PC=0x7F000BD0 INST=0xN/A delay-slot da branch=0xnão
 
 Isto NÃO é o boot real do jogo. O IPL3 foi executado diretamente como teste; PIF/CIC e dispositivos ainda faltam.
