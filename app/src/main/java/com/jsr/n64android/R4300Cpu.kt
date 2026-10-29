@@ -15,6 +15,10 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         private set
     /** Basic COP0 storage with initial syscall/break exception and ERET handling. */
     val cop0: LongArray = LongArray(32)
+    /** Floating-point register storage (raw 32-bit words; full paired-double semantics remain incomplete). */
+    val fpr: LongArray = LongArray(32)
+    /** Floating-point control registers; FCR31 holds the FPU condition/status flags. */
+    val fcr: LongArray = LongArray(32)
     /** Initial 32-entry TLB model; opt-in until architectural TLB exceptions are wired. */
     val tlb: R4300Tlb = R4300Tlb()
     var tlbEnabled: Boolean = false
@@ -41,6 +45,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         hi = 0L
         lo = 0L
         cop0.fill(0L)
+        fpr.fill(0L)
+        fcr.fill(0L)
         tlb.clear()
         tlbEnabled = false
         pc = RESET_VECTOR
@@ -418,6 +424,29 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     }
                     else -> throw ReservedInstructionFault(
                         "R4300 COP0 rs=0x${copRs.toString(16)} at 0x${instructionAddress.toString(16)}"
+                    )
+                }
+            }
+            0x11 -> { // COP1 register/control transfers (initial subset)
+                when (rs) {
+                    0x00 -> { // MFC1 rt, fs
+                        if ((instruction and 0x7FF) != 0) throw ReservedInstructionFault("Malformed MFC1 reserved fields")
+                        gpr[rt] = fpr[rd].toInt().toLong()
+                    }
+                    0x02 -> { // CFC1 rt, fs
+                        if ((instruction and 0x7FF) != 0) throw ReservedInstructionFault("Malformed CFC1 reserved fields")
+                        gpr[rt] = fcr[rd].toInt().toLong()
+                    }
+                    0x04 -> { // MTC1 rt, fs
+                        if ((instruction and 0x7FF) != 0) throw ReservedInstructionFault("Malformed MTC1 reserved fields")
+                        fpr[rd] = gpr[rt].toInt().toLong() and 0xFFFFFFFFL
+                    }
+                    0x06 -> { // CTC1 rt, fs; FCR0 is read-only.
+                        if ((instruction and 0x7FF) != 0) throw ReservedInstructionFault("Malformed CTC1 reserved fields")
+                        if (rd != 0) fcr[rd] = gpr[rt].toInt().toLong()
+                    }
+                    else -> throw ReservedInstructionFault(
+                        "R4300 COP1 transfer/arithmetic rs=0x${rs.toString(16)} at 0x${instructionAddress.toString(16)}; FPU arithmetic is not implemented yet"
                     )
                 }
             }
