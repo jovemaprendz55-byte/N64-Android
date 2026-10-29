@@ -355,8 +355,10 @@ class MainActivity : Activity() {
                 }
             }
         } catch (error: Exception) {
-            val failedPc = lastAttemptedPc.toULong().toString(16).uppercase().padStart(16, '0')
-            val failedInstruction = lastAttemptedInstruction?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"
+            val failurePc = cpu.diagnosticInstructionAddress ?: lastAttemptedPc
+            val failureInstruction = cpu.diagnosticInstructionWord ?: lastAttemptedInstruction
+            val failedPc = failurePc.toULong().toString(16).uppercase().padStart(16, '0')
+            val failedInstruction = failureInstruction?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"
             stopReason = "Parou em erro/área não implementada: ${error.message ?: error.javaClass.simpleName}; PC=0x$failedPc INST=0x$failedInstruction"
         }
         val causeValue = cpu.cop0[13]
