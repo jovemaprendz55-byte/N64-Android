@@ -1,7 +1,7 @@
 DIAGNÓSTICO PARCIAL DA ROM
 Passos executados: 11188099
 PC final: 0x7000D2D0
-Motivo: Parou em erro/área não implementada: Unmapped N64 physical read at 0x5000508.; PC=0x000000007000D2D0 INST=0x408B1000
+Motivo: Parou em erro/área não implementada: Unmapped N64 physical read at 0x5000508.; PC=0x000000007000D2D0 INST=0x8D4B0508; acesso=READ VADDR=0xFFFFFFFFA5000508 PADDR=0x5000508
 COP0 Status: 0x20000000
 COP0 Cause: 0x0
 Cause decodificado: Exceção MIPS código 0; BD (delay slot)=false; ExcCode=0
