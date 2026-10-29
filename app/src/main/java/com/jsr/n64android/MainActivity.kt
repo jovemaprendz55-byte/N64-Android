@@ -490,6 +490,8 @@ class MainActivity : Activity() {
                 "; tipo=" + (cpu.lastTlbFaultAccessType ?: "N/A") +
                 "; motivo=" + (cpu.lastTlbFaultKind?.name ?: "N/A") +
             "\nEstado TLB no endereço da falha: " + cpu.describeTlbAddressForDiagnostic(tlbFaultAddress) +
+            "\n\nENTRADAS TLB ATIVAS NO MOMENTO DA FALHA:\n" + cpu.lastTlbEntrySnapshot +
+            "\n\nGRAVAÇÕES TLBWI/TLBWR (últimas 64):\n" + (if (cpu.diagnosticTlbWriteHistory.isEmpty()) "(nenhuma gravação TLB registrada)" else cpu.diagnosticTlbWriteHistory.joinToString("\n")) +
             "\nÚltima exceção registrada: código=" + (cpu.lastExceptionCode?.toString() ?: "nenhuma") +
             " PC=0x" + (cpu.lastExceptionInstructionAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A") +
             " INST=0x" + (cpu.lastExceptionInstructionWord?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A") +
