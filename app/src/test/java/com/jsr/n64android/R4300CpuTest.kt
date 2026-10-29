@@ -1690,6 +1690,14 @@ class R4300CpuTest {
         assertEquals(faultAddress, cpu.lastTlbFaultVirtualAddress)
         assertEquals("FETCH", cpu.lastTlbFaultAccessType)
         assertEquals(R4300Tlb.FaultKind.MISS, cpu.lastTlbFaultKind)
+
+        // A later fetch from the refill vector updates the live access diagnostics,
+        // but must not overwrite the snapshot of the original TLB fault.
+        cpu.step()
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.diagnosticVirtualAddress)
+        assertEquals(faultAddress, cpu.lastTlbFaultVirtualAddress)
+        assertEquals("FETCH", cpu.lastTlbFaultAccessType)
+        assertEquals(R4300Tlb.FaultKind.MISS, cpu.lastTlbFaultKind)
     }
 
 
