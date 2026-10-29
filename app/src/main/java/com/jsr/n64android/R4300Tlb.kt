@@ -97,7 +97,7 @@ class R4300Tlb(private val entryCount: Int = ENTRY_COUNT) {
         if (access == Access.WRITE && !page.dirty) throw TlbFault(FaultKind.MODIFIED, virtualAddress, access)
 
         // PFN bits below the selected page size are ignored by hardware.
-        val physicalPageBase = (page.physicalFrameNumber.toLong() shl PAGE_SHIFT) and (pageSize.inv())
+        val physicalPageBase = (page.physicalFrameNumber.toLong() shl PAGE_SHIFT) and -pageSize
         return (physicalPageBase or offset).toInt()
     }
 
