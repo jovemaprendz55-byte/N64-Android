@@ -831,6 +831,14 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         address: Long,
         access: R4300Tlb.Access = R4300Tlb.Access.READ
     ): Int {
+        // Record the attempted access before translation, because a TLB fault throws.
+        diagnosticVirtualAddress = address
+        diagnosticPhysicalAddress = null
+        diagnosticAccessType = when (access) {
+            R4300Tlb.Access.FETCH -> "FETCH"
+            R4300Tlb.Access.READ -> "READ"
+            R4300Tlb.Access.WRITE -> "WRITE"
+        }
         // Treat sign-extended 32-bit virtual addresses as 32-bit N64 addresses.
         val virtual32 = address and 0xFFFFFFFFL
         val segment = (virtual32 ushr 29) and 0x7L
@@ -845,13 +853,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         require(physical <= Int.MAX_VALUE.toLong()) {
             "Address cannot be represented by this initial RAM bus: 0x${address.toString(16)}"
         }
-        diagnosticVirtualAddress = address
         diagnosticPhysicalAddress = physical.toInt()
-        diagnosticAccessType = when (access) {
-            R4300Tlb.Access.FETCH -> "FETCH"
-            R4300Tlb.Access.READ -> "READ"
-            R4300Tlb.Access.WRITE -> "WRITE"
-        }
         return physical.toInt()
     }
 
