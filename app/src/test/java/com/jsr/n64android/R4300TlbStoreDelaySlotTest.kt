@@ -23,6 +23,6 @@ class R4300TlbStoreDelaySlotTest {
         assertEquals(0x7020159FL, cpu.cop0[8]) // BadVAddr preserves the unaligned byte address
         assertEquals(0xFFFFFFFF80000004UL.toLong(), cpu.lastExceptionInstructionAddress)
         assertEquals((0x28 shl 26) or (1 shl 21) or (2 shl 16) or 0x059F, cpu.lastExceptionInstructionWord)
-        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc) // First-level TLB refill vector when EXL was clear
     }
 }
