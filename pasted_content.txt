@@ -7,8 +7,10 @@ COP0 Cause: 0x8
 Cause decodificado: TLB Load/Fetch Miss ou Invalid; BD (delay slot)=false; ExcCode=2
 COP0 EPC: 0x7F000BD0
 COP0 BadVAddr: 0x7F000BD0
+Último acesso tentado: VADDR=0x7F000BD0; PADDR=N/A; tipo=FETCH
 Tipo de acesso da exceção: FETCH
-Estado TLB no endereço da falha: TLB entry=1 VPN2=0x70000000 ASID=0x0 PageMask=0x7FE000 page=even PFN=0x0 valid=true dirty=true global=true
+Última falha TLB preservada: VADDR=0x7F000BD0; tipo=FETCH; motivo=MISS
+Estado TLB no endereço da falha: TLB MISS: VADDR=0x7F000BD0, ASID=0x0; no matching VPN2/ASID entry
 Última exceção registrada: código=2 PC=0x7F000BD0 INST=0xN/A delay-slot da branch=0xnão
 
 Isto NÃO é o boot real do jogo. O IPL3 foi executado diretamente como teste; PIF/CIC e dispositivos ainda faltam.
