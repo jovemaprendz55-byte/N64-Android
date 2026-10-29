@@ -674,6 +674,34 @@ class R4300CpuTest {
         assertEquals(0x00400008L, cpu.pc)
     }
 
+    @Test fun mtc0SequenceProgramsTlbEntryThroughRealInstructions() {
+        val memory = N64Memory(128)
+        fun mtc0(rt: Int, rd: Int) =
+            (0x10 shl 26) or (0x04 shl 21) or (rt shl 16) or (rd shl 11)
+        memory.write32(0, mtc0(1, 0))  // Index
+        memory.write32(4, mtc0(2, 5))  // PageMask
+        memory.write32(8, mtc0(3, 10)) // EntryHi
+        memory.write32(12, mtc0(4, 2)) // EntryLo0
+        memory.write32(16, mtc0(5, 3)) // EntryLo1
+        memory.write32(20, cop0Co(0x02)) // TLBWI
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 4L
+        cpu.gpr[2] = 0L
+        cpu.gpr[3] = 0x00400007L // VPN2 + ASID 7
+        cpu.gpr[4] = (1L shl 6) or 0x6L
+        cpu.gpr[5] = (2L shl 6) or 0x6L
+
+        repeat(6) { cpu.step() }
+
+        cpu.tlbEnabled = true
+        assertEquals(0x1000, cpu.tlb.translate(0x00400000L, 7, R4300Tlb.Access.READ))
+        assertEquals(0x2000, cpu.tlb.translate(0x00401000L, 7, R4300Tlb.Access.READ))
+        assertEquals(1, cpu.diagnosticTlbWriteHistory.size)
+        assertTrue(cpu.diagnosticTlbWriteHistory.single().contains("TLBWI"))
+        assertTrue(cpu.diagnosticTlbWriteHistory.single().contains("index=4"))
+    }
+
     @Test fun cop0TlbwiTlbrAndTlbpRoundTripEntry() {
         val memory = N64Memory(64)
         memory.write32(0, cop0Co(0x02)) // TLBWI
