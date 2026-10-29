@@ -59,6 +59,11 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     private var delayedTarget: Long? = null
     private var pendingDelaySlotBranchAddress: Long? = null
     private var randomResetByWiredWrite = false
+    /** Bounded record of actual TLBWI/TLBWR operations for ROM diagnostics. */
+    val diagnosticTlbWriteHistory: MutableList<String> = mutableListOf()
+    /** TLB contents frozen when the first architectural TLB fault is delivered. */
+    var lastTlbEntrySnapshot: String = "(nenhuma entrada capturada)"
+        private set
 
     fun reset() {
         gpr.fill(0L)
@@ -724,13 +729,37 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         val entryHi = cop0[10] and 0xFFFFFFFFL
         val pageMask = R4300Tlb.normalizePageMask(cop0[5])
         val pairMask = R4300Tlb.pairAddressMask(pageMask)
-        tlb.write(index, R4300Tlb.Entry(
+        val entry = R4300Tlb.Entry(
             virtualPagePairBase = entryHi and pairMask,
             asid = (entryHi and 0xFFL).toInt(),
             evenPage = decodeEntryLo(cop0[2]),
             oddPage = decodeEntryLo(cop0[3]),
             pageMask = pageMask
-        ))
+        )
+        tlb.write(index, entry)
+        val operation = if ((instructionWordForCurrentStep?.and(0x3F)) == 0x06) "TLBWR" else "TLBWI"
+        val line = operation + " PC=0x" + (instructionAddressForCurrentStep ?: pc).toULong().toString(16).uppercase() +
+            " index=$index PageMask=0x" + pageMask.toString(16).uppercase() +
+            " EntryHi=0x" + entryHi.toString(16).uppercase() +
+            " EntryLo0=0x" + cop0[2].toUInt().toString(16).uppercase().padStart(8, '0') +
+            " EntryLo1=0x" + cop0[3].toUInt().toString(16).uppercase().padStart(8, '0')
+        diagnosticTlbWriteHistory.add(line)
+        if (diagnosticTlbWriteHistory.size > 64) diagnosticTlbWriteHistory.removeAt(0)
+    }
+
+    private fun snapshotTlbEntriesForDiagnostic(): String {
+        val lines = mutableListOf<String>()
+        for (index in 0 until R4300Tlb.ENTRY_COUNT) {
+            val entry = try { tlb.read(index) } catch (_: IllegalStateException) { null }
+            if (entry != null) {
+                lines.add("TLB[$index] VPN2=0x" + entry.virtualPagePairBase.toString(16).uppercase() +
+                    " ASID=0x" + entry.asid.toString(16).uppercase() +
+                    " PageMask=0x" + entry.pageMask.toString(16).uppercase() +
+                    " Lo0=0x" + encodeEntryLo(entry.evenPage).toString(16).uppercase().padStart(8, '0') +
+                    " Lo1=0x" + encodeEntryLo(entry.oddPage).toString(16).uppercase().padStart(8, '0'))
+            }
+        }
+        return if (lines.isEmpty()) "(nenhuma entrada TLB inicializada)" else lines.joinToString("\\n")
     }
 
     private fun enterException(instructionAddress: Long, exceptionCode: Int, branchAddress: Long?) {
@@ -759,6 +788,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             R4300Tlb.Access.WRITE -> "WRITE"
         }
         lastTlbFaultKind = fault.kind
+        lastTlbEntrySnapshot = snapshotTlbEntriesForDiagnostic()
         lastExceptionAccessType = when (fault.access) {
             R4300Tlb.Access.FETCH -> "FETCH"
             R4300Tlb.Access.READ -> "READ"
