@@ -419,7 +419,7 @@ class MainActivity : Activity() {
         // For TLB exceptions, COP0 BadVAddr is authoritative. A later fetch of the
         // exception vector may overwrite the last attempted-access diagnostic address.
         val tlbFaultAddress = if (causeCode == 2 || causeCode == 3) {
-            cpu.cop0[8]
+            cpu.lastTlbFaultVirtualAddress ?: cpu.cop0[8]
         } else {
             cpu.diagnosticVirtualAddress ?: cpu.cop0[8]
         }
@@ -436,6 +436,10 @@ class MainActivity : Activity() {
             "; PADDR=" + (cpu.diagnosticPhysicalAddress?.let { "0x" + it.toUInt().toString(16).uppercase() } ?: "N/A") +
             "; tipo=" + (cpu.diagnosticAccessType ?: "N/A") +
             "\nTipo de acesso da exceção: " + (cpu.lastExceptionAccessType ?: "N/A") +
+            "\nÚltima falha TLB preservada: VADDR=0x" +
+                (cpu.lastTlbFaultVirtualAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A") +
+                "; tipo=" + (cpu.lastTlbFaultAccessType ?: "N/A") +
+                "; motivo=" + (cpu.lastTlbFaultKind?.name ?: "N/A") +
             "\nEstado TLB no endereço da falha: " + cpu.describeTlbAddressForDiagnostic(tlbFaultAddress) +
             "\nÚltima exceção registrada: código=" + (cpu.lastExceptionCode?.toString() ?: "nenhuma") +
             " PC=0x" + (cpu.lastExceptionInstructionAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A") +
