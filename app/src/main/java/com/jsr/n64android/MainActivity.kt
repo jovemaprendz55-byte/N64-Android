@@ -233,6 +233,7 @@ class MainActivity : Activity() {
                 } else {
                     0
                 }
+                if (needsInstructionForTrace) lastAttemptedInstruction = instruction
                 if ((inIpl3Loop || inPostHandoffLoop) && stepIndex % 4096 == 0) {
                     // Sample loop state periodically to avoid millions of temporary strings/allocations.
                     // The previous window stopped at 0x4B0 and could hide the final branch/jump
