@@ -228,4 +228,18 @@ class R4300TlbTest {
         }
     }
 
+    @Test fun largePageProbeRejectsAddressOutsideConfiguredVirtualPair() {
+        val tlb = R4300Tlb()
+        tlb.write(1, R4300Tlb.Entry(
+            virtualPagePairBase = 0x70000000L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
+            pageMask = 0x7FE000L
+        ))
+
+        assertEquals(1, tlb.probe(0x70000BD0L, 0))
+        assertEquals(null, tlb.probe(0x7F000BD0L, 0))
+    }
+
 }
