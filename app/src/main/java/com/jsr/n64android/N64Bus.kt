@@ -42,6 +42,9 @@ class N64Bus(
     private var aiControl = 0
     private var aiDacRate = 0
     private var aiBitRate = 0
+    // Minimal VI register model: readable/writable configuration registers and a static current-line value.
+    private val viRegisters = IntArray(VI_REGISTER_COUNT)
+    private var viCurrentLine = 0
 
     /**
      * Identifies a small supported subset of Nintendo CIC variants from the IPL3 word sum.
@@ -155,6 +158,8 @@ class N64Bus(
             AI_STATUS_REG -> return 0 // No queued audio and no modeled AI interrupt.
             AI_DACRATE_REG -> return aiDacRate
             AI_BITRATE_REG -> return aiBitRate
+            VI_CURRENT_REG -> return viCurrentLine
+            in VI_REG_BASE until VI_REG_BASE + VI_REG_SIZE -> return viRegisters[(address - VI_REG_BASE) / 4]
         }
         return (read8(address) shl 24) or (read8(address + 1) shl 16) or
             (read8(address + 2) shl 8) or read8(address + 3)
@@ -240,6 +245,11 @@ class N64Bus(
             AI_STATUS_REG -> { return } // Write clears the AI interrupt; interrupts are not yet modeled.
             AI_DACRATE_REG -> { aiDacRate = value and 0x3FFF; return }
             AI_BITRATE_REG -> { aiBitRate = value and 0xF; return }
+            VI_CURRENT_REG -> { viCurrentLine = 0; return } // Writing CURRENT acknowledges VI interrupt; interrupts are not yet modeled.
+            in VI_REG_BASE until VI_REG_BASE + VI_REG_SIZE -> {
+                viRegisters[(address - VI_REG_BASE) / 4] = value
+                return
+            }
         }
         write8(address, value ushr 24)
         write8(address + 1, value ushr 16)
@@ -498,5 +508,9 @@ class N64Bus(
         const val AI_STATUS_REG = AI_REG_BASE + 0x0C
         const val AI_DACRATE_REG = AI_REG_BASE + 0x10
         const val AI_BITRATE_REG = AI_REG_BASE + 0x14
+        const val VI_REG_BASE = 0x04400000
+        const val VI_REG_SIZE = 0x38
+        const val VI_CURRENT_REG = VI_REG_BASE + 0x10
+        const val VI_REGISTER_COUNT = VI_REG_SIZE / 4
     }
 }
