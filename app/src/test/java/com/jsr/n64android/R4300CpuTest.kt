@@ -6,6 +6,22 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class R4300CpuTest {
+
+    @Test fun unmappedDataReadKeepsTheFaultingInstructionInDiagnosticContext() {
+        val instruction = (0x23 shl 26) or (9 shl 21) or (8 shl 16) // lw $t0, 0($t1)
+        val bus = N64Bus(ram = N64Memory(8 * 1024))
+        bus.write32(0, instruction)
+        val cpu = R4300Cpu(bus)
+        val startPc = 0xFFFFFFFF80000000UL.toLong()
+        cpu.setProgramCounter(startPc)
+        cpu.gpr[9] = 0x05000508L
+
+        assertThrows(UnsupportedOperationException::class.java) { cpu.step() }
+
+        assertEquals(startPc, cpu.diagnosticInstructionAddress)
+        assertEquals(instruction, cpu.diagnosticInstructionWord)
+    }
+
     @Test fun cop1ControlAndDataTransfersMoveRawWords() {
         val memory = N64Memory(32)
         // CFC1 $v0, $31 (the instruction reached by the latest GoldenEye report).
