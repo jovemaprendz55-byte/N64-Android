@@ -168,7 +168,7 @@ class MainActivity : Activity() {
         // The BNE at 0x8000018C compares t0 with ra (0x00100000), not with t1).
         // t0 advances by four bytes, so this routine can need about 262,144 iterations
         // (~5.2 million instructions) before reaching its end. Keep a bounded 6M-step test.
-        val maxSteps = 8_000_000
+        val maxSteps = 12_000_000
         var stopReason = "Limite de $maxSteps passos alcançado (rastro amostrado a cada 256 instruções)."
         try {
             for (stepIndex in 0 until maxSteps) {
