@@ -803,6 +803,26 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         }
     }
 
+    /** Read-only summary of how the diagnostic address would be handled by the current MMU state. */
+    fun describeTlbAddressForDiagnostic(address: Long): String {
+        val virtual32 = address and 0xFFFFFFFFL
+        val segment = (virtual32 ushr 29) and 0x7L
+        if (segment == 4L || segment == 5L) {
+            return "KSEG bypass: VADDR=0x${virtual32.toString(16).uppercase()} -> PADDR=0x${(virtual32 and 0x1FFFFFFFL).toString(16).uppercase()}"
+        }
+        if (!tlbEnabled) {
+            return "TLB disabled; compatibility translation is active"
+        }
+        val asid = (cop0[10].toInt() and 0xFF)
+        val index = tlb.probe(virtual32, asid)
+            ?: return "TLB MISS: VADDR=0x${virtual32.toString(16).uppercase()}, ASID=0x${asid.toString(16).uppercase()}; no matching VPN2/ASID entry"
+        val entry = tlb.read(index)
+        val pageSize = R4300Tlb.pageSize(entry.pageMask)
+        val odd = (virtual32 and pageSize) != 0L
+        val page = if (odd) entry.oddPage else entry.evenPage
+        return "TLB entry=$index VPN2=0x${entry.virtualPagePairBase.toString(16).uppercase()} ASID=0x${entry.asid.toString(16).uppercase()} PageMask=0x${entry.pageMask.toString(16).uppercase()} page=${if (odd) "odd" else "even"} PFN=0x${page.physicalFrameNumber.toString(16).uppercase()} valid=${page.valid} dirty=${page.dirty} global=${page.global}"
+    }
+
     /** Translate a virtual instruction address for diagnostics using the same TLB rules as CPU fetch. */
     fun readInstructionForDiagnostic(address: Long): Int =
         memory.read32(physicalAddress(address, R4300Tlb.Access.FETCH))
