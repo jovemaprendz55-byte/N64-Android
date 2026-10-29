@@ -4121,4 +4121,46 @@ class R4300CpuTest {
         assertEquals(0L, (cpu.cop0[13] ushr 2) and 0x1FL) // No exception code was raised.
         assertEquals(0L, cpu.cop0[12] and 0x2L) // EXL remains clear.
     }
+
+    @Test fun tlbDiagnosticExplainsKsegBypassWithoutChangingCpuState() {
+        val cpu = R4300Cpu(N64Memory(64))
+        cpu.tlbEnabled = true
+
+        val description = cpu.describeTlbAddressForDiagnostic(0xFFFFFFFF80000180UL.toLong())
+
+        assertTrue(description.contains("KSEG bypass"))
+        assertTrue(description.contains("VADDR=0x80000180"))
+        assertTrue(description.contains("PADDR=0x180"))
+    }
+
+    @Test fun tlbDiagnosticReportsMissForUnmappedVirtualAddress() {
+        val cpu = R4300Cpu(N64Memory(64))
+        cpu.tlbEnabled = true
+        cpu.cop0[10] = 3L // EntryHi ASID
+
+        val description = cpu.describeTlbAddressForDiagnostic(0x00400000L)
+
+        assertTrue(description.contains("TLB MISS"))
+        assertTrue(description.contains("VADDR=0x400000"))
+        assertTrue(description.contains("ASID=0x3"))
+    }
+
+    @Test fun tlbDiagnosticReportsMatchingEntryAndSelectedPageFlags() {
+        val cpu = R4300Cpu(N64Memory(64))
+        cpu.tlbEnabled = true
+        cpu.tlb.write(2, R4300Tlb.Entry(
+            virtualPagePairBase = 0x00400000L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(0x123, valid = true, dirty = false),
+            oddPage = R4300Tlb.Page(0x456, valid = false, dirty = true)
+        ))
+
+        val description = cpu.describeTlbAddressForDiagnostic(0x00400000L)
+
+        assertTrue(description.contains("TLB entry=2"))
+        assertTrue(description.contains("page=even"))
+        assertTrue(description.contains("PFN=0x123"))
+        assertTrue(description.contains("valid=true"))
+        assertTrue(description.contains("dirty=false"))
+    }
 }
