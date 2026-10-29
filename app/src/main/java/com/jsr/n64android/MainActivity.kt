@@ -147,6 +147,14 @@ class MainActivity : Activity() {
         cpu.gpr[29] = 0xFFFFFFFFA07FFFE0UL.toLong()
         cpu.setProgramCounter(0xFFFFFFFFA4000040UL.toLong())
         var executed = 0
+        // Count recurring PCs in the post-IPL3 0x70000000 region. The latest
+        // report reaches 0x7020090C without an exception but cycles through several
+        // routines, so a two-PC detector alone cannot identify the hot loop.
+        // Cap unique addresses to keep memory bounded on mid-range Android devices.
+        val postHandoffPcVisits = LinkedHashMap<Long, Int>()
+        val postHandoffPcRangeStart = 0x70000000L
+        val postHandoffPcRangeEnd = 0x70400000L
+        val maxTrackedPostHandoffPcs = 2048
         // Detect a tight two-PC loop early instead of spending millions of steps
         // repeatedly executing a branch and its delay slot. Keep the full trace
         // and register dump so the first stable loop can be diagnosed.
@@ -161,6 +169,11 @@ class MainActivity : Activity() {
         try {
             for (stepIndex in 0 until maxSteps) {
                 val pc = cpu.pc
+                if (pc >= postHandoffPcRangeStart && pc < postHandoffPcRangeEnd &&
+                    (postHandoffPcVisits.containsKey(pc) || postHandoffPcVisits.size < maxTrackedPostHandoffPcs)
+                ) {
+                    postHandoffPcVisits[pc] = (postHandoffPcVisits[pc] ?: 0) + 1
+                }
                 if (pc == twoStepsAgoPc && pc != previousPc) {
                     repeatedTwoPcVisits++
                 } else {
@@ -374,6 +387,16 @@ class MainActivity : Activity() {
             if (terminalPathTrace.isEmpty()) "O PC não passou pelo intervalo 0x800001C0..0x800001D0." else terminalPathTrace.joinToString("\n")
         diagnostic += "\n\nLINHA DO TEMPO DO LOOP IPL3 (registradores antes da instrução):\n" +
             if (loopCheckpoints.isEmpty()) "O PC não passou pelo intervalo monitorado." else loopCheckpoints.joinToString("\n")
+        val hotPostHandoffPcs = postHandoffPcVisits.entries
+            .sortedByDescending { it.value }
+            .take(24)
+            .joinToString("\n") { (address, visits) ->
+                "PC=0x" + address.toULong().toString(16).uppercase().padStart(8, '0') +
+                    " visitas=" + visits
+            }
+        diagnostic += "\n\nPCs MAIS VISITADOS APÓS A TRANSFERÊNCIA (região 0x70000000..0x703FFFFF):\n" +
+            if (hotPostHandoffPcs.isEmpty()) "Nenhum PC dessa região foi amostrado." else
+                hotPostHandoffPcs + "\nTotal de PCs distintos rastreados: " + postHandoffPcVisits.size
         diagnostic += "\n\nTODOS OS REGISTRADORES GPR NO PONTO DE PARADA:\n" + registerDump
         diagnostic += "\n\nRDRAM NOS ENDEREÇOS DE INTERESSE:\n" + ramDump
         diagnostic += "\n\nSP DMEM PERTO DA ORIGEM DE CÓPIA (0xA4000774):\n" + spDmemDump
