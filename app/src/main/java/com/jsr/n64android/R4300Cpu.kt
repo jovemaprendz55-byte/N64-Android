@@ -358,6 +358,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                             2, 3 -> { // EntryLo0/1: PFN [25:6] and flags [5:0] are writable.
                                 cop0[copRd] = value and 0x03FFFFFFL
                             }
+                            5 -> { // PageMask: supported paired-page size encoding.
+                                cop0[5] = R4300Tlb.normalizePageMask(value)
+                            }
                             10 -> { // EntryHi: VPN2 [31:13] and ASID [7:0] are writable.
                                 cop0[10] = value and 0xFFFFE0FFL
                             }
@@ -377,10 +380,12 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                                     null // An uninitialized model entry reads as invalid/zero.
                                 }
                                 if (entry == null) {
+                                    cop0[5] = 0L
                                     cop0[10] = 0L
                                     cop0[2] = 0L
                                     cop0[3] = 0L
                                 } else {
+                                    cop0[5] = entry.pageMask
                                     cop0[10] = (entry.virtualPagePairBase or entry.asid.toLong()) and 0xFFFFFFFFL
                                     cop0[2] = encodeEntryLo(entry.evenPage)
                                     cop0[3] = encodeEntryLo(entry.oddPage)
@@ -661,11 +666,14 @@ class R4300Cpu(private val memory: N64AddressSpace) {
 
     private fun writeTlbEntry(index: Int) {
         val entryHi = cop0[10] and 0xFFFFFFFFL
+        val pageMask = R4300Tlb.normalizePageMask(cop0[5])
+        val pairMask = R4300Tlb.pairAddressMask(pageMask)
         tlb.write(index, R4300Tlb.Entry(
-            virtualPagePairBase = entryHi and R4300Tlb.PAGE_PAIR_MASK,
+            virtualPagePairBase = entryHi and pairMask,
             asid = (entryHi and 0xFFL).toInt(),
             evenPage = decodeEntryLo(cop0[2]),
-            oddPage = decodeEntryLo(cop0[3])
+            oddPage = decodeEntryLo(cop0[3]),
+            pageMask = pageMask
         ))
     }
 
