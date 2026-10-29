@@ -289,6 +289,8 @@ class N64Bus(
 
     /** Copies exactly 64 bytes from RDRAM into PIF RAM (SI write DMA). */
     private fun dmaRdramToPif() {
+        // Invalid PIF targets do not start a transfer; preserve the programmed register value.
+        if (siPifWriteAddress != PIF_RAM_BASE) return
         val source = siDramAddress and 0x00FFFFFF
         require(source <= ram.size - PIF_RAM_SIZE) {
             "SI DMA source is outside installed RDRAM: address=0x${source.toString(16)}."
@@ -304,6 +306,8 @@ class N64Bus(
 
     /** Copies exactly 64 bytes from PIF RAM into RDRAM (SI read DMA). */
     private fun dmaPifToRdram() {
+        // Invalid PIF targets do not start a transfer; preserve the programmed register value.
+        if (siPifReadAddress != PIF_RAM_BASE) return
         val destination = siDramAddress and 0x00FFFFFF
         require(destination <= ram.size - PIF_RAM_SIZE) {
             "SI DMA destination is outside installed RDRAM: address=0x${destination.toString(16)}."
