@@ -432,6 +432,9 @@ class MainActivity : Activity() {
             "\nCause decodificado: $causeName; BD (delay slot)=$branchDelay; ExcCode=$causeCode" +
             "\nCOP0 EPC: 0x${cpu.cop0[14].toULong().toString(16).uppercase()}" +
             "\nCOP0 BadVAddr: 0x${cpu.cop0[8].toULong().toString(16).uppercase()}" +
+            "\nÚltimo acesso tentado: VADDR=0x" + (cpu.diagnosticVirtualAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A") +
+            "; PADDR=" + (cpu.diagnosticPhysicalAddress?.let { "0x" + it.toUInt().toString(16).uppercase() } ?: "N/A") +
+            "; tipo=" + (cpu.diagnosticAccessType ?: "N/A") +
             "\nTipo de acesso da exceção: " + (cpu.lastExceptionAccessType ?: "N/A") +
             "\nEstado TLB no endereço da falha: " + cpu.describeTlbAddressForDiagnostic(tlbFaultAddress) +
             "\nÚltima exceção registrada: código=" + (cpu.lastExceptionCode?.toString() ?: "nenhuma") +
