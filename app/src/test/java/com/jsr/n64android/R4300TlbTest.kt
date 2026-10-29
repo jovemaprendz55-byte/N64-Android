@@ -192,7 +192,7 @@ class R4300TlbTest {
         // A 16 KiB page uses address bit 14 to select the odd half;
         // low two PFN bits are ignored, so PFN 0x123 aligns to 0x120.
         assertEquals(0x00120034, tlb.translate(0x00400034L, 3, R4300Tlb.Access.READ))
-        assertEquals(0x00136078, tlb.translate(0x00404078L, 3, R4300Tlb.Access.READ))
+        assertEquals(0x00454078, tlb.translate(0x00404078L, 3, R4300Tlb.Access.READ))
         assertEquals(0, tlb.probe(0x00407000L, 3))
     }
 
