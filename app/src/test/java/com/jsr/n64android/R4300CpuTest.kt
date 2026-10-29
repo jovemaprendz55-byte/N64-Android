@@ -1683,6 +1683,10 @@ class R4300CpuTest {
         assertEquals(faultAddress, cpu.cop0[14]) // EPC points to the faulting instruction.
         assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc) // TLB refill vector.
         assertEquals(0x2L, cpu.cop0[12] and 0x2L) // EXL is set.
+        assertEquals(faultAddress, cpu.diagnosticVirtualAddress)
+        assertEquals(null, cpu.diagnosticPhysicalAddress) // Translation failed before a physical address existed.
+        assertEquals("FETCH", cpu.diagnosticAccessType)
+        assertEquals(faultAddress, cpu.diagnosticInstructionAddress)
     }
 
 
