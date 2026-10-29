@@ -6,6 +6,27 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class R4300CpuTest {
+    @Test fun cop1ControlAndDataTransfersMoveRawWords() {
+        val memory = N64Memory(32)
+        // CFC1 $v0, $31 (the instruction reached by the latest GoldenEye report).
+        memory.write32(0, 0x4442F800.toInt())
+        // MTC1 $v1, $f4
+        memory.write32(4, (0x11 shl 26) or (0x04 shl 21) or (3 shl 16) or (4 shl 11))
+        // MFC1 $a0, $f4
+        memory.write32(8, (0x11 shl 26) or (0x00 shl 21) or (4 shl 16) or (4 shl 11))
+        val cpu = R4300Cpu(memory)
+        cpu.fcr[31] = 0x80000001L
+        cpu.gpr[3] = 0xFEDCBA98L
+        cpu.setProgramCounter(0)
+
+        repeat(3) { cpu.step() }
+
+        assertEquals(0xFFFFFFFF80000001UL.toLong(), cpu.gpr[2])
+        assertEquals(0xFEDCBA98L, cpu.fpr[4])
+        assertEquals(0xFFFFFFFFFEDCBA98UL.toLong(), cpu.gpr[4])
+        assertEquals(0L, cpu.cop0[13] and 0x7CL)
+    }
+
     @Test fun daddSigned64BitOverflowRaisesExceptionButDadduWraps() {
         val memory = N64Memory(64)
         memory.write32(0, rType(1, 2, 3, 0x2C)) // dadd $v1, $at, $v0
