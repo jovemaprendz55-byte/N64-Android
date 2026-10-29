@@ -36,6 +36,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         private set
     private var instructionWordForCurrentStep: Int? = null
     private var instructionAddressForCurrentStep: Long? = null
+    /** Exact instruction context retained when a bus access fails during execution. */
+    val diagnosticInstructionAddress: Long? get() = instructionAddressForCurrentStep
+    val diagnosticInstructionWord: Int? get() = instructionWordForCurrentStep
     private var delayedTarget: Long? = null
     private var pendingDelaySlotBranchAddress: Long? = null
     private var randomResetByWiredWrite = false
