@@ -416,6 +416,13 @@ class MainActivity : Activity() {
                 " t3=0x" + faultHistoryT3[index].toULong().toString(16).uppercase() +
                 " ra=0x" + faultHistoryRa[index].toULong().toString(16).uppercase()
         }.joinToString("\\n")
+        // For TLB exceptions, COP0 BadVAddr is authoritative. A later fetch of the
+        // exception vector may overwrite the last attempted-access diagnostic address.
+        val tlbFaultAddress = if (causeCode == 2 || causeCode == 3) {
+            cpu.cop0[8]
+        } else {
+            cpu.diagnosticVirtualAddress ?: cpu.cop0[8]
+        }
         var diagnostic = "DIAGNÓSTICO PARCIAL DA ROM" +
             "\nPassos executados: $executed" +
             "\nPC final: 0x${cpu.pc.toULong().toString(16).uppercase()}" +
@@ -426,7 +433,7 @@ class MainActivity : Activity() {
             "\nCOP0 EPC: 0x${cpu.cop0[14].toULong().toString(16).uppercase()}" +
             "\nCOP0 BadVAddr: 0x${cpu.cop0[8].toULong().toString(16).uppercase()}" +
             "\nTipo de acesso da exceção: " + (cpu.lastExceptionAccessType ?: "N/A") +
-            "\nEstado TLB no endereço da falha: " + cpu.describeTlbAddressForDiagnostic(cpu.diagnosticVirtualAddress ?: cpu.cop0[8]) +
+            "\nEstado TLB no endereço da falha: " + cpu.describeTlbAddressForDiagnostic(tlbFaultAddress) +
             "\nÚltima exceção registrada: código=" + (cpu.lastExceptionCode?.toString() ?: "nenhuma") +
             " PC=0x" + (cpu.lastExceptionInstructionAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A") +
             " INST=0x" + (cpu.lastExceptionInstructionWord?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A") +
