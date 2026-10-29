@@ -416,6 +416,32 @@ class MainActivity : Activity() {
                 " t3=0x" + faultHistoryT3[index].toULong().toString(16).uppercase() +
                 " ra=0x" + faultHistoryRa[index].toULong().toString(16).uppercase()
         }.joinToString("\\n")
+        // Decode a J/JAL immediately before the delay slot when the next fetch faults.
+        // This distinguishes a valid architectural jump from missing boot-time TLB setup.
+        val transferAnalysis = run {
+            if (faultHistoryCount < 3) {
+                "Não há instruções suficientes no rastro para decodificar a transferência."
+            } else {
+                val jumpIndex = (faultHistoryNext - 3 + faultHistoryCapacity) % faultHistoryCapacity
+                val jumpPc = faultHistoryPc[jumpIndex]
+                val jumpInstruction = faultHistoryWord[jumpIndex]
+                val opcode = if (jumpInstruction == Int.MIN_VALUE) -1 else jumpInstruction ushr 26
+                if (opcode == 2 || opcode == 3) {
+                    val target = ((jumpPc + 4L) and -0x10000000L) or
+                        ((jumpInstruction.toLong() and 0x03FFFFFFL) shl 2)
+                    val kind = if (opcode == 3) "JAL" else "J"
+                    val region = when {
+                        target >= 0xFFFFFFFFA0000000UL.toLong() && target < 0xFFFFFFFFC0000000UL.toLong() -> "KSEG1: mapeamento direto"
+                        target >= 0xFFFFFFFF80000000UL.toLong() && target < 0xFFFFFFFFA0000000UL.toLong() -> "KSEG0: mapeamento direto"
+                        target >= 0L && target < 0x80000000L -> "KUSEG: requer tradução TLB"
+                        else -> "região virtual a confirmar"
+                    }
+                    "$kind em PC=0x${jumpPc.toULong().toString(16).uppercase()}: destino calculado=0x${target.toULong().toString(16).uppercase()}; $region"
+                } else {
+                    "A instrução antes do delay slot não é J/JAL (opcode=${if (opcode < 0) "N/A" else opcode.toString()}); destino não decodificado como salto direto."
+                }
+            }
+        }
         // For TLB exceptions, COP0 BadVAddr is authoritative. A later fetch of the
         // exception vector may overwrite the last attempted-access diagnostic address.
         val tlbFaultAddress = if (causeCode == 2 || causeCode == 3) {
@@ -446,6 +472,7 @@ class MainActivity : Activity() {
             " INST=0x" + (cpu.lastExceptionInstructionWord?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A") +
             " delay-slot da branch=0x" + (cpu.lastExceptionBranchAddress?.toULong()?.toString(16)?.uppercase() ?: "não") +
             "\n\nIsto NÃO é o boot real do jogo. O IPL3 foi executado diretamente como teste; PIF/CIC e dispositivos ainda faltam." +
+            "\n\nANÁLISE DA TRANSFERÊNCIA PARA A FALHA: " + transferAnalysis +
             "\n\nRASTRO IMEDIATO ANTES DA PARADA (máximo 32 instruções):\n" + faultHistoryTrace +
             "\n\nPRIMEIRA PASSAGEM PELO LOOP KSEG0 (máximo 48):\n" + firstLoopTrace.joinToString("\n") +
             "\n\nRASTRO RECENTE AMOSTRADO (máximo 80 entradas, a cada 256 instruções):\n" + recentInstructionTrace.joinToString("\n") +
