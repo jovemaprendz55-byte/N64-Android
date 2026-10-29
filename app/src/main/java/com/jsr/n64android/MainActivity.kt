@@ -388,6 +388,7 @@ class MainActivity : Activity() {
             "\nCause decodificado: $causeName; BD (delay slot)=$branchDelay; ExcCode=$causeCode" +
             "\nCOP0 EPC: 0x${cpu.cop0[14].toULong().toString(16).uppercase()}" +
             "\nCOP0 BadVAddr: 0x${cpu.cop0[8].toULong().toString(16).uppercase()}" +
+            "\nTipo de acesso da exceção: " + (cpu.lastExceptionAccessType ?: "N/A") +
             "\nÚltima exceção registrada: código=" + (cpu.lastExceptionCode?.toString() ?: "nenhuma") +
             " PC=0x" + (cpu.lastExceptionInstructionAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A") +
             " INST=0x" + (cpu.lastExceptionInstructionWord?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A") +
