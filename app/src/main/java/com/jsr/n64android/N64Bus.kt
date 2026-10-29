@@ -31,10 +31,11 @@ class N64Bus(
     private var miInterruptMask = 0
     // Minimal RI register state; these values are placeholders, not full RDRAM timing emulation.
     private val riRegisters = IntArray(RI_REGISTER_COUNT).also { it[RI_SELECT_OFFSET / 4] = RI_SELECT_RESET }
-    // SI registers are mapped for IPL3 boot progress; PIF RAM DMA and controller protocol remain partial.
+    // SI uses a 64-byte PIF RAM window and synchronous DMA; Joybus processing/timing remain unimplemented.
+    private val pifRam = ByteArray(PIF_RAM_SIZE)
     private var siDramAddress = 0
-    private var siPifReadAddress = 0
-    private var siPifWriteAddress = 0
+    private var siPifReadAddress = PIF_RAM_BASE
+    private var siPifWriteAddress = PIF_RAM_BASE
     private var siStatus = 0
     // Minimal Audio Interface register model; audio DMA playback/timing is not emulated.
     private var aiDramAddress = 0
@@ -102,6 +103,10 @@ class N64Bus(
             return image[offset].toInt() and 0xFF
         }
 
+        if (address >= PIF_RAM_BASE && address < PIF_RAM_BASE + PIF_RAM_SIZE) {
+            return pifRam[address - PIF_RAM_BASE].toInt() and 0xFF
+        }
+
         if (address >= PIF_ROM_BASE && address < PIF_ROM_BASE + PIF_ROM_SIZE) {
             val image = pif ?: throw UnsupportedOperationException(
                 "PIF boot ROM is not loaded (physical address 0x${address.toString(16)})."
@@ -166,6 +171,10 @@ class N64Bus(
             spImem[address - SP_IMEM_BASE] = value.toByte()
             return
         }
+        if (address >= PIF_RAM_BASE && address < PIF_RAM_BASE + PIF_RAM_SIZE) {
+            pifRam[address - PIF_RAM_BASE] = value.toByte()
+            return
+        }
         if ((address >= CARTRIDGE_ROM_BASE && address < PIF_ROM_BASE) ||
             (address >= PIF_ROM_BASE && address < PIF_ROM_BASE + PIF_ROM_SIZE)
         ) {
@@ -206,9 +215,20 @@ class N64Bus(
                 return
             }
             SI_DRAM_ADDR_REG -> { siDramAddress = value and 0x00FFFFFF; return }
-            SI_PIF_ADDR_RD64B_REG -> { siPifReadAddress = value and 0x1FFFFFFF; return }
-            SI_PIF_ADDR_WR64B_REG -> { siPifWriteAddress = value and 0x1FFFFFFF; return }
-            SI_STATUS_REG -> { if ((value and SI_STATUS_INTERRUPT) != 0) siStatus = siStatus and SI_STATUS_INTERRUPT.inv(); return }
+            SI_PIF_ADDR_RD64B_REG -> {
+                siPifReadAddress = value and 0x1FFFFFFF
+                dmaPifToRdram()
+                return
+            }
+            SI_PIF_ADDR_WR64B_REG -> {
+                siPifWriteAddress = value and 0x1FFFFFFF
+                dmaRdramToPif()
+                return
+            }
+            SI_STATUS_REG -> {
+                if ((value and SI_STATUS_INTERRUPT) != 0) siStatus = siStatus and SI_STATUS_INTERRUPT.inv()
+                return
+            }
             AI_DRAM_ADDR_REG -> { aiDramAddress = value and 0x00FFFFFF; return }
             AI_LEN_REG -> { return } // Consume the request without audio DMA or timing.
             AI_CONTROL_REG -> { aiControl = value and 1; return }
@@ -265,6 +285,36 @@ class N64Bus(
         piDramAddress = (piDramAddress + length) and 0x00FFFFFF
         piCartAddress += length
         piStatus = piStatus and PI_STATUS_DMA_BUSY.inv()
+    }
+
+    /** Copies exactly 64 bytes from RDRAM into PIF RAM (SI write DMA). */
+    private fun dmaRdramToPif() {
+        val source = siDramAddress and 0x00FFFFFF
+        require(source <= ram.size - PIF_RAM_SIZE) {
+            "SI DMA source is outside installed RDRAM: address=0x${source.toString(16)}."
+        }
+        require(siPifWriteAddress == PIF_RAM_BASE) {
+            "SI write DMA must target PIF RAM at 0x${PIF_RAM_BASE.toString(16)}; got 0x${siPifWriteAddress.toString(16)}."
+        }
+        siStatus = siStatus or SI_STATUS_DMA_BUSY or SI_STATUS_IO_BUSY
+        for (index in 0 until PIF_RAM_SIZE) pifRam[index] = ram.read8(source + index).toByte()
+        siDramAddress = (source + PIF_RAM_SIZE) and 0x00FFFFFF
+        siStatus = (siStatus and (SI_STATUS_DMA_BUSY or SI_STATUS_IO_BUSY).inv()) or SI_STATUS_INTERRUPT
+    }
+
+    /** Copies exactly 64 bytes from PIF RAM into RDRAM (SI read DMA). */
+    private fun dmaPifToRdram() {
+        val destination = siDramAddress and 0x00FFFFFF
+        require(destination <= ram.size - PIF_RAM_SIZE) {
+            "SI DMA destination is outside installed RDRAM: address=0x${destination.toString(16)}."
+        }
+        require(siPifReadAddress == PIF_RAM_BASE) {
+            "SI read DMA must target PIF RAM at 0x${PIF_RAM_BASE.toString(16)}; got 0x${siPifReadAddress.toString(16)}."
+        }
+        siStatus = siStatus or SI_STATUS_DMA_BUSY or SI_STATUS_IO_BUSY
+        for (index in 0 until PIF_RAM_SIZE) ram.write8(destination + index, pifRam[index].toInt() and 0xFF)
+        siDramAddress = (destination + PIF_RAM_SIZE) and 0x00FFFFFF
+        siStatus = (siStatus and (SI_STATUS_DMA_BUSY or SI_STATUS_IO_BUSY).inv()) or SI_STATUS_INTERRUPT
     }
 
     /**
@@ -425,7 +475,11 @@ class N64Bus(
         const val SI_PIF_ADDR_RD64B_REG = SI_REG_BASE + 0x04
         const val SI_PIF_ADDR_WR64B_REG = SI_REG_BASE + 0x10
         const val SI_STATUS_REG = SI_REG_BASE + 0x18
+        const val SI_STATUS_DMA_BUSY = 1 shl 0
+        const val SI_STATUS_IO_BUSY = 1 shl 1
         const val SI_STATUS_INTERRUPT = 1 shl 12
+        const val PIF_RAM_BASE = PIF_ROM_BASE + PIF_ROM_SIZE
+        const val PIF_RAM_SIZE = 0x40
         const val AI_REG_BASE = 0x04500000
         const val AI_DRAM_ADDR_REG = AI_REG_BASE
         const val AI_LEN_REG = AI_REG_BASE + 0x04
