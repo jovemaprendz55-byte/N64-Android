@@ -172,6 +172,20 @@ class MainActivity : Activity() {
         var stopReason = "Limite de $maxSteps passos alcançado (rastro amostrado a cada 256 instruções)."
         var lastAttemptedPc = cpu.pc
         var lastAttemptedInstruction: Int? = null
+        // Keep a low-allocation ring buffer of the instructions immediately before a fault.
+        // This captures the jump/return that led to an invalid virtual fetch without
+        // formatting millions of log strings during the long ROM diagnostic.
+        val faultHistoryCapacity = 32
+        val faultHistoryPc = LongArray(faultHistoryCapacity)
+        val faultHistoryWord = IntArray(faultHistoryCapacity) { Int.MIN_VALUE }
+        val faultHistoryNextPc = LongArray(faultHistoryCapacity)
+        val faultHistoryT0 = LongArray(faultHistoryCapacity)
+        val faultHistoryT1 = LongArray(faultHistoryCapacity)
+        val faultHistoryT2 = LongArray(faultHistoryCapacity)
+        val faultHistoryT3 = LongArray(faultHistoryCapacity)
+        val faultHistoryRa = LongArray(faultHistoryCapacity)
+        var faultHistoryCount = 0
+        var faultHistoryNext = 0
         try {
             for (stepIndex in 0 until maxSteps) {
                 val pc = cpu.pc
@@ -324,6 +338,17 @@ class MainActivity : Activity() {
                 }
                 cpu.step()
                 executed++
+                // Record primitive values only; format strings later, only if we need the report.
+                faultHistoryPc[faultHistoryNext] = pc
+                faultHistoryWord[faultHistoryNext] = cpu.diagnosticInstructionWord ?: Int.MIN_VALUE
+                faultHistoryNextPc[faultHistoryNext] = cpu.pc
+                faultHistoryT0[faultHistoryNext] = cpu.gpr[8]
+                faultHistoryT1[faultHistoryNext] = cpu.gpr[9]
+                faultHistoryT2[faultHistoryNext] = cpu.gpr[10]
+                faultHistoryT3[faultHistoryNext] = cpu.gpr[11]
+                faultHistoryRa[faultHistoryNext] = cpu.gpr[31]
+                faultHistoryNext = (faultHistoryNext + 1) % faultHistoryCapacity
+                if (faultHistoryCount < faultHistoryCapacity) faultHistoryCount++
                 // Building a long diagnostic string after EVERY instruction creates
                 // millions of temporary objects on mid-range phones. Keep this bounded
                 // trace sampled (the separate early-stop reason preserves the failing PC).
@@ -379,6 +404,18 @@ class MainActivity : Activity() {
             else -> "Exceção MIPS código $causeCode"
         }
         val branchDelay = (causeValue and 0x80000000L) != 0L
+        val faultHistoryTrace = (0 until faultHistoryCount).map { offset ->
+            val index = (faultHistoryNext - faultHistoryCount + offset + faultHistoryCapacity) % faultHistoryCapacity
+            "PC=0x" + faultHistoryPc[index].toULong().toString(16).uppercase().padStart(16, '0') +
+                " INST=" + (if (faultHistoryWord[index] == Int.MIN_VALUE) "N/A" else
+                    "0x" + faultHistoryWord[index].toUInt().toString(16).uppercase().padStart(8, '0')) +
+                " NEXT_PC=0x" + faultHistoryNextPc[index].toULong().toString(16).uppercase().padStart(16, '0') +
+                " t0=0x" + faultHistoryT0[index].toULong().toString(16).uppercase() +
+                " t1=0x" + faultHistoryT1[index].toULong().toString(16).uppercase() +
+                " t2=0x" + faultHistoryT2[index].toULong().toString(16).uppercase() +
+                " t3=0x" + faultHistoryT3[index].toULong().toString(16).uppercase() +
+                " ra=0x" + faultHistoryRa[index].toULong().toString(16).uppercase()
+        }.joinToString("\\n")
         var diagnostic = "DIAGNÓSTICO PARCIAL DA ROM" +
             "\nPassos executados: $executed" +
             "\nPC final: 0x${cpu.pc.toULong().toString(16).uppercase()}" +
@@ -394,6 +431,7 @@ class MainActivity : Activity() {
             " INST=0x" + (cpu.lastExceptionInstructionWord?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A") +
             " delay-slot da branch=0x" + (cpu.lastExceptionBranchAddress?.toULong()?.toString(16)?.uppercase() ?: "não") +
             "\n\nIsto NÃO é o boot real do jogo. O IPL3 foi executado diretamente como teste; PIF/CIC e dispositivos ainda faltam." +
+            "\n\nRASTRO IMEDIATO ANTES DA PARADA (máximo 32 instruções):\n" + faultHistoryTrace +
             "\n\nPRIMEIRA PASSAGEM PELO LOOP KSEG0 (máximo 48):\n" + firstLoopTrace.joinToString("\n") +
             "\n\nRASTRO RECENTE AMOSTRADO (máximo 80 entradas, a cada 256 instruções):\n" + recentInstructionTrace.joinToString("\n") +
             "\n\nRASTRO AMOSTRADO DAS ÚLTIMAS INSTRUÇÕES (máximo 80):\n" + trace.joinToString("\n")
