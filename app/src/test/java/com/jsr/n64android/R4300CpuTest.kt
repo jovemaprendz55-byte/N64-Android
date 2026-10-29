@@ -4145,6 +4145,23 @@ class R4300CpuTest {
         assertTrue(description.contains("ASID=0x3"))
     }
 
+    @Test fun tlbDiagnosticDoesNotMatchLargePageOutsideItsVirtualPair() {
+        val cpu = R4300Cpu(N64Memory(64))
+        cpu.tlbEnabled = true
+        cpu.tlb.write(1, R4300Tlb.Entry(
+            virtualPagePairBase = 0x70000000L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
+            pageMask = 0x7FE000L
+        ))
+
+        val description = cpu.describeTlbAddressForDiagnostic(0x7F000BD0L)
+
+        assertTrue("address outside the 8 MiB virtual pair must miss: $description",
+            description.contains("TLB MISS"))
+    }
+
     @Test fun tlbDiagnosticReportsMatchingEntryAndSelectedPageFlags() {
         val cpu = R4300Cpu(N64Memory(64))
         cpu.tlbEnabled = true
