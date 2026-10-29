@@ -37,6 +37,13 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     /** Access that caused the most recent TLB exception (FETCH, READ, or WRITE). */
     var lastExceptionAccessType: String? = null
         private set
+    /** Immutable snapshot of the last TLB fault, unaffected by later diagnostic memory accesses. */
+    var lastTlbFaultVirtualAddress: Long? = null
+        private set
+    var lastTlbFaultAccessType: String? = null
+        private set
+    var lastTlbFaultKind: R4300Tlb.FaultKind? = null
+        private set
     private var instructionWordForCurrentStep: Int? = null
     private var instructionAddressForCurrentStep: Long? = null
     /** Exact instruction context retained when a bus access fails during execution. */
@@ -68,6 +75,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         lastExceptionBranchAddress = null
         lastExceptionInstructionWord = null
         lastExceptionAccessType = null
+        lastTlbFaultVirtualAddress = null
+        lastTlbFaultAccessType = null
+        lastTlbFaultKind = null
         instructionWordForCurrentStep = null
         instructionAddressForCurrentStep = null
         diagnosticVirtualAddress = null
@@ -742,6 +752,13 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     }
 
     private fun enterTlbException(fault: R4300Tlb.TlbFault, branchAddress: Long?) {
+        lastTlbFaultVirtualAddress = fault.virtualAddress and 0xFFFFFFFFL
+        lastTlbFaultAccessType = when (fault.access) {
+            R4300Tlb.Access.FETCH -> "FETCH"
+            R4300Tlb.Access.READ -> "READ"
+            R4300Tlb.Access.WRITE -> "WRITE"
+        }
+        lastTlbFaultKind = fault.kind
         lastExceptionAccessType = when (fault.access) {
             R4300Tlb.Access.FETCH -> "FETCH"
             R4300Tlb.Access.READ -> "READ"
