@@ -90,6 +90,9 @@ class N64Bus(
             return spImem[address - SP_IMEM_BASE].toInt() and 0xFF
         }
 
+        // No 64DD is attached: Domain 2 Address 1 reads return open bus (0xFF).
+        if (address in DD_DOMAIN1_BASE until DD_DOMAIN1_END) return 0xFF
+
         if (address >= CARTRIDGE_ROM_BASE && address < PIF_ROM_BASE) {
             val image = cartridge ?: throw UnsupportedOperationException(
                 "Cartridge ROM is not loaded (physical address 0x${address.toString(16)})."
@@ -175,6 +178,8 @@ class N64Bus(
             pifRam[address - PIF_RAM_BASE] = value.toByte()
             return
         }
+        // Writes to the absent 64DD address window are ignored.
+        if (address in DD_DOMAIN1_BASE until DD_DOMAIN1_END) return
         if ((address >= CARTRIDGE_ROM_BASE && address < PIF_ROM_BASE) ||
             (address >= PIF_ROM_BASE && address < PIF_ROM_BASE + PIF_ROM_SIZE)
         ) {
@@ -441,6 +446,8 @@ class N64Bus(
         const val SP_STATUS_CMD_SET_INTR_BREAK = 1 shl 8
         const val SP_PC_REG = 0x04080000
         const val SP_PC_MASK = 0x00001FFC
+        const val DD_DOMAIN1_BASE = 0x05000000
+        const val DD_DOMAIN1_END = 0x06000000
         const val CARTRIDGE_ROM_BASE = 0x10000000
         const val MAX_CARTRIDGE_ROM_SIZE = 64 * 1024 * 1024
         const val PIF_ROM_BASE = 0x1FC00000
