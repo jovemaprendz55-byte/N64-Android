@@ -359,7 +359,10 @@ class MainActivity : Activity() {
             val failureInstruction = cpu.diagnosticInstructionWord ?: lastAttemptedInstruction
             val failedPc = failurePc.toULong().toString(16).uppercase().padStart(16, '0')
             val failedInstruction = failureInstruction?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"
-            stopReason = "Parou em erro/área não implementada: ${error.message ?: error.javaClass.simpleName}; PC=0x$failedPc INST=0x$failedInstruction"
+            val virtualAddress = cpu.diagnosticVirtualAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A"
+            val physicalAddress = cpu.diagnosticPhysicalAddress?.toUInt()?.toString(16)?.uppercase() ?: "N/A"
+            val accessType = cpu.diagnosticAccessType ?: "N/A"
+            stopReason = "Parou em erro/área não implementada: ${error.message ?: error.javaClass.simpleName}; PC=0x$failedPc INST=0x$failedInstruction; acesso=$accessType VADDR=0x$virtualAddress PADDR=0x$physicalAddress"
         }
         val causeValue = cpu.cop0[13]
         val causeCode = ((causeValue ushr 2) and 0x1FL).toInt()
