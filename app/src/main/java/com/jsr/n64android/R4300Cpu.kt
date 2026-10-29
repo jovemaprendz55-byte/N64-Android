@@ -31,6 +31,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     var lastExceptionInstructionWord: Int? = null
         private set
     private var instructionWordForCurrentStep: Int? = null
+    private var instructionAddressForCurrentStep: Long? = null
     private var delayedTarget: Long? = null
     private var pendingDelaySlotBranchAddress: Long? = null
     private var randomResetByWiredWrite = false
@@ -48,6 +49,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         lastExceptionBranchAddress = null
         lastExceptionInstructionWord = null
         instructionWordForCurrentStep = null
+        instructionAddressForCurrentStep = null
         delayedTarget = null
         pendingDelaySlotBranchAddress = null
     }
@@ -62,6 +64,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     /** Executes one instruction and converts address-translation faults into architectural COP0 exceptions. */
     fun step() {
         instructionWordForCurrentStep = null
+        instructionAddressForCurrentStep = pc
         val branchAddressForFault = pendingDelaySlotBranchAddress
         randomResetByWiredWrite = false
         try {
@@ -73,7 +76,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             enterAddressException(fault, branchAddressForFault)
         } catch (_: ReservedInstructionFault) {
             // Unsupported encodings raise the architectural Reserved Instruction exception (RI).
-            enterException(pc, 10, branchAddressForFault)
+            enterException(instructionAddressForCurrentStep ?: pc, 10, branchAddressForFault)
             pc = exceptionVector()
             delayedTarget = null
             pendingDelaySlotBranchAddress = null
@@ -83,6 +86,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     /** Branches and jumps take effect after the delay slot. */
     private fun stepInstruction() {
         val instructionAddress = pc
+        instructionAddressForCurrentStep = instructionAddress
         val instruction = memory.read32(physicalAddress(instructionAddress, R4300Tlb.Access.FETCH))
         instructionWordForCurrentStep = instruction
         val targetFromPreviousBranch = delayedTarget
@@ -696,7 +700,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             R4300Tlb.FaultKind.MISS, R4300Tlb.FaultKind.INVALID ->
                 if (fault.access == R4300Tlb.Access.WRITE) 3 else 2
         }
-        enterException(pc, code, branchAddress)
+        enterException(instructionAddressForCurrentStep ?: pc, code, branchAddress)
 
         val boot = (cop0[12] and (1L shl 22)) != 0L
         pc = if (fault.kind == R4300Tlb.FaultKind.MISS && !wasExl) {
@@ -728,7 +732,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
 
     private fun enterAddressException(fault: AddressFault, branchAddress: Long?) {
         cop0[8] = fault.virtualAddress and 0xFFFFFFFFL // BadVAddr
-        enterException(pc, if (fault.store) 5 else 4, branchAddress) // AdES / AdEL
+        enterException(instructionAddressForCurrentStep ?: pc, if (fault.store) 5 else 4, branchAddress) // AdES / AdEL
         pc = exceptionVector()
         delayedTarget = null
         pendingDelaySlotBranchAddress = null
