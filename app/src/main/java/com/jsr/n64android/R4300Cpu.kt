@@ -83,6 +83,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         lastTlbFaultVirtualAddress = null
         lastTlbFaultAccessType = null
         lastTlbFaultKind = null
+        diagnosticTlbWriteHistory.clear()
+        lastTlbEntrySnapshot = "(nenhuma entrada capturada)"
         instructionWordForCurrentStep = null
         instructionAddressForCurrentStep = null
         diagnosticVirtualAddress = null
