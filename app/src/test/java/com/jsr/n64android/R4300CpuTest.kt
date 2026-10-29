@@ -1687,6 +1687,9 @@ class R4300CpuTest {
         assertEquals(null, cpu.diagnosticPhysicalAddress) // Translation failed before a physical address existed.
         assertEquals("FETCH", cpu.diagnosticAccessType)
         assertEquals(faultAddress, cpu.diagnosticInstructionAddress)
+        assertEquals(faultAddress, cpu.lastTlbFaultVirtualAddress)
+        assertEquals("FETCH", cpu.lastTlbFaultAccessType)
+        assertEquals(R4300Tlb.FaultKind.MISS, cpu.lastTlbFaultKind)
     }
 
 
