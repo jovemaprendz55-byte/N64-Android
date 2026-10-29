@@ -27,19 +27,30 @@ class R4300CpuTest {
 
     @Test fun jalKeepsTheUpperFourBitsOfPcPlusFourAndExecutesDelaySlot() {
         val memory = N64Memory(0x6000)
-        // JAL 0x0FC002F4 at 0x00005D58 encodes target 0x0F000BD0.
+        // The GoldenEye trace executes this JAL at virtual address 0x70005D58.
+        // The address-space adapter lets this focused test store those bytes locally.
         memory.write32(0x5D58, 0x0FC002F4)
         memory.write32(0x5D5C, iType(0x09, 0, 8, 7)) // delay slot: addiu $t0, $zero, 7
-        val cpu = R4300Cpu(memory)
-        cpu.setProgramCounter(0x5D58L)
+        val base = 0x70000000
+        val mappedMemory = object : N64AddressSpace {
+            private fun offset(address: Int) = address - base
+            override fun read8(address: Int) = memory.read8(offset(address))
+            override fun read16(address: Int) = memory.read16(offset(address))
+            override fun read32(address: Int) = memory.read32(offset(address))
+            override fun write8(address: Int, value: Int) = memory.write8(offset(address), value)
+            override fun write16(address: Int, value: Int) = memory.write16(offset(address), value)
+            override fun write32(address: Int, value: Int) = memory.write32(offset(address), value)
+        }
+        val cpu = R4300Cpu(mappedMemory)
+        cpu.setProgramCounter(0x70005D58L)
 
         cpu.step() // JAL schedules the destination and writes the return address.
-        assertEquals(0x5D60L, cpu.gpr[31])
-        assertEquals(0x5D5CL, cpu.pc)
+        assertEquals(0x70005D60L, cpu.gpr[31])
+        assertEquals(0x70005D5CL, cpu.pc)
 
         cpu.step() // Delay slot executes before the jump is taken.
         assertEquals(7L, cpu.gpr[8])
-        assertEquals(0x0F000BD0L, cpu.pc)
+        assertEquals(0x7F000BD0L, cpu.pc)
     }
 
     @Test fun cop1ControlAndDataTransfersMoveRawWords() {
