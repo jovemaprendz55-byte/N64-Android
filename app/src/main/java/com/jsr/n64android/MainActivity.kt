@@ -170,9 +170,12 @@ class MainActivity : Activity() {
         // (~5.2 million instructions) before reaching its end. Keep a bounded 6M-step test.
         val maxSteps = 12_000_000
         var stopReason = "Limite de $maxSteps passos alcançado (rastro amostrado a cada 256 instruções)."
+        var lastAttemptedPc = cpu.pc
+        var lastAttemptedInstruction: Int? = null
         try {
             for (stepIndex in 0 until maxSteps) {
                 val pc = cpu.pc
+                lastAttemptedPc = pc
                 if (stepIndex >= nextPostHandoffProgressStep &&
                     pc >= postHandoffPcRangeStart && pc < postHandoffPcRangeEnd
                 ) {
@@ -352,7 +355,9 @@ class MainActivity : Activity() {
                 }
             }
         } catch (error: Exception) {
-            stopReason = "Parou em erro/área não implementada: ${error.message ?: error.javaClass.simpleName}"
+            val failedPc = lastAttemptedPc.toULong().toString(16).uppercase().padStart(16, '0')
+            val failedInstruction = lastAttemptedInstruction?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"
+            stopReason = "Parou em erro/área não implementada: ${error.message ?: error.javaClass.simpleName}; PC=0x$failedPc INST=0x$failedInstruction"
         }
         val causeValue = cpu.cop0[13]
         val causeCode = ((causeValue ushr 2) and 0x1FL).toInt()
