@@ -293,6 +293,7 @@ class MainActivity : Activity() {
                         " t1=0x" + cpu.gpr[9].toULong().toString(16).uppercase() +
                         " t2=0x" + cpu.gpr[10].toULong().toString(16).uppercase() +
                         " t3=0x" + cpu.gpr[11].toULong().toString(16).uppercase() +
+                        " v1=0x" + cpu.gpr[3].toULong().toString(16).uppercase() +
                         " ra=0x" + cpu.gpr[31].toULong().toString(16).uppercase()
                     )
                     if (recentInstructionTrace.size > 80) recentInstructionTrace.removeFirst()
