@@ -19,6 +19,8 @@ import java.io.IOException
 class MainActivity : Activity() {
     private lateinit var status: TextView
     private var cartridgeBus: N64Bus? = null
+    private var cartridgeRomBytes: ByteArray? = null
+    private var pifRomBytes: ByteArray? = null
     private var romTraceButton: Button? = null
     private lateinit var mainLayout: LinearLayout
 
@@ -34,6 +36,10 @@ class MainActivity : Activity() {
         val chooseRom = Button(this).apply {
             text = "Selecionar ROM (.z64 / .v64 / .n64)"
             setOnClickListener { openRomPicker() }
+        }
+        val choosePifRom = Button(this).apply {
+            text = "Selecionar PIF ROM (firmware legítimo, 0x7C0 bytes)"
+            setOnClickListener { openPifRomPicker() }
         }
         val cpuDiagnostic = Button(this).apply {
             text = "Executar teste interno da CPU"
@@ -55,6 +61,7 @@ class MainActivity : Activity() {
             })
             addView(status)
             addView(chooseRom)
+            addView(choosePifRom)
             addView(cpuDiagnostic)
             addView(romTraceButton)
         }
@@ -619,6 +626,14 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun openPifRomPicker() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+        }
+        startActivityForResult(intent, REQUEST_PIF_ROM)
+    }
+
     private fun openRomPicker() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
@@ -630,8 +645,42 @@ class MainActivity : Activity() {
     @Deprecated("Uses the platform Activity result API for the minimum dependency base.")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != REQUEST_ROM || resultCode != RESULT_OK) return
+        if (resultCode != RESULT_OK) return
         val uri: Uri = data?.data ?: return
+        if (requestCode == REQUEST_PIF_ROM) {
+            val pifBytes = try {
+                contentResolver.openInputStream(uri)?.use { input ->
+                    val output = ByteArrayOutputStream(N64Bus.PIF_ROM_SIZE)
+                    val buffer = ByteArray(1024)
+                    var total = 0
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count < 0) break
+                        total += count
+                        if (total > N64Bus.PIF_ROM_SIZE) {
+                            throw IOException("PIF ROM maior que o tamanho esperado de 0x7C0 bytes.")
+                        }
+                        output.write(buffer, 0, count)
+                    }
+                    output.toByteArray()
+                }
+            } catch (error: Exception) {
+                status.text = error.message ?: "Não foi possível ler a PIF ROM."
+                return
+            }
+            if (pifBytes == null || pifBytes.size != N64Bus.PIF_ROM_SIZE) {
+                status.text = "PIF ROM inválida: esperado exatamente 0x7C0 (1984) bytes. Nenhum firmware foi carregado."
+                return
+            }
+            pifRomBytes = pifBytes
+            cartridgeRomBytes?.let { rom -> cartridgeBus = N64Bus(pifRom = pifBytes, cartridgeRom = rom) }
+            status.text = "PIF ROM carregada e validada (1984 bytes)." +
+                if (cartridgeRomBytes == null) "\\nAgora selecione uma ROM de jogo." else
+                    "\\nROM do cartucho preservada. O caminho de boot real ainda depende da emulação completa de PIF/CIC e dispositivos."
+            romTraceButton?.isEnabled = cartridgeRomBytes != null
+            return
+        }
+        if (requestCode != REQUEST_ROM) return
         val bytes = try {
             contentResolver.openInputStream(uri)?.use { input ->
                 val output = ByteArrayOutputStream()
@@ -660,7 +709,8 @@ class MainActivity : Activity() {
         }
         when (val result = N64RomLoader.load(bytes)) {
             is RomLoadResult.Success -> {
-                cartridgeBus = N64Bus(cartridgeRom = result.rom.bytes)
+                cartridgeRomBytes = result.rom.bytes
+                cartridgeBus = N64Bus(pifRom = pifRomBytes, cartridgeRom = result.rom.bytes)
                 romTraceButton?.isEnabled = true
                 val info = N64RomInspector.inspect(result.rom.bytes)
                 status.text = "ROM carregada no barramento: ${result.rom.byteSize} bytes" +
@@ -677,5 +727,8 @@ class MainActivity : Activity() {
         }
     }
 
-    companion object { private const val REQUEST_ROM = 640 }
+    companion object {
+        private const val REQUEST_ROM = 640
+        private const val REQUEST_PIF_ROM = 641
+    }
 }
