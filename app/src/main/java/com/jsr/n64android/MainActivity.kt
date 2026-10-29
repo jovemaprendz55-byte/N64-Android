@@ -184,6 +184,9 @@ class MainActivity : Activity() {
         val faultHistoryT2 = LongArray(faultHistoryCapacity)
         val faultHistoryT3 = LongArray(faultHistoryCapacity)
         val faultHistoryRa = LongArray(faultHistoryCapacity)
+        // Snapshot GPRs before each instruction so JR/JALR targets can be reconstructed
+        // even when JALR writes its link into the same register used as its target.
+        val faultHistoryRegisters = Array(32) { LongArray(faultHistoryCapacity) }
         var faultHistoryCount = 0
         var faultHistoryNext = 0
         try {
@@ -336,6 +339,11 @@ class MainActivity : Activity() {
                         status.text = "Diagnóstico em andamento: $stepIndex / $maxSteps instruções. ROM mantida carregada."
                     }
                 }
+                // Save the pre-instruction register state for the bounded fault history.
+                // This is needed to decode indirect JR/JALR targets accurately.
+                for (registerIndex in 1..31) {
+                    faultHistoryRegisters[registerIndex][faultHistoryNext] = cpu.gpr[registerIndex]
+                }
                 cpu.step()
                 executed++
                 // Record primitive values only; format strings later, only if we need the report.
@@ -416,8 +424,8 @@ class MainActivity : Activity() {
                 " t3=0x" + faultHistoryT3[index].toULong().toString(16).uppercase() +
                 " ra=0x" + faultHistoryRa[index].toULong().toString(16).uppercase()
         }.joinToString("\\n")
-        // Decode a J/JAL immediately before the delay slot when the next fetch faults.
-        // This distinguishes a valid architectural jump from missing boot-time TLB setup.
+        // Decode the control transfer immediately before the delay slot when the next
+        // fetch faults. Cover direct J/JAL and indirect JR/JALR instructions.
         val transferAnalysis = run {
             if (faultHistoryCount < 3) {
                 "Não há instruções suficientes no rastro para decodificar a transferência."
@@ -426,19 +434,34 @@ class MainActivity : Activity() {
                 val jumpPc = faultHistoryPc[jumpIndex]
                 val jumpInstruction = faultHistoryWord[jumpIndex]
                 val opcode = if (jumpInstruction == Int.MIN_VALUE) -1 else jumpInstruction ushr 26
-                if (opcode == 2 || opcode == 3) {
-                    val target = ((jumpPc + 4L) and -0x10000000L) or
-                        ((jumpInstruction.toLong() and 0x03FFFFFFL) shl 2)
-                    val kind = if (opcode == 3) "JAL" else "J"
-                    val region = when {
-                        target >= 0xFFFFFFFFA0000000UL.toLong() && target < 0xFFFFFFFFC0000000UL.toLong() -> "KSEG1: mapeamento direto"
-                        target >= 0xFFFFFFFF80000000UL.toLong() && target < 0xFFFFFFFFA0000000UL.toLong() -> "KSEG0: mapeamento direto"
-                        target >= 0L && target < 0x80000000L -> "KUSEG: requer tradução TLB"
-                        else -> "região virtual a confirmar"
+                val function = jumpInstruction and 0x3F
+                val rs = (jumpInstruction ushr 21) and 0x1F
+                val decoded = when {
+                    opcode == 2 || opcode == 3 -> {
+                        val target = ((jumpPc + 4L) and -0x10000000L) or
+                            ((jumpInstruction.toLong() and 0x03FFFFFFL) shl 2)
+                        (if (opcode == 3) "JAL" else "J") to target
+                    }
+                    opcode == 0 && (function == 0x08 || function == 0x09) -> {
+                        val target = faultHistoryRegisters[rs][jumpIndex]
+                        (if (function == 0x09) "JALR (rs=$rs)" else "JR (rs=$rs)") to target
+                    }
+                    else -> null
+                }
+                if (decoded != null) {
+                    val (kind, target) = decoded
+                    val virtual32 = target and 0xFFFFFFFFL
+                    val segment = (virtual32 ushr 29) and 0x7L
+                    val region = when (segment) {
+                        4L -> "KSEG0: mapeamento direto"
+                        5L -> "KSEG1: mapeamento direto"
+                        in 0L..3L -> "KUSEG: requer tradução TLB"
+                        6L -> "KSEG2: requer tradução TLB"
+                        else -> "KSEG3: requer tradução TLB"
                     }
                     "$kind em PC=0x${jumpPc.toULong().toString(16).uppercase()}: destino calculado=0x${target.toULong().toString(16).uppercase()}; $region"
                 } else {
-                    "A instrução antes do delay slot não é J/JAL (opcode=${if (opcode < 0) "N/A" else opcode.toString()}); destino não decodificado como salto direto."
+                    "A instrução antes do delay slot não é J/JAL/JR/JALR (opcode=${if (opcode < 0) "N/A" else opcode.toString()}, funct=0x${function.toString(16)}); transferência não decodificada."
                 }
             }
         }
