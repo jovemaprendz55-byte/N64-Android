@@ -675,8 +675,8 @@ class MainActivity : Activity() {
             pifRomBytes = pifBytes
             cartridgeRomBytes?.let { rom -> cartridgeBus = N64Bus(pifRom = pifBytes, cartridgeRom = rom) }
             status.text = "PIF ROM carregada e validada (1984 bytes)." +
-                if (cartridgeRomBytes == null) "\\nAgora selecione uma ROM de jogo." else
-                    "\\nROM do cartucho preservada. O caminho de boot real ainda depende da emulação completa de PIF/CIC e dispositivos."
+                if (cartridgeRomBytes == null) "\nAgora selecione uma ROM de jogo." else
+                    "\nROM do cartucho preservada. O caminho de boot real ainda depende da emulação completa de PIF/CIC e dispositivos."
             romTraceButton?.isEnabled = cartridgeRomBytes != null
             return
         }
