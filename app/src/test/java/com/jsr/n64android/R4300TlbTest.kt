@@ -178,4 +178,54 @@ class R4300TlbTest {
         assertEquals(0x00456000, tlb.translate(0x00401000L, 8, R4300Tlb.Access.READ))
     }
 
+
+    @Test fun translatesEvenAndOddSixteenKiBPagesAndMasksLowPfnBits() {
+        val tlb = R4300Tlb()
+        tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0x00400000L,
+            asid = 3,
+            evenPage = R4300Tlb.Page(0x123, valid = true, dirty = true),
+            oddPage = R4300Tlb.Page(0x456, valid = true, dirty = true),
+            pageMask = 0x6000L
+        ))
+
+        // A 16 KiB page uses address bit 14 to select the odd half;
+        // low two PFN bits are ignored, so PFN 0x123 aligns to 0x120.
+        assertEquals(0x00120034, tlb.translate(0x00400034L, 3, R4300Tlb.Access.READ))
+        assertEquals(0x00136078, tlb.translate(0x00404078L, 3, R4300Tlb.Access.READ))
+        assertEquals(0, tlb.probe(0x00407000L, 3))
+    }
+
+    @Test fun largerPageMaskMatchesWholeVirtualPairAndHonorsAsidGlobalRules() {
+        val tlb = R4300Tlb()
+        tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0x01000000L,
+            asid = 4,
+            evenPage = R4300Tlb.Page(0x200, valid = true, dirty = true, global = true),
+            oddPage = R4300Tlb.Page(0x300, valid = true, dirty = true, global = true),
+            pageMask = 0x1E000L
+        ))
+
+        assertEquals(0, tlb.probe(0x0100FFFFL, 9))
+        assertEquals(0x0020FFFF, tlb.translate(0x0100FFFFL, 9, R4300Tlb.Access.READ))
+        assertEquals(0x00300000, tlb.translate(0x01010000L, 9, R4300Tlb.Access.READ))
+        assertEquals(null, tlb.probe(0x01020000L, 9))
+    }
+
+    @Test fun rejectsUnsupportedPageMaskAndMisalignedLargePairBase() {
+        assertThrows(IllegalArgumentException::class.java) {
+            R4300Tlb.normalizePageMask(0x2000L)
+        }
+        val tlb = R4300Tlb()
+        assertThrows(IllegalArgumentException::class.java) {
+            tlb.write(0, R4300Tlb.Entry(
+                virtualPagePairBase = 0x00402000L,
+                asid = 0,
+                evenPage = R4300Tlb.Page(1, true, true),
+                oddPage = R4300Tlb.Page(2, true, true),
+                pageMask = 0x6000L
+            ))
+        }
+    }
+
 }
