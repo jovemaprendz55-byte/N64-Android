@@ -1,12 +1,11 @@
 package com.jsr.n64android
 
 /**
- * Initial R4300 TLB model for 4 KiB pages.
+ * R4300 32-entry TLB model with variable paired-page sizes.
  *
- * This models the 32-entry, fixed-4-KiB paired-page lookup separately from the CPU.
- * The CPU now integrates lookup faults and basic COP0 TLB operations. Variable PageMask
- * values and larger page sizes remain unsupported; replacement behavior is implemented
- * in the CPU at a basic level and is not a cycle-accurate hardware model.
+ * PageMask follows the MIPS III encoding: 0x0000 for 4 KiB pages,
+ * 0x6000 for 16 KiB, 0x1E000 for 64 KiB, and so on through 16 MiB.
+ * This is an instruction-level model, not a cycle-accurate MMU.
  */
 class R4300Tlb(private val entryCount: Int = ENTRY_COUNT) {
     init {
@@ -17,7 +16,8 @@ class R4300Tlb(private val entryCount: Int = ENTRY_COUNT) {
         val virtualPagePairBase: Long,
         val asid: Int,
         val evenPage: Page,
-        val oddPage: Page
+        val oddPage: Page,
+        val pageMask: Long = 0L
     )
 
     data class Page(
@@ -49,14 +49,16 @@ class R4300Tlb(private val entryCount: Int = ENTRY_COUNT) {
 
     fun write(index: Int, entry: Entry) {
         require(index in entries.indices) { "TLB index $index is out of range." }
-        require(entry.virtualPagePairBase and PAGE_PAIR_MASK == entry.virtualPagePairBase) {
-            "TLB virtual pair base must be aligned to 8 KiB."
-        }
         require(entry.asid in 0..0xFF) { "ASID must fit in 8 bits." }
-        // TLB lookup normalizes virtual addresses to 32 bits, so store VPN2 in
-        // the same representation even when callers pass sign-extended N64 addresses.
+        val pageMask = normalizePageMask(entry.pageMask)
+        val pairMask = pairAddressMask(pageMask)
+        val base = entry.virtualPagePairBase and 0xFFFFFFFFL
+        require(base and pairMask.inv() and 0xFFFFFFFFL == 0L) {
+            "TLB virtual pair base must be aligned for its PageMask."
+        }
         entries[index] = entry.copy(
-            virtualPagePairBase = entry.virtualPagePairBase and 0xFFFFFFFFL
+            virtualPagePairBase = base and pairMask,
+            pageMask = pageMask
         )
     }
 
@@ -65,36 +67,42 @@ class R4300Tlb(private val entryCount: Int = ENTRY_COUNT) {
         return entries[index] ?: throw IllegalStateException("TLB entry $index is not initialized.")
     }
 
-    /** Returns the matching entry index, or null when VPN2/ASID probing misses. */
+    /** Returns the matching entry index, or null when VPN/ASID probing misses. */
     fun probe(virtualAddress: Long, asid: Int): Int? {
         require(asid in 0..0xFF) { "ASID must fit in 8 bits." }
         val address = virtualAddress and 0xFFFFFFFFL
-        val pairBase = address and PAGE_PAIR_MASK
         return entries.indices.firstOrNull { index ->
-            val entry = entries[index]
-            entry != null && entry.virtualPagePairBase == pairBase &&
-                (entry.asid == asid || (entry.evenPage.global && entry.oddPage.global))
+            val entry = entries[index] ?: return@firstOrNull false
+            val mask = pairAddressMask(entry.pageMask)
+            (entry.virtualPagePairBase and mask) == (address and mask) &&
+                (entry.asid == asid || isGlobal(entry))
         }
     }
 
     fun translate(virtualAddress: Long, asid: Int, access: Access): Int {
         require(asid in 0..0xFF) { "ASID must fit in 8 bits." }
         val address = virtualAddress and 0xFFFFFFFFL
-        val pairBase = address and PAGE_PAIR_MASK
-        val offset = address and PAGE_OFFSET_MASK
-        val odd = (address and PAGE_SIZE.toLong()) != 0L
-
         val entry = entries.firstOrNull {
-            it != null && it.virtualPagePairBase == pairBase && (it.asid == asid || it.evenPage.global && it.oddPage.global)
+            it != null &&
+                (it.virtualPagePairBase and pairAddressMask(it.pageMask)) ==
+                    (address and pairAddressMask(it.pageMask)) &&
+                (it.asid == asid || isGlobal(it))
         } ?: throw TlbFault(FaultKind.MISS, virtualAddress, access)
 
+        val pageSize = pageSize(entry.pageMask)
+        val offset = address and (pageSize - 1L)
+        val odd = (address and pageSize) != 0L
         val page = if (odd) entry.oddPage else entry.evenPage
         if (!page.valid) throw TlbFault(FaultKind.INVALID, virtualAddress, access)
         if (access == Access.WRITE && !page.dirty) throw TlbFault(FaultKind.MODIFIED, virtualAddress, access)
 
-        val physical = (page.physicalFrameNumber.toLong() shl PAGE_SHIFT) or offset
-        return physical.toInt()
+        // PFN bits below the selected page size are ignored by hardware.
+        val physicalPageBase = (page.physicalFrameNumber.toLong() shl PAGE_SHIFT) and (pageSize.inv())
+        return (physicalPageBase or offset).toInt()
     }
+
+    private fun isGlobal(entry: Entry): Boolean =
+        entry.evenPage.global && entry.oddPage.global
 
     companion object {
         const val ENTRY_COUNT = 32
@@ -103,5 +111,34 @@ class R4300Tlb(private val entryCount: Int = ENTRY_COUNT) {
         const val PAGE_OFFSET_MASK = PAGE_SIZE.toLong() - 1L
         const val PAGE_PAIR_MASK = -0x2000L
         const val MAX_PFN = 0xFFFFF
+        const val PAGEMASK_REGISTER_MASK = 0x01FFE000L
+
+        private val SUPPORTED_PAGE_MASKS = setOf(
+            0x00000000L,
+            0x00006000L,
+            0x0001E000L,
+            0x0007E000L,
+            0x001FE000L,
+            0x007FE000L,
+            0x01FFE000L
+        )
+
+        fun normalizePageMask(value: Long): Long {
+            val mask = value and PAGEMASK_REGISTER_MASK
+            require(mask in SUPPORTED_PAGE_MASKS) {
+                "Unsupported or non-contiguous R4300 PageMask 0x${mask.toString(16)}."
+            }
+            return mask
+        }
+
+        fun pageSize(pageMask: Long): Long {
+            val mask = normalizePageMask(pageMask)
+            return ((mask or 0x1FFFL) + 1L) ushr 1
+        }
+
+        fun pairAddressMask(pageMask: Long): Long {
+            val mask = normalizePageMask(pageMask)
+            return (mask or 0x1FFFL).inv() and 0xFFFFFFFFL
+        }
     }
 }
