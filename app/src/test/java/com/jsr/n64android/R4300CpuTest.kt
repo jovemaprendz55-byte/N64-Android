@@ -20,6 +20,9 @@ class R4300CpuTest {
 
         assertEquals(startPc, cpu.diagnosticInstructionAddress)
         assertEquals(instruction, cpu.diagnosticInstructionWord)
+        assertEquals(0x05000508L, cpu.diagnosticVirtualAddress)
+        assertEquals(0x05000508, cpu.diagnosticPhysicalAddress)
+        assertEquals("READ", cpu.diagnosticAccessType)
     }
 
     @Test fun cop1ControlAndDataTransfersMoveRawWords() {
