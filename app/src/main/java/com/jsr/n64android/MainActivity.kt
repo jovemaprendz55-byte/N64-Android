@@ -155,6 +155,10 @@ class MainActivity : Activity() {
         val postHandoffPcRangeStart = 0x70000000L
         val postHandoffPcRangeEnd = 0x70400000L
         val maxTrackedPostHandoffPcs = 2048
+        // Capture sparse progress checkpoints so repeated hot PCs can be distinguished
+        // from a genuinely stuck loop by observing changing pointers/counters.
+        val postHandoffProgressTrace = ArrayDeque<String>()
+        var nextPostHandoffProgressStep = 250_000
         // Detect a tight two-PC loop early instead of spending millions of steps
         // repeatedly executing a branch and its delay slot. Keep the full trace
         // and register dump so the first stable loop can be diagnosed.
@@ -169,6 +173,28 @@ class MainActivity : Activity() {
         try {
             for (stepIndex in 0 until maxSteps) {
                 val pc = cpu.pc
+                if (stepIndex >= nextPostHandoffProgressStep &&
+                    pc >= postHandoffPcRangeStart && pc < postHandoffPcRangeEnd
+                ) {
+                    val checkpointInstruction = try {
+                        cpu.readInstructionForDiagnostic(pc).toUInt().toString(16).uppercase().padStart(8, '0')
+                    } catch (_: Exception) {
+                        "unavailable"
+                    }
+                    val watchedRegisters = listOf(
+                        "v0" to 2, "v1" to 3, "a0" to 4, "a1" to 5, "a2" to 6, "a3" to 7,
+                        "t0" to 8, "t1" to 9, "t2" to 10, "t3" to 11,
+                        "s0" to 16, "s1" to 17, "s2" to 18, "sp" to 29, "ra" to 31
+                    ).joinToString(" ") { (name, index) ->
+                        name + "=0x" + cpu.gpr[index].toULong().toString(16).uppercase()
+                    }
+                    postHandoffProgressTrace.addLast(
+                        "step=$stepIndex PC=0x" + pc.toULong().toString(16).uppercase().padStart(8, '0') +
+                            " INST=0x" + checkpointInstruction + " " + watchedRegisters
+                    )
+                    if (postHandoffProgressTrace.size > 32) postHandoffProgressTrace.removeFirst()
+                    nextPostHandoffProgressStep += 250_000
+                }
                 if (pc >= postHandoffPcRangeStart && pc < postHandoffPcRangeEnd &&
                     (postHandoffPcVisits.containsKey(pc) || postHandoffPcVisits.size < maxTrackedPostHandoffPcs)
                 ) {
@@ -397,6 +423,9 @@ class MainActivity : Activity() {
         diagnostic += "\n\nPCs MAIS VISITADOS APÓS A TRANSFERÊNCIA (região 0x70000000..0x703FFFFF):\n" +
             if (hotPostHandoffPcs.isEmpty()) "Nenhum PC dessa região foi amostrado." else
                 hotPostHandoffPcs + "\nTotal de PCs distintos rastreados: " + postHandoffPcVisits.size
+        diagnostic += "\n\nPROGRESSO APÓS A TRANSFERÊNCIA (amostras espaçadas por 250.000 instruções):\n" +
+            if (postHandoffProgressTrace.isEmpty()) "Nenhum checkpoint de progresso capturado." else
+                postHandoffProgressTrace.joinToString("\n")
         diagnostic += "\n\nTODOS OS REGISTRADORES GPR NO PONTO DE PARADA:\n" + registerDump
         diagnostic += "\n\nRDRAM NOS ENDEREÇOS DE INTERESSE:\n" + ramDump
         diagnostic += "\n\nSP DMEM PERTO DA ORIGEM DE CÓPIA (0xA4000774):\n" + spDmemDump
