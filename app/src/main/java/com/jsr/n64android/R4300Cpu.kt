@@ -39,6 +39,13 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     /** Exact instruction context retained when a bus access fails during execution. */
     val diagnosticInstructionAddress: Long? get() = instructionAddressForCurrentStep
     val diagnosticInstructionWord: Int? get() = instructionWordForCurrentStep
+    /** Most recent translated memory access, retained even if the physical bus throws. */
+    var diagnosticVirtualAddress: Long? = null
+        private set
+    var diagnosticPhysicalAddress: Int? = null
+        private set
+    var diagnosticAccessType: String? = null
+        private set
     private var delayedTarget: Long? = null
     private var pendingDelaySlotBranchAddress: Long? = null
     private var randomResetByWiredWrite = false
@@ -59,6 +66,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         lastExceptionInstructionWord = null
         instructionWordForCurrentStep = null
         instructionAddressForCurrentStep = null
+        diagnosticVirtualAddress = null
+        diagnosticPhysicalAddress = null
+        diagnosticAccessType = null
         delayedTarget = null
         pendingDelaySlotBranchAddress = null
     }
@@ -805,6 +815,13 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         }
         require(physical <= Int.MAX_VALUE.toLong()) {
             "Address cannot be represented by this initial RAM bus: 0x${address.toString(16)}"
+        }
+        diagnosticVirtualAddress = address
+        diagnosticPhysicalAddress = physical.toInt()
+        diagnosticAccessType = when (access) {
+            R4300Tlb.Access.FETCH -> "FETCH"
+            R4300Tlb.Access.READ -> "READ"
+            R4300Tlb.Access.WRITE -> "WRITE"
         }
         return physical.toInt()
     }
