@@ -882,13 +882,14 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         address: Long,
         access: R4300Tlb.Access = R4300Tlb.Access.READ
     ): Int {
-        // Record the attempted access before translation, because a TLB fault throws.
-        diagnosticVirtualAddress = address
-        diagnosticPhysicalAddress = null
-        diagnosticAccessType = when (access) {
-            R4300Tlb.Access.FETCH -> "FETCH"
-            R4300Tlb.Access.READ -> "READ"
-            R4300Tlb.Access.WRITE -> "WRITE"
+        // Instruction fetch happens on every CPU step. Do not allocate/update
+        // diagnostic strings for every fetch: this hot path runs millions of times.
+        // READ/WRITE accesses remain tracked, and fetch faults are preserved by
+        // enterTlbException through lastExceptionAccessType/lastTlbFaultAccessType.
+        if (access != R4300Tlb.Access.FETCH) {
+            diagnosticVirtualAddress = address
+            diagnosticPhysicalAddress = null
+            diagnosticAccessType = if (access == R4300Tlb.Access.READ) "READ" else "WRITE"
         }
         // Treat sign-extended 32-bit virtual addresses as 32-bit N64 addresses.
         val virtual32 = address and 0xFFFFFFFFL
