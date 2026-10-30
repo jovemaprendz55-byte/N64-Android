@@ -4223,4 +4223,25 @@ class R4300CpuTest {
         assertTrue(description.contains("valid=true"))
         assertTrue(description.contains("dirty=false"))
     }
+
+    @Test fun goldenEyeHleHandoffFetchUsesTlbAndReportsUnmappedTarget() {
+        val memory = N64Memory(64)
+        memory.write32(0, (1 shl 21) or 0x08) // jr $at
+        memory.write32(4, 0) // delay slot
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 0x70000510L
+
+        cpu.step() // JR schedules the KUSEG target.
+        cpu.step() // Delay slot completes the jump.
+        cpu.step() // Fetch at 0x70000510 must raise a TLB load/fetch miss.
+
+        assertEquals(0x70000510L, cpu.cop0[8]) // BadVAddr
+        assertEquals(0x70000510L, cpu.cop0[14]) // EPC points to the failed fetch.
+        assertEquals(2L, (cpu.cop0[13] ushr 2) and 0x1FL) // TLB load/fetch miss.
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc) // TLB refill vector.
+        assertEquals(0x70000510L, cpu.lastTlbFaultVirtualAddress)
+        assertEquals("FETCH", cpu.lastTlbFaultAccessType)
+    }
 }
