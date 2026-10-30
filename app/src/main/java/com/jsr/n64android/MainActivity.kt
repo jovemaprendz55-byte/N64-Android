@@ -110,6 +110,10 @@ class MainActivity : Activity() {
             var stackRegionEntryObserved = false
             val stackRegionEntryContext = ArrayList<String>()
             val stackRegionTrace = ArrayList<String>()
+            // Capture the indirect handoff at JR $a3 and inspect its mapped target.
+            var indirectJumpTarget: Long? = null
+            var indirectJumpRegisters = ""
+            val indirectTargetWords = ArrayList<String>()
             val payloadWords = ArrayList<String>()
             val cicSeed = bus.detectCicSeed()
             fun hex(value: Long): String = "0x" + value.toULong().toString(16).uppercase().padStart(16, '0')
@@ -157,7 +161,12 @@ class MainActivity : Activity() {
                         (inStackRegion && (!stackRegionEntryObserved || stackRegionTrace.size < 128)) ||
                         (before in 0xFFFFFFFF80000410UL.toLong()..0xFFFFFFFF80000420UL.toLong() &&
                             loopEntryTrace.size < 24)
-                    val registersBefore = if (captureBeforeRegisters) watchedRegisters() else ""
+                    val registersBefore = if (captureBeforeRegisters || before == 0x70000500L) watchedRegisters() else ""
+                    if (before == 0x70000500L) {
+                        // 0x00E00008 is JR $a3; retain the source register before execution.
+                        indirectJumpTarget = cpu.gpr[7]
+                        indirectJumpRegisters = registersBefore
+                    }
                     cpu.step()
                     // The observed byte-copy loop branches at 0x70000584 and
                     // executes its store in the delay slot at 0x70000588.
@@ -230,6 +239,18 @@ class MainActivity : Activity() {
                 stopReason = "Execução interrompida: ${error.javaClass.simpleName}: ${error.message ?: "sem detalhes"}"
             }
             val report = "BOOT HLE EXPERIMENTAL — SEM PIF ROM" +
+            // Inspect the indirect jump target after execution stops; no per-step overhead.
+            indirectJumpTarget?.let { target ->
+                for (offset in -16L..32L step 4L) {
+                    val address = target + offset
+                    val word = try {
+                        "0x" + cpu.readInstructionForDiagnostic(address).toUInt().toString(16).uppercase().padStart(8, '0')
+                    } catch (error: Throwable) {
+                        "ERRO(${error.javaClass.simpleName}: ${error.message ?: "sem detalhes"})"
+                    }
+                    indirectTargetWords.add("VADDR=0x${address.toULong().toString(16).uppercase().padStart(16, '0')} INST=$word")
+                }
+            }
                 "\nPIF ROM externa: não utilizada" +
                 "\nCIC seed detectado: " + (cicSeed?.let { "0x" + it.toString(16).uppercase() } ?: "não reconhecido") +
                 "\nPayload copiado: 0xFC0 bytes do cartucho (offset 0x1000) para RDRAM 0x400" +
@@ -250,6 +271,13 @@ class MainActivity : Activity() {
                 (if (cpu.diagnosticTlbWriteHistory.isEmpty()) "(nenhuma)" else cpu.diagnosticTlbWriteHistory.joinToString("\n")) +
                 "\n\nENTRADAS TLB NO MOMENTO DA FALHA:\n" + cpu.lastTlbEntrySnapshot +
                 "\n\nPAYLOAD REAL COPIADO (primeiros 64 bytes):\n" + payloadWords.joinToString("\n") +
+                "\\n\\nSALTO INDIRETO JR $a3 EM 0x70000500:\\n" +
+                (indirectJumpTarget?.let { target ->
+                    "Registradores antes do JR: $indirectJumpRegisters\\n" +
+                    "Destino virtual de $a3: 0x${target.toULong().toString(16).uppercase()}\\n" +
+                    "Mapeamento: ${cpu.describeTlbAddressForDiagnostic(target)}\\n" +
+                    "Palavras ao redor do destino (-16..+32):\\n" + indirectTargetWords.joinToString("\\n")
+                } ?: "Instrução JR $a3 não foi observada.") +
                 "\n\nPRIMEIRAS INSTRUÇÕES COM REGISTRADORES (máximo 64):\n" + firstTrace.joinToString("\n") +
                 "\n\nPRIMEIRAS PASSAGENS NO LAÇO 0x80000410–0x80000420:\n" + loopEntryTrace.joinToString("\n") +
                 "\n\nDIAGNÓSTICO DO LAÇO DE CÓPIA 0x70000574–0x70000588:\n" +
