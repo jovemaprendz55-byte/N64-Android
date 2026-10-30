@@ -329,6 +329,7 @@ class MainActivity : Activity() {
                 (if (stackRegionTrace.isEmpty()) "(nenhuma)" else stackRegionTrace.joinToString("\n")) +
                 "\n\nÚLTIMAS INSTRUÇÕES (máximo 80):\n" + trace.joinToString("\n") +
                 "\n\nREGISTRADORES FINAIS: " + watchedRegisters() +
+                "\n\n" + transferMemoryDiagnostics +
                 "\n\nLimitações: HLE inicial de handoff, não emula PIF/Joybus/CIC completo, RSP, GPU/VI, áudio ou controles. A execução da CPU não comprova que o jogo esteja jogável."
             runOnUiThread {
                 hleBootButton?.isEnabled = cartridgeBus != null
