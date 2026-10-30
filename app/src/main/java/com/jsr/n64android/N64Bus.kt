@@ -400,6 +400,8 @@ class N64Bus(
         val memorySelect = spMemAddress and 0x1000
         var memoryOffset = spMemAddress and 0xFFF
         var dramAddress = spDramAddress and 0x00FFFFFF
+        val dramStartAddress = dramAddress
+        val spStartAddress = memorySelect or memoryOffset
 
         require(blockLength > 0 && blockCount > 0) { "Invalid SP DMA length/count." }
         for (block in 0 until blockCount) {
@@ -424,11 +426,11 @@ class N64Bus(
         }
         if (diagnosticSpDmaHistory.size >= 64) diagnosticSpDmaHistory.removeFirst()
         val direction = if (toSp) "RDRAM_TO_SP" else "SP_TO_RDRAM"
-        val dramEnd = if (toSp) (spDramAddress and 0x00FFFFFF) else (dramAddress - dramSkip - 1)
+        val dramEnd = dramAddress - dramSkip - 1
         diagnosticSpDmaHistory.addLast(
-            "$direction dramStart=0x${(spDramAddress and 0x00FFFFFF).toString(16).uppercase()} " +
+            "$direction dramStart=0x${dramStartAddress.toString(16).uppercase()} " +
                 "dramLast=0x${dramEnd.toString(16).uppercase()} blockLength=0x${blockLength.toString(16).uppercase()} " +
-                "blocks=$blockCount skip=0x${dramSkip.toString(16).uppercase()} spStart=0x${(spMemAddress and 0x1FFF).toString(16).uppercase()}"
+                "blocks=$blockCount skip=0x${dramSkip.toString(16).uppercase()} spStart=0x${spStartAddress.toString(16).uppercase()}"
         )
         spMemAddress = memorySelect or memoryOffset
         spDramAddress = dramAddress and 0x00FFFFFF
