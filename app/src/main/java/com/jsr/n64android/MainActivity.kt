@@ -250,6 +250,41 @@ class MainActivity : Activity() {
                     indirectTargetWords.add("VADDR=0x${address.toULong().toString(16).uppercase().padStart(16, '0')} INST=$word")
                 }
             }
+            // Compare the byte-copy source in KSEG0 with its expected destination in TLB-mapped RDRAM.
+            // The observed loop copies downward: source 0x80033F2E -> destination 0x7020159F.
+            val transferMemoryDiagnostics = buildString {
+                append("CÓPIA DE MEMÓRIA — COMPARAÇÃO ORIGEM/DESTINO\\n")
+                append("Mapeamento esperado: origem física 0x33F2E -> destino físico 0x20159F (cópia descendente)\\n")
+                append("Bytes perto da origem correspondente ao JR (físico 0x33DAB):\\n")
+                for (offset in -8..23) {
+                    val sourceAddress = 0x33DAB + offset
+                    val sourceByte = try { bus.read8(sourceAddress) } catch (error: Throwable) { -1 }
+                    append("SRC[0x").append(sourceAddress.toString(16).uppercase()).append("]=0x")
+                    append(if (sourceByte >= 0) sourceByte.toString(16).uppercase().padStart(2, '0') else "ERRO")
+                    if (offset < 23) append("  ")
+                }
+                append("\\nBytes reais no destino físico perto de 0x20141C:\\n")
+                for (offset in -8..23) {
+                    val destAddress = 0x20141C + offset
+                    val destByte = try { bus.read8(destAddress) } catch (error: Throwable) { -1 }
+                    append("DST[0x").append(destAddress.toString(16).uppercase()).append("]=0x")
+                    append(if (destByte >= 0) destByte.toString(16).uppercase().padStart(2, '0') else "ERRO")
+                    if (offset < 23) append("  ")
+                }
+                append("\\nComparação esperada por byte (destino -> origem):\\n")
+                for (offset in -8..23) {
+                    val destAddress = 0x20141C + offset
+                    val sourceAddress = 0x33F2E - (0x20159F - destAddress)
+                    val sourceByte = try { bus.read8(sourceAddress) } catch (error: Throwable) { -1 }
+                    val destByte = try { bus.read8(destAddress) } catch (error: Throwable) { -1 }
+                    append("dst+").append(offset).append(": src=0x")
+                    append(if (sourceByte >= 0) sourceByte.toString(16).uppercase().padStart(2, '0') else "ERRO")
+                    append(" dst=0x")
+                    append(if (destByte >= 0) destByte.toString(16).uppercase().padStart(2, '0') else "ERRO")
+                    append(if (sourceByte == destByte) " OK" else " DIFERENTE")
+                    if (offset < 23) append(" | ")
+                }
+            }
             val report = "BOOT HLE EXPERIMENTAL — SEM PIF ROM" +
                 "\nPIF ROM externa: não utilizada" +
                 "\nCIC seed detectado: " + (cicSeed?.let { "0x" + it.toString(16).uppercase() } ?: "não reconhecido") +
