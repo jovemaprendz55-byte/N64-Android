@@ -549,9 +549,8 @@ class MainActivity : Activity() {
         val faultHistoryT2 = LongArray(faultHistoryCapacity)
         val faultHistoryT3 = LongArray(faultHistoryCapacity)
         val faultHistoryRa = LongArray(faultHistoryCapacity)
-        // Snapshot GPRs before each instruction so JR/JALR targets can be reconstructed
-        // even when JALR writes its link into the same register used as its target.
-        val faultHistoryRegisters = Array(32) { LongArray(faultHistoryCapacity) }
+        // CPU captures JR/JALR targets directly; avoid copying 31 GPRs on every step.
+        val faultHistoryIndirectTarget = LongArray(faultHistoryCapacity)
         var faultHistoryCount = 0
         var faultHistoryNext = 0
         try {
@@ -580,7 +579,9 @@ class MainActivity : Activity() {
                     if (postHandoffProgressTrace.size > 32) postHandoffProgressTrace.removeFirst()
                     nextPostHandoffProgressStep += 250_000
                 }
-                if (pc >= postHandoffPcRangeStart && pc < postHandoffPcRangeEnd &&
+                // PC-frequency diagnostics are sampled; they are not architectural state.
+                if (stepIndex % 256 == 0 &&
+                    pc >= postHandoffPcRangeStart && pc < postHandoffPcRangeEnd &&
                     (postHandoffPcVisits.containsKey(pc) || postHandoffPcVisits.size < maxTrackedPostHandoffPcs)
                 ) {
                     postHandoffPcVisits[pc] = (postHandoffPcVisits[pc] ?: 0) + 1
@@ -704,17 +705,13 @@ class MainActivity : Activity() {
                         status.text = "Diagnóstico em andamento: $stepIndex / $maxSteps instruções. ROM mantida carregada."
                     }
                 }
-                // Save the pre-instruction register state for the bounded fault history.
-                // This is needed to decode indirect JR/JALR targets accurately.
-                for (registerIndex in 1..31) {
-                    faultHistoryRegisters[registerIndex][faultHistoryNext] = cpu.gpr[registerIndex]
-                }
                 cpu.step()
                 executed++
                 // Record primitive values only; format strings later, only if we need the report.
                 faultHistoryPc[faultHistoryNext] = pc
                 faultHistoryWord[faultHistoryNext] = cpu.diagnosticInstructionWord ?: Int.MIN_VALUE
                 faultHistoryNextPc[faultHistoryNext] = cpu.pc
+                faultHistoryIndirectTarget[faultHistoryNext] = cpu.diagnosticLastIndirectTarget ?: Long.MIN_VALUE
                 faultHistoryT0[faultHistoryNext] = cpu.gpr[8]
                 faultHistoryT1[faultHistoryNext] = cpu.gpr[9]
                 faultHistoryT2[faultHistoryNext] = cpu.gpr[10]
@@ -808,7 +805,7 @@ class MainActivity : Activity() {
                         (if (opcode == 3) "JAL" else "J") to target
                     }
                     opcode == 0 && (function == 0x08 || function == 0x09) -> {
-                        val target = faultHistoryRegisters[rs][jumpIndex]
+                        val target = faultHistoryIndirectTarget[jumpIndex]
                         (if (function == 0x09) "JALR (rs=$rs)" else "JR (rs=$rs)") to target
                     }
                     else -> null
