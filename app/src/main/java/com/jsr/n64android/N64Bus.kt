@@ -33,27 +33,39 @@ class N64Bus(
     var diagnosticRdramWriteCount: Long = 0
         private set
     val diagnosticRdramWriteHistory = ArrayDeque<String>()
+    private var diagnosticBootMemoryAccessCount: Long = 0
     private fun recordRdramWrite(address: Int, value: Int) {
         diagnosticRdramWriteCount++
-        if (diagnosticRdramWriteHistory.size >= 128) diagnosticRdramWriteHistory.removeFirst()
-        diagnosticRdramWriteHistory.addLast(
-            "W RDRAM paddr=0x${address.toString(16).uppercase()} value=0x${value.toString(16).uppercase().padStart(2, '0')}"
-        )
+        // Keep the total exact, but avoid allocating a formatted String for every
+        // byte written while IPL3 copies large blocks of RDRAM.
+        if (diagnosticRdramWriteCount <= 16L || diagnosticRdramWriteCount % 256L == 0L) {
+            if (diagnosticRdramWriteHistory.size >= 128) diagnosticRdramWriteHistory.removeFirst()
+            diagnosticRdramWriteHistory.addLast(
+                "W RDRAM paddr=0x${address.toString(16).uppercase()} value=0x${value.toString(16).uppercase().padStart(2, '0')}"
+            )
+        }
     }
     private fun recordBootDestinationWrite(address: Int, value: Int) {
         if (address !in 0x1EE400..0x20159F) return
         diagnosticBootDestinationWriteCount++
-        if (diagnosticBootDestinationWriteHistory.size >= 96) diagnosticBootDestinationWriteHistory.removeFirst()
-        diagnosticBootDestinationWriteHistory.addLast(
-            "W paddr=0x${address.toString(16).uppercase()} value=0x${value.toString(16).uppercase().padStart(2, '0')}"
-        )
+        // Preserve early samples and periodic checkpoints; the exact write count
+        // remains available separately for validating the descending copy.
+        if (diagnosticBootDestinationWriteCount <= 16L || diagnosticBootDestinationWriteCount % 256L == 0L) {
+            if (diagnosticBootDestinationWriteHistory.size >= 96) diagnosticBootDestinationWriteHistory.removeFirst()
+            diagnosticBootDestinationWriteHistory.addLast(
+                "W paddr=0x${address.toString(16).uppercase()} value=0x${value.toString(16).uppercase().padStart(2, '0')}"
+            )
+        }
     }
     private fun recordBootMemoryAccess(kind: String, address: Int, value: Int) {
         if (address !in 0x33D00 until 0x34000) return
-        if (diagnosticBootMemoryAccessHistory.size >= 256) diagnosticBootMemoryAccessHistory.removeFirst()
-        diagnosticBootMemoryAccessHistory.addLast(
-            "$kind paddr=0x${address.toString(16).uppercase()} value=0x${value.toString(16).uppercase().padStart(2, '0')}"
-        )
+        diagnosticBootMemoryAccessCount++
+        if (diagnosticBootMemoryAccessCount <= 16L || diagnosticBootMemoryAccessCount % 64L == 0L) {
+            if (diagnosticBootMemoryAccessHistory.size >= 256) diagnosticBootMemoryAccessHistory.removeFirst()
+            diagnosticBootMemoryAccessHistory.addLast(
+                "$kind paddr=0x${address.toString(16).uppercase()} value=0x${value.toString(16).uppercase().padStart(2, '0')}"
+            )
+        }
     }
     // RSP program counter register (SP_PC); the RSP core itself is not yet emulated.
     private var spPc = 0
