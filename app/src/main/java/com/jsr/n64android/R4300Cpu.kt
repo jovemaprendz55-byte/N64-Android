@@ -739,6 +739,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             pageMask = pageMask
         )
         tlb.write(index, entry)
+        // TLB translation is architecturally active for TLB-mapped segments.
+        // Keep compatibility mode for early tests until software installs its first entry.
+        tlbEnabled = true
         val operation = if ((instructionWordForCurrentStep?.and(0x3F)) == 0x06) "TLBWR" else "TLBWI"
         val line = operation + " PC=0x" + (instructionAddressForCurrentStep ?: pc).toULong().toString(16).uppercase() +
             " index=$index PageMask=0x" + pageMask.toString(16).uppercase() +
