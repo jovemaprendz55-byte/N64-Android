@@ -394,6 +394,9 @@ class MainActivity : Activity() {
                 (if (bus.diagnosticPiDmaHistory.isEmpty()) "(nenhuma transferência PI cartucho -> RDRAM observada)" else bus.diagnosticPiDmaHistory.joinToString("\n")) +
                 "\n\nACESSOS À JANELA DE ORIGEM RDRAM (0x33D00–0x33FFF):\n" +
                 (if (bus.diagnosticBootMemoryAccessHistory.isEmpty()) "(nenhum acesso observado)" else bus.diagnosticBootMemoryAccessHistory.joinToString("\n")) +
+                "\n\nESCRITAS CPU NA REGIÃO DE DESTINO 0x1EE400–0x20159F:\n" +
+                "Total de bytes gravados: " + bus.diagnosticBootDestinationWriteCount + "\n" +
+                (if (bus.diagnosticBootDestinationWriteHistory.isEmpty()) "(nenhuma escrita observada nessa região)" else bus.diagnosticBootDestinationWriteHistory.joinToString("\n")) +
                 "\n\nLimitações: HLE inicial de handoff, não emula PIF/Joybus/CIC completo, RSP, GPU/VI, áudio ou controles. A execução da CPU não comprova que o jogo esteja jogável."
             runOnUiThread {
                 hleBootButton?.isEnabled = cartridgeBus != null
