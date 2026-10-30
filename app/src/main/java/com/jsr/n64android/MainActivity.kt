@@ -247,6 +247,9 @@ class MainActivity : Activity() {
                     } catch (error: Throwable) {
                         "ERRO(${error.javaClass.simpleName}: ${error.message ?: "sem detalhes"})"
                     }
+                    indirectTargetWords.add("VADDR=0x${address.toULong().toString(16).uppercase().padStart(16, '0')} INST=$word")
+                }
+            }
             val report = "BOOT HLE EXPERIMENTAL — SEM PIF ROM" +
                     indirectTargetWords.add("VADDR=0x${address.toULong().toString(16).uppercase().padStart(16, '0')} INST=$word")
                 }
@@ -277,14 +280,14 @@ class MainActivity : Activity() {
                     "Mapeamento: ${cpu.describeTlbAddressForDiagnostic(target)}\n" +
                     "Palavras ao redor do destino (-16..+32):\n" + indirectTargetWords.joinToString("\n")
                 } ?: "Instrução JR \\$a3 não foi observada.") +
-                "\n\nPAYLOAD REAL COPIADO (primeiros 64 bytes):\n" + payloadWords.joinToString("\n") +
-                "\\n\\nSALTO INDIRETO JR $a3 EM 0x70000500:\\n" +
+                "\n\nSALTO INDIRETO JR \\$a3 EM 0x70000500:\n" +
                 (indirectJumpTarget?.let { target ->
-                    "Registradores antes do JR: $indirectJumpRegisters\\n" +
-                    "Destino virtual de $a3: 0x${target.toULong().toString(16).uppercase()}\\n" +
-                    "Mapeamento: ${cpu.describeTlbAddressForDiagnostic(target)}\\n" +
-                    "Palavras ao redor do destino (-16..+32):\\n" + indirectTargetWords.joinToString("\\n")
-                } ?: "Instrução JR $a3 não foi observada.") +
+                    "Registradores antes do JR: $indirectJumpRegisters\n" +
+                    "Destino virtual de \\$a3: 0x${target.toULong().toString(16).uppercase()}\n" +
+                    "Mapeamento: ${cpu.describeTlbAddressForDiagnostic(target)}\n" +
+                    "Palavras ao redor do destino (-16..+32):\n" + indirectTargetWords.joinToString("\n")
+                } ?: "Instrução JR \\$a3 não foi observada.") +
+                "\n\nPAYLOAD REAL COPIADO (primeiros 64 bytes):\n" + payloadWords.joinToString("\n") +
                 "\n\nPRIMEIRAS INSTRUÇÕES COM REGISTRADORES (máximo 64):\n" + firstTrace.joinToString("\n") +
                 "\n\nPRIMEIRAS PASSAGENS NO LAÇO 0x80000410–0x80000420:\n" + loopEntryTrace.joinToString("\n") +
                 "\n\nDIAGNÓSTICO DO LAÇO DE CÓPIA 0x70000574–0x70000588:\n" +
