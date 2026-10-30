@@ -102,6 +102,14 @@ class MainActivity : Activity() {
             var copyLoopIterations = 0L
             var copyLoopTakenBranches = 0L
             var copyLoopExitObserved = false
+            // Capture the first instructions after the byte-copy loop exits. The
+            // previous report only retained the final ring, which hid the path
+            // from the completed copy routine to the later stack-region fault.
+            var postCopyTraceRemaining = 0
+            val postCopyTrace = ArrayList<String>()
+            var stackRegionEntryObserved = false
+            val stackRegionEntryContext = ArrayList<String>()
+            val stackRegionTrace = ArrayList<String>()
             val payloadWords = ArrayList<String>()
             val cicSeed = bus.detectCicSeed()
             fun hex(value: Long): String = "0x" + value.toULong().toString(16).uppercase().padStart(16, '0')
@@ -154,6 +162,33 @@ class MainActivity : Activity() {
                         "step=$steps PC=" + hex(before) +
                         " INST=" + (word?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A") +
                         " NEXT_PC=" + hex(cpu.pc)
+                    if (copyLoopExitObserved && postCopyTraceRemaining == 0 && postCopyTrace.isEmpty()) {
+                        postCopyTraceRemaining = 256
+                    }
+                    if (postCopyTraceRemaining > 0) {
+                        postCopyTrace.add(
+                            instructionText + " BEFORE{" + registersBefore + "} AFTER{" + watchedRegisters() + "}"
+                        )
+                        postCopyTraceRemaining--
+                    }
+                    // The previous run faulted at 0x703AB3F8, close to its stack
+                    // pointer. Capture the first entry into that address window
+                    // together with the preceding ring and the first instructions there.
+                    if (before in 0x703A0000L..0x703BFFFFL) {
+                        if (!stackRegionEntryObserved) {
+                            stackRegionEntryObserved = true
+                            stackRegionEntryContext.addAll(trace)
+                            stackRegionEntryContext.add(
+                                "FIRST STACK-REGION ENTRY: " + instructionText +
+                                " BEFORE{" + registersBefore + "} AFTER{" + watchedRegisters() + "}"
+                            )
+                        }
+                        if (stackRegionTrace.size < 128) {
+                            stackRegionTrace.add(
+                                instructionText + " BEFORE{" + registersBefore + "} AFTER{" + watchedRegisters() + "}"
+                            )
+                        }
+                    }
                     if (firstTrace.size < 64) {
                         firstTrace.add(instructionText + " BEFORE{" + registersBefore + "} AFTER{" + watchedRegisters() + "}")
                     }
@@ -203,6 +238,12 @@ class MainActivity : Activity() {
                 "\nSaída do laço observada: $copyLoopExitObserved" +
                 "\nPrimeiras passagens:\n" + copyLoopFirstTrace.joinToString("\n") +
                 "\nÚltimas passagens:\n" + copyLoopRecentTrace.joinToString("\n") +
+                "\n\nPRIMEIRAS 256 INSTRUÇÕES APÓS A SAÍDA DO LAÇO:\n" +
+                (if (postCopyTrace.isEmpty()) "(saída não capturada)" else postCopyTrace.joinToString("\n")) +
+                "\n\nCONTEXTO DA PRIMEIRA ENTRADA NA REGIÃO 0x703A0000–0x703BFFFF:\n" +
+                (if (!stackRegionEntryObserved) "(região não visitada)" else stackRegionEntryContext.joinToString("\n")) +
+                "\n\nPRIMEIRAS INSTRUÇÕES NA REGIÃO DA PILHA (máximo 128):\n" +
+                (if (stackRegionTrace.isEmpty()) "(nenhuma)" else stackRegionTrace.joinToString("\n")) +
                 "\n\nÚLTIMAS INSTRUÇÕES (máximo 80):\n" + trace.joinToString("\n") +
                 "\n\nREGISTRADORES FINAIS: " + watchedRegisters() +
                 "\n\nLimitações: HLE inicial de handoff, não emula PIF/Joybus/CIC completo, RSP, GPU/VI, áudio ou controles. A execução da CPU não comprova que o jogo esteja jogável."
