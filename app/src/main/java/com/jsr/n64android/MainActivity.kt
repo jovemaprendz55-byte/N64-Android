@@ -168,6 +168,12 @@ class MainActivity : Activity() {
                 "\nÚltima falha TLB: VADDR=0x" + (cpu.lastTlbFaultVirtualAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A") +
                 " tipo=" + (cpu.lastTlbFaultAccessType ?: "N/A") +
                 "\nEstado do endereço: " + cpu.describeTlbAddressForDiagnostic(cpu.lastTlbFaultVirtualAddress ?: cpu.pc) +
+                "\nÚltimo acesso de memória: VADDR=0x" + (cpu.diagnosticVirtualAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A") +
+                " PADDR=" + (cpu.diagnosticPhysicalAddress?.let { "0x" + it.toUInt().toString(16).uppercase() } ?: "N/A") +
+                " tipo=" + (cpu.diagnosticAccessType ?: "N/A") +
+                "\n\nESCRITAS TLB EXECUTADAS:\n" +
+                (if (cpu.diagnosticTlbWriteHistory.isEmpty()) "(nenhuma)" else cpu.diagnosticTlbWriteHistory.joinToString("\n")) +
+                "\n\nENTRADAS TLB NO MOMENTO DA FALHA:\n" + cpu.lastTlbEntrySnapshot +
                 "\n\nPAYLOAD REAL COPIADO (primeiros 64 bytes):\n" + payloadWords.joinToString("\n") +
                 "\n\nPRIMEIRAS INSTRUÇÕES COM REGISTRADORES (máximo 64):\n" + firstTrace.joinToString("\n") +
                 "\n\nPRIMEIRAS PASSAGENS NO LAÇO 0x80000410–0x80000420:\n" + loopEntryTrace.joinToString("\n") +
