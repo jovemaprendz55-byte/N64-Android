@@ -259,20 +259,20 @@ class MainActivity : Activity() {
             val copySourceEnd = copySourceStart - copyLength + 1
             val copyDestinationEnd = copyDestinationStart - copyLength + 1
             val transferMemoryDiagnostics = buildString {
-                append("CÓPIA DE MEMÓRIA — ORIGEM RDRAM / ROM / DESTINO\\n")
+                append("CÓPIA DE MEMÓRIA — ORIGEM RDRAM / ROM / DESTINO\n")
                 append("Laço descendente observado: origem física 0x")
                     .append(copySourceStart.toString(16).uppercase())
                     .append(" -> destino físico 0x")
                     .append(copyDestinationStart.toString(16).uppercase())
                     .append(" | bytes=0x")
                     .append(copyLength.toString(16).uppercase())
-                    .append("\\n")
+                    .append("\n")
                 append("Fim esperado: origem física 0x")
                     .append(copySourceEnd.toString(16).uppercase())
                     .append(" -> destino físico 0x")
                     .append(copyDestinationEnd.toString(16).uppercase())
-                    .append("\\n")
-                append("AMOSTRA NO INÍCIO DA CÓPIA (offset relativo -8..+23):\\n")
+                    .append("\n")
+                append("AMOSTRA NO INÍCIO DA CÓPIA (offset relativo -8..+23):\n")
                 for (offset in -8..23) {
                     val sourceAddress = copySourceStart + offset
                     val romAddress = N64Bus.CARTRIDGE_ROM_BASE + sourceAddress
@@ -287,9 +287,9 @@ class MainActivity : Activity() {
                         .append(if (romByte >= 0) romByte.toString(16).uppercase().padStart(2, '0') else "ERRO")
                         .append(" DST[0x").append(destinationAddress.toString(16).uppercase()).append("]=0x")
                         .append(if (destinationByte >= 0) destinationByte.toString(16).uppercase().padStart(2, '0') else "ERRO")
-                        .append("\\n")
+                        .append("\n")
                 }
-                append("AMOSTRA NO FIM DA CÓPIA (offset relativo -8..+23):\\n")
+                append("AMOSTRA NO FIM DA CÓPIA (offset relativo -8..+23):\n")
                 for (offset in -8..23) {
                     val sourceAddress = copySourceEnd + offset
                     val destinationAddress = copyDestinationEnd + offset
@@ -303,7 +303,7 @@ class MainActivity : Activity() {
                         .append(if (romByte >= 0) romByte.toString(16).uppercase().padStart(2, '0') else "ERRO")
                         .append(" DST[0x").append(destinationAddress.toString(16).uppercase()).append("]=0x")
                         .append(if (destinationByte >= 0) destinationByte.toString(16).uppercase().padStart(2, '0') else "ERRO")
-                        .append("\\n")
+                        .append("\n")
                 }
             }
             val report = "BOOT HLE EXPERIMENTAL — SEM PIF ROM" +
