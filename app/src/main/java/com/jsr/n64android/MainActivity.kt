@@ -90,16 +90,24 @@ class MainActivity : Activity() {
         Thread({
             val cpu = R4300Cpu(bus)
             var steps = 0
-            val maxSteps = 200_000
+            // Two million steps provide room for the IPL3 copy loop while keeping
+            // diagnostics bounded and the work off the UI thread.
+            val maxSteps = 2_000_000
             var stopReason = "Limite de $maxSteps instruções alcançado."
             val trace = ArrayDeque<String>()
             val firstTrace = ArrayList<String>()
             val loopEntryTrace = ArrayList<String>()
+            val copyLoopFirstTrace = ArrayList<String>()
+            val copyLoopRecentTrace = ArrayDeque<String>()
+            var copyLoopIterations = 0L
+            var copyLoopTakenBranches = 0L
+            var copyLoopExitObserved = false
             val payloadWords = ArrayList<String>()
             val cicSeed = bus.detectCicSeed()
             fun hex(value: Long): String = "0x" + value.toULong().toString(16).uppercase().padStart(16, '0')
             fun watchedRegisters(): String =
-                "t0=" + hex(cpu.gpr[8]) + " t1=" + hex(cpu.gpr[9]) +
+                "v0=" + hex(cpu.gpr[2]) + " v1=" + hex(cpu.gpr[3]) +
+                " t0=" + hex(cpu.gpr[8]) + " t1=" + hex(cpu.gpr[9]) +
                 " t2=" + hex(cpu.gpr[10]) + " t3=" + hex(cpu.gpr[11]) +
                 " a0=" + hex(cpu.gpr[4]) + " a1=" + hex(cpu.gpr[5]) +
                 " s6=" + hex(cpu.gpr[22]) + " sp=" + hex(cpu.gpr[29]) +
@@ -129,6 +137,18 @@ class MainActivity : Activity() {
                     val before = cpu.pc
                     val registersBefore = watchedRegisters()
                     cpu.step()
+                    // The observed byte-copy loop branches at 0x70000584 and
+                    // executes its store in the delay slot at 0x70000588.
+                    if (before == 0x70000588L) {
+                        copyLoopIterations++
+                        val branchTaken = cpu.pc == 0x70000574L
+                        if (branchTaken) copyLoopTakenBranches++ else copyLoopExitObserved = true
+                        val sample = "copyLoop iteration=$copyLoopIterations branchTaken=$branchTaken " +
+                            "nextPC=${hex(cpu.pc)} BEFORE{$registersBefore} AFTER{${watchedRegisters()}}"
+                        if (copyLoopFirstTrace.size < 8) copyLoopFirstTrace.add(sample)
+                        copyLoopRecentTrace.addLast(sample)
+                        if (copyLoopRecentTrace.size > 16) copyLoopRecentTrace.removeFirst()
+                    }
                     val word = cpu.diagnosticInstructionWord
                     val instructionText =
                         "step=$steps PC=" + hex(before) +
@@ -177,6 +197,12 @@ class MainActivity : Activity() {
                 "\n\nPAYLOAD REAL COPIADO (primeiros 64 bytes):\n" + payloadWords.joinToString("\n") +
                 "\n\nPRIMEIRAS INSTRUÇÕES COM REGISTRADORES (máximo 64):\n" + firstTrace.joinToString("\n") +
                 "\n\nPRIMEIRAS PASSAGENS NO LAÇO 0x80000410–0x80000420:\n" + loopEntryTrace.joinToString("\n") +
+                "\n\nDIAGNÓSTICO DO LAÇO DE CÓPIA 0x70000574–0x70000588:\n" +
+                "Iterações observadas: $copyLoopIterations" +
+                "\nDesvios que retornaram ao início: $copyLoopTakenBranches" +
+                "\nSaída do laço observada: $copyLoopExitObserved" +
+                "\nPrimeiras passagens:\n" + copyLoopFirstTrace.joinToString("\n") +
+                "\nÚltimas passagens:\n" + copyLoopRecentTrace.joinToString("\n") +
                 "\n\nÚLTIMAS INSTRUÇÕES (máximo 80):\n" + trace.joinToString("\n") +
                 "\n\nREGISTRADORES FINAIS: " + watchedRegisters() +
                 "\n\nLimitações: HLE inicial de handoff, não emula PIF/Joybus/CIC completo, RSP, GPU/VI, áudio ou controles. A execução da CPU não comprova que o jogo esteja jogável."
