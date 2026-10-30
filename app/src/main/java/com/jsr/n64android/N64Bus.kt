@@ -19,6 +19,8 @@ class N64Bus(
     private var piDramAddress = 0
     private var piCartAddress = CARTRIDGE_ROM_BASE
     private var piStatus = 0
+    // Bounded trace of PI DMA requests for boot diagnostics; avoids per-byte logging.
+    val diagnosticPiDmaHistory = ArrayDeque<String>()
     // RSP program counter register (SP_PC); the RSP core itself is not yet emulated.
     private var spPc = 0
     // SP DMA registers. Transfers are synchronous; RSP execution and DMA timing are not modeled.
@@ -272,6 +274,11 @@ class N64Bus(
         require(offset >= 0 && offset <= image.size - length) {
             "PI DMA source exceeds loaded cartridge ROM: offset=0x${offset.toString(16)}, length=$length."
         }
+        if (diagnosticPiDmaHistory.size >= 64) diagnosticPiDmaHistory.removeFirst()
+        diagnosticPiDmaHistory.addLast(
+            "PI_WR_LEN cart=0x${piCartAddress.toUInt().toString(16).uppercase()} romOffset=0x${offset.toString(16).uppercase()} " +
+                "dram=0x${piDramAddress.toString(16).uppercase()} length=0x${length.toString(16).uppercase()}"
+        )
         for (index in 0 until length) {
             ram.write8(piDramAddress + index, image[offset + index].toInt() and 0xFF)
         }
