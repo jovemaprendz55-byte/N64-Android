@@ -4273,4 +4273,27 @@ class R4300CpuTest {
         assertEquals(0L, (cpu.cop0[13] ushr 2) and 0x1FL)
     }
 
+
+    @Test fun goldenEyeIpl3CacheScanLoopTerminatesAtUnsignedEndAddress() {
+        val memory = N64Memory(64)
+        // Exact four-instruction loop observed at IPL3 SP-DMEM 0xA4000428:
+        // cache 0,0($t0); sltu $at,$t0,$t1; bne $at,$zero,-3; addiu $t0,$t0,32.
+        memory.write32(0, iType(0x2F, 8, 8, 0)) // CACHE $t0, 0($t0)
+        memory.write32(4, rType(8, 9, 1, 0x2B)) // SLTU $at, $t0, $t1
+        memory.write32(8, iType(0x05, 1, 0, -3)) // BNE $at, $zero, loop
+        memory.write32(12, iType(0x09, 8, 8, 0x20)) // Delay slot: ADDIU $t0, $t0, 32
+
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[8] = 0xFFFFFFFF80000000UL.toLong()
+        cpu.gpr[9] = 0xFFFFFFFF80003FE0UL.toLong()
+        cpu.setProgramCounter(0)
+
+        repeat(512) { repeat(4) { cpu.step() } }
+
+        assertEquals(0xFFFFFFFF80004000UL.toLong(), cpu.gpr[8])
+        assertEquals(0L, cpu.gpr[1])
+        assertEquals(0x10L, cpu.pc)
+        assertEquals(0L, cpu.cop0[13] and 0x7CL)
+    }
+
 }
