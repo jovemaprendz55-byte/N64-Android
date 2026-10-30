@@ -90,7 +90,8 @@ class MainActivity : Activity() {
         Thread({
             val cpu = R4300Cpu(bus)
             var steps = 0
-            var stopReason = "Limite de 100000 instruções alcançado."
+            val maxSteps = 200_000
+            var stopReason = "Limite de $maxSteps instruções alcançado."
             val trace = ArrayDeque<String>()
             val firstTrace = ArrayList<String>()
             val loopEntryTrace = ArrayList<String>()
@@ -124,7 +125,7 @@ class MainActivity : Activity() {
                 cpu.gpr[22] = cicSeed.toLong() // CIC seed ($s6), synthesized by HLE.
                 cpu.gpr[29] = 0xFFFFFFFFA07FFFE0UL.toLong() // Initial 8 MiB RDRAM stack.
                 cpu.setProgramCounter(0xFFFFFFFF80000400UL.toLong())
-                while (steps < 100_000) {
+                while (steps < maxSteps) {
                     val before = cpu.pc
                     val registersBefore = watchedRegisters()
                     cpu.step()
