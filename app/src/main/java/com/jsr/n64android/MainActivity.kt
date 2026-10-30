@@ -397,6 +397,9 @@ class MainActivity : Activity() {
                 "\n\nESCRITAS CPU NA REGIÃO DE DESTINO 0x1EE400–0x20159F:\n" +
                 "Total de bytes gravados: " + bus.diagnosticBootDestinationWriteCount + "\n" +
                 (if (bus.diagnosticBootDestinationWriteHistory.isEmpty()) "(nenhuma escrita observada nessa região)" else bus.diagnosticBootDestinationWriteHistory.joinToString("\n")) +
+                "\n\nESCRITAS CPU EM TODA A RDRAM:\n" +
+                "Total de bytes gravados: " + bus.diagnosticRdramWriteCount + "\n" +
+                (if (bus.diagnosticRdramWriteHistory.isEmpty()) "(nenhuma escrita CPU na RDRAM)" else bus.diagnosticRdramWriteHistory.joinToString("\n")) +
                 "\n\nLimitações: HLE inicial de handoff, não emula PIF/Joybus/CIC completo, RSP, GPU/VI, áudio ou controles. A execução da CPU não comprova que o jogo esteja jogável."
             runOnUiThread {
                 hleBootButton?.isEnabled = cartridgeBus != null
