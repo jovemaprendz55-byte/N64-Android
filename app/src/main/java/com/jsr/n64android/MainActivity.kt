@@ -90,9 +90,10 @@ class MainActivity : Activity() {
         Thread({
             val cpu = R4300Cpu(bus)
             var steps = 0
-            // Two million steps provide room for the IPL3 copy loop while keeping
-            // diagnostics bounded and the work off the UI thread.
-            val maxSteps = 2_000_000
+            // The post-IPL3 startup loop scans a large RDRAM range before it can
+            // hand off to the game. Two million steps stop partway through it;
+            // allow up to eight million while keeping execution off the UI thread.
+            val maxSteps = 8_000_000
             var stopReason = "Limite de $maxSteps instruções alcançado."
             val trace = ArrayDeque<String>()
             val firstTrace = ArrayList<String>()
