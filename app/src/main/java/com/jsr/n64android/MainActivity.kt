@@ -253,15 +253,15 @@ class MainActivity : Activity() {
                 }
             }
             // The observed descending memcpy reads KSEG0 0x80033F2E and writes
-            // TLB-mapped 0x7020159F. Compare the actual RDRAM source with the same
-            // cartridge-ROM offsets and the corresponding destination bytes.
+            // TLB-mapped 0x7020159F. IPL3 DMA-copied ROM offset 0x1000 to RDRAM
+            // physical 0x400, so RDRAM address X corresponds to ROM address X+0x1000.
             val copySourceStart = 0x33F2E
             val copyDestinationStart = 0x20159F
             val copyLength = 0x131A0
             val copySourceEnd = copySourceStart - copyLength + 1
             val copyDestinationEnd = copyDestinationStart - copyLength + 1
             val transferMemoryDiagnostics = buildString {
-                append("CÓPIA DE MEMÓRIA — ORIGEM RDRAM / ROM / DESTINO\n")
+                append("CÓPIA DE MEMÓRIA — ORIGEM RDRAM / ROM (+0x1000) / DESTINO\n")
                 append("Laço descendente observado: origem física 0x")
                     .append(copySourceStart.toString(16).uppercase())
                     .append(" -> destino físico 0x")
@@ -277,7 +277,7 @@ class MainActivity : Activity() {
                 append("AMOSTRA NO INÍCIO DA CÓPIA (offset relativo -8..+23):\n")
                 for (offset in -8..23) {
                     val sourceAddress = copySourceStart + offset
-                    val romAddress = N64Bus.CARTRIDGE_ROM_BASE + sourceAddress
+                    val romAddress = N64Bus.CARTRIDGE_ROM_BASE + 0x1000 + sourceAddress
                     val destinationAddress = copyDestinationStart + offset
                     val sourceByte = try { bus.read8(sourceAddress) } catch (error: Throwable) { -1 }
                     val romByte = try { bus.read8(romAddress) } catch (error: Throwable) { -1 }
@@ -285,7 +285,7 @@ class MainActivity : Activity() {
                     append("off=").append(offset)
                         .append(" SRC_RDRAM[0x").append(sourceAddress.toString(16).uppercase()).append("]=0x")
                         .append(if (sourceByte >= 0) sourceByte.toString(16).uppercase().padStart(2, '0') else "ERRO")
-                        .append(" ROM[0x").append(sourceAddress.toString(16).uppercase()).append("]=0x")
+                        .append(" ROM[0x").append((sourceAddress + 0x1000).toString(16).uppercase()).append("]=0x")
                         .append(if (romByte >= 0) romByte.toString(16).uppercase().padStart(2, '0') else "ERRO")
                         .append(" DST[0x").append(destinationAddress.toString(16).uppercase()).append("]=0x")
                         .append(if (destinationByte >= 0) destinationByte.toString(16).uppercase().padStart(2, '0') else "ERRO")
@@ -296,12 +296,12 @@ class MainActivity : Activity() {
                     val sourceAddress = copySourceEnd + offset
                     val destinationAddress = copyDestinationEnd + offset
                     val sourceByte = try { bus.read8(sourceAddress) } catch (error: Throwable) { -1 }
-                    val romByte = try { bus.read8(N64Bus.CARTRIDGE_ROM_BASE + sourceAddress) } catch (error: Throwable) { -1 }
+                    val romByte = try { bus.read8(N64Bus.CARTRIDGE_ROM_BASE + 0x1000 + sourceAddress) } catch (error: Throwable) { -1 }
                     val destinationByte = try { bus.read8(destinationAddress) } catch (error: Throwable) { -1 }
                     append("off=").append(offset)
                         .append(" SRC_RDRAM[0x").append(sourceAddress.toString(16).uppercase()).append("]=0x")
                         .append(if (sourceByte >= 0) sourceByte.toString(16).uppercase().padStart(2, '0') else "ERRO")
-                        .append(" ROM[0x").append(sourceAddress.toString(16).uppercase()).append("]=0x")
+                        .append(" ROM[0x").append((sourceAddress + 0x1000).toString(16).uppercase()).append("]=0x")
                         .append(if (romByte >= 0) romByte.toString(16).uppercase().padStart(2, '0') else "ERRO")
                         .append(" DST[0x").append(destinationAddress.toString(16).uppercase()).append("]=0x")
                         .append(if (destinationByte >= 0) destinationByte.toString(16).uppercase().padStart(2, '0') else "ERRO")
