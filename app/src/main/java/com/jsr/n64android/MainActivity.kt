@@ -92,15 +92,32 @@ class MainActivity : Activity() {
             var steps = 0
             var stopReason = "Limite de 100000 instruções alcançado."
             val trace = ArrayDeque<String>()
+            val firstTrace = ArrayList<String>()
+            val loopEntryTrace = ArrayList<String>()
+            val payloadWords = ArrayList<String>()
             val cicSeed = bus.detectCicSeed()
+            fun hex(value: Long): String = "0x" + value.toULong().toString(16).uppercase().padStart(16, '0')
+            fun watchedRegisters(): String =
+                "t0=" + hex(cpu.gpr[8]) + " t1=" + hex(cpu.gpr[9]) +
+                " t2=" + hex(cpu.gpr[10]) + " t3=" + hex(cpu.gpr[11]) +
+                " a0=" + hex(cpu.gpr[4]) + " a1=" + hex(cpu.gpr[5]) +
+                " s6=" + hex(cpu.gpr[22]) + " sp=" + hex(cpu.gpr[29]) +
+                " ra=" + hex(cpu.gpr[31])
             try {
                 require(cicSeed != null) {
                     "CIC/seed do IPL3 não reconhecido. Este HLE inicial suporta apenas CIC 6102/7101 e 6105/7105."
                 }
-                // IPL3 normally copies the first 0xFC0 bytes after its own 0xFC0-byte
-                // region (cartridge offset 0x1000) to RDRAM physical 0x400.
+                // Stage the cartridge payload at RDRAM physical 0x400.
                 for (offset in 0 until 0xFC0) {
                     bus.write8(0x400 + offset, bus.read8(0x10001000 + offset))
+                }
+                // Record the actual staged words so the report can verify the code
+                // that the CPU is about to execute, independently of the trace.
+                for (offset in 0 until 0x40 step 4) {
+                    payloadWords.add(
+                        "RDRAM[0x" + (0x400 + offset).toString(16).uppercase() +
+                        "]=0x" + bus.read32(0x400 + offset).toUInt().toString(16).uppercase().padStart(8, '0')
+                    )
                 }
                 cpu.reset()
                 cpu.tlbEnabled = false
@@ -109,18 +126,27 @@ class MainActivity : Activity() {
                 cpu.setProgramCounter(0xFFFFFFFF80000400UL.toLong())
                 while (steps < 100_000) {
                     val before = cpu.pc
+                    val registersBefore = watchedRegisters()
                     cpu.step()
                     val word = cpu.diagnosticInstructionWord
-                    trace.addLast(
-                        "step=$steps PC=0x" + before.toULong().toString(16).uppercase().padStart(16, '0') +
+                    val instructionText =
+                        "step=$steps PC=" + hex(before) +
                         " INST=" + (word?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A") +
-                        " NEXT_PC=0x" + cpu.pc.toULong().toString(16).uppercase().padStart(16, '0')
-                    )
-                    if (trace.size > 160) trace.removeFirst()
+                        " NEXT_PC=" + hex(cpu.pc)
+                    if (firstTrace.size < 64) {
+                        firstTrace.add(instructionText + " BEFORE{" + registersBefore + "} AFTER{" + watchedRegisters() + "}")
+                    }
+                    if (before in 0xFFFFFFFF80000410UL.toLong()..0xFFFFFFFF80000420UL.toLong() &&
+                        loopEntryTrace.size < 24
+                    ) {
+                        loopEntryTrace.add(instructionText + " BEFORE{" + registersBefore + "} AFTER{" + watchedRegisters() + "}")
+                    }
+                    trace.addLast(instructionText)
+                    if (trace.size > 80) trace.removeFirst()
                     steps++
                     if (cpu.lastExceptionCode != null) {
-                        stopReason = "Exceção arquitetural: código=${cpu.lastExceptionCode}, PC=0x" +
-                            (cpu.lastExceptionInstructionAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A")
+                        stopReason = "Exceção arquitetural: código=${cpu.lastExceptionCode}, PC=" +
+                            hex(cpu.lastExceptionInstructionAddress ?: before)
                         break
                     }
                 }
@@ -136,7 +162,11 @@ class MainActivity : Activity() {
                 "\nMotivo da parada: $stopReason" +
                 "\nCOP0 Status=0x" + cpu.cop0[12].toULong().toString(16).uppercase() +
                 " Cause=0x" + cpu.cop0[13].toULong().toString(16).uppercase() +
-                "\n\nÚLTIMAS INSTRUÇÕES (máximo 160):\n" + trace.joinToString("\n") +
+                "\n\nPAYLOAD REAL COPIADO (primeiros 64 bytes):\n" + payloadWords.joinToString("\n") +
+                "\n\nPRIMEIRAS INSTRUÇÕES COM REGISTRADORES (máximo 64):\n" + firstTrace.joinToString("\n") +
+                "\n\nPRIMEIRAS PASSAGENS NO LAÇO 0x80000410–0x80000420:\n" + loopEntryTrace.joinToString("\n") +
+                "\n\nÚLTIMAS INSTRUÇÕES (máximo 80):\n" + trace.joinToString("\n") +
+                "\n\nREGISTRADORES FINAIS: " + watchedRegisters() +
                 "\n\nLimitações: HLE inicial de handoff, não emula PIF/Joybus/CIC completo, RSP, GPU/VI, áudio ou controles. A execução da CPU não comprova que o jogo esteja jogável."
             runOnUiThread {
                 hleBootButton?.isEnabled = cartridgeBus != null
