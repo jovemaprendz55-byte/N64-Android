@@ -694,7 +694,7 @@ class R4300CpuTest {
 
         repeat(6) { cpu.step() }
 
-        assertEquals(true, cpu.tlbEnabled) // TLBWI ativa a tradução automaticamente.
+        assertEquals(false, cpu.tlbEnabled) // TLBWI updates the TLB, not the CPU mode switch.
         assertEquals(0x1000, cpu.tlb.translate(0x00400000L, 7, R4300Tlb.Access.READ))
         assertEquals(0x2000, cpu.tlb.translate(0x00401000L, 7, R4300Tlb.Access.READ))
         assertEquals(1, cpu.diagnosticTlbWriteHistory.size)
@@ -4230,7 +4230,7 @@ class R4300CpuTest {
         memory.write32(4, 0) // delay slot
         val cpu = R4300Cpu(memory)
         cpu.tlbEnabled = true
-        cpu.setProgramCounter(0)
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong()) // Execute setup code from KSEG0.
         cpu.gpr[1] = 0x70000510L
 
         cpu.step() // JR schedules the KUSEG target.
@@ -4256,9 +4256,10 @@ class R4300CpuTest {
         cpu.cop0[3] = 0x01L // EntryLo1: global only; invalid
         cpu.cop0[5] = 0x007FE000L // 4 MiB pages, 8 MiB pair
         cpu.cop0[10] = 0x70000000L // EntryHi: GoldenEye KUSEG pair
+        cpu.tlbEnabled = true // Runtime mode is configured explicitly by the HLE boot path.
 
         cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
-        cpu.step() // TLBWI installs the mapping and enables architectural TLB translation.
+        cpu.step() // TLBWI installs the mapping while executing from KSEG0.
 
         assertTrue(cpu.tlbEnabled)
         assertTrue(cpu.diagnosticTlbWriteHistory.last().contains("EntryHi=0x70000000"))
