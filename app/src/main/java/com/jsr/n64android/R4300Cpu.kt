@@ -57,6 +57,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     var diagnosticAccessType: String? = null
         private set
     private var delayedTarget: Long? = null
+    /** Target captured when the most recently executed instruction was JR/JALR. */
+    var diagnosticLastIndirectTarget: Long? = null
+        private set
     private var pendingDelaySlotBranchAddress: Long? = null
     private var randomResetByWiredWrite = false
     /** Bounded record of actual TLBWI/TLBWR operations for ROM diagnostics. */
@@ -91,6 +94,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         diagnosticPhysicalAddress = null
         diagnosticAccessType = null
         delayedTarget = null
+        diagnosticLastIndirectTarget = null
         pendingDelaySlotBranchAddress = null
     }
 
@@ -127,6 +131,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     private fun stepInstruction() {
         val instructionAddress = pc
         instructionAddressForCurrentStep = instructionAddress
+        diagnosticLastIndirectTarget = null
         val instruction = memory.read32(physicalAddress(instructionAddress, R4300Tlb.Access.FETCH))
         instructionWordForCurrentStep = instruction
         val targetFromPreviousBranch = delayedTarget
@@ -337,13 +342,16 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 0x08 -> { // JR: rt, rd and shamt are reserved.
                     if (rt != 0 || rd != 0 || shamt != 0) throw ReservedInstructionFault("Malformed JR reserved fields")
                     pendingDelaySlotBranchAddress = instructionAddress
+                    diagnosticLastIndirectTarget = gpr[rs]
                     delayedTarget = gpr[rs]
                 }
                 0x09 -> { // JALR: rt and shamt are reserved; rd selects the link register.
                     if (rt != 0 || shamt != 0) throw ReservedInstructionFault("Malformed JALR reserved fields")
+                    val jumpTarget = gpr[rs]
                     gpr[rd] = nextSequential + 4L
                     pendingDelaySlotBranchAddress = instructionAddress
-                    delayedTarget = gpr[rs]
+                    diagnosticLastIndirectTarget = jumpTarget
+                    delayedTarget = jumpTarget
                 }
                 0x20 -> { // ADD: signed 32-bit addition traps on overflow.
                     val result = gpr[rs].toInt().toLong() + gpr[rt].toInt().toLong()
