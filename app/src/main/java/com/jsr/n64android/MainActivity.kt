@@ -153,7 +153,7 @@ class MainActivity : Activity() {
                     val captureBeforeRegisters =
                         firstTrace.size < 64 ||
                         captureCopySample ||
-                        (copyLoopExitObserved && postCopyTraceRemaining > 0) ||
+                        (copyLoopExitObserved && (postCopyTraceRemaining > 0 || postCopyTrace.isEmpty())) ||
                         (inStackRegion && (!stackRegionEntryObserved || stackRegionTrace.size < 128)) ||
                         (before in 0xFFFFFFFF80000410UL.toLong()..0xFFFFFFFF80000420UL.toLong() &&
                             loopEntryTrace.size < 24)
