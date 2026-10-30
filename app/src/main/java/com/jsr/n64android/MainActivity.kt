@@ -238,7 +238,6 @@ class MainActivity : Activity() {
             } catch (error: Throwable) {
                 stopReason = "Execução interrompida: ${error.javaClass.simpleName}: ${error.message ?: "sem detalhes"}"
             }
-            val report = "BOOT HLE EXPERIMENTAL — SEM PIF ROM" +
             // Inspect the indirect jump target after execution stops; no per-step overhead.
             indirectJumpTarget?.let { target ->
                 for (offset in -16L..32L step 4L) {
@@ -248,6 +247,7 @@ class MainActivity : Activity() {
                     } catch (error: Throwable) {
                         "ERRO(${error.javaClass.simpleName}: ${error.message ?: "sem detalhes"})"
                     }
+            val report = "BOOT HLE EXPERIMENTAL — SEM PIF ROM" +
                     indirectTargetWords.add("VADDR=0x${address.toULong().toString(16).uppercase().padStart(16, '0')} INST=$word")
                 }
             }
@@ -270,6 +270,13 @@ class MainActivity : Activity() {
                 "\n\nESCRITAS TLB EXECUTADAS:\n" +
                 (if (cpu.diagnosticTlbWriteHistory.isEmpty()) "(nenhuma)" else cpu.diagnosticTlbWriteHistory.joinToString("\n")) +
                 "\n\nENTRADAS TLB NO MOMENTO DA FALHA:\n" + cpu.lastTlbEntrySnapshot +
+                "\n\nSALTO INDIRETO JR \\$a3 EM 0x70000500:\n" +
+                (indirectJumpTarget?.let { target ->
+                    "Registradores antes do JR: $indirectJumpRegisters\n" +
+                    "Destino virtual de \\$a3: 0x${target.toULong().toString(16).uppercase()}\n" +
+                    "Mapeamento: ${cpu.describeTlbAddressForDiagnostic(target)}\n" +
+                    "Palavras ao redor do destino (-16..+32):\n" + indirectTargetWords.joinToString("\n")
+                } ?: "Instrução JR \\$a3 não foi observada.") +
                 "\n\nPAYLOAD REAL COPIADO (primeiros 64 bytes):\n" + payloadWords.joinToString("\n") +
                 "\\n\\nSALTO INDIRETO JR $a3 EM 0x70000500:\\n" +
                 (indirectJumpTarget?.let { target ->
