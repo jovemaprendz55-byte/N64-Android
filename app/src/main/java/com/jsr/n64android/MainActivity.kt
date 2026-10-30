@@ -206,10 +206,21 @@ class MainActivity : Activity() {
                         }
                     }
                     val word = cpu.diagnosticInstructionWord
-                    val instructionText =
+                    // Formatting a diagnostic line allocates several strings. Most
+                    // instructions are not retained, so only format sampled steps or
+                    // steps belonging to a section that explicitly captures detail.
+                    val captureInstructionText =
+                        steps < 64 ||
+                        (copyLoopExitObserved && (postCopyTraceRemaining > 0 || postCopyTrace.isEmpty())) ||
+                        inStackRegion ||
+                        (before in 0xFFFFFFFF80000410UL.toLong()..0xFFFFFFFF80000420UL.toLong() &&
+                            loopEntryTrace.size < 24) ||
+                        (steps and 0xFF) == 0
+                    val instructionText = if (captureInstructionText) {
                         "step=$steps PC=" + hex(before) +
-                        " INST=" + (word?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A") +
-                        " NEXT_PC=" + hex(cpu.pc)
+                            " INST=" + (word?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A") +
+                            " NEXT_PC=" + hex(cpu.pc)
+                    } else ""
                     if (copyLoopExitObserved && postCopyTraceRemaining == 0 && postCopyTrace.isEmpty()) {
                         postCopyTraceRemaining = 256
                     }
@@ -245,8 +256,10 @@ class MainActivity : Activity() {
                     ) {
                         loopEntryTrace.add(instructionText + " BEFORE{" + registersBefore + "} AFTER{" + watchedRegisters() + "}")
                     }
-                    trace.addLast(instructionText)
-                    if (trace.size > 80) trace.removeFirst()
+                    if (captureInstructionText) {
+                        trace.addLast(instructionText)
+                        if (trace.size > 80) trace.removeFirst()
+                    }
                     steps++
                     if (cpu.lastExceptionCode != null) {
                         stopReason = "Exceção arquitetural: código=${cpu.lastExceptionCode}, PC=" +
