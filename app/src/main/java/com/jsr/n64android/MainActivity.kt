@@ -143,7 +143,21 @@ class MainActivity : Activity() {
                 cpu.setProgramCounter(0xFFFFFFFF80000400UL.toLong())
                 while (steps < maxSteps) {
                     val before = cpu.pc
-                    val registersBefore = watchedRegisters()
+                    val inStackRegion = before in 0x703A0000L..0x703BFFFFL
+                    val nextCopyIteration = if (before == 0x70000588L) copyLoopIterations + 1 else 0L
+                    // Register formatting allocates many strings. Capture it only
+                    // where a diagnostic section will actually retain the values,
+                    // rather than on all ~78k byte-copy iterations.
+                    val captureCopySample = before == 0x70000588L &&
+                        (nextCopyIteration <= 8L || nextCopyIteration % 4096L == 0L)
+                    val captureBeforeRegisters =
+                        firstTrace.size < 64 ||
+                        captureCopySample ||
+                        (copyLoopExitObserved && postCopyTraceRemaining > 0) ||
+                        (inStackRegion && (!stackRegionEntryObserved || stackRegionTrace.size < 128)) ||
+                        (before in 0xFFFFFFFF80000410UL.toLong()..0xFFFFFFFF80000420UL.toLong() &&
+                            loopEntryTrace.size < 24)
+                    val registersBefore = if (captureBeforeRegisters) watchedRegisters() else ""
                     cpu.step()
                     // The observed byte-copy loop branches at 0x70000584 and
                     // executes its store in the delay slot at 0x70000588.
@@ -151,11 +165,17 @@ class MainActivity : Activity() {
                         copyLoopIterations++
                         val branchTaken = cpu.pc == 0x70000574L
                         if (branchTaken) copyLoopTakenBranches++ else copyLoopExitObserved = true
-                        val sample = "copyLoop iteration=$copyLoopIterations branchTaken=$branchTaken " +
-                            "nextPC=${hex(cpu.pc)} BEFORE{$registersBefore} AFTER{${watchedRegisters()}}"
-                        if (copyLoopFirstTrace.size < 8) copyLoopFirstTrace.add(sample)
-                        copyLoopRecentTrace.addLast(sample)
-                        if (copyLoopRecentTrace.size > 16) copyLoopRecentTrace.removeFirst()
+                        // Keep the first samples, periodic checkpoints and final exit.
+                        // Formatting every iteration made the diagnostic itself a
+                        // major source of delay on mid-range Android devices.
+                        if (captureCopySample || !branchTaken) {
+                            val sample = "copyLoop iteration=$copyLoopIterations branchTaken=$branchTaken " +
+                                "nextPC=${hex(cpu.pc)} BEFORE{${if (captureCopySample) registersBefore else "not sampled"}} " +
+                                "AFTER{${watchedRegisters()}}"
+                            if (copyLoopFirstTrace.size < 8) copyLoopFirstTrace.add(sample)
+                            copyLoopRecentTrace.addLast(sample)
+                            if (copyLoopRecentTrace.size > 16) copyLoopRecentTrace.removeFirst()
+                        }
                     }
                     val word = cpu.diagnosticInstructionWord
                     val instructionText =
