@@ -410,6 +410,8 @@ class MainActivity : Activity() {
                 "\\n\\n" + transferMemoryDiagnostics +
                 "\n\nHISTÓRICO DE DMA PI (até 64 solicitações):\n" +
                 (if (bus.diagnosticPiDmaHistory.isEmpty()) "(nenhuma transferência PI cartucho -> RDRAM observada)" else bus.diagnosticPiDmaHistory.joinToString("\n")) +
+                "\n\nHISTÓRICO DE DMA SP (até 64 transferências):\n" +
+                (if (bus.diagnosticSpDmaHistory.isEmpty()) "(nenhuma transferência SP observada)" else bus.diagnosticSpDmaHistory.joinToString("\n")) +
                 "\n\nACESSOS À JANELA DE ORIGEM RDRAM (0x33D00–0x33FFF):\n" +
                 (if (bus.diagnosticBootMemoryAccessHistory.isEmpty()) "(nenhum acesso observado)" else bus.diagnosticBootMemoryAccessHistory.joinToString("\n")) +
                 "\n\nESCRITAS CPU NA REGIÃO DE DESTINO 0x1EE400–0x20159F:\n" +
