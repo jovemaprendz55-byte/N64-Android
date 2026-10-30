@@ -4244,4 +4244,32 @@ class R4300CpuTest {
         assertEquals(0x70000510L, cpu.lastTlbFaultVirtualAddress)
         assertEquals("FETCH", cpu.lastTlbFaultAccessType)
     }
+
+    @Test fun goldenEyeBootCodeTlbwiMaps70000510ToRdram0510() {
+        val memory = N64Memory(0x1000)
+        memory.write32(0, 0x42000002) // tlbwi
+        memory.write32(0x510, iType(0x09, 0, 2, 42)) // addiu $v0, $zero, 42
+
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[0] = 1L // Index
+        cpu.cop0[2] = 0x1FL // EntryLo0: PFN 0, G/V/D set
+        cpu.cop0[3] = 0x01L // EntryLo1: global only; invalid
+        cpu.cop0[5] = 0x007FE000L // 4 MiB pages, 8 MiB pair
+        cpu.cop0[10] = 0x70000000L // EntryHi: GoldenEye KUSEG pair
+
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
+        cpu.step() // TLBWI installs the mapping and enables architectural TLB translation.
+
+        assertTrue(cpu.tlbEnabled)
+        assertTrue(cpu.diagnosticTlbWriteHistory.last().contains("EntryHi=0x70000000"))
+
+        cpu.setProgramCounter(0x70000510L)
+        cpu.step() // Fetch must translate to physical RDRAM 0x510.
+
+        assertEquals(42L, cpu.gpr[2])
+        assertEquals(0x510, cpu.diagnosticPhysicalAddress)
+        assertEquals("FETCH", cpu.diagnosticAccessType)
+        assertEquals(0L, (cpu.cop0[13] ushr 2) and 0x1FL)
+    }
+
 }
