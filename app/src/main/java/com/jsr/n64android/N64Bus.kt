@@ -23,6 +23,18 @@ class N64Bus(
     val diagnosticPiDmaHistory = ArrayDeque<String>()
     // Captures CPU-visible accesses to the suspected IPL3 copy-source window.
     val diagnosticBootMemoryAccessHistory = ArrayDeque<String>()
+    // Bounded trace of CPU byte writes in the IPL3 destination range under investigation.
+    var diagnosticBootDestinationWriteCount: Long = 0
+        private set
+    val diagnosticBootDestinationWriteHistory = ArrayDeque<String>()
+    private fun recordBootDestinationWrite(address: Int, value: Int) {
+        if (address !in 0x1EE400..0x20159F) return
+        diagnosticBootDestinationWriteCount++
+        if (diagnosticBootDestinationWriteHistory.size >= 96) diagnosticBootDestinationWriteHistory.removeFirst()
+        diagnosticBootDestinationWriteHistory.addLast(
+            "W paddr=0x${address.toString(16).uppercase()} value=0x${value.toString(16).uppercase().padStart(2, '0')}"
+        )
+    }
     private fun recordBootMemoryAccess(kind: String, address: Int, value: Int) {
         if (address !in 0x33D00 until 0x34000) return
         if (diagnosticBootMemoryAccessHistory.size >= 256) diagnosticBootMemoryAccessHistory.removeFirst()
@@ -185,6 +197,7 @@ class N64Bus(
         if (address < ram.size) {
             ram.write8(address, value)
             recordBootMemoryAccess("W", address, value and 0xFF)
+            recordBootDestinationWrite(address, value and 0xFF)
             return
         }
         if (address in SP_DMEM_BASE until SP_DMEM_BASE + SP_MEM_SIZE) {
