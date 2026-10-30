@@ -166,6 +166,12 @@ class N64Bus(
 
     override fun read16(address: Int): Int {
         requireAligned(address, 2)
+        if (address < ram.size) {
+            val value = ram.read16(address)
+            recordBootMemoryAccess("R", address, value ushr 8)
+            recordBootMemoryAccess("R", address + 1, value and 0xFF)
+            return value
+        }
         return (read8(address) shl 8) or read8(address + 1)
     }
 
@@ -200,6 +206,14 @@ class N64Bus(
             AI_BITRATE_REG -> return aiBitRate
             VI_CURRENT_REG -> return viCurrentLine
             in VI_REG_BASE until VI_REG_BASE + VI_REG_SIZE -> return viRegisters[(address - VI_REG_BASE) / 4]
+        }
+        if (address < ram.size) {
+            val value = ram.read32(address)
+            recordBootMemoryAccess("R", address, value ushr 24)
+            recordBootMemoryAccess("R", address + 1, value ushr 16)
+            recordBootMemoryAccess("R", address + 2, value ushr 8)
+            recordBootMemoryAccess("R", address + 3, value)
+            return value
         }
         return (read8(address) shl 24) or (read8(address + 1) shl 16) or
             (read8(address + 2) shl 8) or read8(address + 3)
