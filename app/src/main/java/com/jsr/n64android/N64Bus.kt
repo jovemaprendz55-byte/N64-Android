@@ -21,6 +21,15 @@ class N64Bus(
     private var piStatus = 0
     // Bounded trace of PI DMA requests for boot diagnostics; avoids per-byte logging.
     val diagnosticPiDmaHistory = ArrayDeque<String>()
+    // Captures CPU-visible accesses to the suspected IPL3 copy-source window.
+    val diagnosticBootMemoryAccessHistory = ArrayDeque<String>()
+    private fun recordBootMemoryAccess(kind: String, address: Int, value: Int) {
+        if (address !in 0x33D00 until 0x34000) return
+        if (diagnosticBootMemoryAccessHistory.size >= 256) diagnosticBootMemoryAccessHistory.removeFirst()
+        diagnosticBootMemoryAccessHistory.addLast(
+            "$kind paddr=0x${address.toString(16).uppercase()} value=0x${value.toString(16).uppercase().padStart(2, '0')}"
+        )
+    }
     // RSP program counter register (SP_PC); the RSP core itself is not yet emulated.
     private var spPc = 0
     // SP DMA registers. Transfers are synchronous; RSP execution and DMA timing are not modeled.
@@ -87,7 +96,11 @@ class N64Bus(
 
     override fun read8(address: Int): Int {
         require(address >= 0) { "Negative physical address: 0x${address.toUInt().toString(16)}" }
-        if (address < ram.size) return ram.read8(address)
+        if (address < ram.size) {
+            val value = ram.read8(address)
+            recordBootMemoryAccess("R", address, value)
+            return value
+        }
         if (address in SP_DMEM_BASE until SP_DMEM_BASE + SP_MEM_SIZE) {
             return spDmem[address - SP_DMEM_BASE].toInt() and 0xFF
         }
@@ -171,6 +184,7 @@ class N64Bus(
         require(address >= 0) { "Negative physical address." }
         if (address < ram.size) {
             ram.write8(address, value)
+            recordBootMemoryAccess("W", address, value and 0xFF)
             return
         }
         if (address in SP_DMEM_BASE until SP_DMEM_BASE + SP_MEM_SIZE) {
