@@ -424,7 +424,7 @@ class N64Bus(
         }
         if (diagnosticSpDmaHistory.size >= 64) diagnosticSpDmaHistory.removeFirst()
         val direction = if (toSp) "RDRAM_TO_SP" else "SP_TO_RDRAM"
-        val dramEnd = if (toSp) (spDramAddress and 0x00FFFFFF) else (dramAddress - dramSkip)
+        val dramEnd = if (toSp) (spDramAddress and 0x00FFFFFF) else (dramAddress - dramSkip - 1)
         diagnosticSpDmaHistory.addLast(
             "$direction dramStart=0x${(spDramAddress and 0x00FFFFFF).toString(16).uppercase()} " +
                 "dramLast=0x${dramEnd.toString(16).uppercase()} blockLength=0x${blockLength.toString(16).uppercase()} " +
