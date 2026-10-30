@@ -251,9 +251,6 @@ class MainActivity : Activity() {
                 }
             }
             val report = "BOOT HLE EXPERIMENTAL — SEM PIF ROM" +
-                    indirectTargetWords.add("VADDR=0x${address.toULong().toString(16).uppercase().padStart(16, '0')} INST=$word")
-                }
-            }
                 "\nPIF ROM externa: não utilizada" +
                 "\nCIC seed detectado: " + (cicSeed?.let { "0x" + it.toString(16).uppercase() } ?: "não reconhecido") +
                 "\nPayload copiado: 0xFC0 bytes do cartucho (offset 0x1000) para RDRAM 0x400" +
@@ -273,20 +270,13 @@ class MainActivity : Activity() {
                 "\n\nESCRITAS TLB EXECUTADAS:\n" +
                 (if (cpu.diagnosticTlbWriteHistory.isEmpty()) "(nenhuma)" else cpu.diagnosticTlbWriteHistory.joinToString("\n")) +
                 "\n\nENTRADAS TLB NO MOMENTO DA FALHA:\n" + cpu.lastTlbEntrySnapshot +
-                "\n\nSALTO INDIRETO JR \\$a3 EM 0x70000500:\n" +
+                "\n\nSALTO INDIRETO JR registrador 7 EM 0x70000500:\n" +
                 (indirectJumpTarget?.let { target ->
                     "Registradores antes do JR: $indirectJumpRegisters\n" +
-                    "Destino virtual de \\$a3: 0x${target.toULong().toString(16).uppercase()}\n" +
+                    "Destino virtual de registrador 7: 0x${target.toULong().toString(16).uppercase()}\n" +
                     "Mapeamento: ${cpu.describeTlbAddressForDiagnostic(target)}\n" +
                     "Palavras ao redor do destino (-16..+32):\n" + indirectTargetWords.joinToString("\n")
-                } ?: "Instrução JR \\$a3 não foi observada.") +
-                "\n\nSALTO INDIRETO JR \\$a3 EM 0x70000500:\n" +
-                (indirectJumpTarget?.let { target ->
-                    "Registradores antes do JR: $indirectJumpRegisters\n" +
-                    "Destino virtual de \\$a3: 0x${target.toULong().toString(16).uppercase()}\n" +
-                    "Mapeamento: ${cpu.describeTlbAddressForDiagnostic(target)}\n" +
-                    "Palavras ao redor do destino (-16..+32):\n" + indirectTargetWords.joinToString("\n")
-                } ?: "Instrução JR \\$a3 não foi observada.") +
+                } ?: "Instrução JR registrador 7 não foi observada.") +
                 "\n\nPAYLOAD REAL COPIADO (primeiros 64 bytes):\n" + payloadWords.joinToString("\n") +
                 "\n\nPRIMEIRAS INSTRUÇÕES COM REGISTRADORES (máximo 64):\n" + firstTrace.joinToString("\n") +
                 "\n\nPRIMEIRAS PASSAGENS NO LAÇO 0x80000410–0x80000420:\n" + loopEntryTrace.joinToString("\n") +
