@@ -96,6 +96,8 @@ class MainActivity : Activity() {
             var stopReason = "Limite de $maxSteps instruções alcançado."
             val trace = ArrayDeque<String>()
             val firstTrace = ArrayList<String>()
+            // Full register snapshots for the actual post-IPL3 loop seen at 0x80000130.
+            val postIpl3LoopTrace = ArrayList<String>()
             val loopEntryTrace = ArrayList<String>()
             val copyLoopFirstTrace = ArrayList<String>()
             val copyLoopRecentTrace = ArrayDeque<String>()
@@ -124,6 +126,9 @@ class MainActivity : Activity() {
                 " a0=" + hex(cpu.gpr[4]) + " a1=" + hex(cpu.gpr[5]) +
                 " s6=" + hex(cpu.gpr[22]) + " sp=" + hex(cpu.gpr[29]) +
                 " ra=" + hex(cpu.gpr[31])
+            fun allRegisters(): String = (0 until 32).joinToString(" ") { index ->
+                "r" + index + "=" + hex(cpu.gpr[index])
+            }
             try {
                 require(cicSeed != null) {
                     "CIC/seed do IPL3 não reconhecido. Este HLE inicial suporta apenas CIC 6102/7101 e 6105/7105."
@@ -170,6 +175,17 @@ class MainActivity : Activity() {
                         indirectJumpRegisters = registersBefore
                     }
                     cpu.step()
+                    // Capture complete GPR state in the actual loop found by the new log.
+                    if (before in 0xFFFFFFFF80000130UL.toLong()..0xFFFFFFFF80000190UL.toLong() &&
+                        postIpl3LoopTrace.size < 256
+                    ) {
+                        postIpl3LoopTrace.add(
+                            "PC=" + hex(before) +
+                            " INST=" + (cpu.diagnosticInstructionWord?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A") +
+                            " NEXT_PC=" + hex(cpu.pc) +
+                            " GPR{" + allRegisters() + "}"
+                        )
+                    }
                     // The observed byte-copy loop branches at 0x70000584 and
                     // executes its store in the delay slot at 0x70000588.
                     if (before == 0x70000588L) {
@@ -374,6 +390,8 @@ class MainActivity : Activity() {
                 "\n\nIPL3 REAL PREPARADO NA SP DMEM (primeiros 64 bytes):\n" + payloadWords.joinToString("\n") +
                 "\n\nPRIMEIRAS INSTRUÇÕES COM REGISTRADORES (máximo 64):\n" + firstTrace.joinToString("\n") +
                 "\n\nPRIMEIRAS PASSAGENS NO LAÇO 0x80000410–0x80000420:\n" + loopEntryTrace.joinToString("\n") +
+                "\\n\\nLAÇO REAL PÓS-IPL3 0x80000130–0x80000190 (registradores completos):\\n" +
+                (if (postIpl3LoopTrace.isEmpty()) "(não observado)" else postIpl3LoopTrace.joinToString("\\n")) +
                 "\n\nDIAGNÓSTICO DO LAÇO DE CÓPIA 0x70000574–0x70000588:\n" +
                 "Iterações observadas: $copyLoopIterations" +
                 "\nDesvios que retornaram ao início: $copyLoopTakenBranches" +
