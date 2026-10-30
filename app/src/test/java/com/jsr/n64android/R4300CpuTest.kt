@@ -694,7 +694,7 @@ class R4300CpuTest {
 
         repeat(6) { cpu.step() }
 
-        cpu.tlbEnabled = true
+        assertEquals(true, cpu.tlbEnabled) // TLBWI ativa a tradução automaticamente.
         assertEquals(0x1000, cpu.tlb.translate(0x00400000L, 7, R4300Tlb.Access.READ))
         assertEquals(0x2000, cpu.tlb.translate(0x00401000L, 7, R4300Tlb.Access.READ))
         assertEquals(1, cpu.diagnosticTlbWriteHistory.size)
