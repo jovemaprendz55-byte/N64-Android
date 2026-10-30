@@ -341,6 +341,8 @@ class MainActivity : Activity() {
                 "\n\nÚLTIMAS INSTRUÇÕES (máximo 80):\n" + trace.joinToString("\n") +
                 "\n\nREGISTRADORES FINAIS: " + watchedRegisters() +
                 "\n\n" + transferMemoryDiagnostics +
+                "\n\nHISTÓRICO DE DMA PI (até 64 solicitações):\n" +
+                (if (bus.diagnosticPiDmaHistory.isEmpty()) "(nenhuma transferência PI cartucho -> RDRAM observada)" else bus.diagnosticPiDmaHistory.joinToString("\n")) +
                 "\n\nLimitações: HLE inicial de handoff, não emula PIF/Joybus/CIC completo, RSP, GPU/VI, áudio ou controles. A execução da CPU não comprova que o jogo esteja jogável."
             runOnUiThread {
                 hleBootButton?.isEnabled = cartridgeBus != null
