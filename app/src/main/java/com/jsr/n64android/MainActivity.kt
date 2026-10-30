@@ -282,17 +282,17 @@ class MainActivity : Activity() {
                         if (samples.size < 12) samples.add("SRC/DST off=0x${index.toString(16).uppercase()} src=0x${source.toString(16).uppercase().padStart(2, '0')} dst=0x${destination.toString(16).uppercase().padStart(2, '0')}")
                     }
                 }
-                append("Bytes verificados: ").append(copyLength).append("\\n")
-                append("Origem RDRAM diferente da ROM (+0xC00): ").append(sourceRomMismatches).append("\\n")
-                append("Destino diferente da origem: ").append(sourceDestinationMismatches).append("\\n")
-                append("Erros de leitura: ").append(readErrors).append("\\n")
+                append("Bytes verificados: ").append(copyLength).append("\n")
+                append("Origem RDRAM diferente da ROM (+0xC00): ").append(sourceRomMismatches).append("\n")
+                append("Destino diferente da origem: ").append(sourceDestinationMismatches).append("\n")
+                append("Erros de leitura: ").append(readErrors).append("\n")
                 append("Resultado: ").append(
                     if (readErrors == 0 && sourceRomMismatches == 0 && sourceDestinationMismatches == 0)
                         "PASS — ROM, origem e destino correspondem"
                     else "DIVERGÊNCIA — consultar amostras"
-                ).append("\\n")
+                ).append("\n")
                 if (samples.isEmpty()) append("Nenhuma divergência amostrada.")
-                else append(samples.joinToString("\\n"))
+                else append(samples.joinToString("\n"))
             }
             val transferMemoryDiagnostics = buildString {
                 append("CÓPIA DE MEMÓRIA — ORIGEM RDRAM / ROM (+0xC00) / DESTINO\n")
