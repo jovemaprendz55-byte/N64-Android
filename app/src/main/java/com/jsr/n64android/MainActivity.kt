@@ -254,7 +254,7 @@ class MainActivity : Activity() {
             }
             // The observed descending memcpy reads KSEG0 0x80033F2E and writes
             // TLB-mapped 0x7020159F. IPL3 DMA-copied ROM offset 0x1000 to RDRAM
-            // physical 0x400, so RDRAM address X corresponds to ROM address X+0x1000.
+            // physical 0x400, so RDRAM address X corresponds to ROM address X+0xC00.
             val copySourceStart = 0x33F2E
             val copyDestinationStart = 0x20159F
             val copyLength = 0x131A0
