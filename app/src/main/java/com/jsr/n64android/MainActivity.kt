@@ -20,9 +20,8 @@ class MainActivity : Activity() {
     private lateinit var status: TextView
     private var cartridgeBus: N64Bus? = null
     private var cartridgeRomBytes: ByteArray? = null
-    private var pifRomBytes: ByteArray? = null
     private var romTraceButton: Button? = null
-    private var pifBootButton: Button? = null
+    private var hleBootButton: Button? = null
     private lateinit var mainLayout: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,10 +37,6 @@ class MainActivity : Activity() {
             text = "Selecionar ROM (.z64 / .v64 / .n64)"
             setOnClickListener { openRomPicker() }
         }
-        val choosePifRom = Button(this).apply {
-            text = "Selecionar PIF ROM (firmware legítimo, 0x7C0 bytes)"
-            setOnClickListener { openPifRomPicker() }
-        }
         val cpuDiagnostic = Button(this).apply {
             text = "Executar teste interno da CPU"
             setOnClickListener { runCpuDiagnostic() }
@@ -51,9 +46,9 @@ class MainActivity : Activity() {
             setOnClickListener { runRomInstructionDiagnostic() }
             isEnabled = false
         }
-        pifBootButton = Button(this).apply {
-            text = "Testar início real pela PIF ROM"
-            setOnClickListener { runPifBootDiagnostic() }
+        hleBootButton = Button(this).apply {
+            text = "Iniciar jogo (Boot HLE experimental)"
+            setOnClickListener { runHleBootDiagnostic() }
             isEnabled = false
         }
         mainLayout = LinearLayout(this).apply {
@@ -67,10 +62,9 @@ class MainActivity : Activity() {
             })
             addView(status)
             addView(chooseRom)
-            addView(choosePifRom)
             addView(cpuDiagnostic)
             addView(romTraceButton)
-            addView(pifBootButton)
+            addView(hleBootButton)
         }
         setContentView(mainLayout)
     }
@@ -80,64 +74,76 @@ class MainActivity : Activity() {
      * This is an internal CPU test, not a claim that the selected game boots.
      */
     /**
-     * Starts at the architectural reset vector with the user-supplied PIF ROM.
-     * This is a bounded boot trace, not a claim of complete PIF/CIC emulation.
+     * Experimental HLE handoff: bypasses external PIF firmware and stages the
+     * first 0xFC0 bytes of the cartridge boot payload at RDRAM 0x400.
+     * This is a bounded CPU bring-up trace, not full game execution/rendering.
      */
-    private fun runPifBootDiagnostic() {
+    private fun runHleBootDiagnostic() {
         val bus = cartridgeBus
-        if (bus == null || pifRomBytes == null) {
-            status.text = "Selecione uma ROM de jogo e uma PIF ROM válida antes do teste."
+        if (bus == null) {
+            status.text = "Selecione uma ROM de jogo primeiro."
             return
         }
-        pifBootButton?.isEnabled = false
+        hleBootButton?.isEnabled = false
         romTraceButton?.isEnabled = false
-        status.text = "Iniciando teste pela PIF ROM no vetor de reset. O relatório será aberto ao terminar."
+        status.text = "Preparando boot HLE experimental sem PIF ROM..."
         Thread({
             val cpu = R4300Cpu(bus)
-            cpu.reset()
-            val trace = ArrayDeque<String>()
             var steps = 0
             var stopReason = "Limite de 100000 instruções alcançado."
+            val trace = ArrayDeque<String>()
+            val cicSeed = bus.detectCicSeed()
             try {
+                require(cicSeed != null) {
+                    "CIC/seed do IPL3 não reconhecido. Este HLE inicial suporta apenas CIC 6102/7101 e 6105/7105."
+                }
+                // IPL3 normally copies the first 0xFC0 bytes after its own 0xFC0-byte
+                // region (cartridge offset 0x1000) to RDRAM physical 0x400.
+                for (offset in 0 until 0xFC0) {
+                    bus.write8(0x400 + offset, bus.read8(0x10001000 + offset))
+                }
+                cpu.reset()
+                cpu.tlbEnabled = false
+                cpu.gpr[22] = cicSeed.toLong() // CIC seed ($s6), synthesized by HLE.
+                cpu.gpr[29] = 0xFFFFFFFFA07FFFE0UL.toLong() // Initial 8 MiB RDRAM stack.
+                cpu.setProgramCounter(0xFFFFFFFF80000400UL.toLong())
                 while (steps < 100_000) {
-                    val pcBefore = cpu.pc
+                    val before = cpu.pc
                     cpu.step()
                     val word = cpu.diagnosticInstructionWord
                     trace.addLast(
-                        "step=$steps PC=0x" + pcBefore.toULong().toString(16).uppercase().padStart(16, '0') +
+                        "step=$steps PC=0x" + before.toULong().toString(16).uppercase().padStart(16, '0') +
                         " INST=" + (word?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A") +
                         " NEXT_PC=0x" + cpu.pc.toULong().toString(16).uppercase().padStart(16, '0')
                     )
                     if (trace.size > 160) trace.removeFirst()
                     steps++
                     if (cpu.lastExceptionCode != null) {
-                        stopReason = "Primeira exceção arquitetural: código=${cpu.lastExceptionCode}, PC=0x" +
+                        stopReason = "Exceção arquitetural: código=${cpu.lastExceptionCode}, PC=0x" +
                             (cpu.lastExceptionInstructionAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A")
                         break
                     }
                 }
             } catch (error: Throwable) {
-                stopReason = "Execução interrompida: ${error.javaClass.simpleName}: ${error.message ?: "sem detalhes"}; " +
-                    "PC=0x" + cpu.pc.toULong().toString(16).uppercase()
+                stopReason = "Execução interrompida: ${error.javaClass.simpleName}: ${error.message ?: "sem detalhes"}"
             }
-            val report = "DIAGNÓSTICO DE BOOT PIF — TESTE INICIAL" +
-                "\nPIF ROM carregada: ${pifRomBytes?.size ?: 0} bytes" +
-                "\nROM do cartucho: ${cartridgeRomBytes?.size ?: 0} bytes" +
-                "\nVetor inicial: 0xFFFFFFFFBFC00000" +
-                "\nPassos executados: $steps" +
+            val report = "BOOT HLE EXPERIMENTAL — SEM PIF ROM" +
+                "\nPIF ROM externa: não utilizada" +
+                "\nCIC seed detectado: " + (cicSeed?.let { "0x" + it.toString(16).uppercase() } ?: "não reconhecido") +
+                "\nPayload copiado: 0xFC0 bytes do cartucho (offset 0x1000) para RDRAM 0x400" +
+                "\nPC inicial: 0xFFFFFFFF80000400" +
+                "\nInstruções executadas: $steps" +
                 "\nMotivo da parada: $stopReason" +
                 "\nCOP0 Status=0x" + cpu.cop0[12].toULong().toString(16).uppercase() +
                 " Cause=0x" + cpu.cop0[13].toULong().toString(16).uppercase() +
-                " EPC=0x" + cpu.cop0[14].toULong().toString(16).uppercase() +
-                "\n\nRASTRO DAS ÚLTIMAS INSTRUÇÕES (máximo 160):\n" + trace.joinToString("\n") +
-                "\n\nLimitações conhecidas: o barramento ainda não processa os comandos Joybus/CIC completos, " +
-                "e esta execução não garante o boot do jogo."
+                "\n\nÚLTIMAS INSTRUÇÕES (máximo 160):\n" + trace.joinToString("\n") +
+                "\n\nLimitações: HLE inicial de handoff, não emula PIF/Joybus/CIC completo, RSP, GPU/VI, áudio ou controles. A execução da CPU não comprova que o jogo esteja jogável."
             runOnUiThread {
-                pifBootButton?.isEnabled = cartridgeBus != null && pifRomBytes != null
+                hleBootButton?.isEnabled = cartridgeBus != null
                 romTraceButton?.isEnabled = cartridgeBus != null
                 showRomDiagnosticPage(report)
             }
-        }, "N64-PIF-Boot-Diagnostic").start()
+        }, "N64-HLE-Boot-Diagnostic").start()
     }
 
     private fun runRomInstructionDiagnostic() {
@@ -694,14 +700,6 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun openPifRomPicker() {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            addCategory(Intent.CATEGORY_OPENABLE)
-            type = "*/*"
-        }
-        startActivityForResult(intent, REQUEST_PIF_ROM)
-    }
-
     private fun openRomPicker() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
@@ -715,40 +713,6 @@ class MainActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (resultCode != RESULT_OK) return
         val uri: Uri = data?.data ?: return
-        if (requestCode == REQUEST_PIF_ROM) {
-            val pifBytes = try {
-                contentResolver.openInputStream(uri)?.use { input ->
-                    val output = ByteArrayOutputStream(N64Bus.PIF_ROM_SIZE)
-                    val buffer = ByteArray(1024)
-                    var total = 0
-                    while (true) {
-                        val count = input.read(buffer)
-                        if (count < 0) break
-                        total += count
-                        if (total > N64Bus.PIF_ROM_SIZE) {
-                            throw IOException("PIF ROM maior que o tamanho esperado de 0x7C0 bytes.")
-                        }
-                        output.write(buffer, 0, count)
-                    }
-                    output.toByteArray()
-                }
-            } catch (error: Exception) {
-                status.text = error.message ?: "Não foi possível ler a PIF ROM."
-                return
-            }
-            if (pifBytes == null || pifBytes.size != N64Bus.PIF_ROM_SIZE) {
-                status.text = "PIF ROM inválida: esperado exatamente 0x7C0 (1984) bytes. Nenhum firmware foi carregado."
-                return
-            }
-            pifRomBytes = pifBytes
-            cartridgeRomBytes?.let { rom -> cartridgeBus = N64Bus(pifRom = pifBytes, cartridgeRom = rom) }
-            status.text = "PIF ROM carregada e validada (1984 bytes)." +
-                if (cartridgeRomBytes == null) "\nAgora selecione uma ROM de jogo." else
-                    "\nROM do cartucho preservada. O caminho de boot real ainda depende da emulação completa de PIF/CIC e dispositivos."
-            romTraceButton?.isEnabled = cartridgeRomBytes != null
-            pifBootButton?.isEnabled = cartridgeRomBytes != null && pifRomBytes != null
-            return
-        }
         if (requestCode != REQUEST_ROM) return
         val bytes = try {
             contentResolver.openInputStream(uri)?.use { input ->
@@ -779,20 +743,20 @@ class MainActivity : Activity() {
         when (val result = N64RomLoader.load(bytes)) {
             is RomLoadResult.Success -> {
                 cartridgeRomBytes = result.rom.bytes
-                cartridgeBus = N64Bus(pifRom = pifRomBytes, cartridgeRom = result.rom.bytes)
+                cartridgeBus = N64Bus(cartridgeRom = result.rom.bytes)
                 romTraceButton?.isEnabled = true
-                pifBootButton?.isEnabled = pifRomBytes != null
+                hleBootButton?.isEnabled = true
                 val info = N64RomInspector.inspect(result.rom.bytes)
                 status.text = "ROM carregada no barramento: ${result.rom.byteSize} bytes" +
                     "\nFormato: ${result.rom.format}" +
                     "\nEndereço físico: 0x10000000" +
                     "\n\n" + info.toDisplayText() +
-                    "\n\nDiagnóstico do cabeçalho concluído. O jogo ainda não foi inicializado: faltam boot PIF/CIC e integração completa do núcleo."
+                    "\n\nROM pronta. Use Boot HLE experimental para testar a inicialização sem firmware PIF externo."
             }
             is RomLoadResult.Failure -> {
                 cartridgeBus = null
                 romTraceButton?.isEnabled = false
-                pifBootButton?.isEnabled = false
+                hleBootButton?.isEnabled = false
                 status.text = result.reason
             }
         }
@@ -800,6 +764,5 @@ class MainActivity : Activity() {
 
     companion object {
         private const val REQUEST_ROM = 640
-        private const val REQUEST_PIF_ROM = 641
     }
 }
