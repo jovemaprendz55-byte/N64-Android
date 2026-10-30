@@ -121,7 +121,7 @@ class MainActivity : Activity() {
                     )
                 }
                 cpu.reset()
-                cpu.tlbEnabled = false
+                cpu.tlbEnabled = true // KUSEG handoff targets must use architectural TLB translation.
                 cpu.gpr[22] = cicSeed.toLong() // CIC seed ($s6), synthesized by HLE.
                 cpu.gpr[29] = 0xFFFFFFFFA07FFFE0UL.toLong() // Initial 8 MiB RDRAM stack.
                 cpu.setProgramCounter(0xFFFFFFFF80000400UL.toLong())
@@ -163,6 +163,11 @@ class MainActivity : Activity() {
                 "\nMotivo da parada: $stopReason" +
                 "\nCOP0 Status=0x" + cpu.cop0[12].toULong().toString(16).uppercase() +
                 " Cause=0x" + cpu.cop0[13].toULong().toString(16).uppercase() +
+                " EPC=0x" + cpu.cop0[14].toULong().toString(16).uppercase() +
+                " BadVAddr=0x" + cpu.cop0[8].toULong().toString(16).uppercase() +
+                "\nÚltima falha TLB: VADDR=0x" + (cpu.lastTlbFaultVirtualAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A") +
+                " tipo=" + (cpu.lastTlbFaultAccessType ?: "N/A") +
+                "\nEstado do endereço: " + cpu.describeTlbAddressForDiagnostic(cpu.lastTlbFaultVirtualAddress ?: cpu.pc) +
                 "\n\nPAYLOAD REAL COPIADO (primeiros 64 bytes):\n" + payloadWords.joinToString("\n") +
                 "\n\nPRIMEIRAS INSTRUÇÕES COM REGISTRADORES (máximo 64):\n" + firstTrace.joinToString("\n") +
                 "\n\nPRIMEIRAS PASSAGENS NO LAÇO 0x80000410–0x80000420:\n" + loopEntryTrace.joinToString("\n") +
