@@ -22,6 +22,7 @@ class MainActivity : Activity() {
     private var cartridgeRomBytes: ByteArray? = null
     private var pifRomBytes: ByteArray? = null
     private var romTraceButton: Button? = null
+    private var pifBootButton: Button? = null
     private lateinit var mainLayout: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,8 +47,13 @@ class MainActivity : Activity() {
             setOnClickListener { runCpuDiagnostic() }
         }
         romTraceButton = Button(this).apply {
-            text = "Executar diagnóstico de instruções da ROM"
+            text = "Executar diagnóstico de instruções da ROM (IPL3 direto)"
             setOnClickListener { runRomInstructionDiagnostic() }
+            isEnabled = false
+        }
+        pifBootButton = Button(this).apply {
+            text = "Testar início real pela PIF ROM"
+            setOnClickListener { runPifBootDiagnostic() }
             isEnabled = false
         }
         mainLayout = LinearLayout(this).apply {
@@ -64,6 +70,7 @@ class MainActivity : Activity() {
             addView(choosePifRom)
             addView(cpuDiagnostic)
             addView(romTraceButton)
+            addView(pifBootButton)
         }
         setContentView(mainLayout)
     }
@@ -72,6 +79,67 @@ class MainActivity : Activity() {
      * Runs a known instruction sequence on the real R4300Cpu implementation.
      * This is an internal CPU test, not a claim that the selected game boots.
      */
+    /**
+     * Starts at the architectural reset vector with the user-supplied PIF ROM.
+     * This is a bounded boot trace, not a claim of complete PIF/CIC emulation.
+     */
+    private fun runPifBootDiagnostic() {
+        val bus = cartridgeBus
+        if (bus == null || pifRomBytes == null) {
+            status.text = "Selecione uma ROM de jogo e uma PIF ROM válida antes do teste."
+            return
+        }
+        pifBootButton?.isEnabled = false
+        romTraceButton?.isEnabled = false
+        status.text = "Iniciando teste pela PIF ROM no vetor de reset. O relatório será aberto ao terminar."
+        Thread({
+            val cpu = R4300Cpu(bus)
+            cpu.reset()
+            val trace = ArrayDeque<String>()
+            var steps = 0
+            var stopReason = "Limite de 100000 instruções alcançado."
+            try {
+                while (steps < 100_000) {
+                    val pcBefore = cpu.pc
+                    cpu.step()
+                    val word = cpu.diagnosticInstructionWord
+                    trace.addLast(
+                        "step=$steps PC=0x" + pcBefore.toULong().toString(16).uppercase().padStart(16, '0') +
+                        " INST=" + (word?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A") +
+                        " NEXT_PC=0x" + cpu.pc.toULong().toString(16).uppercase().padStart(16, '0')
+                    )
+                    if (trace.size > 160) trace.removeFirst()
+                    steps++
+                    if (cpu.lastExceptionCode != null) {
+                        stopReason = "Primeira exceção arquitetural: código=${cpu.lastExceptionCode}, PC=0x" +
+                            (cpu.lastExceptionInstructionAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A")
+                        break
+                    }
+                }
+            } catch (error: Throwable) {
+                stopReason = "Execução interrompida: ${error.javaClass.simpleName}: ${error.message ?: "sem detalhes"}; " +
+                    "PC=0x" + cpu.pc.toULong().toString(16).uppercase()
+            }
+            val report = "DIAGNÓSTICO DE BOOT PIF — TESTE INICIAL" +
+                "\nPIF ROM carregada: ${pifRomBytes?.size ?: 0} bytes" +
+                "\nROM do cartucho: ${cartridgeRomBytes?.size ?: 0} bytes" +
+                "\nVetor inicial: 0xFFFFFFFFBFC00000" +
+                "\nPassos executados: $steps" +
+                "\nMotivo da parada: $stopReason" +
+                "\nCOP0 Status=0x" + cpu.cop0[12].toULong().toString(16).uppercase() +
+                " Cause=0x" + cpu.cop0[13].toULong().toString(16).uppercase() +
+                " EPC=0x" + cpu.cop0[14].toULong().toString(16).uppercase() +
+                "\n\nRASTRO DAS ÚLTIMAS INSTRUÇÕES (máximo 160):\n" + trace.joinToString("\n") +
+                "\n\nLimitações conhecidas: o barramento ainda não processa os comandos Joybus/CIC completos, " +
+                "e esta execução não garante o boot do jogo."
+            runOnUiThread {
+                pifBootButton?.isEnabled = cartridgeBus != null && pifRomBytes != null
+                romTraceButton?.isEnabled = cartridgeBus != null
+                showRomDiagnosticPage(report)
+            }
+        }, "N64-PIF-Boot-Diagnostic").start()
+    }
+
     private fun runRomInstructionDiagnostic() {
         val bus = cartridgeBus
         if (bus == null) {
@@ -678,6 +746,7 @@ class MainActivity : Activity() {
                 if (cartridgeRomBytes == null) "\nAgora selecione uma ROM de jogo." else
                     "\nROM do cartucho preservada. O caminho de boot real ainda depende da emulação completa de PIF/CIC e dispositivos."
             romTraceButton?.isEnabled = cartridgeRomBytes != null
+            pifBootButton?.isEnabled = cartridgeRomBytes != null && pifRomBytes != null
             return
         }
         if (requestCode != REQUEST_ROM) return
@@ -712,6 +781,7 @@ class MainActivity : Activity() {
                 cartridgeRomBytes = result.rom.bytes
                 cartridgeBus = N64Bus(pifRom = pifRomBytes, cartridgeRom = result.rom.bytes)
                 romTraceButton?.isEnabled = true
+                pifBootButton?.isEnabled = pifRomBytes != null
                 val info = N64RomInspector.inspect(result.rom.bytes)
                 status.text = "ROM carregada no barramento: ${result.rom.byteSize} bytes" +
                     "\nFormato: ${result.rom.format}" +
@@ -722,6 +792,7 @@ class MainActivity : Activity() {
             is RomLoadResult.Failure -> {
                 cartridgeBus = null
                 romTraceButton?.isEnabled = false
+                pifBootButton?.isEnabled = false
                 status.text = result.reason
             }
         }
