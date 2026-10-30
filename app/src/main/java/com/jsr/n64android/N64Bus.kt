@@ -27,6 +27,17 @@ class N64Bus(
     var diagnosticBootDestinationWriteCount: Long = 0
         private set
     val diagnosticBootDestinationWriteHistory = ArrayDeque<String>()
+    // Broad CPU RDRAM write trace: reveals the real destination before assuming a copy range.
+    var diagnosticRdramWriteCount: Long = 0
+        private set
+    val diagnosticRdramWriteHistory = ArrayDeque<String>()
+    private fun recordRdramWrite(address: Int, value: Int) {
+        diagnosticRdramWriteCount++
+        if (diagnosticRdramWriteHistory.size >= 128) diagnosticRdramWriteHistory.removeFirst()
+        diagnosticRdramWriteHistory.addLast(
+            "W RDRAM paddr=0x${address.toString(16).uppercase()} value=0x${value.toString(16).uppercase().padStart(2, '0')}"
+        )
+    }
     private fun recordBootDestinationWrite(address: Int, value: Int) {
         if (address !in 0x1EE400..0x20159F) return
         diagnosticBootDestinationWriteCount++
@@ -196,6 +207,7 @@ class N64Bus(
         require(address >= 0) { "Negative physical address." }
         if (address < ram.size) {
             ram.write8(address, value)
+            recordRdramWrite(address, value and 0xFF)
             recordBootMemoryAccess("W", address, value and 0xFF)
             recordBootDestinationWrite(address, value and 0xFF)
             return
