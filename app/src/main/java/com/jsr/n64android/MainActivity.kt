@@ -260,6 +260,40 @@ class MainActivity : Activity() {
             val copyLength = 0x131A0
             val copySourceEnd = copySourceStart - copyLength + 1
             val copyDestinationEnd = copyDestinationStart - copyLength + 1
+            // Verify every byte of the descending IPL3 memory transfer.
+            val copyVerificationDiagnostics = buildString {
+                var sourceRomMismatches = 0
+                var sourceDestinationMismatches = 0
+                var readErrors = 0
+                val samples = ArrayList<String>()
+                for (index in 0 until copyLength) {
+                    val sourceAddress = copySourceStart - index
+                    val destinationAddress = copyDestinationStart - index
+                    val source = try { bus.read8(sourceAddress) } catch (error: Throwable) { -1 }
+                    val rom = try { bus.read8(N64Bus.CARTRIDGE_ROM_BASE + 0x0C00 + sourceAddress) } catch (error: Throwable) { -1 }
+                    val destination = try { bus.read8(destinationAddress) } catch (error: Throwable) { -1 }
+                    if (source < 0 || destination < 0 || rom < 0) readErrors++
+                    if (source >= 0 && rom >= 0 && source != rom) {
+                        sourceRomMismatches++
+                        if (samples.size < 12) samples.add("SRC/ROM off=0x${index.toString(16).uppercase()} src=0x${source.toString(16).uppercase().padStart(2, '0')} rom=0x${rom.toString(16).uppercase().padStart(2, '0')}")
+                    }
+                    if (source >= 0 && destination >= 0 && source != destination) {
+                        sourceDestinationMismatches++
+                        if (samples.size < 12) samples.add("SRC/DST off=0x${index.toString(16).uppercase()} src=0x${source.toString(16).uppercase().padStart(2, '0')} dst=0x${destination.toString(16).uppercase().padStart(2, '0')}")
+                    }
+                }
+                append("Bytes verificados: ").append(copyLength).append("\\n")
+                append("Origem RDRAM diferente da ROM (+0xC00): ").append(sourceRomMismatches).append("\\n")
+                append("Destino diferente da origem: ").append(sourceDestinationMismatches).append("\\n")
+                append("Erros de leitura: ").append(readErrors).append("\\n")
+                append("Resultado: ").append(
+                    if (readErrors == 0 && sourceRomMismatches == 0 && sourceDestinationMismatches == 0)
+                        "PASS — ROM, origem e destino correspondem"
+                    else "DIVERGÊNCIA — consultar amostras"
+                ).append("\\n")
+                if (samples.isEmpty()) append("Nenhuma divergência amostrada.")
+                else append(samples.joinToString("\\n"))
+            }
             val transferMemoryDiagnostics = buildString {
                 append("CÓPIA DE MEMÓRIA — ORIGEM RDRAM / ROM (+0xC00) / DESTINO\n")
                 append("Laço descendente observado: origem física 0x")
@@ -352,7 +386,8 @@ class MainActivity : Activity() {
                 (if (stackRegionTrace.isEmpty()) "(nenhuma)" else stackRegionTrace.joinToString("\n")) +
                 "\n\nÚLTIMAS INSTRUÇÕES (máximo 80):\n" + trace.joinToString("\n") +
                 "\n\nREGISTRADORES FINAIS: " + watchedRegisters() +
-                "\n\n" + transferMemoryDiagnostics +
+                "\\n\\nVERIFICAÇÃO INTEGRAL DA CÓPIA:\\n" + copyVerificationDiagnostics +
+                "\\n\\n" + transferMemoryDiagnostics +
                 "\n\nHISTÓRICO DE DMA PI (até 64 solicitações):\n" +
                 (if (bus.diagnosticPiDmaHistory.isEmpty()) "(nenhuma transferência PI cartucho -> RDRAM observada)" else bus.diagnosticPiDmaHistory.joinToString("\n")) +
                 "\n\nACESSOS À JANELA DE ORIGEM RDRAM (0x33D00–0x33FFF):\n" +
