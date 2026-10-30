@@ -128,23 +128,25 @@ class MainActivity : Activity() {
                 require(cicSeed != null) {
                     "CIC/seed do IPL3 não reconhecido. Este HLE inicial suporta apenas CIC 6102/7101 e 6105/7105."
                 }
-                // Stage the cartridge payload at RDRAM physical 0x400.
+                // IPL3 is stored at cartridge offset 0x40 and executes from SP DMEM.
+                // The previous HLE path incorrectly staged game data from 0x1000 into
+                // RDRAM 0x400 and started at 0x80000400, bypassing the real IPL3 entry.
                 for (offset in 0 until 0xFC0) {
-                    bus.write8(0x400 + offset, bus.read8(0x10001000 + offset))
+                    bus.write8(0x04000040 + offset, bus.read8(0x10000040 + offset))
                 }
                 // Record the actual staged words so the report can verify the code
                 // that the CPU is about to execute, independently of the trace.
                 for (offset in 0 until 0x40 step 4) {
                     payloadWords.add(
-                        "RDRAM[0x" + (0x400 + offset).toString(16).uppercase() +
-                        "]=0x" + bus.read32(0x400 + offset).toUInt().toString(16).uppercase().padStart(8, '0')
+                        "SP_DMEM[0x" + (0x04000040 + offset).toString(16).uppercase() +
+                        "]=0x" + bus.read32(0x04000040 + offset).toUInt().toString(16).uppercase().padStart(8, '0')
                     )
                 }
                 cpu.reset()
                 cpu.tlbEnabled = true // KUSEG handoff targets must use architectural TLB translation.
                 cpu.gpr[22] = cicSeed.toLong() // CIC seed ($s6), synthesized by HLE.
                 cpu.gpr[29] = 0xFFFFFFFFA07FFFE0UL.toLong() // Initial 8 MiB RDRAM stack.
-                cpu.setProgramCounter(0xFFFFFFFF80000400UL.toLong())
+                cpu.setProgramCounter(0xFFFFFFFFA4000040UL.toLong())
                 while (steps < maxSteps) {
                     val before = cpu.pc
                     val inStackRegion = before in 0x703A0000L..0x703BFFFFL
@@ -309,8 +311,8 @@ class MainActivity : Activity() {
             val report = "BOOT HLE EXPERIMENTAL — SEM PIF ROM" +
                 "\nPIF ROM externa: não utilizada" +
                 "\nCIC seed detectado: " + (cicSeed?.let { "0x" + it.toString(16).uppercase() } ?: "não reconhecido") +
-                "\nPayload copiado: 0xFC0 bytes do cartucho (offset 0x1000) para RDRAM 0x400" +
-                "\nPC inicial: 0xFFFFFFFF80000400" +
+                "\nIPL3 preparado: 0xFC0 bytes do cartucho (offset 0x40) para SP DMEM 0x04000040" +
+                "\nPC inicial: 0xFFFFFFFFA4000040" +
                 "\nInstruções executadas: $steps" +
                 "\nMotivo da parada: $stopReason" +
                 "\nCOP0 Status=0x" + cpu.cop0[12].toULong().toString(16).uppercase() +
@@ -333,7 +335,7 @@ class MainActivity : Activity() {
                     "Mapeamento: ${cpu.describeTlbAddressForDiagnostic(target)}\n" +
                     "Palavras ao redor do destino (-16..+32):\n" + indirectTargetWords.joinToString("\n")
                 } ?: "Instrução JR registrador 7 não foi observada.") +
-                "\n\nPAYLOAD REAL COPIADO (primeiros 64 bytes):\n" + payloadWords.joinToString("\n") +
+                "\n\nIPL3 REAL PREPARADO NA SP DMEM (primeiros 64 bytes):\n" + payloadWords.joinToString("\n") +
                 "\n\nPRIMEIRAS INSTRUÇÕES COM REGISTRADORES (máximo 64):\n" + firstTrace.joinToString("\n") +
                 "\n\nPRIMEIRAS PASSAGENS NO LAÇO 0x80000410–0x80000420:\n" + loopEntryTrace.joinToString("\n") +
                 "\n\nDIAGNÓSTICO DO LAÇO DE CÓPIA 0x70000574–0x70000588:\n" +
