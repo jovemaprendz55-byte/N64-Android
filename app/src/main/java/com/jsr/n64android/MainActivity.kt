@@ -349,6 +349,8 @@ class MainActivity : Activity() {
                 "\nPC inicial: 0xFFFFFFFFA4000040" +
                 "\nInstruções executadas: $steps" +
                 "\nMotivo da parada: $stopReason" +
+                "\nPC final: " + hex(cpu.pc) +
+                "\nRegistradores finais: " + watchedRegisters() +
                 "\nCOP0 Status=0x" + cpu.cop0[12].toULong().toString(16).uppercase() +
                 " Cause=0x" + cpu.cop0[13].toULong().toString(16).uppercase() +
                 " EPC=0x" + cpu.cop0[14].toULong().toString(16).uppercase() +
