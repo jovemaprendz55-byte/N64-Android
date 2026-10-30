@@ -263,6 +263,17 @@ class MainActivity : Activity() {
                     append(if (sourceByte >= 0) sourceByte.toString(16).uppercase().padStart(2, '0') else "ERRO")
                     if (offset < 23) append("  ")
                 }
+                append("\\nBytes correspondentes no ARQUIVO ROM (offset 0x33DAB):\\n")
+                var romNonZero = 0
+                for (offset in -8..23) {
+                    val romOffset = 0x33DAB + offset
+                    val romByte = try { bus.read8(0x10000000 + romOffset) } catch (error: Throwable) { -1 }
+                    if (romByte > 0) romNonZero++
+                    append("ROM[0x").append(romOffset.toString(16).uppercase()).append("]=0x")
+                    append(if (romByte >= 0) romByte.toString(16).uppercase().padStart(2, '0') else "ERRO")
+                    if (offset < 23) append("  ")
+                }
+                append("\\nBytes não zero na janela da ROM: ").append(romNonZero).append("/32")
                 append("\\nBytes reais no destino físico perto de 0x20141C:\\n")
                 for (offset in -8..23) {
                     val destAddress = 0x20141C + offset
