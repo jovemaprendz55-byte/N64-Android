@@ -390,8 +390,8 @@ class MainActivity : Activity() {
                 "\n\nIPL3 REAL PREPARADO NA SP DMEM (primeiros 64 bytes):\n" + payloadWords.joinToString("\n") +
                 "\n\nPRIMEIRAS INSTRUÇÕES COM REGISTRADORES (máximo 64):\n" + firstTrace.joinToString("\n") +
                 "\n\nPRIMEIRAS PASSAGENS NO LAÇO 0x80000410–0x80000420:\n" + loopEntryTrace.joinToString("\n") +
-                "\\n\\nLAÇO REAL PÓS-IPL3 0x80000130–0x80000190 (registradores completos):\\n" +
-                (if (postIpl3LoopTrace.isEmpty()) "(não observado)" else postIpl3LoopTrace.joinToString("\\n")) +
+                "\n\nLAÇO REAL PÓS-IPL3 0x80000130–0x80000190 (registradores completos):\n" +
+                (if (postIpl3LoopTrace.isEmpty()) "(não observado)" else postIpl3LoopTrace.joinToString("\n")) +
                 "\n\nDIAGNÓSTICO DO LAÇO DE CÓPIA 0x70000574–0x70000588:\n" +
                 "Iterações observadas: $copyLoopIterations" +
                 "\nDesvios que retornaram ao início: $copyLoopTakenBranches" +
