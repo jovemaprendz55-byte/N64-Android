@@ -127,7 +127,7 @@ class MainActivity : Activity() {
                 lines.add("PC: 0x${cpu.pc.toULong().toString(16).uppercase()}")
             }
             runOnUiThread {
-                status.text = lines.joinToString("\\n")
+                status.text = lines.joinToString("\n")
                 hleBootButton?.isEnabled = true
                 romTraceButton?.isEnabled = true
             }
