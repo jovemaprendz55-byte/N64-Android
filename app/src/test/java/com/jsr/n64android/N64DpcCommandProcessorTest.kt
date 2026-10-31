@@ -77,7 +77,7 @@ class N64DpcCommandProcessorTest {
             N64RdpFillProcessor(memory, memory.size)
         )
 
-        val error = runCatching { dpc.process(0xF8, 0x100) }.exceptionOrNull()
+        val error = runCatching { dpc.process(0x100, 0x108) }.exceptionOrNull()
 
         assertTrue(error is IllegalArgumentException)
     }
