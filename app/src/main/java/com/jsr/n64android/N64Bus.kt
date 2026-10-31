@@ -48,6 +48,17 @@ class N64Bus(
         recordMmio("R", address, value)
         return value
     }
+
+    /** Returns a side-effect-free snapshot of implemented device register state. */
+    fun diagnosticDeviceSnapshot(): List<String> = buildList {
+        add("SP: MEM_ADDR=0x${spMemAddress.toUInt().toString(16).uppercase()} DRAM_ADDR=0x${spDramAddress.toUInt().toString(16).uppercase()} STATUS=0x${spStatus.toUInt().toString(16).uppercase()} PC=0x${spPc.toUInt().toString(16).uppercase()} SEMAPHORE=0x${spSemaphore.toUInt().toString(16).uppercase()}")
+        add("MI: INIT_MODE=0x${miInitMode.toUInt().toString(16).uppercase()} INTR_MASK=0x${miInterruptMask.toUInt().toString(16).uppercase()} INTR=0x00000000")
+        add("PI: DRAM_ADDR=0x${piDramAddress.toUInt().toString(16).uppercase()} CART_ADDR=0x${piCartAddress.toUInt().toString(16).uppercase()} STATUS=0x${piStatus.toUInt().toString(16).uppercase()}")
+        add("AI: DRAM_ADDR=0x${aiDramAddress.toUInt().toString(16).uppercase()} CONTROL=0x${aiControl.toUInt().toString(16).uppercase()} DACRATE=0x${aiDacRate.toUInt().toString(16).uppercase()} BITRATE=0x${aiBitRate.toUInt().toString(16).uppercase()} LEN=0 STATUS=0")
+        add("SI: DRAM_ADDR=0x${siDramAddress.toUInt().toString(16).uppercase()} PIF_RD=0x${siPifReadAddress.toUInt().toString(16).uppercase()} PIF_WR=0x${siPifWriteAddress.toUInt().toString(16).uppercase()} STATUS=0x${siStatus.toUInt().toString(16).uppercase()}")
+        add("RI: " + riRegisters.mapIndexed { index, value -> "R${index}=0x${value.toUInt().toString(16).uppercase().padStart(8, '0')}" }.joinToString(" "))
+        add("VI: " + viRegisters.mapIndexed { index, value -> "R${index}=0x${value.toUInt().toString(16).uppercase().padStart(8, '0')}" }.joinToString(" ") + " CURRENT=0x${viCurrentLine.toUInt().toString(16).uppercase().padStart(8, '0')}")
+    }
     // Bounded trace of PI DMA requests for boot diagnostics; avoids per-byte logging.
     val diagnosticPiDmaHistory = ArrayDeque<String>()
     // Bounded trace of SP DMA transfers, including direction and RDRAM destination ranges.
