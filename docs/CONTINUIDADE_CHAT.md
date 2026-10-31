@@ -396,3 +396,35 @@ Branch `dev/n64-clean-start` estava no commit `35a72e4af0d7a90e4664aab30e494489b
 4. No log novo, analisar as últimas 256 instruções, PCs quentes, acessos MMIO por dispositivo e contagens. A instrumentação registra observações; não implementar respostas falsas para dispositivos.
 5. Em uma etapa seguinte, complementar com snapshots de estado VI/MI/SP/PI/AI/SI/RI e testes específicos.
 6. main continua intocada.
+## 17. MMIO e snapshot dos dispositivos — 2026-10-31
+
+### Build #625 — trace MMIO validado
+- Commit e83a0f4914cbf344d253d7b2fb228f6f250c3966 corrigiu a faixa de registradores AI (0x18 bytes; não havia constante AI_REG_SIZE).
+- Run ID 41185356161, build #625, branch dev/n64-clean-start.
+- CI concluída com sucesso; Build and test e Upload debug APK passaram.
+- Artifact n64-android-debug-apk, ID 13036728083, tamanho 893.661 bytes.
+- SHA-256 d5b6d1dedeb60ff25aa6f77a3ab0e6b2d680edbbac680cc04050bda07f9d6590.
+- Link: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41185356161
+- Expiração do artifact: 2026-11-14 08:38:14 UTC.
+
+### Snapshot final dos dispositivos — nova alteração
+- N64Bus.diagnosticDeviceSnapshot() gera snapshot sem chamar read32, portanto não acrescenta eventos artificiais ao histórico MMIO.
+- Inclui estado implementado de SP, MI, PI, AI, SI, RI e VI.
+- MainActivity adiciona o snapshot ao relatório normal e ao relatório de falha.
+- Teste N64BusMmioDiagnosticTest.deviceSnapshotReportsImplementedStateWithoutAddingMmioEvents verifica estados alterados e ausência de novos eventos ao consultar o snapshot.
+- Commits:
+  - 9a814b17f63507ee3a3748561b0840e7dd56c4d9 — snapshot observacional do barramento.
+  - 3992d99414169166ae437b0de298a8994e890031 — snapshot anexado ao relatório.
+  - 69af94efd0b0fb693c1cd2c228a789f915dc99aa — teste do snapshot.
+- CI dos commits 626, 627 e 628 estava em execução no momento deste registro; verificar resultado antes de distribuir APK.
+- Links:
+  - https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41185471361
+  - https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41185486463
+  - https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41185506844
+
+### Próximos passos
+1. Verificar as builds 626–628 e a build de documentação subsequente.
+2. Quando a CI estiver verde, instalar o APK mais recente e executar o GoldenEye HLE.
+3. Enviar o novo relatório. Usar ring buffer final de instruções, PCs quentes, trace MMIO e snapshots para identificar dependências de dispositivo.
+4. Não inferir que qualquer dispositivo precisa de HLE adicional sem evidência do trace.
+5. main permanece intocada.
