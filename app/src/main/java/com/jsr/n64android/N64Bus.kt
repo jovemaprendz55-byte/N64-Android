@@ -131,6 +131,13 @@ class N64Bus(
         }
     }
 
+    /** Reads memory for report generation without polluting CPU-access diagnostic histories. */
+    fun peek8ForDiagnostic(address: Int): Int {
+        require(address >= 0) { "Negative physical address." }
+        if (address < ram.size) return ram.read8(address)
+        return read8(address)
+    }
+
     override fun read8(address: Int): Int {
         require(address >= 0) { "Negative physical address: 0x${address.toUInt().toString(16)}" }
         if (address < ram.size) {
