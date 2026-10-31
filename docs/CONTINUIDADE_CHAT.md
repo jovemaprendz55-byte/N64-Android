@@ -274,3 +274,42 @@ CI:
 - Link da build #607: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41182212696
 
 Próximo passo: instalar a APK #607, executar GoldenEye com HLE e enviar o novo log. Verificar especialmente se o destino `0x70000510` agora é traduzido por uma entrada válida, se aparece TLB MISS/INVALID/MODIFIED, e os valores registrados por TLBWI/TLBWR. Se ocorrer TLB miss, usar EntryLo/PageMask/ASID reais para investigar; não inventar mapeamento.
+
+
+## 13. Correção do tamanho da imagem carregada pelo HLE — 2026-10-31
+
+O log `Logi` da branch `main` foi analisado. A execução alcançou o fim do laço de cópia:
+- 78.240 iterações; 78.239 branches tomados; saída observada.
+- O laço lê a origem física RDRAM `0x20D90..0x33F2F` (virtual KSEG0 `0x80020D90..0x80033F2F`) e escreve o destino físico `0x1EE400..0x20159F`.
+- As leituras na origem eram zero, e o código copiado foi executado em `0x7020141C`, levando à exceção RI (código 10) em `0x703AB3F8`.
+- PI DMA e SP DMA permaneceram em zero.
+
+### Causa confirmada no código HLE anterior
+
+`N64HleBoot.prepare()` copiava somente `0xFC0` bytes (4032 bytes) do ROM `0x1000` para RDRAM `0x400`. Porém, o boot padrão do N64 copia o primeiro **1 MiB** do cartucho, começando no ROM `0x1000`, para RDRAM `0x400` antes de entrar no código do jogo. O endereço físico `0x33F2F` fica dentro dessa janela de 1 MiB e, portanto, deveria conter dados da ROM, não zeros. O mapeamento correspondente é ROM offset `0x34B2F` (`0x1000 + (0x33F2F - 0x400)`).
+
+Referências técnicas consultadas:
+- https://reverseengineering.wiki/index.php/Platform%3ANintendo_64 — descrição do boot padrão, cópia de 1 MiB e parâmetros em `0x80000300`.
+- https://ultra64.ca/files/documentation/online-manuals/man/pro-man/pro06/06-10.html — manual de programação N64, boot procedure.
+- https://github.com/decompals/N64-IPL — disassemblies correspondentes de IPL1/2/3.
+
+### Correção implementada na branch de trabalho
+
+- `N64HleBoot.kt` agora prepara `0x100000` bytes (1 MiB) do ROM `0x1000` em RDRAM `0x400`.
+- O PC é obtido do entry point do cabeçalho da ROM (offset `0x08`), validado como endereço KSEG0.
+- São escritos os parâmetros básicos de boot em RDRAM `0x300..0x318`: tipo de TV, tipo/base de ROM, reset frio, versão IPL2 e tamanho RDRAM.
+- Registradores `$s3..$s7` recebem tipo de ROM, TV, reset, seed CIC e versão IPL2.
+- O IPL3 continua sem ser copiado para SP DMEM ou executado. A detecção do seed CIC ainda consulta os bytes IPL3.
+- `N64HleBootTest.kt` agora verifica a cópia de 1 MiB, os parâmetros de boot e, em particular, a presença do byte na origem física `0x33F2F`, que antes era zero. O offset ROM esperado é `0x34B2F`.
+
+Commits:
+- `afacb2542de488eaaccf36817b29044c1c77bf74` — `fix: stage full first MiB for HLE game entry`.
+- `60c2aa9dc7a32b11f7756fba81e6e5df6f002e12` — `test: verify HLE first MiB and boot flags`.
+- `9cfcee76d3b78e3351ca5bf78eab5cc403ab950b` — corrige o offset esperado no teste de mapeamento RDRAM→ROM.
+
+CI:
+- Build #612 (run ID `41183951900`) disparada para o commit de código `afacb254`.
+- Build #613 (run ID `41183954348`) disparada para o commit de teste `60c2aa9`; no momento deste registro estava em andamento. Verificar conclusão e logs antes de disponibilizar APK.
+- HEAD da branch após o ajuste de teste: `9cfcee76d3b78e3351ca5bf78eab5cc403ab950b`.
+
+Próximo passo: verificar a build #613. Se passar, instalar a APK resultante e executar novamente o diagnóstico HLE do GoldenEye. Espera-se que a cópia do laço não leia mais zeros na região de origem e que a sequência de execução avance além do antigo destino `0x7020141C`. Isso ainda não prova boot completo: observar a próxima exceção, DMA, SI/PIF e primeiro estado real de vídeo.
