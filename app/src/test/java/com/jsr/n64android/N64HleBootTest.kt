@@ -33,6 +33,12 @@ class N64HleBootTest {
             assertEquals(rom[N64HleBoot.BOOTCODE_ROM_OFFSET + i].toInt() and 0xFF,
                 bus.peek8ForDiagnostic(N64HleBoot.BOOTCODE_RAM_ADDRESS + i))
         }
+        // The CPU must fetch the staged first instruction through KSEG0 -> RDRAM.
+        // The synthetic payload starts with NOP, so one step advances sequentially.
+        cpu.step()
+        assertEquals(0, cpu.diagnosticInstructionWord)
+        assertEquals(N64HleBoot.ENTRY_PC + 4L, cpu.pc)
+
         // IPL3 remains untouched in SP DMEM: HLE did not stage or execute it.
         assertEquals(0, bus.read8(0x04000040))
     }
