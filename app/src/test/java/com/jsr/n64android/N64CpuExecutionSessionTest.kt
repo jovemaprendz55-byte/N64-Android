@@ -50,4 +50,33 @@ class N64CpuExecutionSessionTest {
         assertEquals(4L, cpu.pc)
         assertEquals(42L, cpu.gpr[8])
     }
+    @Test
+    fun beforeAndAfterObserversBracketEachRealInstruction() {
+        val memory = N64Memory(64)
+        memory.write32(0, (0x09 shl 26) or (8 shl 16) or 42)
+        memory.write32(4, (0x09 shl 26) or (8 shl 21) or (9 shl 16) or 1)
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0L)
+        val events = ArrayList<String>()
+        val session = N64CpuExecutionSession(
+            cpu = cpu,
+            instructionLimit = 2,
+            batchSize = 1,
+            beforeInstruction = { observedCpu ->
+                events.add("before:${observedCpu.pc}:${observedCpu.gpr[8]}")
+            },
+            afterInstruction = { observedCpu ->
+                events.add("after:${observedCpu.pc}:${observedCpu.gpr[8]}")
+                false
+            }
+        )
+
+        val result = session.execute()
+
+        assertEquals(N64ExecutionSession.State.COMPLETED, result.state)
+        assertEquals(
+            listOf("before:0:0", "after:4:42", "before:4:42", "after:8:43"),
+            events
+        )
+    }
 }
