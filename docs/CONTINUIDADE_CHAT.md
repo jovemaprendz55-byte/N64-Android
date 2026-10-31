@@ -573,3 +573,31 @@ A próxima implementação de execução deve ser separada em componentes testá
 ### Próxima ação
 
 Projetar e implementar primeiro o controlador de execução independente do Android, com cancelamento e execução em lotes, sem ativá-lo como game loop na interface até existir timing de hardware. Manter toda alteração em `dev/n64-clean-start`; `main` permanece intocada.
+
+
+## 25. Controlador puro de execução em lotes — 2026-10-31
+
+### Implementação
+- Criada a classe `N64ExecutionSession`, sem dependências Android, para fornecer a base de execução controlada do núcleo.
+- A sessão é de uso único e recebe um limite positivo de instruções, tamanho positivo de lote e uma função que executa uma instrução.
+- Executa no máximo o limite configurado, divide o trabalho em lotes limitados e cede a CPU entre lotes com `Thread.yield()`.
+- Cancelamento cooperativo por `requestStop()`; a parada ocorre entre instruções, permitindo que a instrução corrente termine.
+- Estados observáveis: READY, RUNNING, STOP_REQUESTED, COMPLETED, CANCELLED e FAILED.
+- Snapshot informa estado, quantidade de instruções concluídas e mensagem de falha, quando houver.
+- A classe não cria threads, não toca na UI, não acessa CPU/RAM diretamente e não agenda temporização de hardware. O chamador deverá executá-la em worker dedicado.
+
+### Testes
+- Conclusão exata no limite de instruções, cruzando múltiplos lotes.
+- Cancelamento solicitado durante uma instrução e respeitado antes da próxima.
+- Sessão não pode ser executada duas vezes.
+- Falha de instrução preserva contagem concluída e marca estado FAILED.
+- Limites inválidos são rejeitados.
+
+### Limites e integração
+- Esta é uma infraestrutura testável, ainda não conectada ao botão HLE nem ao R4300Cpu.
+- Não é game loop, não cria cadência de frames e não substitui RSP/RDP/VI timing.
+- A próxima integração deve garantir que CPU, barramento e memória pertençam exclusivamente à sessão enquanto ela roda; diagnósticos paralelos não podem ler/modificar o mesmo estado.
+- Antes de ligar a UI, adicionar controlador de ciclo de vida Android com worker dedicado, cancelamento ao sair da tela e publicação/coalescência de frames no thread principal.
+- Manter a captura VI diagnóstica como amostragem única até existir scanout e sincronização de hardware.
+- Commits: `8e2d1cb7306eaa5741ac35864006e2b589156a94` (classe) e `c321e050d8744689f2e5f06dc61ab07b47398d50` (testes).
+- CI deve passar antes de considerar a etapa validada; não alegar teste em aparelho nem renderização de jogo.
