@@ -5,7 +5,7 @@
 **Última atualização:** 2026-10-31  
 **Repositório:** https://github.com/jovemaprendz55-byte/N64-Android  
 **Branch de trabalho obrigatória:** `dev/n64-clean-start`  
-**Último commit de código verificado:** `037c023a20b1a7f29a41a8362fb44daebe0ef38f`  
+**Último commit de código verificado:** f8cf8ac8b24139289f3cc7c1475580ba9ff98f10 (inclui o coletor de rastros da etapa 40).
 **Último commit de documentação:** atualização pendente após a etapa 32.  
 **Build mais recente verificada:** GitHub Actions #680 — sucesso (código `037c023a20b1a7f29a41a8362fb44daebe0ef38f`), incluindo testes e upload do APK debug.
 
@@ -890,3 +890,27 @@ Projetar e implementar primeiro o controlador de execução independente do Andr
 - O worker ainda envolve a tarefa completa em uma sessão genérica externa de uma unidade.
 - Não foram implementados RSP/RDP, timing VI/VBlank, áudio, controles ou boot comprovado de GoldenEye.
 - `main` permanece intacta.
+
+## 40. Coletor limitado de rastros de instruções HLE — 2026-10-31
+
+### Alteração
+- Criado `N64HleInstructionTrace`, componente Kotlin sem dependência Android para armazenar a janela recente de instruções e contadores de visitas por PC.
+- A janela recente tem limite configurável (padrão 256); o mapa de PCs distintos também é limitado (padrão 4096), mas continua contando visitas para PCs já registrados.
+- O snapshot fornece as linhas recentes, os PCs mais visitados e a quantidade de PCs contabilizados.
+- O componente não interpreta instruções nem afirma que um endereço representa uma rotina específica.
+
+### Testes
+- `N64HleInstructionTraceTest` cobre descarte das instruções antigas, formatação de instrução ausente, contagem repetida, limite de PCs distintos e rejeição de limites inválidos.
+
+### Limite desta etapa
+- O coletor foi criado e testado isoladamente, mas **ainda não substitui** as estruturas locais equivalentes de `MainActivity`. A integração será feita em etapa seguinte, preservando o formato dos logs.
+- A Activity ainda concentra os callbacks de instrução, traces específicos do laço de cópia, checkpoints, snapshots do barramento e montagem do relatório.
+- O worker externo ainda envolve o diagnóstico como uma tarefa genérica; a arquitetura composta continua pendente.
+- Nenhuma mudança em RSP, RDP, temporização VI/VBlank, áudio, controles ou boot real de GoldenEye.
+
+### Commits
+- `0a699397f57b543c822af9b7166902227dea3aac` — adiciona o coletor.
+- `f8cf8ac8b24139289f3cc7c1475580ba9ff98f10` — adiciona testes.
+
+### Validação
+- Build and test e geração do APK debug devem concluir com sucesso antes de considerar esta etapa validada.
