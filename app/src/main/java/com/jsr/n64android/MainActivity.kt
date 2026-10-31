@@ -157,58 +157,76 @@ class MainActivity : Activity() {
                     "r17=0x${cpu.gpr[17].toULong().toString(16).uppercase()} " +
                     "r24=0x${cpu.gpr[24].toULong().toString(16).uppercase()} " +
                     "r31=0x${cpu.gpr[31].toULong().toString(16).uppercase()}"
-                while (steps < maxSteps && !hleStopRequested) {
-                    val pcBefore = cpu.pc
-                    val inCopyLoop = pcBefore in 0x70000570L..0x70000588L
-                    val sampleIteration = pcBefore == 0x70000588L &&
-                        (copyLoopIterations < 8L || (copyLoopIterations + 1L) % 4096L == 0L)
-                    val registersBefore = if (inCopyLoop && (copyLoopTrace.size < 32 || sampleIteration)) copyLoopRegisters() else ""
-                    bus.setDiagnosticCpuPc(pcBefore)
-                    cpu.step()
-                    val instruction = cpu.diagnosticInstructionWord
-                    recordExecution(pcBefore, instruction, cpu.pc)
-                    if (inCopyLoop && copyLoopTrace.size < 32) {
-                        copyLoopTrace.add(
-                            "PC=0x${pcBefore.toULong().toString(16).uppercase()} " +
-                            "INST=${instruction?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"} " +
-                            "NEXT=0x${cpu.pc.toULong().toString(16).uppercase()} " +
-                            "BEFORE{$registersBefore} AFTER{${copyLoopRegisters()}}"
-                        )
-                    }
-                    if (pcBefore == 0x70000588L) {
-                        copyLoopIterations++
-                        val branchTaken = cpu.pc == 0x70000574L
-                        if (branchTaken) copyLoopTakenBranches++ else copyLoopExitObserved = true
-                        if (sampleIteration || !branchTaken) {
-                            copyLoopSamples.add(
-                                "iteration=$copyLoopIterations branchTaken=$branchTaken " +
-                                "NEXT=0x${cpu.pc.toULong().toString(16).uppercase()} " +
-                                "BEFORE{$registersBefore} AFTER{${copyLoopRegisters()}}"
+                var pcBeforeInstruction = cpu.pc
+                var inCopyLoopInstruction = false
+                var sampleCopyIteration = false
+                var registersBeforeInstruction = ""
+                val cpuSession = N64CpuExecutionSession(
+                    cpu = cpu,
+                    instructionLimit = maxSteps.toLong(),
+                    batchSize = 512,
+                    beforeInstruction = { observedCpu ->
+                        pcBeforeInstruction = observedCpu.pc
+                        inCopyLoopInstruction = pcBeforeInstruction in 0x70000570L..0x70000588L
+                        sampleCopyIteration = pcBeforeInstruction == 0x70000588L &&
+                            (copyLoopIterations < 8L || (copyLoopIterations + 1L) % 4096L == 0L)
+                        registersBeforeInstruction = if (
+                            inCopyLoopInstruction && (copyLoopTrace.size < 32 || sampleCopyIteration)
+                        ) copyLoopRegisters() else ""
+                        bus.setDiagnosticCpuPc(pcBeforeInstruction)
+                    },
+                    afterInstruction = { observedCpu ->
+                        val instruction = observedCpu.diagnosticInstructionWord
+                        recordExecution(pcBeforeInstruction, instruction, observedCpu.pc)
+                        if (inCopyLoopInstruction && copyLoopTrace.size < 32) {
+                            copyLoopTrace.add(
+                                "PC=0x${pcBeforeInstruction.toULong().toString(16).uppercase()} " +
+                                "INST=${instruction?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"} " +
+                                "NEXT=0x${observedCpu.pc.toULong().toString(16).uppercase()} " +
+                                "BEFORE{$registersBeforeInstruction} AFTER{${copyLoopRegisters()}}"
                             )
                         }
+                        if (pcBeforeInstruction == 0x70000588L) {
+                            copyLoopIterations++
+                            val branchTaken = observedCpu.pc == 0x70000574L
+                            if (branchTaken) copyLoopTakenBranches++ else copyLoopExitObserved = true
+                            if (sampleCopyIteration || !branchTaken) {
+                                copyLoopSamples.add(
+                                    "iteration=$copyLoopIterations branchTaken=$branchTaken " +
+                                    "NEXT=0x${observedCpu.pc.toULong().toString(16).uppercase()} " +
+                                    "BEFORE{$registersBeforeInstruction} AFTER{${copyLoopRegisters()}}"
+                                )
+                            }
+                        }
+                        if (copyLoopExitObserved && postCopyTraceRemaining == 0 && postCopyTrace.isEmpty()) {
+                            postCopyTraceRemaining = 64
+                        }
+                        if (postCopyTraceRemaining > 0) {
+                            postCopyTrace.add(
+                                "PC=0x${pcBeforeInstruction.toULong().toString(16).uppercase()} " +
+                                "INST=${instruction?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"} " +
+                                "NEXT=0x${observedCpu.pc.toULong().toString(16).uppercase()} REG{${copyLoopRegisters()}}"
+                            )
+                            postCopyTraceRemaining--
+                        }
+                        if (steps < 48) {
+                            lines.add("step=$steps PC=0x${pcBeforeInstruction.toULong().toString(16).uppercase()} INST=${instruction?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"} NEXT=0x${observedCpu.pc.toULong().toString(16).uppercase()}")
+                        }
+                        steps++
+                        if (steps % 50_000 == 0) {
+                            lines.add("checkpoint=$steps PC=0x${observedCpu.pc.toULong().toString(16).uppercase()} t0=0x${observedCpu.gpr[8].toULong().toString(16).uppercase()} t1=0x${observedCpu.gpr[9].toULong().toString(16).uppercase()} a0=0x${observedCpu.gpr[4].toULong().toString(16).uppercase()} sp=0x${observedCpu.gpr[29].toULong().toString(16).uppercase()}")
+                        }
+                        observedCpu.lastExceptionCode != null || hleStopRequested
                     }
-                    if (copyLoopExitObserved && postCopyTraceRemaining == 0 && postCopyTrace.isEmpty()) {
-                        postCopyTraceRemaining = 64
-                    }
-                    if (postCopyTraceRemaining > 0) {
-                        postCopyTrace.add(
-                            "PC=0x${pcBefore.toULong().toString(16).uppercase()} " +
-                            "INST=${instruction?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"} " +
-                            "NEXT=0x${cpu.pc.toULong().toString(16).uppercase()} REG{${copyLoopRegisters()}}"
-                        )
-                        postCopyTraceRemaining--
-                    }
-                    if (steps < 48) {
-                        lines.add("step=$steps PC=0x${pcBefore.toULong().toString(16).uppercase()} INST=${instruction?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"} NEXT=0x${cpu.pc.toULong().toString(16).uppercase()}")
-                    }
-                    steps++
-                    if (steps % 50_000 == 0) {
-                        lines.add("checkpoint=$steps PC=0x${cpu.pc.toULong().toString(16).uppercase()} t0=0x${cpu.gpr[8].toULong().toString(16).uppercase()} t1=0x${cpu.gpr[9].toULong().toString(16).uppercase()} a0=0x${cpu.gpr[4].toULong().toString(16).uppercase()} sp=0x${cpu.gpr[29].toULong().toString(16).uppercase()}")
-                    }
-                    if (cpu.lastExceptionCode != null) {
-                        stopReason = "Exceção CPU code=${cpu.lastExceptionCode} em 0x${(cpu.lastExceptionInstructionAddress ?: pcBefore).toULong().toString(16).uppercase()}."
-                        break
-                    }
+                )
+                val executionSnapshot = cpuSession.execute()
+                steps = executionSnapshot.executedInstructions.toInt()
+                if (cpu.lastExceptionCode != null) {
+                    stopReason = "Exceção CPU code=${cpu.lastExceptionCode} em 0x${(cpu.lastExceptionInstructionAddress ?: pcBeforeInstruction).toULong().toString(16).uppercase()}."
+                } else if (hleStopRequested || executionSnapshot.state == N64ExecutionSession.State.CANCELLED) {
+                    stopReason = "Execução cancelada porque a Activity foi encerrada."
+                } else if (executionSnapshot.state == N64ExecutionSession.State.FAILED) {
+                    stopReason = "Falha na sessão CPU: ${executionSnapshot.failureMessage ?: "sem detalhes"}"
                 }
                 if (hleStopRequested) stopReason = "Execução cancelada porque a Activity foi encerrada."
                 // One diagnostic sample after the bounded CPU trace; this is not timed VI scanout.
