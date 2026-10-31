@@ -45,6 +45,10 @@ class MainActivity : Activity() {
             text = "Executar teste interno da CPU"
             setOnClickListener { runCpuDiagnostic() }
         }
+        val videoTestButton = Button(this).apply {
+            text = "Testar vídeo (padrão de cores)"
+            setOnClickListener { runVideoTest() }
+        }
         romTraceButton = Button(this).apply {
             text = "Executar diagnóstico de instruções da ROM (IPL3 direto)"
             setOnClickListener { runRomInstructionDiagnostic() }
@@ -67,6 +71,7 @@ class MainActivity : Activity() {
             addView(status)
             addView(chooseRom)
             addView(cpuDiagnostic)
+            addView(videoTestButton)
             addView(romTraceButton)
             addView(hleBootButton)
         }
@@ -1212,6 +1217,57 @@ class MainActivity : Activity() {
             }
             addView(diagnosticText, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
             addView(copyButton)
+            addView(backButton)
+        }
+        setContentView(page)
+    }
+
+    /**
+     * Exercises the synthetic RDRAM -> VI registers -> framebuffer reader
+     * -> Android ImageView path. This is a video-output test, not game rendering.
+     */
+    private fun runVideoTest() {
+        try {
+            val frame = N64VideoTestPattern.createFrame()
+            showVideoTestPage(frame)
+        } catch (error: Exception) {
+            status.text = "Falha no teste de vídeo: ${error.javaClass.simpleName}: ${error.message}"
+            setContentView(mainLayout)
+        }
+    }
+
+    private fun showVideoTestPage(frame: N64VideoFrame) {
+        val bitmap = Bitmap.createBitmap(
+            frame.argbPixels,
+            frame.width,
+            frame.height,
+            Bitmap.Config.ARGB_8888
+        )
+        val image = ImageView(this).apply {
+            setImageBitmap(bitmap)
+            adjustViewBounds = true
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            contentDescription = "Padrão de cores de teste capturado pelo VI do Nintendo 64"
+        }
+        val details = TextView(this).apply {
+            text = "TESTE DE VÍDEO\n" +
+                "Framebuffer: ${frame.width}x${frame.height}\n" +
+                "Formato: RGBA5551 (16 bits)\n" +
+                "Origem RDRAM: 0x${frame.origin.toString(16).uppercase()}\n\n" +
+                "Imagem sintética lida pelos registradores VI e exibida pelo Android. " +
+                "Isto valida o caminho de vídeo de teste, não a renderização de um jogo."
+            textSize = 14f
+            setPadding(16, 16, 16, 16)
+        }
+        val backButton = Button(this).apply {
+            text = "Voltar ao menu"
+            setOnClickListener { setContentView(mainLayout) }
+        }
+        val page = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(16, 16, 16, 16)
+            addView(image, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+            addView(details)
             addView(backButton)
         }
         setContentView(page)
