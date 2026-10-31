@@ -2,10 +2,10 @@
 
 > Documento de passagem de contexto para qualquer novo chat ou colaborador. Leia este arquivo antes de alterar código. Atualize-o sempre que houver mudança relevante, teste, build, log ou decisão técnica.
 
-**Última atualização:** 2026-10-31 (etapa 43 — integração validada; CI documental pendente)  
+**Última atualização:** 2026-10-31 (etapa 44 — teste visual sintético do VI adicionado; CI pendente)  
 **Repositório:** https://github.com/jovemaprendz55-byte/N64-Android  
 **Branch de trabalho obrigatória:** `dev/n64-clean-start`  
-**Último commit de código verificado:** `81f64a0190a993fc9917995f6792afc5557e349e` (integração do coletor do laço de cópia e correção do teste, etapa 43).
+**Último commit de código da etapa 44 enviado:** `e187a2757551ac000ccc5a4b9e4b244b36dc02c4` (tela de teste visual VI; aguarda CI).
 **Último commit documental antes desta atualização:** `cefe58ed989b8ac37d1488c4df9611910463aebf`.
 **Commit da auditoria documental:** `eac1f8350c66eb50510b3661e969699840abcd4a`.  
 **Commit da integração do coletor:** `3e88607b7011630bc9063f2aa1059cfb2c8563a8`.
@@ -14,7 +14,7 @@
 **CI anterior concluído:** build #708, run ID `41235044776`, sucesso; build/testes e upload do APK debug concluídos. A build #707, para o último commit de código, também terminou com sucesso.
 **CI da auditoria documental:** build #709, run ID `41240222394`, sucesso.  
 **CI da etapa 42:** build #711 (run ID `41250019688`) e build #712 (run ID `41250044868`) concluíram com **success**. **Etapa 43:** build #714 (run ID `41250243896`) passou para compilação do componente; builds intermediárias #715 e #716 falharam por um endereço incorreto no cenário de teste, corrigido no commit `81f64a0...`; build #717 (run ID `41250293247`) concluiu com **success**, incluindo Build and test e Upload debug APK. Build #718 (run ID `41250358376`) valida esta atualização documental.
-**Estado deste documento:** etapa 43 validada por CI #717; CI #718 valida esta atualização documental.
+**Estado documental confirmado:** CI #719 (run ID `41250393284`) concluiu com sucesso, incluindo Build and test e Upload debug APK. A etapa 44 aguarda os workflows #720, #721 e #722.
 
 ---
 
@@ -1030,3 +1030,49 @@ Retirar de `MainActivity.runHleBootDiagnostic()` o estado e a formatação dos t
 2. Se logs do aparelho forem enviados, comparar as seções do laço com o formato anterior; corrigir qualquer divergência real com teste de regressão.
 3. Em seguida, considerar extrair os checkpoints e as primeiras 48 instruções para o runner, mantendo limites e ordem.
 4. Não confundir CI verde com boot ou renderização funcional do GoldenEye.
+
+## 11. Etapa 44 — primeiro teste visual sintético do VI (2026-10-31)
+
+### Objetivo
+
+Criar um caminho de teste independente de ROM para verificar a sequência RDRAM -> registradores VI -> leitor de framebuffer -> Bitmap/ImageView Android. Isso permite testar a apresentação de pixels no aparelho antes de depender de CPU/RSP/RDP ou de um jogo.
+
+### Implementação enviada
+
+Arquivos:
+- app/src/main/java/com/jsr/n64android/N64VideoTestPattern.kt — cria uma RDRAM sintética, preenche 320x240 pixels RGBA5551 com oito barras de cores e programa VI_STATUS, VI_ORIGIN, VI_WIDTH, VI_V_START e VI_Y_SCALE. Em seguida chama captureViFrameFromRegisters() para obter o mesmo tipo de frame utilizado no diagnóstico de ROM.
+- app/src/test/java/com/jsr/n64android/N64VideoTestPatternTest.kt — verifica dimensões 320x240, origem, pixelSize e as oito cores convertidas, incluindo o último pixel.
+- app/src/main/java/com/jsr/n64android/MainActivity.kt — adiciona ao menu portrait o botão “Testar vídeo (padrão de cores)”. Ao tocar, gera o frame sintético e mostra-o em um ImageView, com detalhes do framebuffer e botão de retorno ao menu. A tela informa explicitamente que o teste não representa renderização de jogo.
+
+Commits da etapa 44:
+- 4cc521253380c5b697669161277944088bdb7e68 — gerador de padrão de cores e captura via VI.
+- bcadd7aced60edcbd24b2e10969ba920d3cb34f1 — teste unitário do padrão.
+- e187a2757551ac000ccc5a4b9e4b244b36dc02c4 — botão e tela de teste visual Android.
+
+### O que este teste comprova — e o que não comprova
+
+Se os testes automatizados passarem, eles comprovam que o gerador grava pixels RGBA5551 em memória sintética, programa os registradores VI modelados, calcula a altura pela janela vertical/escala e recupera os pixels esperados pelo leitor atual. Somente abrir a opção em um aparelho e ver as barras comprova a apresentação visual no Android.
+
+Não comprova:
+- execução do RSP;
+- rasterização RDP ou comandos gráficos reais do N64;
+- VBlank/scanout temporizado;
+- captura de framebuffer produzido por um jogo;
+- compatibilidade ou renderização do GoldenEye 007.
+
+### Estado de validação
+
+- CI #719 (run ID 41250393284) confirmou com sucesso a etapa documental anterior, com Build and test e Upload debug APK.
+- CI #720 (run ID 41250932243), #721 (run ID 41250934832) e #722 (run ID 41250938272) foram disparados pelos três commits da etapa 44 e estavam em execução/fila na última consulta.
+- Ainda não declarar a etapa 44 aprovada até confirmar os resultados dos três workflows, em especial o teste e a build que incluem todos os arquivos.
+- Após CI verde, baixar o APK mais recente do artifact correspondente, instalar no Android e pedir ao usuário para abrir “Testar vídeo (padrão de cores)”. Não presumir instalação ou resultado visual sem confirmação do usuário.
+
+### Próximo passo
+
+1. Confirmar CI #720, #721 e #722 e corrigir qualquer falha real antes de prosseguir.
+2. Atualizar este documento com o resultado da CI documental subsequente.
+3. Entregar o APK debug mais recente e orientar o teste no aparelho.
+4. Solicitar ao usuário uma captura de tela ou confirmação do resultado. Se as barras aparecerem corretamente, registrar como primeiro teste visual Android/VI sintético aprovado.
+5. Depois, evoluir para um framebuffer alimentado por um produtor gráfico controlado e, mais tarde, para comandos RDP reais. Não chamar esse estágio de emulação completa de vídeo.
+
+- 2026-10-31 — etapa 44: adicionado gerador de framebuffer sintético 320x240 RGBA5551, captura pelos registradores VI e botão de teste visual independente de ROM no menu. Commits 4cc5212, bcadd7a e e187a27; CI #720–#722 pendentes na última consulta.
