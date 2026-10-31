@@ -112,6 +112,7 @@ class MainActivity : Activity() {
             var stopReason = "Limite de instruções alcançado."
             var capturedVideoFrame: N64VideoFrame? = null
             var videoCaptureMessage = "VI: captura ainda não tentada."
+            var diagnosticFailureMessage: String? = null
             try {
                 val preparation = N64HleDiagnosticRunner().prepare(bus, cpu)
                 val handoff = preparation.handoff
@@ -278,6 +279,7 @@ class MainActivity : Activity() {
                 lines.add("PIF RAM 64B: " + (0 until N64Bus.PIF_RAM_SIZE).joinToString("") { index -> bus.read8(N64Bus.PIF_RAM_BASE + index).toString(16).uppercase().padStart(2, '0') })
                 lines.add("Resultado: $stopReason")
             } catch (error: Throwable) {
+                diagnosticFailureMessage = "${error.javaClass.simpleName}: ${error.message ?: "sem detalhes"}"
                 val failedInstructionPc = cpu.diagnosticInstructionAddress
                 val failedInstruction = cpu.diagnosticInstructionWord
                 lines.add("=== FALHA HLE — CONTEXTO PRESERVADO ===")
@@ -314,7 +316,8 @@ class MainActivity : Activity() {
                     reportLines = lines.toList(),
                     videoFrame = capturedVideoFrame,
                     executedInstructions = steps,
-                    stopReason = stopReason
+                    stopReason = stopReason,
+                    failureMessage = diagnosticFailureMessage
                 )
                 runOnUiThread {
                     if (!isFinishing && !isDestroyed) {
