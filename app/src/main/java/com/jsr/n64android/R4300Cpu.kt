@@ -64,7 +64,6 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         private set
     var diagnosticLastIndirectJumpInstruction: Int? = null
         private set
-        private set
     private var pendingDelaySlotBranchAddress: Long? = null
     private var randomResetByWiredWrite = false
     /** Bounded record of actual TLBWI/TLBWR operations for ROM diagnostics. */
