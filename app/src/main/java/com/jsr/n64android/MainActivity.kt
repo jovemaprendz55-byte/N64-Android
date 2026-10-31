@@ -158,7 +158,7 @@ class MainActivity : Activity() {
                 var inCopyLoopInstruction = false
                 var sampleCopyIteration = false
                 var registersBeforeInstruction = ""
-                val cpuSession = N64CpuExecutionSession(
+                val executionSnapshot = N64HleDiagnosticRunner().executeCpu(
                     cpu = cpu,
                     instructionLimit = maxSteps.toLong(),
                     batchSize = 512,
@@ -216,7 +216,6 @@ class MainActivity : Activity() {
                         observedCpu.lastExceptionCode != null || hleStopRequested
                     }
                 )
-                val executionSnapshot = cpuSession.execute()
                 steps = executionSnapshot.executedInstructions.toInt()
                 if (cpu.lastExceptionCode != null) {
                     stopReason = "Exceção CPU code=${cpu.lastExceptionCode} em 0x${(cpu.lastExceptionInstructionAddress ?: pcBeforeInstruction).toULong().toString(16).uppercase()}."
