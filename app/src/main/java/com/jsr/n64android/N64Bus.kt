@@ -552,6 +552,26 @@ class N64Bus(
         }
     }
 
+    /**
+     * Captures a VI framebuffer using the currently programmed VI_ORIGIN,
+     * VI_WIDTH and VI_STATUS registers. Height is explicit until VI timing/
+     * active-scanline calculation is implemented.
+     *
+     * Reads RDRAM directly (not through bus MMIO), so capture does not add
+     * artificial CPU-access events to the diagnostic MMIO trace.
+     */
+    fun captureViFrame(height: Int): N64VideoFrame? {
+        require(height in 1..N64ViFramebufferReader.MAX_HEIGHT) {
+            "Unsupported VI framebuffer height: $height"
+        }
+        val origin = viRegisters[VI_ORIGIN_OFFSET / 4]
+        val width = viRegisters[VI_WIDTH_OFFSET / 4]
+        val status = viRegisters[VI_STATUS_OFFSET / 4]
+        if (width == 0) return null
+        val reader = N64ViFramebufferReader(ram, ram.size)
+        return reader.capture(origin, width, height, status)
+    }
+
     private fun requireAligned(address: Int, alignment: Int) {
         require(address >= 0 && (address and (alignment - 1)) == 0) {
             "Physical address must be $alignment-byte aligned: 0x${address.toString(16)}."
@@ -641,6 +661,9 @@ class N64Bus(
         const val AI_DACRATE_REG = AI_REG_BASE + 0x10
         const val AI_BITRATE_REG = AI_REG_BASE + 0x14
         const val VI_REG_BASE = 0x04400000
+        const val VI_STATUS_OFFSET = 0x00
+        const val VI_ORIGIN_OFFSET = 0x04
+        const val VI_WIDTH_OFFSET = 0x08
         const val VI_REG_SIZE = 0x38
         const val VI_CURRENT_REG = VI_REG_BASE + 0x10
         const val VI_REGISTER_COUNT = VI_REG_SIZE / 4
