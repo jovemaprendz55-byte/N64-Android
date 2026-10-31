@@ -122,15 +122,9 @@ class MainActivity : Activity() {
                 // around 0x70000574..0x70000588. Extend the bounded run and capture
                 // the loop's actual exit instead of relying only on distant checkpoints.
                 val maxSteps = 2_000_000
-                var copyLoopIterations = 0L
-                var copyLoopTakenBranches = 0L
-                var copyLoopExitObserved = false
-                val copyLoopTrace = ArrayList<String>()
-                val copyLoopSamples = ArrayList<String>()
-                val postCopyTrace = ArrayList<String>()
-                var postCopyTraceRemaining = 0
-                // Keep the bounded final instruction window and PC counters in the
-                // reusable trace collector; specialized copy-loop traces remain local.
+                // Keep both the general instruction window and the specialized copy-loop
+                // trace in bounded, UI-independent collectors.
+                val copyLoopTrace = N64HleCopyLoopTrace()
                 fun recordExecution(pc: Long, opcode: Int?, nextPc: Long) {
                     instructionTrace.record(pc, opcode, nextPc)
                 }
@@ -146,57 +140,27 @@ class MainActivity : Activity() {
                     "r24=0x${cpu.gpr[24].toULong().toString(16).uppercase()} " +
                     "r31=0x${cpu.gpr[31].toULong().toString(16).uppercase()}"
                 var pcBeforeInstruction = cpu.pc
-                var inCopyLoopInstruction = false
-                var sampleCopyIteration = false
-                var registersBeforeInstruction = ""
+                var copyLoopObservation = copyLoopTrace.beforeInstruction(cpu.pc) { "" }
                 val executionSnapshot = N64HleDiagnosticRunner().executeCpu(
                     cpu = cpu,
                     instructionLimit = maxSteps.toLong(),
                     batchSize = 512,
                     beforeInstruction = { observedCpu ->
                         pcBeforeInstruction = observedCpu.pc
-                        inCopyLoopInstruction = pcBeforeInstruction in 0x70000570L..0x70000588L
-                        sampleCopyIteration = pcBeforeInstruction == 0x70000588L &&
-                            (copyLoopIterations < 8L || (copyLoopIterations + 1L) % 4096L == 0L)
-                        registersBeforeInstruction = if (
-                            inCopyLoopInstruction && (copyLoopTrace.size < 32 || sampleCopyIteration)
-                        ) copyLoopRegisters() else ""
+                        copyLoopObservation = copyLoopTrace.beforeInstruction(pcBeforeInstruction) {
+                            copyLoopRegisters()
+                        }
                         bus.setDiagnosticCpuPc(pcBeforeInstruction)
                     },
                     afterInstruction = { observedCpu ->
                         val instruction = observedCpu.diagnosticInstructionWord
                         recordExecution(pcBeforeInstruction, instruction, observedCpu.pc)
-                        if (inCopyLoopInstruction && copyLoopTrace.size < 32) {
-                            copyLoopTrace.add(
-                                "PC=0x${pcBeforeInstruction.toULong().toString(16).uppercase()} " +
-                                "INST=${instruction?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"} " +
-                                "NEXT=0x${observedCpu.pc.toULong().toString(16).uppercase()} " +
-                                "BEFORE{$registersBeforeInstruction} AFTER{${copyLoopRegisters()}}"
-                            )
-                        }
-                        if (pcBeforeInstruction == 0x70000588L) {
-                            copyLoopIterations++
-                            val branchTaken = observedCpu.pc == 0x70000574L
-                            if (branchTaken) copyLoopTakenBranches++ else copyLoopExitObserved = true
-                            if (sampleCopyIteration || !branchTaken) {
-                                copyLoopSamples.add(
-                                    "iteration=$copyLoopIterations branchTaken=$branchTaken " +
-                                    "NEXT=0x${observedCpu.pc.toULong().toString(16).uppercase()} " +
-                                    "BEFORE{$registersBeforeInstruction} AFTER{${copyLoopRegisters()}}"
-                                )
-                            }
-                        }
-                        if (copyLoopExitObserved && postCopyTraceRemaining == 0 && postCopyTrace.isEmpty()) {
-                            postCopyTraceRemaining = 64
-                        }
-                        if (postCopyTraceRemaining > 0) {
-                            postCopyTrace.add(
-                                "PC=0x${pcBeforeInstruction.toULong().toString(16).uppercase()} " +
-                                "INST=${instruction?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"} " +
-                                "NEXT=0x${observedCpu.pc.toULong().toString(16).uppercase()} REG{${copyLoopRegisters()}}"
-                            )
-                            postCopyTraceRemaining--
-                        }
+                        copyLoopTrace.afterInstruction(
+                            before = copyLoopObservation,
+                            instruction = instruction,
+                            nextPc = observedCpu.pc,
+                            registersAfter = { copyLoopRegisters() }
+                        )
                         if (steps < 48) {
                             lines.add("step=$steps PC=0x${pcBeforeInstruction.toULong().toString(16).uppercase()} INST=${instruction?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"} NEXT=0x${observedCpu.pc.toULong().toString(16).uppercase()}")
                         }
@@ -230,13 +194,14 @@ class MainActivity : Activity() {
                 }
                 lines.add(videoCaptureMessage)
                 lines.add("Nota: captura única ao fim do diagnóstico; não representa VBlank/scanout temporizado.")
+                val copyLoopSnapshot = copyLoopTrace.snapshot()
                 lines.add("=== LAÇO DE CÓPIA 0x70000588 ===")
-                lines.add("Iterações=$copyLoopIterations branches_taken=$copyLoopTakenBranches saída_observada=$copyLoopExitObserved")
-                lines.addAll(copyLoopTrace)
+                lines.add("Iterações=${copyLoopSnapshot.iterations} branches_taken=${copyLoopSnapshot.takenBranches} saída_observada=${copyLoopSnapshot.exitObserved}")
+                lines.addAll(copyLoopSnapshot.loopLines)
                 lines.add("=== AMOSTRAS DO LAÇO ===")
-                lines.addAll(copyLoopSamples)
+                lines.addAll(copyLoopSnapshot.sampleLines)
                 lines.add("=== PRIMEIRAS INSTRUÇÕES APÓS A SAÍDA ===")
-                lines.addAll(postCopyTrace)
+                lines.addAll(copyLoopSnapshot.postExitLines)
                 val instructionTraceSnapshot = instructionTrace.snapshot()
                 lines.add("=== ÚLTIMAS 256 INSTRUÇÕES ===")
                 lines.addAll(instructionTraceSnapshot.recentLines)
