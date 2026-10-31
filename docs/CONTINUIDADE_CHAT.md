@@ -493,3 +493,13 @@ A inspeção da falha das builds #628 e #629 identificou que o teste usava o com
 - Outro teste verifica ausência de quadro quando VI_WIDTH=0.
 - Limitação: ainda não há cálculo automático de altura, chamada no loop de emulação, RSP/RDP nem apresentação Android. Isto valida a conexão VI→leitura de framebuffer, não renderização do GoldenEye.
 - CI acionada pelos commits desta etapa deve ser verificada antes de considerar o código validado.
+
+## 22. Altura automática da janela vertical VI — 2026-10-31
+
+- `N64Bus.captureViFrameFromRegisters()` calcula a altura ativa a partir de `VI_V_START` (offset `0x28`) e `VI_Y_SCALE` (offset `0x34`), e então reutiliza a captura dos registradores de origem, largura e formato.
+- O campo alto/baixo de `VI_V_START` é decodificado como início/fim da janela vertical (unidades de meia linha). A escala usa 11 bits fracionários, com 2048 representando 1.0; altura = `(fim - início) * escala / 2048` usando divisão inteira truncada. A fórmula de escala é consistente com implementações de vídeo N64 consultadas; não foi adicionada correção empírica de aspecto/overscan.
+- Retorna `null` se janela vazia/invertida, escala zero ou altura calculada fora de 1..1024. A API antiga `captureViFrame(height)` continua disponível para diagnóstico controlado.
+- Testes cobrem janela de 480 unidades com escala 0.5 (240 linhas), pixels no início do framebuffer, janela vazia e escala zero.
+- Referências técnicas: Project64 `Source/Project64-video/Main.cpp` (cálculo a partir de `VI_V_START` e `VI_Y_SCALE`) e N64 Timing Reference (janela vertical em meia-linha). A implementação não inclui o fator corretivo específico de Project64, nem temporização/interlace completo.
+- Limitação: cálculo de dimensões não implementa VI scanout por linha, filtros/antialias, sincronização de campo, RSP/RDP ou apresentação Android. Ainda não comprova quadro real de GoldenEye.
+- Aguardar CI dos commits abaixo antes de declarar etapa validada.
