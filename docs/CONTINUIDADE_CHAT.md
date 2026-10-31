@@ -795,3 +795,30 @@ Projetar e implementar primeiro o controlador de execução independente do Andr
 ### Limites preservados
 - Não altera a lógica do R4300, o handoff HLE, a captura VI ou o formato do relatório.
 - Não implementa game loop, RSP, RDP, VBlank, áudio, controles ou boot real de GoldenEye.
+
+
+## 36. Primeira extração do diagnóstico HLE para componente sem UI — 2026-10-31
+
+### Alteração
+- Criado `N64HleDiagnosticRunner`, inicialmente responsável pela etapa de preparação do handoff HLE e pela criação das seis linhas de resumo inicial.
+- `MainActivity.runHleBootDiagnostic()` agora delega essa preparação ao runner e incorpora as linhas retornadas ao relatório existente.
+- O runner não depende de APIs Android e não executa IPL3/PIF ROM.
+- O objeto de preparação mantém o resultado tipado de `N64HleBoot.prepare()` junto com o resumo para que as próximas etapas possam mover execução e coleta de diagnóstico sem alterar o contrato da UI.
+
+### Testes
+- Criado `N64HleDiagnosticRunnerTest` com ROM sintética CIC 6102/7101.
+- O teste verifica o entry point, tamanho do payload, PC preparado e conteúdo do resumo.
+- O teste também confirma que o resumo identifica explicitamente que IPL3 não foi executado.
+
+### Limite desta extração
+- Esta é a primeira fatia da refatoração; rastreamento por instrução, relatório completo, captura VI e snapshots do barramento ainda permanecem em `MainActivity`.
+- O worker ainda usa o controlador externo de uma tarefa; sua substituição por um controlador composto será feita após a extração do relatório e da execução.
+- Não há implementação RSP/RDP, temporização VI/VBlank, áudio ou boot comprovado de GoldenEye.
+
+### Commits
+- `a0e503139731bec2e78da5367d7cf2fe11541c05` — extrai a preparação HLE.
+- `ce473cae1f39c915fc92ab193d03a7f66d423530` — Activity delega preparação ao runner.
+- `495a02206a4fb45f32ffe8e270873aa2c9124d39` — teste do resumo e handoff.
+
+### Validação
+- CI deve concluir com Build and test e geração do APK debug antes de considerar esta etapa validada.
