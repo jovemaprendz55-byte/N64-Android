@@ -25,6 +25,7 @@ class MainActivity : Activity() {
     private var romTraceButton: Button? = null
     private var hleBootButton: Button? = null
     private lateinit var mainLayout: LinearLayout
+    @Volatile private var hleStopRequested = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -84,12 +85,18 @@ class MainActivity : Activity() {
      * Executes a bounded bring-up trace from the game bootcode staged by HLE.
      * This path deliberately does not execute the cartridge IPL3 in SP DMEM.
      */
+    override fun onDestroy() {
+        hleStopRequested = true
+        super.onDestroy()
+    }
+
     private fun runHleBootDiagnostic() {
         val bus = cartridgeBus
         if (bus == null) {
             status.text = "Selecione uma ROM de jogo primeiro."
             return
         }
+        hleStopRequested = false
         hleBootButton?.isEnabled = false
         romTraceButton?.isEnabled = false
         status.text = "Preparando HLE sem executar IPL3..."
@@ -145,7 +152,7 @@ class MainActivity : Activity() {
                     "r17=0x${cpu.gpr[17].toULong().toString(16).uppercase()} " +
                     "r24=0x${cpu.gpr[24].toULong().toString(16).uppercase()} " +
                     "r31=0x${cpu.gpr[31].toULong().toString(16).uppercase()}"
-                while (steps < maxSteps) {
+                while (steps < maxSteps && !hleStopRequested) {
                     val pcBefore = cpu.pc
                     val inCopyLoop = pcBefore in 0x70000570L..0x70000588L
                     val sampleIteration = pcBefore == 0x70000588L &&
@@ -198,6 +205,7 @@ class MainActivity : Activity() {
                         break
                     }
                 }
+                if (hleStopRequested) stopReason = "Execução cancelada porque a Activity foi encerrada."
                 // One diagnostic sample after the bounded CPU trace; this is not timed VI scanout.
                 try {
                     capturedVideoFrame = bus.captureViFrameFromRegisters()
@@ -282,10 +290,14 @@ class MainActivity : Activity() {
                 lines.add("SI DRAM=0x${bus.read32(N64Bus.SI_DRAM_ADDR_REG).toUInt().toString(16).uppercase()} PIF_RD=0x${bus.read32(N64Bus.SI_PIF_ADDR_RD64B_REG).toUInt().toString(16).uppercase()} PIF_WR=0x${bus.read32(N64Bus.SI_PIF_ADDR_WR64B_REG).toUInt().toString(16).uppercase()} STATUS=0x${bus.read32(N64Bus.SI_STATUS_REG).toUInt().toString(16).uppercase()}")
                 lines.add("PIF RAM 64B: " + (0 until N64Bus.PIF_RAM_SIZE).joinToString("") { index -> bus.read8(N64Bus.PIF_RAM_BASE + index).toString(16).uppercase().padStart(2, '0') })
             }
-            runOnUiThread {
-                showRomDiagnosticPage(lines.joinToString("\n"), capturedVideoFrame)
-                hleBootButton?.isEnabled = true
-                romTraceButton?.isEnabled = true
+            if (!hleStopRequested) {
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed) {
+                        showRomDiagnosticPage(lines.joinToString("\n"), capturedVideoFrame)
+                        hleBootButton?.isEnabled = true
+                        romTraceButton?.isEnabled = true
+                    }
+                }
             }
         }.start()
     }
