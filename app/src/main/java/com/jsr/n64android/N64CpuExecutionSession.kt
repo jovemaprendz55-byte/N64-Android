@@ -9,12 +9,14 @@ package com.jsr.n64android
 class N64CpuExecutionSession(
     cpu: R4300Cpu,
     instructionLimit: Long,
-    batchSize: Int = N64ExecutionSession.DEFAULT_BATCH_SIZE
+    batchSize: Int = N64ExecutionSession.DEFAULT_BATCH_SIZE,
+    afterInstruction: ((R4300Cpu) -> Boolean)? = null
 ) {
     private val runner = N64ExecutionSession(
         instructionLimit = instructionLimit,
         batchSize = batchSize,
-        stepInstruction = cpu::step
+        stepInstruction = cpu::step,
+        afterInstruction = afterInstruction?.let { observer -> { observer(cpu) } }
     )
 
     fun execute(): N64ExecutionSession.Snapshot = runner.execute()
