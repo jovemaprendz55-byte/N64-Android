@@ -27,6 +27,30 @@ class N64HleDiagnosticRunnerTest {
         assertTrue(preparation.summaryLines[4].contains("80000400"))
     }
 
+    @Test
+    fun executeCpuDelegatesToBoundedRealCpuSessionAndReturnsSnapshot() {
+        val memory = N64Memory(64)
+        memory.write32(0, (0x09 shl 26) or (8 shl 16) or 42)
+        memory.write32(4, (0x09 shl 26) or (8 shl 21) or (9 shl 16) or 1)
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0L)
+        val events = ArrayList<String>()
+
+        val result = N64HleDiagnosticRunner().executeCpu(
+            cpu = cpu,
+            instructionLimit = 2,
+            batchSize = 1,
+            beforeInstruction = { events.add("before:${it.pc}") },
+            afterInstruction = { events.add("after:${it.pc}"); false }
+        )
+
+        assertEquals(N64ExecutionSession.State.COMPLETED, result.state)
+        assertEquals(2L, result.executedInstructions)
+        assertEquals(8L, cpu.pc)
+        assertEquals(42L, cpu.gpr[8])
+        assertEquals(43L, cpu.gpr[9])
+        assertEquals(listOf("before:0", "after:4", "before:4", "after:8"), events)
+    }
     private fun putWord(bytes: ByteArray, offset: Int, value: Int) {
         bytes[offset] = (value ushr 24).toByte()
         bytes[offset + 1] = (value ushr 16).toByte()
