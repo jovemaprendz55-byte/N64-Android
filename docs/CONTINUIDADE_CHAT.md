@@ -2,15 +2,17 @@
 
 > Documento de passagem de contexto para qualquer novo chat ou colaborador. Leia este arquivo antes de alterar código. Atualize-o sempre que houver mudança relevante, teste, build, log ou decisão técnica.
 
-**Última atualização:** 2026-10-31  
+**Última atualização:** 2026-10-31 (etapa 42 — integração do coletor HLE)  
 **Repositório:** https://github.com/jovemaprendz55-byte/N64-Android  
 **Branch de trabalho obrigatória:** `dev/n64-clean-start`  
-**Último commit de código verificado:** `f8cf8ac8b24139289f3cc7c1475580ba9ff98f10` (coletor de rastros HLE, etapa 40).
+**Último commit de código verificado:** `3e88607b7011630bc9063f2aa1059cfb2c8563a8` (integração do coletor HLE, etapa 42).
 **Último commit de documentação anterior à auditoria:** `fcce62293ce65b871bcf04d20894b7da9f2cd27a`.
-**Commit desta auditoria e atualização documental:** `eac1f8350c66eb50510b3661e969699840abcd4a`.
+**Commit da auditoria documental:** `eac1f8350c66eb50510b3661e969699840abcd4a`.  
+**Commit da integração do coletor:** `3e88607b7011630bc9063f2aa1059cfb2c8563a8`.
 **HEAD-base conferido antes desta atualização:** `fcce62293ce65b871bcf04d20894b7da9f2cd27a`; após a gravação, o HEAD passou a ser o commit desta auditoria. O próximo chat deve sempre conferir o HEAD real.
 **CI anterior concluído:** build #708, run ID `41235044776`, sucesso; build/testes e upload do APK debug concluídos. A build #707, para o último commit de código, também terminou com sucesso.
-**CI desta atualização:** build #709, run ID `41240222394`, em andamento no momento do registro.
+**CI da auditoria documental:** build #709, run ID `41240222394`, sucesso.  
+**CI da integração da etapa 42:** build #711, run ID `41250019688`, em andamento no momento do registro.
 **Estado deste documento:** auditoria realizada em 2026-10-31; resumo e plano de continuidade atualizados após a auditoria.
 
 ---
@@ -962,3 +964,33 @@ Projetar e implementar primeiro o controlador de execução independente do Andr
 
 ### Próxima ação
 Integrar cuidadosamente `N64HleInstructionTrace` à `MainActivity`, após nova inspeção do HEAD e dos testes. Preservar o comportamento e os campos de diagnóstico existentes. Registrar o commit e o CI dessa integração como etapa 42, somente depois de confirmação real.
+
+
+## 42. Integração do coletor limitado de rastros HLE à MainActivity — 2026-10-31
+
+### Objetivo
+Eliminar a duplicação da janela recente de instruções e da contagem limitada de PCs dentro do fluxo HLE principal, passando a usar o componente puro `N64HleInstructionTrace` criado na etapa 40.
+
+### Alteração realizada
+- Arquivo alterado: `app/src/main/java/com/jsr/n64android/MainActivity.kt`.
+- Instanciado `N64HleInstructionTrace` no escopo do diagnóstico HLE principal.
+- O callback `recordExecution` agora delega o registro de PC, opcode e próximo PC ao coletor reutilizável.
+- O relatório normal agora obtém a janela recente, PCs mais visitados e total de PCs distintos por meio de `snapshot()`.
+- O caminho de exceção/falha também inclui snapshot das instruções recentes e PCs mais visitados antes da falha, ampliando a evidência preservada.
+- Removidas do fluxo HLE principal as estruturas locais equivalentes para a janela de 256 instruções e mapa de até 4096 PCs.
+- Os traces especializados do laço de cópia, amostras periódicas, 64 instruções após a saída, checkpoints, snapshots MMIO, DMA, RDRAM, VI e relatório de registradores foram preservados.
+- O método legado separado continua tendo estruturas próprias; esta etapa integra somente o fluxo `runHleBootDiagnostic()`, sem alterar o diagnóstico legado.
+
+### Validação
+- Commit de código: `3e88607b7011630bc9063f2aa1059cfb2c8563a8`.
+- Diff: 14 adições e 18 remoções em `MainActivity.kt`.
+- Testes unitários existentes de `N64HleInstructionTraceTest` continuam sendo a cobertura do componente: janela recente, contagem repetida, limite de PCs e limites inválidos.
+- CI #711, run ID `41250019688`, estava em andamento no momento deste registro. Não declarar build/testes aprovados até a conclusão.
+- Nenhum APK foi instalado ou testado no aparelho nesta etapa.
+- Nenhuma alteração em `main`.
+
+### Próximo passo
+1. Confirmar o resultado completo da build #711, incluindo Build and test e Upload debug APK.
+2. Se o CI passar, considerar a integração estrutural validada e atualizar este registro com o resultado.
+3. Em seguida, avaliar extração do relatório HLE para um componente dedicado, mas somente depois de inspecionar dependências e preservar a ordem e o conteúdo dos logs.
+4. Não avançar para RSP/RDP ou alegar renderização funcional com base nesta refatoração.
