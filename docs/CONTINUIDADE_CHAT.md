@@ -250,3 +250,27 @@ Builds anteriores ao ajuste observacional:
 - #599 — run ID `41181207832`, commit `12685cb014d31dbfce972bd597f58734d4d5a7d8`, sucesso. Artifact ID `13034509641`, SHA-256 `b05b83f0175ed291fcdfe113302f891ce48562e2b4e68da50cee15ab0689cbac`.
 
 A nova alteração precisa de CI próprio antes de ser considerada pronta para instalação.
+## 12. Segundo log real do HLE e correção de tradução TLB — 2026-10-31
+
+O usuário executou a build #604 e o relatório identificou:
+- Último salto: `JR $t2` em `0xFFFFFFFF800004B4` (instrução `0x01400008`), destino `0x70000510`.
+- `$t2` (r10) contém `0x70000510`; r4/r5 contêm `0x70000000`.
+- `tlbEnabled=false`, COP0 Index `1`, Wired `0`, EntryHi `0x70000000`.
+- O fetch falha ao tentar ler `0x70000510`.
+
+Auditoria de `R4300Cpu.physicalAddress()` confirmou que KSEG0/KSEG1 (segmentos 4/5) são traduzidos diretamente, enquanto KUSEG e outras regiões passam por `tlb.translate()` somente quando `tlbEnabled=true`. Com a flag falsa, o emulador usa um modo de compatibilidade que trata o endereço virtual como físico. A TLB de 32 entradas é limpa em `cpu.reset()`, e as instruções TLBWI/TLBWR instalam entradas sem ativar por si só a flag.
+
+### Correção aplicada e validada no CI
+- Commit `3acd80aa15e8213a7a54c04da74e7125cf024bc1`: `N64HleBoot.prepare()` ativa `cpu.tlbEnabled=true` imediatamente após `cpu.reset()`. O PC inicial `0xFFFFFFFF80000400` continua em KSEG0 e não depende de uma entrada TLB.
+- Commit `d909f2a115ba0f21ec01b7623524912964432cf0`: teste `N64HleBootTest` verifica que o handoff ativa a tradução TLB.
+- Commit `0f5e1cca5d47244701c6493015eabf43fc103681`: diagnóstico HLE registra a tradução do último destino JR/JALR e o histórico de TLBWI/TLBWR.
+- Nenhuma entrada artificial foi criada para `0x70000000` ou `0x70000510`.
+
+CI:
+- Build #605 (run ID `41182207941`): sucesso, build/test e upload APK.
+- Build #606 (run ID `41182210147`): sucesso, build/test e upload APK.
+- Build #607 (run ID `41182212696`): sucesso, build/test e upload APK.
+- Artifact #607: `n64-android-debug-apk`, ID `13035427541`, 888.116 bytes, SHA-256 `e4c924508f22632c4d08c497d6ef8118c338834f829d01133dfc023e19aec128`, expira em 2026-11-14 07:51:42 UTC.
+- Link da build #607: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41182212696
+
+Próximo passo: instalar a APK #607, executar GoldenEye com HLE e enviar o novo log. Verificar especialmente se o destino `0x70000510` agora é traduzido por uma entrada válida, se aparece TLB MISS/INVALID/MODIFIED, e os valores registrados por TLBWI/TLBWR. Se ocorrer TLB miss, usar EntryLo/PageMask/ASID reais para investigar; não inventar mapeamento.
