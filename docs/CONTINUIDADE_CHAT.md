@@ -649,3 +649,19 @@ Projetar e implementar primeiro o controlador de execução independente do Andr
 - O callback executa na thread worker; não tocar Views diretamente nele.
 - O chamador deverá manter CPU/barramento exclusivos, chamar requestStop no encerramento da tela e encaminhar resultados para a main thread.
 - Não há pacing de quadros, temporização de hardware, áudio, RSP/RDP ou vídeo contínuo.
+
+
+## 28. Cancelamento do diagnóstico HLE no ciclo de vida da Activity — 2026-10-31
+
+### Alteração Android
+- `MainActivity` agora mantém uma flag `@Volatile hleStopRequested`.
+- `onDestroy()` ativa a flag para solicitar parada cooperativa do diagnóstico HLE em execução.
+- O loop limitado verifica a flag entre instruções; não interrompe uma instrução no meio.
+- Ao detectar cancelamento, o relatório marca o motivo como encerramento da Activity.
+- A publicação final da página/log é ignorada se a execução foi cancelada ou se a Activity já está finalizando/destruída.
+
+### Limites
+- Esta integração aplica-se ao caminho `runHleBootDiagnostic()`; não altera os diagnósticos legados de IPL3.
+- O worker HLE ainda é uma thread local criada pela Activity, não uma instância de `N64ExecutionWorker`. A abstração genérica permanece coberta por testes, mas sua adoção direta exigirá separar a coleta de diagnóstico do loop de CPU.
+- Cancelamento é cooperativo, verificado entre instruções; coleta de logs já iniciada pode terminar antes da thread encerrar.
+- Não há ainda renderização contínua, frame pacing, RSP/RDP, áudio ou boot funcional comprovado de jogo.
