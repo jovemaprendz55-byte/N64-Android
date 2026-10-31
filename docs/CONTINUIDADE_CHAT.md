@@ -2,7 +2,7 @@
 
 > Documento de passagem de contexto para qualquer novo chat ou colaborador. Leia este arquivo antes de alterar código. Atualize-o sempre que houver mudança relevante, teste, build, log ou decisão técnica.
 
-**Última atualização:** 2026-10-31 (etapa 44 — teste visual sintético do VI adicionado; CI pendente)  
+**Última atualização:** 2026-10-31 (etapa 44 — teste visual sintético do VI confirmado no aparelho pelo usuário)  
 **Repositório:** https://github.com/jovemaprendz55-byte/N64-Android  
 **Branch de trabalho obrigatória:** `dev/n64-clean-start`  
 **Último commit de código da etapa 44 enviado:** `e187a2757551ac000ccc5a4b9e4b244b36dc02c4` (tela de teste visual VI; aguarda CI).
@@ -1073,11 +1073,13 @@ Não comprova:
 1. Confirmar CI #720, #721 e #722 e corrigir qualquer falha real antes de prosseguir.
 2. Atualizar este documento com o resultado da CI documental subsequente.
 3. Entregar o APK debug mais recente e orientar o teste no aparelho.
-4. Solicitar ao usuário uma captura de tela ou confirmação do resultado. Se as barras aparecerem corretamente, registrar como primeiro teste visual Android/VI sintético aprovado.
-5. Depois, evoluir para um framebuffer alimentado por um produtor gráfico controlado e, mais tarde, para comandos RDP reais. Não chamar esse estágio de emulação completa de vídeo.
+4. Resultado: usuário confirmou a tela de teste no aparelho. A primeira apresentação de um frame sintético pela rota VI/Android está confirmada; ainda não há evidência enviada de inspeção pixel a pixel das oito barras.
+5. Próxima etapa: evoluir para um framebuffer alimentado por um produtor gráfico controlado e, mais tarde, para comandos RDP reais. Não chamar esse estágio de emulação completa de vídeo.
 
 - 2026-10-31 — etapa 44: adicionado gerador de framebuffer sintético 320x240 RGBA5551, captura pelos registradores VI e botão de teste visual independente de ROM no menu. Commits 4cc5212, bcadd7a e e187a27; CI #720–#722 pendentes na última consulta.
 
 - 2026-10-31 — validação da etapa 44: CI #720, #721 e #722 concluídos com sucesso (Build and test e Upload debug APK); artifact #722 ID 13061057670. CI documental #723 aguardava conclusão.
 
 - 2026-10-31 — CI documental #723 (run ID 41251008024) concluiu com success, validando o registro de aprovação da etapa 44.
+
+- 2026-10-31 — teste no aparelho confirmado pelo usuário: tela “TESTE DE VÍDEO”, framebuffer 320x240, RGBA5551, origem 0x1000; o usuário confirmou que a tela com a mensagem de frame sintético lido pelo VI e exibido pelo Android apareceu. Ainda não foi enviado screenshot da área da imagem para confirmar cada barra de cor.
