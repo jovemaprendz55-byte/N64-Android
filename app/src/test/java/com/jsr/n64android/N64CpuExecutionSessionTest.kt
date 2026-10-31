@@ -74,10 +74,10 @@ class N64CpuExecutionSessionTest {
         val result = session.execute()
 
         assertEquals(N64ExecutionSession.State.COMPLETED, result.state)
-        assertEquals(
-            "Observed event sequence: $events",
-            listOf("before:0:0", "after:4:42", "before:4:42", "after:8:43"),
-            events
-        )
+        assertEquals("Expected four observer events: $events", 4, events.size)
+        assertEquals("First callback must run before execution: $events", "before:0:0", events[0])
+        assertEquals("First after-callback must see result: $events", "after:4:42", events[1])
+        assertEquals("Second before-callback must see prior result: $events", "before:4:42", events[2])
+        assertEquals("Second after-callback must see result: $events", "after:8:43", events[3])
     }
 }
