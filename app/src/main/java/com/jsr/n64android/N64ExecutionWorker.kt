@@ -8,7 +8,7 @@ package com.jsr.n64android
  * updates to the main thread themselves.
  */
 class N64ExecutionWorker(
-    private val session: N64ExecutionSession,
+    private val session: N64ExecutionController,
     private val onComplete: (N64ExecutionSession.Snapshot) -> Unit
 ) {
     private val lock = Any()
