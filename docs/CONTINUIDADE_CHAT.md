@@ -313,3 +313,26 @@ CI:
 - HEAD da branch após o ajuste de teste: `9cfcee76d3b78e3351ca5bf78eab5cc403ab950b`.
 
 Próximo passo: verificar a build #613. Se passar, instalar a APK resultante e executar novamente o diagnóstico HLE do GoldenEye. Espera-se que a cópia do laço não leia mais zeros na região de origem e que a sequência de execução avance além do antigo destino `0x7020141C`. Isso ainda não prova boot completo: observar a próxima exceção, DMA, SI/PIF e primeiro estado real de vídeo.
+
+
+## 14. Build #613 — HLE com imagem de 1 MiB — 2026-10-31
+
+A build #613 foi verificada diretamente no GitHub Actions e concluiu com sucesso:
+- Run ID: `41183954348`.
+- Branch: `dev/n64-clean-start`.
+- Commit testado: `60c2aa9dc7a32b11f7756fba81e6e5df6f002e12` (`test: verify HLE first MiB and boot flags`).
+- Job `build`: concluído com `success`.
+- Etapas `Build and test` e `Upload debug APK`: `success`.
+- Artifact: `n64-android-debug-apk`, ID `13035951188`, tamanho 891.178 bytes.
+- SHA-256: `7f64207c8f0b19e08ae2b807c7b3e6434ae84ec8b5e1b1a929e669146fd702a8`.
+- Artifact não expirado no momento da verificação; expiração em 2026-11-14 08:17:53 UTC.
+- Link: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41183954348
+
+**Interpretação:** CI verde confirma compilação, testes automatizados e upload do APK. Não confirma que GoldenEye inicia ou apresenta imagem no Android.
+
+### Próxima ação obrigatória
+1. Usuário instala o artifact da build #613.
+2. Executa GoldenEye pelo fluxo `Iniciar jogo (HLE sem IPL3)`.
+3. Copia e envia o relatório completo da página de diagnóstico.
+4. Analisar se as leituras na origem física `0x20D90..0x33F2F` agora contêm dados da ROM, se a execução ultrapassa o antigo endereço `0x7020141C`, e qual é a primeira nova exceção ou dependência de hardware.
+5. Não alterar `main`; não declarar boot completo sem evidência visual real.
