@@ -33,8 +33,7 @@ class N64RdpFillProcessor(
         commands.forEach { command ->
             when (((command ushr 58) and 0x3FL).toInt()) {
                 CMD_SET_OTHER_MODES -> {
-                    val value = command.toInt()
-                    cycleType = (value ushr 20) and 0x3
+                    cycleType = ((command ushr 52) and 0x3L).toInt()
                 }
                 CMD_SET_COLOR_IMAGE -> configureColorImage(command)
                 CMD_SET_SCISSOR -> configureScissor(command)
