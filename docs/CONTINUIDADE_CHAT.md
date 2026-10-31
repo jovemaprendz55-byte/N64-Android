@@ -685,3 +685,12 @@ Projetar e implementar primeiro o controlador de execução independente do Andr
 - Teste novo verifica execução de uma instrução MIPS real por meio de `N64ExecutionWorker`, confirmando callback COMPLETED e registrador esperado.
 - Esta etapa fecha a lacuna entre o worker e o adaptador R4300; ainda não migra `MainActivity.runHleBootDiagnostic()`.
 - Não acrescenta timing, sincronização de periféricos, RSP/RDP, áudio ou renderização contínua.
+
+## 31. Observadores antes e depois de cada instrução — 2026-10-31
+
+- `N64ExecutionSession` agora aceita callback opcional `beforeInstruction`, executado imediatamente antes de cada instrução, além de `afterInstruction`.
+- `N64CpuExecutionSession` disponibiliza ambos os callbacks com acesso ao `R4300Cpu`.
+- Teste novo verifica a ordem exata antes/depois em duas instruções MIPS reais e confirma os valores de PC e GPR em cada fronteira.
+- Isso permite preservar capturas pré-instrução (PC e registradores anteriores) e pós-instrução (opcode, próximo PC, registradores resultantes) ao migrar o diagnóstico HLE para o worker.
+- A `MainActivity` ainda usa seu loop atual nesta etapa; nenhuma alteração de fluxo de diagnóstico ou UI foi feita.
+- Sem mudanças em timing, periféricos, RSP/RDP, áudio ou apresentação contínua de vídeo.
