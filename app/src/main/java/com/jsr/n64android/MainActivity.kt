@@ -113,13 +113,9 @@ class MainActivity : Activity() {
             var capturedVideoFrame: N64VideoFrame? = null
             var videoCaptureMessage = "VI: captura ainda não tentada."
             try {
-                val handoff = N64HleBoot.prepare(bus, cpu)
-                lines.add("BOOT HLE — IPL3 NÃO EXECUTADO")
-                lines.add("PIF ROM utilizada: ${handoff.pifRomUsed}")
-                lines.add("CIC seed: 0x${handoff.cicSeed.toString(16).uppercase()}")
-                lines.add("Payload: ${handoff.copiedBytes} bytes | ROM 0x${handoff.romOffset.toString(16).uppercase()} -> RDRAM 0x${handoff.ramAddress.toString(16).uppercase()}")
-                lines.add("PC inicial: 0x${cpu.pc.toULong().toString(16).uppercase()}")
-                lines.add("SP inicial: 0x${cpu.gpr[29].toULong().toString(16).uppercase()}")
+                val preparation = N64HleDiagnosticRunner().prepare(bus, cpu)
+                val handoff = preparation.handoff
+                lines.addAll(preparation.summaryLines)
                 // The previous 500k-step run was still inside the byte-copy loop
                 // around 0x70000574..0x70000588. Extend the bounded run and capture
                 // the loop's actual exit instead of relying only on distant checkpoints.
