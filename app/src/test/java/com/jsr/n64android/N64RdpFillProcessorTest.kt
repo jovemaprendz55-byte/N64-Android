@@ -95,7 +95,7 @@ class N64RdpFillProcessorTest {
                 high = (2L shl 19) or 3L, low = 0xFC),
             command(N64RdpFillProcessor.CMD_SET_FILL_COLOR, low = 0xFFFFFFFFL),
             command(N64RdpFillProcessor.CMD_FILL_RECTANGLE,
-                high = 4L shl 12, low = 4L shl 12)
+                high = 8L shl 12, low = 8L shl 12)
         )
 
         val error = runCatching { processor.execute(commands) }.exceptionOrNull()
