@@ -10,8 +10,8 @@ class N64HleBootTest {
     fun preparesGameBootcodeWithoutExecutingIpl3OrUsingPifRom() {
         val rom = ByteArray(0x2000)
         // Synthetic IPL3 checksum for CIC 6102/7101: 0xD057C85244.
-        putWord(rom, 0x40, 0x000000D0)
-        putWord(rom, 0x44, 0x57C85244)
+        for (word in 0 until 208) putWord(rom, 0x40 + word * 4, 0xFFFFFFFF.toInt())
+        putWord(rom, 0x40 + 208 * 4, 0x57C85314)
         for (i in 0 until N64HleBoot.BOOTCODE_SIZE) {
             rom[N64HleBoot.BOOTCODE_ROM_OFFSET + i] = ((i * 13 + 7) and 0xFF).toByte()
         }
