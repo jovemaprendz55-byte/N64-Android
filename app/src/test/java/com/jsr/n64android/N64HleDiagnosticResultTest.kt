@@ -26,6 +26,9 @@ class N64HleDiagnosticResultTest {
         assertEquals(12, result.executedInstructions)
         assertEquals("Limite de instruções alcançado.", result.stopReason)
         assertNull(result.failureMessage)
+
+        val failed = result.copy(failureMessage = "IllegalStateException: teste")
+        assertEquals("IllegalStateException: teste", failed.failureMessage)
     }
 
     @Test(expected = IllegalArgumentException::class)
