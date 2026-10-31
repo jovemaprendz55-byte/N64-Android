@@ -6,9 +6,11 @@
 **Repositório:** https://github.com/jovemaprendz55-byte/N64-Android  
 **Branch de trabalho obrigatória:** `dev/n64-clean-start`  
 **Último commit de código verificado:** `f8cf8ac8b24139289f3cc7c1475580ba9ff98f10` (coletor de rastros HLE, etapa 40).
-**Último commit de documentação verificado:** `fcce62293ce65b871bcf04d20894b7da9f2cd27a` (atualização da etapa 40).
-**HEAD atual verificado da branch:** `fcce62293ce65b871bcf04d20894b7da9f2cd27a`.
-**CI mais recente verificado:** build #708, run ID `41235044776`, sucesso; build/testes e upload do APK debug concluídos. A build #707, para o último commit de código, também terminou com sucesso.
+**Último commit de documentação anterior à auditoria:** `fcce62293ce65b871bcf04d20894b7da9f2cd27a`.
+**Commit desta auditoria e atualização documental:** `eac1f8350c66eb50510b3661e969699840abcd4a`.
+**HEAD-base conferido antes desta atualização:** `fcce62293ce65b871bcf04d20894b7da9f2cd27a`; após a gravação, o HEAD passou a ser o commit desta auditoria. O próximo chat deve sempre conferir o HEAD real.
+**CI anterior concluído:** build #708, run ID `41235044776`, sucesso; build/testes e upload do APK debug concluídos. A build #707, para o último commit de código, também terminou com sucesso.
+**CI desta atualização:** build #709, run ID `41240222394`, em andamento no momento do registro.
 **Estado deste documento:** auditoria realizada em 2026-10-31; resumo e plano de continuidade atualizados após a auditoria.
 
 ---
