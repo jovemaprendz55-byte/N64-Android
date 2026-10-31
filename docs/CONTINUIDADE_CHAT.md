@@ -428,3 +428,12 @@ Branch `dev/n64-clean-start` estava no commit `35a72e4af0d7a90e4664aab30e494489b
 3. Enviar o novo relatório. Usar ring buffer final de instruções, PCs quentes, trace MMIO e snapshots para identificar dependências de dispositivo.
 4. Não inferir que qualquer dispositivo precisa de HLE adicional sem evidência do trace.
 5. main permanece intocada.
+
+## 18. Correção do teste de snapshot MI — 2026-10-31
+
+A inspeção da falha das builds #628 e #629 identificou que o teste usava o comando MI_INTR_MASK incorreto. O registrador usa pares de bits: clear no bit `2*n`, set no bit `2*n+1`; para habilitar a fonte SI (bit de máscara 1), o comando é `1 shl 3`, e não `1 shl 1` (que habilita SP, máscara 0). A implementação do barramento segue essa regra; o erro estava na expectativa/entrada do teste, não no snapshot.
+
+- Arquivo alterado: `app/src/test/java/com/jsr/n64android/N64BusMmioDiagnosticTest.kt`.
+- Ajuste: comando do teste mudou de `1 shl 1` para `1 shl 3`, mantendo a expectativa `INTR_MASK=0x2`.
+- Builds #628 e #629 falharam em `deviceSnapshotReportsImplementedStateWithoutAddingMmioEvents`, linha 55; as demais 285 verificações passaram.
+- Próxima validação: executar novamente `testDebugUnitTest assembleDebug` na branch `dev/n64-clean-start`. Não alterar `main`.
