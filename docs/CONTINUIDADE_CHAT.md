@@ -366,3 +366,33 @@ O relatório atual não mostra o que a CPU estava fazendo imediatamente antes de
 6. Criar testes unitários para a instrumentação e manter UI portrait e botão de copiar log na tela de diagnóstico.
 
 Branch `dev/n64-clean-start` estava no commit `35a72e4af0d7a90e4664aab30e494489b38a0844` após registrar a build #613. `main` contém o arquivo de log enviado; não foi modificada nesta análise.
+
+## 16. Instrumentação de instruções e MMIO — 2026-10-31
+
+### Build #619 (instrumentação de fluxo)
+- Commit d6c48e24c246e6923a1b39b755870c24bc719322 — ring buffer das últimas 256 instruções e PCs mais visitados.
+- Run ID 41185078343, build #619, branch dev/n64-clean-start.
+- CI concluída com success; etapas Build and test e Upload debug APK passaram.
+- Artifact n64-android-debug-apk, ID 13036108672, tamanho 892.492 bytes, SHA-256 fe3cef20ddf5b558cb15896a61b576be20413cf2734e795d5fbae3bfeb9b31ee.
+- Link: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41185078343
+- Expiração do artifact: 2026-11-14 08:34:18 UTC.
+
+### Instrumentação MMIO em andamento
+- N64Bus.kt: adiciona PC virtual corrente fornecido pelo loop HLE, ring buffer limitado a 256 leituras/escritas de registradores MMIO, contagem exata por dispositivo e eventos com operação, dispositivo, PC, endereço físico e valor.
+- Cobertura do trace: MI, VI, AI, PI, SP, SI e RI.
+- MainActivity.kt: informa PC antes de cada cpu.step() e inclui contagens/histórico MMIO no relatório HLE normal e no relatório de falha.
+- Commits em sequência:
+  - f8e552701fdd1ba5f7e00e62afd0f9839bb80807 — instrumentação base do barramento.
+  - d075ff71834c3830826729ad633fd70a4016e558 — correção das expressões Kotlin do registro de leituras.
+  - 803ea7f53a235c9dfbd98e9fce9f0dd92a778575 — inclusão do histórico MMIO no relatório HLE.
+  - a4ccccabc9401525d0319082915be6dea704a753 — teste unitário de histórico MMIO e limite 256.
+- Atenção: os commits MMIO acabaram de ser enviados em sequência; verificar a execução CI mais recente antes de considerar a alteração compilada ou distribuir APK.
+- Teste N64BusMmioDiagnosticTest.kt: valida leitura MI_VERSION, escrita VI, PC/endereço/valor no evento, contadores e retenção dos últimos 256 eventos.
+
+### Próximos passos
+1. Verificar a CI disparada pelo commit a4ccccabc9401525d0319082915be6dea704a753.
+2. Se falhar, corrigir Kotlin/testes somente em dev/n64-clean-start.
+3. Se passar, atualizar este documento com run/artifact e disponibilizar o APK para o usuário instalar e executar o HLE do GoldenEye novamente.
+4. No log novo, analisar as últimas 256 instruções, PCs quentes, acessos MMIO por dispositivo e contagens. A instrumentação registra observações; não implementar respostas falsas para dispositivos.
+5. Em uma etapa seguinte, complementar com snapshots de estado VI/MI/SP/PI/AI/SI/RI e testes específicos.
+6. main continua intocada.
