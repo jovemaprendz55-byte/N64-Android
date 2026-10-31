@@ -467,3 +467,16 @@ A inspeção da falha das builds #628 e #629 identificou que o teste usava o com
 - Não declarar vídeo funcional até demonstrar pixels originados do framebuffer escrito pelo emulador.
 - Não declarar GoldenEye iniciado sem evidência de boot real e imagem do jogo.
 - Continuar todo o trabalho na branch `dev/n64-clean-start`; não alterar `main`.
+
+
+## 20. Primeira camada de captura de framebuffer VI — 2026-10-31
+
+- Adicionado `N64VideoFrame`, um contêiner imutável de dimensões, pixels ARGB, origem e formato.
+- Adicionado `N64ViFramebufferReader`, que lê pixels reais da RDRAM via `N64AddressSpace`, respeitando origem, largura, altura e bytes por pixel.
+- Conversão implementada:
+  - VI_STATUS pixel size 2: RGBA5551 big-endian para ARGB8888, incluindo o bit alpha.
+  - VI_STATUS pixel size 3: RGBA8888 big-endian para ARGB8888.
+- Há validação de largura/altura, formato suportado e limites de RDRAM; a captura não lê além do framebuffer declarado.
+- Testes adicionados para vermelho/verde/azul RGBA5551, preservação de canais RGBA8888, formato inválido e framebuffer fora da RDRAM.
+- Limitação explícita: esta é uma camada de conversão/captura com dimensões fornecidas pelo chamador. Ainda não calcula altura ativa/temporização VI, não é chamada pelo loop do emulador e não apresenta imagem no Android. Não constitui renderizador RDP/RSP nem prova de vídeo de jogo.
+- Próximo passo: integrar a captura aos registradores VI com cálculo de região ativa/escala e, depois, encaminhar quadros válidos a uma superfície Android.
