@@ -113,6 +113,9 @@ class MainActivity : Activity() {
                         lines.add("step=$steps PC=0x${pcBefore.toULong().toString(16).uppercase()} INST=${instruction?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"} NEXT=0x${cpu.pc.toULong().toString(16).uppercase()}")
                     }
                     steps++
+                    if (steps % 50_000 == 0) {
+                        lines.add("checkpoint=$steps PC=0x${cpu.pc.toULong().toString(16).uppercase()} t0=0x${cpu.gpr[8].toULong().toString(16).uppercase()} t1=0x${cpu.gpr[9].toULong().toString(16).uppercase()} a0=0x${cpu.gpr[4].toULong().toString(16).uppercase()} sp=0x${cpu.gpr[29].toULong().toString(16).uppercase()}")
+                    }
                     if (cpu.lastExceptionCode != null) {
                         stopReason = "Exceção CPU code=${cpu.lastExceptionCode} em 0x${(cpu.lastExceptionInstructionAddress ?: pcBefore).toULong().toString(16).uppercase()}."
                         break
@@ -120,6 +123,14 @@ class MainActivity : Activity() {
                 }
                 lines.add("Instruções executadas: $steps")
                 lines.add("PC final: 0x${cpu.pc.toULong().toString(16).uppercase()}")
+                lines.add("Exceção: ${cpu.lastExceptionCode ?: "nenhuma"}")
+                lines.add("Exception PC: 0x${(cpu.lastExceptionInstructionAddress ?: 0L).toULong().toString(16).uppercase()}")
+                lines.add("COP0 Status: 0x${cpu.cop0[12].toULong().toString(16).uppercase()}")
+                lines.add("COP0 Cause: 0x${cpu.cop0[13].toULong().toString(16).uppercase()}")
+                lines.add("COP0 EPC: 0x${cpu.cop0[14].toULong().toString(16).uppercase()}")
+                lines.add("COP0 BadVAddr: 0x${cpu.cop0[8].toULong().toString(16).uppercase()}")
+                lines.add("GPR: " + (0 until 32).joinToString(" ") { index -> "r$index=0x${cpu.gpr[index].toULong().toString(16).uppercase()}" })
+                lines.add("TLB fault: ${cpu.lastTlbFaultKind ?: "nenhuma"} / ${cpu.lastTlbFaultAccessType ?: "sem acesso"} / 0x${(cpu.lastTlbFaultVirtualAddress ?: 0L).toULong().toString(16).uppercase()}")
                 lines.add("Resultado: $stopReason")
             } catch (error: Throwable) {
                 lines.add("Falha HLE: ${error.javaClass.simpleName}: ${error.message ?: "sem detalhes"}")
