@@ -665,3 +665,13 @@ Projetar e implementar primeiro o controlador de execução independente do Andr
 - O worker HLE ainda é uma thread local criada pela Activity, não uma instância de `N64ExecutionWorker`. A abstração genérica permanece coberta por testes, mas sua adoção direta exigirá separar a coleta de diagnóstico do loop de CPU.
 - Cancelamento é cooperativo, verificado entre instruções; coleta de logs já iniciada pode terminar antes da thread encerrar.
 - Não há ainda renderização contínua, frame pacing, RSP/RDP, áudio ou boot funcional comprovado de jogo.
+
+
+## 29. Observador por instrução no controlador R4300 — 2026-10-31
+
+- `N64ExecutionSession` agora aceita um observador opcional executado depois de cada instrução concluída.
+- Se o observador retornar `true`, o controlador solicita cancelamento cooperativo e termina entre instruções.
+- `N64CpuExecutionSession` expõe esse ponto de observação com acesso ao `R4300Cpu`, permitindo coletar PC, opcode, registradores e detectar condições de parada sem duplicar o loop de execução.
+- Teste novo confirma que o observador vê a primeira instrução, solicita parada e a segunda instrução não é executada.
+- Esta extensão prepara a migração do diagnóstico HLE para `N64ExecutionWorker`; a Activity ainda não foi migrada nesta etapa.
+- Não muda o limite máximo de instruções, o comportamento padrão quando não há observador, nem implementa timing ou vídeo contínuo.
