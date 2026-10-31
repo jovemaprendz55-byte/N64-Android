@@ -14,8 +14,8 @@ import java.util.concurrent.atomic.AtomicReference
 class N64ExecutionSession(
     private val instructionLimit: Long,
     private val batchSize: Int = DEFAULT_BATCH_SIZE,
-    private val stepInstruction: () -> Unit,
-    private val afterInstruction: (() -> Boolean)? = null
+    private val afterInstruction: (() -> Boolean)? = null,
+    private val stepInstruction: () -> Unit
 ) {
     enum class State {
         READY,
