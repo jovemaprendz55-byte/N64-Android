@@ -299,9 +299,9 @@ class MainActivity : Activity() {
                 for (index in 0 until copyLength) {
                     val sourceAddress = copySourceStart - index
                     val destinationAddress = copyDestinationStart - index
-                    val source = try { bus.read8(sourceAddress) } catch (error: Throwable) { -1 }
-                    val rom = try { bus.read8(N64Bus.CARTRIDGE_ROM_BASE + 0x0C00 + sourceAddress) } catch (error: Throwable) { -1 }
-                    val destination = try { bus.read8(destinationAddress) } catch (error: Throwable) { -1 }
+                    val source = try { bus.peek8ForDiagnostic(sourceAddress) } catch (error: Throwable) { -1 }
+                    val rom = try { bus.peek8ForDiagnostic(N64Bus.CARTRIDGE_ROM_BASE + 0x0C00 + sourceAddress) } catch (error: Throwable) { -1 }
+                    val destination = try { bus.peek8ForDiagnostic(destinationAddress) } catch (error: Throwable) { -1 }
                     if (source < 0 || destination < 0 || rom < 0) readErrors++
                     if (source >= 0 && rom >= 0 && source != rom) {
                         sourceRomMismatches++
@@ -343,9 +343,9 @@ class MainActivity : Activity() {
                     val sourceAddress = copySourceStart + offset
                     val romAddress = N64Bus.CARTRIDGE_ROM_BASE + 0x0C00 + sourceAddress
                     val destinationAddress = copyDestinationStart + offset
-                    val sourceByte = try { bus.read8(sourceAddress) } catch (error: Throwable) { -1 }
-                    val romByte = try { bus.read8(romAddress) } catch (error: Throwable) { -1 }
-                    val destinationByte = try { bus.read8(destinationAddress) } catch (error: Throwable) { -1 }
+                    val sourceByte = try { bus.peek8ForDiagnostic(sourceAddress) } catch (error: Throwable) { -1 }
+                    val romByte = try { bus.peek8ForDiagnostic(romAddress) } catch (error: Throwable) { -1 }
+                    val destinationByte = try { bus.peek8ForDiagnostic(destinationAddress) } catch (error: Throwable) { -1 }
                     append("off=").append(offset)
                         .append(" SRC_RDRAM[0x").append(sourceAddress.toString(16).uppercase()).append("]=0x")
                         .append(if (sourceByte >= 0) sourceByte.toString(16).uppercase().padStart(2, '0') else "ERRO")
@@ -359,9 +359,9 @@ class MainActivity : Activity() {
                 for (offset in -8..23) {
                     val sourceAddress = copySourceEnd + offset
                     val destinationAddress = copyDestinationEnd + offset
-                    val sourceByte = try { bus.read8(sourceAddress) } catch (error: Throwable) { -1 }
-                    val romByte = try { bus.read8(N64Bus.CARTRIDGE_ROM_BASE + 0x0C00 + sourceAddress) } catch (error: Throwable) { -1 }
-                    val destinationByte = try { bus.read8(destinationAddress) } catch (error: Throwable) { -1 }
+                    val sourceByte = try { bus.peek8ForDiagnostic(sourceAddress) } catch (error: Throwable) { -1 }
+                    val romByte = try { bus.peek8ForDiagnostic(N64Bus.CARTRIDGE_ROM_BASE + 0x0C00 + sourceAddress) } catch (error: Throwable) { -1 }
+                    val destinationByte = try { bus.peek8ForDiagnostic(destinationAddress) } catch (error: Throwable) { -1 }
                     append("off=").append(offset)
                         .append(" SRC_RDRAM[0x").append(sourceAddress.toString(16).uppercase()).append("]=0x")
                         .append(if (sourceByte >= 0) sourceByte.toString(16).uppercase().padStart(2, '0') else "ERRO")
