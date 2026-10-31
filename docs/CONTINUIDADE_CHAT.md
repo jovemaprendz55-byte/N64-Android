@@ -5,7 +5,7 @@
 **Última atualização:** 2026-10-31  
 **Repositório:** https://github.com/jovemaprendz55-byte/N64-Android  
 **Branch de trabalho obrigatória:** `dev/n64-clean-start`  
-**HEAD registrado nesta atualização:** `0ea295fab125cc60fc979e9052c62969a76be59c`  
+**Último commit de código registrado:** `bbd964e0b9759df93ab9b38a797317003163ff60`  
 **Build mais recente verificada:** GitHub Actions #592 — sucesso.
 
 ---
@@ -126,6 +126,28 @@ Mensagens do diagnóstico incluem `BOOT HLE — IPL3 NÃO EXECUTADO`, seed CIC, 
 - Logs antigos do caminho IPL3 começavam em `0xFFFFFFFFA4000040` e mostravam exceções/falhas TLB. Eles pertencem ao caminho legado, não ao novo handoff HLE.
 - Diagnósticos antigos de GoldenEye incluíram PCs como `0xFFFFFFFF800001C4`, vetor de exceção `0xFFFFFFFF80000180`, EPC `0xFFFFFFFFB0000428`, loops em torno de `0xFFFFFFFFB0000450` e chegada ao endereço `0xFFFFFFFF80000000` em uma execução com IPL3. Não usar esses resultados como prova do novo HLE.
 
+## 7.1. Instrumentação adicional do diagnóstico HLE — 2026-10-31
+
+No commit `bbd964e0b9759df93ab9b38a797317003163ff60`, `MainActivity.kt` passou a acrescentar ao relatório HLE uma seção `EVENTOS DO BARRAMENTO`, sem alterar o comportamento da CPU ou simular hardware adicional.
+
+O relatório agora inclui:
+- Histórico recente de requisições PI DMA e SP DMA.
+- Contagem total e amostras recentes de escritas na RDRAM.
+- Acessos registrados na região de memória monitorada pelo diagnóstico legado.
+- Contagem e amostras de escritas na região de destino monitorada pelo diagnóstico legado.
+- Registradores SI DRAM, PIF read address, PIF write address e SI status.
+- Snapshot hexadecimal dos 64 bytes da PIF RAM.
+
+Objetivo: quando o usuário executar o HLE no aparelho, o log mostrará se o bootcode solicita DMA, acessa SI/PIF ou altera a PIF RAM. Isso ajuda a localizar a primeira dependência de hardware sem inventar respostas HLE antes de observar o comportamento real.
+
+Esses campos são observabilidade/diagnóstico. **Não significam que o protocolo PIF/Joybus/CIC esteja implementado.** A região de memória monitorada pelo legado é específica e não representa todos os acessos do bootcode.
+
+Build acionada para esse código:
+- Build #595, run ID `41180363612`.
+- Commit testado: `bbd964e0b9759df93ab9b38a797317003163ff60`.
+- Último estado consultado nesta atualização: `in_progress`; resultado ainda não confirmado.
+- Link: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41180363612
+
 ## 7. Builds GitHub Actions
 
 ### Build #592 — última verificação registrada
@@ -197,4 +219,5 @@ Mensagem de arranque recomendada para o próximo chat:
 ## 10. Histórico de atualização deste documento
 
 - **2026-10-31:** criado documento inicial de passagem de contexto; registrado handoff HLE experimental, auditoria, testes, limitações, branch/commit e build #592.
+- **2026-10-31:** diagnóstico HLE ampliado com eventos PI/SP DMA, escritas RDRAM, estado dos registradores SI e snapshot PIF RAM; build #595 pendente no momento do registro.
 - Nas próximas atualizações, adicionar uma entrada datada com: commit novo, arquivos alterados, motivo, testes executados, resultado da build, logs/evidências e próxima tarefa.
