@@ -20,6 +20,7 @@ interface N64ExecutionController {
 class N64ExecutionSession(
     private val instructionLimit: Long,
     private val batchSize: Int = DEFAULT_BATCH_SIZE,
+    private val beforeInstruction: (() -> Unit)? = null,
     private val afterInstruction: (() -> Boolean)? = null,
     private val stepInstruction: () -> Unit
 ) : N64ExecutionController {
@@ -71,6 +72,7 @@ class N64ExecutionSession(
                     !stopRequested.get() &&
                     executed.get() < instructionLimit
                 ) {
+                    beforeInstruction?.invoke()
                     stepInstruction()
                     executed.incrementAndGet()
                     inBatch++
