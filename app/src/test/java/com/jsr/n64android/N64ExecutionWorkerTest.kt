@@ -63,4 +63,26 @@ class N64ExecutionWorkerTest {
         assertEquals(N64ExecutionSession.State.FAILED, result.get().state)
         assertTrue(result.get().failureMessage!!.contains("worker test failure"))
     }
+
+    @Test
+    fun workerCanOwnRealR4300ExecutionSession() {
+        val memory = N64Memory(64)
+        memory.write32(0, (0x09 shl 26) or (8 shl 16) or 42)
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0L)
+        val session = N64CpuExecutionSession(cpu, instructionLimit = 1, batchSize = 1)
+        val completed = CountDownLatch(1)
+        val result = AtomicReference<N64ExecutionSession.Snapshot>()
+        val worker = N64ExecutionWorker(session) {
+            result.set(it)
+            completed.countDown()
+        }
+
+        assertTrue(worker.start())
+        assertTrue(completed.await(2, TimeUnit.SECONDS))
+        assertEquals(N64ExecutionSession.State.COMPLETED, result.get().state)
+        assertEquals(1L, result.get().executedInstructions)
+        assertEquals(42L, cpu.gpr[8])
+    }
+
 }
