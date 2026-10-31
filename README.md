@@ -20,3 +20,7 @@ O objetivo das etapas atuais é construir e validar a base do emulador gradualme
 ## Verificação
 
 O GitHub Actions executa `gradle testDebugUnitTest assembleDebug` em pushes para `main` e `dev/**`. O trabalho em andamento deve ser feito na branch `dev/n64-clean-start`; não mesclar em `main` sem autorização.
+
+## Continuidade entre chats
+
+O histórico técnico, estado atual, decisões, limitações, builds e próximos passos do projeto está em [`docs/CONTINUIDADE_CHAT.md`](docs/CONTINUIDADE_CHAT.md). Leia esse documento antes de continuar o desenvolvimento em outro chat. Atualize-o a cada avanço relevante. Todo trabalho deve permanecer em `dev/n64-clean-start`; não alterar `main` sem autorização explícita.
