@@ -26,6 +26,7 @@ class MainActivity : Activity() {
     private var hleBootButton: Button? = null
     private lateinit var mainLayout: LinearLayout
     @Volatile private var hleStopRequested = false
+    @Volatile private var hleWorker: N64ExecutionWorker? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -87,6 +88,7 @@ class MainActivity : Activity() {
      */
     override fun onDestroy() {
         hleStopRequested = true
+        hleWorker?.requestStop()
         super.onDestroy()
     }
 
@@ -100,8 +102,11 @@ class MainActivity : Activity() {
         hleBootButton?.isEnabled = false
         romTraceButton?.isEnabled = false
         status.text = "Preparando HLE sem executar IPL3..."
-        Thread {
-            val cpu = R4300Cpu(bus)
+        val cpu = R4300Cpu(bus)
+        val session = N64ExecutionSession(
+            instructionLimit = 1L,
+            batchSize = 1
+        ) {
             val lines = ArrayList<String>()
             var steps = 0
             var stopReason = "Limite de instruções alcançado."
@@ -299,7 +304,27 @@ class MainActivity : Activity() {
                     }
                 }
             }
-        }.start()
+        }
+        val worker = N64ExecutionWorker(session) { snapshot ->
+            if (snapshot.state == N64ExecutionSession.State.FAILED) {
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed) {
+                        status.text = "Falha no worker HLE: ${snapshot.failureMessage ?: "sem detalhes"}"
+                        hleBootButton?.isEnabled = true
+                        romTraceButton?.isEnabled = true
+                    }
+                }
+            }
+            if (hleWorker === workerRef) hleWorker = null
+        }
+        val workerRef = worker
+        hleWorker = worker
+        if (!worker.start()) {
+            hleWorker = null
+            status.text = "Não foi possível iniciar o worker HLE."
+            hleBootButton?.isEnabled = true
+            romTraceButton?.isEnabled = true
+        }
     }
 
     private fun runIpl3HandoffDiagnosticLegacy() {
