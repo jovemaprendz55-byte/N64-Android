@@ -66,6 +66,44 @@ class N64RdpFillProcessorTest {
         assertTrue(error is IllegalStateException)
     }
 
+
+    @Test
+    fun fillRectangleWritesRgba8888Pixel() {
+        val memory = N64Memory(256)
+        val processor = N64RdpFillProcessor(memory, memory.size)
+        val commands = listOf(
+            command(N64RdpFillProcessor.CMD_SET_OTHER_MODES, high = 3L shl 20),
+            command(N64RdpFillProcessor.CMD_SET_COLOR_IMAGE,
+                high = (3L shl 19) or 3L, low = 0x80L),
+            command(N64RdpFillProcessor.CMD_SET_FILL_COLOR, low = 0x11223344L),
+            command(N64RdpFillProcessor.CMD_FILL_RECTANGLE)
+        )
+
+        val result = processor.execute(commands)
+
+        assertEquals(1, result.pixelsWritten)
+        assertEquals(0x11223344, memory.read32(0x80))
+    }
+
+    @Test
+    fun fillRectangleRejectsWritesPastRdramEnd() {
+        val memory = N64Memory(256)
+        val processor = N64RdpFillProcessor(memory, memory.size)
+        val commands = listOf(
+            command(N64RdpFillProcessor.CMD_SET_OTHER_MODES, high = 3L shl 20),
+            command(N64RdpFillProcessor.CMD_SET_COLOR_IMAGE,
+                high = (2L shl 19) or 3L, low = 0xFC),
+            command(N64RdpFillProcessor.CMD_SET_FILL_COLOR, low = 0xFFFFFFFFL),
+            command(N64RdpFillProcessor.CMD_FILL_RECTANGLE,
+                high = 4L shl 12, low = 4L shl 12)
+        )
+
+        val error = runCatching { processor.execute(commands) }.exceptionOrNull()
+
+        assertTrue(error is IllegalArgumentException)
+        assertEquals(0, memory.read16(0xFC))
+    }
+
     private fun command(opcode: Int, high: Long = 0L, low: Long = 0L, value: Long? = null): Long {
         val data = value ?: low
         return (opcode.toLong() shl 58) or (high shl 32) or (data and 0xFFFFFFFFL)
