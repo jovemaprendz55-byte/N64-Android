@@ -14,7 +14,8 @@ import java.util.concurrent.atomic.AtomicReference
 class N64ExecutionSession(
     private val instructionLimit: Long,
     private val batchSize: Int = DEFAULT_BATCH_SIZE,
-    private val stepInstruction: () -> Unit
+    private val stepInstruction: () -> Unit,
+    private val afterInstruction: (() -> Boolean)? = null
 ) {
     enum class State {
         READY,
@@ -67,6 +68,7 @@ class N64ExecutionSession(
                     stepInstruction()
                     executed.incrementAndGet()
                     inBatch++
+                    if (afterInstruction?.invoke() == true) requestStop()
                 }
                 if (!stopRequested.get() && executed.get() < instructionLimit) {
                     Thread.yield()
