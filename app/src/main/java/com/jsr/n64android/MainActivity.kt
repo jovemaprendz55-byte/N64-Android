@@ -305,7 +305,6 @@ class MainActivity : Activity() {
                 }
             }
         }
-        lateinit var workerRef: N64ExecutionWorker
         val worker = N64ExecutionWorker(session) { snapshot ->
             if (snapshot.state == N64ExecutionSession.State.FAILED) {
                 runOnUiThread {
@@ -316,9 +315,8 @@ class MainActivity : Activity() {
                     }
                 }
             }
-            if (hleWorker === workerRef) hleWorker = null
+            hleWorker = null
         }
-        workerRef = worker
         hleWorker = worker
         if (!worker.start()) {
             hleWorker = null
