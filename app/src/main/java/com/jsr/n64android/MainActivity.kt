@@ -147,6 +147,7 @@ class MainActivity : Activity() {
                     val sampleIteration = pcBefore == 0x70000588L &&
                         (copyLoopIterations < 8L || (copyLoopIterations + 1L) % 4096L == 0L)
                     val registersBefore = if (inCopyLoop && (copyLoopTrace.size < 32 || sampleIteration)) copyLoopRegisters() else ""
+                    bus.setDiagnosticCpuPc(pcBefore)
                     cpu.step()
                     val instruction = cpu.diagnosticInstructionWord
                     recordExecution(pcBefore, instruction, cpu.pc)
@@ -218,6 +219,9 @@ class MainActivity : Activity() {
                 lines.add("GPR: " + (0 until 32).joinToString(" ") { index -> "r$index=0x${cpu.gpr[index].toULong().toString(16).uppercase()}" })
                 lines.add("TLB fault: ${cpu.lastTlbFaultKind ?: "nenhuma"} / ${cpu.lastTlbFaultAccessType ?: "sem acesso"} / 0x${(cpu.lastTlbFaultVirtualAddress ?: 0L).toULong().toString(16).uppercase()}")
                 lines.add("=== EVENTOS DO BARRAMENTO ===")
+                lines.add("=== MMIO CPU (MI/VI/AI/PI/SP/SI/RI) ===")
+                lines.add("Contagens: " + (if (bus.diagnosticMmioCounts.isEmpty()) "(nenhum acesso)" else bus.diagnosticMmioCounts.entries.joinToString(" | ") { "${it.key}=${it.value}" }))
+                lines.addAll(bus.diagnosticMmioHistory)
                 lines.add("PI DMA count=${bus.diagnosticPiDmaHistory.size}: " + bus.diagnosticPiDmaHistory.toList().takeLast(32).joinToString(" | "))
                 lines.add("SP DMA count=${bus.diagnosticSpDmaHistory.size}: " + bus.diagnosticSpDmaHistory.toList().takeLast(32).joinToString(" | "))
                 lines.add("RDRAM writes total=${bus.diagnosticRdramWriteCount}: " + bus.diagnosticRdramWriteHistory.toList().takeLast(32).joinToString(" | "))
@@ -245,6 +249,9 @@ class MainActivity : Activity() {
                 lines.add("TLB fault=${cpu.lastTlbFaultKind ?: "nenhuma"} acesso=${cpu.lastTlbFaultAccessType ?: "N/A"} VADDR=0x${cpu.lastTlbFaultVirtualAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A"}")
                 lines.add("GPR: " + (0 until 32).joinToString(" ") { index -> "r$index=0x${cpu.gpr[index].toULong().toString(16).uppercase()}" })
                 lines.add("=== EVENTOS DO BARRAMENTO NA FALHA ===")
+                lines.add("=== MMIO CPU (MI/VI/AI/PI/SP/SI/RI) ===")
+                lines.add("Contagens: " + (if (bus.diagnosticMmioCounts.isEmpty()) "(nenhum acesso)" else bus.diagnosticMmioCounts.entries.joinToString(" | ") { "${it.key}=${it.value}" }))
+                lines.addAll(bus.diagnosticMmioHistory)
                 lines.add("PI DMA count=${bus.diagnosticPiDmaHistory.size}: " + bus.diagnosticPiDmaHistory.toList().takeLast(32).joinToString(" | "))
                 lines.add("SP DMA count=${bus.diagnosticSpDmaHistory.size}: " + bus.diagnosticSpDmaHistory.toList().takeLast(32).joinToString(" | "))
                 lines.add("RDRAM writes total=${bus.diagnosticRdramWriteCount}: " + bus.diagnosticRdramWriteHistory.toList().takeLast(32).joinToString(" | "))
