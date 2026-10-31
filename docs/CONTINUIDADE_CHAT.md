@@ -14,7 +14,7 @@
 **CI anterior concluído:** build #708, run ID `41235044776`, sucesso; build/testes e upload do APK debug concluídos. A build #707, para o último commit de código, também terminou com sucesso.
 **CI da auditoria documental:** build #709, run ID `41240222394`, sucesso.  
 **CI da etapa 42:** build #711 (run ID `41250019688`) e build #712 (run ID `41250044868`) concluíram com **success**. **Etapa 43:** build #714 (run ID `41250243896`) passou para compilação do componente; builds intermediárias #715 e #716 falharam por um endereço incorreto no cenário de teste, corrigido no commit `81f64a0...`; build #717 (run ID `41250293247`) concluiu com **success**, incluindo Build and test e Upload debug APK. Build #718 (run ID `41250358376`) valida esta atualização documental.
-**Estado documental confirmado:** CI #719 (run ID `41250393284`) concluiu com sucesso, incluindo Build and test e Upload debug APK. A etapa 44 aguarda os workflows #720, #721 e #722.
+**Estado documental confirmado:** CI #719 (run ID `41250393284`) concluiu com sucesso, incluindo Build and test e Upload debug APK. A etapa 44 teve os workflows de código #720, #721 e #722 concluídos com sucesso; o workflow documental #723 ainda está em execução.
 
 ---
 
@@ -1063,9 +1063,10 @@ Não comprova:
 ### Estado de validação
 
 - CI #719 (run ID 41250393284) confirmou com sucesso a etapa documental anterior, com Build and test e Upload debug APK.
-- CI #720 (run ID 41250932243), #721 (run ID 41250934832) e #722 (run ID 41250938272) foram disparados pelos três commits da etapa 44 e estavam em execução/fila na última consulta.
-- Ainda não declarar a etapa 44 aprovada até confirmar os resultados dos três workflows, em especial o teste e a build que incluem todos os arquivos.
-- Após CI verde, baixar o APK mais recente do artifact correspondente, instalar no Android e pedir ao usuário para abrir “Testar vídeo (padrão de cores)”. Não presumir instalação ou resultado visual sem confirmação do usuário.
+- CI #720 (run ID 41250932243), #721 (run ID 41250934832) e #722 (run ID 41250938272) concluíram com success. Em todos, Build and test e Upload debug APK passaram.
+- Artifact da build #722: n64-android-debug-apk, ID 13061057670, 916.802 bytes, não expirado na consulta; expira em 2026-11-14 23:05:29 UTC.
+- A etapa 44 está validada por CI para compilação e testes automatizados. O workflow documental #723 (run ID 41251008024) ainda estava em execução na última consulta.
+- Próxima ação prática: disponibilizar/baixar o APK da build #722, instalar no Android e pedir ao usuário para abrir “Testar vídeo (padrão de cores)”. Não presumir instalação ou resultado visual sem confirmação do usuário.
 
 ### Próximo passo
 
@@ -1076,3 +1077,5 @@ Não comprova:
 5. Depois, evoluir para um framebuffer alimentado por um produtor gráfico controlado e, mais tarde, para comandos RDP reais. Não chamar esse estágio de emulação completa de vídeo.
 
 - 2026-10-31 — etapa 44: adicionado gerador de framebuffer sintético 320x240 RGBA5551, captura pelos registradores VI e botão de teste visual independente de ROM no menu. Commits 4cc5212, bcadd7a e e187a27; CI #720–#722 pendentes na última consulta.
+
+- 2026-10-31 — validação da etapa 44: CI #720, #721 e #722 concluídos com sucesso (Build and test e Upload debug APK); artifact #722 ID 13061057670. CI documental #723 aguardava conclusão.
