@@ -675,3 +675,13 @@ Projetar e implementar primeiro o controlador de execução independente do Andr
 - Teste novo confirma que o observador vê a primeira instrução, solicita parada e a segunda instrução não é executada.
 - Esta extensão prepara a migração do diagnóstico HLE para `N64ExecutionWorker`; a Activity ainda não foi migrada nesta etapa.
 - Não muda o limite máximo de instruções, o comportamento padrão quando não há observador, nem implementa timing ou vídeo contínuo.
+
+
+## 30. Contrato comum entre worker e sessão R4300 — 2026-10-31
+
+- Introduzido `N64ExecutionController`, contrato sem dependência Android para executar, solicitar parada e consultar snapshot.
+- `N64ExecutionSession` e `N64CpuExecutionSession` implementam o contrato.
+- `N64ExecutionWorker` agora pode possuir tanto a sessão genérica quanto a sessão ligada ao R4300 real.
+- Teste novo verifica execução de uma instrução MIPS real por meio de `N64ExecutionWorker`, confirmando callback COMPLETED e registrador esperado.
+- Esta etapa fecha a lacuna entre o worker e o adaptador R4300; ainda não migra `MainActivity.runHleBootDiagnostic()`.
+- Não acrescenta timing, sincronização de periféricos, RSP/RDP, áudio ou renderização contínua.
