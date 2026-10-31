@@ -1128,3 +1128,32 @@ Começar a substituir a geração artificial de pixels por operações gráficas
 3. Depois, avaliar integração explícita com DPC/RSP somente quando houver modelo de fila e estado de execução adequados; não inventar uma fonte de comandos.
 4. Manter o caminho sintético de vídeo como teste separado até que um produtor RDP validado possa gerar o framebuffer.
 
+
+
+## 13. Revisão corretiva do processador RDP — 2026-10-31
+
+Uma revisão do código após a etapa 45 encontrou um erro na extração do campo `cycle_type` do comando `SetOtherModes`: a implementação lia os bits 21:20 da palavra baixa, mas o campo pertence à palavra alta do comando RDP (bits globais 53:52). O teste inicial repetia a codificação incorreta e, por isso, não detectava o problema.
+
+### Correção aplicada
+- `N64RdpFillProcessor.kt`: agora extrai o ciclo por `(command ushr 52) and 0x3`.
+- `N64RdpFillProcessorTest.kt`: os comandos de teste agora codificam `cycle_type` na palavra alta, nas posições corretas.
+- Acrescentados testes de escrita de pixel RGBA8888 (32 bits) e proteção contra escrita além do fim da RDRAM.
+- O teste de limite foi ajustado para endereçar um pixel realmente fora da memória (base `0xFC`, largura 4, pixel X=2 em RDRAM de 256 bytes).
+
+### Commits corretivos
+- `54cfe2dda9b24f8a2ea26a4189f0946c1b8af9b0` — correção da leitura do cycle type.
+- `64f6d1683d5a235645e11cc8b34799ae31e3ba63` — atualização da codificação do comando nos testes.
+- `98ddd823ba9a9d2f0fe567b8d4b292c64ac18746` — testes RGBA8888 e limite de RDRAM.
+- `2ac17d48f1de690a82c63339dce5d732d4725472` — correção das coordenadas do teste de limite.
+
+### CI corretiva
+- #732 run `41252114386`: commit de correção do processador; execução iniciada.
+- #733 run `41252117623`: atualização dos testes; execução iniciada.
+- #734 run `41252139530`: testes adicionais; execução iniciada.
+- #735 run `41252153682`: coordenadas corrigidas; execução iniciada.
+- Conferir o resultado do workflow para o HEAD atual antes de considerar esta revisão validada. Builds de commits anteriores não substituem a validação do commit mais recente.
+
+### Próximo passo
+- Aguardar a CI do HEAD final e corrigir eventuais falhas.
+- Fazer uma revisão técnica de coordenadas inclusivas/exclusivas, scissor, alinhamento e limites da imagem antes de ampliar o subconjunto.
+- Só depois desenhar a ligação a DPC/RSP, com estado e semântica reais. O processador continua isolado e não renderiza ROMs.
