@@ -13,6 +13,20 @@ class N64HleDiagnosticRunner {
         val summaryLines: List<String>
     )
 
+    fun executeCpu(
+        cpu: R4300Cpu,
+        instructionLimit: Long,
+        batchSize: Int = N64ExecutionSession.DEFAULT_BATCH_SIZE,
+        beforeInstruction: ((R4300Cpu) -> Unit)? = null,
+        afterInstruction: ((R4300Cpu) -> Boolean)? = null
+    ): N64ExecutionSession.Snapshot = N64CpuExecutionSession(
+        cpu = cpu,
+        instructionLimit = instructionLimit,
+        batchSize = batchSize,
+        beforeInstruction = beforeInstruction,
+        afterInstruction = afterInstruction
+    ).execute()
+
     fun prepare(bus: N64Bus, cpu: R4300Cpu): Preparation {
         val handoff = N64HleBoot.prepare(bus, cpu)
         val lines = listOf(
