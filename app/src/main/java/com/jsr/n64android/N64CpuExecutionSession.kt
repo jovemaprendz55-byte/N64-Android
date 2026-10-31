@@ -11,7 +11,7 @@ class N64CpuExecutionSession(
     instructionLimit: Long,
     batchSize: Int = N64ExecutionSession.DEFAULT_BATCH_SIZE,
     afterInstruction: ((R4300Cpu) -> Boolean)? = null
-) {
+) : N64ExecutionController {
     private val runner = N64ExecutionSession(
         instructionLimit = instructionLimit,
         batchSize = batchSize,
@@ -19,9 +19,9 @@ class N64CpuExecutionSession(
         afterInstruction = afterInstruction?.let { observer -> { observer(cpu) } }
     )
 
-    fun execute(): N64ExecutionSession.Snapshot = runner.execute()
+    override fun execute(): N64ExecutionSession.Snapshot = runner.execute()
 
-    fun requestStop() = runner.requestStop()
+    override fun requestStop() = runner.requestStop()
 
-    fun snapshot(): N64ExecutionSession.Snapshot = runner.snapshot()
+    override fun snapshot(): N64ExecutionSession.Snapshot = runner.snapshot()
 }
