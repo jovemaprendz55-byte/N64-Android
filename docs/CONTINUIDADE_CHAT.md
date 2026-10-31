@@ -5,9 +5,9 @@
 **Última atualização:** 2026-10-31  
 **Repositório:** https://github.com/jovemaprendz55-byte/N64-Android  
 **Branch de trabalho obrigatória:** `dev/n64-clean-start`  
-**Último commit de código registrado:** `bbd964e0b9759df93ab9b38a797317003163ff60`  
+**Último commit de código registrado:** `227040724945b051343dce2ab9d6aed41b9e3088`  
 **Último commit de documentação:** `6cb9063645d127ba5a6148b08cc97085021dd63e`  
-**Build mais recente verificada:** GitHub Actions #592 — sucesso.
+**Build mais recente verificada:** GitHub Actions #597 — sucesso para documentação; build #598 do novo diagnóstico está em andamento.
 
 ---
 
@@ -223,4 +223,4 @@ Mensagem de arranque recomendada para o próximo chat:
 
 - **2026-10-31:** criado documento inicial de passagem de contexto; registrado handoff HLE experimental, auditoria, testes, limitações, branch/commit e build #592.
 - **2026-10-31:** diagnóstico HLE ampliado com eventos PI/SP DMA, escritas RDRAM, estado dos registradores SI e snapshot PIF RAM; build #595 concluída com sucesso e APK de diagnóstico gerada.
-- Nas próximas atualizações, adicionar uma entrada datada com: commit novo, arquivos alterados, motivo, testes executados, resultado da build, logs/evidências e próxima tarefa.
+- **2026-10-31:** após o primeiro log real HLE (125.556 instruções, falha em leitura física 0x70000510), o catch do diagnóstico foi ampliado para preservar instrução, acesso, registradores, COP0/TLB e barramento; commit `227040724945b051343dce2ab9d6aed41b9e3088`; build #598 em fila.
