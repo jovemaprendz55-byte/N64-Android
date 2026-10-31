@@ -437,3 +437,33 @@ A inspeção da falha das builds #628 e #629 identificou que o teste usava o com
 - Ajuste: comando do teste mudou de `1 shl 1` para `1 shl 3`, mantendo a expectativa `INTR_MASK=0x2`.
 - Builds #628 e #629 falharam em `deviceSnapshotReportsImplementedStateWithoutAddingMmioEvents`, linha 55; as demais 285 verificações passaram.
 - Próxima validação: executar novamente `testDebugUnitTest assembleDebug` na branch `dev/n64-clean-start`. Não alterar `main`.
+
+
+## 19. Auditoria da interface e do caminho de vídeo — 2026-10-31
+
+### Capturas examinadas
+- Tela inicial publicada em `main/Screenshot_2026-10-31-06-11-12-123_com.jsr.n64android.jpg`.
+- Tela de diagnóstico HLE publicada em `main/Screenshot_2026-10-31-06-08-27-733_com.jsr.n64android.jpg`.
+- As capturas mostram uma interface funcional de protótipo: identificação da ROM, metadados, seleção de ROM e ações de diagnóstico; a página HLE mostra texto de execução e botão de copiar log.
+- A tela inicial está em retrato, coerente com o manifesto atual (`screenOrientation="sensorPortrait"`).
+
+### Auditoria do código em `dev/n64-clean-start`
+- A árvore de produção contém `MainActivity.kt`, `N64Bus.kt`, `N64HleBoot.kt`, memória, ROM loader/inspector, CPU R4300 e TLB.
+- Não há implementação encontrada de `SurfaceView`, `TextureView`, `GLSurfaceView`, Canvas/Bitmap renderer ou classe de apresentação de quadros.
+- Não há núcleo RSP nem RDP no código de produção. O próprio `N64Bus.kt` documenta que a execução RSP não é emulada; o modelo VI atual apenas guarda e lê/escreve registradores.
+- VI não gera framebuffer, não faz scanout da RDRAM e não agenda quadros. O teste `N64BusVideoInterfaceTest` valida somente leitura/escrita de registradores.
+- Portanto, o app ainda não possui um caminho de vídeo de ponta a ponta. A ausência de imagem não pode ser atribuída apenas à falta de um widget de tela: faltam também os componentes de emulação gráfica que produziriam os pixels.
+- O diagnóstico HLE é uma execução limitada de CPU; não é ainda uma sessão contínua de jogo nem uma fonte de quadros.
+
+### Plano técnico ordenado
+1. Definir e testar uma interface de framebuffer/quadros entre os dispositivos emulados e a camada Android, sem simular uma imagem de jogo.
+2. Implementar a leitura/scanout VI a partir dos registradores reais e da RDRAM, incluindo formatos de pixel e limites de memória; cobrir com testes unitários.
+3. Criar uma superfície Android em paisagem para apresentar somente quadros efetivamente produzidos pelo núcleo.
+4. Implementar o RDP e a execução RSP necessários para que comandos gráficos reais gerem framebuffer; conectar o resultado ao VI e à superfície.
+5. Só então integrar o ciclo contínuo de execução do jogo, áudio e controles.
+
+### Restrições de validação
+- Uma superfície Android vazia ou um quadro de teste não prova que GoldenEye está renderizando.
+- Não declarar vídeo funcional até demonstrar pixels originados do framebuffer escrito pelo emulador.
+- Não declarar GoldenEye iniciado sem evidência de boot real e imagem do jogo.
+- Continuar todo o trabalho na branch `dev/n64-clean-start`; não alterar `main`.
