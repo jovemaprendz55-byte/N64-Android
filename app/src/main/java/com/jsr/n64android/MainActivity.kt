@@ -5,10 +5,12 @@ import android.content.Intent
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -96,6 +98,8 @@ class MainActivity : Activity() {
             val lines = ArrayList<String>()
             var steps = 0
             var stopReason = "Limite de instruções alcançado."
+            var capturedVideoFrame: N64VideoFrame? = null
+            var videoCaptureMessage = "VI: captura ainda não tentada."
             try {
                 val handoff = N64HleBoot.prepare(bus, cpu)
                 lines.add("BOOT HLE — IPL3 NÃO EXECUTADO")
@@ -194,6 +198,20 @@ class MainActivity : Activity() {
                         break
                     }
                 }
+                // One diagnostic sample after the bounded CPU trace; this is not timed VI scanout.
+                try {
+                    capturedVideoFrame = bus.captureViFrameFromRegisters()
+                    videoCaptureMessage = if (capturedVideoFrame == null) {
+                        "VI: nenhum framebuffer válido (registradores não programados ou configuração inválida)."
+                    } else {
+                        val frame = capturedVideoFrame!!
+                        "VI: framebuffer ${frame.width}x${frame.height}, pixelSize=${frame.pixelSize}, origin=0x${frame.origin.toString(16).uppercase()}."
+                    }
+                } catch (videoError: Exception) {
+                    videoCaptureMessage = "VI: falha na captura: ${videoError.javaClass.simpleName}: ${videoError.message}"
+                }
+                lines.add(videoCaptureMessage)
+                lines.add("Nota: captura única ao fim do diagnóstico; não representa VBlank/scanout temporizado.")
                 lines.add("=== LAÇO DE CÓPIA 0x70000588 ===")
                 lines.add("Iterações=$copyLoopIterations branches_taken=$copyLoopTakenBranches saída_observada=$copyLoopExitObserved")
                 lines.addAll(copyLoopTrace)
@@ -265,7 +283,7 @@ class MainActivity : Activity() {
                 lines.add("PIF RAM 64B: " + (0 until N64Bus.PIF_RAM_SIZE).joinToString("") { index -> bus.read8(N64Bus.PIF_RAM_BASE + index).toString(16).uppercase().padStart(2, '0') })
             }
             runOnUiThread {
-                showRomDiagnosticPage(lines.joinToString("\n"))
+                showRomDiagnosticPage(lines.joinToString("\n"), capturedVideoFrame)
                 hleBootButton?.isEnabled = true
                 romTraceButton?.isEnabled = true
             }
@@ -1129,7 +1147,7 @@ class MainActivity : Activity() {
     }
 
 
-    private fun showRomDiagnosticPage(diagnostic: String) {
+    private fun showRomDiagnosticPage(diagnostic: String, videoFrame: N64VideoFrame? = null) {
         val diagnosticText = TextView(this).apply {
             text = diagnostic
             textSize = 14f
@@ -1151,6 +1169,16 @@ class MainActivity : Activity() {
         val page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(16, 16, 16, 16)
+            if (videoFrame != null) {
+                val bitmap = Bitmap.createBitmap(videoFrame.argbPixels, videoFrame.width, videoFrame.height, Bitmap.Config.ARGB_8888)
+                val frameView = ImageView(this@MainActivity).apply {
+                    setImageBitmap(bitmap)
+                    adjustViewBounds = true
+                    scaleType = ImageView.ScaleType.FIT_CENTER
+                    contentDescription = "Framebuffer VI capturado no diagnóstico"
+                }
+                addView(frameView, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+            }
             addView(diagnosticText, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
             addView(copyButton)
             addView(backButton)
