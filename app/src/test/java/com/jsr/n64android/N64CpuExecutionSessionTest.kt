@@ -75,9 +75,9 @@ class N64CpuExecutionSessionTest {
 
         assertEquals(N64ExecutionSession.State.COMPLETED, result.state)
         assertEquals(
+            "Observed event sequence: $events",
             listOf("before:0:0", "after:4:42", "before:4:42", "after:8:43"),
-            events,
-            "Observed event sequence: $events"
+            events
         )
     }
 }
