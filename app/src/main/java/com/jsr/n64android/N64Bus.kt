@@ -572,6 +572,25 @@ class N64Bus(
         return reader.capture(origin, width, height, status)
     }
 
+    /**
+     * Derives active framebuffer height from VI_V_START and VI_Y_SCALE.
+     * VI_V_START stores start/end in half-line units; VI_Y_SCALE is 11-bit
+     * fixed-point with 2048 representing 1.0 output lines per half-line unit.
+     * Integer division intentionally matches the truncating dimension
+     * calculation used by established N64 video implementations.
+     */
+    fun captureViFrameFromRegisters(): N64VideoFrame? {
+        val verticalWindow = viRegisters[VI_V_START_OFFSET / 4]
+        val start = (verticalWindow ushr 16) and VI_WINDOW_COORD_MASK
+        val end = verticalWindow and VI_WINDOW_COORD_MASK
+        val scale = viRegisters[VI_Y_SCALE_OFFSET / 4] and VI_SCALE_MASK
+        if (end <= start || scale == 0) return null
+        val activeHalfLines = end - start
+        val height = (activeHalfLines.toLong() * scale.toLong() / VI_SCALE_ONE).toInt()
+        if (height !in 1..N64ViFramebufferReader.MAX_HEIGHT) return null
+        return captureViFrame(height)
+    }
+
     private fun requireAligned(address: Int, alignment: Int) {
         require(address >= 0 && (address and (alignment - 1)) == 0) {
             "Physical address must be $alignment-byte aligned: 0x${address.toString(16)}."
@@ -664,6 +683,11 @@ class N64Bus(
         const val VI_STATUS_OFFSET = 0x00
         const val VI_ORIGIN_OFFSET = 0x04
         const val VI_WIDTH_OFFSET = 0x08
+        const val VI_V_START_OFFSET = 0x28
+        const val VI_Y_SCALE_OFFSET = 0x34
+        const val VI_WINDOW_COORD_MASK = 0x3FF
+        const val VI_SCALE_MASK = 0xFFF
+        const val VI_SCALE_ONE = 2048L
         const val VI_REG_SIZE = 0x38
         const val VI_CURRENT_REG = VI_REG_BASE + 0x10
         const val VI_REGISTER_COUNT = VI_REG_SIZE / 4
