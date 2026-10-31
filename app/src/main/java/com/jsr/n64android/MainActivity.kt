@@ -323,18 +323,27 @@ class MainActivity : Activity() {
                 }
             }
         }
+        lateinit var workerRef: N64ExecutionWorker
         val worker = N64ExecutionWorker(session) { snapshot ->
-            if (snapshot.state == N64ExecutionSession.State.FAILED) {
-                runOnUiThread {
-                    if (!isFinishing && !isDestroyed) {
-                        status.text = "Falha no worker HLE: ${snapshot.failureMessage ?: "sem detalhes"}"
-                        hleBootButton?.isEnabled = true
-                        romTraceButton?.isEnabled = true
+            runOnUiThread {
+                if (hleWorker === workerRef) hleWorker = null
+                if (!isFinishing && !isDestroyed) {
+                    when (snapshot.state) {
+                        N64ExecutionSession.State.FAILED -> {
+                            status.text = "Falha no worker HLE: ${snapshot.failureMessage ?: "sem detalhes"}"
+                            hleBootButton?.isEnabled = true
+                            romTraceButton?.isEnabled = true
+                        }
+                        N64ExecutionSession.State.CANCELLED -> {
+                            hleBootButton?.isEnabled = true
+                            romTraceButton?.isEnabled = true
+                        }
+                        else -> Unit
                     }
                 }
             }
-            hleWorker = null
         }
+        workerRef = worker
         hleWorker = worker
         if (!worker.start()) {
             hleWorker = null
