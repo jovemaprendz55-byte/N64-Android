@@ -336,3 +336,33 @@ A build #613 foi verificada diretamente no GitHub Actions e concluiu com sucesso
 3. Copia e envia o relatório completo da página de diagnóstico.
 4. Analisar se as leituras na origem física `0x20D90..0x33F2F` agora contêm dados da ROM, se a execução ultrapassa o antigo endereço `0x7020141C`, e qual é a primeira nova exceção ou dependência de hardware.
 5. Não alterar `main`; não declarar boot completo sem evidência visual real.
+
+
+## 15. Primeiro log do HLE com staging de 1 MiB — 2026-10-31
+
+O usuário enviou o arquivo `main/Logi` após instalar/executar a build #613. Blob do log consultado: `37a170cadde75992abfc71f503738cf3fe948e0b`.
+
+### Evidências confirmadas no relatório
+- HLE: `PIF ROM utilizada: false`, seed CIC `0x3F`.
+- Payload de `1048576` bytes (1 MiB), ROM `0x1000` -> RDRAM `0x400`; PC inicial `0xFFFFFFFF80000400`.
+- A execução atingiu o limite de **2.000.000 instruções**, sem exceção CPU e sem fault TLB registrado.
+- O laço de cópia em `0x70000588` terminou após 78.240 iterações; 78.239 branches tomados e saída observada.
+- O fluxo ultrapassou o antigo trecho `0x7020141C` e executou diversas rotinas em `0x702014xx`, `0x702013xx`, `0x702012xx`, `0x70200xxx`.
+- Foram contabilizadas 1.549.312 escritas RDRAM; 166.964 escritas na faixa de destino monitorada.
+- PI DMA count=0, SP DMA count=0. SI DRAM=0, PIF_RD/PIF_WR=`0x1FC007C0`, SI STATUS=0. PIF RAM permaneceu zerada.
+- Estado final: PC `0x702009C8`; sem exceção; limite de instruções alcançado.
+
+### Interpretação técnica
+A correção de 1 MiB resolveu a falta de dados na origem do laço: a CPU agora executa o código que foi copiado e avança muito além do ponto que anteriormente falhava com instruções inválidas. Isso é progresso real no caminho HLE, mas não demonstra que o jogo iniciou.
+
+O relatório atual não mostra o que a CPU estava fazendo imediatamente antes de parar em `0x702009C8`: os 64 passos após a saída do laço são capturados apenas perto do início, e os checkpoints a cada 50 mil instruções não mostram o fluxo final. Também não há histórico de leituras/escritas MMIO nem um resumo de PCs mais frequentes. Portanto, ainda não é seguro afirmar que o PC final é um loop de espera por SI, VI, RSP ou outro dispositivo. O estado SI/PIF zerado e ausência de PI/SP DMA são fatos, mas não identificam sozinhos a causa da estagnação.
+
+### Próxima etapa de engenharia (diagnóstico observacional, sem inventar HLE)
+1. Instrumentar um ring buffer com as últimas 256 instruções (PC, opcode, próximo PC e registradores relevantes), sempre atualizado durante a execução.
+2. Contabilizar frequência dos PCs/loops e registrar os 10 PCs mais visitados, para identificar o laço quente que consome as instruções.
+3. Acrescentar histórico limitado de acessos CPU a registradores MMIO (leituras e escritas, endereço físico, valor e PC da instrução), cobrindo MI, VI, AI, PI, SP, SI e RI; manter contadores totais sem formatar strings por acesso.
+4. Registrar snapshot final dos registradores de estado dos dispositivos, incluindo VI, MI, SP, PI, AI, SI e RI.
+5. Preservar a execução atual de 2 milhões como limite inicial; se necessário, aumentar de forma controlada depois que o ring buffer mostrar o ponto de espera. Não adicionar respostas artificiais de dispositivos nem habilitar DMA sem evidência.
+6. Criar testes unitários para a instrumentação e manter UI portrait e botão de copiar log na tela de diagnóstico.
+
+Branch `dev/n64-clean-start` estava no commit `35a72e4af0d7a90e4664aab30e494489b38a0844` após registrar a build #613. `main` contém o arquivo de log enviado; não foi modificada nesta análise.
