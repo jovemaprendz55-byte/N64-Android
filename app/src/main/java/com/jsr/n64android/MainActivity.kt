@@ -47,7 +47,7 @@ class MainActivity : Activity() {
             isEnabled = false
         }
         hleBootButton = Button(this).apply {
-            text = "Iniciar jogo (Boot HLE experimental)"
+            text = "Iniciar jogo (HLE sem IPL3)"
             setOnClickListener { runHleBootDiagnostic() }
             isEnabled = false
         }
@@ -78,7 +78,63 @@ class MainActivity : Activity() {
      * first 0xFC0 bytes of the cartridge boot payload at RDRAM 0x400.
      * This is a bounded CPU bring-up trace, not full game execution/rendering.
      */
+    /**
+     * Executes a bounded bring-up trace from the game bootcode staged by HLE.
+     * This path deliberately does not execute the cartridge IPL3 in SP DMEM.
+     */
     private fun runHleBootDiagnostic() {
+        val bus = cartridgeBus
+        if (bus == null) {
+            status.text = "Selecione uma ROM de jogo primeiro."
+            return
+        }
+        hleBootButton?.isEnabled = false
+        romTraceButton?.isEnabled = false
+        status.text = "Preparando HLE sem executar IPL3..."
+        Thread {
+            val cpu = R4300Cpu(bus)
+            val lines = ArrayList<String>()
+            var steps = 0
+            var stopReason = "Limite de instruções alcançado."
+            try {
+                val handoff = N64HleBoot.prepare(bus, cpu)
+                lines.add("BOOT HLE — IPL3 NÃO EXECUTADO")
+                lines.add("PIF ROM utilizada: ${handoff.pifRomUsed}")
+                lines.add("CIC seed: 0x${handoff.cicSeed.toString(16).uppercase()}")
+                lines.add("Payload: ${handoff.copiedBytes} bytes | ROM 0x${handoff.romOffset.toString(16).uppercase()} -> RDRAM 0x${handoff.ramAddress.toString(16).uppercase()}")
+                lines.add("PC inicial: 0x${cpu.pc.toULong().toString(16).uppercase()}")
+                lines.add("SP inicial: 0x${cpu.gpr[29].toULong().toString(16).uppercase()}")
+                val maxSteps = 500_000
+                while (steps < maxSteps) {
+                    val pcBefore = cpu.pc
+                    cpu.step()
+                    if (steps < 48) {
+                        val instruction = cpu.diagnosticInstructionWord
+                        lines.add("step=$steps PC=0x${pcBefore.toULong().toString(16).uppercase()} INST=${instruction?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"} NEXT=0x${cpu.pc.toULong().toString(16).uppercase()}")
+                    }
+                    steps++
+                    if (cpu.lastExceptionCode != null) {
+                        stopReason = "Exceção CPU code=${cpu.lastExceptionCode} em 0x${(cpu.lastExceptionInstructionAddress ?: pcBefore).toULong().toString(16).uppercase()}."
+                        break
+                    }
+                }
+                lines.add("Instruções executadas: $steps")
+                lines.add("PC final: 0x${cpu.pc.toULong().toString(16).uppercase()}")
+                lines.add("Resultado: $stopReason")
+            } catch (error: Throwable) {
+                lines.add("Falha HLE: ${error.javaClass.simpleName}: ${error.message ?: "sem detalhes"}")
+                lines.add("Instruções executadas: $steps")
+                lines.add("PC: 0x${cpu.pc.toULong().toString(16).uppercase()}")
+            }
+            runOnUiThread {
+                status.text = lines.joinToString("\\n")
+                hleBootButton?.isEnabled = true
+                romTraceButton?.isEnabled = true
+            }
+        }.start()
+    }
+
+    private fun runIpl3HandoffDiagnosticLegacy() {
         val bus = cartridgeBus
         if (bus == null) {
             status.text = "Selecione uma ROM de jogo primeiro."
