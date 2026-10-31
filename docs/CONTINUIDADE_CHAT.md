@@ -847,3 +847,26 @@ Projetar e implementar primeiro o controlador de execução independente do Andr
 
 ### Validação
 - Aguardar Build and test e Upload debug APK do workflow acionado após os commits.
+
+
+## 38. Preservação de falhas no resultado HLE — 2026-10-31
+
+### Alteração
+- A execução HLE agora guarda a classe e a mensagem da exceção capturada no fluxo principal de diagnóstico.
+- O campo `failureMessage` de `N64HleDiagnosticResult` é preenchido quando a coleta/execução lança uma exceção; permanece nulo quando não houve exceção capturada.
+- O relatório textual de contexto preservado continua sendo montado como antes, e o resultado estruturado passa a transportar também o detalhe técnico para consumidores futuros.
+
+### Teste
+- `N64HleDiagnosticResultTest` agora valida a preservação de uma mensagem de falha no modelo.
+
+### Limite
+- Falhas de CPU tratadas como exceções arquiteturais pela própria sessão continuam distintas de exceções Kotlin lançadas no fluxo externo.
+- O runner ainda não assumiu o loop completo nem a coleta dos snapshots. Esta correção melhora o contrato antes da extração.
+- Não implementa RSP/RDP, scanout temporizado ou boot comprovado de GoldenEye.
+
+### Commits
+- `d51ebc991d2127180355b9255c24ee06cb3a3317` — captura mensagem de exceção no resultado.
+- `5a0611fbdc9d0f99df7b6d74bc4e21e789ec8c8e` — teste da mensagem de falha.
+
+### Validação
+- Aguardar CI de código e documentação.
