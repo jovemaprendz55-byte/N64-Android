@@ -870,3 +870,23 @@ Projetar e implementar primeiro o controlador de execução independente do Andr
 
 ### Validação
 - Aguardar CI de código e documentação.
+
+
+## 39. Integração da execução R4300 pelo runner — 2026-10-31
+
+### Alteração
+- `MainActivity.runHleBootDiagnostic()` agora chama `N64HleDiagnosticRunner.executeCpu()` em vez de instanciar diretamente `N64CpuExecutionSession`.
+- O runner passou a ser o ponto responsável por criar/executar a sessão R4300 limitada e devolver seu snapshot.
+- Os callbacks antes/depois da instrução continuam definidos na Activity nesta etapa, preservando os traces e checkpoints existentes.
+- A captura VI, o relatório detalhado e a apresentação Android continuam no fluxo anterior; nenhuma alteração de renderização foi feita.
+
+### Teste e validação
+- Teste sintético em `N64HleDiagnosticRunnerTest` cobre duas instruções ADDIU, estado COMPLETED, contagem, PC, registradores e ordem dos callbacks.
+- Commits: `c8746bbb1e7bb91ea9e310431d28bf854d8730e2` (runner), `892d9da27539701752db1c3a66c2cdcf9086f0be` (teste) e `5841a340a56983920c2a9bf3439a04a1ebcfcdaa` (integração Activity).
+- CI #699 (runner), #700 (preservação de falha) e #701 (teste de execução) concluíram com sucesso. CI #702 e #703 ainda devem ser conferidas após a conclusão.
+
+### Limites
+- A coleta dos callbacks/traces, montagem do relatório e snapshots MMIO ainda permanecem em `MainActivity`; próxima etapa é mover essa coleta para um componente puro sem mudar o conteúdo do diagnóstico.
+- O worker ainda envolve a tarefa completa em uma sessão genérica externa de uma unidade.
+- Não foram implementados RSP/RDP, timing VI/VBlank, áudio, controles ou boot comprovado de GoldenEye.
+- `main` permanece intacta.
