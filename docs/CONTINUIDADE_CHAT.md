@@ -503,3 +503,30 @@ A inspeção da falha das builds #628 e #629 identificou que o teste usava o com
 - Referências técnicas: Project64 `Source/Project64-video/Main.cpp` (cálculo a partir de `VI_V_START` e `VI_Y_SCALE`) e N64 Timing Reference (janela vertical em meia-linha). A implementação não inclui o fator corretivo específico de Project64, nem temporização/interlace completo.
 - Limitação: cálculo de dimensões não implementa VI scanout por linha, filtros/antialias, sincronização de campo, RSP/RDP ou apresentação Android. Ainda não comprova quadro real de GoldenEye.
 - Aguardar CI dos commits abaixo antes de declarar etapa validada.
+
+
+## 23. Captura VI apresentada na página de diagnóstico — 2026-10-31
+
+Commit de código: `4a24d3503ccc0882442205e79aa91d20affe3512`.
+
+Em `MainActivity.runHleBootDiagnostic()`, após o limite de execução da CPU, a aplicação tenta uma captura única por `bus.captureViFrameFromRegisters()`. O resultado é registrado no log:
+
+- Se não houver configuração VI válida, o relatório informa que nenhum framebuffer foi capturado.
+- Se houver frame válido, registra largura, altura, pixel size e origem.
+- Se houver erro de formato/faixa de memória, registra o tipo e a mensagem da falha.
+- A captura é explicitamente identificada como amostragem única ao final do diagnóstico, não como VBlank, scanout ou temporização VI real.
+
+A página de diagnóstico passou a aceitar um `N64VideoFrame` opcional e, quando presente, converte o array ARGB para `Bitmap` e mostra a imagem acima do log. O botão de copiar logs permanece na mesma página. O caminho antigo que chama `showRomDiagnosticPage(diagnostic)` continua compatível porque o parâmetro de frame é opcional.
+
+Limites importantes:
+- O HLE atual ainda é uma execução diagnóstica limitada; não é uma sessão contínua de jogo.
+- O VI ainda não possui temporização/VBlank/scanout completo.
+- RSP/RDP continuam ausentes; portanto, a captura só exibirá dados se a CPU ou outro código já tiver escrito um framebuffer válido em RDRAM e programado os registradores VI.
+- Um frame capturado não comprova boot ou jogabilidade do GoldenEye.
+- A conversão para Bitmap e a atualização da interface ocorrem na thread principal ao abrir a página; avaliar custo/performance antes de transformar isso em apresentação contínua.
+
+Próximo passo:
+1. Verificar CI para o commit acima.
+2. Se passar, adicionar testes para a camada de apresentação/conversão e validar a página em aparelho.
+3. Depois projetar uma sessão de emulação contínua com thread própria e sincronização de frames; não reutilizar o loop diagnóstico como game loop.
+4. RSP/RDP e temporização VI continuam sendo pré-requisitos para renderizar jogos N64 reais.
