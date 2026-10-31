@@ -10,11 +10,13 @@ class N64CpuExecutionSession(
     cpu: R4300Cpu,
     instructionLimit: Long,
     batchSize: Int = N64ExecutionSession.DEFAULT_BATCH_SIZE,
+    beforeInstruction: ((R4300Cpu) -> Unit)? = null,
     afterInstruction: ((R4300Cpu) -> Boolean)? = null
 ) : N64ExecutionController {
     private val runner = N64ExecutionSession(
         instructionLimit = instructionLimit,
         batchSize = batchSize,
+        beforeInstruction = beforeInstruction?.let { observer -> { observer(cpu) } },
         stepInstruction = cpu::step,
         afterInstruction = afterInstruction?.let { observer -> { observer(cpu) } }
     )
