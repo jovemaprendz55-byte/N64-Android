@@ -11,8 +11,8 @@ object N64HleBoot {
     const val BOOTCODE_ROM_OFFSET = 0x1000
     const val BOOTCODE_RAM_ADDRESS = 0x400
     const val BOOTCODE_SIZE = 0xFC0
-    const val ENTRY_PC: Long = 0xFFFFFFFF80000400UL.toLong()
-    const val INITIAL_STACK: Long = 0xFFFFFFFFA07FFFE0UL.toLong()
+    val ENTRY_PC: Long = 0xFFFFFFFF80000400UL.toLong()
+    val INITIAL_STACK: Long = 0xFFFFFFFFA07FFFE0UL.toLong()
 
     data class Result(
         val cicSeed: Int,
