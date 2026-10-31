@@ -11,12 +11,18 @@ import java.util.concurrent.atomic.AtomicReference
  * This class deliberately has no Android dependencies and does not implement hardware timing,
  * frame pacing, audio, or device scheduling.
  */
+interface N64ExecutionController {
+    fun execute(): N64ExecutionSession.Snapshot
+    fun requestStop()
+    fun snapshot(): N64ExecutionSession.Snapshot
+}
+
 class N64ExecutionSession(
     private val instructionLimit: Long,
     private val batchSize: Int = DEFAULT_BATCH_SIZE,
     private val afterInstruction: (() -> Boolean)? = null,
     private val stepInstruction: () -> Unit
-) {
+) : N64ExecutionController {
     enum class State {
         READY,
         RUNNING,
@@ -43,7 +49,7 @@ class N64ExecutionSession(
     }
 
     /** Requests cooperative cancellation; the current instruction, if any, may finish first. */
-    fun requestStop() {
+    override fun requestStop() {
         stopRequested.set(true)
         state.compareAndSet(State.RUNNING, State.STOP_REQUESTED)
     }
@@ -52,7 +58,7 @@ class N64ExecutionSession(
      * Executes at most [instructionLimit] instructions, yielding between bounded batches.
      * This method is single-use and should be called from a dedicated worker thread.
      */
-    fun execute(): Snapshot {
+    override fun execute(): Snapshot {
         check(state.compareAndSet(State.READY, State.RUNNING)) {
             "Execution session can only be executed once."
         }
@@ -85,7 +91,7 @@ class N64ExecutionSession(
         return snapshot()
     }
 
-    fun snapshot(): Snapshot = Snapshot(
+    override fun snapshot(): Snapshot = Snapshot(
         state = state.get(),
         executedInstructions = executed.get(),
         failureMessage = failureMessage
