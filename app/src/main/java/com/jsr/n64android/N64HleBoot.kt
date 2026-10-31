@@ -47,6 +47,9 @@ object N64HleBoot {
         }
 
         cpu.reset()
+        // KUSEG/KSEG2/KSEG3 accesses must use the architectural TLB.
+        // The bootcode entry at 0x80000400 remains direct-mapped through KSEG0.
+        cpu.tlbEnabled = true
         cpu.gpr[22] = seed.toLong() // CIC seed expected in $s6 by supported IPL3 families.
         cpu.gpr[29] = INITIAL_STACK
         cpu.setProgramCounter(ENTRY_PC)
