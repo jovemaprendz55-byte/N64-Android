@@ -141,9 +141,27 @@ class MainActivity : Activity() {
                 lines.add("PIF RAM 64B: " + (0 until N64Bus.PIF_RAM_SIZE).joinToString("") { index -> bus.read8(N64Bus.PIF_RAM_BASE + index).toString(16).uppercase().padStart(2, '0') })
                 lines.add("Resultado: $stopReason")
             } catch (error: Throwable) {
-                lines.add("Falha HLE: ${error.javaClass.simpleName}: ${error.message ?: "sem detalhes"}")
+                val failedInstructionPc = cpu.diagnosticInstructionAddress
+                val failedInstruction = cpu.diagnosticInstructionWord
+                lines.add("=== FALHA HLE — CONTEXTO PRESERVADO ===")
+                lines.add("Erro: ${error.javaClass.simpleName}: ${error.message ?: "sem detalhes"}")
                 lines.add("Instruções executadas: $steps")
-                lines.add("PC: 0x${cpu.pc.toULong().toString(16).uppercase()}")
+                lines.add("PC atual: 0x${cpu.pc.toULong().toString(16).uppercase()}")
+                lines.add("Instrução que provocou a falha: PC=0x${failedInstructionPc?.toULong()?.toString(16)?.uppercase() ?: "N/A"} INST=0x${failedInstruction?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"}")
+                lines.add("Acesso que falhou: VADDR=0x${cpu.diagnosticVirtualAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A"} PADDR=${cpu.diagnosticPhysicalAddress?.let { "0x" + it.toUInt().toString(16).uppercase() } ?: "N/A"} tipo=${cpu.diagnosticAccessType ?: "N/A"}")
+                lines.add("Último destino JR/JALR: ${cpu.diagnosticLastIndirectTarget?.let { "0x" + it.toULong().toString(16).uppercase() } ?: "N/A"}")
+                lines.add("Última exceção CPU: código=${cpu.lastExceptionCode ?: "nenhuma"} PC=0x${cpu.lastExceptionInstructionAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A"}")
+                lines.add("COP0 Status=0x${cpu.cop0[12].toULong().toString(16).uppercase()} Cause=0x${cpu.cop0[13].toULong().toString(16).uppercase()} EPC=0x${cpu.cop0[14].toULong().toString(16).uppercase()} BadVAddr=0x${cpu.cop0[8].toULong().toString(16).uppercase()}")
+                lines.add("TLB fault=${cpu.lastTlbFaultKind ?: "nenhuma"} acesso=${cpu.lastTlbFaultAccessType ?: "N/A"} VADDR=0x${cpu.lastTlbFaultVirtualAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A"}")
+                lines.add("GPR: " + (0 until 32).joinToString(" ") { index -> "r$index=0x${cpu.gpr[index].toULong().toString(16).uppercase()}" })
+                lines.add("=== EVENTOS DO BARRAMENTO NA FALHA ===")
+                lines.add("PI DMA count=${bus.diagnosticPiDmaHistory.size}: " + bus.diagnosticPiDmaHistory.toList().takeLast(32).joinToString(" | "))
+                lines.add("SP DMA count=${bus.diagnosticSpDmaHistory.size}: " + bus.diagnosticSpDmaHistory.toList().takeLast(32).joinToString(" | "))
+                lines.add("RDRAM writes total=${bus.diagnosticRdramWriteCount}: " + bus.diagnosticRdramWriteHistory.toList().takeLast(32).joinToString(" | "))
+                lines.add("Boot memory accesses: " + bus.diagnosticBootMemoryAccessHistory.toList().takeLast(32).joinToString(" | "))
+                lines.add("Boot destination writes total=${bus.diagnosticBootDestinationWriteCount}: " + bus.diagnosticBootDestinationWriteHistory.toList().takeLast(32).joinToString(" | "))
+                lines.add("SI DRAM=0x${bus.read32(N64Bus.SI_DRAM_ADDR_REG).toUInt().toString(16).uppercase()} PIF_RD=0x${bus.read32(N64Bus.SI_PIF_ADDR_RD64B_REG).toUInt().toString(16).uppercase()} PIF_WR=0x${bus.read32(N64Bus.SI_PIF_ADDR_WR64B_REG).toUInt().toString(16).uppercase()} STATUS=0x${bus.read32(N64Bus.SI_STATUS_REG).toUInt().toString(16).uppercase()}")
+                lines.add("PIF RAM 64B: " + (0 until N64Bus.PIF_RAM_SIZE).joinToString("") { index -> bus.read8(N64Bus.PIF_RAM_BASE + index).toString(16).uppercase().padStart(2, '0') })
             }
             runOnUiThread {
                 showRomDiagnosticPage(lines.joinToString("\n"))
