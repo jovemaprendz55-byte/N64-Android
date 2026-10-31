@@ -40,7 +40,7 @@ class N64RdpFillProcessorTest {
             command(N64RdpFillProcessor.CMD_SET_COLOR_IMAGE, high = (2L shl 19) or 3L, low = 0x100L),
             command(N64RdpFillProcessor.CMD_SET_SCISSOR,
                 high = (4L shl 12) or 4L, low = (8L shl 12) or 8L),
-            command(N64RdpFillProcessor.CMD_SET_FILL_COLOR, low = 0xFFFF0000L),
+            command(N64RdpFillProcessor.CMD_SET_FILL_COLOR, low = 0xFFFFFFFFL),
             command(N64RdpFillProcessor.CMD_FILL_RECTANGLE,
                 high = (12L shl 12) or 12L, low = 0L)
         )
