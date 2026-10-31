@@ -36,7 +36,7 @@ class N64HleCopyLoopTraceTest {
         val trace = N64HleCopyLoopTrace()
 
         repeat(40) {
-            val observation = trace.beforeInstruction(N64HleCopyLoopTrace.LOOP_FIRST_PC) { "before" }
+            val observation = trace.beforeInstruction(N64HleCopyLoopTrace.LOOP_STORE_PC) { "before" }
             trace.afterInstruction(observation, 0, N64HleCopyLoopTrace.LOOP_START_PC) { "after" }
         }
         val bounded = trace.snapshot()
