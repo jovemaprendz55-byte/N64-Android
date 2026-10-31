@@ -746,3 +746,10 @@ Projetar e implementar primeiro o controlador de execução independente do Andr
 
 ### Validação
 - CI iniciado após as alterações; registrar resultado do workflow antes de considerar esta etapa validada.
+
+
+### Correção adicional da etapa 33
+- O primeiro build da integração apontou `Unresolved reference 'workerRef'`: a variável local era capturada no callback antes da declaração.
+- Removida a comparação com essa referência local; o botão HLE fica desabilitado durante a execução, portanto há apenas uma execução ativa pelo fluxo normal da tela. O callback limpa `hleWorker`.
+- Commit de correção: `131310f163c65cd1e4f0090e531436481c8e23e3`.
+- O CI da correção está em andamento; a integração só será considerada compilada após resultado verde.
