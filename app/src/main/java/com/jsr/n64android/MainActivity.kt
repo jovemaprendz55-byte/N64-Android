@@ -310,9 +310,18 @@ class MainActivity : Activity() {
                 lines.add("PIF RAM 64B: " + (0 until N64Bus.PIF_RAM_SIZE).joinToString("") { index -> bus.read8(N64Bus.PIF_RAM_BASE + index).toString(16).uppercase().padStart(2, '0') })
             }
             if (!hleStopRequested) {
+                val diagnosticResult = N64HleDiagnosticResult(
+                    reportLines = lines.toList(),
+                    videoFrame = capturedVideoFrame,
+                    executedInstructions = steps,
+                    stopReason = stopReason
+                )
                 runOnUiThread {
                     if (!isFinishing && !isDestroyed) {
-                        showRomDiagnosticPage(lines.joinToString("\n"), capturedVideoFrame)
+                        showRomDiagnosticPage(
+                            diagnosticResult.reportLines.joinToString("\n"),
+                            diagnosticResult.videoFrame
+                        )
                         hleBootButton?.isEnabled = true
                         romTraceButton?.isEnabled = true
                     }
