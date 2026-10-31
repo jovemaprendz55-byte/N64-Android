@@ -480,3 +480,16 @@ A inspeção da falha das builds #628 e #629 identificou que o teste usava o com
 - Testes adicionados para vermelho/verde/azul RGBA5551, preservação de canais RGBA8888, formato inválido e framebuffer fora da RDRAM.
 - Limitação explícita: esta é uma camada de conversão/captura com dimensões fornecidas pelo chamador. Ainda não calcula altura ativa/temporização VI, não é chamada pelo loop do emulador e não apresenta imagem no Android. Não constitui renderizador RDP/RSP nem prova de vídeo de jogo.
 - Próximo passo: integrar a captura aos registradores VI com cálculo de região ativa/escala e, depois, encaminhar quadros válidos a uma superfície Android.
+
+## 21. Captura ligada aos registradores VI — 2026-10-31
+
+- `N64Bus.captureViFrame(height)` conecta a camada `N64ViFramebufferReader` ao estado VI programado pelo software:
+  - `VI_STATUS` (offset `0x00`), para o formato de pixel;
+  - `VI_ORIGIN` (offset `0x04`), para o endereço inicial;
+  - `VI_WIDTH` (offset `0x08`), para o stride/largura.
+- A altura permanece parâmetro explícito, pois o cálculo correto de região ativa/temporização ainda não foi implementado. Se VI_WIDTH estiver zerado, a API retorna `null` (nenhum quadro capturável).
+- A captura lê a memória RDRAM diretamente, sem usar `read32` do barramento para consultar os registradores e sem gerar eventos MMIO artificiais.
+- Teste de integração verifica que os registradores VI selecionam origem/largura/formato, que os pixels reais em RDRAM são convertidos e que a captura não aumenta o histórico MMIO.
+- Outro teste verifica ausência de quadro quando VI_WIDTH=0.
+- Limitação: ainda não há cálculo automático de altura, chamada no loop de emulação, RSP/RDP nem apresentação Android. Isto valida a conexão VI→leitura de framebuffer, não renderização do GoldenEye.
+- CI acionada pelos commits desta etapa deve ser verificada antes de considerar o código validado.
