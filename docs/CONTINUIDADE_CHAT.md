@@ -5,9 +5,9 @@
 **Última atualização:** 2026-10-31  
 **Repositório:** https://github.com/jovemaprendz55-byte/N64-Android  
 **Branch de trabalho obrigatória:** `dev/n64-clean-start`  
-**Último commit de código registrado:** `227040724945b051343dce2ab9d6aed41b9e3088`  
-**Último commit de documentação:** `6cb9063645d127ba5a6148b08cc97085021dd63e`  
-**Build mais recente verificada:** GitHub Actions #597 — sucesso para documentação; build #598 do novo diagnóstico está em andamento.
+**Último commit de código verificado:** `037c023a20b1a7f29a41a8362fb44daebe0ef38f`  
+**Último commit de documentação:** atualização pendente após a etapa 32.  
+**Build mais recente verificada:** GitHub Actions #680 — sucesso (código `037c023a20b1a7f29a41a8362fb44daebe0ef38f`), incluindo testes e upload do APK debug.
 
 ---
 
@@ -694,3 +694,31 @@ Projetar e implementar primeiro o controlador de execução independente do Andr
 - Isso permite preservar capturas pré-instrução (PC e registradores anteriores) e pós-instrução (opcode, próximo PC, registradores resultantes) ao migrar o diagnóstico HLE para o worker.
 - A `MainActivity` ainda usa seu loop atual nesta etapa; nenhuma alteração de fluxo de diagnóstico ou UI foi feita.
 - Sem mudanças em timing, periféricos, RSP/RDP, áudio ou apresentação contínua de vídeo.
+
+
+## 32. Correção do teste de observadores e validação CI — 2026-10-31
+
+### Diagnóstico da falha anterior
+- Builds #675–#679 falhavam em `N64CpuExecutionSessionTest.beforeAndAfterObserversBracketEachRealInstruction`.
+- O log do GitHub Actions #679 confirmou `org.junit.ComparisonFailure` na linha 81.
+- A segunda instrução sintética estava codificada como ADDIU com destino em `$t1` (rt=9) e fonte em `$t0` (rs=8). O teste verificava incorretamente que `$t0` passaria a 43.
+- O comportamento esperado correto é: após a segunda instrução, PC=8, `$t0=42` e `$t1=43`.
+
+### Correção
+- Atualizado o teste para registrar também `$t1` nos snapshots antes/depois.
+- Expectativa final agora valida explicitamente `after:8:42:43`, preservando a verificação da ordem dos quatro callbacks.
+- Commit: `037c023a20b1a7f29a41a8362fb44daebe0ef38f` — `fix: assert destination register written by second ADDIU`.
+
+### Validação
+- GitHub Actions #680, run ID `41230306554`: **success**.
+- Etapa Build and test: success.
+- Etapa Upload debug APK: success.
+- [Workflow #680](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41230306554).
+- Resultado valida a suíte automatizada e a geração do APK debug; não comprova boot de GoldenEye nem teste em aparelho.
+
+### Estado da integração
+- `MainActivity.runHleBootDiagnostic()` ainda usa uma thread local e loop próprio de até 2.000.000 instruções.
+- `N64ExecutionWorker` e `N64CpuExecutionSession` ainda não são usados por esse fluxo.
+- A migração deve preservar o diagnóstico existente: PC/opcode/próximo PC, janela das últimas 256 instruções, contagem de PCs, observação do laço de cópia, checkpoints, detecção de exceção, snapshots MMIO/periféricos, captura VI única e publicação da UI na main thread.
+- A sessão deve ser a única proprietária de CPU/barramento durante execução. O callback do worker ocorre na thread worker e precisa usar `runOnUiThread`; o cancelamento deve ser solicitado em `onDestroy()`.
+- Não converter em loop contínuo de jogo: continuam ausentes RSP/RDP e scanout/VBlank temporizado.
