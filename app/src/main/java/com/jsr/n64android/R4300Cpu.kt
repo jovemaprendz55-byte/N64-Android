@@ -59,6 +59,11 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     private var delayedTarget: Long? = null
     /** Target captured when the most recently executed instruction was JR/JALR. */
     var diagnosticLastIndirectTarget: Long? = null
+    /** Source instruction for the most recently executed JR/JALR, retained across later instructions. */
+    var diagnosticLastIndirectJumpAddress: Long? = null
+        private set
+    var diagnosticLastIndirectJumpInstruction: Int? = null
+        private set
         private set
     private var pendingDelaySlotBranchAddress: Long? = null
     private var randomResetByWiredWrite = false
@@ -95,6 +100,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         diagnosticAccessType = null
         delayedTarget = null
         diagnosticLastIndirectTarget = null
+        diagnosticLastIndirectJumpAddress = null
+        diagnosticLastIndirectJumpInstruction = null
         pendingDelaySlotBranchAddress = null
     }
 
@@ -131,7 +138,6 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     private fun stepInstruction() {
         val instructionAddress = pc
         instructionAddressForCurrentStep = instructionAddress
-        diagnosticLastIndirectTarget = null
         val instruction = memory.read32(physicalAddress(instructionAddress, R4300Tlb.Access.FETCH))
         instructionWordForCurrentStep = instruction
         val targetFromPreviousBranch = delayedTarget
@@ -343,6 +349,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     if (rt != 0 || rd != 0 || shamt != 0) throw ReservedInstructionFault("Malformed JR reserved fields")
                     pendingDelaySlotBranchAddress = instructionAddress
                     diagnosticLastIndirectTarget = gpr[rs]
+                    diagnosticLastIndirectJumpAddress = instructionAddress
+                    diagnosticLastIndirectJumpInstruction = instruction
                     delayedTarget = gpr[rs]
                 }
                 0x09 -> { // JALR: rt and shamt are reserved; rd selects the link register.
@@ -351,6 +359,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     gpr[rd] = nextSequential + 4L
                     pendingDelaySlotBranchAddress = instructionAddress
                     diagnosticLastIndirectTarget = jumpTarget
+                    diagnosticLastIndirectJumpAddress = instructionAddress
+                    diagnosticLastIndirectJumpInstruction = instruction
                     delayedTarget = jumpTarget
                 }
                 0x20 -> { // ADD: signed 32-bit addition traps on overflow.
