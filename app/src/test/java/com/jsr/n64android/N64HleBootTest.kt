@@ -3,6 +3,7 @@ package com.jsr.n64android
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class N64HleBootTest {
@@ -29,6 +30,7 @@ class N64HleBootTest {
         assertEquals(N64HleBoot.ENTRY_PC, cpu.pc)
         assertEquals(N64HleBoot.INITIAL_STACK, cpu.gpr[29])
         assertEquals(0x3FL, cpu.gpr[22])
+        assertTrue("HLE must use architectural TLB translation outside KSEG0/KSEG1", cpu.tlbEnabled)
         assertFalse(result.pifRomUsed)
 
         for (i in 0 until N64HleBoot.BOOTCODE_SIZE) {
