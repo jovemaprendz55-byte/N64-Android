@@ -15,6 +15,8 @@ class N64HleBootTest {
         for (i in 0 until N64HleBoot.BOOTCODE_SIZE) {
             rom[N64HleBoot.BOOTCODE_ROM_OFFSET + i] = ((i * 13 + 7) and 0xFF).toByte()
         }
+        // A NOP at the entry makes the first CPU fetch deterministic.
+        for (i in 0 until 4) rom[N64HleBoot.BOOTCODE_ROM_OFFSET + i] = 0
 
         val bus = N64Bus(ram = N64Memory(), pifRom = null, cartridgeRom = rom)
         val cpu = R4300Cpu(bus)
