@@ -224,3 +224,29 @@ Mensagem de arranque recomendada para o próximo chat:
 - **2026-10-31:** criado documento inicial de passagem de contexto; registrado handoff HLE experimental, auditoria, testes, limitações, branch/commit e build #592.
 - **2026-10-31:** diagnóstico HLE ampliado com eventos PI/SP DMA, escritas RDRAM, estado dos registradores SI e snapshot PIF RAM; build #595 concluída com sucesso e APK de diagnóstico gerada.
 - **2026-10-31:** após o primeiro log real HLE (125.556 instruções, falha em leitura física 0x70000510), o catch do diagnóstico foi ampliado para preservar instrução, acesso, registradores, COP0/TLB e barramento; commit `227040724945b051343dce2ab9d6aed41b9e3088`; build #598 em fila.
+
+## 11. Primeiro log real do HLE com contexto preservado — 2026-10-31
+
+O usuário executou GoldenEye com a build que contém o catch ampliado e enviou o relatório completo:
+
+- HLE confirma `PIF ROM utilizada: false`, seed CIC `0x3F`, payload de 4032 bytes copiado de ROM `0x1000` para RDRAM `0x400`, PC inicial `0xFFFFFFFF80000400`.
+- O bootcode executou **125.556 instruções** antes da falha.
+- Foram registradas **204.864 escritas na RDRAM**; não houve PI DMA nem SP DMA.
+- SI permaneceu em `DRAM=0`, `PIF_RD=PIF_WR=0x1FC007C0`, `STATUS=0`; os 64 bytes de PIF RAM permaneceram zerados.
+- Falha: `UnsupportedOperationException: Unmapped N64 physical read at 0x70000510`, durante `FETCH`; VADDR e PADDR reportados iguais a `0x70000510`.
+- No momento da falha: `r4=r5=0x70000000`, `r10=0x70000510`, `r2=1`, `r3=0x1F`, `r6=0x1F`, `r7=1`, `r8=0x7FE000`, `$sp=0xFFFFFFFF803AB410`; COP0 Status/Cause/EPC/BadVAddr zerados; nenhum TLB fault arquitetural registrado.
+- O diagnóstico mostrou `INST=N/A` porque a falha ocorreu ao buscar a instrução, antes de a CPU conseguir ler a palavra. `Último destino JR/JALR=N/A` não era prova de ausência de salto: o campo era apagado no início de cada instrução, inclusive antes de um fetch que falhasse.
+
+Interpretação cuidadosa: a execução avançou e escreveu memória, mas o endereço `0x70000510` não foi explicado ainda. `0x70000000` está fora de KSEG0/KSEG1 e, portanto, exige compreender o estado de tradução/endereço do handoff. Não habilitar TLB às cegas nem criar mapeamento físico para `0x70000000`; primeiro identificar a transferência de controle e o estado arquitetural que a precedeu.
+
+### Correção de diagnóstico em andamento
+
+Foi preparado um ajuste estritamente observacional em `R4300Cpu.kt` e `MainActivity.kt`: preservar o último JR/JALR executado (PC de origem, palavra da instrução e destino) mesmo após instruções subsequentes; incluir no relatório a flag interna TLB e COP0 Index, Wired e EntryHi; acrescentar teste unitário para garantir que instruções posteriores não apaguem a evidência do JR.
+
+Não foram alterados tradução de endereços, TLB, estado de boot ou dispositivos. O objetivo é obter evidência antes de qualquer correção funcional.
+
+Builds anteriores ao ajuste observacional:
+- #598 — run ID `41181156270`, commit `227040724945b051343dce2ab9d6aed41b9e3088`, sucesso. Artifact ID `13035231089`, SHA-256 `b01176eb0a68cb0e0c227026f6ad00a1d10c520a418b36377bdba02c8e6ff005`.
+- #599 — run ID `41181207832`, commit `12685cb014d31dbfce972bd597f58734d4d5a7d8`, sucesso. Artifact ID `13034509641`, SHA-256 `b05b83f0175ed291fcdfe113302f891ce48562e2b4e68da50cee15ab0689cbac`.
+
+A nova alteração precisa de CI próprio antes de ser considerada pronta para instalação.
