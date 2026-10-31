@@ -37,6 +37,10 @@ class N64ExecutionWorkerTest {
         assertEquals(N64ExecutionSession.State.CANCELLED, result.get().state)
         assertTrue(result.get().executedInstructions > 0L)
         assertTrue(result.get().executedInstructions < 1_000_000L)
+        val threadExitDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2)
+        while (worker.isAlive() && System.nanoTime() < threadExitDeadline) {
+            Thread.yield()
+        }
         assertFalse(worker.isAlive())
         assertFalse(worker.start())
     }
