@@ -28,7 +28,7 @@ class N64Bus(
         in SP_REG_BASE until SP_REG_BASE + 0x20, SP_PC_REG -> "SP"
         in MI_REG_BASE until MI_REG_BASE + 0x10 -> "MI"
         in VI_REG_BASE until VI_REG_BASE + VI_REG_SIZE -> "VI"
-        in AI_REG_BASE until AI_REG_BASE + AI_REG_SIZE -> "AI"
+        in AI_REG_BASE until AI_REG_BASE + 0x18 -> "AI"
         in PI_REG_BASE until PI_REG_BASE + 0x14 -> "PI"
         in SI_REG_BASE until SI_REG_BASE + 0x1C -> "SI"
         in RI_REG_BASE until RI_REG_BASE + RI_REG_SIZE -> "RI"
