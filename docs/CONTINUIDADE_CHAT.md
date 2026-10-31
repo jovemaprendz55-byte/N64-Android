@@ -14,7 +14,7 @@
 **CI anterior concluído:** build #708, run ID `41235044776`, sucesso; build/testes e upload do APK debug concluídos. A build #707, para o último commit de código, também terminou com sucesso.
 **CI da auditoria documental:** build #709, run ID `41240222394`, sucesso.  
 **CI da etapa 42:** build #711 (run ID `41250019688`) e build #712 (run ID `41250044868`) concluíram com **success**. **Etapa 43:** build #714 (run ID `41250243896`) passou para compilação do componente; builds intermediárias #715 e #716 falharam por um endereço incorreto no cenário de teste, corrigido no commit `81f64a0...`; build #717 (run ID `41250293247`) concluiu com **success**, incluindo Build and test e Upload debug APK. Build #718 (run ID `41250358376`) valida esta atualização documental.
-**Estado documental confirmado:** CI #719 (run ID `41250393284`) concluiu com sucesso, incluindo Build and test e Upload debug APK. A etapa 44 teve os workflows de código #720, #721 e #722 concluídos com sucesso; o workflow documental #723 ainda está em execução.
+**Estado documental confirmado:** CI #719 (run ID `41250393284`) concluiu com sucesso, incluindo Build and test e Upload debug APK. A etapa 44 teve os workflows de código #720, #721 e #722 concluídos com sucesso; o workflow documental #723 concluiu com sucesso.
 
 ---
 
@@ -1079,3 +1079,5 @@ Não comprova:
 - 2026-10-31 — etapa 44: adicionado gerador de framebuffer sintético 320x240 RGBA5551, captura pelos registradores VI e botão de teste visual independente de ROM no menu. Commits 4cc5212, bcadd7a e e187a27; CI #720–#722 pendentes na última consulta.
 
 - 2026-10-31 — validação da etapa 44: CI #720, #721 e #722 concluídos com sucesso (Build and test e Upload debug APK); artifact #722 ID 13061057670. CI documental #723 aguardava conclusão.
+
+- 2026-10-31 — CI documental #723 (run ID 41251008024) concluiu com success, validando o registro de aprovação da etapa 44.
