@@ -10,7 +10,7 @@ class N64RdpFillProcessorTest {
         val memory = N64Memory(4096)
         val processor = N64RdpFillProcessor(memory, memory.size)
         val commands = listOf(
-            command(N64RdpFillProcessor.CMD_SET_OTHER_MODES, value = 3L shl 20),
+            command(N64RdpFillProcessor.CMD_SET_OTHER_MODES, high = 3L shl 20),
             command(N64RdpFillProcessor.CMD_SET_COLOR_IMAGE,
                 high = (2L shl 19) or (3L shl 0), low = 0x100L),
             command(N64RdpFillProcessor.CMD_SET_FILL_COLOR, low = 0xF801F801L),
@@ -36,7 +36,7 @@ class N64RdpFillProcessorTest {
         val memory = N64Memory(4096)
         val processor = N64RdpFillProcessor(memory, memory.size)
         val commands = listOf(
-            command(N64RdpFillProcessor.CMD_SET_OTHER_MODES, value = 3 shl 20),
+            command(N64RdpFillProcessor.CMD_SET_OTHER_MODES, high = 3L shl 20),
             command(N64RdpFillProcessor.CMD_SET_COLOR_IMAGE, high = (2L shl 19) or 3L, low = 0x100L),
             command(N64RdpFillProcessor.CMD_SET_SCISSOR,
                 high = (4L shl 12) or 4L, low = (8L shl 12) or 8L),
