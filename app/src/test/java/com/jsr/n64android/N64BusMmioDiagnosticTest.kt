@@ -43,7 +43,7 @@ class N64BusMmioDiagnosticTest {
     fun deviceSnapshotReportsImplementedStateWithoutAddingMmioEvents() {
         val bus = N64Bus()
         bus.write32(N64Bus.SP_STATUS_REG, N64Bus.SP_STATUS_CMD_CLR_HALT)
-        bus.write32(N64Bus.MI_INTR_MASK_REG, 1 shl 1)
+        bus.write32(N64Bus.MI_INTR_MASK_REG, 1 shl 3)
         bus.write32(N64Bus.AI_DACRATE_REG, 0x000003FF)
         bus.write32(N64Bus.SI_DRAM_ADDR_REG, 0x00001230)
         bus.write32(N64Bus.VI_REG_BASE, 0x00000320)
