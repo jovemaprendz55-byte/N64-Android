@@ -63,10 +63,10 @@ class N64CpuExecutionSessionTest {
             instructionLimit = 2,
             batchSize = 1,
             beforeInstruction = { observedCpu ->
-                events.add("before:${observedCpu.pc}:${observedCpu.gpr[8]}")
+                events.add("before:${observedCpu.pc}:${observedCpu.gpr[8]}:${observedCpu.gpr[9]}")
             },
             afterInstruction = { observedCpu ->
-                events.add("after:${observedCpu.pc}:${observedCpu.gpr[8]}")
+                events.add("after:${observedCpu.pc}:${observedCpu.gpr[8]}:${observedCpu.gpr[9]}")
                 false
             }
         )
@@ -75,9 +75,9 @@ class N64CpuExecutionSessionTest {
 
         assertEquals(N64ExecutionSession.State.COMPLETED, result.state)
         assertEquals("Expected four observer events: $events", 4, events.size)
-        assertEquals("First callback must run before execution: $events", "before:0:0", events[0])
-        assertEquals("First after-callback must see result: $events", "after:4:42", events[1])
-        assertEquals("Second before-callback must see prior result: $events", "before:4:42", events[2])
-        assertEquals("Second after-callback must see result: $events", "after:8:43", events[3])
+        assertEquals("First callback must run before execution: $events", "before:0:0:0", events[0])
+        assertEquals("First after-callback must see result: $events", "after:4:42:0", events[1])
+        assertEquals("Second before-callback must see prior result: $events", "before:4:42:0", events[2])
+        assertEquals("Second after-callback must see result: $events", "after:8:42:43", events[3])
     }
 }
