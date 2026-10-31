@@ -43,6 +43,43 @@ class N64BusVideoInterfaceTest {
         assertEquals(eventCountBeforeCapture, bus.diagnosticMmioHistory.size)
     }
 
+
+    @Test fun derivesActiveHeightFromViVerticalWindowAndScale() {
+        val memory = N64Memory(1024 * 1024)
+        val bus = N64Bus(ram = memory)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_STATUS_OFFSET, 2)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_ORIGIN_OFFSET, 0x100)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_WIDTH_OFFSET, 2)
+        // 480 half-line units scaled by 0.5 produce 240 output lines.
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_START_OFFSET, (0x20 shl 16) or 0x200)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_Y_SCALE_OFFSET, 0x400)
+        for (line in 0 until 240) {
+            memory.write16(0x100 + line * 4, 0xF801)
+            memory.write16(0x102 + line * 4, 0x07C1)
+        }
+
+        val frame = bus.captureViFrameFromRegisters()
+
+        assertEquals(2, frame?.width)
+        assertEquals(240, frame?.height)
+        assertEquals(0xFFFF0000.toInt(), frame?.argbPixels?.get(0))
+        assertEquals(0xFF00FF00.toInt(), frame?.argbPixels?.get(1))
+    }
+
+    @Test fun returnsNoAutomaticFrameWhenVerticalWindowIsEmpty() {
+        val bus = N64Bus()
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_START_OFFSET, (100 shl 16) or 100)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_Y_SCALE_OFFSET, 0x400)
+        assertEquals(null, bus.captureViFrameFromRegisters())
+    }
+
+    @Test fun returnsNoAutomaticFrameWhenVerticalScaleIsZero() {
+        val bus = N64Bus()
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_START_OFFSET, (0x20 shl 16) or 0x200)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_Y_SCALE_OFFSET, 0)
+        assertEquals(null, bus.captureViFrameFromRegisters())
+    }
+
     @Test fun returnsNoFrameWhenViWidthIsZero() {
         val bus = N64Bus()
         assertEquals(null, bus.captureViFrame(height = 240))
