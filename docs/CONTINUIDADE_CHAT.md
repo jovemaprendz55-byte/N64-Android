@@ -2,7 +2,7 @@
 
 > Documento de passagem de contexto para qualquer novo chat ou colaborador. Leia este arquivo antes de alterar código. Atualize-o sempre que houver mudança relevante, teste, build, log ou decisão técnica.
 
-**Última atualização:** 2026-10-31 (etapa 43 — extração do rastreador do laço de cópia; CI pendente)  
+**Última atualização:** 2026-10-31 (etapa 43 — integração validada; CI documental pendente)  
 **Repositório:** https://github.com/jovemaprendz55-byte/N64-Android  
 **Branch de trabalho obrigatória:** `dev/n64-clean-start`  
 **Último commit de código verificado:** `81f64a0190a993fc9917995f6792afc5557e349e` (integração do coletor do laço de cópia e correção do teste, etapa 43).
@@ -13,8 +13,8 @@
 **HEAD conhecido antes desta atualização documental:** `cefe58ed989b8ac37d1488c4df9611910463aebf` (documentação da etapa 42). O próximo chat deve sempre conferir o HEAD real.
 **CI anterior concluído:** build #708, run ID `41235044776`, sucesso; build/testes e upload do APK debug concluídos. A build #707, para o último commit de código, também terminou com sucesso.
 **CI da auditoria documental:** build #709, run ID `41240222394`, sucesso.  
-**CI da etapa 42:** build #711 (run ID `41250019688`) e build #712 (run ID `41250044868`) concluíram com **success**. **Etapa 43:** build #714 (run ID `41250243896`) concluiu com **success** para compilação do novo componente; build #717 (run ID `41250293247`), que inclui o teste corrigido e a integração completa, está em andamento.
-**Estado deste documento:** etapa 43 registrada com validação integrada pendente; conferir CI #717 antes de declarar concluída.
+**CI da etapa 42:** build #711 (run ID `41250019688`) e build #712 (run ID `41250044868`) concluíram com **success**. **Etapa 43:** build #714 (run ID `41250243896`) passou para compilação do componente; builds intermediárias #715 e #716 falharam por um endereço incorreto no cenário de teste, corrigido no commit `81f64a0...`; build #717 (run ID `41250293247`) concluiu com **success**, incluindo Build and test e Upload debug APK. Build #718 (run ID `41250358376`) valida esta atualização documental.
+**Estado deste documento:** etapa 43 validada por CI #717; CI #718 valida esta atualização documental.
 
 ---
 
@@ -191,7 +191,7 @@ Build #589 (run ID `41179440281`) também foi registrada como sucesso, mas #592 
 - Último commit de código conhecido: `81f64a0190a993fc9917995f6792afc5557e349e`.
 - Último commit documental antes desta atualização: `cefe58ed989b8ac37d1488c4df9611910463aebf`.
 - Etapa 42: build #711 (run ID `41250019688`) e build #712 (run ID `41250044868`) concluíram com sucesso.
-- Etapa 43: build #714 (run ID `41250243896`) concluiu com sucesso para compilação do componente isolado; build #717 (run ID `41250293247`) permanece em andamento para validar testes e integração da Activity.
+- Etapa 43: build #714 (run ID `41250243896`) passou para compilação do componente; builds #715 e #716 falharam por cenário de teste incorreto, corrigido em `81f64a0...`; build #717 (run ID `41250293247`) concluiu com sucesso, incluindo Build and test e Upload debug APK. Artifact `n64-android-debug-apk`, ID `13060674754`, 914.918 bytes, expira em 2026-11-14 22:56:08 UTC.
 - `N64HleInstructionTrace` está integrado ao fluxo `runHleBootDiagnostic()`.
 - `N64HleCopyLoopTrace` foi extraído e integrado ao fluxo HLE principal. O teste de amostragem foi corrigido no commit `81f64a0...`; considerar o resultado final somente após CI #717.
 - O método legado `runIpl3HandoffDiagnosticLegacy()` ainda mantém instrumentação local própria.
@@ -204,10 +204,11 @@ Links:
 - [Build #712 — documentação da etapa 42](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41250044868)
 - [Build #714 — componente do laço de cópia](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41250243896)
 - [Build #717 — teste corrigido e integração completa](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41250293247)
+- [Build #718 — documentação da etapa 43](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41250358376)
 
 ### Próxima etapa técnica recomendada
-1. Confirmar CI #717, especialmente Build and test e Upload debug APK.
-2. Se passar, revisar o diff final e registrar o resultado nesta etapa.
+1. Confirmar o resultado de CI #718, que valida esta atualização documental.
+2. Revisar o diff final da etapa 43 se algum novo log do usuário indicar divergência no formato do rastreamento.
 3. Depois, avaliar a extração dos checkpoints/primeiras 48 instruções para o runner, sem alterar a ordem ou o formato do relatório.
 4. Preservar a captura VI única, snapshots MMIO/periféricos, logs de falha, limites de instruções e cancelamento.
 5. Não avançar para RSP/RDP nem alegar renderização funcional com base em refatorações de diagnóstico.
@@ -238,7 +239,7 @@ Mensagem de arranque recomendada:
 - **2026-10-31:** auditoria do documento comparou resumo, commits, CI e código. Identificou cabeçalho e próximos passos obsoletos, corrigidos nesta atualização. Confirmado que o coletor da etapa 40 ainda não está integrado à `MainActivity`.
 - **2026-10-31:** CI #707 (run ID `41234995195`) validou o commit de código `f8cf8ac8b24139289f3cc7c1475580ba9ff98f10`; CI #708 (run ID `41235044776`) validou a atualização de documentação `fcce62293ce65b871bcf04d20894b7da9f2cd27a`. Ambos com Build and test e Upload debug APK em sucesso.
 - **2026-10-31:** etapa 42 integrou o coletor limitado `N64HleInstructionTrace` ao fluxo HLE principal; CI #711 (run ID `41250019688`) e CI #712 (run ID `41250044868`) concluíram com sucesso, incluindo Build and test e Upload debug APK. Nenhum teste em aparelho foi realizado/confirmado.
-- **2026-10-31:** etapa 43 extraiu `N64HleCopyLoopTrace`, integrou-o ao fluxo HLE principal e criou testes de limites/amostragem/janela pós-saída. Build #714 passou para o componente isolado; build #717 está pendente para validar o conjunto corrigido e integrado.
+- **2026-10-31:** etapa 43 extraiu `N64HleCopyLoopTrace`, integrou-o ao fluxo HLE principal e criou testes de limites/amostragem/janela pós-saída. Após corrigir a fixture de teste, build #717 concluiu com sucesso, incluindo Build and test e Upload debug APK.
 
 ## 11. Primeiro log real do HLE com contexto preservado — 2026-10-31
 
@@ -997,3 +998,35 @@ Eliminar a duplicação da janela recente de instruções e da contagem limitada
 2. Se o CI passar, considerar a integração estrutural validada e atualizar este registro com o resultado.
 3. Em seguida, avaliar extração do relatório HLE para um componente dedicado, mas somente depois de inspecionar dependências e preservar a ordem e o conteúdo dos logs.
 4. Não avançar para RSP/RDP ou alegar renderização funcional com base nesta refatoração.
+
+## 43. Extração do rastreador do laço de cópia HLE — 2026-10-31
+
+### Objetivo
+Retirar de `MainActivity.runHleBootDiagnostic()` o estado e a formatação dos traces especializados do laço de cópia, mantendo a Activity responsável pela sessão, CPU, barramento e publicação do relatório.
+
+### Implementação
+- Criado `N64HleCopyLoopTrace.kt`, componente Kotlin sem dependências Android.
+- O componente recebe observações antes/depois de cada instrução e recebe snapshots de registradores por callbacks lazy, evitando formatar registradores quando nenhuma linha será armazenada.
+- Armazena contagem de iterações, desvios que retornam ao início, observação da saída, até 32 linhas detalhadas, amostras das primeiras 8 iterações e depois a cada 4096, e até 64 linhas a partir da instrução de saída.
+- `MainActivity.runHleBootDiagnostic()` agora delega a coleta a esse componente e monta o mesmo bloco do relatório na mesma posição e ordem.
+- A janela geral de 256 instruções, checkpoints de 50.000, primeiras 48 instruções, captura VI única, snapshots MMIO/periféricos e tratamento de falhas foram mantidos.
+- O diagnóstico legado `runIpl3HandoffDiagnosticLegacy()` não foi alterado.
+
+### Testes e correção encontrada
+- Criado `N64HleCopyLoopTraceTest.kt` com testes de contagem, desvio/saída, janela de 64 instruções, limite de 32 linhas, amostras iniciais/periódicas e ausência de snapshots de registradores fora das regiões retidas.
+- As builds intermediárias #715 (run ID `41250249388`) e #716 (run ID `41250267431`) falharam porque o teste de amostragem simulava o PC de início do intervalo em vez do PC da instrução de store que incrementa o contador.
+- O teste foi corrigido no commit `81f64a0190a993fc9917995f6792afc5557e349e`, usando `LOOP_STORE_PC` para simular a iteração real.
+- Build #717 (run ID `41250293247`) concluiu com **success**; Build and test e Upload debug APK passaram. O workflow validou o HEAD com a correção e a integração completa.
+- Artifact: `n64-android-debug-apk`, ID `13060674754`, tamanho 914.918 bytes, expiração 2026-11-14 22:56:08 UTC. Confirmar validade antes de tentar baixar.
+- [Workflow #714 — compilação do componente](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41250243896).
+- [Workflow #715 — teste inicial com fixture incorreta](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41250249388).
+- [Workflow #716 — integração com fixture incorreta](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41250267431).
+- [Workflow #717 — código/testes integrados corrigidos](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41250293247).
+- Nenhum APK foi instalado ou testado no aparelho nesta etapa.
+- Nenhuma alteração em `main`.
+
+### Próximo passo
+1. Confirmar CI #718 para esta atualização documental.
+2. Se logs do aparelho forem enviados, comparar as seções do laço com o formato anterior; corrigir qualquer divergência real com teste de regressão.
+3. Em seguida, considerar extrair os checkpoints e as primeiras 48 instruções para o runner, mantendo limites e ordem.
+4. Não confundir CI verde com boot ou renderização funcional do GoldenEye.
