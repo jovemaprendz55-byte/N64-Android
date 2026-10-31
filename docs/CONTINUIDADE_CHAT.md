@@ -530,3 +530,46 @@ Próximo passo:
 2. Se passar, adicionar testes para a camada de apresentação/conversão e validar a página em aparelho.
 3. Depois projetar uma sessão de emulação contínua com thread própria e sincronização de frames; não reutilizar o loop diagnóstico como game loop.
 4. RSP/RDP e temporização VI continuam sendo pré-requisitos para renderizar jogos N64 reais.
+
+
+## 24. Auditoria da fronteira entre execução, vídeo e interface — 2026-10-31
+
+### Estado confirmado no código após a etapa 23
+
+- `runHleBootDiagnostic()` cria um `R4300Cpu` e executa `cpu.step()` dentro de uma `Thread` dedicada. Portanto, o diagnóstico não bloqueia diretamente a thread da interface durante as instruções.
+- A execução continua sendo um procedimento fechado e limitado: máximo de 2.000.000 instruções, coleta de rastros e captura VI única ao final. Não existe uma sessão de jogo reutilizável nem um ciclo de quadros.
+- A captura atual ocorre depois do loop CPU, chamando `captureViFrameFromRegisters()`. Não existe callback de frame originado durante a execução nem sincronização com VBlank.
+- `showRomDiagnosticPage()` cria `Bitmap` e `ImageView` na thread principal. Isso é aceitável para uma amostra diagnóstica única, mas não deve ser reutilizado como estratégia de apresentação contínua.
+- A thread de diagnóstico não é guardada em um controlador de sessão e não há cancelamento cooperativo ligado ao ciclo de vida da Activity. Os botões são reabilitados no término do worker.
+- `N64VideoFrame` transporta dimensões, pixels ARGB, origem e formato; a captura e a apresentação ainda estão acopladas ao diagnóstico da Activity, sem uma interface de saída de vídeo do núcleo.
+
+### Decisão de arquitetura
+
+Não converter `runHleBootDiagnostic()` em game loop e não criar um loop infinito de CPU enquanto RSP/RDP/VI timing ainda não existem. Isso produziria apenas execução acelerada de instruções sem a cadência de hardware necessária e poderia consumir bateria/CPU sem entregar vídeo.
+
+A próxima implementação de execução deve ser separada em componentes testáveis:
+
+1. Um controlador/sessão de execução do núcleo, sem dependência Android, com início, parada cooperativa, estado (parado/executando/finalizado/falhou) e execução em lotes limitados de instruções.
+2. Um contrato de saída de vídeo que publique apenas frames válidos produzidos pelo núcleo; a camada Android será consumidora e não deverá ler registradores/RDRAM em paralelo com a CPU.
+3. Um mecanismo de coalescência/backpressure para não enfileirar Bitmaps nem atualizações da UI mais rápido do que a tela consegue apresentar; manter no máximo o frame mais recente pendente.
+4. Um ciclo de vida Android que cancele a sessão ao sair da tela/Activity e encaminhe atualizações de UI pela thread principal.
+5. Testes unitários para limites de lote, cancelamento, transições de estado, publicação/coalescência e preservação do diagnóstico atual.
+
+### Pré-requisitos que continuam bloqueando jogo com imagem
+
+- RSP não implementado; RDP não implementado.
+- VI ainda não gera scanout temporizado, VBlank/interlace ou quadros periódicos.
+- A captura atual apenas interpreta bytes existentes em RDRAM quando os registradores VI parecem válidos. Não cria pixels de cena.
+- Portanto, a próxima etapa não deve alegar que GoldenEye está renderizando. O avanço de infraestrutura de sessão deve ser validado com testes sintéticos e permanecer claramente separado de compatibilidade de jogo.
+
+### Build da etapa 23 confirmada
+
+- Build #649, run ID `41222765560`, commit `151c4d282ba72f4c86068bdf6d177c8ed87257fa`.
+- Resultado: success; workflow Android build concluído.
+- Artifact `n64-android-debug-apk`, ID `13049924251`, 899.104 bytes; SHA-256 `bdf8785ffd93c9700b7440d5a4431c759a2cbe148ce778b753f2cb6f1f2179d8`; expira em 2026-11-14 17:06:01 UTC.
+- Link: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41222765560
+- CI verde comprova build/testes automatizados, não validação em aparelho nem boot/renderização do GoldenEye.
+
+### Próxima ação
+
+Projetar e implementar primeiro o controlador de execução independente do Android, com cancelamento e execução em lotes, sem ativá-lo como game loop na interface até existir timing de hardware. Manter toda alteração em `dev/n64-clean-start`; `main` permanece intocada.
