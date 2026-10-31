@@ -628,3 +628,24 @@ Projetar e implementar primeiro o controlador de execução independente do Andr
 - Não há worker Android gerenciado, lifecycle cancellation, sincronização de dispositivos, temporização, RSP/RDP ou publicação de frames.
 - Não iniciar loop contínuo de jogo com esta camada isolada.
 - Manter `main` sem alterações; todo o trabalho permanece em `dev/n64-clean-start`.
+
+
+## 27. Proprietário de worker cancelável — 2026-10-31
+
+### Implementação
+- Criada `N64ExecutionWorker`, camada sem dependências Android que possui a thread de uma `N64ExecutionSession`.
+- `start()` inicia a sessão uma única vez e impede segunda inicialização.
+- `requestStop()` encaminha cancelamento cooperativo à sessão; a instrução em andamento pode terminar, e a parada ocorre entre instruções.
+- `onComplete` recebe o snapshot final na própria thread worker. Qualquer atualização de UI Android deverá ser encaminhada explicitamente para a main thread pelo chamador.
+- Exceções da execução são capturadas pelo worker apenas para permitir a publicação do snapshot; o estado/mensagem FAILED permanecem registrados na sessão.
+- `isAlive()` permite consultar se a thread ainda está ativa.
+
+### Testes
+- Cancelamento real de worker com limite alto: espera início, solicita parada, aguarda callback e confirma CANCELLED, contagem limitada, thread encerrada e impossibilidade de reiniciar.
+- Falha dentro da instrução: confirma callback com estado FAILED e mensagem preservada.
+
+### Limites e próxima integração
+- Ainda não conectado à MainActivity nem ao ciclo de vida Android.
+- O callback executa na thread worker; não tocar Views diretamente nele.
+- O chamador deverá manter CPU/barramento exclusivos, chamar requestStop no encerramento da tela e encaminhar resultados para a main thread.
+- Não há pacing de quadros, temporização de hardware, áudio, RSP/RDP ou vídeo contínuo.
