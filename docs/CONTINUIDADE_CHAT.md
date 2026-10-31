@@ -1157,3 +1157,82 @@ Uma revisão do código após a etapa 45 encontrou um erro na extração do camp
 - Aguardar a CI do HEAD final e corrigir eventuais falhas.
 - Fazer uma revisão técnica de coordenadas inclusivas/exclusivas, scissor, alinhamento e limites da imagem antes de ampliar o subconjunto.
 - Só depois desenhar a ligação a DPC/RSP, com estado e semântica reais. O processador continua isolado e não renderiza ROMs.
+
+## 14. Estado de continuidade atualizado — etapa 46 (2026-10-31)
+
+> **Este bloco é o estado mais recente e prevalece sobre metadados antigos e próximos passos históricos das seções anteriores.** Antes de continuar, confira o HEAD e o Actions na branch. Não presuma que os números de CI abaixo já terminaram.
+
+### Estado confirmado no GitHub
+- Repositório: `jovemaprendz55-byte/N64-Android`.
+- Branch de trabalho: `dev/n64-clean-start`.
+- HEAD confirmado nesta atualização: `a5c0a547b500d30553b0377c41c264ed2bdb88c0`.
+- A branch `main` não foi modificada.
+- O trabalho está na primeira ligação experimental entre lista de comandos em RDRAM e o processador RDP isolado.
+- CI do commit atual #739 (run ID `41254029960`) estava **in_progress** na consulta. Os workflows #737 (run ID `41254009813`) e #738 (run ID `41254018347`) também estavam em andamento para commits anteriores. Não declarar o HEAD validado até consultar especificamente o #739 e seus jobs.
+
+### Auditoria que orientou a etapa 46
+A árvore da branch foi listada integralmente. Não existe ainda arquivo/classe dedicado ao DPC; os arquivos Kotlin existentes incluem `N64Bus.kt`, `N64RdpFillProcessor.kt`, `N64VideoFrame.kt`, `N64HleBoot.kt`, `R4300Cpu.kt`, `R4300Tlb.kt`, sessões/worker de CPU e testes associados.
+
+Constatações:
+- `N64Bus.kt` implementa RDRAM e vários blocos MMIO parciais (SP, MI, PI, SI, AI, VI, RI), mas não implementa os registradores DPC em `0x04100000`–`0x0410001C`.
+- `N64Bus.mmioDevice()` não classifica endereços DPC.
+- `N64Bus.read32()/write32()` não têm tratamento de registradores DPC.
+- `N64RdpFillProcessor.execute(commands)` recebe diretamente uma lista Kotlin de palavras de 64 bits; não lê uma display list de RDRAM e não está ligado ao DPC/RSP.
+- O RDP atual entende somente o subconjunto já documentado na seção 12: SetOtherModes, SetColorImage, SetScissor, SetFillColor e FillRectangle, com restrições.
+- `N64Bus.captureViFrameFromRegisters()` lê framebuffer da RDRAM pelos registradores VI, mas a captura no diagnóstico HLE é única e ocorre após a janela de execução; não é scanout/VBlank temporizado.
+- O teste de vídeo sintético exibido no aparelho pelo usuário confirma apenas a rota sintética VI/Android, não renderização de ROM.
+- O BOOT HLE prepara o handoff da CPU e usa o barramento; não deve ser transformado no próprio rasterizador. A futura máquina integrada deve compartilhar a mesma RDRAM/barramento entre CPU, DPC/RDP e VI.
+
+### Referência técnica usada para planejar o DPC
+- SGI/Nintendo, *Nintendo 64 RSP Programmer's Guide*, seção “Controlling the RDP”: descreve a FIFO de comandos, leitura em unidades de 8 bytes, avanço de CURRENT até END e atualização bufferizada de START/END. PDF: https://ultra64.ca/files/documentation/silicon-graphics/SGI_Nintendo_64_RSP_Programmers_Guide.pdf
+- libdragon `rdp.h`: define DP_START, DP_END, DP_CURRENT e DP_STATUS nos offsets `0xA4100000`, `+4`, `+8`, `+0xC` no segmento KSEG1 (equivalentes físicos `0x04100000`–`0x0410000C`), e os bits documentados de status. Fonte: https://github.com/DragonMinded/libdragon/blob/trunk/include/rdp.h
+- Estas fontes orientam a implementação futura dos registradores. A classe adicionada nesta etapa ainda não modela a FIFO física, START/END double-buffered, XBUS/DMEM, temporização ou interrupções.
+
+### Etapa 46 — ponte experimental DPC command-list → RDP
+Arquivos criados:
+- `app/src/main/java/com/jsr/n64android/N64DpcCommandProcessor.kt`
+- `app/src/test/java/com/jsr/n64android/N64DpcCommandProcessorTest.kt`
+
+Comportamento atual:
+- Recebe `N64AddressSpace`, tamanho declarado da RDRAM e instância de `N64RdpFillProcessor`.
+- Lê o intervalo `[startAddress, endAddressExclusive)` da RDRAM, com END exclusivo.
+- Exige START e END alinhados em 8 bytes e dentro da RDRAM.
+- Lê cada comando como dois `read32` big-endian e combina em uma palavra de 64 bits.
+- Impõe limite de 1 MiB por chamada (configurável) para evitar leitura/execução sem limite.
+- Entrega a lista ao processador RDP já existente e devolve contagem de comandos, retângulos e pixels escritos.
+- Teste principal grava quatro comandos na RDRAM sintética (SetOtherModes fill-cycle, SetColorImage RGBA16, SetFillColor, FillRectangle), executa a ponte e verifica pixels efetivamente escritos na mesma memória.
+- Outros testes cobrem intervalo vazio, desalinhamento, limite da RDRAM e limite máximo de bytes.
+
+Limitações deliberadas:
+- **Ainda não é a implementação completa do DPC.** É uma ponte síncrona de leitura de uma lista na RDRAM para o subconjunto atual do RDP.
+- Não há registradores DPC no barramento, START/END double-buffered, CURRENT, STATUS, DMA real, XBUS/DMEM, FIFO assíncrona, contadores, timing, freeze/flush ou interrupções.
+- O processador atual pressupõe que cada comando suportado ocupa uma palavra de 64 bits. Não interpretar listas gerais com comandos multiword até implementar a decodificação de comprimentos do RDP.
+- Não há integração com RSP nem com a CPU em execução contínua.
+- Não há confirmação de renderização de jogo.
+
+### Commits da etapa 46
+- `46b63952990b77c7396da6be7929e78f9bd1afb1` — adiciona ponte síncrona de leitura de display list da RDRAM e dispatch para RDP.
+- `62198544fcf54e8ff3e3cf4d8480c01135ad4c9f` — adiciona testes da ponte DPC→RDP.
+- `a5c0a547b500d30553b0377c41c264ed2bdb88c0` — corrige o cenário de teste de limite: o primeiro teste usava `0xF8..0x100` numa RDRAM de 256 bytes, intervalo que termina exatamente no limite e é válido; o teste agora usa `0x100..0x108`, que realmente ultrapassa a RDRAM.
+
+### Histórico de erros e correções que o próximo chat deve preservar
+- Etapa 43: testes iniciais falharam por endereço/fixture de teste incorreto no cenário de cópia; corrigido no commit `81f64a0190a993fc9917995f6792afc5557e349e`, e CI #717 passou.
+- Etapa 45: primeiro teste de limite do RDP não chegava a escrever fora da RDRAM; coordenadas foram ajustadas no commit `2ac17d48f1de690a82c63339dce5d732d4725472`.
+- Revisão RDP: leitura de `cycle_type` estava nos bits errados; corrigida para bits globais 53:52 no commit `54cfe2dda9b24f8a2ea26a4189f0946c1b8af9b0`; fixtures ajustadas no `64f6d1683d5a235645e11cc8b34799ae31e3ba63`.
+- Etapa 45: CI #732 (run `41252114386`) e #734 (run `41252139530`) tiveram falhas intermediárias. O teste #734 foi corrigido com fixture de limite real no commit `2ac17d48f1de690a82c63339dce5d732d4725472`; CI #735 (run `41252153682`) e #736 (run `41252187162`) concluíram com sucesso.
+- Etapa 46: revisão identificou que o novo teste de overflow também estava incorreto: `0xF8..0x100` é válido para RDRAM de 256 bytes. Foi corrigido para `0x100..0x108` no commit `a5c0a547b500d30553b0377c41c264ed2bdb88c0`. A CI do HEAD ainda precisa ser conferida.
+- Regra: não considerar uma falha intermediária como falha do HEAD final se houve correção posterior; mas também não declarar sucesso do HEAD atual usando CI de um commit anterior.
+
+### Próximos passos — ordem recomendada
+1. Consultar CI #739 (run `41254029960`) do HEAD `a5c0a547...`; examinar jobs e logs se falhar. Corrigir o HEAD atual e esperar nova CI.
+2. Após CI verde, atualizar este documento com o resultado e o SHA documental.
+3. Fazer revisão da semântica da ponte (big-endian, END exclusivo, alinhamento, overflow, comandos suportados) e manter testes.
+4. Próxima integração real: adicionar modelo dos registradores DPC no `N64Bus` (START, END, CURRENT, STATUS e leituras/escritas), começando com modo RDRAM síncrono e explicitamente limitado ao subconjunto RDP atual. Testar escrita de START, avanço de CURRENT ao END, escrita em END disparando o processamento, leitura de status e erros de intervalo. Não implementar XBUS/DMEM, timing ou IRQ como se estivessem prontos.
+5. Só depois adicionar suporte correto a fila/atualizações bufferizadas START/END, freeze/flush, status e comandos multiword; pesquisar as semânticas no guia SGI e em fontes independentes antes de codificar.
+6. Integrar DPC/RDP com o mesmo `N64Bus`/RDRAM que o VI usa; criar teste end-to-end sintético que leia display list da RDRAM, produza framebuffer pela operação RDP suportada e capture-o pelo VI. Esse teste ainda será sintético e não significa que a ROM funcione.
+7. Mais adiante, desenvolver RSP para gerar display lists a partir do microcódigo; somente então integrar BOOT HLE → CPU/RSP → DPC/RDP → RDRAM → VI num ciclo de emulação.
+8. Manter `main` intocada. Não aumentar o limite de 2.000.000 instruções HLE para esconder loops. Não alegar renderização de GoldenEye ou outro jogo sem prova no aparelho.
+
+### Estado da documentação
+- Este documento deve ser atualizado a cada commit significativo, correção, CI e teste físico.
+- O novo chat deve começar lendo esta seção 14, conferir HEAD/CI, e então executar o passo 1 acima. Não recriar o DPC command processor nem os testes já feitos.
