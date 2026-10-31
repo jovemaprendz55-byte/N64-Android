@@ -104,12 +104,68 @@ class MainActivity : Activity() {
                 lines.add("Payload: ${handoff.copiedBytes} bytes | ROM 0x${handoff.romOffset.toString(16).uppercase()} -> RDRAM 0x${handoff.ramAddress.toString(16).uppercase()}")
                 lines.add("PC inicial: 0x${cpu.pc.toULong().toString(16).uppercase()}")
                 lines.add("SP inicial: 0x${cpu.gpr[29].toULong().toString(16).uppercase()}")
-                val maxSteps = 500_000
+                // The previous 500k-step run was still inside the byte-copy loop
+                // around 0x70000574..0x70000588. Extend the bounded run and capture
+                // the loop's actual exit instead of relying only on distant checkpoints.
+                val maxSteps = 2_000_000
+                var copyLoopIterations = 0L
+                var copyLoopTakenBranches = 0L
+                var copyLoopExitObserved = false
+                val copyLoopTrace = ArrayList<String>()
+                val copyLoopSamples = ArrayList<String>()
+                val postCopyTrace = ArrayList<String>()
+                var postCopyTraceRemaining = 0
+                fun copyLoopRegisters(): String =
+                    "r2=0x${cpu.gpr[2].toULong().toString(16).uppercase()} " +
+                    "r3=0x${cpu.gpr[3].toULong().toString(16).uppercase()} " +
+                    "r4=0x${cpu.gpr[4].toULong().toString(16).uppercase()} " +
+                    "r5=0x${cpu.gpr[5].toULong().toString(16).uppercase()} " +
+                    "r8=0x${cpu.gpr[8].toULong().toString(16).uppercase()} " +
+                    "r9=0x${cpu.gpr[9].toULong().toString(16).uppercase()} " +
+                    "r10=0x${cpu.gpr[10].toULong().toString(16).uppercase()} " +
+                    "r17=0x${cpu.gpr[17].toULong().toString(16).uppercase()} " +
+                    "r24=0x${cpu.gpr[24].toULong().toString(16).uppercase()} " +
+                    "r31=0x${cpu.gpr[31].toULong().toString(16).uppercase()}"
                 while (steps < maxSteps) {
                     val pcBefore = cpu.pc
+                    val inCopyLoop = pcBefore in 0x70000570L..0x70000588L
+                    val sampleIteration = pcBefore == 0x70000588L &&
+                        (copyLoopIterations < 8L || (copyLoopIterations + 1L) % 4096L == 0L)
+                    val registersBefore = if (inCopyLoop && (copyLoopTrace.size < 32 || sampleIteration)) copyLoopRegisters() else ""
                     cpu.step()
+                    val instruction = cpu.diagnosticInstructionWord
+                    if (inCopyLoop && copyLoopTrace.size < 32) {
+                        copyLoopTrace.add(
+                            "PC=0x${pcBefore.toULong().toString(16).uppercase()} " +
+                            "INST=${instruction?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"} " +
+                            "NEXT=0x${cpu.pc.toULong().toString(16).uppercase()} " +
+                            "BEFORE{$registersBefore} AFTER{${copyLoopRegisters()}}"
+                        )
+                    }
+                    if (pcBefore == 0x70000588L) {
+                        copyLoopIterations++
+                        val branchTaken = cpu.pc == 0x70000574L
+                        if (branchTaken) copyLoopTakenBranches++ else copyLoopExitObserved = true
+                        if (sampleIteration || !branchTaken) {
+                            copyLoopSamples.add(
+                                "iteration=$copyLoopIterations branchTaken=$branchTaken " +
+                                "NEXT=0x${cpu.pc.toULong().toString(16).uppercase()} " +
+                                "BEFORE{$registersBefore} AFTER{${copyLoopRegisters()}}"
+                            )
+                        }
+                    }
+                    if (copyLoopExitObserved && postCopyTraceRemaining == 0 && postCopyTrace.isEmpty()) {
+                        postCopyTraceRemaining = 64
+                    }
+                    if (postCopyTraceRemaining > 0) {
+                        postCopyTrace.add(
+                            "PC=0x${pcBefore.toULong().toString(16).uppercase()} " +
+                            "INST=${instruction?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"} " +
+                            "NEXT=0x${cpu.pc.toULong().toString(16).uppercase()} REG{${copyLoopRegisters()}}"
+                        )
+                        postCopyTraceRemaining--
+                    }
                     if (steps < 48) {
-                        val instruction = cpu.diagnosticInstructionWord
                         lines.add("step=$steps PC=0x${pcBefore.toULong().toString(16).uppercase()} INST=${instruction?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"} NEXT=0x${cpu.pc.toULong().toString(16).uppercase()}")
                     }
                     steps++
@@ -121,6 +177,13 @@ class MainActivity : Activity() {
                         break
                     }
                 }
+                lines.add("=== LAÇO DE CÓPIA 0x70000588 ===")
+                lines.add("Iterações=$copyLoopIterations branches_taken=$copyLoopTakenBranches saída_observada=$copyLoopExitObserved")
+                lines.addAll(copyLoopTrace)
+                lines.add("=== AMOSTRAS DO LAÇO ===")
+                lines.addAll(copyLoopSamples)
+                lines.add("=== PRIMEIRAS INSTRUÇÕES APÓS A SAÍDA ===")
+                lines.addAll(postCopyTrace)
                 lines.add("Instruções executadas: $steps")
                 lines.add("PC final: 0x${cpu.pc.toULong().toString(16).uppercase()}")
                 lines.add("Exceção: ${cpu.lastExceptionCode ?: "nenhuma"}")
