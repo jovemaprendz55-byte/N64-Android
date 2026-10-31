@@ -1083,3 +1083,48 @@ Não comprova:
 - 2026-10-31 — CI documental #723 (run ID 41251008024) concluiu com success, validando o registro de aprovação da etapa 44.
 
 - 2026-10-31 — teste no aparelho confirmado pelo usuário: tela “TESTE DE VÍDEO”, framebuffer 320x240, RGBA5551, origem 0x1000; o usuário confirmou que a tela com a mensagem de frame sintético lido pelo VI e exibido pelo Android apareceu. Ainda não foi enviado screenshot da área da imagem para confirmar cada barra de cor.
+
+
+## 12. Etapa 45 — primeiro processador isolado de preenchimento RDP (2026-10-31)
+
+### Objetivo
+Começar a substituir a geração artificial de pixels por operações gráficas determinísticas que escrevem diretamente em RDRAM. Esta etapa cria um subconjunto pequeno e isolado do RDP, sem fingir que a lista de comandos já vem do RSP/DPC.
+
+### Implementação
+- Criado `app/src/main/java/com/jsr/n64android/N64RdpFillProcessor.kt`.
+- O processador interpreta um subconjunto de comandos RDP:
+  - `SetOtherModes`: identifica o modo de ciclo e exige fill-cycle para `FillRectangle`.
+  - `SetColorImage`: configura imagem RGBA de 16 ou 32 bits, largura e endereço de destino em RDRAM.
+  - `SetScissor`: limita a região de desenho.
+  - `SetFillColor`: configura a cor de preenchimento.
+  - `FillRectangle`: grava pixels no endereço de imagem configurado, respeitando recorte e limites de RDRAM.
+- Criado `app/src/test/java/com/jsr/n64android/N64RdpFillProcessorTest.kt`, com cenários para escrita RGBA5551, retângulo, scissor e exigência de fill-cycle.
+- O componente usa a interface `N64AddressSpace` existente e não depende de Android.
+
+### Limites explícitos
+- Ainda não está ligado ao RSP, ao registrador DPC ou à fila de comandos de um jogo.
+- Não implementa triângulos, texturas/TMEM, combinação de pixels, Z-buffer, blending, anti-aliasing, sincronização ou rasterização RDP completa.
+- Não altera a captura VI nem a tela Android existente.
+- Portanto, não comprova renderização de GoldenEye 007 nem de qualquer ROM.
+
+### Commits da etapa
+- `a4c2682938ce478e6b1c9dd6c62c89cc93ee12c0` — processador isolado de fill-cycle.
+- `a1cc226045e6af4a8d611368a738219b63f34284` — testes iniciais.
+- `cd217b10ba66bbb44c1ceef28d48e77bb54abc72` — ajuste da cor repetida no cenário de scissor.
+- `a38a468c6b53a33db28d51410ea7e49fc411aaef` — literal Long explícito no teste do modo de ciclo.
+
+### CI
+- Build #726 (run ID `41251510492`): **success**, documentação da etapa 44.
+- Build #727 (run ID `41251679635`): **success**, compilação e testes existentes do processador isolado, antes da inclusão do teste dedicado.
+- Build #728 (run ID `41251681769`): falhou no passo Build and test durante a primeira versão do teste; foi seguido por ajustes e nova execução.
+- Build #729 (run ID `41251700924`): **success**, Build and test e Upload debug APK para o teste corrigido no commit `cd217b1...`.
+- Build #730 (run ID `41251747014`): valida o commit final `a38a468...`; estava em execução durante a atualização deste documento. Não declarar esta revisão final validada até conferir seu resultado.
+- Nenhum APK desta etapa foi confirmado como instalado ou testado no aparelho.
+- Nenhuma alteração em `main`.
+
+### Próxima etapa
+1. Confirmar Build #730 para o commit final e atualizar este registro com o resultado.
+2. Projetar testes de borda para alinhamento, limites de framebuffer e coordenadas de scissor antes de ampliar comandos.
+3. Depois, avaliar integração explícita com DPC/RSP somente quando houver modelo de fila e estado de execução adequados; não inventar uma fonte de comandos.
+4. Manter o caminho sintético de vídeo como teste separado até que um produtor RDP validado possa gerar o framebuffer.
+
