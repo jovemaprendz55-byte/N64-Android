@@ -773,3 +773,25 @@ Projetar e implementar primeiro o controlador de execução independente do Andr
 ### Commit e validação
 - Commit: `1c288cfbdadd9a9381249c0a77f9b3395828673f`.
 - GitHub Actions #687 (run ID `41231769395`) iniciou; resultado deve ser conferido antes de considerar a etapa validada.
+
+
+## 35. Finalização do worker HLE na thread principal — 2026-10-31
+
+### Revisão
+- Builds #687 (código da sessão R4300) e #688 (documentação) concluídas com sucesso.
+- Na revisão do lifecycle foi observado que o callback final de `N64ExecutionWorker` limpava `hleWorker` diretamente na thread de background; além disso, apenas o estado FAILED tinha um caminho explícito de recuperação dos botões.
+
+### Correção
+- O callback de conclusão agora encaminha toda a finalização da Activity para `runOnUiThread`.
+- A referência é limpa somente se ainda corresponder à instância que concluiu (`workerRef`).
+- Estados FAILED e CANCELLED reabilitam os botões se a Activity ainda estiver ativa; FAILED também apresenta a mensagem de erro.
+- Estado COMPLETED mantém a publicação normal do relatório, que já é agendada na thread principal pela tarefa diagnóstica.
+- Commit: `4fee619e4eaf9887e7f9712f99bba4dc8756c9f6`.
+
+### Validação pendente
+- GitHub Actions #689, run ID `41232115523`, acionada para validar a alteração.
+- Não considerar esta correção validada até Build and test e Upload debug APK concluírem com sucesso.
+
+### Limites preservados
+- Não altera a lógica do R4300, o handoff HLE, a captura VI ou o formato do relatório.
+- Não implementa game loop, RSP, RDP, VBlank, áudio, controles ou boot real de GoldenEye.
