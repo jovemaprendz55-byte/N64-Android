@@ -822,3 +822,28 @@ Projetar e implementar primeiro o controlador de execução independente do Andr
 
 ### Validação
 - CI deve concluir com Build and test e geração do APK debug antes de considerar esta etapa validada.
+
+
+## 37. Contrato estruturado de resultado do diagnóstico HLE — 2026-10-31
+
+### Alteração
+- Criado `N64HleDiagnosticResult`, modelo sem dependência Android para transportar linhas do relatório, frame VI opcional, quantidade de instruções, motivo de parada e mensagem de falha opcional.
+- A publicação do diagnóstico na Activity agora monta esse resultado e apresenta suas linhas/frame na UI principal.
+- A criação de `Bitmap` e a atualização de Views continuam na Activity; o resultado carrega somente os pixels decodificados de `N64VideoFrame`.
+- O modelo valida contagem não negativa de instruções e motivo de parada não vazio.
+
+### Testes
+- Criado `N64HleDiagnosticResultTest` para validar os campos, frame opcional e rejeição de contagem negativa.
+
+### Limite desta etapa
+- A execução da CPU, os callbacks de rastreamento e a montagem detalhada do relatório ainda permanecem em `MainActivity`; esta etapa estabelece o contrato de saída para a extração seguinte.
+- O worker externo ainda envolve o diagnóstico como tarefa genérica de uma unidade.
+- Não adiciona RSP/RDP, VBlank/scanout contínuo, áudio, controles ou boot comprovado de GoldenEye.
+
+### Commits
+- `7896de242597b1d328b75ffb53696a5d05f874aa` — cria o modelo de resultado.
+- `83a2866387a69219afc5bb3d3a2d6be11f556e6b` — Activity publica o resultado estruturado.
+- `57d30b2f4eeb7271792307a5f030269131029878` — adiciona testes do contrato.
+
+### Validação
+- Aguardar Build and test e Upload debug APK do workflow acionado após os commits.
