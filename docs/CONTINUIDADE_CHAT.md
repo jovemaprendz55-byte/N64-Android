@@ -6,6 +6,7 @@
 **Repositório:** https://github.com/jovemaprendz55-byte/N64-Android  
 **Branch de trabalho obrigatória:** `dev/n64-clean-start`  
 **Último commit de código registrado:** `bbd964e0b9759df93ab9b38a797317003163ff60`  
+**Último commit de documentação:** `6cb9063645d127ba5a6148b08cc97085021dd63e`  
 **Build mais recente verificada:** GitHub Actions #592 — sucesso.
 
 ---
@@ -145,7 +146,9 @@ Esses campos são observabilidade/diagnóstico. **Não significam que o protocol
 Build acionada para esse código:
 - Build #595, run ID `41180363612`.
 - Commit testado: `bbd964e0b9759df93ab9b38a797317003163ff60`.
-- Último estado consultado nesta atualização: `in_progress`; resultado ainda não confirmado.
+- Resultado final: **success** (Build and test e Upload debug APK concluídos com sucesso).
+- Artifact: `n64-android-debug-apk`, ID `13034074585`, tamanho 885.882 bytes, SHA-256 `ab83ecc9a66df3617149ba8489aeda169424ca5967a5476a1033a0798a52d594`.
+- Expira em 2026-11-14 07:23:48 UTC (confirmar validade no momento do acesso).
 - Link: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41180363612
 
 ## 7. Builds GitHub Actions
@@ -219,5 +222,5 @@ Mensagem de arranque recomendada para o próximo chat:
 ## 10. Histórico de atualização deste documento
 
 - **2026-10-31:** criado documento inicial de passagem de contexto; registrado handoff HLE experimental, auditoria, testes, limitações, branch/commit e build #592.
-- **2026-10-31:** diagnóstico HLE ampliado com eventos PI/SP DMA, escritas RDRAM, estado dos registradores SI e snapshot PIF RAM; build #595 pendente no momento do registro.
+- **2026-10-31:** diagnóstico HLE ampliado com eventos PI/SP DMA, escritas RDRAM, estado dos registradores SI e snapshot PIF RAM; build #595 concluída com sucesso e APK de diagnóstico gerada.
 - Nas próximas atualizações, adicionar uma entrada datada com: commit novo, arquivos alterados, motivo, testes executados, resultado da build, logs/evidências e próxima tarefa.
