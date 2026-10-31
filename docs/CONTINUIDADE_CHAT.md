@@ -601,3 +601,30 @@ Projetar e implementar primeiro o controlador de execução independente do Andr
 - Manter a captura VI diagnóstica como amostragem única até existir scanout e sincronização de hardware.
 - Commits: `8e2d1cb7306eaa5741ac35864006e2b589156a94` (classe) e `c321e050d8744689f2e5f06dc61ab07b47398d50` (testes).
 - CI deve passar antes de considerar a etapa validada; não alegar teste em aparelho nem renderização de jogo.
+
+
+## 26. Adaptador do controlador para o R4300 real — 2026-10-31
+
+### Implementação
+- Criada `N64CpuExecutionSession`, que compõe `N64ExecutionSession` com a implementação real `R4300Cpu.step()`.
+- O adaptador recebe uma CPU existente e encaminha cada instrução para o controlador limitado; expõe `execute()`, `requestStop()` e `snapshot()`.
+- O chamador continua responsável por executar `execute()` em worker dedicado e por manter CPU/barramento/memória exclusivos durante a sessão.
+- Nenhuma alteração foi feita no fluxo atual de diagnóstico HLE ou nos botões da Activity. A integração de UI fica para depois de uma etapa específica de ciclo de vida/cancelamento.
+
+### Teste
+- Novo teste executa duas instruções MIPS reais em `N64Memory` através do adaptador:
+  - ADDIU produz `$t0=42`;
+  - ADDIU seguinte produz `$t1=43`;
+  - PC termina em 8;
+  - snapshot informa COMPLETED e duas instruções executadas.
+- O teste valida a ligação entre o controlador genérico e a CPU real, não compatibilidade de ROM nem boot de jogo.
+
+### Commits
+- `58161eddcb68dc6e35503cae90126628703824ac` — adaptador R4300.
+- `3eb0ec56afd4e8c350bac4cb72f0a0513d0027b7` — teste de integração unitário.
+
+### Limites
+- Adaptador ainda não é usado pela MainActivity.
+- Não há worker Android gerenciado, lifecycle cancellation, sincronização de dispositivos, temporização, RSP/RDP ou publicação de frames.
+- Não iniciar loop contínuo de jogo com esta camada isolada.
+- Manter `main` sem alterações; todo o trabalho permanece em `dev/n64-clean-start`.
