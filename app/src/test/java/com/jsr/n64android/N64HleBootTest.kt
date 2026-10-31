@@ -50,9 +50,9 @@ class N64HleBootTest {
             )
         }
         // The byte read by the previous failing copy loop must now be present:
-        // physical 0x33F2F maps to ROM offset 0x3432F.
+        // physical 0x33F2F maps to ROM offset 0x34B2F.
         assertEquals(
-            rom[0x3432F].toInt() and 0xFF,
+            rom[0x34B2F].toInt() and 0xFF,
             bus.peek8ForDiagnostic(0x33F2F)
         )
 
