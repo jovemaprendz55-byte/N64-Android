@@ -5,9 +5,11 @@
 **Última atualização:** 2026-10-31  
 **Repositório:** https://github.com/jovemaprendz55-byte/N64-Android  
 **Branch de trabalho obrigatória:** `dev/n64-clean-start`  
-**Último commit de código verificado:** f8cf8ac8b24139289f3cc7c1475580ba9ff98f10 (inclui o coletor de rastros da etapa 40).
-**Último commit de documentação:** atualização pendente após a etapa 32.  
-**Build mais recente verificada:** GitHub Actions #680 — sucesso (código `037c023a20b1a7f29a41a8362fb44daebe0ef38f`), incluindo testes e upload do APK debug.
+**Último commit de código verificado:** `f8cf8ac8b24139289f3cc7c1475580ba9ff98f10` (coletor de rastros HLE, etapa 40).
+**Último commit de documentação verificado:** `fcce62293ce65b871bcf04d20894b7da9f2cd27a` (atualização da etapa 40).
+**HEAD atual verificado da branch:** `fcce62293ce65b871bcf04d20894b7da9f2cd27a`.
+**CI mais recente verificado:** build #708, run ID `41235044776`, sucesso; build/testes e upload do APK debug concluídos. A build #707, para o último commit de código, também terminou com sucesso.
+**Estado deste documento:** auditoria realizada em 2026-10-31; resumo e plano de continuidade atualizados após a auditoria.
 
 ---
 
@@ -34,12 +36,14 @@ A meta HLE não significa remover a emulação do hardware do N64. Continuam nec
 
 ## 3. Estado atual confirmado
 
-A branch `dev/n64-clean-start` estava no commit:
+**Nota de histórico:** o commit abaixo era o estado registrado numa versão anterior deste documento; não é mais o HEAD atual.
 
 ```
 0ea295fab125cc60fc979e9052c62969a76be59c
 Make HLE entry fetch test use deterministic NOP payload
 ```
+
+**Estado atual confirmado pela auditoria de 2026-10-31:** HEAD da branch `dev/n64-clean-start` é `fcce62293ce65b871bcf04d20894b7da9f2cd27a`. O último commit de código é `f8cf8ac8b24139289f3cc7c1475580ba9ff98f10`; o HEAD seguinte registra a documentação. Consulte sempre o GitHub antes de continuar, pois esse estado pode avançar.
 
 O arquivo `N64HleBoot.kt` contém um handoff experimental que:
 
@@ -108,7 +112,9 @@ Esses testes validam o handoff e a busca de instrução sintética; **não prova
 
 ## 6. Diagnóstico e logs
 
-A rotina `runHleBootDiagnostic()` foi preparada para:
+**Registro histórico:** a primeira versão de `runHleBootDiagnostic()` tinha limite de 500.000 instruções. As etapas posteriores alteraram o limite; o fluxo atual usa `N64HleDiagnosticRunner` e `N64CpuExecutionSession`, com limite documentado de 2.000.000 instruções. Não usar esta descrição antiga como especificação do código atual.
+
+A rotina `runHleBootDiagnostic()` foi preparada originalmente para:
 - Chamar `N64HleBoot.prepare`.
 - Executar até 500.000 instruções ou parar em exceção.
 - Capturar os primeiros 48 passos.
@@ -173,57 +179,59 @@ Links:
 
 Build #589 (run ID `41179440281`) também foi registrada como sucesso, mas #592 é mais recente. Não presumir que o usuário instalou a APK #592: perguntar/confirmar antes de interpretar logs do aparelho.
 
-## 8. Próximos passos — ordem recomendada
+## 8. Estado atual e próximos passos — atualizado em 2026-10-31
 
-### Passo 1 — conferir o estado atual antes de qualquer edição
-- Consultar HEAD da branch `dev/n64-clean-start`.
-- Conferir se há commits novos depois de `0ea295f`.
-- Verificar estado do run #592 e artifact se ainda for necessário.
-- Ler `N64HleBoot.kt`, testes, `MainActivity.kt`, CPU e barramento na versão atual.
-- Não confiar cegamente neste documento se o código já tiver avançado; o GitHub/HEAD atual é a fonte de verdade.
+### Estado confirmado
+- Branch obrigatória: `dev/n64-clean-start`; não alterar `main`.
+- HEAD verificado: `fcce62293ce65b871bcf04d20894b7da9f2cd27a`.
+- Último commit de código: `f8cf8ac8b24139289f3cc7c1475580ba9ff98f10`.
+- Build #707 (run ID `41234995195`) validou o commit de código; build #708 (run ID `41235044776`) validou o commit de documentação. Ambas concluíram com sucesso, incluindo Build and test e Upload debug APK.
+- Build #706 (run ID `41234987504`) também consta como sucesso para commit anterior.
+- O coletor `N64HleInstructionTrace` existe e tem testes, mas ainda não está integrado à `MainActivity`.
+- `MainActivity` ainda mantém contagem local de PCs, buffer de instruções e resumo. A integração do novo coletor é o próximo passo de baixo risco, se a inspeção do HEAD confirmar que nada mudou.
+- O diagnóstico HLE continua limitado a 2.000.000 instruções. Não aumentar esse limite para ocultar falhas ou loops.
+- O pipeline gráfico ainda não está completo: VI/framebuffer é experimental; RSP/RDP, scanout temporizado/VBlank e apresentação contínua não estão implementados de forma suficiente para afirmar que um jogo já renderiza corretamente.
+- CI verde significa apenas que compilação/testes automatizados e upload do APK passaram. Não significa que GoldenEye foi testado ou funciona no aparelho. Não presumir que o usuário instalou o APK.
 
-### Passo 2 — obter o primeiro log do novo HLE no aparelho
-- Confirmar se o usuário instalou a APK da build #592 ou build mais recente.
-- Pedir log completo da página “Iniciar jogo (HLE sem IPL3)”.
-- Analisar o PC inicial, sequência de instruções, checkpoints, exceção, COP0 e TLB.
-- Determinar se o bootcode está executando, se está preso em loop ou se falha em acesso a hardware.
-- Não misturar com logs da rotina IPL3 antiga.
+Links de CI:
+- [Build #707 — código](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41234995195)
+- [Build #708 — documentação](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41235044776)
+- [Build #706](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41234987504)
 
-### Passo 3 — identificar estado real necessário no handoff
-- Investigar os registradores e estruturas esperados pelo bootcode de cartucho do GoldenEye.
-- Comparar com comportamento/documentação confiável do IPL3/PIF/CIC e com logs históricos disponíveis.
-- Determinar valores e efeitos ausentes (COP0, cache/status, RDRAM, registradores de periféricos, interrupções etc.) somente com evidência.
-- Criar testes unitários pequenos para cada estado adicionado.
-- Não declarar sucesso apenas por passar em uma ROM sintética.
+### Próxima etapa técnica recomendada
+1. Conferir novamente o HEAD e os arquivos atuais na branch de trabalho.
+2. Ler `N64HleInstructionTrace.kt`, seus testes e o trecho completo de rastreamento em `MainActivity.kt`.
+3. Planejar a integração do coletor puro na Activity, removendo duplicação somente se os mesmos dados, limites, ordem e formato do relatório forem preservados.
+4. Criar/ajustar testes para janela recente, contagem por PC, limites e formatação; não remover os traces específicos do laço de cópia, checkpoints, snapshots MMIO ou captura VI.
+5. Rodar CI e conferir o resultado real antes de registrar a etapa como concluída.
+6. Atualizar este documento com commits, arquivos, testes, workflow e limitações observadas.
 
-### Passo 4 — implementar HLE dos serviços que faltam
-- Projetar PIF/SI/Joybus HLE e protocolo CIC conforme necessário.
-- Completar DMA/registradores e interrupções do hardware que o bootcode realmente acessa.
-- Registrar cada serviço HLE simulado e sua limitação nos logs.
-- Manter o caminho IPL3 legado apenas como diagnóstico comparativo, sem confundir com HLE.
+### Regras para a próxima alteração
+- Não alterar `main`; não fazer merge ou reset.
+- Não executar loops infinitos nem transformar o diagnóstico limitado em game loop.
+- Não simular RSP/RDP, PIF/CIC ou dispositivos sem evidência e testes.
+- Não declarar imagem funcional apenas porque existe uma captura VI experimental.
+- Preservar UI portrait e o botão de copiar log na tela de diagnóstico.
+- Antes de pedir instalação, fornecer o link da build validada e perguntar se o usuário instalou essa versão.
 
-### Passo 5 — avançar para execução de jogo e imagem
-- Completar CPU R4300/MIPS III conforme instruções exigidas pelos logs.
-- Implementar/integrar RSP e RDP próprios e VI/framebuffer.
-- Adicionar áudio e controles depois que a execução básica estiver estável.
-- Testar GoldenEye em aparelho Android e guardar logs/imagens reproduzíveis.
-- Preservar UI portrait e botão copiar log dentro da tela de diagnóstico.
+## 9. Como o próximo chat deve continuar
 
-## 9. Como o próximo chat deve começar
+A primeira ação do próximo chat é ler este documento e conferir o HEAD real de `dev/n64-clean-start`. Em seguida, conferir os arquivos do coletor de rastros e a implementação atual de rastreamento em `MainActivity`. Não repetir a auditoria inteira sem necessidade, mas confirmar se houve commits depois do HEAD registrado.
 
-A primeira ação do próximo chat deve ser ler este documento e conferir o HEAD atual da branch `dev/n64-clean-start`. Depois, consultar o resultado da build #592 (ou build mais recente) e inspecionar os arquivos citados.
-
-**Não começar reescrevendo o projeto. Não alterar `main`. Não dizer que o jogo já funciona.**
+**Não começar reescrevendo o projeto. Não alterar `main`. Não presumir que o APK foi instalado. Não dizer que GoldenEye ou outro jogo já funciona.**
 
 Mensagem de arranque recomendada para o próximo chat:
 
-> Continue o projeto N64 Android a partir do documento `docs/CONTINUIDADE_CHAT.md` no GitHub. Leia o documento inteiro, confira o HEAD real da branch `dev/n64-clean-start` e os arquivos atuais antes de agir. Não altere a branch `main`. Nosso objetivo é avançar o HLE sem executar IPL3/PIF ROM original e fazer o GoldenEye avançar. Comece verificando a build mais recente e depois analise o primeiro log real do novo HLE. Atualize `docs/CONTINUIDADE_CHAT.md` a cada avanço relevante para que o próximo chat nunca perca o contexto.
+> Continue o projeto N64 Android a partir de `docs/CONTINUIDADE_CHAT.md` na branch `dev/n64-clean-start`. Leia o documento e confira o HEAD real antes de editar. Nunca altere `main`. O último estado registrado é o coletor `N64HleInstructionTrace` criado e testado isoladamente, mas ainda não integrado à `MainActivity`, que mantém contadores e buffers locais. Comece conferindo essa diferença no código atual e planeje a integração sem perder logs, limites, checkpoints, traces do laço de cópia, snapshots MMIO ou captura VI. Faça uma alteração pequena por vez, rode testes/CI e registre cada avanço neste mesmo documento. Não confunda CI verde com jogo funcionando no aparelho; pergunte antes se a APK foi instalada quando precisar de logs reais.
 
 ## 10. Histórico de atualização deste documento
 
 - **2026-10-31:** criado documento inicial de passagem de contexto; registrado handoff HLE experimental, auditoria, testes, limitações, branch/commit e build #592.
 - **2026-10-31:** diagnóstico HLE ampliado com eventos PI/SP DMA, escritas RDRAM, estado dos registradores SI e snapshot PIF RAM; build #595 concluída com sucesso e APK de diagnóstico gerada.
 - **2026-10-31:** após o primeiro log real HLE (125.556 instruções, falha em leitura física 0x70000510), o catch do diagnóstico foi ampliado para preservar instrução, acesso, registradores, COP0/TLB e barramento; commit `227040724945b051343dce2ab9d6aed41b9e3088`; build #598 em fila.
+- **2026-10-31:** etapas 33–40 registraram integração progressiva do worker/sessão R4300, extração do runner e do resultado estruturado, preservação de falhas e criação do coletor limitado de rastros. Os detalhes permanecem nas seções 33–40.
+- **2026-10-31:** auditoria do documento comparou resumo, commits, CI e código. Identificou cabeçalho e próximos passos obsoletos, corrigidos nesta atualização. Confirmado que o coletor da etapa 40 ainda não está integrado à `MainActivity`.
+- **2026-10-31:** CI #707 (run ID `41234995195`) validou o commit de código `f8cf8ac8b24139289f3cc7c1475580ba9ff98f10`; CI #708 (run ID `41235044776`) validou a atualização de documentação `fcce62293ce65b871bcf04d20894b7da9f2cd27a`. Ambos com Build and test e Upload debug APK em sucesso.
 
 ## 11. Primeiro log real do HLE com contexto preservado — 2026-10-31
 
@@ -913,4 +921,42 @@ Projetar e implementar primeiro o controlador de execução independente do Andr
 - `f8cf8ac8b24139289f3cc7c1475580ba9ff98f10` — adiciona testes.
 
 ### Validação
-- Build and test e geração do APK debug devem concluir com sucesso antes de considerar esta etapa validada.
+- Build #707, run ID `41234995195`, commit `f8cf8ac8b24139289f3cc7c1475580ba9ff98f10`: **success**.
+- Build and test: success.
+- Upload debug APK: success.
+- [Workflow #707](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41234995195).
+- A build valida os testes automatizados e a geração do APK debug; não comprova execução ou renderização de GoldenEye no aparelho.
+
+
+## 41. Auditoria e atualização do documento de continuidade — 2026-10-31
+
+### O que foi auditado
+- Documento `docs/CONTINUIDADE_CHAT.md` na branch `dev/n64-clean-start`.
+- Histórico de commits da branch e estado do HEAD.
+- Resultados recentes do GitHub Actions.
+- Implementação de `N64HleInstructionTrace.kt`, testes e rastreamento ainda presente em `MainActivity.kt`.
+
+### Achados
+- O documento continha 40 etapas úteis, mas o cabeçalho ainda apontava a documentação como pendente após a etapa 32 e citava a build #680 como mais recente.
+- A seção de estado atual ainda apresentava o commit `0ea295f...` como se fosse o estado vigente.
+- As seções de próximos passos e mensagem para o próximo chat ainda orientavam consultar/instalar a build #592.
+- A validação da etapa 40 estava escrita como pendente, embora o CI #707 já tivesse concluído com sucesso.
+- O coletor `N64HleInstructionTrace` e seus testes existem, mas o coletor não está integrado à `MainActivity`. A Activity ainda mantém estruturas locais de contagem de PCs e buffer/resumo. Isso foi mantido como próximo passo, não como trabalho concluído.
+
+### Estado Git/CI verificado
+- HEAD da branch `dev/n64-clean-start`: `fcce62293ce65b871bcf04d20894b7da9f2cd27a`.
+- Commit de código anterior ao registro documental: `f8cf8ac8b24139289f3cc7c1475580ba9ff98f10`.
+- Build #707 / run ID `41234995195`: sucesso para o commit de código.
+- Build #708 / run ID `41235044776`: sucesso para o commit de documentação.
+- `main` não foi modificada nesta auditoria.
+
+### Alterações documentais desta etapa
+- Corrigidos os campos de último commit, HEAD e CI no cabeçalho.
+- Identificado explicitamente o commit `0ea295f...` como histórico, não atual.
+- Marcada a descrição de 500.000 instruções como histórica; o limite atual documentado é 2.000.000.
+- Substituídas as instruções obsoletas das seções 8 e 9 por estado atual, próximos passos e mensagem de arranque para o próximo chat.
+- Atualizado o histórico e o resultado de validação da etapa 40.
+- Preservadas as 40 etapas anteriores e suas evidências; nenhuma implementação de código foi alterada nesta auditoria.
+
+### Próxima ação
+Integrar cuidadosamente `N64HleInstructionTrace` à `MainActivity`, após nova inspeção do HEAD e dos testes. Preservar o comportamento e os campos de diagnóstico existentes. Registrar o commit e o CI dessa integração como etapa 42, somente depois de confirmação real.
