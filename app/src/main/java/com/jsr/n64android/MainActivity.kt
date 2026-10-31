@@ -115,6 +115,21 @@ class MainActivity : Activity() {
                 val copyLoopSamples = ArrayList<String>()
                 val postCopyTrace = ArrayList<String>()
                 var postCopyTraceRemaining = 0
+                // Always retain the final execution window; unlike the old one-shot
+                // post-copy trace, this ring is useful even when the CPU stops much later.
+                val recentInstructionTrace = ArrayDeque<String>()
+                val pcVisitCounts = LinkedHashMap<Long, Int>()
+                fun recordExecution(pc: Long, opcode: Int?, nextPc: Long) {
+                    if (recentInstructionTrace.size >= 256) recentInstructionTrace.removeFirst()
+                    recentInstructionTrace.addLast(
+                        "PC=0x${pc.toULong().toString(16).uppercase()} " +
+                        "INST=${opcode?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"} " +
+                        "NEXT=0x${nextPc.toULong().toString(16).uppercase()}"
+                    )
+                    if (pcVisitCounts.containsKey(pc) || pcVisitCounts.size < 4096) {
+                        pcVisitCounts[pc] = (pcVisitCounts[pc] ?: 0) + 1
+                    }
+                }
                 fun copyLoopRegisters(): String =
                     "r2=0x${cpu.gpr[2].toULong().toString(16).uppercase()} " +
                     "r3=0x${cpu.gpr[3].toULong().toString(16).uppercase()} " +
@@ -134,6 +149,7 @@ class MainActivity : Activity() {
                     val registersBefore = if (inCopyLoop && (copyLoopTrace.size < 32 || sampleIteration)) copyLoopRegisters() else ""
                     cpu.step()
                     val instruction = cpu.diagnosticInstructionWord
+                    recordExecution(pcBefore, instruction, cpu.pc)
                     if (inCopyLoop && copyLoopTrace.size < 32) {
                         copyLoopTrace.add(
                             "PC=0x${pcBefore.toULong().toString(16).uppercase()} " +
@@ -184,6 +200,13 @@ class MainActivity : Activity() {
                 lines.addAll(copyLoopSamples)
                 lines.add("=== PRIMEIRAS INSTRUÇÕES APÓS A SAÍDA ===")
                 lines.addAll(postCopyTrace)
+                lines.add("=== ÚLTIMAS 256 INSTRUÇÕES ===")
+                lines.addAll(recentInstructionTrace)
+                lines.add("=== PCs MAIS VISITADOS (até 16) ===")
+                lines.addAll(pcVisitCounts.entries.sortedByDescending { it.value }.take(16).map { (pc, count) ->
+                    "PC=0x${pc.toULong().toString(16).uppercase()} visits=$count"
+                })
+                lines.add("PCs distintos contabilizados=${pcVisitCounts.size} (limite 4096)")
                 lines.add("Instruções executadas: $steps")
                 lines.add("PC final: 0x${cpu.pc.toULong().toString(16).uppercase()}")
                 lines.add("Exceção: ${cpu.lastExceptionCode ?: "nenhuma"}")
