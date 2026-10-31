@@ -19,6 +19,35 @@ class N64Bus(
     private var piDramAddress = 0
     private var piCartAddress = CARTRIDGE_ROM_BASE
     private var piStatus = 0
+    // CPU-originated MMIO trace. The caller supplies the current virtual PC before each step.
+    private var diagnosticCpuPc: Long = 0L
+    val diagnosticMmioHistory = ArrayDeque<String>()
+    val diagnosticMmioCounts = linkedMapOf<String, Long>()
+    fun setDiagnosticCpuPc(pc: Long) { diagnosticCpuPc = pc }
+    private fun mmioDevice(address: Int): String? = when (address) {
+        in SP_REG_BASE until SP_REG_BASE + 0x20, SP_PC_REG -> "SP"
+        in MI_REG_BASE until MI_REG_BASE + 0x10 -> "MI"
+        in VI_REG_BASE until VI_REG_BASE + VI_REG_SIZE -> "VI"
+        in AI_REG_BASE until AI_REG_BASE + AI_REG_SIZE -> "AI"
+        in PI_REG_BASE until PI_REG_BASE + 0x14 -> "PI"
+        in SI_REG_BASE until SI_REG_BASE + 0x1C -> "SI"
+        in RI_REG_BASE until RI_REG_BASE + RI_REG_SIZE -> "RI"
+        else -> null
+    }
+    private fun recordMmio(kind: String, address: Int, value: Int) {
+        val device = mmioDevice(address) ?: return
+        diagnosticMmioCounts[device] = (diagnosticMmioCounts[device] ?: 0L) + 1L
+        if (diagnosticMmioHistory.size >= 256) diagnosticMmioHistory.removeFirst()
+        diagnosticMmioHistory.addLast(
+            "$kind $device PC=0x${diagnosticCpuPc.toULong().toString(16).uppercase()} " +
+                "PADDR=0x${address.toString(16).uppercase().padStart(8, '0')} " +
+                "VALUE=0x${value.toUInt().toString(16).uppercase().padStart(8, '0')}"
+        )
+    }
+    private fun recordMmioRead(address: Int, value: Int): Int {
+        recordMmio("R", address, value)
+        return value
+    }
     // Bounded trace of PI DMA requests for boot diagnostics; avoids per-byte logging.
     val diagnosticPiDmaHistory = ArrayDeque<String>()
     // Bounded trace of SP DMA transfers, including direction and RDRAM destination ranges.
@@ -197,34 +226,34 @@ class N64Bus(
     override fun read32(address: Int): Int {
         requireAligned(address, 4)
         when (address) {
-            SP_MEM_ADDR_REG -> return spMemAddress
-            SP_DRAM_ADDR_REG -> return spDramAddress
-            SP_PC_REG -> return spPc
-            SP_STATUS_REG -> return spStatus
-            SP_DMA_FULL_REG -> return 0
-            SP_DMA_BUSY_REG -> return 0
-            SP_SEMAPHORE_REG -> return spSemaphore
-            PI_DRAM_ADDR_REG -> return piDramAddress
-            PI_CART_ADDR_REG -> return piCartAddress
-            PI_RD_LEN_REG, PI_WR_LEN_REG -> return 0
-            PI_STATUS_REG -> return piStatus
-            MI_INIT_MODE_REG -> return miInitMode
-            MI_VERSION_REG -> return MI_VERSION_VALUE
-            MI_INTR_REG -> return 0 // No device currently raises MI interrupt lines.
-            MI_INTR_MASK_REG -> return miInterruptMask
-            in RI_REG_BASE until RI_REG_BASE + RI_REG_SIZE -> return riRegisters[(address - RI_REG_BASE) / 4]
-            SI_DRAM_ADDR_REG -> return siDramAddress
-            SI_PIF_ADDR_RD64B_REG -> return siPifReadAddress
-            SI_PIF_ADDR_WR64B_REG -> return siPifWriteAddress
-            SI_STATUS_REG -> return siStatus
-            AI_DRAM_ADDR_REG -> return aiDramAddress
-            AI_LEN_REG -> return 0 // Audio queue is treated as immediately drained.
-            AI_CONTROL_REG -> return aiControl
-            AI_STATUS_REG -> return 0 // No queued audio and no modeled AI interrupt.
-            AI_DACRATE_REG -> return aiDacRate
-            AI_BITRATE_REG -> return aiBitRate
-            VI_CURRENT_REG -> return viCurrentLine
-            in VI_REG_BASE until VI_REG_BASE + VI_REG_SIZE -> return viRegisters[(address - VI_REG_BASE) / 4]
+            SP_MEM_ADDR_REG -> return recordMmioRead(address, spMemAddress)
+            SP_DRAM_ADDR_REG -> return recordMmioRead(address, spDramAddress)
+            SP_PC_REG -> return recordMmioRead(address, spPc)
+            SP_STATUS_REG -> return recordMmioRead(address, spStatus)
+            SP_DMA_FULL_REG -> return recordMmioRead(address, 0)
+            SP_DMA_BUSY_REG -> return recordMmioRead(address, 0)
+            SP_SEMAPHORE_REG -> return recordMmioRead(address, spSemaphore)
+            PI_DRAM_ADDR_REG -> return recordMmioRead(address, piDramAddress)
+            PI_CART_ADDR_REG -> return recordMmioRead(address, piCartAddress)
+            PI_RD_LEN_REG, PI_WR_LEN_REG -> return recordMmioRead(address, 0)
+            PI_STATUS_REG -> return recordMmioRead(address, piStatus)
+            MI_INIT_MODE_REG -> return recordMmioRead(address, miInitMode)
+            MI_VERSION_REG -> return recordMmioRead(address, MI_VERSION_VALUE)
+            MI_INTR_REG -> return recordMmioRead(address, 0 // No device currently raises MI interrupt lines.)
+            MI_INTR_MASK_REG -> return recordMmioRead(address, miInterruptMask)
+            in RI_REG_BASE until RI_REG_BASE + RI_REG_SIZE -> return recordMmioRead(address, riRegisters[(address - RI_REG_BASE) / 4])
+            SI_DRAM_ADDR_REG -> return recordMmioRead(address, siDramAddress)
+            SI_PIF_ADDR_RD64B_REG -> return recordMmioRead(address, siPifReadAddress)
+            SI_PIF_ADDR_WR64B_REG -> return recordMmioRead(address, siPifWriteAddress)
+            SI_STATUS_REG -> return recordMmioRead(address, siStatus)
+            AI_DRAM_ADDR_REG -> return recordMmioRead(address, aiDramAddress)
+            AI_LEN_REG -> return recordMmioRead(address, 0 // Audio queue is treated as immediately drained.)
+            AI_CONTROL_REG -> return recordMmioRead(address, aiControl)
+            AI_STATUS_REG -> return recordMmioRead(address, 0 // No queued audio and no modeled AI interrupt.)
+            AI_DACRATE_REG -> return recordMmioRead(address, aiDacRate)
+            AI_BITRATE_REG -> return recordMmioRead(address, aiBitRate)
+            VI_CURRENT_REG -> return recordMmioRead(address, viCurrentLine)
+            in VI_REG_BASE until VI_REG_BASE + VI_REG_SIZE -> return recordMmioRead(address, viRegisters[(address - VI_REG_BASE) / 4])
         }
         if (address < ram.size) {
             val value = ram.read32(address)
@@ -279,6 +308,7 @@ class N64Bus(
 
     override fun write32(address: Int, value: Int) {
         requireAligned(address, 4)
+        recordMmio("W", address, value)
         when (address) {
             SP_MEM_ADDR_REG -> { spMemAddress = value and SP_MEM_ADDR_MASK; return }
             SP_DRAM_ADDR_REG -> { spDramAddress = value and 0x00FFFFFF; return }
