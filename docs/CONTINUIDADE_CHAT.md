@@ -753,3 +753,23 @@ Projetar e implementar primeiro o controlador de execução independente do Andr
 - Removida a comparação com essa referência local; o botão HLE fica desabilitado durante a execução, portanto há apenas uma execução ativa pelo fluxo normal da tela. O callback limpa `hleWorker`.
 - Commit de correção: `131310f163c65cd1e4f0090e531436481c8e23e3`.
 - O CI da correção está em andamento; a integração só será considerada compilada após resultado verde.
+
+
+## 34. Migração do loop HLE para N64CpuExecutionSession — 2026-10-31
+
+### Alteração de código
+- O loop manual `while (steps < maxSteps)` em `MainActivity.runHleBootDiagnostic()` foi substituído por `N64CpuExecutionSession` com limite de 2.000.000 instruções e lotes de 512.
+- `beforeInstruction` agora captura PC, estado dos registradores para o laço de cópia e atualiza `bus.setDiagnosticCpuPc()` imediatamente antes de cada instrução.
+- `afterInstruction` registra opcode/PC seguinte, ring buffer de 256 instruções, contagem dos PCs, trace do laço de cópia, amostras, pós-saída, primeiras 48 instruções e checkpoints de 50.000; também interrompe em exceção CPU ou quando `hleStopRequested` fica ativo.
+- A contagem final passa a usar `executionSnapshot.executedInstructions`, evitando depender somente do contador local.
+- A captura VI única e o relatório de dispositivos/MMIO permanecem após a execução da sessão.
+
+### Arquitetura e ressalvas
+- A Activity ainda usa uma sessão genérica externa de uma tarefa para manter o diagnóstico completo no worker existente; dentro dessa tarefa, a execução das instruções R4300 agora é feita por `N64CpuExecutionSession`.
+- O cancelamento de fechamento é cooperativo: `onDestroy()` ativa `hleStopRequested`, verificado no observador pós-instrução. A solicitação de parada do worker externo também é mantida.
+- A arquitetura pode ser simplificada futuramente para o próprio worker receber diretamente um controlador composto que execute preparação HLE, sessão CPU e relatório, sem sessão externa de tarefa.
+- Nenhuma implementação RSP/RDP, VBlank, scanout contínuo, temporização de hardware ou boot real de GoldenEye foi adicionada.
+
+### Commit e validação
+- Commit: `1c288cfbdadd9a9381249c0a77f9b3395828673f`.
+- GitHub Actions #687 (run ID `41231769395`) iniciou; resultado deve ser conferido antes de considerar a etapa validada.
