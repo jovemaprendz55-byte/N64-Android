@@ -25,6 +25,24 @@ class R4300CpuTest {
         assertEquals("READ", cpu.diagnosticAccessType)
     }
 
+    @Test fun indirectJumpDiagnosticSurvivesSubsequentInstructions() {
+        val memory = N64Memory(0x100)
+        val jrT0 = (8 shl 21) or 0x08 // jr $t0
+        memory.write32(0, jrT0)
+        memory.write32(4, 0) // delay-slot NOP
+        memory.write32(0x20, 0) // target NOP
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[8] = 0x20L
+        cpu.setProgramCounter(0)
+
+        cpu.step() // JR records the transfer.
+        cpu.step() // Delay slot.
+        cpu.step() // A later instruction must not erase the JR evidence.
+
+        assertEquals(0L, cpu.diagnosticLastIndirectJumpAddress)
+        assertEquals(jrT0, cpu.diagnosticLastIndirectJumpInstruction)
+        assertEquals(0x20L, cpu.diagnosticLastIndirectTarget)
+    }
     @Test fun jalKeepsTheUpperFourBitsOfPcPlusFourAndExecutesDelaySlot() {
         val memory = N64Memory(0x6000)
         // The GoldenEye trace executes this JAL at virtual address 0x70005D58.
