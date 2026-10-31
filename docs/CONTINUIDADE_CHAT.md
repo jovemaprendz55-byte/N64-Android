@@ -722,3 +722,27 @@ Projetar e implementar primeiro o controlador de execução independente do Andr
 - A migração deve preservar o diagnóstico existente: PC/opcode/próximo PC, janela das últimas 256 instruções, contagem de PCs, observação do laço de cópia, checkpoints, detecção de exceção, snapshots MMIO/periféricos, captura VI única e publicação da UI na main thread.
 - A sessão deve ser a única proprietária de CPU/barramento durante execução. O callback do worker ocorre na thread worker e precisa usar `runOnUiThread`; o cancelamento deve ser solicitado em `onDestroy()`.
 - Não converter em loop contínuo de jogo: continuam ausentes RSP/RDP e scanout/VBlank temporizado.
+
+
+## 33. Primeira integração do worker no diagnóstico HLE — 2026-10-31
+
+### Alteração
+- `MainActivity` passou a manter uma referência ao `N64ExecutionWorker` do diagnóstico HLE.
+- O trabalho HLE é despachado pelo worker dedicado, e falhas de sessão são encaminhadas para a UI por `runOnUiThread`.
+- `onDestroy()` agora solicita cancelamento tanto pela flag de diagnóstico existente quanto por `hleWorker.requestStop()`.
+- A referência do worker é limpa no callback de conclusão somente se ainda corresponder à execução atual.
+- A captura VI, relatório, logs e exibição permanecem no fluxo atual; a tela não foi redesenhada.
+
+### Limitação importante desta etapa
+- Esta é uma integração intermediária de propriedade da thread/lifecycle: o controlador genérico envolve o trabalho HLE existente como uma tarefa limitada de uma unidade.
+- **O loop de CPU de até 2.000.000 instruções ainda permanece dentro da tarefa e ainda verifica a flag `hleStopRequested`; ele ainda não foi migrado para `N64CpuExecutionSession` com callbacks antes/depois de cada instrução.**
+- Portanto, não declarar concluída a migração do loop de CPU. O próximo passo é transferir a lógica por instrução para os observadores da sessão R4300, preservando os contadores e rastros.
+- O worker callback continua sendo thread de background; qualquer acesso a Views precisa permanecer dentro de `runOnUiThread`.
+- Não há game loop, temporização, RSP/RDP ou scanout de vídeo contínuo.
+
+### Commits
+- `f1ca0307aed4efb9a133bc1b517221142a8b29a3` — primeira integração do worker no diagnóstico.
+- `7766d2c896931c0c4cc521c20dd07a65552cc310` — correção de inicialização da referência capturada no callback.
+
+### Validação
+- CI iniciado após as alterações; registrar resultado do workflow antes de considerar esta etapa validada.
