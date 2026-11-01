@@ -52,6 +52,33 @@ class N64RomVideoSessionTest {
     }
 
     @Test
+    fun reportsCpuProgressEvenWhenNoViFrameExists() {
+        val memory = N64Memory(64)
+        memory.write32(0, 0x08000000)
+        memory.write32(4, 0)
+        val bus = N64Bus(ram = memory)
+        val cpu = R4300Cpu(bus)
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
+        val progress = mutableListOf<Long>()
+        val session = N64RomVideoSession(
+            bus = bus,
+            cpu = cpu,
+            instructionLimit = 10,
+            batchSize = 1,
+            progressPollInterval = 2,
+            framePollInterval = 100,
+            onProgress = progress::add,
+            onFrame = {}
+        )
+
+        val result = session.execute()
+
+        assertEquals(N64ExecutionSession.State.COMPLETED, result.state)
+        assertEquals(listOf(2L, 4L, 6L, 8L, 10L), progress)
+        assertEquals(0L, session.publishedFrameCount())
+    }
+
+    @Test
     fun cooperativeStopStillWorksWhilePollingFrames() {
         val memory = N64Memory(64)
         memory.write32(0, 0x08000000)
