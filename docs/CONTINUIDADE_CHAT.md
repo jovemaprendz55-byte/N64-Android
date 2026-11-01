@@ -2449,3 +2449,18 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 
 ### Próximo passo prioritário
 - Executar GoldenEye com o novo worker e coletar PC/última instrução/erro RSP. Usar o primeiro opcode não suportado como alvo para ampliar o RSP, depois implementar os comandos RDP efetivamente emitidos pelo microcode.
+
+## 56. Menu inicial unificado em um único controle — 2026-11-01
+
+### Interface
+- Removidos do menu inicial os botões separados de CPU, vídeo sintético, pipeline RDP, diagnóstico IPL3, diagnóstico HLE e execução experimental.
+- Removido também o painel expansível de ferramentas de desenvolvimento do menu.
+- A tela inicial agora tem título, estado do jogo e um único botão principal.
+- Sem ROM carregada: o botão mostra "ESCOLHER JOGO" e abre o seletor de arquivos.
+- Com ROM válida: o mesmo botão muda para "INICIAR JOGO" e inicia a sessão experimental CPU/RSP/VI.
+- Pressionar e segurar o botão principal abre novamente o seletor para trocar a ROM, sem adicionar outro botão ao menu.
+- Os controles PARAR e VOLTAR continuam apenas na tela de execução, não no menu inicial.
+
+### Observações
+- As rotinas internas de diagnóstico foram mantidas no código para desenvolvimento, mas não aparecem mais no menu principal.
+- Esta mudança reorganiza a navegação; não aumenta por si só a compatibilidade de jogos nem significa que GoldenEye já renderiza.
