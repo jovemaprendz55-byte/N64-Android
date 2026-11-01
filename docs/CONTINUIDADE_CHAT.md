@@ -3736,3 +3736,53 @@ Não há correção funcional aplicada. Nenhuma entrada TLB foi forçada, nenhum
 
 ### 29.8. Mensagem de continuidade
 > A comparação dos dumps do Log confirmou 8.192/8.192 bytes idênticos entre ROM `0x34B30..0x36B2F` e RDRAM `0x340000..0x341FFF`. O código em `0x340BD0` parece MIPS válido, mas a equivalência VA `0x7F000BD0` → PA `0x340BD0` ainda não foi provada. A falha permanece: refill lê PTE `1`, EntryLo0/1 ficam inválidos e a segunda exceção é TLB INVALID/FETCH. Investigue sem forçar o TLB: desmontar o código do overlay, a função chamadora `0x70005D58`, a rotina PTE `0x700017E0` e os handlers `0x80000000/0x80000180`. O PI DMA desta transferência específica está validado; não gastar mais ciclos tentando corrigir esse DMA sem evidência nova.
+
+
+## 30. Validação dos bits EntryLo e sequência real de refill — 2026-11-01 às 18:03 (UTC−03:00)
+
+### 30.1. O que o Log confirma
+A sequência de exceções gravada no Log é:
+1. `TLB EXCEPTION kind=MISS access=FETCH faultVA=0x7F000BD0`, vetor `0xFFFFFFFF80000000`.
+2. O handler de refill lê `0x7FC65BF0` em `0x8005E4A4` e depois lê `0x00000001` em `0x8005DBF0`.
+3. O handler executa `TLBWR` no PC `0xFFFFFFFF80000034`, índice 15, `EntryHi=0x7F000000`, `EntryLo0=0x1`, `EntryLo1=0x41`.
+4. Ao retornar, a mesma busca em `0x7F000BD0` falha como `TLB INVALID/FETCH`, vetor geral `0xFFFFFFFF80000180`.
+
+### 30.2. Revisão da codificação EntryLo
+O código atual em `R4300Cpu.kt`:
+- extrai PFN por `(raw ushr 6) and 0xFFFFF`;
+- extrai V pelo bit `0x2`;
+- extrai D pelo bit `0x4`;
+- extrai G pelo bit `0x1`;
+- reconstrói EntryLo com os mesmos campos antes de gravar na TLB.
+
+Para os valores observados:
+- `EntryLo0=0x1`: PFN 0, V=0, D=0, G=1.
+- `EntryLo1=0x41`: PFN 1, V=0, D=0, G=1.
+- Os dois valores são inválidos por V=0. O modelo `R4300Tlb.translate` gera INVALID quando a página selecionada não tem V.
+- A entrada de 4 KiB criada pelo refill usa `EntryHi=0x7F000000`, `PageMask=0`; `0x7F000BD0` está na página par (EntryLo0).
+
+Conclusão: os campos V/PFN registrados no Log são coerentes com a codificação EntryLo e com o modelo TLB atual. Não há evidência, nesta execução, de que a rotina `decodeEntryLo` tenha transformado uma PTE válida em inválida. Isso não prova que toda a implementação TLB/COP0 esteja completa ou perfeita; apenas afasta a hipótese específica de erro de bit V nesse caminho.
+
+### 30.3. Rotina que prepara a tabela
+A janela de instruções `0x700017E0..0x70001804` mostra:
+- `LUI/ADDIU` formando os endereços de início/fim da região `0x8005DBF0..0x8005E3F0`;
+- valor `1` preparado no registrador usado para o primeiro campo;
+- incremento de `0x10` por iteração;
+- stores em campos separados por 4 bytes dentro de cada bloco de 16 bytes.
+
+A PTE de `0x7F000000` lida pelo refill está no início `0x8005DBF0`, e o valor final observado é consistente com a inicialização registrada. A rotina não grava, nesse endereço monitorado, um PFN válido para a página candidata antes do salto.
+
+### 30.4. O que permanece sem resposta
+- Por que o programa chama `0x7F000BD0` sem que a página virtual esteja marcada como válida.
+- Se o bloco DMA em `0x340000` deveria ser instalado na tabela de páginas por um carregador de overlay que não foi executado, ou se o endereço alvo/estado do jogo é incorreto devido a outra falha anterior.
+- Se o HLE iniciou o jogo com todas as estruturas que o código espera do bootcode original.
+- Se o handler geral em `0x80000180` termina no loop por uma falha lógica do jogo ou por algum detalhe ainda ausente no emulador.
+
+### 30.5. Próximo ponto de investigação
+O próximo foco não é mudar os bits de EntryLo nem a função de tradução. É desmontar e rastrear:
+1. as instruções imediatamente antes do JAL em `0x70005D58`, com todos os registradores de argumentos;
+2. a origem e finalidade do bloco ROM `0x34B30` carregado em `0x340000`;
+3. o código/estrutura que deveria associar a janela virtual `0x7F000000` ao bloco físico, caso essa seja realmente a intenção;
+4. a decisão do handler geral após a falha INVALID.
+
+Nenhuma alteração funcional de código foi feita nesta etapa. O resultado é diagnóstico; a correção continua em aberto.
