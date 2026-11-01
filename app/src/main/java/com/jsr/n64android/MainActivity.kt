@@ -162,7 +162,22 @@ class MainActivity : Activity() {
                         appendLine("CPU ainda não disponível.")
                     } else {
                         appendLine("PC=0x${diagnosticCpu.pc.toULong().toString(16).uppercase()}")
+                        appendLine("HI=0x${diagnosticCpu.hi.toULong().toString(16).uppercase().padStart(16, '0')} LO=0x${diagnosticCpu.lo.toULong().toString(16).uppercase().padStart(16, '0')}")
                         appendLine("TLB habilitada=${diagnosticCpu.tlbEnabled}")
+                        appendLine("=== TODOS OS GPR (R4300) ===")
+                        diagnosticCpu.gpr.forEachIndexed { index, value ->
+                            appendLine("GPR[$index]=0x${value.toULong().toString(16).uppercase().padStart(16, '0')}")
+                        }
+                        appendLine("=== TODOS OS COP0 ===")
+                        diagnosticCpu.cop0.forEachIndexed { index, value ->
+                            appendLine("COP0[$index]=0x${value.toULong().toString(16).uppercase().padStart(16, '0')}")
+                        }
+                        appendLine("=== TODOS OS FPR / FCR ===")
+                        diagnosticCpu.fpr.forEachIndexed { index, value ->
+                            appendLine("FPR[$index]=0x${value.toULong().toString(16).uppercase().padStart(16, '0')} FCR[$index]=0x${diagnosticCpu.fcr[index].toULong().toString(16).uppercase().padStart(16, '0')}")
+                        }
+                        appendLine("=== TODAS AS ENTRADAS TLB ATUAIS ===")
+                        appendLine(diagnosticCpu.diagnosticFullTlbSnapshot())
                         appendLine("Exceção=${diagnosticCpu.lastExceptionCode ?: "nenhuma"} EPC-instrução=0x${diagnosticCpu.lastExceptionInstructionAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A"}")
                         appendLine("Falha TLB=${diagnosticCpu.lastTlbFaultKind ?: "nenhuma"} acesso=${diagnosticCpu.lastTlbFaultAccessType ?: "N/A"} VA=0x${diagnosticCpu.lastTlbFaultVirtualAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A"}")
                         appendLine("BadVAddr=0x${diagnosticCpu.cop0[8].toUInt().toString(16).uppercase().padStart(8, '0')} Context=0x${diagnosticCpu.cop0[4].toUInt().toString(16).uppercase().padStart(8, '0')} EntryHi=0x${diagnosticCpu.cop0[10].toUInt().toString(16).uppercase().padStart(8, '0')}")
@@ -222,8 +237,26 @@ class MainActivity : Activity() {
                     appendLine("Total: ${bus.diagnosticBootDestinationWriteCount}")
                     appendLine(bus.diagnosticBootDestinationWriteHistory.toList().joinToString("\n").ifBlank { "Vazio." })
                     appendLine()
+                    appendLine("=== IDENTIFICAÇÃO E CABEÇALHO DA ROM ===")
+                    appendLine(bus.diagnosticCartridgeSummary())
+                    appendLine()
                     appendLine("=== REGISTRADORES DOS DISPOSITIVOS ===")
                     appendLine(bus.diagnosticDeviceSnapshot().joinToString("\n"))
+                    appendLine("=== SNAPSHOT RSP COMPLETO (GPR, HI/LO, VEC, ACC E FLAGS) ===")
+                    appendLine(activeSession?.diagnosticRspSnapshot() ?: "Sessão RSP indisponível.")
+                    appendLine("=== DUMP DE MEMÓRIA RDRAM — REGIÕES DE INVESTIGAÇÃO ===")
+                    appendLine(bus.diagnosticMemoryDump(listOf(
+                        0x0000..0x003F,
+                        0x02A0..0x02E0,
+                        0x0400..0x0440,
+                        0x1000..0x103F,
+                        0x340000..0x342000,
+                        0x5DBF0..0x5E4A4,
+                        0x636D0..0x63710,
+                        0x201460..0x2014C0
+                    )))
+                    appendLine("=== SP DMEM E IMEM COMPLETAS ===")
+                    appendLine(bus.diagnosticSpMemoryDump())
                     appendLine()
                     appendLine("=== DPC / RDP ===")
                     appendLine(bus.diagnosticDpcSnapshot())
