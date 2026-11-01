@@ -148,6 +148,48 @@ class N64RspCoreTest {
     }
 
     @Test
+    fun bltzAndBgezUseSignedComparisonAndExecuteDelaySlots() {
+        val (bus, rsp) = setup(
+            addiu(8, 0, -1),
+            (0x01 shl 26) or (8 shl 21) or (0x00 shl 16) or 2, // BLTZ r8,+2
+            addiu(9, 0, 7), // delay slot
+            addiu(10, 0, 99), // skipped
+            addiu(11, 0, 11), // target
+            addiu(8, 0, 0),
+            (0x01 shl 26) or (8 shl 21) or (0x01 shl 16) or 2, // BGEZ r8,+2
+            addiu(12, 0, 12), // delay slot
+            addiu(13, 0, 99), // skipped
+            addiu(14, 0, 14) // target
+        )
+
+        assertEquals(10, rsp.run(10))
+        assertEquals(7, rsp.gpr[9])
+        assertEquals(0, rsp.gpr[10])
+        assertEquals(11, rsp.gpr[11])
+        assertEquals(12, rsp.gpr[12])
+        assertEquals(0, rsp.gpr[13])
+        assertEquals(14, rsp.gpr[14])
+        assertEquals(40, rsp.pc)
+    }
+
+    @Test
+    fun bltzAndBgezDoNotBranchWhenSignedConditionIsFalse() {
+        val (_, rsp) = setup(
+            addiu(8, 0, 1),
+            (0x01 shl 26) or (8 shl 21) or (0x00 shl 16) or 1, // BLTZ not taken
+            addiu(9, 0, 9),
+            addiu(8, 0, -1),
+            (0x01 shl 26) or (8 shl 21) or (0x01 shl 16) or 1, // BGEZ not taken
+            addiu(10, 0, 10)
+        )
+
+        assertEquals(6, rsp.run(6))
+        assertEquals(9, rsp.gpr[9])
+        assertEquals(10, rsp.gpr[10])
+        assertEquals(24, rsp.pc)
+    }
+
+    @Test
     fun executionIsBoundedByInstructionBudget() {
         val (_, rsp) = setup(addiu(8, 0, 1), addiu(9, 0, 2), addiu(10, 0, 3))
 
