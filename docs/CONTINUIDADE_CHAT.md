@@ -2450,6 +2450,22 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 ### Próximo passo prioritário
 - Executar GoldenEye com o novo worker e coletar PC/última instrução/erro RSP. Usar o primeiro opcode não suportado como alvo para ampliar o RSP, depois implementar os comandos RDP efetivamente emitidos pelo microcode.
 
+## 57. Diagnóstico contínuo durante tela preta — 2026-11-01
+
+### Implementação
+- A sessão de ROM agora chama um observador de progresso a cada 50.000 instruções CPU, mesmo quando nenhum frame VI é produzido.
+- A tela de execução atualiza CPU, frames publicados, instruções RSP, PC e snapshots dos registradores SP/VI.
+- A atualização não depende de callback de frame; portanto a ausência de imagem deixa de congelar o diagnóstico.
+- Corrigidas as quebras de linha da tela de execução para usar novas linhas reais, em vez de exibir os caracteres literais "\\n".
+
+### Objetivo do teste
+- Instalar o APK e observar se CPU avança, onde está o PC, se SP está em HALT/BROKE e quais valores VI foram programados.
+- Esses dados devem apontar o próximo bloqueio (loop/exception CPU, instrução RSP não suportada, ou VI sem configuração/framebuffer válido).
+
+### Limites
+- O snapshot de registradores é diagnóstico, não prova de renderização.
+- Nenhuma ROM comercial ou frame real de GoldenEye foi validado por esta alteração.
+
 ## 56. Menu inicial unificado em um único controle — 2026-11-01
 
 ### Interface
