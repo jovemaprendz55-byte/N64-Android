@@ -1380,3 +1380,47 @@ Integração:
 - Nenhuma ROM foi confirmada como renderizada no aparelho nesta etapa.
 - Próxima etapa, depois de CI verde: revisar se a API do pacote deve ser endurecida para imutabilidade efetiva e adicionar testes de todos os comprimentos multiword em listas mistas. Depois escolher um comando multiword de baixa complexidade para implementar com especificação e fixtures independentes; não começar rasterização de triângulos sem o pipeline gráfico planejado.
 - Branch obrigatória: `dev/n64-clean-start`. Manter `main` intocada.
+
+
+## 20. Correção final dos testes do parser RDP e CI aprovada (2026-11-01)
+
+### Resultado final confirmado
+- HEAD de código validado: `e6dba5d3c60ed4d79105f158ef0c90c7f8804ea5`.
+- Build #757, run `41291055717`: **success**.
+- Job `build`: concluído com sucesso.
+- Etapas `Build and test` e `Upload debug APK`: ambas concluídas com sucesso.
+- Artefato confirmado: `n64-android-debug-apk`, ID `13077387211`, tamanho 925.493 bytes, criado em 2026-11-01 e com expiração em 2026-11-15.
+- Link da compilação: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41291055717
+- Link do artefato: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41291055717/artifacts/13077387211
+- Link do commit: https://github.com/jovemaprendz55-byte/N64-Android/commit/e6dba5d3c60ed4d79105f158ef0c90c7f8804ea5
+
+### Correções que levaram ao resultado verde
+- #753 (run `41290780039`) falhou na compilação dos testes Kotlin por literais hexadecimais unsigned fora do intervalo de `Long`.
+- #754 (run `41290835725`) também falhou porque os testes ainda não compilavam.
+- #755 (run `41290859691`) falhou após uma primeira tentativa de corrigir os valores dos fixtures.
+- #756 (run `41290954083`) compilou o APK e executou 347 de 348 testes; falhou em `rejectsRangeOutsideRdram`, porque o END usado era exatamente o limite exclusivo válido da RDRAM.
+- Commit `e6dba5d3c60ed4d79105f158ef0c90c7f8804ea5` corrigiu o fixture para ultrapassar realmente o limite da RDRAM e renomeou o teste para `returnsDetachedSnapshotOfSourceWords`, descrevendo corretamente o comportamento: snapshot separado da memória de origem, sem prometer imutabilidade efetiva da lista.
+- A CI #757 confirmou que a correção final passou em Build and test e Upload debug APK.
+
+### Estado técnico que permanece
+- O parser agora recolhe pacotes RDP completos e preserva words de payload.
+- A integração DPC valida a lista toda antes de despachar comandos.
+- Comandos RDP de 8 bytes suportados continuam seguindo para o processador fill-cycle.
+- Comandos multiword são identificados e preservados, mas ainda rejeitados antes da execução. Triângulos e retângulos texturizados não são rasterizados.
+- O snapshot é destacado da memória original, mas a lista não deve ser descrita como imutável.
+- DPC continua síncrono e experimental; não há FIFO real, START/END bufferizados, DMA XBUS/DMEM, timing ou IRQ.
+- O teste sintético DPC → RDP → RDRAM → VI continua sendo evidência de integração interna sintética, não de execução de ROM. Nenhum jogo foi confirmado renderizado no aparelho nesta etapa.
+
+### Próxima sessão — ordem de trabalho
+1. Confirmar que o HEAD da branch `dev/n64-clean-start` continua em `e6dba5d3c60ed4d79105f158ef0c90c7f8804ea5`; não alterar `main`.
+2. Se o usuário ainda não instalou o APK, pode instalar o artefato #757 e relatar o comportamento da aplicação; a tela de teste sintético não comprova renderização de ROM.
+3. Revisar a API do pacote e decidir se vale proteger a lista de words com uma coleção efetivamente não modificável, incluindo testes adequados.
+4. Adicionar testes de listas mistas cobrindo os comprimentos multiword e o comando válido seguinte, garantindo que o parser mantenha os limites dos pacotes.
+5. Só depois selecionar um comando multiword de baixa complexidade para implementação, com especificação técnica e fixtures independentes. Não iniciar triângulos sem planejar interpolantes, clipping, texturas/TMEM, Z-buffer e rasterização.
+6. Atualizar esta documentação após cada etapa significativa, incluindo commit, CI, falhas intermediárias, correções e observações no aparelho.
+
+### Regra de encerramento diário
+- Trabalhar em sessões de aproximadamente 1–2 horas, sem sacrificar a validação.
+- Encerrar o dia somente em ponto seguro: alteração registrada, testes/CI verificados quando houver commit e documentação atualizada com o próximo passo.
+- Avisar explicitamente ao usuário na conversa: “Por hoje está bom. Amanhã continuamos daqui.”
+- Não prometer mensagem espontânea fora de uma conversa ativa; o aviso é feito enquanto o usuário estiver conversando.
