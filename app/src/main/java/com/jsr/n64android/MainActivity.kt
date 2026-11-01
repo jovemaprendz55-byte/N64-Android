@@ -31,6 +31,7 @@ class MainActivity : Activity() {
     @Volatile private var hleWorker: N64ExecutionWorker? = null
     @Volatile private var romVideoStopRequested = false
     @Volatile private var romVideoSession: N64RomVideoSession? = null
+    @Volatile private var lastRomVideoSession: N64RomVideoSession? = null
     @Volatile private var romVideoThread: Thread? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -130,6 +131,7 @@ class MainActivity : Activity() {
         }
 
         romVideoStopRequested = false
+        lastRomVideoSession = null
         mainActionButton?.isEnabled = false
         val frameView = N64VideoPresenterView(this).apply {
             contentDescription = "Vídeo experimental da ROM Nintendo 64"
@@ -143,7 +145,7 @@ class MainActivity : Activity() {
             text = "COPIAR LOGS"
             isAllCaps = false
             setOnClickListener {
-                val activeSession = romVideoSession
+                val activeSession = romVideoSession ?: lastRomVideoSession
                 val log = buildString {
                     appendLine("=== N64 ANDROID — LOGS DA EXECUÇÃO ===")
                     appendLine("ROM em memória: ${cartridgeRomBytes?.size ?: 0} bytes")
@@ -270,6 +272,7 @@ class MainActivity : Activity() {
                     }
                 )
                 romVideoSession = session
+                lastRomVideoSession = session
                 if (romVideoStopRequested) session.requestStop()
                 runOnUiThread {
                     details.text =
