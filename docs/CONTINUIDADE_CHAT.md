@@ -2884,3 +2884,26 @@ Foi ampliado o watchpoint de RDRAM `0x5DBF0–0x5DC33` para registrar também o 
 Executar o APK desta branch com a mesma ROM e examinar a nova seção `WATCHPOINT DA TABELA TLB`. Interpretar a instrução MIPS e os registradores antes de decidir qualquer correção de TLB. Não forçar o bit Valid nem fabricar mapeamentos.
 
 **Validação:** pendente do GitHub Actions após os commits desta etapa.
+
+## 10. CI otimizada e releitura do log main — 2026-11-01
+
+### Validação da branch de trabalho
+- Commit final desta sequência: `d1badf3bb41c4b84fc3e60fdb16141ac12a7f323` — evita criar um `Set` temporário em cada instrução no caminho de diagnóstico.
+- GitHub Actions run `41333729997`: job `build` concluído com `success`; etapas Build and test e Upload debug APK concluídas com sucesso.
+- Artefato `n64-android-debug-apk`, ID `13094630298`, disponível até 2026-11-15T17:54:15Z.
+- URL da execução: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41333729997
+- Branch permanece `dev/n64-clean-start`; `main` não foi alterada.
+
+### Releitura do arquivo Log na branch main
+- O Log consultado ainda não contém os novos campos `INST/OP/RS/RT/BASE/RTVAL/EA`; portanto, ele não valida a instrumentação adicionada em `d1badf3`. É necessário gerar um novo log usando o APK da branch de trabalho.
+- O watchpoint do Log antigo registra 172 bytes na faixa `0x5DBF0–0x5DC33`. Uma parte inicial aparece com `PC=0` e dados não nulos, seguida por uma inicialização em que o boot escreve zeros a partir de PCs `0xFFFFFFFF80000414` e `0xFFFFFFFF80000418`.
+- Mais tarde, PCs `0x700017FC` escrevem o byte final `0x01` em `0x5DBF0`, `0x5DC00`, `0x5DC10`, `0x5DC20` e `0x5DC30`; PCs `0x70001804` escrevem zeros nas palavras seguintes. Isso é compatível com os PTEs inválidos observados no refill, mas o Log antigo não contém palavra de instrução nem registradores para decodificar a rotina.
+- Não atribuir as escritas com `PC=0` à CPU executando uma instrução específica: o contexto está ausente nesse trecho do Log antigo.
+- O estado final do Log ainda mostra `SP_STATUS=0x1` (HALT), `RSP instruções=0`, `Frames VI publicados=0` e DPC sem comandos. Nenhuma imagem/quadro real foi comprovada.
+
+### Próxima validação necessária
+1. Instalar e executar o APK gerado pela run `41333729997` com a mesma ROM e reproduzir o cenário.
+2. Copiar o novo log e verificar se as escritas em `0x5DBF0–0x5DC33` agora exibem contexto MIPS completo.
+3. Decodificar os stores de `0x700017FC` e `0x70001804` a partir de `INST`, `BASE`, `RTVAL` e `EA`; só então decidir se a causa é inicialização de page table, endereço-base incorreto ou outro fluxo.
+4. Se o novo log ainda mostrar `CTX=unavailable`, investigar o caminho exato de escrita (SC/SCD, DMA ou inicialização fora do step CPU) antes de ampliar o watchpoint.
+5. Não forçar o bit Valid, não fabricar mapeamentos TLB, não liberar HALT e não criar OSTask artificialmente.
