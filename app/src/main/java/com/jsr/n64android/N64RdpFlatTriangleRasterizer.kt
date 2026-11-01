@@ -46,15 +46,21 @@ object N64RdpFlatTriangleRasterizer {
     }
 }
 
-/** End-to-end synthetic proof: triangle spans -> RDRAM -> VI capture. Not a ROM. */
+/** End-to-end synthetic DPC display list -> RDP -> RDRAM -> VI capture. Not a ROM. */
 object N64TrianglePipelineDemo {
     const val WIDTH = 320
     const val HEIGHT = 240
     const val ORIGIN = 0x1000
-    const val TRIANGLE_COLOR = 0xF801
+    const val DISPLAY_LIST_ADDRESS = 0x30000
+    const val TRIANGLE_COLOR = 0xFF0000FF.toInt()
     const val BACKGROUND_COLOR = 0x0001
 
-    data class FrameResult(val frame: N64VideoFrame, val spansWritten: Int, val pixelsWritten: Int)
+    data class FrameResult(
+        val frame: N64VideoFrame,
+        val commandsProcessed: Int,
+        val trianglesRasterized: Int,
+        val pixelsWritten: Int
+    )
 
     fun createFrame(): FrameResult {
         val memory = N64Memory()
@@ -65,28 +71,40 @@ object N64TrianglePipelineDemo {
             }
         }
 
-        val setup = N64RdpTriangleSetup(
-            opcode = 0x08,
-            rightMajor = false,
-            tile = 0,
-            yLow = 190 * 4,
-            yMiddle = 100 * 4,
-            yHigh = 40 * 4,
-            xLow = 230 shl 16,
-            dxLowDy = 0,
-            xHigh = 80 shl 16,
-            dxHighDy = 0,
-            xMiddle = 160 shl 16,
-            dxMiddleDy = 0
+        val commands = listOf(
+            command(
+                N64RdpFillProcessor.CMD_SET_COLOR_IMAGE,
+                high = (N64RdpFillProcessor.IMAGE_SIZE_16.toLong() shl 19) or (WIDTH - 1).toLong(),
+                low = ORIGIN.toLong()
+            ),
+            command(
+                N64RdpFillProcessor.CMD_SET_SCISSOR,
+                low = (WIDTH.toLong() * 4L shl 12) or (HEIGHT.toLong() * 4L)
+            ),
+            command(N64RdpFillProcessor.CMD_SET_PRIM_COLOR, low = TRIANGLE_COLOR.toLong() and 0xFFFFFFFFL)
         )
-        val result = N64RdpFlatTriangleRasterizer.render(
-            setup = setup,
+        writeCommands(memory, DISPLAY_LIST_ADDRESS, commands)
+
+        val triangleHeader = (0x08L shl 58) or
+            ((HEIGHT * 190L / HEIGHT * 4L) shl 32) or
+            ((HEIGHT * 100L / HEIGHT * 4L) shl 16) or
+            (HEIGHT * 40L / HEIGHT * 4L)
+        val triangleWords = listOf(
+            triangleHeader,
+            packEdgeWord(230 shl 16, 0),
+            packEdgeWord(80 shl 16, 0),
+            packEdgeWord(160 shl 16, 0)
+        )
+        writeWords(memory, DISPLAY_LIST_ADDRESS + commands.size * 8, triangleWords)
+
+        val dpc = N64DpcCommandProcessor(
             memory = memory,
             rdramSize = memory.size,
-            colorImageAddress = ORIGIN,
-            width = WIDTH,
-            height = HEIGHT,
-            colorRgba5551 = TRIANGLE_COLOR
+            rdp = N64RdpFillProcessor(memory, memory.size)
+        )
+        val dpcResult = dpc.process(
+            DISPLAY_LIST_ADDRESS,
+            DISPLAY_LIST_ADDRESS + commands.size * 8 + triangleWords.size * 8
         )
 
         bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_STATUS_OFFSET,
@@ -97,8 +115,31 @@ object N64TrianglePipelineDemo {
         bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_Y_SCALE_OFFSET, 0x400)
 
         val frame = checkNotNull(bus.captureViFrameFromRegisters()) {
-            "VI did not capture the triangle framebuffer."
+            "VI did not capture the DPC triangle framebuffer."
         }
-        return FrameResult(frame, result.spansWritten, result.pixelsWritten)
+        return FrameResult(
+            frame = frame,
+            commandsProcessed = dpcResult.commandsProcessed,
+            trianglesRasterized = dpcResult.trianglesRasterized,
+            pixelsWritten = dpcResult.pixelsWritten
+        )
+    }
+
+    private fun command(opcode: Int, high: Long = 0L, low: Long = 0L): Long =
+        (opcode.toLong() shl 58) or (high shl 32) or (low and 0xFFFFFFFFL)
+
+    private fun packEdgeWord(x: Int, slope: Int): Long =
+        ((x.toLong() and 0xFFFFFFFFL) shl 32) or (slope.toLong() and 0xFFFFFFFFL)
+
+    private fun writeCommands(memory: N64Memory, start: Int, commands: List<Long>) {
+        writeWords(memory, start, commands)
+    }
+
+    private fun writeWords(memory: N64Memory, start: Int, words: List<Long>) {
+        words.forEachIndexed { index, word ->
+            val address = start + index * 8
+            memory.write32(address, (word ushr 32).toInt())
+            memory.write32(address + 4, word.toInt())
+        }
     }
 }
