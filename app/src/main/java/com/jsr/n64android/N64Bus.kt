@@ -21,6 +21,12 @@ class N64Bus(
     private var piStatus = 0
     // CPU-originated MMIO trace. The caller supplies the current virtual PC before each step.
     private var diagnosticCpuPc: Long = 0L
+    private var diagnosticCpuInstructionWord: Int? = null
+    private var diagnosticCpuRs: Int? = null
+    private var diagnosticCpuRt: Int? = null
+    private var diagnosticCpuRsValue: Long? = null
+    private var diagnosticCpuRtValue: Long? = null
+    private var diagnosticCpuEffectiveAddress: Long? = null
     val diagnosticMmioHistory = ArrayDeque<String>()
     /** Dedicated SP-only MMIO trace; it cannot be evicted by accesses to other devices. */
     val diagnosticSpMmioHistory = ArrayDeque<String>()
@@ -28,6 +34,19 @@ class N64Bus(
     val diagnosticSpWriteHistory = ArrayDeque<String>()
     val diagnosticMmioCounts = linkedMapOf<String, Long>()
     fun setDiagnosticCpuPc(pc: Long) { diagnosticCpuPc = pc }
+    /** Supplies the decoded CPU instruction context used by narrow memory watchpoints. */
+    fun setDiagnosticCpuInstructionContext(
+        pc: Long, instruction: Int, rs: Int, rt: Int,
+        rsValue: Long, rtValue: Long, effectiveAddress: Long?
+    ) {
+        diagnosticCpuPc = pc
+        diagnosticCpuInstructionWord = instruction
+        diagnosticCpuRs = rs
+        diagnosticCpuRt = rt
+        diagnosticCpuRsValue = rsValue
+        diagnosticCpuRtValue = rtValue
+        diagnosticCpuEffectiveAddress = effectiveAddress
+    }
     /** Reads SP status for the cooperative scheduler without recording a fake CPU MMIO access. */
     fun diagnosticSpStatus(): Int = spStatus
     private fun mmioDevice(address: Int): String? = when (address) {
@@ -126,10 +145,22 @@ class N64Bus(
         if (address !in 0x5DBF0 until 0x5DC34) return
         diagnosticPteWriteCount++
         if (diagnosticPteWriteHistory.size >= 256) diagnosticPteWriteHistory.removeFirst()
+        val instruction = diagnosticCpuInstructionWord
+        val context = if (instruction != null) {
+            " INST=0x${instruction.toUInt().toString(16).uppercase().padStart(8, '0')}" +
+                " OP=0x${(instruction ushr 26).toString(16).uppercase()}" +
+                " RS=${diagnosticCpuRs} RT=${diagnosticCpuRt}" +
+                " BASE=0x${diagnosticCpuRsValue?.toULong()?.toString(16)?.uppercase() ?: "?"}" +
+                " RTVAL=0x${diagnosticCpuRtValue?.toULong()?.toString(16)?.uppercase() ?: "?"}" +
+                (diagnosticCpuEffectiveAddress?.let { " EA=0x${it.toULong().toString(16).uppercase()}" } ?: "")
+        } else {
+            " CTX=unavailable"
+        }
         diagnosticPteWriteHistory.addLast(
-            "CPU W PTE PC=0x${diagnosticCpuPc.toULong().toString(16).uppercase()} " +
-                "PADDR=0x${address.toString(16).uppercase().padStart(8, '0')} " +
-                "VALUE=0x${(value and 0xFF).toString(16).uppercase().padStart(2, '0')}"
+            "CPU W PTE PC=0x${diagnosticCpuPc.toULong().toString(16).uppercase()}" +
+                context +
+                " PADDR=0x${address.toString(16).uppercase().padStart(8, '0')}" +
+                " VALUE=0x${(value and 0xFF).toString(16).uppercase().padStart(2, '0')}"
         )
     }
     private fun recordBootDestinationWrite(address: Int, value: Int) {
