@@ -3103,3 +3103,39 @@ Os endereços acima são apresentados em 32 bits para facilitar a leitura; o PC 
 - Não mudar a regra arquitetural de V, não fabricar PFN, não modificar o handler da ROM e não contornar a exceção.
 - SP continua em HALT, RSP em zero instruções, DPC em zero e VI em zero frames no Log analisado.
 - Branch de trabalho: `dev/n64-clean-start`; `main` foi usada somente como fonte do Log e não foi modificada nesta etapa.
+
+
+## 17. Captura PTE com prefixo e janela recente — 2026-11-01
+
+### Motivo
+A seção PTE anterior mantinha somente as 512 instruções mais recentes. O laço de inicialização era maior que esse limite, então o começo do laço e a preparação de seus registradores eram descartados. Isso impedia observar o valor inicial do limite `$2` e o primeiro endereço-base de `$3`.
+
+### Implementação
+- `R4300Cpu.kt`: o histórico PTE agora preserva as primeiras 64 instruções capturadas.
+- Depois do prefixo, insere um marcador explícito de que existem instruções intermediárias omitidas.
+- Mantém uma janela móvel das 512 instruções mais recentes.
+- Capacidade máxima: 577 linhas (64 iniciais + 1 marcador + 512 recentes).
+- Cada registro inclui agora `GPR2`, além de `GPR3`, `GPR4`, PC, instrução, opcode, registradores decodificados e COP0.
+- A captura continua restrita à janela PC `0x700017C0–0x70001840`; não registra instruções fora dela nem altera o estado da CPU.
+
+### Teste automatizado
+- `R4300CpuTest.pteSetupTracePreservesInitialPrefixAndRecentTailWithGpr2`.
+- O teste mapeia uma região virtual de teste pela TLB, executa 200 iterações de um laço sintético dentro da janela e verifica:
+  - limite de 577 registros;
+  - primeiro PC e valor inicial de `$2` preservados;
+  - marcador de omissão;
+  - PC final e valor final de `$2` presentes no sufixo.
+- O teste é sintético e valida somente a política do coletor; não prova a semântica do laço da ROM.
+
+### Commits e CI
+- `208586abfdd8ff594046a8f0d74e6d00cdb185f9` — `R4300Cpu.kt`: prefixo + sufixo recente e captura de GPR2.
+- `10cb126a70699af42e4e3500cfadf67b024eb24f` — `R4300CpuTest.kt`: teste de capacidade, prefixo, marcador e sufixo.
+- CI run `41336463306` (commit `208586a`) e run `41336525296` (commit `10cb126`) foram consultadas durante a execução e estavam `in_progress`; não declarar sucesso até a conclusão.
+- Nenhuma APK desta etapa está confirmada como gerada ou instalada.
+- Branch `dev/n64-clean-start`; `main` não foi modificada.
+
+### Próximo passo
+1. Aguardar e verificar os dois workflows; investigar logs caso algum falhe.
+2. Se ambos passarem, usar o APK do commit final para repetir a ROM e copiar o novo Log.
+3. Conferir o início do laço, `GPR2`, `GPR3` e o marcador; calcular a faixa inicial/final com evidência direta.
+4. Continuar sem alterar a semântica de TLB, sem forçar Valid/PFN e sem criar tarefa SP artificial.
