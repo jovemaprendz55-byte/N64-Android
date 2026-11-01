@@ -3962,3 +3962,56 @@ A inspeção do trecho de `R4300Cpu.kt` mostrou que o histórico de caminho de c
 Na próxima execução, o relatório deve capturar o caminho tomado após o branch em `0x70010B30`, permitindo identificar o propósito do helper chamado pela rotina `0x70005B90`. Ainda não classificá-lo como rotina de cache, page-in ou mapeador TLB sem analisar as instruções adicionais.
 
 **Commit:** `f83a59bb98531c3b67c1bd74294f7e3b145c2e6b`. CI deste commit ainda precisa ser conferido.
+
+
+---
+
+## 36. Validação final das builds de diagnóstico e APK disponível (2026-11-01, 19:38:00 UTC−03:00)
+
+### 36.1. Estado confirmado da branch
+
+A branch `dev/n64-clean-start` foi consultada diretamente no GitHub. O HEAD confirmado é:
+
+- Commit: `f228b816129762abfbc981aa03b349d9425da327`
+- Mensagem: `Fix PI helper address in continuity notes`
+- A branch `main` não foi modificada nesta etapa.
+
+### 36.2. CI concluído com sucesso
+
+Os workflows que estavam pendentes na etapa anterior foram reconsultados e agora estão concluídos com `success`:
+
+| Run | Commit | Resultado |
+|---|---|---|
+| `41351210294` | `d8ab67d3cbe7565339fae90322d1ae1e327c34b8` | success |
+| `41351242942` | `f83a59bb98531c3b67c1bd74294f7e3b145c2e6b` | success |
+| `41351260384` | `4bff5c47ef724b9e22c914811e46d83cde9639f3` | success |
+| `41351302356` | `f228b816129762abfbc981aa03b349d9425da327` | success |
+
+Cada execução apresentou o job `build` concluído com sucesso.
+
+### 36.3. APK de diagnóstico
+
+A execução mais recente, run `41351302356`, publicou o artefato `n64-android-debug-apk`:
+
+- Artifact ID: `13101706139`
+- Tamanho: 991.688 bytes
+- SHA-256: `bf0dd567b276973ffd06480a80568d5109952a4b789c57fb78d025277e43c2ca`
+- Página da execução: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41351302356
+- Validade indicada pelo GitHub até 2026-11-15 21:19:02 UTC.
+
+A APK contém as alterações de instrumentação já integradas até o commit `f228b81`, incluindo watchpoint de toda a tabela PTE e captura estendida do helper PI. A build verde confirma compilação/testes do workflow, não a execução correta do GoldenEye no aparelho.
+
+### 36.4. Inspeção do código de captura
+
+Foi conferido em `R4300Cpu.kt` que a condição de captura usa o endereço baixo de 32 bits e inclui a faixa `0x70010B20..0x70010C80`. Portanto, o destino `0x70010BAC` do branch anterior está dentro da faixa. A rotina registra PC, instrução, opcode e registradores RA, T9, V0, V1, A0–A3, SP e S0–S7, em histórico limitado por capacidade.
+
+Isso confirma que a janela de endereços foi ampliada no código. A execução real do novo caminho ainda precisa ser observada no próximo Log produzido pela APK atualizada.
+
+### 36.5. Próxima etapa necessária
+
+1. Instalar a APK do artefato mais recente e executar o mesmo teste de GoldenEye que gerou o Log anterior.
+2. Exportar o novo Log e verificar a seção de caminho de chamada, especialmente instruções em `0x70010BAC..0x70010C80`.
+3. Examinar as escritas em toda a tabela `0x5DBF0..0x5E3EF` antes do primeiro fetch em `0x7F000BD0`.
+4. Só então decidir se a ausência de mapeamento válido vem do fluxo de overlay/page-in, do estado de boot HLE ou de uma falha concreta de CPU/barramento.
+
+**Resultado:** CI e APK de diagnóstico confirmados. Nenhuma correção funcional do GoldenEye foi feita ou validada nesta etapa; o próximo avanço depende da execução da APK e da análise do novo Log.
