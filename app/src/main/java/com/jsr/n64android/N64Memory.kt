@@ -19,6 +19,9 @@ interface N64AddressSpace {
     /** Atomically stores only when the matching load-linked reservation remains valid. */
     fun storeConditional(address: Int, width: Int, value: Long): Boolean =
         throw UnsupportedOperationException("Store-conditional is not supported by this address space.")
+
+    /** Clears the processor's reservation after an exception or context reset. */
+    fun clearLoadLinkedReservation() {}
 }
 
 /**
@@ -107,6 +110,11 @@ class N64Memory(ramSize: Int = DEFAULT_RAM_SIZE) : N64AddressSpace {
             write32Raw(address + 4, value.toInt())
         }
         return true
+    }
+
+    @Synchronized
+    override fun clearLoadLinkedReservation() {
+        clearReservation()
     }
 
     @Synchronized
