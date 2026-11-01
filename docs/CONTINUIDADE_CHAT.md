@@ -1639,3 +1639,19 @@ A partir desta etapa, priorizar fatias verticais pequenas e demonstráveis: gera
 3. Implementar COP0 mínimo do SP e acoplamento de execução ao SP_STATUS/SP_PC.
 4. Implementar execução de task SP controlada a partir de IMEM/DMEM, com término/BREAK e geração de display list em RDRAM.
 5. Só então iniciar subset vetorial e microcode gráfico; manter a demonstração sintética separada do caminho de ROM.
+
+
+## 27. COP0 mínimo do SP e semântica de BREAK — 2026-11-01
+
+- O RSP agora decodifica MFC0 e MTC0 para o subconjunto de registradores SP: MEM_ADDR, DRAM_ADDR, RD_LEN, WR_LEN, STATUS, DMA_FULL, DMA_BUSY e SEMAPHORE.
+- Escritas em DMA_FULL/DMA_BUSY são ignoradas por serem registradores somente de leitura; os demais passam pelo mapa MMIO já existente no barramento.
+- A instrução BREAK agora marca simultaneamente SP_STATUS.HALT e SP_STATUS.BROKE, em vez de apenas parar o núcleo.
+- Testes ampliados para leitura/escrita de SP_STATUS via COP0 e confirmação dos bits HALT/BROKE após BREAK.
+- Limite importante: isso ainda não equivale a um executor completo de tarefas SP; falta modelar o ciclo de vida de task, interrupções, sincronização e microcode.
+
+Commits:
+- `0bbed8817d9aaf6d67de795b68be612384e7b8af`: sinalização arquitetural de BREAK no barramento.
+- `b35159de5fc343242655ac282535833c7a909309`: MFC0/MTC0 do SP.
+- `d8c43a5f81ca9f5341d640a91d49ad70c8fb2dd3`: testes COP0 e BREAK.
+
+Próximo passo: validar CI; depois implementar registradores vetoriais/accumulator e operações COP2 de forma incremental, com testes de largura, saturação e flags, antes de abordar microcode gráfico.
