@@ -2368,3 +2368,21 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 - O primeiro CI da mudança horizontal revelou que o demo sintético de triângulo ainda programava apenas os registradores verticais; por isso `captureViFrameFromRegisters` retornava null.
 - O demo agora programa VI_H_START e VI_X_SCALE para sua largura de 320 pixels.
 - O CI do primeiro commit de VI horizontal falhou somente em `N64RdpFlatTriangleRasterizerTest.syntheticPipelineProducesViFrameContainingRasterizedTriangle`; compilação e montagem do APK haviam passado. A correção está no commit `4816592a78dccadfaf9baa97177e6e2d9e2595c2` e deve ser validada pelo workflow subsequente.
+
+
+## 52. Apresentador Android reutilizável para frames VI — 2026-11-01
+
+### Implementação
+- Criada `N64VideoPresenterView`, uma View Android dedicada a receber frames `N64VideoFrame` por `submitFrame`.
+- A View converte os pixels ARGB em Bitmap, troca o frame na thread da UI e redesenha mantendo proporção e centralização.
+- Apenas o frame mais recente é mantido; o bitmap anterior é reciclado após a troca.
+- O desenho é sincronizado com a troca/liberação do bitmap para evitar leitura concorrente durante atualização.
+- A página de teste de vídeo/RDP e a página de diagnóstico que pode mostrar uma captura VI passaram a usar o apresentador reutilizável, em vez de criar um ImageView com bitmap isolado em cada caminho.
+
+### Limites
+- O método aceita frames sucessivos e pode ser chamado por uma thread de emulação, mas ainda não foi conectado a um loop de execução de ROM que gere frames VI continuamente.
+- As telas atuais continuam exibindo frames de teste ou capturas pontuais; isso não demonstra renderização de jogos comerciais.
+- A View preserva proporção e centraliza a imagem; não há ainda sincronização com VBlank, áudio ou controle de taxa de quadros.
+
+### Próximo passo
+- Confirmar compilação/testes no CI. Depois integrar a submissão de frames ao ciclo de execução real, com atualização limitada e descarte de frames antigos para não acumular Bitmaps.
