@@ -374,6 +374,12 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     enterException(instructionAddress, 9, branchAddressForCurrentInstruction)
                     directPc = exceptionVector()
                 }
+                0x0F -> { // SYNC: all memory operations are already serialized by this interpreter.
+                    if (rs != 0 || rt != 0 || rd != 0) {
+                        throw ReservedInstructionFault("Malformed SYNC reserved fields")
+                    }
+                    // The single-threaded bus has no outstanding asynchronous CPU memory operations to drain.
+                }
                 0x08 -> { // JR: rt, rd and shamt are reserved.
                     if (rt != 0 || rd != 0 || shamt != 0) throw ReservedInstructionFault("Malformed JR reserved fields")
                     pendingDelaySlotBranchAddress = instructionAddress
