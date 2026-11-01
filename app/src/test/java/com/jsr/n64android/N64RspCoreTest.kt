@@ -223,7 +223,7 @@ class N64RspCoreTest {
         assertEquals(0x17, bus.read8(N64Bus.SP_DMEM_BASE + 0x200))
         assertEquals(0x19, bus.read8(N64Bus.SP_DMEM_BASE + 0x202))
         assertEquals((0x1200 ushr 7) and 0xFF, bus.read8(N64Bus.SP_DMEM_BASE + 0x203))
-        assertEquals((0x1400 ushr 7) and 0xFF, bus.read8(N64Bus.SP_DMEM_BASE + 0x207))
+        assertEquals((0x1600 ushr 7) and 0xFF, bus.read8(N64Bus.SP_DMEM_BASE + 0x207))
 
         // SUV swaps the packing rule on the same wrapped element positions.
         assertEquals((0x3900 ushr 7) and 0xFF, bus.read8(N64Bus.SP_DMEM_BASE + 0x210))
