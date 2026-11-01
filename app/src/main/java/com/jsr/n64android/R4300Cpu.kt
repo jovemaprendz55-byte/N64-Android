@@ -1042,6 +1042,22 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         }
     }
 
+    private fun recordPteSetupDiagnostic(line: String) {
+        // Preserve the first 64 instructions (routine setup/loop entry), then keep
+        // a rolling tail of 512 records. This prevents long loops from erasing
+        // the initialization values while keeping diagnostics strictly bounded.
+        if (diagnosticPteSetupHistory.size < PTE_TRACE_PREFIX_CAPACITY) {
+            diagnosticPteSetupHistory.add(line)
+            return
+        }
+        if (diagnosticPteSetupHistory.size == PTE_TRACE_PREFIX_CAPACITY) {
+            diagnosticPteSetupHistory.add("... [instruções intermediárias omitidas; prefixo inicial + janela recente] ...")
+        } else if (diagnosticPteSetupHistory.size >= PTE_TRACE_PREFIX_CAPACITY + 1 + PTE_TRACE_RECENT_CAPACITY) {
+            diagnosticPteSetupHistory.removeAt(PTE_TRACE_PREFIX_CAPACITY + 1)
+        }
+        diagnosticPteSetupHistory.add(line)
+    }
+
     private fun recordTlbDiagnosticInstruction(address: Long, instruction: Int) {
         diagnosticInstructionCount++
         val opcode = (instruction ushr 26) and 0x3F
@@ -1056,6 +1072,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             val line = "PC=0x${address.toULong().toString(16).uppercase()} " +
                 "INST=0x${instruction.toUInt().toString(16).uppercase().padStart(8, '0')} " +
                 "OP=0x${opcode.toString(16).uppercase()} rs=$rs rt=$rt rd=$rd " +
+                "GPR2=0x${gpr[2].toULong().toString(16).uppercase().padStart(16, '0')} " +
                 "GPR3=0x${gpr[3].toULong().toString(16).uppercase().padStart(16, '0')} " +
                 "GPR4=0x${gpr[4].toULong().toString(16).uppercase().padStart(16, '0')} " +
                 "Context=0x${cop0[4].toUInt().toString(16).uppercase().padStart(8, '0')} " +
@@ -1064,8 +1081,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 "EntryLo1=0x${cop0[3].toUInt().toString(16).uppercase().padStart(8, '0')} " +
                 "PageMask=0x${cop0[5].toUInt().toString(16).uppercase().padStart(8, '0')} " +
                 "Status=0x${cop0[12].toUInt().toString(16).uppercase().padStart(8, '0')}"
-            diagnosticPteSetupHistory.add(line)
-            if (diagnosticPteSetupHistory.size > 512) diagnosticPteSetupHistory.removeAt(0)
+            recordPteSetupDiagnostic(line)
         }
 
         // Keep a primitive-only rolling window on every successful fetch. Avoid
@@ -1198,6 +1214,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
 
     companion object {
         private const val TLB_PRE_EXCEPTION_TRACE_CAPACITY = 64
+        private const val PTE_TRACE_PREFIX_CAPACITY = 64
+        private const val PTE_TRACE_RECENT_CAPACITY = 512
         const val RESET_VECTOR: Long = -0x40400000L
     }
 }
