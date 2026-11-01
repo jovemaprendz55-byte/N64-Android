@@ -18,6 +18,8 @@ class N64RomVideoSession(
     private val framePollInterval: Long = DEFAULT_FRAME_POLL_INTERVAL,
     private val rspPollInterval: Long = DEFAULT_RSP_POLL_INTERVAL,
     private val rspInstructionQuantum: Int = DEFAULT_RSP_INSTRUCTION_QUANTUM,
+    private val progressPollInterval: Long = DEFAULT_PROGRESS_POLL_INTERVAL,
+    private val onProgress: (Long) -> Unit = {},
     private val onFrame: (N64VideoFrame) -> Unit
 ) : N64ExecutionController {
     private val instructionCount = AtomicLong(0L)
@@ -33,12 +35,14 @@ class N64RomVideoSession(
         require(framePollInterval > 0L) { "Frame polling interval must be positive." }
         require(rspPollInterval > 0L) { "RSP polling interval must be positive." }
         require(rspInstructionQuantum > 0) { "RSP instruction quantum must be positive." }
+        require(progressPollInterval > 0L) { "Progress polling interval must be positive." }
         delegate = N64ExecutionSession(
             instructionLimit = instructionLimit,
             batchSize = batchSize,
             afterInstruction = {
                 val count = instructionCount.incrementAndGet()
                 if (count % rspPollInterval == 0L) pumpRsp()
+                if (count % progressPollInterval == 0L) onProgress(count)
                 if (count % framePollInterval == 0L) {
                     val frame = bus.captureViFrameFromRegisters()
                     if (frame != null && !frame.argbPixels.contentEquals(previousPixels)) {
@@ -103,5 +107,6 @@ class N64RomVideoSession(
         const val DEFAULT_FRAME_POLL_INTERVAL = 100_000L
         const val DEFAULT_RSP_POLL_INTERVAL = 4_096L
         const val DEFAULT_RSP_INSTRUCTION_QUANTUM = 512
+        const val DEFAULT_PROGRESS_POLL_INTERVAL = 50_000L
     }
 }
