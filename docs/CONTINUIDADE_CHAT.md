@@ -2240,5 +2240,37 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 - f5d8c044dd47a0e3892049510145a5eae0bc6e60 — teste do evento e da cópia concluída.
 
 ### Validação
-- CI acionado pelos commits acima; resultado ainda pendente nesta atualização. Não declarar testes/build aprovados até confirmar o workflow.
+- CI dos commits de código #865 (run 41302042402) e #866 (run 41302055039) concluiu com success, incluindo Build and test e Upload debug APK.
 - Nenhuma ROM comercial ou imagem originada de jogo foi validada nesta etapa.
+
+## 47. Handoff observável boot microcode → task microcode — 2026-11-01
+
+### Implementação
+- N64RspCore agora permite registrar um observador opcional chamado depois da execução de cada instrução, recebendo o PC de busca e a instrução. O observador não altera o estado da CPU.
+- Criado N64SpTaskMicrocodeTracker. Ele só aceita uma transferência RDRAM→IMEM que corresponda exatamente ao endereço ucode e ao tamanho ucodeSize do OSTask, com destino IMEM[0].
+- Depois dessa transferência, o tracker aguarda uma instrução realmente executada dentro da faixa alinhada do código carregado. PC fora da faixa, desalinhado ou anterior ao DMA não inicia a task.
+- N64SpTaskRunner instala os observadores após o bootstrap, remove o listener DMA ao terminar o orçamento de execução e expõe taskMicrocodeEntryObserved no resultado.
+- Quando recebe um N64SpTaskDpCoordinator opcional, o runner inicia o estado BOOT_MICROCODE_RUNNING após o bootstrap, informa TASK_MICROCODE_RUNNING somente depois da evidência DMA+execução e informa BREAK apenas se a task microcode foi identificada e o SP terminou em BROKE.
+- A implementação é conservadora: transferência parcial/em blocos separados ainda não é reconhecida como carregamento completo. Não inferir handoff quando o microcode é carregado por múltiplas transferências ou copiado por outro mecanismo.
+
+### Testes
+- Tracker exige DMA correspondente antes da execução.
+- Rejeita endereço RDRAM incorreto, tamanho incorreto, direção SP→RDRAM e destino que não seja IMEM[0].
+- Rejeita PC fora da faixa e desalinhado.
+- Teste de integração do runner usa boot microcode sintético que carrega 12 bytes do task microcode para IMEM, salta para IMEM[0], executa o código e termina em BREAK. Verifica a entrada observada e a conclusão do lifecycle sem DP_WAIT.
+- Os testes são sintéticos; não demonstram que o microcode de GoldenEye use exatamente uma única transferência completa nem que a ROM comercial já funcione.
+
+### Commits
+- 32972cf — observador de instruções RSP.
+- c6dc7bb — tracker de evidência do task microcode.
+- 7e398ec / 4363fdf — testes do tracker e correção do cenário de tamanho incorreto.
+- 2ae3bc7 — integração do tracker ao runner e coordenador opcional.
+- 48240f7 — teste de integração boot→task→BREAK.
+- 4e806ef / 8df480c / 1bee4e8 — simplificação do callback para observar apenas o PC executado.
+
+### Limites e próximo passo
+- O reconhecimento exige uma transferência única, completa e com destino IMEM[0]. Implementar agregação segura de múltiplos blocos/DMAs é necessário se o bootcode real carregar o ucode em partes.
+- O RSP ainda implementa apenas um subconjunto de instruções; uma instrução não suportada pode interromper o teste antes do handoff.
+- O runner continua sendo uma execução limitada e não-resumível: ao esgotar o orçamento, não preserva a instância RSP para uma chamada posterior.
+- Próximo passo: rodar CI do HEAD; se passar, ampliar os testes para DP_WAIT com task microcode realista e verificar o Full Sync emitido pelo task antes de trabalhar em agregação de DMA e suporte ao microcode comercial.
+- Nenhuma ROM comercial foi validada nesta etapa; nenhum frame real de jogo foi produzido.
