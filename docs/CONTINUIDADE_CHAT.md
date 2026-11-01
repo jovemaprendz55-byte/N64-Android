@@ -2543,3 +2543,15 @@ Executar CI. Se aprovado, iniciar a auditoria do RDP: parser/command lengths, de
 - Objetivo do próximo teste: identificar o fluxo do vetor TLB, origem de EntryLo0/EntryLo1 inválidos e estado dos registradores durante o loop em \`0x70000720\`.
 - A análise está em andamento; não considerar a correção resolvida nem afirmar compatibilidade de GoldenEye.
 
+
+
+## Correção da instrumentação TLB — 2026-11-01
+
+- Commit: `644b16013b72db721656daa7a9794c506a2d5f3d`.
+- Corrigidas 12 interpolações Kotlin escapadas no método `recordTlbDiagnosticInstruction`; os campos de PC, instrução, GPR e COP0 agora são formatados com seus valores em vez de aparecerem como texto literal.
+- CI Android build #962, run ID `41321520649`: **success**. Build and test e Upload debug APK concluídos.
+- Artefato `n64-android-debug-apk`, APK `app-debug.apk`, 980.999 bytes. SHA-256: `5ef99a9e2d7015b7c552246efb6b1769e7b17f99150284dcfc1d58965618498a`.
+- Link da execução: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41321520649
+- Próximo passo: instalar o APK #962, executar GoldenEye USA, deixar avançar até estabilizar o loop e usar COPIAR LOGS. Conferir especialmente as instruções após MISS/INVALID, o vetor de exceção, EntryHi/EntryLo, EPC, BadVAddr e amostras do PC no loop.
+- A correção da instrumentação não é uma correção funcional do TLB nem prova que o jogo executa. HLE permanece obrigatório; não desativar TLB nem usar PIF ROM original como atalho.
+- Branch de trabalho: `dev/n64-clean-start`. `main` não foi alterada.
