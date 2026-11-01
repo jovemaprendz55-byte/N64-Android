@@ -2155,3 +2155,35 @@ Construir o ciclo de vida de task SP: leitura do descriptor em RDRAM, carregamen
 - CI #846–#849 estão em execução no momento desta atualização; não declarar a ponte aprovada até confirmar o workflow do HEAD.
 - Tarefa 8 continua em andamento: próximo passo é testar boot microcode que realmente carrega task microcode, estabelecer um critério observável e arquitetural para entrada na task, então integrar BREAK, SP interrupt e DP_WAIT/DPC sem simular conclusões.
 - Nenhuma ROM real foi declarada funcional e nenhum frame real foi produzido por esta etapa.
+
+## 44. DPC Full Sync e interrupção DP no MI — 2026-11-01
+
+### Implementação
+- O pipeline DPC já existente foi confirmado: escrita em DPC_END lê a lista end-exclusive em RDRAM, faz parsing dos pacotes e encaminha o subconjunto suportado ao processador RDP; o VI captura o framebuffer resultante da mesma RDRAM.
+- N64DpcCommandProcessor agora reconhece o comando RDP Full Sync (opcode 0x29), remove-o do fluxo enviado ao rasterizador (não é comando de desenho) e contabiliza sua execução.
+- Ao processar uma lista que contém Full Sync, N64Bus levanta MI_INTR_DP em MI_INTR e MI_INIT_MODE_DP_INTR em MI_INIT_MODE.
+- O comando write-one MI_INIT_MODE_CLR_DP_INTR limpa os dois estados de interrupção DP.
+- A interrupção DP só é levantada quando o Full Sync aparece; encerrar uma lista sem Full Sync não gera DP interrupt.
+
+### Testes adicionados
+- Display list com Full Sync: confirma MI_INTR_DP e MI_INIT_MODE_DP_INTR.
+- Reconhecimento/acknowledgement: confirma que CLR_DP_INTR limpa ambos.
+- Display list sem Full Sync: confirma ausência de interrupção DP.
+- Os testes anteriores de framebuffer VI/RDP continuam cobrindo o caminho de desenho sintético.
+
+### Limites
+- DPC ainda é síncrono e limitado a RDRAM; não implementa FIFO assíncrono, XBUS/DMEM, timing, clock, status busy/freeze/flush ou latência real.
+- RDP continua parcial: fill-cycle, retângulos e triângulo flat RGBA16; sem textura, Z, blending, combiner ou cobertura completa.
+- Full Sync é tratado como evento de conclusão no modelo síncrono atual; não representa uma fila DP assíncrona real nem prova de compatibilidade com ROM comercial.
+- Nenhuma ROM comercial foi declarada funcional e nenhum frame de ROM real foi comprovado.
+
+### Commits
+- 6a37bb7: reconhecimento do Full Sync no DPC.
+- 853aa71: sinalização MI_INTR_DP / MI_INIT_MODE_DP_INTR.
+- ed2e4ae: testes de Full Sync e limpeza da interrupção.
+- 36ae78c: contabilização do comando Full Sync no total processado.
+
+### Próximo passo
+- Rodar CI completo e corrigir qualquer falha.
+- Depois, ligar o estado de conclusão do DPC ao lifecycle SP com DP_WAIT, sem marcar drain antes do processamento real da lista.
+- Expandir a execução RDP a partir dos comandos de textura e triângulo, mantendo testes de framebuffer.
