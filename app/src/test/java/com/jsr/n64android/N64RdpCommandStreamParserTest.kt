@@ -52,6 +52,33 @@ class N64RdpCommandStreamParserTest {
         assertEquals(command(0x2F), packets.single().firstWord)
     }
 
+
+    @Test
+    fun packetWordsAndPacketCollectionAreUnmodifiableSnapshots() {
+        val sourceWords = mutableListOf(command(0x24), 0x0123456789ABCDEFL)
+        val packet = N64RdpCommandPacket(
+            opcode = 0x24,
+            byteLength = 16,
+            words = sourceWords
+        )
+        sourceWords[0] = 0L
+        assertEquals(command(0x24), packet.firstWord)
+
+        val wordMutation = runCatching {
+            (packet.words as MutableList<Long>)[0] = 0L
+        }.exceptionOrNull()
+        assertTrue(wordMutation is UnsupportedOperationException)
+
+        val memory = N64Memory(128)
+        writeWord(memory, 0x20, command(0x2F))
+        val packets = N64RdpCommandStreamParser.parse(memory, 0x20, 0x28, memory.size)
+        val packetMutation = runCatching {
+            (packets as MutableList<N64RdpCommandPacket>).clear()
+        }.exceptionOrNull()
+        assertTrue(packetMutation is UnsupportedOperationException)
+        assertEquals(1, packets.size)
+    }
+
     @Test
     fun rejectsTruncatedMultiwordPacketBeforeReturningAnyPackets() {
         val memory = N64Memory(128)
