@@ -23,9 +23,10 @@ class N64SpTaskRunnerTest {
         )
         task.forEachIndexed { index, word -> ram.write32(taskAddress + index * 4, word) }
 
-        // ADDIU $t0,$zero,42 ; BREAK
+        // ADDIU $t0,$zero,42 ; SW $t0,0($zero) ; BREAK
         val bootWords = intArrayOf(
             (0x09 shl 26) or (8 shl 16) or 42,
+            (0x2B shl 26) or (8 shl 16),
             0x0000000D
         )
         bootWords.forEachIndexed { index, word -> ram.write32(bootAddress + index * 4, word) }
@@ -33,13 +34,13 @@ class N64SpTaskRunnerTest {
         val bus = N64Bus(ram = ram)
         val result = N64SpTaskRunner(bus, ram.size).startAndRun(taskAddress, 16)
 
-        assertEquals(2, result.executedInstructions)
-        assertEquals(42, N64RspCore(bus).gpr[8]) // A new core is reset-state; bus status remains authoritative.
+        assertEquals(3, result.executedInstructions)
+        assertEquals(42, bus.read32(N64Bus.SP_DMEM_BASE))
         assertTrue(result.halted)
         assertTrue(result.broke)
         assertFalse(result.instructionBudgetExhausted)
         assertEquals(N64Bus.SP_STATUS_HALT or N64Bus.SP_STATUS_BROKE, result.spStatus)
-        assertEquals(8, result.programCounter)
+        assertEquals(12, result.programCounter)
         assertEquals(0x0000000D, result.lastInstruction)
     }
 
