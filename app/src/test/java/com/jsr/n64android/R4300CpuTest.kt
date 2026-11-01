@@ -4098,6 +4098,58 @@ class R4300CpuTest {
     }
 
 
+    @Test fun regimmBranchLikelyOpcodesAnnulDelaySlotWhenNotTaken() {
+        val cases = listOf(
+            Triple(0x02, 1L, 0x1234L), // BLTZL: positive is not negative.
+            Triple(0x03, -1L, 0x1234L), // BGEZL: negative is not nonnegative.
+            Triple(0x12, 1L, 0x1234L), // BLTZALL: link must not occur when not taken.
+            Triple(0x13, -1L, 0x1234L) // BGEZALL: link must not occur when not taken.
+        )
+        for ((rt, rsValue, initialLink) in cases) {
+            val memory = N64Memory(32)
+            memory.write32(0, iType(0x01, 1, rt, 2))
+            memory.write32(4, iType(0x09, 0, 2, 7)) // Annulled delay slot.
+            memory.write32(8, iType(0x09, 0, 3, 9))
+            val cpu = R4300Cpu(memory)
+            cpu.setProgramCounter(0)
+            cpu.gpr[1] = rsValue
+            cpu.gpr[31] = initialLink
+
+            cpu.step()
+            cpu.step()
+
+            assertEquals("REGIMM rt=0x${rt.toString(16)} delay slot", 0L, cpu.gpr[2])
+            assertEquals("REGIMM rt=0x${rt.toString(16)} sequential", 9L, cpu.gpr[3])
+            assertEquals("REGIMM rt=0x${rt.toString(16)} link", initialLink, cpu.gpr[31])
+            assertEquals("REGIMM rt=0x${rt.toString(16)} PC", 12L, cpu.pc)
+        }
+    }
+
+    @Test fun regimmBranchLikelyLinkOpcodesLinkAndExecuteDelaySlotWhenTaken() {
+        val cases = listOf(
+            Triple(0x12, -1L, "BLTZALL"),
+            Triple(0x13, 0L, "BGEZALL")
+        )
+        for ((rt, rsValue, name) in cases) {
+            val memory = N64Memory(32)
+            memory.write32(0, iType(0x01, 1, rt, 2)) // Target is address 12.
+            memory.write32(4, iType(0x09, 0, 2, 7)) // Delay slot must execute.
+            memory.write32(8, iType(0x09, 0, 3, 8)) // Skipped.
+            memory.write32(12, iType(0x09, 0, 4, 10))
+            val cpu = R4300Cpu(memory)
+            cpu.setProgramCounter(0)
+            cpu.gpr[1] = rsValue
+
+            repeat(3) { cpu.step() }
+
+            assertEquals("$name link address", 8L, cpu.gpr[31])
+            assertEquals("$name delay slot", 7L, cpu.gpr[2])
+            assertEquals("$name skipped instruction", 0L, cpu.gpr[3])
+            assertEquals("$name branch target", 10L, cpu.gpr[4])
+            assertEquals("$name final PC", 16L, cpu.pc)
+        }
+    }
+
     @Test fun branchLikelyNotTakenAnnulsDelaySlot() {
         val memory = N64Memory(32)
         memory.write32(0, iType(0x14, 1, 0, 2)) // beql $at, $zero, target
