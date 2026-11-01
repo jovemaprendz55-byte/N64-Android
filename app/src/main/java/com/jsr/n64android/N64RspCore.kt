@@ -133,10 +133,39 @@ class N64RspCore(private val bus: N64Bus) {
      * This first integration intentionally accepts element=0 only.
      */
     private fun executeCop2(instruction: Int, rs: Int) {
+        val rt = (instruction ushr 16) and 31
+        val vectorRegister = (instruction ushr 11) and 31
+        when (rs) {
+            0x00 -> { // MFC2: byte element offset, sign-extended halfword
+                val element = (instruction ushr 7) and 0x0F
+                val high = vectorUnit.readByte(vectorRegister, element)
+                val low = vectorUnit.readByte(vectorRegister, (element + 1) and 0x0F)
+                val value = (high shl 8) or low
+                gpr[rt] = value.toShort().toInt()
+                return
+            }
+            0x02 -> { // CFC2: VCO, VCC or VCE
+                val control = vectorUnit.readControl(vectorRegister)
+                gpr[rt] = if (vectorRegister == 2) control.toByte().toInt() else control.toShort().toInt()
+                return
+            }
+            0x04 -> { // MTC2: byte element offset; final byte does not wrap
+                val element = (instruction ushr 7) and 0x0F
+                vectorUnit.writeByte(vectorRegister, element, (gpr[rt] ushr 8) and 0xFF)
+                if (element != 15) {
+                    vectorUnit.writeByte(vectorRegister, element + 1, gpr[rt] and 0xFF)
+                }
+                return
+            }
+            0x06 -> { // CTC2: write vector control register
+                vectorUnit.writeControl(vectorRegister, gpr[rt] and 0xFFFF)
+                return
+            }
+        }
         if (rs !in 0x10..0x1F) unsupported(instruction)
         val element = rs and 0x0F
         if (element != 0) {
-            throw UnsupportedOperationException("RSP COP2 element selection $element is not implemented.")
+            throw UnsupportedOperationException("RSP COP2 vector element selection $element is not implemented.")
         }
         val vt = (instruction ushr 16) and 31
         val vs = (instruction ushr 11) and 31
