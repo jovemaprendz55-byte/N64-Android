@@ -24,7 +24,8 @@ class N64DpcCommandProcessor(
         val commandsProcessed: Int,
         val rectanglesFilled: Int,
         val pixelsWritten: Int,
-        val trianglesRasterized: Int = 0
+        val trianglesRasterized: Int = 0,
+        val fullSyncCommands: Int = 0
     )
 
     init {
@@ -67,19 +68,23 @@ class N64DpcCommandProcessor(
             maxCommandBytes = maxCommandBytes
         )
         // The parser frames and validates every complete packet before any RDP command runs.
-        val rdpResult = rdp.executePackets(packets)
+        val fullSyncCommands = packets.count { it.opcode == CMD_FULL_SYNC }
+        val renderPackets = packets.filterNot { it.opcode == CMD_FULL_SYNC }
+        val rdpResult = rdp.executePackets(renderPackets)
         return Result(
             startAddress = startAddress,
             endAddressExclusive = endAddressExclusive,
             commandsProcessed = rdpResult.commandsProcessed,
             rectanglesFilled = rdpResult.rectanglesFilled,
             pixelsWritten = rdpResult.pixelsWritten,
-            trianglesRasterized = rdpResult.trianglesRasterized
+            trianglesRasterized = rdpResult.trianglesRasterized,
+            fullSyncCommands = fullSyncCommands
         )
     }
 
     companion object {
         const val COMMAND_BYTES = 8
         const val DEFAULT_MAX_COMMAND_BYTES = 1 shl 20
+        const val CMD_FULL_SYNC = 0x29
     }
 }
