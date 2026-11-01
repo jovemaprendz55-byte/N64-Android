@@ -787,8 +787,15 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 memory.write32(physical, (oldWord and preserveMask) or (gpr[rt].toInt() and valueMask))
             }
             0x2F -> {
-                // CACHE: this early core has no modeled cache hierarchy.
-                // Treat cache maintenance as a no-op for bring-up, not as accurate cache emulation.
+                // Cache data is not modeled yet. Preserve the VR4300 LLbit side effect for
+                // D-cache invalidation operations, which can invalidate the reserved line.
+                val cacheSelector = (rt ushr 3) and 0x03 // 0=I-cache, 1=D-cache.
+                val cacheOperation = rt and 0x07
+                val invalidatesDataCache = cacheSelector == 1 &&
+                    (cacheOperation == 0 || cacheOperation == 4 || cacheOperation == 5 ||
+                        (cacheOperation == 2 && (cop0[28] and 0xC0L) == 0L))
+                if (invalidatesDataCache) memory.clearLoadLinkedReservation()
+                // Other cache data/tag operations remain unmodeled.
             }
             0x30 -> { // LL: load-linked signed word.
                 val address = gpr[rs] + immediate
