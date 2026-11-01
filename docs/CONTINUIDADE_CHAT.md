@@ -1608,3 +1608,4 @@ A partir desta etapa, priorizar fatias verticais pequenas e demonstráveis: gera
 - A tela principal agora prioriza um único botão “ADICIONAR JOGO”, mostra o estado da ROM e recolhe os testes internos em “FERRAMENTAS DE DESENVOLVIMENTO”.
 - CPU, padrão de cores, triângulo RDP, diagnóstico IPL3 e diagnóstico HLE continuam acessíveis dentro do painel; os dois diagnósticos dependentes de ROM permanecem desativados até carregar uma ROM.
 - Próximo passo: aguardar/verificar CI e APK desta alteração; instalar no Galaxy A15 e confirmar se o menu recolhido abre/fecha e se os testes continuam acessíveis. Depois, aprimorar biblioteca/lista de ROMs sem alegar suporte de execução antes de testar um jogo real.
+- Correção complementar no commit `3dd8fedb9e9a1f65bef90e3076196ad241518cf7`: a mensagem de estado vazio usa quebra de linha real, sem exibir os caracteres `\\n` literalmente.
