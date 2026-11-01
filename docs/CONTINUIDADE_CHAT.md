@@ -3374,3 +3374,41 @@ A captura ampliada já está na branch `dev/n64-clean-start`, mas este Log não 
 3. Enviar o novo Log; verificar se aparecem instruções em ambas as janelas ampliadas.
 4. Só então decodificar os loads/stores, branches, chamadas e formação dos argumentos.
 5. Manter a investigação TLB sem correções artificiais.
+
+
+
+## 24. CI #1059 aprovada e APK com captura ampliada disponível — 2026-11-01
+
+### Validação do HEAD
+- Branch: `dev/n64-clean-start`.
+- HEAD validado: `50b9ac5e6a66a6fea0b70eab7624fd41690f5959`.
+- Workflow: Android build, execução #1059, run ID `41340252279`.
+- Evento: push; commit executado corresponde exatamente ao HEAD acima.
+- Resultado geral: `completed / success`.
+- Job `build`: `completed / success`.
+- Etapas `Build and test` e `Upload debug APK`: ambas concluídas com sucesso.
+- Portanto, para este HEAD, a CI confirmou compilação/testes do workflow e upload do APK de debug. Isso não prova instalação nem execução no aparelho.
+
+### Artefato gerado
+- Nome: `n64-android-debug-apk`.
+- Artifact ID: `13097186822`.
+- Tamanho informado pelo GitHub: 983.736 bytes.
+- Criado em `2026-11-01T19:10:14Z`.
+- Expira em `2026-11-15T19:10:12Z`.
+- Digest informado pelo endpoint de artefatos: `sha256:ccfc0934f7246730a69d3241a026072039a8fc626758bd3d7ef5767c3f9c5236`. Este digest é o informado para o artefato ZIP pelo GitHub; não deve ser apresentado como SHA-256 do APK interno.
+- Link da execução: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41340252279
+- O artefato pode ser baixado na seção Artifacts dessa execução.
+
+### Estado após esta validação
+- A ampliação de captura das janelas `0x70004E2C–0x70004EAC` e `0x70005B60–0x70005D60` está incluída no HEAD que passou pela CI.
+- Ainda falta confirmar que o usuário instalou e executou este APK específico.
+- Não há novo Log de aparelho posterior à instalação desse artefato nesta etapa.
+- Nenhuma alteração foi feita na branch `main`.
+- Nenhuma correção foi feita no TLB, EntryLo, PFN, bit Valid, SP HALT ou DPC.
+
+### Próximo passo obrigatório
+1. Baixar o artefato `n64-android-debug-apk` da execução #1059 e instalar no Android 16.
+2. Abrir a ROM de teste, aguardar a reprodução do erro e usar COPIAR LOGS.
+3. Enviar o novo Log.
+4. Verificar primeiro se aparecem instruções internas nas janelas ampliadas. Se aparecerem, decodificar a cadeia de loads/stores/branches e os valores de A0–A3/T9. Se não aparecerem, investigar a ativação/limpeza da captura antes de tirar conclusões sobre a ROM.
+5. Não tratar APK gerado como APK instalado e não declarar vídeo, RSP ou jogo funcionando sem evidência do aparelho.
