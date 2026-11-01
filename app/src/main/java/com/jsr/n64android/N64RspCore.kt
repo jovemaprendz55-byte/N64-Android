@@ -4,11 +4,13 @@ package com.jsr.n64android
  * First independent scalar RSP interpreter.
  *
  * This is deliberately a small, explicit MIPS-I subset for SP IMEM/DMEM.
- * It is not the R4300 CPU and does not reuse its implementation. Vector
- * instructions, COP0, DMA scheduling and graphics microcode are not included.
+ * It is not the R4300 CPU and does not reuse its implementation. COP2 support
+ * is an explicitly limited initial vector subset; DMA scheduling and graphics
+ * microcode are not included.
  */
 class N64RspCore(private val bus: N64Bus) {
     val gpr = IntArray(32)
+    val vectorUnit = N64RspVectorUnit()
     var pc: Int = 0
         private set
     var executedInstructions: Long = 0
@@ -90,6 +92,7 @@ class N64RspCore(private val bus: N64Bus) {
                 0x2B -> gpr[rd] = if (a.toUInt() < b.toUInt()) 1 else 0
                 else -> unsupported(i)
             }
+            0x12 -> executeCop2(i, rs)
             0x10 -> when (rs) {
                 0x00 -> gpr[rt] = readSpCop0(rd) // MFC0
                 0x04 -> writeSpCop0(rd, b) // MTC0
@@ -122,6 +125,32 @@ class N64RspCore(private val bus: N64Bus) {
         }
     }
 
+
+
+    /**
+     * Executes the initial COP2 vector arithmetic subset. RSP vector-format
+     * instructions use rs=0x10..0x1F; the low four rs bits select element.
+     * This first integration intentionally accepts element=0 only.
+     */
+    private fun executeCop2(instruction: Int, rs: Int) {
+        if (rs !in 0x10..0x1F) unsupported(instruction)
+        val element = rs and 0x0F
+        if (element != 0) {
+            throw UnsupportedOperationException("RSP COP2 element selection $element is not implemented.")
+        }
+        val vt = (instruction ushr 16) and 31
+        val vs = (instruction ushr 11) and 31
+        val vd = (instruction ushr 6) and 31
+        when (instruction and 63) {
+            0x10 -> vectorUnit.add(vd, vs, vt) // VADD, initial lane semantics
+            0x11 -> vectorUnit.subtract(vd, vs, vt) // VSUB, initial lane semantics
+            0x28 -> vectorUnit.and(vd, vs, vt) // VAND
+            0x2A -> vectorUnit.or(vd, vs, vt) // VOR
+            0x2B -> vectorUnit.nor(vd, vs, vt) // VNOR
+            0x2C -> vectorUnit.xor(vd, vs, vt) // VXOR
+            else -> unsupported(instruction)
+        }
+    }
 
     /** SP COP0 register subset: DMA address/length, status and semaphore. */
     private fun readSpCop0(register: Int): Int {
