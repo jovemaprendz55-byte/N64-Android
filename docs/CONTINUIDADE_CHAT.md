@@ -2535,3 +2535,11 @@ Executar CI. Se aprovado, iniciar a auditoria do RDP: parser/command lengths, de
 
 ### Próximo passo
 - Executar CI e, se aprovada, instalar o APK para recolher um trace de uma ROM real. Usar os primeiros comandos RDP não suportados e a primeira instrução RSP que falhar para escolher a próxima implementação.
+
+## Instrumentação adicional TLB — 2026-11-01
+- Commit \`ca4187e6b20bf22c7eb5d293b26d686b53f15b01\`: adiciona rastro das primeiras 256 instruções executadas após cada exceção TLB, registrando PC, instrução, opcode, operandos GPR e registradores COP0 relevantes.
+- Também registra amostras esparsas a cada 250.000 instruções após a primeira exceção TLB, para capturar loops persistentes sem registrar milhões de instruções nem degradar excessivamente a execução.
+- Commit \`0b8dedc02eaeb770f5f80019f6d15e06ceaeccca\`: inclui esse rastro no botão COPIAR LOGS.
+- Objetivo do próximo teste: identificar o fluxo do vetor TLB, origem de EntryLo0/EntryLo1 inválidos e estado dos registradores durante o loop em \`0x70000720\`.
+- A análise está em andamento; não considerar a correção resolvida nem afirmar compatibilidade de GoldenEye.
+
