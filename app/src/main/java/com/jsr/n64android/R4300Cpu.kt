@@ -81,6 +81,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     val diagnosticTlbMemoryAccessHistory: MutableList<String> = mutableListOf()
     /** Narrow trace of the ROM routine that initializes the suspected page-table area. */
     val diagnosticPteSetupHistory: MutableList<String> = mutableListOf()
+    /** Bounded register snapshots around the observed JR RA -> JAL call path. */
+    val diagnosticCallPathHistory: MutableList<String> = mutableListOf()
     private val preTlbFaultPc = LongArray(TLB_PRE_EXCEPTION_TRACE_CAPACITY)
     private val preTlbFaultInstruction = IntArray(TLB_PRE_EXCEPTION_TRACE_CAPACITY)
     private val preTlbFaultGprRs = LongArray(TLB_PRE_EXCEPTION_TRACE_CAPACITY)
@@ -118,6 +120,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         diagnosticTlbPreExceptionHistory.clear()
         diagnosticTlbMemoryAccessHistory.clear()
         diagnosticPteSetupHistory.clear()
+        diagnosticCallPathHistory.clear()
         preTlbFaultPc.fill(0L)
         preTlbFaultInstruction.fill(0)
         preTlbFaultGprRs.fill(0L)
@@ -1058,6 +1061,35 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         diagnosticPteSetupHistory.add(line)
     }
 
+    private fun recordCallPathDiagnostic(address: Long, instruction: Int) {
+        val lowAddress = address and 0xFFFFFFFFL
+        val inReturnSite = lowAddress in 0x70001880L..0x70001894L
+        val inCallSite = lowAddress in 0x70005D40L..0x70005D60L
+        if (!inReturnSite && !inCallSite) return
+
+        val opcode = (instruction ushr 26) and 0x3F
+        val directTarget = if (opcode == 0x03 || opcode == 0x1D) {
+            val pcPlusFour = (lowAddress + 4L) and 0xFFFFFFFFL
+            (pcPlusFour and 0xF0000000L) or
+                ((instruction.toLong() and 0x03FFFFFFL) shl 2)
+        } else null
+        val line = buildString {
+            append("PC=0x\${address.toULong().toString(16).uppercase()}")
+            append(" INST=0x\${instruction.toUInt().toString(16).uppercase().padStart(8, '0')}")
+            append(" OP=0x\${opcode.toString(16).uppercase()}")
+            if (directTarget != null) append(" JAL_TARGET=0x\${directTarget.toString(16).uppercase()}")
+            append(" RA=0x\${gpr[31].toULong().toString(16).uppercase().padStart(16, '0')}")
+            append(" T9=0x\${gpr[25].toULong().toString(16).uppercase().padStart(16, '0')}")
+            append(" V0=0x\${gpr[2].toULong().toString(16).uppercase().padStart(16, '0')}")
+            append(" V1=0x\${gpr[3].toULong().toString(16).uppercase().padStart(16, '0')}")
+            for (index in 4..7) append(" A\${index - 4}=0x\${gpr[index].toULong().toString(16).uppercase().padStart(16, '0')}")
+            append(" SP=0x\${gpr[29].toULong().toString(16).uppercase().padStart(16, '0')}")
+            for (index in 16..23) append(" S\${index - 16}=0x\${gpr[index].toULong().toString(16).uppercase().padStart(16, '0')}")
+        }
+        diagnosticCallPathHistory.add(line)
+        if (diagnosticCallPathHistory.size > CALL_PATH_TRACE_CAPACITY) diagnosticCallPathHistory.removeAt(0)
+    }
+
     private fun recordTlbDiagnosticInstruction(address: Long, instruction: Int) {
         diagnosticInstructionCount++
         val opcode = (instruction ushr 26) and 0x3F
@@ -1068,6 +1100,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         // Capture only the small code window implicated by the PTE initialization
         // watchpoint. This is inactive outside that address range.
         val lowAddress = address and 0xFFFFFFFFL
+        recordCallPathDiagnostic(address, instruction)
         if (lowAddress in 0x700017C0L..0x70001840L) {
             val line = "PC=0x${address.toULong().toString(16).uppercase()} " +
                 "INST=0x${instruction.toUInt().toString(16).uppercase().padStart(8, '0')} " +
@@ -1216,6 +1249,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         private const val TLB_PRE_EXCEPTION_TRACE_CAPACITY = 64
         private const val PTE_TRACE_PREFIX_CAPACITY = 64
         private const val PTE_TRACE_RECENT_CAPACITY = 512
+        private const val CALL_PATH_TRACE_CAPACITY = 64
         const val RESET_VECTOR: Long = -0x40400000L
     }
 }
