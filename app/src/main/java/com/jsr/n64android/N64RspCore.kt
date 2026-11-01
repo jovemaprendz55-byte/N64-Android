@@ -93,6 +93,8 @@ class N64RspCore(private val bus: N64Bus) {
                 else -> unsupported(i)
             }
             0x12 -> executeCop2(i, rs)
+            0x32 -> executeVectorMemory(i, load = true)
+            0x3A -> executeVectorMemory(i, load = false)
             0x10 -> when (rs) {
                 0x00 -> gpr[rt] = readSpCop0(rd) // MFC0
                 0x04 -> writeSpCop0(rd, b) // MTC0
@@ -178,6 +180,39 @@ class N64RspCore(private val bus: N64Bus) {
             0x2B -> vectorUnit.nor(vd, vs, vt) // VNOR
             0x2C -> vectorUnit.xor(vd, vs, vt) // VXOR
             else -> unsupported(instruction)
+        }
+    }
+
+
+    /**
+     * Initial scalar vector-memory subset: LBV/LSV/LLV/LDV and stores.
+     * Loads stop at the end of the vector register; stores wrap within it.
+     * The signed 7-bit displacement is scaled by the transfer width.
+     */
+    private fun executeVectorMemory(instruction: Int, load: Boolean) {
+        val base = (instruction ushr 21) and 31
+        val vectorRegister = (instruction ushr 16) and 31
+        val operation = (instruction ushr 11) and 31
+        val element = (instruction ushr 7) and 0x0F
+        val rawOffset = instruction and 0x7F
+        val offset = if ((rawOffset and 0x40) != 0) rawOffset - 0x80 else rawOffset
+        val size = when (operation) {
+            0 -> 1 // LBV / SBV
+            1 -> 2 // LSV / SSV
+            2 -> 4 // LLV / SLV
+            3 -> 8 // LDV / SDV
+            else -> unsupported(instruction)
+        }
+        val address = (gpr[base] + offset * size) and 0xFFF
+        val transferBytes = if (load) minOf(size, 16 - element) else size
+        for (index in 0 until transferBytes) {
+            val memoryByte = bus.read8(dmemAddress(address + index))
+            val vectorByte = if (load) element + index else (element + index) and 0x0F
+            if (load) {
+                vectorUnit.writeByte(vectorRegister, vectorByte, memoryByte)
+            } else {
+                bus.write8(dmemAddress(address + index), vectorUnit.readByte(vectorRegister, vectorByte))
+            }
         }
     }
 
