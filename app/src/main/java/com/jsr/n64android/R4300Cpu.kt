@@ -73,6 +73,10 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     /** TLB contents frozen when the first architectural TLB fault is delivered. */
     var lastTlbEntrySnapshot: String = "(nenhuma entrada capturada)"
         private set
+    /** Short instruction trace after TLB exceptions plus sparse snapshots during later loops. */
+    val diagnosticTlbInstructionHistory: MutableList<String> = mutableListOf()
+    private var diagnosticTlbTraceRemaining = 0
+    private var diagnosticInstructionCount = 0L
 
     fun reset() {
         gpr.fill(0L)
@@ -95,6 +99,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         diagnosticTlbWriteHistory.clear()
         diagnosticTlbExceptionHistory.clear()
         lastTlbEntrySnapshot = "(nenhuma entrada capturada)"
+        diagnosticTlbInstructionHistory.clear()
+        diagnosticTlbTraceRemaining = 0
+        diagnosticInstructionCount = 0L
         instructionWordForCurrentStep = null
         instructionAddressForCurrentStep = null
         diagnosticVirtualAddress = null
@@ -142,6 +149,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         instructionAddressForCurrentStep = instructionAddress
         val instruction = memory.read32(physicalAddress(instructionAddress, R4300Tlb.Access.FETCH))
         instructionWordForCurrentStep = instruction
+        recordTlbDiagnosticInstruction(instructionAddress, instruction)
         val targetFromPreviousBranch = delayedTarget
         val branchAddressForCurrentInstruction = pendingDelaySlotBranchAddress
         delayedTarget = null
@@ -849,6 +857,34 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             "EPC=0x${cop0[14].toULong().toString(16).uppercase()} EntryHi=0x${cop0[10].toString(16).uppercase()}"
         diagnosticTlbExceptionHistory.add(trace)
         if (diagnosticTlbExceptionHistory.size > 64) diagnosticTlbExceptionHistory.removeAt(0)
+        // Capture the exception handler/refill path from its first instruction.
+        diagnosticTlbTraceRemaining = 256
+    }
+
+    private fun recordTlbDiagnosticInstruction(address: Long, instruction: Int) {
+        diagnosticInstructionCount++
+        val captureBurst = diagnosticTlbTraceRemaining > 0
+        val captureSample = diagnosticTlbExceptionHistory.isNotEmpty() && diagnosticInstructionCount % 250_000L == 0L
+        if (!captureBurst && !captureSample) return
+        if (captureBurst) diagnosticTlbTraceRemaining--
+        val opcode = (instruction ushr 26) and 0x3F
+        val rs = (instruction ushr 21) and 0x1F
+        val rt = (instruction ushr 16) and 0x1F
+        val rd = (instruction ushr 11) and 0x1F
+        val line = (if (captureSample && !captureBurst) "SAMPLE " else "") +
+            "PC=0x\${address.toULong().toString(16).uppercase()} INST=0x\${instruction.toUInt().toString(16).uppercase().padStart(8, '0')} " +
+            "OP=0x\${opcode.toString(16).uppercase()} rs=$rs rt=$rt rd=$rd " +
+            "GPRrs=0x\${gpr[rs].toULong().toString(16).uppercase().padStart(16, '0')} " +
+            "GPRrt=0x\${gpr[rt].toULong().toString(16).uppercase().padStart(16, '0')} " +
+            "Status=0x\${cop0[12].toUInt().toString(16).uppercase().padStart(8, '0')} " +
+            "Index=0x\${cop0[0].toUInt().toString(16).uppercase().padStart(8, '0')} " +
+            "Random=0x\${cop0[1].toUInt().toString(16).uppercase().padStart(8, '0')} " +
+            "EntryHi=0x\${cop0[10].toUInt().toString(16).uppercase().padStart(8, '0')} " +
+            "PageMask=0x\${cop0[5].toUInt().toString(16).uppercase().padStart(8, '0')} " +
+            "EntryLo0=0x\${cop0[2].toUInt().toString(16).uppercase().padStart(8, '0')} " +
+            "EntryLo1=0x\${cop0[3].toUInt().toString(16).uppercase().padStart(8, '0')}"
+        diagnosticTlbInstructionHistory.add(line)
+        if (diagnosticTlbInstructionHistory.size > 512) diagnosticTlbInstructionHistory.removeAt(0)
     }
 
     private fun exceptionVector(): Long {
