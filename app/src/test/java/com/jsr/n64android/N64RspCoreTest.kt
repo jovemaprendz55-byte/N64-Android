@@ -230,7 +230,7 @@ class N64RspCoreTest {
             vectorMemory(0x32, 8, 17, 8, 0, 0)
         )
         for (index in 0 until 8) {
-            bus.write8(N64Bus.SP_DMEM_BASE + 0xFF8 + index * 2 and 0xFFF, 0x70 + index)
+            bus.write8(N64Bus.SP_DMEM_BASE + ((0xFF8 + index * 2) and 0xFFF), 0x70 + index)
         }
 
         assertEquals(2, rsp.run(2))
