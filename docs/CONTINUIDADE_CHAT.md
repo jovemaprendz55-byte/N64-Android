@@ -2,7 +2,7 @@
 
 > Documento de passagem de contexto. Leia antes de alterar o código. Registre cada avanço real com data, horário, fuso, commit, arquivos, testes, CI e limitações.
 
-**Última organização deste documento:** 2026-11-01 às 10:31:28 (UTC−03:00, horário de Brasília).  
+**Última organização deste documento:** 2026-11-01 às 17:15:48 (UTC−03:00, horário de Brasília).  
 **Repositório:** https://github.com/jovemaprendz55-byte/N64-Android  
 **Branch de trabalho obrigatória:** `dev/n64-clean-start`  
 **Branch protegida:** `main` — não modificar, mesclar, resetar ou enviar commits sem autorização explícita.  
@@ -3593,3 +3593,87 @@ Reduzir a necessidade de pedir vários Logs separados. O botão existente `COPIA
 - A versão #1089 inclui o pacote diagnóstico completo, buffers auxiliares, bytes da ROM fonte PI, PIF RAM, snapshots CPU/TLB/RSP e o dump de destino PI com exatamente `0x2000` bytes (`0x340000..0x341FFF`).
 - Commit `1470f892...` ajusta o fim do dump para corresponder exatamente ao tamanho do DMA observado.
 - APK foi compilado e artefato gerado; instalação e execução no aparelho ainda dependem de confirmação do usuário.
+
+
+## 28. Investigação da primeira falha TLB após PI DMA — 2026-11-01 às 17:15:48 (UTC−03:00)
+
+### 28.1. Fonte e estado verificado
+- Log analisado: arquivo `Log` da branch `main`, Blob SHA `8171120cdbbc70ec1ec58e776fed25eb424735c1`.
+- Branch de desenvolvimento: `dev/n64-clean-start`.
+- HEAD confirmado no momento desta atualização: `2a2cabb98dde57ad7dfe5deb63cee65032fdc483`.
+- A branch `main` não foi modificada.
+- Execução de referência do relatório: CPU executou 10.897.759 instruções; RSP executou 0; VI publicou 0 frames. O DPC/RDP permaneceu sem comandos (`START/END/CURRENT=0`).
+- O Log atual ainda termina em falha de execução e não apresenta imagem do jogo.
+
+### 28.2. Sequência reconstruída antes da falha
+1. O jogo solicita PI DMA da ROM:
+   - CART/ROM: `0x10034B30` / offset `0x34B30`.
+   - Destino DRAM: `0x340000`.
+   - Tamanho: `0x2000` bytes (8 KiB).
+   - O relatório contém a transferência `PI_WR_LEN cart=0x10034B30 romOffset=0x34B30 dram=0x340000 length=0x2000`.
+2. A cadeia de chamadas passa pela rotina `0x70005B90`; a chamada auxiliar `0x70010B20` participa do caminho de preparação do DMA.
+3. Em seguida, o fluxo chega à rotina `0x700017E0`, que inicializa uma região de tabela PTE. Os stores observados escrevem entradas com valores `1` e `0`, em posições espaçadas.
+4. O chamador em `0x70005D58` executa um JAL com destino direto `0x7F000BD0`.
+5. A CPU tenta buscar instrução em `0x7F000BD0` e ocorre a primeira falta TLB relevante: fetch/load TLB miss, seguida por entrada inválida no refill.
+
+### 28.3. Evidência da falha TLB
+- BadVAddr/VA de busca: `0x7F000BD0`.
+- O handler usa PTEBase lido em `0x8005E4A4`, com valor observado `0x7FC65BF0`.
+- O cálculo de endereço PTE chega a `0x8005DBF0`.
+- A palavra lida dessa PTE é `0x00000001`.
+- O handler prepara `EntryLo0=0x00000001` e `EntryLo1=0x00000041`, executa TLBWR e retorna.
+- Nos dois valores, o bit V (bit 1) está desligado. Portanto, a entrada instalada é inválida e a busca volta a falhar como TLB INVALID.
+- A falha inicial é de fetch (TLBL / ExcCode 2), não uma store inicial. O EPC/Cause visto em snapshots posteriores do handler não deve ser confundido com a primeira exceção.
+
+### 28.4. Correção de interpretação feita nesta investigação
+Uma análise anterior interpretou incorretamente o snapshot final `Cause=0x8`, `EPC=0x70000718` e a instrução store próxima como se fossem a causa inicial da falha. Essa conclusão foi corrigida:
+- O primeiro evento relevante é a busca de instrução em `0x7F000BD0`.
+- O snapshot posterior em `0x70000718` pertence a uma etapa posterior do tratamento/encerramento e não substitui o registro da primeira falha.
+- Não usar o EPC final isoladamente para diagnosticar a origem da primeira exceção.
+
+### 28.5. Hipótese de relação entre o DMA e o endereço virtual
+- O destino do DMA é `0x340000..0x341FFF`.
+- O endereço virtual solicitado `0x7F000BD0` tem deslocamento `0xBD0` dentro da página virtual iniciada em `0x7F000000`.
+- Se — e somente se — o overlay carregado em `0x340000` for de fato o backing físico pretendido para essa janela virtual, o byte/código correspondente estaria em `0x340BD0`.
+- Sob essa hipótese, valores de EntryLo para páginas físicas `0x340000` e `0x341000`, com PFN e flags V/D/G, seriam `0xD007` e `0xD047`. Isso é apenas cálculo condicional para comparação, não uma correção comprovada.
+- O relatório contém dumps da ROM fonte no intervalo `0x34B30..0x36B2F` e da RDRAM destino `0x340000..0x341FFF`; a comparação byte a byte e a interpretação do formato do overlay ainda precisam ser concluídas.
+- Não afirmar que VA `0x7F000BD0` necessariamente mapeia para PA `0x340BD0` até provar a relação pelo código de paginação/overlay ou por evidência do sistema.
+
+### 28.6. O que foi descartado ou permanece não comprovado
+- Não há evidência para culpar o JAL direto: o destino `0x7F000BD0` está registrado no caminho de chamada.
+- A implementação de cálculo PageMask/TLB não foi demonstrada incorreta nesta investigação; não alterar a tradução TLB por palpite.
+- O registro inicial `EntryLo0=1` / `EntryLo1=0x41` vem do caminho de refill do próprio jogo, a partir da PTE observada; não é um valor arbitrariamente inventado pelo emulador.
+- A hipótese de que o HLE tenha omitido alguma preparação do IPL3/OS continua possível, mas ainda não está provada.
+- A finalidade completa da rotina `0x700017E0` e o motivo pelo qual a PTE correspondente continua inválida ainda precisam ser determinados.
+- O handler geral de exceção acaba chegando ao loop de parada em torno de `0x7000071C/0x70000720`; ainda falta decodificar o motivo semântico pelo qual o sistema não pagina/carrega o overlay.
+- RSP=0, DPC/RDP=0 e VI=0 frames continuam sendo limitações/estados observados; esta investigação não corrigiu renderização.
+
+### 28.7. Instrumentação adicionada na branch de desenvolvimento
+- `R4300Cpu.kt`: adicionados campos de snapshot para registrar o endereço, a instrução e o alvo do último salto indireto JR/JALR antes da primeira falha TLB.
+- `MainActivity.kt`: o relatório passou a imprimir a seção `JR/JALR antes da primeira falha TLB`.
+- A instrumentação é diagnóstica: não muda o mapeamento, a validade das entradas TLB, o fluxo de exceção ou a execução do jogo.
+- Commit mais recente da alteração: `2a2cabb98dde57ad7dfe5deb63cee65032fdc483` — `Report indirect jump preceding first TLB fault`.
+- A captura de saltos indiretos é complementar. Neste caso específico, o Log já mostra um JAL direto em `0x70005D58`; portanto, a ausência de JR/JALR anterior não invalidaria a evidência do JAL direto.
+
+### 28.8. Build e validação
+- GitHub Actions build #1095; run ID `41345484543`.
+- Resultado: `completed / success`.
+- Artefato: `n64-android-debug-apk`, ID `13099385591`, tamanho 991.688 bytes.
+- [Execução da build #1095](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41345484543).
+- A CI confirma compilação/testes automatizados e geração do artefato. Não confirma instalação no aparelho, correção da falha TLB ou funcionamento do GoldenEye.
+- A alteração deste commit é instrumentação; não é correção funcional do emulador.
+
+### 28.9. Estado da correção — muito importante
+**A falha TLB ainda NÃO foi corrigida.** O que foi corrigido nesta etapa foi a interpretação incorreta do snapshot final e a cobertura do diagnóstico. Não foram forçados os bits Valid, PFN ou PageMask, não foi desabilitado o TLB e não foi alterado artificialmente o handler do jogo.
+
+### 28.10. Próximas ações técnicas, na ordem
+1. Comparar byte a byte o dump ROM `0x34B30..0x36B2F` com o dump RDRAM `0x340000..0x341FFF`; confirmar se o PI DMA copiou exatamente os 8 KiB e se houve byte swap/erro de endian.
+2. Decodificar os bytes/instruções na posição física candidata `0x340BD0` e identificar se formam código válido; tratar o endereço físico como hipótese até comprovar o mapeamento.
+3. Decodificar por completo a rotina `0x700017E0`, os laços de stores da tabela e a inicialização do PTEBase em `0x8005E4A4`.
+4. Seguir o handler a partir do primeiro TLB miss, incluindo `0x70010900` e o handler geral que leva ao loop `0x7000071C`, para descobrir se deveria haver page-in/overlay e por que não ocorre.
+5. Verificar se o HLE está omitindo algum estado ou rotina de inicialização que normalmente seria preparado pelo IPL3/bootcode, usando evidência do fluxo real.
+6. Conferir os testes existentes de `R4300Tlb.kt`, `R4300Cpu.kt` e `N64Bus.kt`; só corrigir código após localizar uma divergência concreta e escrever teste reproduzível.
+7. Não mexer em `main`; não forçar V/PFN; não declarar GoldenEye funcionando até existir boot e frame real.
+
+### 28.11. Mensagem de continuidade para o próximo chat
+> Continue a investigação do GoldenEye 007 em `dev/n64-clean-start`. Leia a seção 28 de `docs/CONTINUIDADE_CHAT.md`, confira o HEAD e o CI atuais. A primeira falha é TLB fetch em VA `0x7F000BD0`; antes dela ocorreu PI DMA de ROM `0x34B30` para RDRAM `0x340000`, tamanho `0x2000`. A rotina de refill lê PTE `1` e instala EntryLo `1`/`0x41`, ambos inválidos. A possível relação VA->PA `0x340BD0` é hipótese, não fato. Primeiro comparar ROM/RDRAM, decodificar a rotina `0x700017E0` e o handler de exceção. Não alterar artificialmente TLB nem tocar em `main`. A build #1095 é diagnóstica e verde, não uma correção funcional.
