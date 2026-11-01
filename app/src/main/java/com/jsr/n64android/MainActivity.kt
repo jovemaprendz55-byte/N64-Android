@@ -175,7 +175,7 @@ class MainActivity : Activity() {
                         appendLine("Instruções imediatamente anteriores à primeira exceção TLB:")
                         appendLine(diagnosticCpu.diagnosticTlbPreExceptionHistory.joinToString("\n").ifBlank { "Nenhuma instrução anterior capturada." })
                         appendLine("Acessos de dados durante o handler TLB (VA/PA/valor):")
-                        appendLine(diagnosticCpu.diagnosticTlbMemoryAccessHistory.joinToString("\\n").ifBlank { "Nenhum acesso de dados capturado durante a janela do handler." })
+                        appendLine(diagnosticCpu.diagnosticTlbMemoryAccessHistory.joinToString("\n").ifBlank { "Nenhum acesso de dados capturado durante a janela do handler." })
                         appendLine("Instruções após exceções TLB e amostras do loop:")
                         appendLine(diagnosticCpu.diagnosticTlbInstructionHistory.joinToString("\n").ifBlank { "Nenhuma instrução capturada." })
                         appendLine("Snapshot TLB no primeiro fault:")
