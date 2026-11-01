@@ -22,6 +22,30 @@ class N64BusSpDiagnosticsTest {
     }
 
     @Test
+    fun pteWatchpointIncludesDecodedStoreInstructionAndSourceRegisters() {
+        val bus = N64Bus()
+        bus.setDiagnosticCpuInstructionContext(
+            pc = 0xFFFFFFFF80001874UL.toLong(),
+            instruction = 0xAC620000.toInt(), // SW $2, 0($3)
+            rs = 3,
+            rt = 2,
+            rsValue = 0x5DBF0L,
+            rtValue = 1L,
+            effectiveAddress = 0x5DBF0L
+        )
+
+        bus.write32(0x5DBF0, 0x00000001)
+
+        val first = bus.diagnosticPteWriteHistory.first()
+        assertTrue(first.contains("INST=0xAC620000"))
+        assertTrue(first.contains("OP=0x2B"))
+        assertTrue(first.contains("RS=3 RT=2"))
+        assertTrue(first.contains("BASE=0x5DBF0"))
+        assertTrue(first.contains("RTVAL=0x1"))
+        assertTrue(first.contains("EA=0x5DBF0"))
+    }
+
+    @Test
     fun dedicatedSpHistoryRetainsCpuReadsAndWritesAfterOtherMmioTraffic() {
         val bus = N64Bus()
         bus.setDiagnosticCpuPc(0xFFFFFFFF80001234UL.toLong())
