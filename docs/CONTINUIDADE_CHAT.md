@@ -3307,3 +3307,34 @@ O relatório contém a seção `Caminho de chamada para o destino 0x7F000BD0 (JR
 3. Verificar se existe cópia/relocação do segmento associado a `0x7F000000` antes do JAL; o único DMA PI observado não basta para provar isso.
 4. Capturar bytes/palavras de instrução e dados no destino/segmento antes do salto, se a memória física correspondente puder ser localizada sem assumir um mapeamento virtual.
 5. Manter a hipótese em aberto até evidência; não forçar o TLB para fazer a execução avançar.
+
+
+## 22. Ampliação da captura das funções chamadoras — 2026-11-01
+
+### Motivo
+O Log da seção 21 provou o salto direto em `0x70005D58`, mas a captura anterior cobria apenas o retorno `0x70001880–0x70001894` e o fim do chamador `0x70005D40–0x70005D60`. Isso não mostrava a preparação anterior feita pelas funções em `0x70005B60` e `0x70004E2C`.
+
+### Alterações na branch `dev/n64-clean-start`
+- `R4300Cpu.kt`: a captura limitada agora inclui `0x70004E2C–0x70004EAC` e `0x70005B60–0x70005D60`, além das duas janelas antigas.
+- A capacidade do histórico foi ampliada de 64 para 256 linhas. Continua sendo um histórico limitado; se as funções forem executadas repetidamente, a política de cauda recente ainda pode descartar eventos antigos.
+- O snapshot continua registrando instrução, destino JAL/JALX, RA, T9, V0/V1, A0–A3, SP e S0–S7 antes da execução.
+- `MainActivity.kt`: o título da seção COPIAR LOGS foi atualizado para informar a cobertura ampliada.
+- `R4300CpuTest.kt`: novo teste `capturesOuterAndInnerCallerFunctionWindows` confirma que as janelas novas são observadas.
+
+### Commits
+- `d63ae73fce7bb4753df5af42b78a4225a9bc668f` — ampliação das janelas e capacidade da captura.
+- `8cded9d8ab21bc63040b12c174686bde6ecc0de9` — teste das duas novas janelas.
+- `eb37f3cb17a727aeabac71ba9a3870e6fe619dec` — atualização do texto do relatório COPIAR LOGS.
+
+### Validação e limitações
+- O teste novo foi adicionado, mas ainda não há resultado de CI consultado para esta sequência de commits. Não declarar build, testes ou APK aprovados até confirmar o workflow.
+- Nenhum APK desta alteração foi confirmado gerado ou instalado.
+- Nenhuma alteração foi feita em `main`.
+- A captura apenas registra instruções executadas nessas faixas; ainda não interpreta a semântica da função nem prova que o código de destino foi carregado.
+- Não houve alteração no tratamento TLB, nos EntryLo, no bit Valid, em PFN, no SP HALT ou na geração de OSTask.
+
+### Próximo passo
+1. Consultar o CI dos commits desta etapa e corrigir qualquer falha.
+2. Gerar APK somente após CI verde e executar no aparelho.
+3. Enviar o novo `Log` para decodificar a sequência de instruções nas janelas novas, especialmente a formação dos argumentos A0–A3 e T9.
+4. Cruzar eventuais leituras/escritas de memória e DMA com os valores efetivamente usados antes do JAL para `0x7F000BD0`.
