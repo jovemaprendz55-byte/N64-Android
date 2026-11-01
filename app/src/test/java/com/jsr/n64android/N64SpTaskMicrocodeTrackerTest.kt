@@ -8,13 +8,13 @@ class N64SpTaskMicrocodeTrackerTest {
     @Test
     fun requiresMatchingImemDmaBeforeAcceptingExecutedInstruction() {
         val tracker = N64SpTaskMicrocodeTracker(taskDescriptor())
-        assertFalse(tracker.onInstructionExecuted(0, 0x12345678))
+        assertFalse(tracker.onInstructionExecuted(0))
         assertFalse(tracker.taskMicrocodeEntryObserved)
 
         assertTrue(tracker.onSpDmaCompleted(matchingTransfer()))
         assertTrue(tracker.onInstructionExecuted(0, 0x12345678))
         assertTrue(tracker.taskMicrocodeEntryObserved)
-        assertFalse(tracker.onInstructionExecuted(4, 0x87654321))
+        assertFalse(tracker.onInstructionExecuted(4))
     }
 
     @Test
@@ -32,9 +32,9 @@ class N64SpTaskMicrocodeTrackerTest {
         val tracker = N64SpTaskMicrocodeTracker(taskDescriptor())
         tracker.onSpDmaCompleted(matchingTransfer())
 
-        assertFalse(tracker.onInstructionExecuted(0x100, 0))
-        assertFalse(tracker.onInstructionExecuted(2, 0))
-        assertTrue(tracker.onInstructionExecuted(0x20, 0xDEADBEEF.toInt()))
+        assertFalse(tracker.onInstructionExecuted(0x100))
+        assertFalse(tracker.onInstructionExecuted(2))
+        assertTrue(tracker.onInstructionExecuted(0x20))
     }
 
     private fun taskDescriptor() = N64SpTaskDescriptor(
