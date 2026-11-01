@@ -6,6 +6,22 @@ import org.junit.Test
 
 class N64BusSpDiagnosticsTest {
     @Test
+    fun pteWatchpointRecordsCpuWriterPcAndByteValues() {
+        val bus = N64Bus()
+        bus.setDiagnosticCpuPc(0xFFFFFFFF80001874UL.toLong())
+
+        bus.write32(0x5DBF0, 0x00000001)
+
+        assertEquals(4, bus.diagnosticPteWriteHistory.size)
+        assertEquals(4L, bus.diagnosticPteWriteCount)
+        assertTrue(bus.diagnosticPteWriteHistory.all { it.contains("PC=0xFFFFFFFF80001874") })
+        assertTrue(bus.diagnosticPteWriteHistory[0].contains("PADDR=0x0005DBF0"))
+        assertTrue(bus.diagnosticPteWriteHistory[0].contains("VALUE=0x00"))
+        assertTrue(bus.diagnosticPteWriteHistory[3].contains("PADDR=0x0005DBF3"))
+        assertTrue(bus.diagnosticPteWriteHistory[3].contains("VALUE=0x01"))
+    }
+
+    @Test
     fun dedicatedSpHistoryRetainsCpuReadsAndWritesAfterOtherMmioTraffic() {
         val bus = N64Bus()
         bus.setDiagnosticCpuPc(0xFFFFFFFF80001234UL.toLong())
