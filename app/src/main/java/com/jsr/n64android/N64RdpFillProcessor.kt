@@ -15,6 +15,7 @@ class N64RdpFillProcessor(
     private var colorImageWidth = 0
     private var colorImageSize = 0
     private var fillColor = 0
+    private var primitiveColor = 0xFFFFFFFF.toInt()
     private var cycleType = CYCLE_TYPE_ONE
     private var scissorLeft = 0
     private var scissorTop = 0
@@ -24,7 +25,8 @@ class N64RdpFillProcessor(
     data class Result(
         val commandsProcessed: Int,
         val rectanglesFilled: Int,
-        val pixelsWritten: Int
+        val pixelsWritten: Int,
+        val trianglesRasterized: Int = 0
     )
 
     fun execute(commands: List<Long>): Result {
@@ -38,6 +40,7 @@ class N64RdpFillProcessor(
                 CMD_SET_COLOR_IMAGE -> configureColorImage(command)
                 CMD_SET_SCISSOR -> configureScissor(command)
                 CMD_SET_FILL_COLOR -> fillColor = command.toInt()
+                CMD_SET_PRIM_COLOR -> primitiveColor = command.toInt()
                 CMD_FILL_RECTANGLE -> {
                     check(cycleType == CYCLE_TYPE_FILL) {
                         "FillRectangle requires RDP fill-cycle mode."
@@ -116,10 +119,73 @@ class N64RdpFillProcessor(
         return written
     }
 
+    /**
+     * Dispatches fully framed packets from the DPC parser. The first executable
+     * multiword subset is opcode 0x08: flat, untextured, non-Z triangles into RGBA16.
+     * Other multiword triangle variants remain explicitly unsupported.
+     */
+    fun executePackets(packets: List<N64RdpCommandPacket>): Result {
+        var commandsProcessed = 0
+        var rectanglesFilled = 0
+        var pixelsWritten = 0
+        var trianglesRasterized = 0
+
+        for (packet in packets) {
+            if (packet.isSingleWord) {
+                val result = execute(listOf(packet.firstWord))
+                commandsProcessed += result.commandsProcessed
+                rectanglesFilled += result.rectanglesFilled
+                pixelsWritten += result.pixelsWritten
+                continue
+            }
+            if (packet.opcode != 0x08) {
+                throw UnsupportedOperationException(
+                    "RDP multiword command 0x${packet.opcode.toString(16)} execution is not implemented."
+                )
+            }
+            check(colorImageWidth > 0) { "SetColorImage must precede a triangle." }
+            check(colorImageSize == IMAGE_SIZE_16) {
+                "Flat triangle rasterization currently requires an RGBA16 color image."
+            }
+            val availableHeight = (rdramSize - colorImageAddress) / (colorImageWidth * 2)
+            require(availableHeight > 0) { "Triangle color image has no available RDRAM rows." }
+            val height = minOf(N64ViFramebufferReader.MAX_HEIGHT, availableHeight)
+            val setup = N64RdpTriangleSetup.decode(packet)
+            val result = N64RdpFlatTriangleRasterizer.render(
+                setup = setup,
+                memory = memory,
+                rdramSize = rdramSize,
+                colorImageAddress = colorImageAddress,
+                width = colorImageWidth,
+                height = height,
+                colorRgba5551 = rgba8888ToRgba5551(primitiveColor),
+                clipLeft = scissorLeft,
+                clipTop = scissorTop,
+                clipRightExclusive = minOf(scissorRight, colorImageWidth),
+                clipBottomExclusive = minOf(scissorBottom, height)
+            )
+            commandsProcessed++
+            trianglesRasterized++
+            pixelsWritten += result.pixelsWritten
+        }
+        return Result(commandsProcessed, rectanglesFilled, pixelsWritten, trianglesRasterized)
+    }
+
+    private fun rgba8888ToRgba5551(color: Int): Int {
+        val red = (color ushr 24) and 0xFF
+        val green = (color ushr 16) and 0xFF
+        val blue = (color ushr 8) and 0xFF
+        val alpha = color and 0xFF
+        return ((red * 31 / 255) shl 11) or
+            ((green * 31 / 255) shl 6) or
+            ((blue * 31 / 255) shl 1) or
+            if (alpha >= 128) 1 else 0
+    }
     companion object {
         const val CMD_SET_COLOR_IMAGE = 0x3F
         const val CMD_SET_SCISSOR = 0x2D
         const val CMD_SET_FILL_COLOR = 0x37
+        const val CMD_SET_PRIM_COLOR = 0x3A
         const val CMD_FILL_RECTANGLE = 0x36
         const val CMD_SET_OTHER_MODES = 0x2F
         const val IMAGE_FORMAT_RGBA = 0
