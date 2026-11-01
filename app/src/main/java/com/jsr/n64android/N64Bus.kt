@@ -139,6 +139,12 @@ class N64Bus(
     private var dpcStart = 0
     private var dpcEnd = 0
     private var dpcCurrent = 0
+    // Optional SP task coordinator callback; invoked after synchronous DPC Full Sync processing.
+    private var dpDrainListener: (() -> Unit)? = null
+
+    fun setDpDrainListener(listener: (() -> Unit)?) {
+        dpDrainListener = listener
+    }
     private val dpcCommandProcessor by lazy {
         N64DpcCommandProcessor(this, ram.size, N64RdpFillProcessor(this, ram.size))
     }
@@ -348,6 +354,7 @@ class N64Bus(
                 if (result.fullSyncCommands > 0) {
                     miInitMode = miInitMode or MI_INIT_MODE_DP_INTR
                     miInterrupts = miInterrupts or MI_INTR_DP
+                    dpDrainListener?.invoke()
                 }
                 return
             }
