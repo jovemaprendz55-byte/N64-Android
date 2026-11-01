@@ -2726,3 +2726,39 @@ Esta diretriz foi reafirmada pelo usuário em 2026-11-01 após uma resposta que 
 - Nenhuma alteração de código foi feita nesta análise. O log da CI #999 continua sem quadro real; build/testes sintéticos não comprovam compatibilidade com GoldenEye.
 - Branch de desenvolvimento permanece `dev/n64-clean-start`; `main` não foi alterada nesta etapa.
 - Próximo passo técnico: instrumentar/validar o conteúdo das duas PTEs e a origem do ponteiro da tabela em RDRAM, depois reconstruir a sequência de instruções do vetor geral até o loop SP. Adicionar testes sintéticos para os comportamentos COP0/TLB só quando uma divergência arquitetural concreta for identificada.
+
+
+## Auditoria estática da ponte SP/RSP e sessão de ROM — 2026-11-01
+
+### Constatações no HEAD `ce2ed1e86a09cef55afaa1286e0dcbabb516b745`
+
+- `N64RomVideoSession` executa instruções R4300 e chama `pumpRsp()` a cada 4.096 instruções de CPU por padrão. O bombeamento só cria/executa `N64RspCore` se `SP_STATUS.HALT=0`; com HALT ativo, descarta a instância RSP e retorna.
+- A sessão não examina OSTask em RDRAM, não lê o descritor em DMEM e não chama `N64SpTaskRunner`. Portanto, a sessão não inicia tarefas RSP por conta própria; ela depende de o software da ROM programar SP DMA/PC/STATUS corretamente.
+- `N64SpTaskBootstrap.startFromRdram()` existe como helper separado: copia 64 bytes do descritor para DMEM 0xFC0, carrega o boot microcode para IMEM, define SP_PC=0 e libera HALT. `N64SpTaskRunner` chama esse helper e executa um orçamento limitado, mas não está conectado ao ciclo normal da `N64RomVideoSession`.
+- `N64RspCore` é um interpretador escalar/vetorial inicial, não um RSP completo. O próprio cabeçalho declara subconjunto MIPS-I/COP2, sem microcodes gráficos comerciais completos, sem agendamento DMA e sem temporização SP.
+- `N64Bus` inicializa `spStatus=SP_STATUS_HALT`. As transferências SP DMA são síncronas e simplificadas. O listener de DMA é observacional e usado pelo rastreador de carregamento de microcode no caminho explícito de `N64SpTaskRunner`.
+- O teste `N64RomVideoSessionTest.pumpsRspWhenCpuHasReleasedSpAndObservesBreak` prepara IMEM e libera HALT diretamente antes de iniciar a sessão. Ele valida o bombeamento cooperativo, mas não valida que uma ROM real consiga submeter uma OSTask nem que o caminho de submissão esteja integrado.
+- O teste `N64SpTaskBootstrapTest` valida o helper isoladamente, não a descoberta/submissão de OSTask durante execução de uma ROM.
+
+### Relação com o log GoldenEye #999
+
+- O log real registrou zero instruções RSP, SP_STATUS=HALT, SP_PC=0 e nenhuma escrita SP/DMA SP.
+- A auditoria de código confirma que a sessão não pode iniciar o RSP enquanto HALT permanecer ativo e não possui um caminho alternativo de descoberta de tarefas.
+- Isso é compatível com a ausência de submissão SP observada, mas não estabelece por que o código da ROM nunca escreveu nos registradores SP. A causa pode estar antes disso: estado de boot HLE incompleto, fluxo de exceção/retorno incorreto ou serviço de sistema esperado que ainda não foi implementado.
+- Não chamar `N64SpTaskBootstrap` automaticamente com um endereço presumido: isso fabricaria uma tarefa e poderia corromper o estado da ROM. A tarefa deve ser identificada por evidência de memória/descritor e por uma sequência válida de comandos da CPU.
+- Não limpar HALT por conveniência, não forçar SP_PC, não inventar OSTask e não declarar microcode comercial suportado com base no interpretador parcial.
+
+### Próximos passos técnicos
+
+1. Adicionar diagnóstico passivo para capturar acessos CPU a SP_STATUS/SP_PC/SP_MEM_ADDR/SP_DRAM_ADDR/SP_RD_LEN/SP_WR_LEN e a janela de instruções anterior/posterior ao primeiro polling persistente de SP_STATUS. O trace deve distinguir leitura e escrita e preservar PC, valor e sequência.
+2. Adicionar uma janela circular dos últimos blocos de SP DMA e das últimas alterações relevantes em DMEM/IMEM; não copiar grandes áreas de memória para logs automaticamente.
+3. Reconstituir a sequência R4300 que chega a 0x70000720 e verificar delay slots, branches, registradores e valores usados no polling. Comparar com o fluxo anterior ao primeiro desvio para a rotina de espera.
+4. Auditar os parâmetros e o estado de boot HLE que a ROM lê antes de entrar no polling, incluindo inicialização de dispositivos/MI/RI e serviços libultra, sem presumir qual campo está incorreto.
+5. Só depois de observar um descritor OSTask real, integrar o ciclo de DMA/boot microcode/RSP e validar a transição com testes sintéticos de ABI e memória.
+
+### Limites e estado
+
+- Nenhuma alteração funcional foi feita nesta auditoria; nenhuma causa raiz foi declarada.
+- CI #1001 (run ID 41329359974), no HEAD deste registro, terminou com sucesso. Isso valida build/testes automatizados, não compatibilidade com GoldenEye.
+- Branch de trabalho permanece `dev/n64-clean-start`; `main` não foi alterada.
+- O objetivo segue sendo HLE próprio, sem firmware original, sem PIF ROM original e sem executar IPL3 original.
