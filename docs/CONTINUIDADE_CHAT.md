@@ -2,7 +2,7 @@
 
 > Documento de passagem de contexto para qualquer novo chat ou colaborador. Leia este arquivo antes de alterar código. Atualize-o sempre que houver mudança relevante, teste, build, log ou decisão técnica.
 
-**Última atualização:** 2026-11-01 (integração inicial do decoder COP2 vetorial ao RSP)  
+**Última atualização:** 2026-11-01 (transferências COP2 entre GPR, vetores e flags)  
 **Repositório:** https://github.com/jovemaprendz55-byte/N64-Android  
 **Branch de trabalho obrigatória:** `dev/n64-clean-start`  
 **Último commit de código da etapa 44 enviado:** `e187a2757551ac000ccc5a4b9e4b244b36dc02c4` (tela de teste visual VI; aguarda CI).
@@ -1710,3 +1710,35 @@ Próximo passo: validar CI; depois implementar registradores vetoriais/accumulat
 3. Implementar loads/stores vetoriais e ampliar operações vetoriais necessárias ao microcode gráfico.
 4. Criar execução de task SP controlada e conectar o resultado do RSP ao DPC/RDP.
 5. Manter a demonstração sintética separada e não declarar ROM/jogo funcional sem imagem originada de ROM no aparelho.
+
+
+## 30. Transferências COP2 entre unidade escalar e vetorial — 2026-11-01
+
+### Implementação
+- `N64RspCore.executeCop2` agora diferencia as quatro instruções de movimento pelo campo `rs`: MFC2 (0), CFC2 (2), MTC2 (4) e CTC2 (6), sem confundi-las com o formato aritmético vetorial (`rs=0x10..0x1F`).
+- MFC2/MTC2 extraem o deslocamento de byte do campo `element` em bits 10..7. O acesso é modelado como bytes big-endian sobre os 16 bytes do registrador vetorial.
+- MFC2 lê dois bytes, faz wrap do segundo byte no limite do registrador e estende o resultado como signed 16-bit para o GPR.
+- MTC2 grava os dois bytes, mas no elemento 15 grava somente o byte alto, sem wrap.
+- CFC2/CTC2 acessam VCO (índice 0), VCC (1) e VCE (2). VCO/VCC são empacotados em 16 bits; VCE em 8 bits. Leituras fazem sign-extension da largura correspondente.
+- `N64RspVectorUnit` ganhou leitura/escrita de byte e leitura/escrita dos registradores de controle.
+
+### Testes
+- MTC2/MFC2 em elemento alinhado.
+- MTC2 no último byte sem wrap e MFC2 no último byte com wrap.
+- CTC2/CFC2 para VCO e VCE, incluindo extensão de sinal.
+- Rejeição explícita de índice de registrador de controle não implementado.
+- Testes executam instruções COP2 codificadas e armazenadas na IMEM, pelo caminho real `N64RspCore.step/run`.
+
+### Commits e CI
+- Build #801, run `41296285650`: **success**, integração do decoder vetorial.
+- Build #802, run `41296314585`: **success**, testes de COP2 codificados na IMEM.
+- Commit `b52a0ad3db8d662a312895e329c28d879e9e6827`: byte view e registradores de controle.
+- Commit `79688a9c4c4fb87ab814d1c5c1d296e4769d9aa8`: decoder MFC2/CFC2/MTC2/CTC2.
+- Commit `3e9a2061c0d20e7e2469120e6a3f0eb739580b95`: testes das transferências escalares e de flags.
+- CI para esta etapa deve ser confirmada antes de considerar o APK pronto.
+
+### Limitações e próximo passo
+- Ainda não há load/store vetorial LWC2/SWC2; eles são necessários para carregar vetores de DMEM em microcode real.
+- As operações aritméticas COP2 continuam com seleção de elemento computacional limitada a zero e semântica vetorial simplificada.
+- A unidade ainda não executa microcode gráfico nem está conectada a um scheduler completo de tarefas SP.
+- Próxima fatia: implementar LBV/LSV/LLV/LDV e SBV/SSV/SLV/SDV (subconjunto escalar de LWC2/SWC2), com cálculo de endereço, escala de offset e regras de wrap/no-wrap testadas; depois avançar para LQV/SQV.
