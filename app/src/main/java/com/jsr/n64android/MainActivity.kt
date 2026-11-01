@@ -148,8 +148,10 @@ class MainActivity : Activity() {
         val copyLogsButton = Button(this).apply {
             text = "COPIAR LOGS"
             isAllCaps = false
+            val exportButton = this
             setOnClickListener {
-                copyLogsButton.isEnabled = false
+                exportButton.isEnabled = false
+                val panelText = details.text.toString()
                 Thread({
                     try {
                         val activeSession = romVideoSession ?: lastRomVideoSession
@@ -160,7 +162,7 @@ class MainActivity : Activity() {
                     appendLine("Estado: ${if (romVideoThread?.isAlive == true) "EM EXECUÇÃO" else "PARADA/FINALIZADA"}")
                     appendLine()
                     appendLine("=== PAINEL DA EXECUÇÃO ===")
-                    appendLine(details.text.toString())
+                    appendLine(panelText)
                     appendLine()
                     appendLine("=== CPU / COP0 / TLB ===")
                     if (diagnosticCpu == null) {
@@ -308,7 +310,7 @@ class MainActivity : Activity() {
                             Toast.makeText(this@MainActivity, "Falha ao exportar logs: ${error.message ?: error.javaClass.simpleName}", Toast.LENGTH_LONG).show()
                         }
                     } finally {
-                        runOnUiThread { copyLogsButton.isEnabled = true }
+                        runOnUiThread { exportButton.isEnabled = true }
                     }
                 }, "N64-Log-Export").start()
             }
