@@ -789,8 +789,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             0x2F -> {
                 // Cache data is not modeled yet. Preserve the VR4300 LLbit side effect for
                 // D-cache invalidation operations, which can invalidate the reserved line.
-                val cacheSelector = (rt ushr 3) and 0x03 // 0=I-cache, 1=D-cache.
-                val cacheOperation = rt and 0x07
+                val cacheOperation = (rt ushr 2) and 0x07
+                val cacheSelector = rt and 0x03 // 0=I-cache, 1=D-cache.
                 val invalidatesDataCache = cacheSelector == 1 &&
                     (cacheOperation == 0 || cacheOperation == 4 || cacheOperation == 5 ||
                         (cacheOperation == 2 && (cop0[28] and 0xC0L) == 0L))
