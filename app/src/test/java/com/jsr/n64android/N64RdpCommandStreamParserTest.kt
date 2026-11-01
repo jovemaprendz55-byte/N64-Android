@@ -44,7 +44,7 @@ class N64RdpCommandStreamParserTest {
     }
 
     @Test
-    fun returnsDetachedImmutableSnapshotOfSourceWords() {
+    fun returnsDetachedSnapshotOfSourceWords() {
         val memory = N64Memory(128)
         writeWord(memory, 0x20, command(0x2F))
         val packets = N64RdpCommandStreamParser.parse(memory, 0x20, 0x28, memory.size)
@@ -70,7 +70,7 @@ class N64RdpCommandStreamParserTest {
             N64RdpCommandStreamParser.parse(memory, 0x21, 0x29, memory.size)
         }.exceptionOrNull()
         val outside = runCatching {
-            N64RdpCommandStreamParser.parse(memory, 0x78, 0x80, memory.size)
+            N64RdpCommandStreamParser.parse(memory, 0x78, 0x88, memory.size)
         }.exceptionOrNull()
         assertTrue(misaligned is IllegalArgumentException)
         assertTrue(outside is IllegalArgumentException)
