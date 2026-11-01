@@ -77,6 +77,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     val diagnosticTlbInstructionHistory: MutableList<String> = mutableListOf()
     /** Instructions executed immediately before the first TLB fault, frozen in a bounded ring. */
     val diagnosticTlbPreExceptionHistory: MutableList<String> = mutableListOf()
+    /** Effective-address and value trace for data accesses while the TLB refill handler runs. */
+    val diagnosticTlbMemoryAccessHistory: MutableList<String> = mutableListOf()
     private val preTlbFaultPc = LongArray(TLB_PRE_EXCEPTION_TRACE_CAPACITY)
     private val preTlbFaultInstruction = IntArray(TLB_PRE_EXCEPTION_TRACE_CAPACITY)
     private val preTlbFaultGprRs = LongArray(TLB_PRE_EXCEPTION_TRACE_CAPACITY)
@@ -112,6 +114,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         lastTlbEntrySnapshot = "(nenhuma entrada capturada)"
         diagnosticTlbInstructionHistory.clear()
         diagnosticTlbPreExceptionHistory.clear()
+        diagnosticTlbMemoryAccessHistory.clear()
         preTlbFaultPc.fill(0L)
         preTlbFaultInstruction.fill(0)
         preTlbFaultGprRs.fill(0L)
@@ -706,27 +709,44 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 val preserveMask = if (shift == 0) 0 else (-1 shl (32 - shift))
                 gpr[rt] = (((gpr[rt].toInt() and preserveMask) or (word ushr shift)).toLong()).toInt().toLong()
             }
-            0x20 -> gpr[rt] = memory.read8(physicalAddress(gpr[rs] + immediate, R4300Tlb.Access.READ)).toByte().toLong()
-            0x24 -> gpr[rt] = memory.read8(physicalAddress(gpr[rs] + immediate, R4300Tlb.Access.READ)).toLong()
+            0x20, 0x24 -> {
+                val address = gpr[rs] + immediate
+                val physical = physicalAddress(address, R4300Tlb.Access.READ)
+                val value = memory.read8(physical)
+                recordTlbMemoryAccess(if (opcode == 0x20) "LB" else "LBU", address, physical, value.toLong())
+                gpr[rt] = if (opcode == 0x20) value.toByte().toLong() else value.toLong()
+            }
             0x21 -> {
                 val address = gpr[rs] + immediate
                 requireAligned(address, 2)
-                gpr[rt] = memory.read16(physicalAddress(address, R4300Tlb.Access.READ)).toShort().toLong()
+                val physical = physicalAddress(address, R4300Tlb.Access.READ)
+                val value = memory.read16(physical)
+                recordTlbMemoryAccess("LH", address, physical, value.toLong())
+                gpr[rt] = value.toShort().toLong()
             }
             0x25 -> {
                 val address = gpr[rs] + immediate
                 requireAligned(address, 2)
-                gpr[rt] = memory.read16(physicalAddress(address, R4300Tlb.Access.READ)).toLong()
+                val physical = physicalAddress(address, R4300Tlb.Access.READ)
+                val value = memory.read16(physical)
+                recordTlbMemoryAccess("LHU", address, physical, value.toLong())
+                gpr[rt] = value.toLong()
             }
             0x23 -> {
                 val address = gpr[rs] + immediate
                 requireAligned(address, 4)
-                gpr[rt] = memory.read32(physicalAddress(address, R4300Tlb.Access.READ)).toLong()
+                val physical = physicalAddress(address, R4300Tlb.Access.READ)
+                val value = memory.read32(physical)
+                recordTlbMemoryAccess("LW", address, physical, value.toLong())
+                gpr[rt] = value.toLong()
             }
             0x27 -> { // LWU: load a word and zero-extend to 64 bits
                 val address = gpr[rs] + immediate
                 requireAligned(address, 4)
-                gpr[rt] = memory.read32(physicalAddress(address, R4300Tlb.Access.READ)).toLong() and 0xFFFFFFFFL
+                val physical = physicalAddress(address, R4300Tlb.Access.READ)
+                val value = memory.read32(physical)
+                recordTlbMemoryAccess("LWU", address, physical, value.toLong() and 0xFFFFFFFFL)
+                gpr[rt] = value.toLong() and 0xFFFFFFFFL
             }
             0x37 -> { // LD: load a big-endian doubleword
                 val address = gpr[rs] + immediate
@@ -832,7 +852,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             0x2B -> {
                 val address = gpr[rs] + immediate
                 requireAligned(address, 4, store = true)
-                memory.write32(physicalAddress(address, R4300Tlb.Access.WRITE), gpr[rt].toInt())
+                val physical = physicalAddress(address, R4300Tlb.Access.WRITE)
+                memory.write32(physical, gpr[rt].toInt())
+                recordTlbMemoryAccess("SW", address, physical, gpr[rt])
             }
             0x3F -> { // SD: store a big-endian doubleword
                 val address = gpr[rs] + immediate
@@ -1093,6 +1115,16 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     /** Translate a virtual instruction address for diagnostics using the same TLB rules as CPU fetch. */
     fun readInstructionForDiagnostic(address: Long): Int =
         memory.read32(physicalAddress(address, R4300Tlb.Access.FETCH))
+
+    private fun recordTlbMemoryAccess(kind: String, virtualAddress: Long, physicalAddress: Int, value: Long) {
+        if (diagnosticTlbTraceRemaining <= 0) return
+        val line = kind + " PC=0x" + (instructionAddressForCurrentStep ?: pc).toULong().toString(16).uppercase() +
+            " VA=0x" + virtualAddress.toULong().toString(16).uppercase() +
+            " PA=0x" + physicalAddress.toUInt().toString(16).uppercase().padStart(8, '0') +
+            " VALUE=0x" + value.toULong().toString(16).uppercase().padStart(16, '0')
+        diagnosticTlbMemoryAccessHistory.add(line)
+        if (diagnosticTlbMemoryAccessHistory.size > 512) diagnosticTlbMemoryAccessHistory.removeAt(0)
+    }
 
     private fun physicalAddress(
         address: Long,
