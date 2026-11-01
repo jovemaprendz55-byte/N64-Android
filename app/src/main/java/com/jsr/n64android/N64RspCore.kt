@@ -131,6 +131,14 @@ class N64RspCore(private val bus: N64Bus) {
                 if (op == 0x03) gpr[31] = pc
                 delayedTarget = ((pc and 0xF0000000.toInt()) or ((i and 0x03FFFFFF) shl 2)) and PC_MASK
             }
+            0x01 -> { // REGIMM: BLTZ / BGEZ
+                val takeBranch = when (rt) {
+                    0x00 -> a < 0 // BLTZ
+                    0x01 -> a >= 0 // BGEZ
+                    else -> unsupported(i)
+                }
+                if (takeBranch) delayedTarget = (pc + (imm shl 2)) and PC_MASK
+            }
             0x04 -> if (a == b) delayedTarget = (pc + (imm shl 2)) and PC_MASK
             0x05 -> if (a != b) delayedTarget = (pc + (imm shl 2)) and PC_MASK
             0x06 -> if (a <= 0) delayedTarget = (pc + (imm shl 2)) and PC_MASK
