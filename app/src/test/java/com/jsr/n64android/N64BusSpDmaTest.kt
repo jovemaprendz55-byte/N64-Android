@@ -109,4 +109,31 @@ class N64BusSpDmaTest {
         assertEquals(0x1002, bus.read32(N64Bus.SP_MEM_ADDR_REG))
         assertEquals(0x204, bus.read32(N64Bus.SP_DRAM_ADDR_REG))
     }
+
+    @Test
+    fun reportsCompletedSpDmaWithStructuredAddressesAndTransferShape() {
+        val ram = N64Memory(8 * 1024)
+        ram.write32(0x300, 0x12345678)
+        ram.write32(0x308, 0x90ABCDEF.toInt())
+        val bus = N64Bus(ram = ram)
+        var observed: N64Bus.SpDmaTransfer? = null
+        bus.setSpDmaListener { observed = it }
+
+        bus.write32(N64Bus.SP_MEM_ADDR_REG, 0x1000)
+        bus.write32(N64Bus.SP_DRAM_ADDR_REG, 0x300)
+        // Two 4-byte IMEM blocks with a 4-byte RDRAM skip.
+        bus.write32(N64Bus.SP_RD_LEN_REG, (4 shl 20) or (1 shl 12) or 3)
+
+        val transfer = observed ?: throw AssertionError("SP DMA completion was not reported")
+        assertEquals(true, transfer.toSp)
+        assertEquals(0x300, transfer.dramStartAddress)
+        assertEquals(0x1000, transfer.spStartAddress)
+        assertEquals(4, transfer.blockLength)
+        assertEquals(2, transfer.blockCount)
+        assertEquals(4, transfer.dramSkip)
+        assertEquals(8, transfer.transferredBytes)
+        assertEquals(0x12345678, bus.read32(N64Bus.SP_IMEM_BASE))
+        assertEquals(0x90ABCDEF.toInt(), bus.read32(N64Bus.SP_IMEM_BASE + 4))
+    }
+
 }
