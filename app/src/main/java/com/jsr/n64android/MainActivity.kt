@@ -246,12 +246,18 @@ class MainActivity : Activity() {
                     appendLine("=== SNAPSHOT RSP COMPLETO (GPR, HI/LO, VEC, ACC E FLAGS) ===")
                     appendLine(activeSession?.diagnosticRspSnapshot() ?: "Sessão RSP indisponível.")
                     appendLine("=== BYTES ORIGINAIS DA ROM — FONTE DO DMA PI ===")
-                    appendLine(bus.diagnosticCartridgeDump(listOf(0x34B30..0x36B2F)))
+                    appendLine(bus.diagnosticCartridgeDump(listOf(
+                        0x01320..0x0135F,
+                        0x34B30..0x36B2F
+                    )))
+                    appendLine("=== COMPARAÇÃO DO FETCH FINAL: ROM 0x1320 VS RDRAM 0x720 ===")
+                    appendLine("O PC virtual 0x70000720, com TLB[1] atual, deve ser conferido contra a origem ROM 0x1320.")
                     appendLine("=== DUMP DE MEMÓRIA RDRAM — REGIÕES DE INVESTIGAÇÃO ===")
                     appendLine(bus.diagnosticMemoryDump(listOf(
                         0x0000..0x003F,
                         0x02A0..0x02E0,
                         0x0400..0x0440,
+                        0x0700..0x075F,
                         0x1000..0x103F,
                         0x20000..0x20080,
                         0x232E0..0x23320,
