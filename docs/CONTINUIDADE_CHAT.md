@@ -2986,3 +2986,41 @@ Fonte analisada: `main/Log`, atualizado após a instrumentação da branch `dev/
 - Instrumentação apenas; não muda semântica de CPU, TLB, RAM ou SP.
 - Ainda não identifica por si só o significado dos campos da estrutura.
 - Não força bit Valid nem cria mapeamentos. RSP/VI continuam sem quadro real comprovado até novo teste.
+
+
+## 14. Releitura do Log com a janela PTE — 2026-11-01 às 15:16 (UTC−03:00)
+
+### Fonte e confirmação da instrumentação
+- Fonte: `main/Log`, blob SHA `b9a3f9f1da2bfaf7fa7801a67ab3bfcd2c7b81d1`.
+- O arquivo contém a seção `Rotina de inicialização PTE (janela 0x700017C0–0x70001840)`; portanto, a captura de instruções estreita chegou ao log do aparelho.
+- O painel informa ROM de 12.582.912 bytes, cerca de 12,95 milhões de instruções CPU, TLB INVALID em `0x7F000BD0`, SP STATUS `0x1`, RSP 0 instruções, VI 0 frames e DPC START/END/CURRENT em zero.
+
+### Decodificação da rotina
+- `0x24630010` em `PC=0x700017F4`: `ADDIU $3,$3,0x10`; o ponteiro avança 16 bytes.
+- `0x0062082B` em `PC=0x700017F8`: `SLTU $1,$3,$2`; compara sem sinal o ponteiro atualizado com o limite em `$2`.
+- `0xAC64FFF0` em `PC=0x700017FC`: `SW $4,-16($3)`; com `$4=1`, grava a palavra `0x00000001` na entrada atual.
+- `0x1420FFFC` em `PC=0x70001800`: `BNE $1,$zero,-4`; repete o laço enquanto a comparação for verdadeira.
+- `0xAC60FFF4` em `PC=0x70001804`: `SW $zero,-12($3)`; é o delay slot do branch e grava zero no word seguinte mesmo na última iteração.
+- O watchpoint anterior registra os primeiros stores com base `0x8005DC00`, gravando os pares em `0x5DBF0/0x5DBF4`, `0x5DC00/0x5DC04`, `0x5DC10/0x5DC14`, `0x5DC20/0x5DC24` e `0x5DC30/0x5DC34`. Isso confirma o início da mesma sequência no endereço monitorado.
+- A janela PTE tem capacidade de 512 registros. Como o laço contém mais instruções do que esse limite, o início da janela já foi descartado quando o log é copiado. O primeiro ponteiro visível `$3=0xFFFFFFFF8005DF50` não é o começo do laço; não concluir que a inicialização começa em `0x5DF50`.
+- Os stores observados seguem stride de `0x10`, gravando `1` no primeiro word e `0` no word seguinte. A captura mostra o laço avançando até a região `0x8005E3E0`. O tamanho e o limite total exato da tabela ainda devem ser confirmados com a inicialização de `$2` e com a saída do laço, não extrapolados apenas do trecho retido.
+
+### Relação com a falha TLB
+- O handler de refill lê `0x00000001` em RDRAM física `0x0005DBF0` e instala `EntryLo0=0x1`, `EntryLo1=0x41`.
+- Ambos têm o bit Valid (bit 1) desligado. O fetch subsequente em `0x7F000BD0` falha como TLB INVALID.
+- A nova janela mostra a rotina de inicialização que escreve o primeiro valor observado em `0x5DBF0`; ela não demonstra, por si só, que o valor `1` deveria ser válido. Também não explica ainda por que o handler forma `EntryLo1=0x41`.
+- Não alterar os valores para ligar Valid, não inventar PFNs e não contornar a exceção. Próxima investigação: capturar o início do laço e o valor de `$2`, além de reconstruir as instruções do handler entre `0xFFFFFFFF80000000` e `0xFFFFFFFF80000034`, para explicar a leitura da PTE e a formação dos dois EntryLo.
+
+### CI e APK de diagnóstico
+- Commit de código: `6769b65dae4e14110c96fe536535311524cbb9b5`.
+- GitHub Actions run `41335210242`: job `build`, Build and test e Upload debug APK concluídos com `success`.
+- Artefato `n64-android-debug-apk`, ID `13095101390`, 982.152 bytes, SHA-256 `7830537264a69c053592a476c2bdf436c308e0640db4740ece08beeb67a4b56c`, expira em 2026-11-15 15:11:24 (UTC−03:00).
+- Run: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41335210242
+- O CI verde valida compilação/testes e upload; não comprova execução gráfica no aparelho.
+
+### Próxima etapa
+1. Revisar o início do laço e registrar o valor de `$2` e a condição de saída, mantendo a captura limitada.
+2. Decodificar o bloco de refill e confirmar como o handler transforma a PTE `1` em `EntryLo0=1` e `EntryLo1=0x41`.
+3. Comparar a estrutura de 16 bytes inicializada pela ROM com o formato de PTE que o handler realmente espera.
+4. Só depois decidir se existe erro de HLE, de inicialização da estrutura ou de interpretação da tabela.
+5. Não modificar `main`; não forçar Valid, PFN, TLB, SP HALT ou OSTask.
