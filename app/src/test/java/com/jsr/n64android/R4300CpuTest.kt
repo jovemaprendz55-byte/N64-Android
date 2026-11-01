@@ -4257,7 +4257,8 @@ class R4300CpuTest {
         val memory = N64Memory(64)
         memory.write32(0, iType(0x30, 1, 2, 0)) // LL
         memory.write32(4, 0x0000000C) // SYSCALL exception.
-        memory.write32(8, iType(0x38, 1, 2, 0)) // SC after returning to test address.
+        memory.write32(8, iType(0x38, 1, 2, 0)) // SC after ERET.
+        memory.write32(24, (0x10 shl 26) or (0x10 shl 21) or 0x18) // ERET.
         memory.write32(16, 0x11223344)
         val cpu = R4300Cpu(memory)
         cpu.setProgramCounter(0)
@@ -4266,12 +4267,36 @@ class R4300CpuTest {
         cpu.step()
         cpu.step()
         assertEquals(8, cpu.lastExceptionCode)
-        cpu.setProgramCounter(8)
+        cpu.cop0[14] = 8L // Return to the SC instruction.
+        cpu.setProgramCounter(24)
+        cpu.step() // ERET must clear the VR4300 LLbit.
+        assertEquals(8L, cpu.pc)
         cpu.gpr[2] = 0x55667788L
         cpu.step()
 
         assertEquals(0L, cpu.gpr[2])
         assertEquals(0x11223344, memory.read32(16))
+    }
+
+    @Test fun vr4300ScDoesNotClearLlbitByItself() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x30, 1, 2, 0)) // LL
+        memory.write32(4, iType(0x38, 1, 2, 0)) // SC
+        memory.write32(8, iType(0x38, 1, 2, 0)) // Second SC without another LL.
+        memory.write32(16, 0x11223344)
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 16L
+
+        cpu.step()
+        cpu.gpr[2] = 0x55667788L
+        cpu.step()
+        assertEquals(1L, cpu.gpr[2])
+        cpu.gpr[2] = 0x12345678L
+        cpu.step()
+
+        assertEquals(1L, cpu.gpr[2])
+        assertEquals(0x12345678, memory.read32(16))
     }
 
     @Test fun scWithoutPriorLlFailsAndDoesNotWrite() {
