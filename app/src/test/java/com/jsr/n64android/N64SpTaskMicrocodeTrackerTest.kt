@@ -21,7 +21,7 @@ class N64SpTaskMicrocodeTrackerTest {
     fun rejectsDmaWithWrongAddressSizeDirectionOrImemOffset() {
         val tracker = N64SpTaskMicrocodeTracker(taskDescriptor())
         assertFalse(tracker.onSpDmaCompleted(matchingTransfer().copy(dramStartAddress = 0x500)))
-        assertFalse(tracker.onSpDmaCompleted(matchingTransfer().copy(transferredBytesOverride = 0)))
+        assertFalse(tracker.onSpDmaCompleted(matchingTransfer().copy(blockLength = 0x40, blockCount = 1)))
         assertFalse(tracker.onSpDmaCompleted(matchingTransfer().copy(toSp = false)))
         assertFalse(tracker.onSpDmaCompleted(matchingTransfer().copy(spStartAddress = 0)))
         assertFalse(tracker.taskMicrocodeEntryObserved)
