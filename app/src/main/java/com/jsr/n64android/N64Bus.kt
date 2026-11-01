@@ -647,16 +647,20 @@ class N64Bus(
      * Reads RDRAM directly (not through bus MMIO), so capture does not add
      * artificial CPU-access events to the diagnostic MMIO trace.
      */
-    fun captureViFrame(height: Int): N64VideoFrame? {
+    fun captureViFrame(height: Int, outputWidth: Int? = null): N64VideoFrame? {
         require(height in 1..N64ViFramebufferReader.MAX_HEIGHT) {
             "Unsupported VI framebuffer height: $height"
         }
         val origin = viRegisters[VI_ORIGIN_OFFSET / 4]
-        val width = viRegisters[VI_WIDTH_OFFSET / 4]
+        val stridePixels = viRegisters[VI_WIDTH_OFFSET / 4]
         val status = viRegisters[VI_STATUS_OFFSET / 4]
-        if (width == 0) return null
+        if (stridePixels == 0) return null
+        val width = outputWidth ?: stridePixels
+        require(width in 1..stridePixels) {
+            "VI output width $width must be between 1 and VI_WIDTH stride $stridePixels"
+        }
         val reader = N64ViFramebufferReader(ram, ram.size)
-        return reader.capture(origin, width, height, status)
+        return reader.capture(origin, width, height, status, stridePixels)
     }
 
     /**
