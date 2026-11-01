@@ -22,6 +22,7 @@ class N64Bus(
     // CPU-originated MMIO trace. The caller supplies the current virtual PC before each step.
     private var diagnosticCpuPc: Long = 0L
     val diagnosticMmioHistory = ArrayDeque<String>()
+    val diagnosticSpWriteHistory = ArrayDeque<String>()
     val diagnosticMmioCounts = linkedMapOf<String, Long>()
     fun setDiagnosticCpuPc(pc: Long) { diagnosticCpuPc = pc }
     private fun mmioDevice(address: Int): String? = when (address) {
@@ -44,6 +45,14 @@ class N64Bus(
                 "PADDR=0x${address.toString(16).uppercase().padStart(8, '0')} " +
                 "VALUE=0x${value.toUInt().toString(16).uppercase().padStart(8, '0')}"
         )
+        if (kind == "W" && device == "SP") {
+            if (diagnosticSpWriteHistory.size >= 256) diagnosticSpWriteHistory.removeFirst()
+            diagnosticSpWriteHistory.addLast(
+                "W SP PC=0x${diagnosticCpuPc.toULong().toString(16).uppercase()} " +
+                    "PADDR=0x${address.toString(16).uppercase().padStart(8, '0')} " +
+                    "VALUE=0x${value.toUInt().toString(16).uppercase().padStart(8, '0')}"
+            )
+        }
     }
     private fun recordMmioRead(address: Int, value: Int): Int {
         recordMmio("R", address, value)
