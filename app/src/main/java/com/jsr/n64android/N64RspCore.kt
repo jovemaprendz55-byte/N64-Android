@@ -15,9 +15,8 @@ class N64RspCore(private val bus: N64Bus) {
         private set
     var lastInstruction: Int = 0
         private set
-    var halted: Boolean
+    val halted: Boolean
         get() = (bus.read32(N64Bus.SP_STATUS_REG) and N64Bus.SP_STATUS_HALT) != 0
-        private set(_) {}
 
     private var delayedTarget: Int? = null
 
@@ -56,7 +55,7 @@ class N64RspCore(private val bus: N64Bus) {
     fun run(maxInstructions: Int): Int {
         require(maxInstructions >= 0)
         var count = 0
-        while (count < maxInstructions && step()) count++
+        while (count < maxInstructions && !halted) { step(); count++ }
         return count
     }
 
@@ -80,7 +79,7 @@ class N64RspCore(private val bus: N64Bus) {
                 0x07 -> gpr[rd] = b shr (a and 31)
                 0x08 -> delayedTarget = a and PC_MASK
                 0x09 -> { gpr[rd.takeIf { it != 0 } ?: 31] = pc; delayedTarget = a and PC_MASK }
-                0x0D -> { bus.write32(N64Bus.SP_STATUS_REG, N64Bus.SP_STATUS_CMD_SET_HALT or N64Bus.SP_STATUS_CMD_CLR_BROKE); delayedTarget = null }
+                0x0D -> { bus.write32(N64Bus.SP_STATUS_REG, N64Bus.SP_STATUS_CMD_SET_HALT); delayedTarget = null }
                 0x21 -> gpr[rd] = a + b
                 0x23 -> gpr[rd] = a - b
                 0x24 -> gpr[rd] = a and b
