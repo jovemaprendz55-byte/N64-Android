@@ -3517,3 +3517,53 @@ A captura ampliada já está na branch `dev/n64-clean-start`, mas este Log não 
 - Artefato #1065: `n64-android-debug-apk`, ID `13097258132`, 984.061 bytes, criado em `2026-11-01T19:20:59Z`, expira em `2026-11-15T19:20:58Z`; digest ZIP informado pelo GitHub `sha256:8d15c150ac7be5abb0c0342701ce6ffd6f435621ec24c59ad0b88587742380c7`.
 - O APK #1065 contém as novas janelas de diagnóstico e a UI atualizada. Ainda não há confirmação de instalação/execução no aparelho.
 - Run #1066 (`41341250642`) testa o commit documental `fa51a71d827603f30f6272a9d1298587e47ad516`; estava em execução na última consulta. Não declarar sucesso antes de verificar o estado final.
+
+
+## 27. Pacote diagnóstico completo em um único COPIAR LOGS — 2026-11-01
+
+### Objetivo
+Reduzir a necessidade de pedir vários Logs separados. O botão existente `COPIAR LOGS` agora monta um pacote único de estado e evidências no momento em que o usuário toca nele. A coleta é de leitura e não deve alterar a execução do emulador.
+
+### Conteúdo acrescentado
+- R4300: todos os 32 GPR, HI/LO, todos os 32 COP0, todos os 32 FPR e FCR, estado de exceção, endereços e instrução da falha.
+- TLB: todas as entradas atualmente inicializadas, além do snapshot congelado no primeiro fault e dos históricos de TLBWI/TLBWR, refill, PTE e instruções anteriores à exceção.
+- RSP: PC, última instrução, contador, HI/LO, HALT, 32 GPR, 32 registradores vetoriais (8 lanes cada), acumuladores e flags VCO/VCC/VCE. O snapshot usa leitura interna de SP_STATUS para não gerar acesso MMIO artificial.
+- Barramento/dispositivos: contadores e históricos MMIO, SP MMIO, escritas SP, DMA SP/PI, DPC/RDP e snapshots de registradores SP/MI/PI/AI/SI/RI/VI.
+- ROM: tamanho, magic, CRC1/CRC2, bytes do cabeçalho, título e presença de PIF ROM.
+- Memória: dumps limitados das regiões RDRAM relevantes para PTE, buffers, DMA e endereço de destino investigado; dump completo dos 4 KiB de SP DMEM e 4 KiB de SP IMEM.
+- Fonte do PI DMA: bytes originais da ROM no offset `0x34B30..0x36B2F`, para comparação com destino RDRAM `0x340000..0x341FFF`.
+- Watchpoints de memória: amostras de escritas RDRAM e região de destino agora incluem contador do evento, PC da CPU e palavra de instrução, permitindo distinguir escritas repetidas do mesmo endereço por uma mesma rotina.
+- Acesso ao buffer de boot: total exato de acessos incluído no relatório.
+- Mantidos os históricos limitados já existentes e o botão COPIAR LOGS.
+
+### Testes acrescentados
+- `fullTlbDiagnosticSnapshotIncludesEveryInitializedEntry`
+- `diagnosticSnapshotIncludesScalarAndVectorStateWithoutMmioSideEffects`
+- `diagnosticMemoryAndScratchpadDumpsAreReadOnly`
+- `broadRdramWriteSamplesIdentifyTheCpuInstructionThatWroteEachByte`
+- Fixture de ROM verifica magic e bytes exportados do cartucho.
+- Alterações apenas diagnósticas e de testes; nenhuma mudança para forçar TLB Valid/PFN, SP HALT, RSP tasks, DPC ou mapeamento VA->PA.
+
+### Commits desta etapa
+- `a7b8e16a30882e3ce23cca3ad35f71e81c7ac731` — snapshot TLB público.
+- `6722f780bf6156f873ead4091e8b20d6a5e5e7ca` — snapshot dos registradores vetoriais.
+- `b15c18518cb674e37f9b2d603efc65f315c8f2ea` — snapshot RSP completo.
+- `0b0451fea018f9b7e6f6ad472809f0a13ed50f85` — acesso ao snapshot RSP pela sessão.
+- `61c56a758863b1730acccc6033b12f995c73ada5` — cabeçalho ROM, dump RDRAM e SP DMEM/IMEM.
+- `0dbd5492dd01b3ab6c8ccc5e79b88c43fe5c4b74` — integração no COPIAR LOGS.
+- `c699bf97d1ba779d6b8e071861a83ca2f402e24f` — snapshot RSP sem side effects MMIO.
+- `fda59ad0b3686e76297016ebea3ed59274eb8dca` — linhas corretas no snapshot TLB.
+- `d7072b93c66a1c2591337f33c7e061ca43b5bee5`, `8ef7a3da8d50f7e394671a3c34908eb0f7244ff1`, `63e1af1493f3334c157b570569d523bca42b6846`, `e44e40cd053b192615f221a8c0430d9a03b71510` — testes das novas capturas e correção da ROM de teste.
+- `4d0e6198527aa81fd2883c596ee593c68f67aa11` — PC/instrução nos watchpoints e dump da fonte do DMA PI.
+- `7e61f47081187f43721326f5a90a73b0920e062a` — correção de quebras de linha no cabeçalho.
+- `95c53cbc82d60d33e5413d60072463298277f64a` — inclusão dos bytes da ROM fonte e total de acessos no relatório.
+- `b2dcce5babbeeb62ed751c9cce5365ab4c32406b` — testes de fonte ROM e watchpoint PC/instrução.
+- `0c44baf86af8777d063b9091d983052192af0b12` — rótulo de pacote diagnóstico completo.
+- CI deve ser verificada para o HEAD final antes de instalar ou declarar APK aprovado.
+
+### Limites importantes
+- “Completo” significa pacote amplo de diagnóstico do estado implementado, não telemetria de cada ciclo ou cada acesso. Históricos são limitados/amostrados para proteger desempenho e tamanho do clipboard.
+- O RSP snapshot só contém estado se o núcleo RSP chegou a ser criado; se SP permaneceu em HALT, o relatório informa isso.
+- O dump da ROM cobre o trecho PI conhecido e não a ROM inteira; o dump RDRAM cobre regiões selecionadas, não toda a RAM.
+- A coleta não consegue revelar estado interno de dispositivos ainda não implementados nem provar execução/renderização que não aconteceu.
+- Ao receber o próximo relatório, verificar primeiro se as seções estão presentes e se os contadores/históricos batem com o caminho observado. Se alguma captura estiver ausente, corrigir a instrumentação antes de pedir outro Log.
