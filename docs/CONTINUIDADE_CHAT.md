@@ -3254,3 +3254,11 @@ O histórico imediatamente anterior mostra:
 2. Se o build passar, instalar o APK no aparelho, executar o mesmo diagnóstico HLE/ROM e enviar o texto atualizado de COPIAR LOGS.
 3. Comparar os snapshots em `0x70001890` e `0x70005D58`, especialmente RA/T9/A0-A3/SP/S0-S7.
 4. Rastrear a origem do valor/código em `0x7F000BD0` e verificar cópias/DMA anteriores antes de propor qualquer alteração funcional.
+
+
+### Correção da fixture do caminho de chamada
+- CI #1048 (run `41338772625`) falhou em um único teste, `capturesRegistersAcrossObservedJrRaAndJalCallPath`; compilação Kotlin e montagem do APK haviam passado.
+- A causa foi a expectativa da fixture: a janela de retorno termina inclusivamente em `0x70001894`, portanto também registra o delay slot do JR. A captura real estava preservando corretamente JR, delay slot e JAL.
+- O teste foi corrigido para exigir as três linhas e validar o JAL na terceira posição.
+- Commit corretivo do teste: `fdbbfd40b970933ef318584e92f1394a92d59a1b`.
+- O CI do HEAD após esta correção ainda precisa ser confirmado; não declarar a etapa verde até o workflow concluir.
