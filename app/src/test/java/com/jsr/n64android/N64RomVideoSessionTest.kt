@@ -73,4 +73,38 @@ class N64RomVideoSessionTest {
         assertEquals(N64ExecutionSession.State.CANCELLED, result.state)
         assertEquals(0L, result.executedInstructions)
     }
+    @Test
+    fun pumpsRspWhenCpuHasReleasedSpAndObservesBreak() {
+        val memory = N64Memory(1024)
+        val bus = N64Bus(ram = memory)
+        memory.write32(0, 0) // R4300 NOP
+        val cpu = R4300Cpu(bus)
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
+
+        // RSP BREAK at IMEM[0]; release HALT as the CPU would.
+        bus.write32(N64Bus.SP_IMEM_BASE, 0x0000000D)
+        bus.write32(N64Bus.SP_PC_REG, 0)
+        bus.write32(
+            N64Bus.SP_STATUS_REG,
+            N64Bus.SP_STATUS_CMD_CLR_BROKE or N64Bus.SP_STATUS_CMD_CLR_HALT
+        )
+
+        val session = N64RomVideoSession(
+            bus = bus,
+            cpu = cpu,
+            instructionLimit = 1,
+            rspPollInterval = 1,
+            rspInstructionQuantum = 1,
+            framePollInterval = 100,
+            onFrame = {}
+        )
+
+        val result = session.execute()
+
+        assertEquals(N64ExecutionSession.State.COMPLETED, result.state)
+        assertEquals(1L, session.executedRspInstructionCount())
+        assertTrue((bus.read32(N64Bus.SP_STATUS_REG) and N64Bus.SP_STATUS_BROKE) != 0)
+        assertEquals(null, session.rspFailureMessage())
+    }
+
 }
