@@ -4309,6 +4309,55 @@ class R4300CpuTest {
         assertEquals(0x5A, bus.read8(0x104))
     }
 
+    @Test fun r4300RegisterTrapInstructionsRaiseTrapOnlyWhenConditionMatches() {
+        val cases = listOf(
+            Triple(0x30, -1L to 1L, false), // TGE signed.
+            Triple(0x31, -1L to 1L, true),  // TGEU unsigned.
+            Triple(0x32, -1L to 1L, true),  // TLT signed.
+            Triple(0x33, -1L to 1L, false), // TLTU unsigned.
+            Triple(0x34, 7L to 7L, true),   // TEQ.
+            Triple(0x36, 7L to 7L, false)   // TNE.
+        )
+        for ((funct, operands, shouldTrap) in cases) {
+            val memory = N64Memory(32)
+            memory.write32(0, (1 shl 21) or (2 shl 16) or funct)
+            val cpu = R4300Cpu(memory)
+            cpu.setProgramCounter(0)
+            cpu.gpr[1] = operands.first
+            cpu.gpr[2] = operands.second
+
+            cpu.step()
+
+            assertEquals("SPECIAL trap funct=0x${funct.toString(16)}", shouldTrap, cpu.lastExceptionCode == 13)
+            if (shouldTrap) assertEquals(13L, (cpu.cop0[13] ushr 2) and 0x1FL)
+            else assertEquals(4L, cpu.pc)
+        }
+    }
+
+    @Test fun r4300ImmediateTrapInstructionsUseSignExtendedImmediate() {
+        val cases = listOf(
+            Triple(0x08, 10L, true),  // TGEI 10 >= 5.
+            Triple(0x09, -1L, true),  // TGEIU: unsigned 0xFFFF... >= 5.
+            Triple(0x0A, 4L, true),   // TLTI 4 < 5.
+            Triple(0x0B, -1L, false), // TLTIU: unsigned 0xFFFF... is not < 5.
+            Triple(0x0C, 5L, true),   // TEQI.
+            Triple(0x0E, 5L, false)  // TNEI.
+        )
+        for ((rt, value, shouldTrap) in cases) {
+            val memory = N64Memory(32)
+            memory.write32(0, iType(0x01, 1, rt, 5))
+            val cpu = R4300Cpu(memory)
+            cpu.setProgramCounter(0)
+            cpu.gpr[1] = value
+
+            cpu.step()
+
+            assertEquals("REGIMM trap rt=0x${rt.toString(16)}", shouldTrap, cpu.lastExceptionCode == 13)
+            if (shouldTrap) assertEquals(13L, (cpu.cop0[13] ushr 2) and 0x1FL)
+            else assertEquals(4L, cpu.pc)
+        }
+    }
+
     @Test fun branchLikelyNotTakenAnnulsDelaySlot() {
         val memory = N64Memory(32)
         memory.write32(0, iType(0x14, 1, 0, 2)) // beql $at, $zero, target
