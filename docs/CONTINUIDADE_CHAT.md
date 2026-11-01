@@ -3158,3 +3158,60 @@ A seção PTE anterior mantinha somente as 512 instruções mais recentes. O la�
 - APK foi gerado e está disponível como artefato; **não há confirmação de instalação no aparelho**.
 - Nenhum teste da ROM real com esta nova captura foi recebido ainda.
 - Próximo passo prático: instalar a APK da run `41336525296`, executar a mesma ROM, copiar os logs e conferir o prefixo, o marcador de omissão, `GPR2` e o sufixo recente.
+
+
+## 19. Novo Log main: limite da tabela PTE e origem do salto inválido — 2026-11-01
+
+### Identificação da evidência
+- Arquivo consultado: `main/Log`.
+- Blob SHA atual: `5d391eaa019d0cf503f17660984c55cc26121932`.
+- O arquivo foi somente lido em `main`; nenhum arquivo ou commit foi feito nessa branch.
+- O Log contém 1.634 linhas, 13.365.193 instruções CPU, 0 instruções RSP e 0 frames VI.
+
+### Descoberta 1 — início, limite e tamanho da tabela PTE
+A nova captura preservou o prefixo e mostra os valores iniciais reais:
+- `PC=0x700017E0`: `LUI $3,0x8006`.
+- `PC=0x700017E4`: `LUI $2,0x8006`.
+- `PC=0x700017E8`: `ADDIU $2,$2,-0x1C10`, resultando em `$2=0xFFFFFFFF8005E3F0`.
+- `PC=0x700017EC`: `ADDIU $3,$3,-0x2410`, resultando em `$3=0xFFFFFFFF8005DBF0`.
+- `PC=0x700017F0`: `ADDIU $4,$zero,1`, resultando em `$4=1`.
+
+O laço incrementa `$3` em `0x10`, compara unsigned com `$2`, grava `1` em `-16($3)` e grava `0` em `-12($3)` no delay slot do branch.
+
+Cálculo confirmado:
+- Início: `0x8005DBF0`; limite exclusivo: `0x8005E3F0`.
+- Extensão: `0x800` bytes = 2.048 bytes.
+- Stride: `0x10` bytes = 16 bytes.
+- Quantidade: `0x800 / 0x10 = 128` registros.
+- Primeiro word de cada registro recebe `1`; segundo word recebe `0`.
+- Último registro começa em `0x8005E3E0`; próximo ponteiro após incremento: `0x8005E3F0`.
+- O store no delay slot executa também na última iteração; o último word zero é gravado em `0x8005E3E4`.
+
+### Descoberta 2 — o salto que provoca o TLB fault
+O histórico imediatamente anterior mostra:
+- `PC=0x70005D58`, instrução `0x0FC002F4`: JAL para `0x7F000BD0`.
+- `PC=0x70005D5C`, instrução `0x00000000`: delay slot.
+- A primeira exceção registrada é TLB MISS FETCH em `VA=0x7F000BD0`, com `EPC=0x7F000BD0`.
+- O refill calcula `PTEBase + BadVPN2 = 0x8005DBF0`, lê `1` e constrói `EntryLo0=1`, `EntryLo1=0x41`.
+- A entrada é inválida porque V=0 nos dois EntryLo. O fetch seguinte resulta em TLB INVALID.
+
+**Conclusão nova:** o fetch inválido não surge de um PC aleatório. O código executa explicitamente um JAL cujo destino é `0x7F000BD0`. A tabela que cobre esse par de páginas tem sua primeira entrada inicializada com `1`, que o handler carrega sem alterar. A razão funcional pela qual esse destino deveria estar mapeado, ou por que a rotina chega a chamá-lo antes de existir um mapeamento válido, ainda não está provada.
+
+### Descoberta 3 — ponteiro de tabela usado pelo refill
+- O handler lê em `0xFFFFFFFF8005E4A4` o valor `0x7FC65BF0`.
+- Soma o campo Context `0x003F8000`, obtendo o endereço virtual `0xFFFFFFFF8005DBF0`.
+- Isso coincide exatamente com o primeiro registro inicializado pela rotina.
+- Portanto, a base e o índice usados pelo handler estão coerentes com a tabela recém-inicializada; ainda não há evidência de erro aritmético no cálculo de Context ou no endereço-base.
+
+### Próxima investigação obrigatória
+1. Rastrear quem prepara o destino/callback `0x7F000BD0` e por que executa o JAL em `0x70005D58`.
+2. Descobrir qual código/dado deveria estar no par de páginas virtuais `0x7F000000–0x7F001FFF`, e se houve cópia/carregamento para a RAM antes do salto.
+3. Inspecionar o fluxo que inicializa a tabela e o valor `0x7FC65BF0`; distinguir entrada inválida intencional de mapeamento que deveria ter sido preenchido.
+4. Capturar a origem do registrador de destino/RA e a cadeia de chamadas antes do JAL, sem mudar o handler nem forçar V/PFN.
+5. Manter a distinção: salto direto e entrada inválida são fatos; causa de o destino não estar mapeado ainda é hipótese aberta.
+
+### Estado de vídeo/dispositivos
+- SP_STATUS continua `0x1` (HALT), RSP 0 instruções.
+- DPC START/END/CURRENT seguem zero.
+- VI CURRENT zero e frames publicados zero.
+- PI mostra DRAM_ADDR `0x342000`, CART_ADDR `0x10036B30`, STATUS zero; não concluir transferência adicional sem histórico de DMA correspondente.
