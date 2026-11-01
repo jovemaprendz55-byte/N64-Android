@@ -1889,3 +1889,16 @@ Próximo passo: validar CI; depois implementar registradores vetoriais/accumulat
 - Referência primária: SGI RSP Programmer's Guide descreve LPV/SPV como oito bytes consecutivos, LUV/SUV com alinhamento em bit 14, e LHV/SHV como acesso alternado. A descrição independente do emudev detalha a diferença entre loads packed e stores packed.
 - Próxima fatia: implementar LHV/SHV separando claramente os caminhos de load/store, com fixtures de endereços pares/ímpares, offset signed escalado por 16 e wrap de DMEM. Não declarar suporte completo até validar a semântica de elemento e endereçamento.
 - Nenhuma ROM/jogo foi validado.
+
+
+## 36. LHV/SHV — primeira fatia com element=0 — 2026-11-01
+
+- Build #823 (run `41297999903`), commit `ed6f92f0a85dbd4acc4b4d0225ce5b3e5d025143`: **success**.
+- Job `build`, testes e upload do APK concluídos; artefato `n64-android-debug-apk`, ID `13080495353`, SHA-256 `9d47673f6fb1f4f28d0776fcd1fa563fc701a4f38a7604cba4dd08909640c3dc`.
+- Implementado o primeiro caminho LHV/SHV para `element=0`, offset signed escalado por 16 e janela DMEM de 16 bytes alinhada.
+- LHV carrega os bytes alternados ímpares da janela para bits 14..7 das oito lanes; SHV grava os bytes correspondentes em endereços alternados.
+- Foram adicionados testes sintéticos de LHV e SHV com base desalinhada em 0x106 e preservação dos bytes não selecionados.
+- Limitação importante: SHV ainda é uma implementação inicial para element=0; o mapeamento completo do registrador após rotação e casos de fronteira precisam de fixtures independentes antes de afirmar precisão. Elementos diferentes de zero são rejeitados explicitamente.
+- Fontes técnicas: SGI RSP Programmer's Guide (LHV e nota element=0) e emudev RSP Vector Instructions (padrões de stride e distinção load/store).
+- Próxima etapa: revisar SHV byte a byte com exemplos SGI, ampliar testes para wrap 0xFFF/0x000 e só então liberar elementos não zero.
+- Nenhuma ROM/jogo foi validado.
