@@ -28,6 +28,8 @@ class N64RomVideoSession(
     @Volatile private var previousPixels: IntArray? = null
     @Volatile private var rspCore: N64RspCore? = null
     @Volatile private var rspFailure: String? = null
+    @Volatile private var lastRspInstructionPc: Int? = null
+    @Volatile private var lastRspInstructionWord: Int? = null
 
     private val delegate: N64ExecutionSession
 
@@ -39,6 +41,7 @@ class N64RomVideoSession(
         delegate = N64ExecutionSession(
             instructionLimit = instructionLimit,
             batchSize = batchSize,
+            beforeInstruction = { bus.setDiagnosticCpuPc(cpu.pc) },
             afterInstruction = {
                 val count = instructionCount.incrementAndGet()
                 if (count % rspPollInterval == 0L) pumpRsp()
@@ -71,6 +74,10 @@ class N64RomVideoSession(
 
     fun rspFailureMessage(): String? = rspFailure
 
+    fun lastRspInstructionAddress(): Int? = lastRspInstructionPc
+
+    fun lastRspInstructionWord(): Int? = lastRspInstructionWord
+
     /**
      * Gives the RSP a bounded execution quantum whenever the CPU has released SP.
      * The core is recreated after HALT so it reloads the architectural SP_PC for
@@ -84,6 +91,10 @@ class N64RomVideoSession(
         }
 
         val core = rspCore?.takeUnless { it.halted } ?: N64RspCore(bus).also {
+            it.setInstructionListener { pc, instruction ->
+                lastRspInstructionPc = pc
+                lastRspInstructionWord = instruction
+            }
             rspCore = it
         }
         val before = core.executedInstructions
