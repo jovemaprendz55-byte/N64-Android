@@ -97,7 +97,7 @@ class N64BusVideoInterfaceTest {
         bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_WIDTH_OFFSET, 4)
         bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_H_START_OFFSET, (0x20 shl 16) or 0x22)
         bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_X_SCALE_OFFSET, 0x400)
-        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_START_OFFSET, (0x20 shl 16) or 0x22)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_START_OFFSET, (0x20 shl 16) or 0x24)
         bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_Y_SCALE_OFFSET, 0x400)
         for (y in 0 until 2) {
             memory.write16(0x100 + y * 8, 0xF801)
