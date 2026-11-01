@@ -11,7 +11,7 @@ class N64RdpCommandStreamParserTest {
         val memory = N64Memory(512)
         writeWord(memory, 0x40, command(0x08))
         for (index in 1 until 4) {
-            writeWord(memory, 0x40 + index * 8, 0xA0A0A0A000000000L + index)
+            writeWord(memory, 0x40 + index * 8, 0xA0A0A0A000000000uL.toLong() + index)
         }
         writeWord(memory, 0x60, command(0x2F))
 
