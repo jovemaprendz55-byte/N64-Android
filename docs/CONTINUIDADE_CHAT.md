@@ -1964,7 +1964,7 @@ Construir o ciclo de vida de task SP: leitura do descriptor em RDRAM, carregamen
 5. Auditar o caminho DPC/RDP/VI existente e identificar onde ainda há execução isolada sem ligação com ROM. **Concluída nesta rodada.**
 6. Definir contrato mínimo de task SP: descriptor, origem/destino, tamanhos, flags e endereços de microcode/display-list, conforme evidência arquitetural. **Concluída: decoder OSTask de 64 bytes + testes de offsets e limites.**
 7. Definir estados e transições de task: idle, carregamento DMA, execução, BREAK, conclusão, interrupção e erro. **Concluída como modelo determinístico isolado, com testes; ainda não conectado ao hardware.**
-8. Criar testes de integração do ciclo SP usando descriptor sintético, sem alegar compatibilidade de jogo. **Planejada.**
+8. Criar testes de integração do ciclo SP usando descriptor sintético, sem alegar compatibilidade de jogo. **Em andamento: bootstrap DMA + início RSP testados; execução até BREAK e ligação DPC ainda pendentes.**
 
 ### Grupo 2 — RSP e transferências vetoriais (tarefas 9–16)
 9. Validar o mapeamento exato dos campos de task e do PC do RSP antes de iniciar execução.
@@ -2042,7 +2042,7 @@ Construir o ciclo de vida de task SP: leitura do descriptor em RDRAM, carregamen
 - Tarefa 6: concluída com decoder OSTask de 64 bytes e testes; tarefas 7–64 seguem pendentes.
 - CI #832, #833 e #834: **success**; HEAD confirmado em `b34be16cd97769f1f3d9bb3cd07c128544158a0c`.
 - O estado atual contém componentes experimentais de RDP/VI e RSP, mas o caminho integrado task SP→display list→RDP→VI ainda não está comprovado.
-- Próxima execução: tarefa 7, definir estados/transições da task SP; depois tarefa 8 e primeira integração testável.
+- Próxima execução: completar tarefa 8 conectando o bootstrap ao executor RSP e ao BREAK; depois ligar conclusão/interrupção ao MI e encaminhar display list ao DPC.
 
 
 ## 40. Primeiro contrato de OSTask — decoder do cabeçalho SP — 2026-11-01
@@ -2102,3 +2102,28 @@ Construir o ciclo de vida de task SP: leitura do descriptor em RDRAM, carregamen
 ### Limites e próximo passo
 - O modelo ainda não está ligado ao executor RSP, ao SP_STATUS, ao MI_INTR ou ao DPC.
 - Tarefa 7 concluída como modelo/testes isolados; tarefa 8 exige o primeiro teste de integração com barramento, descriptor, DMA, execução RSP e BREAK.
+
+
+## 42. Bootstrap SP com DMA do OSTask e boot microcode — 2026-11-01
+
+### Implementação
+- Criado `N64SpTaskBootstrap.kt`.
+- Sequência atual: valida faixa do descriptor em RDRAM; coloca SP em HALT; transfere 64 bytes do OSTask para DMEM em `0xFC0` via SP DMA; decodifica o descriptor; valida ponteiro/tamanho do boot microcode; transfere o boot microcode para IMEM a partir de `0x000`; define SP PC=0; limpa BROKE e libera HALT.
+- O helper usa o mecanismo SP DMA síncrono já existente no barramento.
+- O boot microcode continua responsável por carregar ucode/data e iniciar a task. O helper não salta diretamente para o campo `ucode`.
+
+### Testes adicionados
+- Descriptor sintético em RDRAM transferido para DMEM.
+- Boot microcode sintético transferido para IMEM.
+- Verificação do PC inicial e liberação de HALT.
+- Rejeição de boot microcode fora da faixa de RDRAM e descriptor fora dos limites.
+
+### Commits
+- `1c5f94c2cf9432abd9e70fac9a3e0d257bb37b1c`: bootstrap SP.
+- `55c55cb8832d579f48ef2d66eb68a2dad3cc6cd0`: testes do bootstrap.
+
+### Limites
+- O bootstrap ainda não executa RSP até BREAK, não sinaliza MI_INTR_SP e não encaminha display list para DPC.
+- DMA é síncrono/simplificado e não modela latência, fila, busy/full ou timing de hardware.
+- CI dos commits #842 e #843 estava `in_progress` no momento deste registro; não declarar a integração aprovada até consultar o resultado final.
+- Tarefa 8 permanece em andamento, não concluída.
