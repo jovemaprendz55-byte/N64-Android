@@ -68,4 +68,25 @@ class N64BusSpDiagnosticsTest {
         assertEquals(1L, bus.diagnosticSpMmioCounts["SP_STATUS"])
         assertEquals(1L, bus.diagnosticSpMmioCounts["SP_PC"])
     }
+    @Test
+    fun diagnosticMemoryAndScratchpadDumpsAreReadOnly() {
+        val rom = ByteArray(0x1000)
+        rom[0] = 0x80.toByte()
+        rom[1] = 0x37
+        val bus = N64Bus(ram = N64Memory(0x4000), cartridgeRom = rom)
+        bus.write8(0x100, 0x5A)
+        val mmioBefore = bus.diagnosticMmioHistory.size
+
+        val memory = bus.diagnosticMemoryDump(listOf(0x100..0x100))
+        val scratchpad = bus.diagnosticSpMemoryDump()
+        val cartridge = bus.diagnosticCartridgeSummary()
+
+        assertTrue(memory.contains("5A"))
+        assertTrue(scratchpad.contains("SP DMEM"))
+        assertTrue(scratchpad.contains("SP IMEM"))
+        assertTrue(cartridge.contains("ROM_BYTES=4096"))
+        assertTrue(cartridge.contains("MAGIC=0x80371240"))
+        assertEquals(mmioBefore, bus.diagnosticMmioHistory.size)
+    }
+
 }
