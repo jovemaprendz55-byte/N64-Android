@@ -26,6 +26,7 @@ class N64Bus(
     fun setDiagnosticCpuPc(pc: Long) { diagnosticCpuPc = pc }
     private fun mmioDevice(address: Int): String? = when (address) {
         in SP_REG_BASE until SP_REG_BASE + 0x20, SP_PC_REG -> "SP"
+        in DPC_REG_BASE until DPC_REG_BASE + DPC_REG_SIZE -> "DPC"
         in MI_REG_BASE until MI_REG_BASE + 0x10 -> "MI"
         in VI_REG_BASE until VI_REG_BASE + VI_REG_SIZE -> "VI"
         in AI_REG_BASE until AI_REG_BASE + 0x18 -> "AI"
@@ -133,6 +134,13 @@ class N64Bus(
     // Minimal VI register model: readable/writable configuration registers and a static current-line value.
     private val viRegisters = IntArray(VI_REGISTER_COUNT)
     private var viCurrentLine = 0
+    // Synchronous RDRAM-only DPC bridge; no XBUS, asynchronous FIFO, timing or IRQ.
+    private var dpcStart = 0
+    private var dpcEnd = 0
+    private var dpcCurrent = 0
+    private val dpcCommandProcessor by lazy {
+        N64DpcCommandProcessor(this, ram.size, N64RdpFillProcessor(this, ram.size))
+    }
 
     /**
      * Identifies a small supported subset of Nintendo CIC variants from the IPL3 word sum.
@@ -237,6 +245,12 @@ class N64Bus(
     override fun read32(address: Int): Int {
         requireAligned(address, 4)
         when (address) {
+            DPC_START_REG -> return recordMmioRead(address, dpcStart)
+            DPC_END_REG -> return recordMmioRead(address, dpcEnd)
+            DPC_CURRENT_REG -> return recordMmioRead(address, dpcCurrent)
+            DPC_STATUS_REG -> return recordMmioRead(address, DPC_STATUS_IDLE)
+            in DPC_REG_BASE + 0x10 until DPC_REG_BASE + DPC_REG_SIZE ->
+                return recordMmioRead(address, 0)
             SP_MEM_ADDR_REG -> return recordMmioRead(address, spMemAddress)
             SP_DRAM_ADDR_REG -> return recordMmioRead(address, spDramAddress)
             SP_PC_REG -> return recordMmioRead(address, spPc)
@@ -321,6 +335,19 @@ class N64Bus(
         requireAligned(address, 4)
         recordMmio("W", address, value)
         when (address) {
+            DPC_START_REG -> {
+                dpcStart = value and DPC_ADDRESS_MASK
+                dpcCurrent = dpcStart
+                return
+            }
+            DPC_END_REG -> {
+                dpcEnd = value and DPC_ADDRESS_MASK
+                val result = dpcCommandProcessor.process(dpcStart, dpcEnd)
+                dpcCurrent = result.endAddressExclusive
+                return
+            }
+            DPC_CURRENT_REG, DPC_STATUS_REG -> return
+            in DPC_REG_BASE + 0x10 until DPC_REG_BASE + DPC_REG_SIZE -> return
             SP_MEM_ADDR_REG -> { spMemAddress = value and SP_MEM_ADDR_MASK; return }
             SP_DRAM_ADDR_REG -> { spDramAddress = value and 0x00FFFFFF; return }
             SP_RD_LEN_REG -> { dmaRdramToSp(value); return }
@@ -598,6 +625,15 @@ class N64Bus(
     }
 
     companion object {
+        const val DPC_REG_BASE = 0x04100000
+        const val DPC_START_REG = DPC_REG_BASE
+        const val DPC_END_REG = DPC_REG_BASE + 0x04
+        const val DPC_CURRENT_REG = DPC_REG_BASE + 0x08
+        const val DPC_STATUS_REG = DPC_REG_BASE + 0x0C
+        const val DPC_REG_SIZE = 0x20
+        const val DPC_ADDRESS_MASK = 0x00FFFFFF
+        const val DPC_STATUS_IDLE = 0
+
         const val SP_DMEM_BASE = 0x04000000
         const val SP_IMEM_BASE = 0x04001000
         const val SP_MEM_SIZE = 0x1000
