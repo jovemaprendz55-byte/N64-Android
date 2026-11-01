@@ -2,7 +2,7 @@
 
 > Documento de passagem de contexto para qualquer novo chat ou colaborador. Leia este arquivo antes de alterar código. Atualize-o sempre que houver mudança relevante, teste, build, log ou decisão técnica.
 
-**Última atualização:** 2026-10-31 (etapa 44 — teste visual sintético do VI confirmado no aparelho pelo usuário)  
+**Última atualização:** 2026-11-01 (integração inicial do decoder COP2 vetorial ao RSP)  
 **Repositório:** https://github.com/jovemaprendz55-byte/N64-Android  
 **Branch de trabalho obrigatória:** `dev/n64-clean-start`  
 **Último commit de código da etapa 44 enviado:** `e187a2757551ac000ccc5a4b9e4b244b36dc02c4` (tela de teste visual VI; aguarda CI).
@@ -1681,3 +1681,32 @@ Próximo passo: validar CI; depois implementar registradores vetoriais/accumulat
 3. Integrar decodificação COP2 no N64RspCore, incluindo extração correta dos campos de instrução.
 4. Implementar loads/stores vetoriais e operações necessárias ao microcode gráfico, com testes por opcode.
 5. Conectar execução SP task → RSP → display list → DPC/RDP; manter demonstração sintética separada do caminho de ROM.
+
+
+## 29. Primeiro decoder COP2 vetorial integrado ao RSP — 2026-11-01
+
+### Implementação
+- O `N64RspCore` agora possui uma instância `N64RspVectorUnit` e despacha instruções cujo opcode primário é COP2 (`0x12`) para um decoder vetorial separado.
+- O decoder reconhece o formato vetorial COP2 com `rs=0x10..0x1F`; os quatro bits baixos de `rs` são tratados como campo de seleção de elemento.
+- Esta primeira fatia aceita somente `element=0`. Outros valores são rejeitados explicitamente para não executar uma operação com operandos incorretos.
+- Instruções vetoriais integradas: VADD (`0x10`), VSUB (`0x11`), VAND (`0x28`), VOR (`0x2A`), VNOR (`0x2B`) e VXOR (`0x2C`).
+- Testes novos codificam as instruções COP2 em words, gravam-nas na IMEM e executam por `N64RspCore.run()`, verificando resultado de VAND, VADD e VSUB e rejeição de seleção de elemento ainda não suportada.
+
+### Limitações e precisão
+- A unidade vetorial e suas operações aritméticas continuam sendo um primeiro modelo simplificado. Em particular, a semântica real de VADD/VSUB, flags VCO, accumulator e saturação precisa de validação arquitetural mais rigorosa antes de ser considerada compatível com microcode de jogos.
+- Element selection diferente de zero, COP2 MFC2/CFC2/MTC2/CTC2, loads/stores vetoriais, compare/merge, multiplicação/acumulação, operações de clipping e demais funções ainda não estão implementados.
+- Não há ainda execução de microcode F3D/F3DEX nem integração completa de tarefas SP iniciadas por ROM.
+- Os testes de instrução confirmam somente o decoder e o subset implementado; não provam execução de jogos.
+
+### Commits e CI
+- Build #800, run `41296055508`, commit `6f7d4318cd63dbd5a4498955593947554a528eb3`: **success**, Build and test + Upload debug APK. Artefato `n64-android-debug-apk`, ID `13078989704`.
+- Commit `b3353244a607114351a7068ed6f499fa9be61221`: integração do decoder COP2 vetorial.
+- Commit `23376a855fab3a3b74d2a6135bf6331099a692c3`: testes de instruções COP2 codificadas em IMEM.
+- Esta atualização documental segue os commits de implementação; a CI correspondente deve ser registrada após sua conclusão.
+
+### Próximo passo
+1. Validar o mapeamento de campos e semântica COP2 com documentação técnica independente do RSP.
+2. Implementar e testar as operações COP2 de transferência entre GPR e registradores vetoriais/controle (MFC2/CFC2/MTC2/CTC2), com seleção de elemento correta.
+3. Implementar loads/stores vetoriais e ampliar operações vetoriais necessárias ao microcode gráfico.
+4. Criar execução de task SP controlada e conectar o resultado do RSP ao DPC/RDP.
+5. Manter a demonstração sintética separada e não declarar ROM/jogo funcional sem imagem originada de ROM no aparelho.
