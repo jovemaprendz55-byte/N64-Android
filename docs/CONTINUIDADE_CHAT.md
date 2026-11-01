@@ -3522,7 +3522,7 @@ A captura ampliada já está na branch `dev/n64-clean-start`, mas este Log não 
 ## 27. Pacote diagnóstico completo em um único COPIAR LOGS — 2026-11-01
 
 ### Objetivo
-Reduzir a necessidade de pedir vários Logs separados. O botão existente `COPIAR LOGS` agora monta um pacote único de estado e evidências no momento em que o usuário toca nele. A coleta é de leitura e não deve alterar a execução do emulador.
+Reduzir a necessidade de pedir vários Logs separados. O botão existente `SALVAR LOGS` agora monta um pacote único de estado e evidências no momento em que o usuário toca nele. A coleta é de leitura e não deve alterar a execução do emulador.
 
 ### Conteúdo acrescentado
 - R4300: todos os 32 GPR, HI/LO, todos os 32 COP0, todos os 32 FPR e FCR, estado de exceção, endereços e instrução da falha.
@@ -4158,7 +4158,7 @@ Investigar separadamente a rotina de `TLBWI` em `0x7000D3EC` e a cronologia do �
 
 ### 40.1. Causa provável identificada no código
 
-O botão `COPIAR LOGS` em `MainActivity.kt` montava um relatório diagnóstico extenso dentro do callback da interface e, em seguida, enviava o relatório inteiro de uma vez para `ClipboardManager.setPrimaryClip()`. O processo acontecia na thread principal do Android.
+O botão `SALVAR LOGS` em `MainActivity.kt` montava um relatório diagnóstico extenso dentro do callback da interface e, em seguida, enviava o relatório inteiro de uma vez para `ClipboardManager.setPrimaryClip()`. O processo acontecia na thread principal do Android.
 
 O relatório agrega snapshots completos de CPU/COP0/TLB/RSP, históricos MMIO/DMA, watchpoints de memória, dumps da ROM/RDRAM e resumo da sessão. Isso cria trabalho de formatação e alocação de memória na UI e pode causar congelamento/encerramento pelo sistema. A causa exata do crash ainda precisa ser confirmada no aparelho com a nova APK; esta é a causa provável sustentada pela inspeção do código.
 
@@ -4181,7 +4181,7 @@ O GitHub Actions foi iniciado para o commit `37e0c6a5a8e6d279e9a91541e4905d1c018
 
 Após a APK atualizada ser instalada, testar:
 1. Executar GoldenEye até o estado em que normalmente ocorre o problema.
-2. Pressionar `COPIAR LOGS` uma única vez.
+2. Pressionar `SALVAR LOGS` uma única vez.
 3. Confirmar que o emulador permanece aberto e mostra a mensagem de exportação concluída.
 4. Abrir o gerenciador de arquivos em `Downloads/N64Android` e verificar o TXT gerado.
 5. Enviar o TXT ou o conteúdo relevante para análise.
