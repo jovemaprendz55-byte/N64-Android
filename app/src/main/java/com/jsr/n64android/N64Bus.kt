@@ -345,6 +345,10 @@ class N64Bus(
                 dpcEnd = value and DPC_ADDRESS_MASK
                 val result = dpcCommandProcessor.process(dpcStart, dpcEnd)
                 dpcCurrent = result.endAddressExclusive
+                if (result.fullSyncCommands > 0) {
+                    miInitMode = miInitMode or MI_INIT_MODE_DP_INTR
+                    miInterrupts = miInterrupts or MI_INTR_DP
+                }
                 return
             }
             DPC_CURRENT_REG, DPC_STATUS_REG -> return
@@ -544,7 +548,10 @@ class N64Bus(
         if ((command and MI_INIT_MODE_SET_INIT) != 0) miInitMode = miInitMode or MI_INIT_MODE_INIT
         if ((command and MI_INIT_MODE_CLR_EBUS) != 0) miInitMode = miInitMode and MI_INIT_MODE_EBUS.inv()
         if ((command and MI_INIT_MODE_SET_EBUS) != 0) miInitMode = miInitMode or MI_INIT_MODE_EBUS
-        if ((command and MI_INIT_MODE_CLR_DP_INTR) != 0) miInitMode = miInitMode and MI_INIT_MODE_DP_INTR.inv()
+        if ((command and MI_INIT_MODE_CLR_DP_INTR) != 0) {
+            miInitMode = miInitMode and MI_INIT_MODE_DP_INTR.inv()
+            miInterrupts = miInterrupts and MI_INTR_DP.inv()
+        }
         if ((command and MI_INIT_MODE_CLR_RDRAM_REG) != 0) miInitMode = miInitMode and MI_INIT_MODE_RDRAM_REG.inv()
         if ((command and MI_INIT_MODE_SET_RDRAM_REG) != 0) miInitMode = miInitMode or MI_INIT_MODE_RDRAM_REG
     }
