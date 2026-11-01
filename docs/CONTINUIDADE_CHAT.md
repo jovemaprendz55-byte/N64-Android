@@ -2127,3 +2127,31 @@ Construir o ciclo de vida de task SP: leitura do descriptor em RDRAM, carregamen
 - DMA é síncrono/simplificado e não modela latência, fila, busy/full ou timing de hardware.
 - CI #836–#844: **success** na consulta de 2026-11-01; os testes do decoder, ciclo de vida e bootstrap passaram no workflow de build.
 - Tarefa 8 permanece em andamento, não concluída.
+
+
+## 43. Primeira ponte de execução SP → RSP — 2026-11-01
+
+### Implementação
+- Criado `N64SpTaskRunner.kt` para encadear o bootstrap OSTask já existente com a instância de `N64RspCore` ligada ao mesmo `N64Bus`.
+- A API `startAndRun(taskAddress, maxInstructions)` executa o bootstrap, instancia o RSP a partir do SP_PC configurado e executa um orçamento limitado de instruções.
+- O resultado informa instruções executadas, PC, última instrução, SP_STATUS, HALT, BROKE e se o orçamento terminou antes do HALT.
+- Orçamento precisa ser positivo; execução permanece limitada para evitar loop infinito.
+- O runner não presume que qualquer BREAK seja conclusão de uma task gráfica, não adivinha a transição boot→task microcode e não implementa MI_INTR_SP nem DP_WAIT.
+
+### Testes
+- Fixture sintética: DMA do OSTask/boot microcode, execução de ADDIU, gravação em DMEM e BREAK.
+- Fixture sintética sem BREAK: verifica esgotamento do orçamento sem declarar HALT/BROKE.
+- Rejeição de orçamento zero.
+- Os fixtures são testes de integração do caminho de execução, não prova de compatibilidade com microcode comercial ou ROM real.
+
+### Commits
+- `99cb9bb5c9f3ac4fd56d30ea47e9c8e2ce511f3a`: ponte SP→RSP.
+- `08555650241706268c971cd593e34fd6e8a3c56f`: testes iniciais.
+- `6279a3ae584f5856fc44013cebb68bf564ee475d`: verificação de escrita em DMEM.
+- `3d9c7f1a336b1357a78224f64e9495c914787c7b`: tamanho do fixture alinhado ao boot microcode sintético.
+
+### Estado e próximo passo
+- CI #845 confirmou sucesso do bootstrap e da documentação anterior.
+- CI #846–#849 estão em execução no momento desta atualização; não declarar a ponte aprovada até confirmar o workflow do HEAD.
+- Tarefa 8 continua em andamento: próximo passo é testar boot microcode que realmente carrega task microcode, estabelecer um critério observável e arquitetural para entrada na task, então integrar BREAK, SP interrupt e DP_WAIT/DPC sem simular conclusões.
+- Nenhuma ROM real foi declarada funcional e nenhum frame real foi produzido por esta etapa.
