@@ -1089,7 +1089,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         val inInnerCaller = lowAddress in 0x70005B60L..0x70005D60L
         val inDmaHelper = lowAddress in 0x7000D6D0L..0x7000D790L
         val inDmaSetup = lowAddress in 0x7000DDD0L..0x7000DE30L
-        val inPiTransfer = lowAddress in 0x70010B20L..0x70010B80L
+        // Include the branch target at 0x70010BAC; the previous window stopped before the main path.
+        val inPiTransfer = lowAddress in 0x70010B20L..0x70010C80L
         val inPiCompletion = lowAddress in 0x7000F6A0L..0x7000F700L
         if (!inReturnSite && !inOuterCaller && !inOuterHelperA && !inOuterHelperB &&
             !inOuterHelperC && !inInnerCaller && !inDmaHelper && !inDmaSetup &&
