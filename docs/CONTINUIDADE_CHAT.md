@@ -1571,3 +1571,32 @@ A partir desta etapa, priorizar fatias verticais pequenas e demonstráveis: gera
 4. Integrar comandos multiword de triângulo ao parser/dispatcher DPC/RDP com validação integral antes de escrita.
 5. Implementar execução mínima de display-list via RSP/microcode para que o pipeline passe a receber comandos originados de uma ROM.
 6. Só depois de uma ROM produzir pixels, remover a distinção de demonstração sintética da UI.
+
+
+## 25. Execução de triângulo flat através de display list DPC (2026-11-01)
+
+### Integração concluída
+- O parser continua lendo e validando pacotes completos de RDP em big-endian antes da execução.
+- O DPC agora encaminha os pacotes completos ao processador RDP, em vez de rejeitar todos os comandos multiword.
+- Primeiro comando multiword executado: opcode `0x08`, triângulo flat sem shade, textura ou Z.
+- O RDP mantém o estado parcial de SetColorImage, SetScissor e SetPrimColor e grava RGBA5551 na RDRAM usando o rasterizador flat.
+- Foi incluído preflight de suporte para todos os pacotes antes de alterar estado ou escrever pixels; comandos multiword não suportados continuam sendo rejeitados.
+- A demonstração Android agora constrói uma display list sintética em RDRAM, chama o DPC, recebe os pixels do RDP, configura o VI e exibe o frame. O botão existente agora exercita DPC → RDP → RDRAM → VI → Android, não chama diretamente o rasterizador.
+
+### Testes e CI
+- Teste de integração confirma 3 comandos de estado + 1 triângulo multiword processados pelo DPC, pixels gravados em RDRAM e frame capturado pelo VI.
+- CI #775, run `41293641540`: success; valida o preflight e a rejeição atômica de comandos não suportados.
+- CI #779, run `41293804731`: success; Build and test + Upload debug APK.
+- APK #779 artifact ID `13078361370`, disponível até 2026-11-15.
+- CI #780, run `41293816234`: validar status final (refatoração de coordenadas constantes).
+- Links:
+  - https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41293641540
+  - https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41293804731
+  - https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41293816234
+
+### Limites e próximo trabalho
+- A display list ainda é sintética e construída pelo código de demonstração; não vem de uma ROM nem do RSP.
+- O opcode 0x08 é somente o subconjunto flat RGBA16. Shade/texture/Z triangles, cobertura fiel ao hardware, combiner, blending, dither, precisão subpixel e timing ainda faltam.
+- O edge walker permanece experimental e necessita comparação de cobertura com vetores de referência independentes.
+- Próxima prioridade: testar o novo APK no aparelho; depois ligar a execução de display lists originadas pelo SP/RSP, começando por um microprograma controlado e expandindo até um microcode gráfico comum. Não declarar jogo funcional até uma ROM real produzir o framebuffer.
+- Desenvolvimento integralmente próprio; documentação técnica pode ser usada para compreender os formatos e registradores, sem copiar código-fonte de outros emuladores.
