@@ -21,6 +21,12 @@ class N64RspCore(private val bus: N64Bus) {
         get() = (bus.read32(N64Bus.SP_STATUS_REG) and N64Bus.SP_STATUS_HALT) != 0
 
     private var delayedTarget: Int? = null
+    private var instructionListener: ((pc: Int, instruction: Int) -> Unit)? = null
+
+    /** Observes completed instruction execution; does not alter RSP timing or state. */
+    fun setInstructionListener(listener: ((pc: Int, instruction: Int) -> Unit)?) {
+        instructionListener = listener
+    }
 
     init {
         pc = bus.read32(N64Bus.SP_PC_REG) and PC_MASK
@@ -50,6 +56,7 @@ class N64RspCore(private val bus: N64Bus) {
         gpr[0] = 0
         executedInstructions++
         bus.write32(N64Bus.SP_PC_REG, pc)
+        instructionListener?.invoke(instructionPc, instruction)
         return !halted
     }
 
