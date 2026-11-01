@@ -1504,13 +1504,16 @@ class MainActivity : Activity() {
                 status.text = "JOGO SELECIONADO\n$displayName" +
                     "\nTamanho: ${result.rom.byteSize} bytes" +
                     "\nFormato: ${result.rom.format}" +
-                    "\n\nROM carregada no barramento. Inicialização e execução de jogos ainda são experimentais."
+                    "\n\nTudo pronto. Toque em INICIAR JOGO para testar a execução experimental."
             }
             is RomLoadResult.Failure -> {
                 cartridgeBus = null
                 romTraceButton?.isEnabled = false
                 hleBootButton?.isEnabled = false
-                mainActionButton?.isEnabled = false
+                mainActionButton?.apply {
+                    isEnabled = true
+                    text = "ESCOLHER JOGO"
+                }
                 status.text = result.reason
             }
         }
