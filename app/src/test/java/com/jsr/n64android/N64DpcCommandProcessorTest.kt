@@ -60,6 +60,54 @@ class N64DpcCommandProcessorTest {
         assertTrue(error!!.message!!.contains("Truncated RDP command"))
     }
 
+
+    @Test
+    fun rejectsTruncatedTextureRectangle() {
+        val memory = N64Memory(256)
+        val dpc = N64DpcCommandProcessor(memory, memory.size, N64RdpFillProcessor(memory, memory.size))
+        memory.write32(0x40, 0x90000000.toInt()) // opcode 0x24: 16-byte command
+        memory.write32(0x44, 0)
+
+        val error = runCatching { dpc.process(0x40, 0x48) }.exceptionOrNull()
+
+        assertTrue(error is IllegalArgumentException)
+        assertTrue(error!!.message!!.contains("requires 16 bytes"))
+    }
+
+    @Test
+    fun validatesEntireDisplayListBeforeDispatchingAnySupportedPrefix() {
+        val memory = N64Memory(512)
+        val rdp = N64RdpFillProcessor(memory, memory.size)
+        val dpc = N64DpcCommandProcessor(memory, memory.size, rdp)
+        val prefix = listOf(
+            command(N64RdpFillProcessor.CMD_SET_OTHER_MODES, high = 3L shl 20),
+            command(N64RdpFillProcessor.CMD_SET_COLOR_IMAGE, high = (2L shl 19) or 3L, low = 0x100L),
+            command(N64RdpFillProcessor.CMD_SET_FILL_COLOR, low = 0xF801F801L)
+        )
+        writeCommands(memory, 0x40, prefix)
+        memory.write32(0x58, 0x20000000)
+        memory.write32(0x5C, 0)
+
+        val error = runCatching { dpc.process(0x40, 0x78) }.exceptionOrNull()
+
+        assertTrue(error is UnsupportedOperationException)
+        assertEquals(0, memory.read16(0x100))
+
+        val followUp = listOf(
+            command(N64RdpFillProcessor.CMD_SET_OTHER_MODES, high = 3L shl 20),
+            command(N64RdpFillProcessor.CMD_SET_COLOR_IMAGE, high = (2L shl 19) or 3L, low = 0x100L),
+            command(
+                N64RdpFillProcessor.CMD_FILL_RECTANGLE,
+                high = (4L shl 12) or 4L,
+                low = (4L shl 12) or 4L
+            )
+        )
+        writeCommands(memory, 0x100, followUp)
+        dpc.process(0x100, 0x100 + followUp.size * N64DpcCommandProcessor.COMMAND_BYTES)
+
+        assertEquals(0, memory.read16(0x100 + (1 * 4 + 1) * 2))
+    }
+
     @Test
     fun emptyCommandRangeDoesNotInvokeRdpOrChangeMemory() {
         val memory = N64Memory(256)
