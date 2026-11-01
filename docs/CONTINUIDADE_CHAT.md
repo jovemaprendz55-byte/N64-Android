@@ -1812,3 +1812,35 @@ Próximo passo: validar CI; depois implementar registradores vetoriais/accumulat
 2. Revisar casos de borda LRV/SRV com fixtures independentes, sobretudo `element != 0` e alinhamentos extremos.
 3. Avançar para LPV/LUV e SPV/SUV com testes de bytes/lane.
 4. Depois implementar DMA/tarefa SP e conectar execução RSP a display lists reais.
+
+
+## 33. Primeiros loads vetoriais packed LPV/LUV — 2026-11-01
+
+### Implementação
+- `N64RspCore.executeVectorMemory` reconhece os subopcodes 6 (LPV) e 7 (LUV) no caminho LWC2.
+- O endereço efetivo usa deslocamento signed de 7 bits escalado por 8.
+- São lidos oito bytes da DMEM, com seleção circular de origem determinada pelo campo `element`.
+- LPV coloca cada byte nos bits 15..8 de uma lane de 16 bits; LUV coloca o byte nos bits 14..7.
+- Cada lane é escrita como valor novo, zerando os bits que não pertencem ao byte carregado.
+- As instruções de store SPV/SUV ainda não foram implementadas nesta etapa.
+
+### Testes
+- LPV preenche as oito lanes nos bits altos e zera os bits baixos.
+- LUV aplica rotação por `element` e desloca o byte para a posição 14..7.
+- LPV valida offset negativo com escala de oito bytes.
+
+### Commits
+- `4fc15a246b98985056f4520a066b50ecade95884`: implementação LPV/LUV.
+- `7fc4add332310cd1f2fa2f133825eb6cef349313`: testes LPV/LUV.
+
+### Referências e limites
+- Regras consultadas: SGI Nintendo 64 RSP Programmer's Guide, seção de packed vector loads, e descrições técnicas independentes de LPV/LUV.
+- A semântica de `element` para estes formatos deve continuar sendo comparada com fixtures independentes; não declarar compatibilidade total.
+- SPV/SUV, LHV/SHV, LFV/SFV, LTV/STV e SWV permanecem pendentes.
+- Não há ainda task scheduler SP integrado nem execução de microcode gráfico originado por ROM.
+
+### Próximo passo
+1. Confirmar CI e artefato APK.
+2. Implementar SPV/SUV com as regras específicas de lane/element (não espelhar simplesmente LPV/LUV).
+3. Acrescentar fixtures de fronteira e rotação para os stores packed.
+4. Depois avançar para LHV/SHV e completar o ciclo de tarefas SP/DMA.
