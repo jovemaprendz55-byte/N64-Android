@@ -312,7 +312,7 @@ class N64Bus(
         val header = (0 until minOf(0x40, image.size)).joinToString(" ") {
             image[it].toUByte().toString(16).uppercase().padStart(2, '0')
         }
-        return "ROM_BYTES=${image.size} MAGIC=0x${word(0)} CRC1=0x${word(0x10)} CRC2=0x${word(0x14)} " +
+        return "ROM_BYTES=${image.size} MAGIC=0x${word(0)} CRC1=0x${word(0x10)} CRC2=0x${word(0x14)} CIC_SEED=${detectCicSeed()?.let { "0x" + it.toString(16).uppercase() } ?: "unknown"} " +
             "TITLE_BYTES[0x20..0x33]=" + (0x20 until minOf(0x34, image.size)).map { image[it].toInt().toChar() }.joinToString("") +
             "\nHEADER_0x00_0x3F=$header\nPIF_ROM_PRESENT=${pif != null}"
     }
@@ -356,6 +356,15 @@ class N64Bus(
                 address = end + 1
             }
         }
+    }
+
+    /** Full 64-byte PIF RAM snapshot, without initiating SI DMA or Joybus processing. */
+    fun diagnosticPifRamDump(): String = pifRam.indices.chunked(16).joinToString("\n") { row ->
+        val start = row.first()
+        "0x" + start.toString(16).uppercase().padStart(2, '0') + ": " +
+            row.joinToString(" ") { index ->
+                (pifRam[index].toInt() and 0xFF).toString(16).uppercase().padStart(2, '0')
+            }
     }
 
     /** Full SP scratchpad snapshot, read-only and only on explicit log export. */
