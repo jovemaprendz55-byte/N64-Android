@@ -73,6 +73,8 @@ class N64BusSpDiagnosticsTest {
         val rom = ByteArray(0x1000)
         rom[0] = 0x80.toByte()
         rom[1] = 0x37
+        rom[2] = 0x12
+        rom[3] = 0x40
         val bus = N64Bus(ram = N64Memory(0x4000), cartridgeRom = rom)
         bus.write8(0x100, 0x5A)
         val mmioBefore = bus.diagnosticMmioHistory.size
