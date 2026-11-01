@@ -1,0 +1,76 @@
+package com.jsr.n64android
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class N64RomVideoSessionTest {
+
+    @Test
+    fun publishesChangedViFrameDuringRealCpuExecution() {
+        val memory = N64Memory(1024 * 1024)
+        val bus = N64Bus(ram = memory)
+        // A real R4300 jump with a delay-slot NOP, looping at KSEG0.
+        memory.write32(0, 0x08000000)
+        memory.write32(4, 0)
+        val cpu = R4300Cpu(bus)
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
+
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_STATUS_OFFSET, 2)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_ORIGIN_OFFSET, 0x100)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_WIDTH_OFFSET, 2)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_H_START_OFFSET, (0x20 shl 16) or 0x22)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_X_SCALE_OFFSET, 0x400)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_START_OFFSET, (0x20 shl 16) or 0x22)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_Y_SCALE_OFFSET, 0x400)
+        memory.write16(0x100, 0xF801)
+        memory.write16(0x102, 0x07C1)
+
+        val frames = mutableListOf<N64VideoFrame>()
+        val session = N64RomVideoSession(
+            bus = bus,
+            cpu = cpu,
+            instructionLimit = 8,
+            batchSize = 2,
+            framePollInterval = 2,
+            onFrame = frames::add
+        )
+
+        val result = session.execute()
+
+        assertEquals(N64ExecutionSession.State.COMPLETED, result.state)
+        assertEquals(8L, result.executedInstructions)
+        assertEquals(1L, session.publishedFrameCount())
+        assertEquals(1, frames.size)
+        assertNotNull(frames.single())
+        assertEquals(2, frames.single().width)
+        assertEquals(2, frames.single().height)
+        assertEquals(0xFFFF0000.toInt(), frames.single().argbPixels[0])
+        assertEquals(0xFF00FF00.toInt(), frames.single().argbPixels[1])
+        assertTrue(session.executedInstructionCount() >= session.publishedFrameCount())
+    }
+
+    @Test
+    fun cooperativeStopStillWorksWhilePollingFrames() {
+        val memory = N64Memory(64)
+        memory.write32(0, 0x08000000)
+        memory.write32(4, 0)
+        val bus = N64Bus(ram = memory)
+        val cpu = R4300Cpu(bus)
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
+        val session = N64RomVideoSession(
+            bus = bus,
+            cpu = cpu,
+            instructionLimit = 100,
+            batchSize = 1,
+            framePollInterval = 1,
+            onFrame = {}
+        )
+        // A frame is not required for the execution controller to remain cancellable.
+        session.requestStop()
+        val result = session.execute()
+        assertEquals(N64ExecutionSession.State.CANCELLED, result.state)
+        assertEquals(0L, result.executedInstructions)
+    }
+}
