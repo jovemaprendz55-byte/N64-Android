@@ -2515,7 +2515,7 @@ Executar CI. Se aprovado, iniciar a auditoria do RDP: parser/command lengths, de
 - Não declarar GoldenEye funcional sem evidência visual originada da ROM real.
 
 
-## Diagnóstico integrado CPU/RSP/DPC — 2026-11-01
+## Diagnóstico integrado CPU/RSP/DPC — 2026-11-01 10:45 (UTC−03:00)
 
 **Branch:** `dev/n64-clean-start`
 
@@ -2524,6 +2524,8 @@ Executar CI. Se aprovado, iniciar a auditoria do RDP: parser/command lengths, de
 - A sessão captura o endereço e a palavra da última instrução RSP concluída através do listener já existente no núcleo.
 - O barramento mantém o último resultado DPC concluído e a última falha DPC, sem esconder a exceção que interrompe a CPU.
 - A tela de execução apresenta a última instrução RSP e o resumo DPC (START, END, CURRENT, comandos, retângulos, triângulos, pixels e Full Sync).
+- Commits dos arquivos desta etapa: `eafaed28d2e478269cc542d3ab0308354fa5b19f`, `790b4f1b1ae2fad339aa21c25fd8cb2815f38340`, `f9da3483453fe66efe3d30b017d7de598b1a71ab`, `7772a8dfae15ad75aee0ed98e8c8bd120718a681`, `762de0b54b05d6236434119de80c80a3090e0fe8` e `41de5427ed316297dbdd693df4a7b1f83c436ecb`.
+- CI Android builds #943–#948: todas concluídas com **success**. A execução #948 gerou o artefato `n64-android-debug-apk` (969.348 bytes; não expirado).
 - Adicionado teste para confirmar que o barramento conserva o resumo de uma lista DPC com Full Sync; o teste RSP existente também valida PC/palavra da última instrução BREAK.
 
 ### Limites
