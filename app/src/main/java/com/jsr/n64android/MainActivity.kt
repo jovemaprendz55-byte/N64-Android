@@ -146,7 +146,7 @@ class MainActivity : Activity() {
             setPadding(12, 12, 12, 12)
         }
         val copyLogsButton = Button(this).apply {
-            text = "COPIAR LOGS"
+            text = "SALVAR LOGS"
             isAllCaps = false
             val exportButton = this
             setOnClickListener {
