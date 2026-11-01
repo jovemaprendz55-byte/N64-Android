@@ -130,6 +130,8 @@ class N64RomVideoSessionTest {
 
         assertEquals(N64ExecutionSession.State.COMPLETED, result.state)
         assertEquals(1L, session.executedRspInstructionCount())
+        assertEquals(0, session.lastRspInstructionAddress())
+        assertEquals(0x0000000D, session.lastRspInstructionWord())
         assertTrue((bus.read32(N64Bus.SP_STATUS_REG) and N64Bus.SP_STATUS_BROKE) != 0)
         assertEquals(null, session.rspFailureMessage())
     }
