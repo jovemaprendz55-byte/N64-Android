@@ -31,6 +31,29 @@ class N64RspCoreTest {
     }
 
     @Test
+    fun vectorAluSupportsSlidingAndBroadcastElementSelectors() {
+        val (bus, rsp) = setup(
+            vectorOp(0x10, vd = 3, vs = 1, vt = 2, element = 1),
+            vectorOp(0x10, vd = 4, vs = 1, vt = 2, element = 10)
+        )
+        for (lane in 0 until 8) {
+            rsp.vectorUnit.writeLane(1, lane, 100 + lane)
+            rsp.vectorUnit.writeLane(2, lane, 10 + lane)
+        }
+
+        assertEquals(2, rsp.run(2))
+        // Selector 1: [v1,v2,...,v7,v7] from VT.
+        for (lane in 0 until 7) {
+            assertEquals(100 + lane + 11 + lane, rsp.vectorUnit.readLane(3, lane))
+        }
+        assertEquals(107 + 17, rsp.vectorUnit.readLane(3, 7))
+        // Selector 10 broadcasts VT lane 2 to every destination lane.
+        for (lane in 0 until 8) {
+            assertEquals(100 + lane + 12, rsp.vectorUnit.readLane(4, lane))
+        }
+    }
+
+    @Test
     fun executesScalarImmediateArithmeticAndStopsOnBreak() {
         val (bus, rsp) = setup(
             addiu(8, 0, 42),
