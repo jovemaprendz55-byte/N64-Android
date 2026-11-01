@@ -2,7 +2,7 @@
 
 > Documento de passagem de contexto. Leia antes de alterar o código. Registre cada avanço real com data, horário, fuso, commit, arquivos, testes, CI e limitações.
 
-**Última organização deste documento:** 2026-11-01 às 17:15:48 (UTC−03:00, horário de Brasília).  
+**Última organização deste documento:** 2026-11-01 às 18:03:00 (UTC−03:00, horário de Brasília).  
 **Repositório:** https://github.com/jovemaprendz55-byte/N64-Android  
 **Branch de trabalho obrigatória:** `dev/n64-clean-start`  
 **Branch protegida:** `main` — não modificar, mesclar, resetar ou enviar commits sem autorização explícita.  
@@ -3677,3 +3677,62 @@ Uma análise anterior interpretou incorretamente o snapshot final `Cause=0x8`, `
 
 ### 28.11. Mensagem de continuidade para o próximo chat
 > Continue a investigação do GoldenEye 007 em `dev/n64-clean-start`. Leia a seção 28 de `docs/CONTINUIDADE_CHAT.md`, confira o HEAD e o CI atuais. A primeira falha é TLB fetch em VA `0x7F000BD0`; antes dela ocorreu PI DMA de ROM `0x34B30` para RDRAM `0x340000`, tamanho `0x2000`. A rotina de refill lê PTE `1` e instala EntryLo `1`/`0x41`, ambos inválidos. A possível relação VA->PA `0x340BD0` é hipótese, não fato. Primeiro comparar ROM/RDRAM, decodificar a rotina `0x700017E0` e o handler de exceção. Não alterar artificialmente TLB nem tocar em `main`. A build #1095 é diagnóstica e verde, não uma correção funcional.
+
+
+## 29. Verificação integral do PI DMA e bytes do código virtual candidato — 2026-11-01 às 18:03:00 (UTC−03:00)
+
+### 29.1. Resultado da comparação ROM → RDRAM
+Foi feita uma comparação automatizada dos dumps contidos no `Log` da branch `main`:
+- ROM fonte: `0x34B30..0x36B2F`.
+- RDRAM destino: `0x340000..0x341FFF`.
+- Bytes extraídos de cada dump: exatamente 8.192.
+- Primeiro byte divergente: nenhum.
+- Resultado: **os 8.192 bytes do dump da ROM são idênticos aos 8.192 bytes do dump da RDRAM**.
+
+Isso confirma, para a execução registrada, que o conteúdo do PI DMA investigado chegou corretamente à região de destino. A hipótese de corrupção, truncamento, deslocamento ou byte swap nessa transferência específica fica descartada pelo dump comparado. Isso não valida todo o comportamento PI/timing do barramento, apenas essa transferência.
+
+### 29.2. Código no deslocamento correspondente
+- Deslocamento dentro do bloco DMA: `0xBD0`.
+- Bytes em ROM `0x35700` (offset `0x34B30 + 0xBD0`) e RDRAM `0x340BD0` são idênticos.
+- Primeiros bytes observados: `3C 04 80 05 24 82 93 00 8C 4E 00 00 3C 01 00 FF 34 21 FF FF 34 07 FF FF 01 C1 78 24 10 EF 00 14`.
+- A sequência se organiza em palavras MIPS big-endian plausíveis (por exemplo, `0x3C048005`, `0x24829300`, `0x8C4E0000`); portanto, o bloco não está vazio nem evidentemente corrompido nessa posição.
+- Isso ainda **não prova** que o VA `0x7F000BD0` deva ser traduzido para PA `0x340BD0`. A relação de mapeamento deve ser confirmada pelo carregador/gerenciador de overlays do jogo.
+
+### 29.3. Verificação do código PI DMA
+No código atual de `N64Bus.kt`, `PI_WR_LEN_REG` chama `dmaCartridgeToRam(length)`. A rotina:
+1. valida ROM carregada, limites do destino RDRAM, endereço base do cartucho e limites da ROM;
+2. calcula `offset = piCartAddress - CARTRIDGE_ROM_BASE`;
+3. copia cada byte usando `ram.write8(piDramAddress + index, image[offset + index]...)`;
+4. avança os registradores DRAM/CART e limpa o bit DMA busy.
+
+O código não executa swap de bytes nem transforma o conteúdo. O dump ROM/RDRAM idêntico confirma que esse caminho funcionou na transferência analisada. Não foi feita alteração em `N64Bus.kt`.
+
+### 29.4. Releitura da PTE e da exceção
+- A exceção inicial registrada é `MISS/FETCH` em `0x7F000BD0`, com vetor `0xFFFFFFFF80000000`.
+- O handler de refill lê PTEBase em `0x8005E4A4`, valor `0x7FC65BF0`, e depois lê a palavra em `0x8005DBF0`, valor `1`.
+- A segunda exceção é `INVALID/FETCH` no mesmo VA, encaminhada ao vetor geral `0xFFFFFFFF80000180`.
+- O handler geral salva o contexto e termina no caminho de parada observado. A execução não chega a executar o bloco do endereço virtual, apesar de os bytes do bloco candidato estarem presentes na RDRAM.
+- A rotina `0x700017E0` escreve `1` e `0` nos campos observados da tabela. O valor `1` lido pelo refill é, portanto, consistente com o estado gravado pelo próprio código do jogo; não há evidência de que o barramento tenha corrompido a PTE.
+
+### 29.5. Testes de CPU/TLB consultados
+Arquivo consultado: `app/src/test/java/com/jsr/n64android/R4300TlbExceptionAccessTest.kt`.
+- Existem testes para distinguir falha TLB de FETCH, READ e WRITE e verificar BadVAddr em um load.
+- Esses testes cobrem a classificação básica da exceção, mas não reproduzem a sequência específica do GoldenEye: PI DMA → criação/consulta de PTE → refill → retorno ERET → fetch de overlay.
+- Portanto, ainda falta um teste de integração pequeno que reproduza essa sequência com a memória e as instruções reais extraídas do log, ou uma fixture controlada equivalente.
+
+### 29.6. Conclusão atualizada
+**PI DMA da transferência analisada está validado por comparação integral de 8 KiB.** A falha permanece na tradução virtual/paginação: o refill lê PTE `1`, instala EntryLo inválido e a busca de instrução falha novamente. A hipótese anterior de que o DMA pudesse ter copiado bytes errados perde sustentação e não deve ser tratada como causa.
+
+Não há correção funcional aplicada. Nenhuma entrada TLB foi forçada, nenhum bit Valid foi alterado artificialmente e nenhum código foi modificado nesta etapa. O branch de desenvolvimento e a branch `main` permanecem sem mudanças nesta atualização documental.
+
+### 29.7. Próximas ações técnicas
+1. Desmontar as instruções do bloco em `0x340BD0` e identificar a rotina/overlay a que pertencem.
+2. Desmontar a função chamada em `0x70005D58` e seguir os argumentos preparados antes do JAL, incluindo registradores e estrutura de overlay.
+3. Decodificar a rotina `0x700017E0` e o laço `0x7000182C..0x70001850` para determinar a semântica dos campos PTE e o tamanho/índice das páginas.
+4. Seguir o caminho de exceção `0x80000000` e `0x80000180`, em particular como o jogo decide tratar a PTE `1` e por que chega ao encerramento.
+5. Comparar a sequência real de inicialização HLE com os dados/estruturas que o código do jogo espera do IPL3; só concluir omissão de IPL3 se houver evidência concreta.
+6. Construir teste de regressão para DMA + PTE + TLB refill/ERET, depois de compreender o contrato real da PTE.
+7. Continuar sem modificar `main` e sem fabricar um mapeamento VA→PA.
+
+### 29.8. Mensagem de continuidade
+> A comparação dos dumps do Log confirmou 8.192/8.192 bytes idênticos entre ROM `0x34B30..0x36B2F` e RDRAM `0x340000..0x341FFF`. O código em `0x340BD0` parece MIPS válido, mas a equivalência VA `0x7F000BD0` → PA `0x340BD0` ainda não foi provada. A falha permanece: refill lê PTE `1`, EntryLo0/1 ficam inválidos e a segunda exceção é TLB INVALID/FETCH. Investigue sem forçar o TLB: desmontar o código do overlay, a função chamadora `0x70005D58`, a rotina PTE `0x700017E0` e os handlers `0x80000000/0x80000180`. O PI DMA desta transferência específica está validado; não gastar mais ciclos tentando corrigir esse DMA sem evidência nova.
