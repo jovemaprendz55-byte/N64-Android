@@ -86,9 +86,9 @@ object N64TrianglePipelineDemo {
         writeCommands(memory, DISPLAY_LIST_ADDRESS, commands)
 
         val triangleHeader = (0x08L shl 58) or
-            ((HEIGHT * 190L / HEIGHT * 4L) shl 32) or
-            ((HEIGHT * 100L / HEIGHT * 4L) shl 16) or
-            (HEIGHT * 40L / HEIGHT * 4L)
+            (190L * 4L shl 32) or
+            (100L * 4L shl 16) or
+            (40L * 4L)
         val triangleWords = listOf(
             triangleHeader,
             packEdgeWord(230 shl 16, 0),
