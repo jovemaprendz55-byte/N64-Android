@@ -1,11 +1,11 @@
 package com.jsr.n64android
 
 /**
- * Small, isolated RDP command interpreter for deterministic fill-cycle tests.
+ * Partial RDP command interpreter used by the DPC bridge.
  *
- * Supported commands: SetOtherModes (cycle type), SetColorImage (RGBA16/32),
- * SetScissor, SetFillColor and FillRectangle. It is not connected to the RSP
- * or DPC command processor yet and is not a complete RDP implementation.
+ * Supports fill-cycle rectangles and a deliberately limited flat RGBA16 triangle
+ * path. It is not a complete RDP implementation and has no texture, shade, Z,
+ * coverage, blending, or combiner pipeline.
  */
 class N64RdpFillProcessor(
     private val memory: N64AddressSpace,
@@ -124,7 +124,33 @@ class N64RdpFillProcessor(
      * multiword subset is opcode 0x08: flat, untextured, non-Z triangles into RGBA16.
      * Other multiword triangle variants remain explicitly unsupported.
      */
+    /** Validates support for every packet before the first state change or pixel write. */
+    fun validatePackets(packets: List<N64RdpCommandPacket>) {
+        val singleWordOpcodes = setOf(
+            CMD_SET_OTHER_MODES,
+            CMD_SET_COLOR_IMAGE,
+            CMD_SET_SCISSOR,
+            CMD_SET_FILL_COLOR,
+            CMD_SET_PRIM_COLOR,
+            CMD_FILL_RECTANGLE
+        )
+        for (packet in packets) {
+            if (packet.isSingleWord) {
+                require(packet.opcode in singleWordOpcodes) {
+                    "Unsupported RDP command: 0x${packet.opcode.toString(16)}"
+                }
+            } else if (packet.opcode == 0x08) {
+                N64RdpTriangleSetup.decode(packet)
+            } else {
+                throw UnsupportedOperationException(
+                    "RDP multiword command 0x${packet.opcode.toString(16)} execution is not implemented."
+                )
+            }
+        }
+    }
+
     fun executePackets(packets: List<N64RdpCommandPacket>): Result {
+        validatePackets(packets)
         var commandsProcessed = 0
         var rectanglesFilled = 0
         var pixelsWritten = 0
