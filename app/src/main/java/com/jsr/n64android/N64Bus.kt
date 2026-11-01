@@ -672,14 +672,24 @@ class N64Bus(
      */
     fun captureViFrameFromRegisters(): N64VideoFrame? {
         val verticalWindow = viRegisters[VI_V_START_OFFSET / 4]
-        val start = (verticalWindow ushr 16) and VI_WINDOW_COORD_MASK
-        val end = verticalWindow and VI_WINDOW_COORD_MASK
-        val scale = viRegisters[VI_Y_SCALE_OFFSET / 4] and VI_SCALE_MASK
-        if (end <= start || scale == 0) return null
-        val activeHalfLines = end - start
-        val height = (activeHalfLines.toLong() * scale.toLong() / VI_SCALE_ONE).toInt()
+        val verticalStart = (verticalWindow ushr 16) and VI_WINDOW_COORD_MASK
+        val verticalEnd = verticalWindow and VI_WINDOW_COORD_MASK
+        val verticalScale = viRegisters[VI_Y_SCALE_OFFSET / 4] and VI_SCALE_MASK
+        if (verticalEnd <= verticalStart || verticalScale == 0) return null
+        val activeHalfLines = verticalEnd - verticalStart
+        val height = (activeHalfLines.toLong() * verticalScale.toLong() / VI_SCALE_ONE).toInt()
         if (height !in 1..N64ViFramebufferReader.MAX_HEIGHT) return null
-        return captureViFrame(height)
+
+        val horizontalWindow = viRegisters[VI_H_START_OFFSET / 4]
+        val horizontalStart = (horizontalWindow ushr 16) and VI_WINDOW_COORD_MASK
+        val horizontalEnd = horizontalWindow and VI_WINDOW_COORD_MASK
+        val horizontalScale = viRegisters[VI_X_SCALE_OFFSET / 4] and VI_SCALE_MASK
+        if (horizontalEnd <= horizontalStart || horizontalScale == 0) return null
+        val activeClocks = horizontalEnd - horizontalStart
+        val width = (activeClocks.toLong() * horizontalScale.toLong() / VI_X_SCALE_ONE).toInt()
+        val stridePixels = viRegisters[VI_WIDTH_OFFSET / 4]
+        if (width !in 1..N64ViFramebufferReader.MAX_WIDTH || width > stridePixels) return null
+        return captureViFrame(height, width)
     }
 
     private fun requireAligned(address: Int, alignment: Int) {
@@ -789,10 +799,13 @@ class N64Bus(
         const val VI_STATUS_OFFSET = 0x00
         const val VI_ORIGIN_OFFSET = 0x04
         const val VI_WIDTH_OFFSET = 0x08
+        const val VI_H_START_OFFSET = 0x24
         const val VI_V_START_OFFSET = 0x28
+        const val VI_X_SCALE_OFFSET = 0x30
         const val VI_Y_SCALE_OFFSET = 0x34
         const val VI_WINDOW_COORD_MASK = 0x3FF
         const val VI_SCALE_MASK = 0xFFF
+        const val VI_X_SCALE_ONE = 1024L
         const val VI_SCALE_ONE = 2048L
         const val VI_REG_SIZE = 0x38
         const val VI_CURRENT_REG = VI_REG_BASE + 0x10
