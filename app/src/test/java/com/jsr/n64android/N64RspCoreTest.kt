@@ -30,6 +30,62 @@ class N64RspCoreTest {
         return bus to N64RspCore(bus).also { it.reset(0) }
     }
 
+    private fun rType(rs: Int, rt: Int, rd: Int, function: Int) =
+        (rs shl 21) or (rt shl 16) or (rd shl 11) or function
+
+    @Test
+    fun signedMultiplyWritesFullProductToHiLoAndMovesItBack() {
+        val (bus, rsp) = setup(
+            addiu(8, 0, -7),
+            addiu(9, 0, 9),
+            rType(8, 9, 0, 0x18), // MULT
+            rType(0, 0, 10, 0x12), // MFLO
+            rType(0, 0, 11, 0x10) // MFHI
+        )
+
+        assertEquals(5, rsp.run(5))
+        assertEquals(-63, rsp.lo)
+        assertEquals(-1, rsp.hi)
+        assertEquals(-63, rsp.gpr[10])
+        assertEquals(-1, rsp.gpr[11])
+    }
+
+    @Test
+    fun unsignedMultiplyWritesUnsignedHighAndLowHalves() {
+        val (bus, rsp) = setup(
+            (0x0F shl 26) or (8 shl 16) or 0xFFFF, // LUI r8,0xFFFF
+            (0x0D shl 26) or (8 shl 21) or (8 shl 16) or 0xFFFF, // ORI r8,r8,FFFF
+            addiu(9, 0, 2),
+            rType(8, 9, 0, 0x19), // MULTU
+            rType(0, 0, 10, 0x12),
+            rType(0, 0, 11, 0x10)
+        )
+
+        assertEquals(6, rsp.run(6))
+        assertEquals(0xFFFFFFFE.toInt(), rsp.lo)
+        assertEquals(1, rsp.hi)
+        assertEquals(0xFFFFFFFE.toInt(), rsp.gpr[10])
+        assertEquals(1, rsp.gpr[11])
+    }
+
+    @Test
+    fun moveToHiAndLoUpdatesTheSpecialRegisters() {
+        val (bus, rsp) = setup(
+            addiu(8, 0, 0x1234),
+            addiu(9, 0, -2),
+            rType(8, 0, 0, 0x11), // MTHI r8
+            rType(9, 0, 0, 0x13), // MTLO r9
+            rType(0, 0, 10, 0x10), // MFHI r10
+            rType(0, 0, 11, 0x12) // MFLO r11
+        )
+
+        assertEquals(6, rsp.run(6))
+        assertEquals(0x1234, rsp.hi)
+        assertEquals(-2, rsp.lo)
+        assertEquals(0x1234, rsp.gpr[10])
+        assertEquals(-2, rsp.gpr[11])
+    }
+
     @Test
     fun vectorAluSupportsSlidingAndBroadcastElementSelectors() {
         val (bus, rsp) = setup(
