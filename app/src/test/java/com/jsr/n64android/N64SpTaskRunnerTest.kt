@@ -44,6 +44,30 @@ class N64SpTaskRunnerTest {
         assertEquals(0x0000000D, result.lastInstruction)
     }
 
+
+    @Test
+    fun taskBreakRaisesMiSpInterruptWhenConfigured() {
+        val ram = N64Memory(0x4000)
+        val taskAddress = 0x100
+        val bootAddress = 0x2000
+        val task = intArrayOf(
+            1, 0, bootAddress, 4,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        )
+        task.forEachIndexed { index, word -> ram.write32(taskAddress + index * 4, word) }
+        ram.write32(bootAddress, 0x0000000D) // BREAK
+
+        val bus = N64Bus(ram = ram)
+        bus.write32(N64Bus.SP_STATUS_REG, N64Bus.SP_STATUS_CMD_SET_INTR_BREAK)
+
+        val result = N64SpTaskRunner(bus, ram.size).startAndRun(taskAddress, 4)
+
+        assertTrue(result.halted)
+        assertTrue(result.broke)
+        assertTrue((result.spStatus and N64Bus.SP_STATUS_INTR) != 0)
+        assertEquals(N64Bus.MI_INTR_SP, bus.read32(N64Bus.MI_INTR_REG))
+    }
+
     @Test
     fun reportsWhenInstructionBudgetEndsWithoutBreak() {
         val ram = N64Memory(0x4000)
