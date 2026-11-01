@@ -2425,6 +2425,27 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 - O apresentador recebe apenas frames VI diferentes, evitando trabalho repetido com imagens idênticas.
 
 ### Limites
-- O botão é uma ferramenta de bring-up, não uma promessa de compatibilidade. O executor atual roda a CPU R4300, mas ainda não despacha automaticamente o RSP quando o software do jogo libera o SP.
-- Se a ROM não produzir/configurar um framebuffer VI válido, a tela continuará sem imagem; isso é um resultado diagnóstico esperado nesta fase.
-- Nenhum frame de GoldenEye foi validado ainda. O próximo bloqueio real é a integração CPU→SP/OSTask→RSP→DPC/RDP→VI.
+- O botão é uma ferramenta de bring-up, não uma promessa de compatibilidade. A sessão agora bombeia o RSP em pequenos quanta quando o SP está liberado, mas o escalonamento é aproximado e o conjunto de instruções RSP continua parcial.
+- Se o microcode do jogo atingir uma instrução RSP ainda não implementada, a sessão registra a falha e interrompe o SP; se a ROM não produzir/configurar um framebuffer VI válido, a tela continuará sem imagem.
+- Nenhum frame de GoldenEye foi validado ainda. O próximo bloqueio real é ampliar a compatibilidade do RSP e completar os comandos RDP usados pelo microcode do jogo.
+
+## 55. Bombeamento cooperativo do RSP durante execução da ROM — 2026-11-01
+
+### Implementação
+- `N64RomVideoSession` agora consulta SP_STATUS em intervalos de instruções da CPU.
+- Quando HALT está limpo, cria ou retoma um `N64RspCore` e executa um quantum limitado de instruções; mantém a mesma instância entre quanta para preservar PC e registradores.
+- Quando o RSP entra em HALT/BREAK, descarta a instância; uma nova liberação do SP cria um núcleo lendo o SP_PC atualizado.
+- Falhas/instruções não suportadas do RSP são capturadas, expostas no diagnóstico e causam HALT do SP, sem derrubar silenciosamente o worker da CPU.
+- A tela experimental mostra contagem de instruções RSP e eventual falha RSP.
+
+### Testes
+- Teste integrado executa uma instrução NOP do R4300 e, no intervalo configurado, bombeia um BREAK real do RSP carregado em IMEM; verifica SP_STATUS.BROKE e contagem RSP.
+- Testes da sessão de CPU/VI continuam cobrindo publicação de frame e cancelamento.
+
+### Limites
+- O escalonamento usa intervalos/quantum configuráveis, não clocks ou latência real do hardware.
+- O núcleo RSP ainda implementa apenas um subconjunto MIPS/RSP e operações vetoriais limitadas. Microcodes comerciais podem falhar em instruções ainda não suportadas.
+- O RDP também continua parcial; GoldenEye ainda não foi comprovado e nenhum frame real de jogo foi validado.
+
+### Próximo passo prioritário
+- Executar GoldenEye com o novo worker e coletar PC/última instrução/erro RSP. Usar o primeiro opcode não suportado como alvo para ampliar o RSP, depois implementar os comandos RDP efetivamente emitidos pelo microcode.
