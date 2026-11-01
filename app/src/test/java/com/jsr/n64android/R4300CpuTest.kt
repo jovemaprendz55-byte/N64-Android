@@ -4202,6 +4202,20 @@ class R4300CpuTest {
         }
     }
 
+    @Test fun syncActsAsOrderedNoOpInSingleThreadedCpu() {
+        val memory = N64Memory(16)
+        memory.write32(0, (7 shl 6) or 0x0F) // SYNC with implementation-independent stype hint.
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 0x123456789ABCDEFL
+
+        cpu.step()
+
+        assertEquals(4L, cpu.pc)
+        assertEquals(0x123456789ABCDEFL, cpu.gpr[1])
+        assertEquals(null, cpu.lastExceptionCode)
+    }
+
     @Test fun branchLikelyNotTakenAnnulsDelaySlot() {
         val memory = N64Memory(32)
         memory.write32(0, iType(0x14, 1, 0, 2)) // beql $at, $zero, target
