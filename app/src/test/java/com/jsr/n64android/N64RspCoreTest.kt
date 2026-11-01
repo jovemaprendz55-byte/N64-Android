@@ -17,6 +17,10 @@ class N64RspCoreTest {
         (0x12 shl 26) or (kind shl 21) or (rt shl 16) or
             (vectorRegister shl 11) or (element shl 7)
 
+    private fun vectorMemory(opcode: Int, base: Int, vt: Int, operation: Int, element: Int, offset: Int) =
+        (opcode shl 26) or (base shl 21) or (vt shl 16) or (operation shl 11) or
+            (element shl 7) or (offset and 0x7F)
+
     private fun setup(vararg instructions: Int): Pair<N64Bus, N64RspCore> {
         val bus = N64Bus()
         bus.write32(N64Bus.SP_STATUS_REG, N64Bus.SP_STATUS_CMD_CLR_HALT)
