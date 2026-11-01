@@ -30,55 +30,89 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         status = TextView(this).apply {
-            text = "Núcleo próprio em construção. Nenhuma ROM carregada."
-            textSize = 16f
+            text = "Nenhum jogo selecionado.\\nEscolha uma ROM para começar."
+            textSize = 15f
             gravity = Gravity.CENTER
-            setPadding(24, 24, 24, 24)
-            movementMethod = ScrollingMovementMethod()
+            setPadding(20, 18, 20, 18)
         }
+
         val chooseRom = Button(this).apply {
-            text = "Selecionar ROM (.z64 / .v64 / .n64)"
+            text = "＋  ADICIONAR JOGO"
+            textSize = 18f
             setOnClickListener { openRomPicker() }
         }
         val cpuDiagnostic = Button(this).apply {
-            text = "Executar teste interno da CPU"
+            text = "Teste interno da CPU"
             setOnClickListener { runCpuDiagnostic() }
         }
         val videoTestButton = Button(this).apply {
-            text = "Testar vídeo (padrão de cores)"
+            text = "Teste de vídeo (cores)"
             setOnClickListener { runVideoTest() }
         }
         val trianglePipelineButton = Button(this).apply {
-            text = "Renderizar triângulo (RDP → RDRAM → VI)"
+            text = "Teste do renderizador RDP"
             setOnClickListener { runTrianglePipelineDemo() }
         }
         romTraceButton = Button(this).apply {
-            text = "Executar diagnóstico de instruções da ROM (IPL3 direto)"
+            text = "Diagnóstico IPL3 da ROM"
             setOnClickListener { runRomInstructionDiagnostic() }
             isEnabled = false
         }
         hleBootButton = Button(this).apply {
-            text = "Iniciar jogo (HLE sem IPL3)"
+            text = "Diagnóstico de inicialização HLE"
             setOnClickListener { runHleBootDiagnostic() }
             isEnabled = false
         }
-        mainLayout = LinearLayout(this).apply {
+
+        val toolsPanel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(24, 24, 24, 24)
-            addView(TextView(this@MainActivity).apply {
-                text = "N64 Android"
-                textSize = 30f
-                gravity = Gravity.CENTER
-            })
-            addView(status)
-            addView(chooseRom)
+            visibility = LinearLayout.GONE
             addView(cpuDiagnostic)
             addView(videoTestButton)
             addView(trianglePipelineButton)
             addView(romTraceButton)
             addView(hleBootButton)
+        }
+        val toolsToggle = Button(this).apply {
+            text = "FERRAMENTAS DE DESENVOLVIMENTO  ▾"
+            setOnClickListener {
+                val opening = toolsPanel.visibility != LinearLayout.VISIBLE
+                toolsPanel.visibility = if (opening) LinearLayout.VISIBLE else LinearLayout.GONE
+                text = if (opening) "OCULTAR FERRAMENTAS  ▴" else "FERRAMENTAS DE DESENVOLVIMENTO  ▾"
+            }
+        }
+
+        mainLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            setPadding(22, 34, 22, 22)
+            addView(TextView(this@MainActivity).apply {
+                text = "N64 ANDROID"
+                textSize = 28f
+                gravity = Gravity.CENTER
+                setPadding(8, 18, 8, 4)
+            })
+            addView(TextView(this@MainActivity).apply {
+                text = "SEU EMULADOR NINTENDO 64"
+                textSize = 12f
+                gravity = Gravity.CENTER
+                setPadding(8, 0, 8, 22)
+            })
+            addView(chooseRom, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = 14 })
+            addView(status, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = 18 })
+            addView(toolsToggle, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ))
+            addView(toolsPanel)
         }
         setContentView(mainLayout)
     }
