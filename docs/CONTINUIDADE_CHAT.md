@@ -3582,3 +3582,14 @@ Reduzir a necessidade de pedir vários Logs separados. O botão existente `COPIA
   - `b2dcce5babbeeb62ed751c9cce5365ab4c32406b` — testes de ROM e watchpoint.
   - `e240ebf19be41c6479aad7e95f17571a1f3a22df` — CIC e PIF RAM.
   - `9f15d429ff2aaa3bd89695d58b3e747b7f36bc67` — buffers e PIF RAM no COPIAR LOGS.
+
+
+### Validação final do pacote e APK
+- CI #1086 (`41342292444`), commit `e240ebf19be41c6479aad7e95f17571a1f3a22df`: success.
+- CI #1087 (`41342322111`), commit `9f15d429ff2aaa3bd89695d58b3e747b7f36bc67`: success.
+- CI #1088 (`41342344719`), commit documental `08cac6f757344f92e1d40b431313fd3c9d9a1f59`: success.
+- CI #1089 (`41342400319`), commit `1470f892edd6d354742ab41500ecb95f3bb120c3`: success; Build and test e Upload debug APK concluídos.
+- APK #1089: `n64-android-debug-apk`, artefato ID `13098051814`, tamanho 991.034 bytes, criado `2026-11-01T19:35:09Z`, expira `2026-11-15T19:35:08Z`; digest do ZIP `sha256:482ad8f6fbfc043a6663926d690f611202eb08fda516e407aa8fe5c642636a2f`.
+- A versão #1089 inclui o pacote diagnóstico completo, buffers auxiliares, bytes da ROM fonte PI, PIF RAM, snapshots CPU/TLB/RSP e o dump de destino PI com exatamente `0x2000` bytes (`0x340000..0x341FFF`).
+- Commit `1470f892...` ajusta o fim do dump para corresponder exatamente ao tamanho do DMA observado.
+- APK foi compilado e artefato gerado; instalação e execução no aparelho ainda dependem de confirmação do usuário.
