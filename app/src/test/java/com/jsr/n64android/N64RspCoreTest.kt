@@ -90,4 +90,71 @@ class N64RspCoreTest {
         assertTrue(rsp.halted)
         assertEquals(N64Bus.SP_STATUS_HALT, bus.read32(N64Bus.SP_STATUS_REG))
     }
+
+    @Test
+    fun lqvAndLrvCombineToLoadMisalignedSixteenByteWindow() {
+        val instructions = listOf(
+            addiu(8, 0, 0x108),
+            vectorMemory(0x32, 8, 3, 4, 0, 0),
+            addiu(8, 8, 0x10),
+            vectorMemory(0x32, 8, 3, 5, 0, 0)
+        )
+        val (bus, rsp) = setup(*instructions.toIntArray())
+        for (index in 0 until 16) bus.write8(N64Bus.SP_DMEM_BASE + 0x108 + index, 0x40 + index)
+
+        assertEquals(4, rsp.run(4))
+        for (index in 0 until 16) {
+            assertEquals(0x40 + index, rsp.vectorUnit.readByte(3, index))
+        }
+    }
+
+    @Test
+    fun lqvHonorsElementAndDoesNotOverwriteRemainingVectorBytes() {
+        val (bus, rsp) = setup(
+            addiu(8, 0, 0x108),
+            vectorMemory(0x32, 8, 4, 4, 4, 0)
+        )
+        for (index in 0 until 16) {
+            bus.write8(N64Bus.SP_DMEM_BASE + 0x108 + index, 0x20 + index)
+            rsp.vectorUnit.writeByte(4, index, 0xA0 + index)
+        }
+
+        rsp.run(2)
+        for (index in 0 until 4) assertEquals(0xA0 + index, rsp.vectorUnit.readByte(4, index))
+        for (index in 4 until 12) assertEquals(0x20 + index - 4, rsp.vectorUnit.readByte(4, index))
+        for (index in 12 until 16) assertEquals(0xA0 + index, rsp.vectorUnit.readByte(4, index))
+    }
+
+    @Test
+    fun sqvAndSrvStoreMisalignedWindowWithElementRotation() {
+        val (bus, rsp) = setup(
+            addiu(8, 0, 0x108),
+            vectorMemory(0x3A, 8, 5, 4, 4, 0),
+            addiu(8, 8, 0x10),
+            vectorMemory(0x3A, 8, 5, 5, 4, 0)
+        )
+        for (index in 0 until 16) rsp.vectorUnit.writeByte(5, index, 0x60 + index)
+
+        assertEquals(4, rsp.run(4))
+        for (index in 0 until 8) {
+            assertEquals(0x64 + index, bus.read8(N64Bus.SP_DMEM_BASE + 0x108 + index))
+            assertEquals(0x60 + ((12 + index) and 0x0F), bus.read8(N64Bus.SP_DMEM_BASE + 0x110 + index))
+        }
+    }
+
+    @Test
+    fun lrvWithAlignedAddressDoesNotModifyVector() {
+        val (bus, rsp) = setup(
+            addiu(8, 0, 0x110),
+            vectorMemory(0x32, 8, 6, 5, 0, 0)
+        )
+        for (index in 0 until 16) {
+            bus.write8(N64Bus.SP_DMEM_BASE + 0x100 + index, 0x10 + index)
+            rsp.vectorUnit.writeByte(6, index, 0xB0 + index)
+        }
+
+        rsp.run(2)
+        for (index in 0 until 16) assertEquals(0xB0 + index, rsp.vectorUnit.readByte(6, index))
+    }
+
 }
