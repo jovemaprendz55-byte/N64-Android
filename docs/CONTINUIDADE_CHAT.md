@@ -1962,7 +1962,7 @@ Construir o ciclo de vida de task SP: leitura do descriptor em RDRAM, carregamen
 3. Auditar o mapa atual dos registradores SP, DMA e status, separando comportamento implementado de placeholders. **Auditoria inicial concluída; detalhes por registrador pendentes.**
 4. Auditar o caminho RSP atual: decoder, vetores, loads/stores, BREAK e limitações explícitas. **Concluída nesta rodada.**
 5. Auditar o caminho DPC/RDP/VI existente e identificar onde ainda há execução isolada sem ligação com ROM. **Concluída nesta rodada.**
-6. Definir contrato mínimo de task SP: descriptor, origem/destino, tamanhos, flags e endereços de microcode/display-list, conforme evidência arquitetural. **Planejada.**
+6. Definir contrato mínimo de task SP: descriptor, origem/destino, tamanhos, flags e endereços de microcode/display-list, conforme evidência arquitetural. **Concluída: decoder OSTask de 64 bytes + testes de offsets e limites.**
 7. Definir estados e transições de task: idle, carregamento DMA, execução, BREAK, conclusão, interrupção e erro. **Planejada.**
 8. Criar testes de integração do ciclo SP usando descriptor sintético, sem alegar compatibilidade de jogo. **Planejada.**
 
@@ -2039,7 +2039,37 @@ Construir o ciclo de vida de task SP: leitura do descriptor em RDRAM, carregamen
 ### Estado desta rodada
 - Tarefas 1, 2, 4 e 5: auditoria inicial concluída.
 - Tarefa 3: auditoria inicial dos registradores e do DMA concluída em nível geral; revisão detalhada ainda pendente.
-- Tarefas 6–64: planejadas, não concluídas.
+- Tarefa 6: concluída com decoder OSTask de 64 bytes e testes; tarefas 7–64 seguem pendentes.
 - CI #832, #833 e #834: **success**; HEAD confirmado em `b34be16cd97769f1f3d9bb3cd07c128544158a0c`.
 - O estado atual contém componentes experimentais de RDP/VI e RSP, mas o caminho integrado task SP→display list→RDP→VI ainda não está comprovado.
-- Próxima execução: tarefa 6, formalizar o contrato da task SP com base no código e nas referências arquiteturais; depois tarefas 7–8 e primeira integração testável.
+- Próxima execução: tarefa 7, definir estados/transições da task SP; depois tarefa 8 e primeira integração testável.
+
+
+## 40. Primeiro contrato de OSTask — decoder do cabeçalho SP — 2026-11-01
+
+### Implementação
+- Criado `N64SpTaskDescriptor.kt` para decodificar o cabeçalho OSTask de 64 bytes (16 palavras de 32 bits) em SP DMEM.
+- Campos: type, flags, ucodeBoot, ucodeBootSize, ucode, ucodeSize, ucodeData, ucodeDataSize, dramStack, dramStackSize, outputBuffer, outputBufferSize, data, dataSize, yieldData e yieldDataSize.
+- Offset padrão `0x0FC0`; offset explícito aceito somente quando alinhado e com todos os 64 bytes dentro dos 4 KiB de DMEM.
+- Ponteiros preservados como palavras brutas de 32 bits. O decoder não dereferencia nem declara os endereços válidos.
+- O componente apenas decodifica o descriptor; não carrega microcode nem inicia o RSP.
+
+### Testes
+- Leitura dos 16 campos no offset padrão.
+- Leitura a partir de offset explícito.
+- Rejeição de descriptor além do limite da DMEM.
+- Rejeição de offset desalinhado.
+
+### Commits
+- `cf505ab51ab89580bc72c1e1cec5ecc6845f91e4`: decoder OSTask.
+- `55fb102b324544bd8ae8e00d5918f0a2213cce95`: testes do descriptor.
+
+### Referências arquiteturais
+- OSTask ABI e semântica de conclusão/interrupção SP: https://ultra64.ca/files/documentation/online-manuals/functions_reference_manual_2.0i/os/OSTask.html
+- Procedimento de início de task: parar o RSP, transferir OSTask para DMEM em `0x1000 - sizeof(OSTask)`, carregar boot microcode em IMEM, definir PC=0 e liberar HALT: https://ultra64.ca/files/documentation/silicon-graphics/SGI_Nintendo_64_RSP_Programmers_Guide.pdf
+
+### Limites e próximo passo
+- Ainda não há validação de type, flags, ponteiros, tamanhos ou conteúdo dos buffers.
+- O boot microcode deve ser executado para carregar o microcode de tarefa e os dados; não pular diretamente para `ucode`.
+- Tarefa 6 concluída. Tarefas 7 e 8 pendentes.
+- CI dos commits de código deve ser confirmada antes de integrar scheduler ou alterar estado SP.
