@@ -559,6 +559,11 @@ class N64Bus(
         }
     }
 
+    /** Records the architectural effect of an RSP BREAK instruction. */
+    fun signalSpBreak() {
+        spStatus = spStatus or SP_STATUS_HALT or SP_STATUS_BROKE
+    }
+
     /** Applies the SP_STATUS write-one command bits to the readable status bits. */
     private fun writeSpStatusCommand(command: Int) {
         if ((command and SP_STATUS_CMD_CLR_HALT) != 0) spStatus = spStatus and SP_STATUS_HALT.inv()
