@@ -3832,3 +3832,38 @@ O alvo de execução é `0x7F000BD0`: o deslocamento `0xBD0` dentro da página c
 5. Criar teste de reprodução antes de qualquer correção em CPU/TLB/barramento.
 
 **Resultado desta etapa:** descoberta diagnóstica adicional; nenhuma alteração funcional de código e nenhuma correção do GoldenEye. A branch de trabalho permanece `dev/n64-clean-start`; `main` foi consultada apenas para ler o Log fornecido pelo projeto.
+
+
+---
+
+## 32. O handler geral após TLB INVALID é fatal, não um page-in (2026-11-01, 18:12:13 UTC−03:00)
+
+### 32.1. Caminho de exceção confirmado no Log
+
+A seção `Instruções após exceções TLB e amostras do loop` do Log contém a sequência real:
+
+1. A primeira falta em `0x7F000BD0` é TLB MISS e entra no refill vector `0xFFFFFFFF80000000`.
+2. O refill lê PTEBase em `0x8005E4A4`, soma Context `0x003F8000`, consulta `0x8005DBF0` e obtém `1`.
+3. O código grava `EntryLo0=1`, `EntryLo1=0x41`, executa `TLBWR` e `ERET`.
+4. O fetch seguinte na mesma VA gera TLB INVALID e entra no vetor geral `0xFFFFFFFF80000180`.
+5. O vetor geral executa:
+   - `0x80000180: 0x3C1A7001` — LUI k0, 0x7001;
+   - `0x80000184: 0x275A01A0` — ADDIU k0, k0, 0x01A0;
+   - `0x80000188: 0x03400008` — JR k0;
+   - delay slot em `0x8000018C`.
+6. A execução entra em `0x700101A0`, percorre a rotina de tratamento geral, salva contexto e executa rotinas auxiliares. A janela capturada termina em `0x70010A74`; depois o PC passa a `0x70000720`, onde o Log registra repetidamente instrução `0x00000000`.
+
+### 32.2. Conclusão
+
+O vetor de exceção geral está instalado e transfere o controle para código do próprio jogo. Portanto, a hipótese de que o HLE simplesmente deixou `0x80000180` vazio não explica esta falha. O caminho observado também não mostra um carregador de página recuperando a PTE; em vez disso, a execução segue o handler geral e termina num loop de NOPs.
+
+Isso torna a falha anterior ao handler geral o ponto prioritário: a PTE para `0x7F000000` continua inválida quando o jogo tenta executar `0x7F000BD0`. O bloco DMA em `0x340000` contém código plausível no deslocamento correspondente `0x340BD0`, mas ainda não há prova final da tradução esperada.
+
+### 32.3. Próxima investigação
+
+1. Seguir a rotina em `0x70005B90` e a função que solicita o DMA `0x34B30 → 0x340000`, identificando o papel do bloco carregado.
+2. Procurar no fluxo anterior qualquer tentativa de escrever a PTE `0x8005DBF0` ou uma estrutura de mapeamento relacionada.
+3. Confirmar se a rotina candidata em `0x340BD0` é realmente o destino chamado e se o mapeamento pretendido seria `0x7F000000 → 0x340000`.
+4. Não alterar a rotina de exceção nem forçar uma entrada TLB válida sem demonstrar a regra de mapeamento esperada.
+
+**Resultado:** confirmação do destino do vetor geral e da natureza fatal do caminho observado. Nenhuma alteração funcional de código; nenhuma correção do jogo ainda.
