@@ -1922,3 +1922,24 @@ Próximo passo: validar CI; depois implementar registradores vetoriais/accumulat
 1. Executar GitHub Actions e confirmar build/testes.
 2. Investigar a rotação e o mapeamento exatos do SHV com fixtures independentes.
 3. Avançar para as demais transferências vetoriais e o DMA/tarefa SP; ainda não há execução de microcode de jogo nem ROM validada.
+
+
+## 38. Ciclo de 8 tarefas — validação de endereços RSP e DMA SP — 2026-11-01
+
+### As oito tarefas executadas neste ciclo
+1. **Inspeção:** confirmado o trabalho na branch `dev/n64-clean-start`, sem tocar em `main`.
+2. **CPU/RSP:** revisado o caminho de execução COP2/LWC2/SWC2 e mantida a separação entre CPU R4300 e RSP.
+3. **Memória:** validado o helper de endereço DMEM com wrap de 4 KiB usado pelas transferências vetoriais.
+4. **LHV:** mantida a leitura a partir do endereço efetivo, com stride de dois bytes e paridade determinada pelo endereço.
+5. **Testes LHV:** adicionados casos para endereço ímpar (`0x107`) e offset signed `-1` escalado por 16.
+6. **DMA SP:** auditado o caminho existente de SP_RD_LEN/SP_WR_LEN; ele já suporta direção RDRAM↔DMEM/IMEM, contagem de blocos, skip e wrap do endereço interno de 4 KiB, mas continua sem timing/fila de hardware.
+7. **Testes DMA:** adicionado caso de RDRAM→IMEM cruzando `0xFFF` para `0x000`, verificando avanço dos registradores.
+8. **Integração:** executar CI para os novos testes; registrar o resultado real antes de considerar o ciclo validado.
+
+### Limites preservados
+- SHV não foi alterado: seu mapeamento/rotação ainda requer validação independente.
+- O DMA SP atual é síncrono e simplificado; não modela latência, fila, busy/full reais nem interrupção de conclusão.
+- Nenhum teste local substitui validação de ROM real ou hardware.
+
+### Próximo bloco recomendado
+Construir o ciclo de vida de task SP: leitura do descriptor em RDRAM, carregamento IMEM/DMEM por DMA, execução do RSP até BREAK, atualização de status/interrupt e encaminhamento da display list para DPC, com testes de integração em vez de mais alterações isoladas no decoder.
