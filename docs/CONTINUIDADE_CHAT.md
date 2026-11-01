@@ -2274,3 +2274,29 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 - O runner continua sendo uma execução limitada e não-resumível: ao esgotar o orçamento, não preserva a instância RSP para uma chamada posterior.
 - Próximo passo: rodar CI do HEAD; se passar, ampliar os testes para DP_WAIT com task microcode realista e verificar o Full Sync emitido pelo task antes de trabalhar em agregação de DMA e suporte ao microcode comercial.
 - Nenhuma ROM comercial foi validada nesta etapa; nenhum frame real de jogo foi produzido.
+
+
+## 48. Reconhecimento de task microcode carregado em fragmentos DMA — 2026-11-01
+
+### Implementação
+- O tracker de handoff agora agrega transferências RDRAM→IMEM separadas, inclusive fora de ordem.
+- Cada byte de IMEM dentro de `ucodeSize` só é considerado válido quando veio do endereço RDRAM correspondente a `descriptor.ucode + offset`.
+- A cobertura é por byte: lacunas impedem o handoff; DMA posterior que sobrescreve uma faixa com origem incorreta invalida a evidência dessa faixa; uma transferência correta pode restaurá-la.
+- DMAs para DMEM e SP→RDRAM não contam como carregamento de task microcode.
+- A execução de uma instrução RSP alinhada dentro da faixa só é aceita depois da cobertura completa simultânea.
+
+### Testes
+- Fragmentos contíguos em DMAs separados.
+- Fragmentos carregados fora de ordem.
+- Lacunas que impedem a entrada.
+- Origem RDRAM incorreta e invalidação de bytes sobrescritos.
+- DMAs para DMEM e SP→RDRAM ignorados.
+- PC fora da faixa/desalinhado e tamanho de descriptor inválido.
+
+### Limites
+- A correspondência pressupõe que o microcode do OSTask ocupa uma faixa contígua em RDRAM, conforme o ponteiro/tamanho do descriptor. Transferências com `dramSkip` que não preservem essa correspondência não são aceitas para os bytes afetados.
+- O tracker observa os metadados do DMA, não compara o conteúdo real de IMEM com RDRAM; a validação do barramento continua sendo responsabilidade dos testes de DMA.
+- Ainda não comprova microcode comercial, ROM real ou geração de frame real.
+
+### Próximo passo
+- Confirmar CI deste commit; depois, exercitar a integração runner + coordenador com task sintética que emita Full Sync pelo caminho DPC e finalize BREAK/DP_WAIT na ordem arquitetural correta.
