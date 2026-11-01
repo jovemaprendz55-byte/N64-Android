@@ -3912,3 +3912,35 @@ A rotina `0x70005B90` recebe `A0=0xFFFFFFFF80340000` (destino KSEG1 para físico
 5. Não alterar CPU/TLB sem uma reprodução concreta de erro.
 
 **Resultado:** o marcador inválido `1` é escrito explicitamente pelo laço de inicialização do jogo. Nenhuma correção funcional foi feita; ainda falta identificar quem deveria substituí-lo por uma entrada válida.
+
+
+---
+
+## 34. Ampliação do watchpoint para a tabela PTE completa (2026-11-01, 18:16:55 UTC−03:00)
+
+### Motivo
+
+O watchpoint anterior cobria somente `0x5DBF0..0x5DC33` (68 bytes). Essa janela permitia confirmar o marcador inválido na primeira entrada, mas não mostrava se o jogo gravava uma PTE válida em outra posição da estrutura.
+
+### Alterações de diagnóstico
+
+- `N64Bus.kt`: watchpoint ampliado para `0x5DBF0..0x5E3EF` (0x800 bytes). O histórico foi aumentado para 2048 registros, suficiente para preservar uma gravação byte a byte de toda a janela, caso todos os bytes sejam escritos uma vez.
+- `MainActivity.kt`: cabeçalho do relatório atualizado para indicar a faixa completa.
+- Novo teste `N64BusPteWatchpointTest.kt`:
+  - confirma inclusão dos dois limites da faixa;
+  - confirma exclusão do byte imediatamente após o limite;
+  - confirma retenção de 2048 gravações sem truncamento.
+
+### Commits desta instrumentação
+
+- `d60eff78dbf37a0f3e06b7c072788f504a7b2c4f` — expansão da faixa no barramento.
+- `f88ee03f3a0a1702d227c2f046398171ce410e8e` — rótulo do relatório.
+- `b47a64e0cca00a578836803304e6c84900c46053` — teste de limites e retenção.
+
+### Validação
+
+No momento deste registro, os workflows Android disparados pelos commits estavam em andamento. Ainda não declarar testes/build aprovados. A mudança é instrumentação de diagnóstico; não altera a tradução TLB, a CPU, o DMA nem a lógica do jogo.
+
+### Próxima etapa
+
+Após CI verde, instalar a APK de diagnóstico, executar o GoldenEye novamente e examinar todas as escritas entre `0x5DBF0` e `0x5E3EFF`. O objetivo é localizar uma gravação válida ou provar que nenhuma aparece antes da primeira execução em `0x7F000BD0`. Se nenhuma surgir, investigar o caminho de page-in/overlay e o estado de boot esperado; não forçar um PFN.
