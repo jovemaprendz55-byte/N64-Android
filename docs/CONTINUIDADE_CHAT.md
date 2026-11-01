@@ -2407,11 +2407,24 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 - Teste de cancelamento cooperativo antes do primeiro passo.
 
 ### Limites importantes
-- Esta etapa cria o motor de execução contínua da CPU e a ponte de captura/publicação VI; ainda não liga o motor à interface principal.
+- A sessão de CPU e a ponte VI agora estão ligadas à Activity por um botão experimental, com tela de vídeo, contadores e parada cooperativa.
 - O chamador deve preparar CPU/barramento antes da sessão (HLE atual ainda é uma preparação separada).
 - **Ainda não existe despacho automático de tarefas RSP quando o jogo libera o SP.** Portanto, esta etapa sozinha não faz GoldenEye renderizar: o RSP precisa executar o boot/task microcode, produzir comandos DPC/RDP e atualizar o framebuffer VI.
 - Não declarar ROM comercial, GoldenEye ou vídeo real funcional com base nos testes sintéticos desta etapa.
 
 ### Próximo passo prioritário
-- Integrar a sessão à Activity com controles Iniciar/Parar e apresentação de frames.
-- Em seguida, ligar a liberação do SP/OSTask ao executor RSP, preservando DMEM/IMEM e coordenando SP/DP; sem esse caminho, o framebuffer de jogo não será produzido.
+- Próximo passo prioritário: ligar a liberação do SP/OSTask ao executor RSP, preservando DMEM/IMEM e coordenando SP/DP; sem esse caminho, o framebuffer de jogo não será produzido.
+
+## 54. Controles de execução experimental de ROM na Activity — 2026-11-01
+
+### Implementação
+- Adicionado botão principal "EXECUTAR ROM — VÍDEO EXPERIMENTAL", habilitado após carregar uma ROM reconhecida.
+- Ao iniciar, cria CPU R4300, prepara a entrada HLE e executa em worker dedicado, sem bloquear a interface.
+- Adicionada tela com apresentador VI, contadores de instruções/frames, PC final, mensagens de erro e botões Parar/Voltar.
+- Parada cooperativa é solicitada ao sair da tela ou destruir a Activity.
+- O apresentador recebe apenas frames VI diferentes, evitando trabalho repetido com imagens idênticas.
+
+### Limites
+- O botão é uma ferramenta de bring-up, não uma promessa de compatibilidade. O executor atual roda a CPU R4300, mas ainda não despacha automaticamente o RSP quando o software do jogo libera o SP.
+- Se a ROM não produzir/configurar um framebuffer VI válido, a tela continuará sem imagem; isso é um resultado diagnóstico esperado nesta fase.
+- Nenhum frame de GoldenEye foi validado ainda. O próximo bloqueio real é a integração CPU→SP/OSTask→RSP→DPC/RDP→VI.
