@@ -240,6 +240,38 @@ class N64RspCoreTest {
     }
 
     @Test
+    fun lhvPreservesOddAddressParityFromEffectiveAddress() {
+        val (bus, rsp) = setup(
+            addiu(8, 0, 0x107),
+            vectorMemory(0x32, 8, 18, 8, 0, 0)
+        )
+        for (lane in 0 until 8) {
+            bus.write8(N64Bus.SP_DMEM_BASE + 0x107 + lane * 2, 0x30 + lane)
+        }
+
+        assertEquals(2, rsp.run(2))
+        for (lane in 0 until 8) {
+            assertEquals((0x30 + lane) shl 7, rsp.vectorUnit.readLane(18, lane))
+        }
+    }
+
+    @Test
+    fun lhvAppliesSignedSixteenByteScaledOffset() {
+        val (bus, rsp) = setup(
+            addiu(8, 0, 0x110),
+            vectorMemory(0x32, 8, 19, 8, 0, 0x7F)
+        )
+        for (lane in 0 until 8) {
+            bus.write8(N64Bus.SP_DMEM_BASE + 0x100 + lane * 2, 0x40 + lane)
+        }
+
+        assertEquals(2, rsp.run(2))
+        for (lane in 0 until 8) {
+            assertEquals((0x40 + lane) shl 7, rsp.vectorUnit.readLane(19, lane))
+        }
+    }
+
+    @Test
     fun shvStoresOddBytesFromVectorIntoAlternatingDmemAddresses() {
         val (bus, rsp) = setup(
             addiu(8, 0, 0x106),
