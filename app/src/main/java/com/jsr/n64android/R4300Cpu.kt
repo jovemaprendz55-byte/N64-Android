@@ -954,7 +954,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     " Lo1=0x" + encodeEntryLo(entry.oddPage).toString(16).uppercase().padStart(8, '0'))
             }
         }
-        return if (lines.isEmpty()) "(nenhuma entrada TLB inicializada)" else lines.joinToString("\\n")
+        return if (lines.isEmpty()) "(nenhuma entrada TLB inicializada)" else lines.joinToString("\n")
     }
 
     private fun enterException(instructionAddress: Long, exceptionCode: Int, branchAddress: Long?) {
