@@ -196,6 +196,43 @@ class N64RspCore(private val bus: N64Bus) {
         val element = (instruction ushr 7) and 0x0F
         val rawOffset = instruction and 0x7F
         val offset = if ((rawOffset and 0x40) != 0) rawOffset - 0x80 else rawOffset
+        if (operation == 4 || operation == 5) {
+            val address = (gpr[base] + offset * 16) and 0xFFF
+            val misalignment = address and 0x0F
+            if (operation == 4) {
+                // LQV/SQV transfer from EA through the end of its 16-byte block.
+                val count = 16 - misalignment
+                if (load) {
+                    val transfer = minOf(count, 16 - element)
+                    for (index in 0 until transfer) {
+                        vectorUnit.writeByte(vectorRegister, element + index, bus.read8(dmemAddress(address + index)))
+                    }
+                } else {
+                    for (index in 0 until count) {
+                        val vectorByte = (element + index) and 0x0F
+                        bus.write8(dmemAddress(address + index), vectorUnit.readByte(vectorRegister, vectorByte))
+                    }
+                }
+            } else {
+                // LRV/SRV transfer the bytes before EA, from the preceding aligned block.
+                val count = minOf(misalignment, 16 - element)
+                val memoryStart = (address - misalignment) and 0xFFF
+                val vectorStart = 16 - count
+                if (load) {
+                    for (index in 0 until count) {
+                        vectorUnit.writeByte(vectorRegister, vectorStart + index, bus.read8(dmemAddress(memoryStart + index)))
+                    }
+                } else {
+                    val storeCount = misalignment
+                    val sourceStart = (element + 16 - storeCount) and 0x0F
+                    for (index in 0 until storeCount) {
+                        val vectorByte = (sourceStart + index) and 0x0F
+                        bus.write8(dmemAddress(memoryStart + index), vectorUnit.readByte(vectorRegister, vectorByte))
+                    }
+                }
+            }
+            return
+        }
         val size = when (operation) {
             0 -> 1 // LBV / SBV
             1 -> 2 // LSV / SSV
@@ -206,10 +243,9 @@ class N64RspCore(private val bus: N64Bus) {
         val address = (gpr[base] + offset * size) and 0xFFF
         val transferBytes = if (load) minOf(size, 16 - element) else size
         for (index in 0 until transferBytes) {
-            val memoryByte = bus.read8(dmemAddress(address + index))
             val vectorByte = if (load) element + index else (element + index) and 0x0F
             if (load) {
-                vectorUnit.writeByte(vectorRegister, vectorByte, memoryByte)
+                vectorUnit.writeByte(vectorRegister, vectorByte, bus.read8(dmemAddress(address + index)))
             } else {
                 bus.write8(dmemAddress(address + index), vectorUnit.readByte(vectorRegister, vectorByte))
             }
