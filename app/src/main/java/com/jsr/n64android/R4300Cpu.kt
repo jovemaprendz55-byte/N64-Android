@@ -509,7 +509,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                                     hit.toLong()
                                 }
                             }
-                            0x18 -> { // ERET
+                            0x18 -> { // ERET clears the VR4300 LLbit before returning.
+                                memory.clearLoadLinkedReservation()
                                 val status = cop0[12]
                                 if ((status and 0x4L) != 0L) {
                                     cop0[12] = status and 0x4L.inv() // clear ERL
@@ -901,7 +902,6 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     }
 
     private fun enterException(instructionAddress: Long, exceptionCode: Int, branchAddress: Long?) {
-        memory.clearLoadLinkedReservation()
         lastExceptionInstructionAddress = instructionAddress
         lastExceptionCode = exceptionCode
         lastExceptionBranchAddress = branchAddress
