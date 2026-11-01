@@ -92,6 +92,25 @@ class R4300CpuTest {
         assertEquals(0L, cpu.cop0[13] and 0x7CL)
     }
 
+    @Test fun logicalRegisterInstructionsPreserveAll64Bits() {
+        val memory = N64Memory(64)
+        memory.write32(0, rType(1, 2, 3, 0x24)) // AND
+        memory.write32(4, rType(1, 2, 4, 0x25)) // OR
+        memory.write32(8, rType(1, 2, 5, 0x26)) // XOR
+        memory.write32(12, rType(1, 2, 6, 0x27)) // NOR
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = 0x12345678ABCDEF01UL.toLong()
+        cpu.gpr[2] = 0xFFFF0000FFFF0000UL.toLong()
+        cpu.setProgramCounter(0)
+
+        repeat(4) { cpu.step() }
+
+        assertEquals(0x12340000ABCD0000UL.toLong(), cpu.gpr[3])
+        assertEquals(0xFFFF5678FFFFEF01UL.toLong(), cpu.gpr[4])
+        assertEquals(0xEDCB567854321F01UL.toLong(), cpu.gpr[5])
+        assertEquals(0x0000A987000010FEUL.toLong(), cpu.gpr[6])
+    }
+
     @Test fun daddSigned64BitOverflowRaisesExceptionButDadduWraps() {
         val memory = N64Memory(64)
         memory.write32(0, rType(1, 2, 3, 0x2C)) // dadd $v1, $at, $v0
