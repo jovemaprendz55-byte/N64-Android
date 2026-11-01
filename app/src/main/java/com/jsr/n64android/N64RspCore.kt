@@ -17,6 +17,10 @@ class N64RspCore(private val bus: N64Bus) {
         private set
     var lastInstruction: Int = 0
         private set
+    var hi: Int = 0
+        private set
+    var lo: Int = 0
+        private set
     val halted: Boolean
         get() = (bus.read32(N64Bus.SP_STATUS_REG) and N64Bus.SP_STATUS_HALT) != 0
 
@@ -38,6 +42,8 @@ class N64RspCore(private val bus: N64Bus) {
         gpr.fill(0)
         executedInstructions = 0
         lastInstruction = 0
+        hi = 0
+        lo = 0
         delayedTarget = null
         bus.write32(N64Bus.SP_PC_REG, pc)
     }
@@ -89,6 +95,20 @@ class N64RspCore(private val bus: N64Bus) {
                 0x08 -> delayedTarget = a and PC_MASK
                 0x09 -> { gpr[rd] = pc; delayedTarget = a and PC_MASK }
                 0x0D -> { bus.signalSpBreak(); delayedTarget = null }
+                0x10 -> gpr[rd] = hi // MFHI
+                0x11 -> hi = a // MTHI
+                0x12 -> gpr[rd] = lo // MFLO
+                0x13 -> lo = a // MTLO
+                0x18 -> { // MULT signed
+                    val product = a.toLong() * b.toLong()
+                    lo = product.toInt()
+                    hi = (product shr 32).toInt()
+                }
+                0x19 -> { // MULTU unsigned
+                    val product = a.toUInt().toLong() * b.toUInt().toLong()
+                    lo = product.toInt()
+                    hi = (product ushr 32).toInt()
+                }
                 0x21 -> gpr[rd] = a + b
                 0x23 -> gpr[rd] = a - b
                 0x24 -> gpr[rd] = a and b
