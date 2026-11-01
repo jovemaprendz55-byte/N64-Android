@@ -1655,3 +1655,29 @@ Commits:
 - `d8c43a5f81ca9f5341d640a91d49ad70c8fb2dd3`: testes COP0 e BREAK.
 
 Próximo passo: validar CI; depois implementar registradores vetoriais/accumulator e operações COP2 de forma incremental, com testes de largura, saturação e flags, antes de abordar microcode gráfico.
+
+## 28. Estado vetorial inicial do RSP — 2026-11-01
+
+### Implementação
+- Criado `N64RspVectorUnit.kt`, separado do núcleo escalar, com 32 registradores vetoriais × 8 lanes de 16 bits e accumulator de 48 bits por lane.
+- Primeiro subconjunto de operações lane-a-lane: ADD e SUB com interpretação signed, saturação para signed 16-bit e consumo do bit VCO-low como carry/borrow-in; AND, OR, XOR e NOR.
+- O ADD/SUB atualiza o accumulator com o resultado intermediário sign-extended para 48 bits e limpa VCO-low/high.
+- Estado de flags VCO, VCC e VCE é armazenado; VCC/VCE podem ser definidos para preparar os testes/implementações seguintes.
+- Testes em `N64RspVectorUnitTest.kt`: largura/índices dos registradores, saturação, carry/borrow-in, operações lógicas e accumulator.
+
+### Limites importantes
+- Esta etapa cria e testa o estado vetorial e um subconjunto de operações, mas **ainda não integra o decoder COP2 ao N64RspCore**.
+- Não há ainda instruções de load/store vetorial, elemento/element select, operações de comparação/merge, multiplicação/acumulação vetorial nem semântica completa das flags para cada opcode.
+- Não existe ainda execução de microcode F3D/F3DEX nem ligação com tarefas SP disparadas por ROM.
+- Portanto, não declarar que o RSP executa microcode gráfico ou que algum jogo renderiza.
+
+### Commits
+- `a774074a6ea15595918ee87d2e59b15e6333eac5`: estado vetorial e operações iniciais.
+- `ae5a6d478d0d99d596d47bb7e3d38443dc6b937f`: testes da unidade vetorial.
+
+### Próximo passo
+1. Confirmar CI e corrigir qualquer falha.
+2. Validar a semântica das operações vetoriais e flags com vetores de teste independentes.
+3. Integrar decodificação COP2 no N64RspCore, incluindo extração correta dos campos de instrução.
+4. Implementar loads/stores vetoriais e operações necessárias ao microcode gráfico, com testes por opcode.
+5. Conectar execução SP task → RSP → display list → DPC/RDP; manter demonstração sintética separada do caminho de ROM.
