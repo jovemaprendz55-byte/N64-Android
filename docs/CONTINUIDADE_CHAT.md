@@ -2,7 +2,7 @@
 
 > Documento de passagem de contexto para qualquer novo chat ou colaborador. Leia este arquivo antes de alterar código. Atualize-o sempre que houver mudança relevante, teste, build, log ou decisão técnica.
 
-**Última atualização:** 2026-11-01 (transferências COP2 entre GPR, vetores e flags)  
+**Última atualização:** 2026-11-01 (transferências COP2 e primeiro subconjunto LWC2/SWC2)  
 **Repositório:** https://github.com/jovemaprendz55-byte/N64-Android  
 **Branch de trabalho obrigatória:** `dev/n64-clean-start`  
 **Último commit de código da etapa 44 enviado:** `e187a2757551ac000ccc5a4b9e4b244b36dc02c4` (tela de teste visual VI; aguarda CI).
@@ -1742,3 +1742,39 @@ Próximo passo: validar CI; depois implementar registradores vetoriais/accumulat
 - As operações aritméticas COP2 continuam com seleção de elemento computacional limitada a zero e semântica vetorial simplificada.
 - A unidade ainda não executa microcode gráfico nem está conectada a um scheduler completo de tarefas SP.
 - Próxima fatia: implementar LBV/LSV/LLV/LDV e SBV/SSV/SLV/SDV (subconjunto escalar de LWC2/SWC2), com cálculo de endereço, escala de offset e regras de wrap/no-wrap testadas; depois avançar para LQV/SQV.
+
+
+## 31. Primeiro subconjunto de memória vetorial LWC2/SWC2 — 2026-11-01
+
+### Implementação
+- O decoder principal reconhece LWC2 (`0x32`) e SWC2 (`0x3A`).
+- Implementados os subopcodes LBV/LSV/LLV/LDV (0..3) e SBV/SSV/SLV/SDV (0..3).
+- O campo de deslocamento é interpretado como signed 7-bit e escalado pela largura do acesso (1, 2, 4 ou 8 bytes).
+- O elemento é um índice de byte de 0 a 15 no registrador vetorial.
+- Loads copiam até o fim do registrador, sem wrap; stores percorrem a quantidade total e fazem wrap dentro do registrador vetorial.
+- O caminho de memória usa o DMEM do barramento e a visualização de bytes big-endian da unidade vetorial.
+
+### Testes adicionados
+- LSV com deslocamento negativo e escala de 2 bytes.
+- LSV começando no byte 14, comprovando que não sobrescreve byte 0.
+- SDV começando no byte 14, comprovando wrap vetorial e escrita dos oito bytes.
+- Rejeição de subopcode não implementado.
+- Todos os casos executam as instruções codificadas a partir da IMEM.
+
+### Limitações
+- Não estão implementados LQV/LRV/LPV/LUV/LHV/LFV/LWV/LTV e seus stores correspondentes.
+- A semântica de endianness e as regras especiais de cada formato ainda precisam de vetores de teste independentes e validação com documentação do RSP.
+- O RSP ainda não tem scheduler de task, DMA completo ou microcode gráfico; nenhuma ROM/jogo foi validado com esta etapa.
+
+### Commits
+- `b52a0ad3db8d662a312895e329c28d879e9e6827`: byte view e registradores de controle.
+- `79688a9c4c4fb87ab814d1c5c1d296e4769d9aa8`: MFC2/CFC2/MTC2/CTC2.
+- `3e9a2061c0d20e7e2469120e6a3f0eb739580b95`: testes das transferências.
+- `a8d1b36fd355c95afe4b5c3eb8d16ed3e28efdc0`: decoder LBV/LSV/LLV/LDV e SBV/SSV/SLV/SDV.
+- `77a6b2c08a2b34beb80be6a7789749a836eaf8fe`: testes de memória vetorial.
+
+### Próximo passo
+1. Confirmar CI das etapas COP2 e LWC2/SWC2; corrigir falhas antes de instalar.
+2. Revisar e validar byte ordering com fixtures independentes.
+3. Implementar LQV/SQV e LRV/SRV, que são operações frequentes em microcodes.
+4. Criar ciclo de vida mínimo de task SP: ler task descriptor, carregar IMEM/DMEM por DMA, executar RSP até BREAK, reconhecer interrupção SP e encaminhar display-list para DPC.
