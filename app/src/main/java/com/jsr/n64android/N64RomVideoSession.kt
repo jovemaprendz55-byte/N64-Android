@@ -84,7 +84,8 @@ class N64RomVideoSession(
      * the next task. This is an approximate cooperative scheduler, not cycle timing.
      */
     private fun pumpRsp() {
-        val status = bus.read32(N64Bus.SP_STATUS_REG)
+        // Scheduler inspection is not a CPU bus transaction and must not pollute the CPU MMIO trace.
+        val status = bus.diagnosticSpStatus()
         if ((status and N64Bus.SP_STATUS_HALT) != 0) {
             rspCore = null
             return
