@@ -3215,3 +3215,42 @@ O histórico imediatamente anterior mostra:
 - DPC START/END/CURRENT seguem zero.
 - VI CURRENT zero e frames publicados zero.
 - PI mostra DRAM_ADDR `0x342000`, CART_ADDR `0x10036B30`, STATUS zero; não concluir transferência adicional sem histórico de DMA correspondente.
+
+
+## 20. Rastreamento dos registradores no caminho JR RA → JAL 0x7F000BD0 — 2026-11-01
+
+### Evidência que motivou a instrumentação
+- O último arquivo `Log` da branch `main` (blob `5d391eaa019d0cf503f17660984c55cc26121932`) mostra a rotina de preparação da tabela PTE terminando em `JR RA` no PC `0x70001890`, com `RA=0x70005D58`.
+- No endereço de retorno `0x70005D58`, a instrução é `JAL 0x7F000BD0`; o delay slot está em `0x70005D5C`.
+- Isso confirma que o destino não é um PC aleatório nem um salto indireto: o código executa um JAL direto para `0x7F000BD0`. Ainda não revela o papel do destino nem por que ele é chamado antes de existir uma PTE válida.
+
+### Instrumentação adicionada
+- `R4300Cpu.kt` registra snapshots limitados (máximo 64 linhas) somente nas janelas `0x70001880–0x70001894` e `0x70005D40–0x70005D60`.
+- Cada linha captura PC/instrução, destino calculado de JAL/JALX, `$ra`, `$t9`, `$v0/$v1`, `$a0-$a3`, `$sp` e `$s0-$s7`.
+- A captura ocorre antes da execução da instrução, para preservar os argumentos e o RA que o chamador realmente apresentou ao JAL.
+- O histórico é limpo em `reset()`; fora das duas janelas não são formatadas strings nem capturados snapshots adicionais.
+- `MainActivity.kt` inclui a nova seção no texto do botão COPIAR LOGS.
+
+### Teste de regressão
+- `R4300CpuTest.capturesRegistersAcrossObservedJrRaAndJalCallPath` executa uma fixture mapeada com JR RA, delay slot e o JAL observado.
+- O teste verifica a preservação do RA no retorno, destino `0x7F000BD0`, T9, argumentos A0/A3, SP, S0 e limpeza no reset.
+- A fixture não afirma que esses registradores tenham valores específicos na ROM real; serve para validar a instrumentação.
+
+### Commits
+- `b5e8a8a452626061fba5e9c56c636cbc91f317ea` — captura limitada do caminho de chamada.
+- `aea33696f10fad757be844fd543edda41c2325b4` — teste de regressão.
+- `1ec88c539f9c7a6bf0c10cb287fc6ec61ddef74c` — inclusão no relatório COPIAR LOGS.
+- `0820f066f59d1c7f4391eee5cc2cdc759b9128ba` — correção de interpolação dos campos do diagnóstico.
+
+### Validação e limitações
+- CI do HEAD deve ser consultada após esta sequência de commits; não declarar a alteração aprovada antes do resultado final de Build and test e Upload debug APK.
+- Nenhum APK desta etapa foi confirmado instalado no aparelho.
+- Nenhuma alteração em `main`.
+- Ainda falta executar a ROM com esta instrumentação e receber o novo `Log`. Só então será possível analisar os valores reais de RA/T9/argumentos e decidir se o destino representa código, callback ou outro tipo de entrada.
+- Não alterar EntryLo, Valid, PFN, TLB ou o endereço de destino para forçar o avanço.
+
+### Próximo passo
+1. Confirmar CI para o HEAD e corrigir falhas de compilação/teste se houver.
+2. Se o build passar, instalar o APK no aparelho, executar o mesmo diagnóstico HLE/ROM e enviar o texto atualizado de COPIAR LOGS.
+3. Comparar os snapshots em `0x70001890` e `0x70005D58`, especialmente RA/T9/A0-A3/SP/S0-S7.
+4. Rastrear a origem do valor/código em `0x7F000BD0` e verificar cópias/DMA anteriores antes de propor qualquer alteração funcional.
