@@ -3508,3 +3508,12 @@ A captura ampliada já está na branch `dev/n64-clean-start`, mas este Log não 
 4. Decodificar `0x70004D20`, `0x70004DE0` e `0x70004EE0`, para determinar o papel dos buffers `0x80020000`, `0x800287B0` e `0x800232E0`.
 5. Examinar `0x70010B20`, `0x7000F6A0` e `0x7000DDD0` em conjunto com o DMA PI observado `CART 0x10034B30 -> DRAM 0x340000, 0x2000 bytes`.
 6. Continuar sem forçar TLB Valid/PFN, sem desabilitar SP HALT e sem inventar OSTask ou mapeamentos VA->PA.
+
+
+### Atualização posterior da CI (mesmo dia)
+- Run #1064 (`41341171137`), commit `f55ec3ce88c861924302a4e6af8c69599960af13`: `completed / success`; Build and test e Upload debug APK concluídos com sucesso.
+- Artefato #1064: `n64-android-debug-apk`, ID `13097059351`, 984.010 bytes, criado em `2026-11-01T19:20:34Z`, expira em `2026-11-15T19:20:33Z`.
+- Run #1065 (`41341185581`), commit `a8c4598bc70a8efc141b14971026df7a6e6f331a`: `completed / success`; inclui também a alteração do título COPIAR LOGS; Build and test e Upload debug APK concluídos com sucesso.
+- Artefato #1065: `n64-android-debug-apk`, ID `13097258132`, 984.061 bytes, criado em `2026-11-01T19:20:59Z`, expira em `2026-11-15T19:20:58Z`; digest ZIP informado pelo GitHub `sha256:8d15c150ac7be5abb0c0342701ce6ffd6f435621ec24c59ad0b88587742380c7`.
+- O APK #1065 contém as novas janelas de diagnóstico e a UI atualizada. Ainda não há confirmação de instalação/execução no aparelho.
+- Run #1066 (`41341250642`) testa o commit documental `fa51a71d827603f30f6272a9d1298587e47ad516`; estava em execução na última consulta. Não declarar sucesso antes de verificar o estado final.
