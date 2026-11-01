@@ -2842,3 +2842,12 @@ Esta diretriz foi reafirmada pelo usuário em 2026-11-01 após uma resposta que 
 - CI do HEAD 65718f29129e58479387d611b4b0a6f9a2191cf9 terminou com sucesso (run 41330705658).
 - CI do commit de código 09f585ab13abc1f73ec7b6913c3eaf5b0916e0ec terminou com sucesso (run 41330658835).
 - Branch dev/n64-clean-start; main permanece intocada.
+
+
+## Instrumentação de memória do handler TLB (01/11/2026)
+
+- Commit `562caa51b3911059980af5c576dc7791568f4774` adiciona `diagnosticTlbMemoryAccessHistory` em `R4300Cpu`.
+- Durante a janela já existente de captura do handler após exceção TLB, registra operações LB/LBU, LH/LHU, LW/LWU e SW com PC da instrução, endereço virtual efetivo (VA), endereço físico traduzido (PA) e valor transferido.
+- Histórico limitado a 512 entradas e limpo no reset. A instrumentação é inativa fora da janela de diagnóstico para não gerar log contínuo no caminho normal.
+- Próximo passo: expor esse histórico no botão de copiar logs, compilar/testar e executar a ROM para identificar o endereço físico e o conteúdo real das PTEs consultadas pelo handler.
+- Ainda não registra LDL/LDR, LWL/LWR, SDL/SDR, SWL/SWR, SD, LL/LLD ou SC/SCD; se o handler usar essas instruções, ampliar a cobertura após examinar o novo log.
