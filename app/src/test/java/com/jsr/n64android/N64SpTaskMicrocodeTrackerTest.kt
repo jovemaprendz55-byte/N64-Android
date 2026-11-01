@@ -12,7 +12,7 @@ class N64SpTaskMicrocodeTrackerTest {
         assertFalse(tracker.taskMicrocodeEntryObserved)
 
         assertTrue(tracker.onSpDmaCompleted(matchingTransfer()))
-        assertTrue(tracker.onInstructionExecuted(0, 0x12345678))
+        assertTrue(tracker.onInstructionExecuted(0))
         assertTrue(tracker.taskMicrocodeEntryObserved)
         assertFalse(tracker.onInstructionExecuted(4))
     }
