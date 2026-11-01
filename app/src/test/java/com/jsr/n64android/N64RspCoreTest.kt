@@ -157,4 +157,51 @@ class N64RspCoreTest {
         for (index in 0 until 16) assertEquals(0xB0 + index, rsp.vectorUnit.readByte(6, index))
     }
 
+
+    @Test
+    fun lpvLoadsEightWrappedBytesIntoHighByteOfEachLane() {
+        val (bus, rsp) = setup(
+            addiu(8, 0, 0x108),
+            vectorMemory(0x32, 8, 7, 6, 0, 0)
+        )
+        for (index in 0 until 16) {
+            bus.write8(N64Bus.SP_DMEM_BASE + 0x108 + index, 0x30 + index)
+            rsp.vectorUnit.writeLane(7, index % 8, 0xFFFF)
+        }
+
+        assertEquals(2, rsp.run(2))
+        for (lane in 0 until 8) {
+            assertEquals((0x30 + lane) shl 8, rsp.vectorUnit.readLane(7, lane))
+        }
+    }
+
+    @Test
+    fun luvRotatesMemoryByElementAndPlacesByteAtBitSeven() {
+        val (bus, rsp) = setup(
+            addiu(8, 0, 0x108),
+            vectorMemory(0x32, 8, 9, 7, 5, 0)
+        )
+        for (index in 0 until 16) bus.write8(N64Bus.SP_DMEM_BASE + 0x108 + index, 0x10 + index)
+
+        assertEquals(2, rsp.run(2))
+        for (lane in 0 until 8) {
+            val memoryIndex = (11 + lane) and 0x0F
+            assertEquals((0x10 + memoryIndex) shl 7, rsp.vectorUnit.readLane(9, lane))
+        }
+    }
+
+    @Test
+    fun lpvUsesSignedScaledSevenBitOffset() {
+        val (bus, rsp) = setup(
+            addiu(8, 0, 0x110),
+            vectorMemory(0x32, 8, 10, 6, 0, 0x7F)
+        )
+        for (index in 0 until 8) bus.write8(N64Bus.SP_DMEM_BASE + 0x108 + index, 0x50 + index)
+
+        assertEquals(2, rsp.run(2))
+        for (lane in 0 until 8) {
+            assertEquals((0x50 + lane) shl 8, rsp.vectorUnit.readLane(10, lane))
+        }
+    }
+
 }
