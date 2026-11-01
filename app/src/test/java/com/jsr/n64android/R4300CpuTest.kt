@@ -103,16 +103,17 @@ class R4300CpuTest {
         cpu.step() // JAL to the unmapped target.
 
         val trace = cpu.diagnosticCallPathHistory
-        assertEquals(2, trace.size)
+        assertEquals(3, trace.size) // JR, its delay slot, then the direct JAL.
         assertTrue(trace[0].contains("PC=0x70001890"))
         assertTrue(trace[0].contains("RA=0x0000000070005D58"))
-        assertTrue(trace[1].contains("PC=0x70005D58"))
-        assertTrue(trace[1].contains("JAL_TARGET=0x7F000BD0"))
-        assertTrue(trace[1].contains("T9=0x000000007F001234"))
-        assertTrue(trace[1].contains("A0=0x0000000000001111"))
-        assertTrue(trace[1].contains("A3=0x0000000000004444"))
-        assertTrue(trace[1].contains("SP=0x000000007000F000"))
-        assertTrue(trace[1].contains("S0=0x000000000000AAAA"))
+        assertTrue(trace[1].contains("PC=0x70001894"))
+        assertTrue(trace[2].contains("PC=0x70005D58"))
+        assertTrue(trace[2].contains("JAL_TARGET=0x7F000BD0"))
+        assertTrue(trace[2].contains("T9=0x000000007F001234"))
+        assertTrue(trace[2].contains("A0=0x0000000000001111"))
+        assertTrue(trace[2].contains("A3=0x0000000000004444"))
+        assertTrue(trace[2].contains("SP=0x000000007000F000"))
+        assertTrue(trace[2].contains("S0=0x000000000000AAAA"))
 
         cpu.reset()
         assertTrue(cpu.diagnosticCallPathHistory.isEmpty())
