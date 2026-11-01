@@ -2907,3 +2907,27 @@ Executar o APK desta branch com a mesma ROM e examinar a nova seção `WATCHPOIN
 3. Decodificar os stores de `0x700017FC` e `0x70001804` a partir de `INST`, `BASE`, `RTVAL` e `EA`; só então decidir se a causa é inicialização de page table, endereço-base incorreto ou outro fluxo.
 4. Se o novo log ainda mostrar `CTX=unavailable`, investigar o caminho exato de escrita (SC/SCD, DMA ou inicialização fora do step CPU) antes de ampliar o watchpoint.
 5. Não forçar o bit Valid, não fabricar mapeamentos TLB, não liberar HALT e não criar OSTask artificialmente.
+
+
+## 11. Novo Log com contexto MIPS nas escritas PTE — 2026-11-01
+
+Fonte analisada: `main/Log`, atualizado após a instrumentação da branch `dev/n64-clean-start`. Este log já contém `INST/OP/RS/RT/BASE/RTVAL/EA` nas escritas de CPU, diferentemente do log antigo.
+
+### Decodificação comprovada das instruções
+- Em `PC=0x700017FC`, `INST=0xAC64FFF0`, opcode `0x2B`: `SW rt=4, offset=-16(rs=3)`. O registrador base tem valores como `0xFFFFFFFF8005DC00`, `0x...DC10`, `0x...DC20`, etc.; `RTVAL=1`. A EA calculada é `BASE-0x10`, por exemplo `0x8005DBF0`. O store grava a palavra `0x00000001` (little-endian? Não: o log mostra byte 0x01 no endereço +3, compatível com palavra MIPS big-endian).
+- Em `PC=0x70001804`, `INST=0xAC60FFF4`, opcode `0x2B`: `SW rt=0, offset=-12(rs=3)`. `$zero=0`; a EA é `BASE-0x0C`, por exemplo `0x8005DBF4`. Esta instrução grava zero na palavra seguinte.
+- O padrão se repete enquanto o ponteiro-base avança em passos de `0x10`. Logo, não é uma escrita aleatória do watchpoint: é um loop de inicialização da CPU que grava um valor de sentinela `1` e um campo zero em posições regulares da estrutura que inclui a região monitorada.
+- A primeira entrada monitorada `0x5DBF0` recebe `1`; o handler de refill lê exatamente `0x1` nesse endereço (`LW PC=0xFFFFFFFF8000001C`). Em seguida o histórico mostra `EntryLo0=0x1` e `EntryLo1=0x41`, ambos com bit Valid (bit 1) desligado. Isso explica diretamente a exceção seguinte `TLB INVALID FETCH VA=0x7F000BD0`: o handler instala uma tradução inválida, e o fetch falha novamente.
+- A observação comprova quem escreve os valores e como são escritos. Ainda não prova a semântica completa da estrutura nem se a rotina está inicializando deliberadamente entradas não mapeadas ou se o layout/ponteiro foi construído incorretamente.
+
+### Estado do emulador no mesmo Log
+- ROM em memória: 12.582.912 bytes; CPU cerca de 12 milhões de instruções.
+- Exceção final: `TLB INVALID FETCH VA=0x7F000BD0`, PC parado em torno de `0x70000720`.
+- SP permanece `STATUS=0x1` (HALT), RSP executou 0 instruções, DPC START/END/CURRENT permanecem zero e VI publicou 0 frames.
+- Portanto, a instrumentação funcionou e o diagnóstico de PTE ficou mais preciso, mas ainda não existe execução gráfica comprovada.
+
+### Próxima investigação — sem mascarar a falha
+1. Desassemblar a rotina em `0x700017FC–0x70001804` e seu bloco anterior para identificar como `$3` recebe o endereço-base e por que a estrutura começa em `0x8005DBF0`.
+2. Rastrear a origem do valor `$4=1` e a finalidade do passo `0x10`; comparar o layout de PTE esperado pelo handler com o layout escrito pelo inicializador.
+3. Examinar o código que escolhe o endereço de destino `0x7F000BD0` e a construção do Context `0x003F8000`; determinar se o HLE colocou o payload em uma região que exige mapeamento ainda não criado.
+4. Corrigir a origem do mapeamento/estrutura somente após confirmar o formato esperado. Não ligar o bit Valid artificialmente, não fabricar PFNs e não alterar a exceção para prosseguir.
