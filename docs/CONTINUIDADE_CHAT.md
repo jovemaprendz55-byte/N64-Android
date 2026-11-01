@@ -4015,3 +4015,67 @@ Isso confirma que a janela de endereços foi ampliada no código. A execução r
 4. Só então decidir se a ausência de mapeamento válido vem do fluxo de overlay/page-in, do estado de boot HLE ou de uma falha concreta de CPU/barramento.
 
 **Resultado:** CI e APK de diagnóstico confirmados. Nenhuma correção funcional do GoldenEye foi feita ou validada nesta etapa; o próximo avanço depende da execução da APK e da análise do novo Log.
+
+
+---
+
+## 37. Análise do novo Log da branch main e correção da capacidade do histórico PTE (2026-11-01, 20:05:00 UTC−03:00)
+
+### 37.1. Evidência do helper PI
+
+O Log enviado pelo usuário em `main/Log` contém a nova seção de caminho de chamada. A captura ampliada inclui a sequência executada em `0x70010BB4..0x70010BC4`:
+
+| PC | Instrução | Interpretação |
+|---|---|---|
+| `0x70010BB4` | `0xBD010000` | `CACHE 1, 0(T0)` |
+| `0x70010BB8` | `0x0109082B` | `SLTU AT,T0,T1` |
+| `0x70010BBC` | `0x1420FFFD` | `BNE AT,ZERO,-3` |
+| `0x70010BC0` | `0x25080010` | `ADDIU T0,T0,16` |
+| `0x70010BC4` | `0x03E00008` | `JR RA` |
+
+O loop avança 16 bytes por iteração e compara T0 com T1. O opcode CACHE é a operação 1. No R4300, isso é compatível com manutenção/indexação de cache de dados; não é uma gravação da tabela PTE. Os registradores capturados durante o loop mostram A0=`0xFFFFFFFF80340000`, A1=`0x2000`, A2=`0x2000`, RA=`0x70005BAC`. Esses argumentos coincidem com o destino RDRAM `0x340000` e o tamanho `0x2000` do DMA PI registrado no mesmo Log. T0/T1 não fazem parte dos registradores registrados, portanto o limite efetivo do loop ainda não foi observado diretamente.
+
+O DMA PI registrado continua sendo ROM offset `0x34B30` para RDRAM `0x340000`, comprimento `0x2000`. A captura demonstra que existe uma rotina de manutenção de cache associada ao destino do DMA. Ela não demonstra que a rotina atualiza a tabela PTE.
+
+### 37.2. A rotina de inicialização preenche os 128 marcadores inválidos
+
+A seção `WATCHPOINT DA TABELA PTE COMPLETA` informa exatamente 5.120 gravações de bytes pela CPU. A análise dos registros retidos encontrou 128 gravações de valor `0x01`, uma por entrada, nos endereços:
+
+- Primeira: `0x5DBF3`, pertencente ao primeiro word em `0x5DBF0`.
+- Última: `0x5E3E3`, pertencente ao primeiro word em `0x5E3E0`.
+- Passo: `0x10` bytes; total: 128 entradas.
+
+Cada uma das 128 entradas recebe o word inicial `0x00000001` e o word seguinte `0x00000000`, pela sequência em `0x700017FC` e `0x70001804`. Isso confirma que a rotina escreve o marcador inválido em todas as 128 posições da estrutura. O refill que lê `0x8005DBF0` obtém precisamente esse marcador.
+
+### 37.3. Limitação encontrada no histórico de watchpoint
+
+O contador do Log informa 5.120 bytes escritos, mas o histórico guardava apenas os últimos 2.048 registros. A contagem esperada da sequência observada é:
+
+- 2 limpezas de `0x800` bytes: 4.096 gravações de bytes.
+- 128 entradas × 2 words × 4 bytes: 1.024 gravações de bytes.
+- Total: 5.120 gravações de bytes.
+
+O buffer anterior preservava todos os 1.024 eventos de escrita dos marcadores, mas descartava parte das gravações de limpeza. Portanto, os 128 marcadores eram analisáveis, mas o histórico não representava a sequência inteira.
+
+### 37.4. Correção de instrumentação aplicada
+
+Na branch `dev/n64-clean-start`:
+
+- `N64Bus.kt`: capacidade do histórico PTE elevada de 2.048 para 6.144 registros.
+- `N64BusPteWatchpointTest.kt`: adicionado teste que reproduz as duas limpezas de 2.048 bytes e as 128 entradas com dois words, verificando a retenção dos 5.120 registros, do primeiro ao último endereço.
+
+Commits:
+- `b4aedddf1a34b328af1b33abe28e847f597a1b4a` — aumenta capacidade.
+- `607b638c95e17a087147bb27d85fc37f324db5b2` — teste de retenção integral.
+
+Essa é uma melhoria de diagnóstico, não uma correção funcional do emulador. O CI desses commits precisa ser confirmado.
+
+### 37.5. Próxima investigação
+
+1. Acompanhar o CI e obter a próxima APK de diagnóstico.
+2. Capturar T0 e T1 no loop `0x70010BB4..0x70010BC0` para confirmar diretamente o intervalo da manutenção de cache.
+3. Disassemblar a rotina de chamada que prepara o destino `0x80340000` e o tamanho `0x2000`.
+4. Localizar a rotina que deveria substituir os 128 marcadores PTE inválidos por entradas válidas, ou provar que o boot HLE omitiu a inicialização necessária.
+5. Não alterar PFN/V, não desativar TLB e não tratar o loop CACHE como se fosse atualização de PTE.
+
+**Conclusão desta etapa:** o novo Log confirma a rotina CACHE pós-DMA e confirma os 128 marcadores PTE inválidos. A instrumentação foi ampliada para preservar todos os 5.120 eventos da sequência na próxima execução. Nenhuma correção funcional do GoldenEye foi aplicada.
