@@ -872,17 +872,17 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         val rt = (instruction ushr 16) and 0x1F
         val rd = (instruction ushr 11) and 0x1F
         val line = (if (captureSample && !captureBurst) "SAMPLE " else "") +
-            "PC=0x\${address.toULong().toString(16).uppercase()} INST=0x\${instruction.toUInt().toString(16).uppercase().padStart(8, '0')} " +
-            "OP=0x\${opcode.toString(16).uppercase()} rs=$rs rt=$rt rd=$rd " +
-            "GPRrs=0x\${gpr[rs].toULong().toString(16).uppercase().padStart(16, '0')} " +
-            "GPRrt=0x\${gpr[rt].toULong().toString(16).uppercase().padStart(16, '0')} " +
-            "Status=0x\${cop0[12].toUInt().toString(16).uppercase().padStart(8, '0')} " +
-            "Index=0x\${cop0[0].toUInt().toString(16).uppercase().padStart(8, '0')} " +
-            "Random=0x\${cop0[1].toUInt().toString(16).uppercase().padStart(8, '0')} " +
-            "EntryHi=0x\${cop0[10].toUInt().toString(16).uppercase().padStart(8, '0')} " +
-            "PageMask=0x\${cop0[5].toUInt().toString(16).uppercase().padStart(8, '0')} " +
-            "EntryLo0=0x\${cop0[2].toUInt().toString(16).uppercase().padStart(8, '0')} " +
-            "EntryLo1=0x\${cop0[3].toUInt().toString(16).uppercase().padStart(8, '0')}"
+            "PC=0x${address.toULong().toString(16).uppercase()} INST=0x${instruction.toUInt().toString(16).uppercase().padStart(8, '0')} " +
+            "OP=0x${opcode.toString(16).uppercase()} rs=$rs rt=$rt rd=$rd " +
+            "GPRrs=0x${gpr[rs].toULong().toString(16).uppercase().padStart(16, '0')} " +
+            "GPRrt=0x${gpr[rt].toULong().toString(16).uppercase().padStart(16, '0')} " +
+            "Status=0x${cop0[12].toUInt().toString(16).uppercase().padStart(8, '0')} " +
+            "Index=0x${cop0[0].toUInt().toString(16).uppercase().padStart(8, '0')} " +
+            "Random=0x${cop0[1].toUInt().toString(16).uppercase().padStart(8, '0')} " +
+            "EntryHi=0x${cop0[10].toUInt().toString(16).uppercase().padStart(8, '0')} " +
+            "PageMask=0x${cop0[5].toUInt().toString(16).uppercase().padStart(8, '0')} " +
+            "EntryLo0=0x${cop0[2].toUInt().toString(16).uppercase().padStart(8, '0')} " +
+            "EntryLo1=0x${cop0[3].toUInt().toString(16).uppercase().padStart(8, '0')}"
         diagnosticTlbInstructionHistory.add(line)
         if (diagnosticTlbInstructionHistory.size > 512) diagnosticTlbInstructionHistory.removeAt(0)
     }
