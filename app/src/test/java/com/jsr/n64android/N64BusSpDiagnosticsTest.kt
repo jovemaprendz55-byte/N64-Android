@@ -88,7 +88,30 @@ class N64BusSpDiagnosticsTest {
         assertTrue(scratchpad.contains("SP IMEM"))
         assertTrue(cartridge.contains("ROM_BYTES=4096"))
         assertTrue(cartridge.contains("MAGIC=0x80371240"))
+        assertTrue(bus.diagnosticCartridgeDump(listOf(0..3)).contains("80 37 12 40"))
         assertEquals(mmioBefore, bus.diagnosticMmioHistory.size)
+    }
+
+    @Test
+    fun broadRdramWriteSamplesIdentifyTheCpuInstructionThatWroteEachByte() {
+        val bus = N64Bus(ram = N64Memory(0x4000))
+        bus.setDiagnosticCpuInstructionContext(
+            pc = 0xFFFFFFFF80001234UL.toLong(),
+            instruction = 0xAFA80010.toInt(),
+            rs = 29,
+            rt = 8,
+            rsValue = 0x100,
+            rtValue = 0x5A,
+            effectiveAddress = 0x110
+        )
+
+        bus.write8(0x110, 0x5A)
+
+        val sample = bus.diagnosticRdramWriteHistory.single()
+        assertTrue(sample.contains("PC=0xFFFFFFFF80001234"))
+        assertTrue(sample.contains("INST=AFA80010"))
+        assertTrue(sample.contains("paddr=0x110"))
+        assertTrue(sample.contains("value=0x5A"))
     }
 
 }
