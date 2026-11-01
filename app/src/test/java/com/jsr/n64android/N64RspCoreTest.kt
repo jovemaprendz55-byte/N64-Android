@@ -34,6 +34,7 @@ class N64RspCoreTest {
         assertEquals(43, rsp.gpr[10])
         assertEquals(43, bus.read32(N64Bus.SP_DMEM_BASE))
         assertTrue(rsp.halted)
+        assertEquals(N64Bus.SP_STATUS_HALT or N64Bus.SP_STATUS_BROKE, bus.read32(N64Bus.SP_STATUS_REG))
         assertEquals(5L, rsp.executedInstructions)
     }
 
@@ -62,5 +63,19 @@ class N64RspCoreTest {
         assertEquals(2, rsp.run(2))
         assertEquals(8, rsp.pc)
         assertEquals(2L, rsp.executedInstructions)
+    }
+
+    @Test
+    fun mfc0AndMtc0AccessSpStatusRegister() {
+        val (bus, rsp) = setup(
+            addiu(9, 0, N64Bus.SP_STATUS_CMD_SET_HALT),
+            (0x10 shl 26) or (8 shl 16) or (4 shl 11),
+            (0x10 shl 26) or (4 shl 21) or (9 shl 16) or (4 shl 11)
+        )
+
+        assertEquals(3, rsp.run(10))
+        assertEquals(0, rsp.gpr[8])
+        assertTrue(rsp.halted)
+        assertEquals(N64Bus.SP_STATUS_HALT, bus.read32(N64Bus.SP_STATUS_REG))
     }
 }
