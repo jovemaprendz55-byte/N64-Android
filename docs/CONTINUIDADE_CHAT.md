@@ -2513,3 +2513,23 @@ Executar CI. Se aprovado, iniciar a auditoria do RDP: parser/command lengths, de
 - Antes de alterar código: conferir HEAD e CI da branch `dev/n64-clean-start`; preservar `main`.
 - Depois de cada avanço, registrar data, horário UTC−03:00, commit, arquivos, testes, CI, artefatos, evidências no aparelho e o próximo passo.
 - Não declarar GoldenEye funcional sem evidência visual originada da ROM real.
+
+
+## Diagnóstico integrado CPU/RSP/DPC — 2026-11-01
+
+**Branch:** `dev/n64-clean-start`
+
+### Alterações
+- A sessão de ROM agora atualiza o PC virtual da CPU antes de cada instrução, para contextualizar o histórico MMIO.
+- A sessão captura o endereço e a palavra da última instrução RSP concluída através do listener já existente no núcleo.
+- O barramento mantém o último resultado DPC concluído e a última falha DPC, sem esconder a exceção que interrompe a CPU.
+- A tela de execução apresenta a última instrução RSP e o resumo DPC (START, END, CURRENT, comandos, retângulos, triângulos, pixels e Full Sync).
+- Adicionado teste para confirmar que o barramento conserva o resumo de uma lista DPC com Full Sync; o teste RSP existente também valida PC/palavra da última instrução BREAK.
+
+### Limites
+- O diagnóstico DPC descreve a última chamada síncrona concluída; não representa FIFO nem temporização de hardware.
+- O último PC/palavra RSP só é atualizado quando uma instrução termina. Uma instrução que lança exceção pode não aparecer como concluída.
+- Nenhuma ROM comercial ou primeiro frame real foi validado por esta alteração. A aprovação depende da CI após o commit.
+
+### Próximo passo
+- Executar CI e, se aprovada, instalar o APK para recolher um trace de uma ROM real. Usar os primeiros comandos RDP não suportados e a primeira instrução RSP que falhar para escolher a próxima implementação.
