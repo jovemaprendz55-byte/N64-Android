@@ -1610,3 +1610,32 @@ A partir desta etapa, priorizar fatias verticais pequenas e demonstráveis: gera
 - Próximo passo: aguardar/verificar CI e APK desta alteração; instalar no Galaxy A15 e confirmar se o menu recolhido abre/fecha e se os testes continuam acessíveis. Depois, aprimorar biblioteca/lista de ROMs sem alegar suporte de execução antes de testar um jogo real.
 - Correção complementar no commit `3dd8fedb9e9a1f65bef90e3076196ad241518cf7`: a mensagem de estado vazio usa quebra de linha real, sem exibir os caracteres `\\n` literalmente.
 - Continuação da interface em 2026-11-01, commit `f43ef6518b3f377680bd38eaecfc77c66f207839`: ao carregar uma ROM válida, a tela inicial passa a exibir o nome real do arquivo (via `OpenableColumns.DISPLAY_NAME`), tamanho e formato, em vez de colocar o relatório técnico extenso do inspetor no menu. O relatório detalhado deixa de ser mostrado nesse status principal; falhas de leitura/carregamento continuam exibidas.
+
+
+## 26. Primeiro núcleo escalar próprio do RSP — 2026-11-01
+
+### Implementação
+- Criado `N64RspCore.kt`, um interpretador escalar independente para o processador RSP. Não reutiliza o núcleo R4300 e não incorpora código de outros emuladores.
+- Busca instruções na IMEM (4 KiB), mantém 32 registradores GPR de 32 bits e PC SP de 12 bits.
+- Primeiro subconjunto implementado: shifts, operações aritméticas/lógicas, comparações, saltos e branches com delay slot, imediatos, loads/stores byte/meia-palavra/palavra em DMEM, e BREAK/HALT.
+- Execução limitada por orçamento de instruções; o RSP pode ser avançado passo a passo ou por lote.
+- Criado `N64RspCoreTest.kt` para testar aritmética, leitura/escrita DMEM, delay slot, desvio do fall-through, BREAK e limite de execução.
+
+### Limites desta fatia
+- Ainda não há instruções vetoriais COP2, registradores vetoriais/flags, accumulator, operações de clipping, COP0 do SP, task scheduler, interrupções/timing nem microcode gráfico F3D/F3DEX.
+- O núcleo ainda não está conectado ao ciclo de vida de tarefas SP iniciado por uma ROM. Este marco prova somente a execução unitária do subset escalar em IMEM/DMEM.
+- O caminho até jogo real continua dependendo de completar o conjunto escalar necessário, COP0/SP task, DMA coerente, vetor RSP e microcode gráfico que produza comandos RDP.
+- Não declarar ROM ou jogo funcional com base nestes testes unitários.
+
+### Commits
+- `8cbba454f304eb5d7c9b952b63077f781b0751a4`: primeiro núcleo escalar RSP.
+- `a7d0b18862efde24aeb27903f1cf308f93fa0872`: correções de estado HALT e contagem limitada.
+- `eaa665200190551339b02d5d57b496b18245927e`: testes iniciais do RSP.
+- `ab384a8731f2b51ce196f234a9099a980cecd4ae`: correção do destino de JALR.
+
+### Próximos passos imediatos
+1. Rodar CI e corrigir qualquer falha.
+2. Expandir o conjunto escalar com testes de cada instrução e exceções/alinhamento.
+3. Implementar COP0 mínimo do SP e acoplamento de execução ao SP_STATUS/SP_PC.
+4. Implementar execução de task SP controlada a partir de IMEM/DMEM, com término/BREAK e geração de display list em RDRAM.
+5. Só então iniciar subset vetorial e microcode gráfico; manter a demonstração sintética separada do caminho de ROM.
