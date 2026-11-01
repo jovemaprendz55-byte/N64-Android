@@ -4216,6 +4216,99 @@ class R4300CpuTest {
         assertEquals(null, cpu.lastExceptionCode)
     }
 
+    @Test fun llAndScPerformSignedLoadAndConditionalWordStore() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x30, 1, 2, 0)) // LL $v0, 0($at)
+        memory.write32(4, iType(0x38, 1, 2, 0)) // SC $v0, 0($at)
+        memory.write32(16, 0x80000001.toInt())
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 16L
+
+        cpu.step()
+        assertEquals(0xFFFFFFFF80000001UL.toLong(), cpu.gpr[2])
+        cpu.gpr[2] = 0x12345678L
+        cpu.step()
+
+        assertEquals(1L, cpu.gpr[2])
+        assertEquals(0x12345678, memory.read32(16))
+    }
+
+    @Test fun scFailsAfterAnotherStoreTouchesTheReservedGranule() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x30, 1, 2, 0)) // LL
+        memory.write32(4, iType(0x38, 1, 2, 0)) // SC
+        memory.write32(16, 0x11223344)
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 16L
+
+        cpu.step()
+        cpu.gpr[2] = 0x55667788L
+        memory.write8(20, 0xAA) // Different word, same 16-byte reservation granule.
+        cpu.step()
+
+        assertEquals(0L, cpu.gpr[2])
+        assertEquals(0x11223344, memory.read32(16))
+        assertEquals(0xAA, memory.read8(20))
+    }
+
+    @Test fun scWithoutPriorLlFailsAndDoesNotWrite() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x38, 1, 2, 0))
+        memory.write32(16, 0x11223344)
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 16L
+        cpu.gpr[2] = 0x55667788L
+
+        cpu.step()
+
+        assertEquals(0L, cpu.gpr[2])
+        assertEquals(0x11223344, memory.read32(16))
+    }
+
+    @Test fun lldAndScdPerformConditionalDoublewordStore() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x34, 1, 2, 0)) // LLD
+        memory.write32(4, iType(0x3C, 1, 2, 0)) // SCD
+        memory.write32(16, 0x01234567)
+        memory.write32(20, 0x89ABCDEF.toInt())
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 16L
+
+        cpu.step()
+        assertEquals(0x0123456789ABCDEFL, cpu.gpr[2])
+        cpu.gpr[2] = 0xFEDCBA9876543210UL.toLong()
+        cpu.step()
+
+        assertEquals(1L, cpu.gpr[2])
+        assertEquals(0xFEDCBA98.toInt(), memory.read32(16))
+        assertEquals(0x76543210, memory.read32(20))
+    }
+
+    @Test fun piDmaWriteInvalidatesCpuLoadLinkedReservation() {
+        val bus = N64Bus(ram = N64Memory(0x2000), cartridgeRom = byteArrayOf(0x5A))
+        bus.write32(0, iType(0x30, 1, 2, 0)) // LL
+        bus.write32(4, iType(0x38, 1, 2, 0)) // SC
+        bus.write32(0x100, 0x11223344)
+        val cpu = R4300Cpu(bus)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 0x100L
+
+        cpu.step()
+        cpu.gpr[2] = 0x55667788L
+        bus.write32(N64Bus.PI_DRAM_ADDR_REG, 0x104)
+        bus.write32(N64Bus.PI_CART_ADDR_REG, N64Bus.CARTRIDGE_ROM_BASE)
+        bus.write32(N64Bus.PI_WR_LEN_REG, 0) // One byte from cartridge ROM to RDRAM.
+        cpu.step()
+
+        assertEquals(0L, cpu.gpr[2])
+        assertEquals(0x11223344, bus.read32(0x100))
+        assertEquals(0x5A, bus.read8(0x104))
+    }
+
     @Test fun branchLikelyNotTakenAnnulsDelaySlot() {
         val memory = N64Memory(32)
         memory.write32(0, iType(0x14, 1, 0, 2)) // beql $at, $zero, target
