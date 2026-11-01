@@ -39,7 +39,7 @@ class N64SpTaskRunner(
         bus.setSpDmaListener(tracker::onSpDmaCompleted)
         val rsp = N64RspCore(bus)
         rsp.setInstructionListener { pc, instruction ->
-            if (tracker.onInstructionExecuted(pc, instruction)) {
+            if (tracker.onInstructionExecuted(pc)) {
                 coordinator?.startTaskMicrocode()
             }
         }
