@@ -3412,3 +3412,64 @@ A captura ampliada já está na branch `dev/n64-clean-start`, mas este Log não 
 3. Enviar o novo Log.
 4. Verificar primeiro se aparecem instruções internas nas janelas ampliadas. Se aparecerem, decodificar a cadeia de loads/stores/branches e os valores de A0–A3/T9. Se não aparecerem, investigar a ativação/limpeza da captura antes de tirar conclusões sobre a ROM.
 5. Não tratar APK gerado como APK instalado e não declarar vídeo, RSP ou jogo funcionando sem evidência do aparelho.
+
+
+
+## 25. Novo Log com instruções internas das funções chamadoras — 2026-11-01
+
+### Fonte
+- Arquivo: `Log`, branch `main`.
+- Blob SHA consultado: `af76dd23dfcdf4e92b9d4ad00c43e789ca082654`.
+- A captura agora contém a seção `Caminho de chamada (0x70004E2C–0x70004EAC, 0x70005B60–0x70005D60 e retorno/JAL)`, com instruções executadas nas duas funções internas. Isso confirma que a instrumentação ampliada foi executada nesta sessão do aparelho; não identifica o artefato exato instalado.
+- ROM em memória: 12.582.912 bytes (12 MiB).
+- HLE: 1.048.576 bytes preparados.
+- CPU: 12.726.272 instruções.
+- Estado final ainda mostra TLB INVALID FETCH em `0x7F000BD0`, VI=0 frames, RSP=0 instruções, SP_STATUS=`0x1` (HALT), DPC START/END/CURRENT=`0`.
+- Esta é uma execução diferente do Log anterior de 17,15 milhões de instruções; não comparar os contadores como se fossem a mesma sessão.
+
+### Decodificação confirmada da função 0x70004E2C
+- `0x70004E2C: 0x27BDFFE8` — cria frame de pilha de 0x18 bytes.
+- `0x70004E30: 0xAFBF0014` — salva RA.
+- `0x70004E34: 0x3C048002` — prepara A0=`0xFFFFFFFF80020000`.
+- `0x70004E38: 0x3C058003` e `0x70004E3C: 0x24A587B0` — prepara A1=`0xFFFFFFFF800287B0`.
+- `0x70004E40: 0x0C001398` — JAL para `0x70004E60`; no snapshot, A0=`0x80020000`, A1=`0x800287B0`.
+- Mais adiante, `0x70004E44: 0x248432E0` prepara A0=`0x800232E0`; `0x70004E70` chama `0x70004D20` com A0=`0x800232E0`, A1=`0x800287B0`.
+- `0x70004E80` chama `0x70004DE0`; `0x70004E84` restaura A1 do stack e `0x70004E88` restaura RA.
+- `0x70004E48` chama `0x70004EE0`; após o retorno, A0=`0x10`, A1=`0x800232E0`, e a rotina retorna com V0 observado como zero.
+- Conclusão limitada: a função organiza endereços de buffers/estruturas e chama auxiliares `0x70004E60`, `0x70004D20`, `0x70004DE0` e `0x70004EE0`. A finalidade semântica dessas rotinas e o conteúdo dos buffers ainda não estão comprovados. Não rotular como cópia, descompressão ou inicialização específica sem ler as funções auxiliares e os acessos de memória.
+
+### Decodificação confirmada da função 0x70005B60
+- `0x70005B60: 0x27BDFFE8` — frame de pilha de 0x18 bytes.
+- `0x70005B64: 0xAFBF0014` — salva RA.
+- `0x70005B68` / `0x70005B6C` formam base `0xFFFFFFFF80060000`.
+- `0x70005B70: 0x24A536E8` — A1=`0xFFFFFFFF800636E8`.
+- `0x70005B74: 0x248436F0` — A0=`0xFFFFFFFF800636F0`.
+- `0x70005B78: 0x0C0035B4` — JAL para `0x7000D6D0`, passando A0=`0x800636F0`, A1=`0x800636E8`.
+- `0x70005B7C: 0x24060001` — prepara A2=1 no delay slot/retorno da chamada.
+- A função restaura RA e retorna em `0x70005B88`.
+- Conclusão limitada: a função passa dois endereços próximos e o valor 1 para a rotina `0x7000D6D0). Ainda não sabemos o que essa rotina faz; próximo passo é capturar/decode de `0x7000D6D0` e os loads/stores nos buffers `0x800636E8`/`0x800636F0`.
+
+### Evidência adicional no caminho 0x70005Cxx
+- Em `0x70005C1C`, snapshot mostra A0=`0xFFFFFFFF80340000`, A1=`0x34B30`, A2=`0x2000`, S3=`0x7F000000`, S4=`0xFFFFFFFFFFC00000`, S5=`0xA`, T9=`0xFFFFFFFF802F6000`.
+- `0x70005C24` chama `0x70005B90`; nessa rotina, `0x70005BA4` chama `0x70010B20` com A0=`0x80340000`, A1=`0x2000`. Mais adiante há preparação de A0=`0x800636D0`, A3=`0x34B30` e chamada `0x7000F6A0`.
+- O histórico de DMA PI deste Log registra transferência CART `0x10034B30` -> DRAM `0x340000`, tamanho `0x2000`. Os argumentos e a transferência são consistentes entre si, mas ainda não provam que os bytes transferidos sejam o código esperado no destino virtual `0x7F000BD0`.
+- Investigar `0x70005B90`, `0x70010B20`, `0x7000F6A0` e a função `0x7000D6D0`, relacionando-os ao PI DMA e à região virtual `0x7F000000`. Não assumir tradução física da VA sem evidência.
+
+### Estado do TLB continua sem solução
+- O handler continua lendo PTEBase em `0xFFFFFFFF8005E4A4`, valor observado `0x7FC65BF0`, e lendo word `1` em `0xFFFFFFFF8005DBF0`.
+- EntryLo0=`0x1`, EntryLo1=`0x41`; ambos com V=0. A falha é real e permanece TLB INVALID FETCH.
+- A rotina `0x700017E0` agora mostra também um segundo laço de stores byte a partir de `0x8005E3F0`, avançando em passos de 8 até `0x8005E4A4`. Esse padrão merece análise própria; não presumir que seja a tabela PTE principal nem alterar seus bytes.
+- Antes da primeira exceção, o trace mostra `0x7000184C: 0x1462FFF7` (BNE) com delay slot `0x70001850: 0xA064FFF8`, seguido pela preparação de registradores e escrita de PTEBase no endereço `0x8005E4A4`.
+- A falha não foi corrigida: TLB handler ainda instala EntryLo inválido, e VI/RSP não avançam.
+
+### Anomalia de diagnóstico a investigar separadamente
+- A seção `ESCRITAS NA REGIÃO DE DESTINO DO BOOT` informa 367.780 eventos, mas a amostra exibida repete muitas vezes o mesmo PADDR `0x20148B` com padrão de valores. Isso pode ser limitação/erro do watchpoint ou de sua apresentação; não interpretar como 367.780 endereços distintos escritos. Revisar a origem e a semântica dessa instrumentação antes de usá-la para conclusões.
+
+### Próximas ações
+1. Ampliar captura para a função `0x7000D6D0` e seus acessos a `0x800636E8`/`0x800636F0`.
+2. Capturar instruções internas de `0x70004D20`, `0x70004DE0`, `0x70004E60` e `0x70004EE0` para identificar a finalidade dos buffers `0x80020000`, `0x800287B0`, `0x800232E0`.
+3. Decodificar a cadeia `0x70005B90 -> 0x70010B20 / 0x7000F6A0` e comparar com o DMA PI `0x10034B30 -> 0x340000`, tamanho `0x2000`.
+4. Instrumentar leitura dos bytes/palavras efetivamente transferidos e localização física do código relacionado a `0x7F000000`, sem fabricar VA->PA.
+5. Inspecionar o segundo laço de stores byte em `0x7000181C–0x70001850` e sua relação com `PTEBase=0x7FC65BF0`.
+6. Investigar a anomalia de PADDR repetido no watchpoint de destino.
+7. Manter TLB Valid/PFN, SP HALT e DPC sem alterações artificiais. Nenhuma alteração foi feita em `main`.
