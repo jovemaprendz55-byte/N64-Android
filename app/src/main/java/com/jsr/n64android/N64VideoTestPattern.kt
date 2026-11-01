@@ -40,6 +40,8 @@ object N64VideoTestPattern {
         bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_ORIGIN_OFFSET, ORIGIN)
         bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_WIDTH_OFFSET, WIDTH)
         // 480 half-lines at a 0.5 scale produce a 240-line output frame.
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_H_START_OFFSET, (0x20 shl 16) or 0x160)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_X_SCALE_OFFSET, 0x400)
         bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_START_OFFSET, (0x20 shl 16) or 0x200)
         bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_Y_SCALE_OFFSET, 0x400)
 
