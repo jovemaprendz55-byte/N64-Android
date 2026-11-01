@@ -56,27 +56,23 @@ class N64DpcCommandProcessor(
             "DPC command range exceeds processing limit: bytes=$byteCount, limit=$maxCommandBytes."
         }
 
-        val commands = ArrayList<Long>(byteCount / COMMAND_BYTES)
-        var address = startAddress
-        while (address < endAddressExclusive) {
-            val high = memory.read32(address).toLong() and 0xFFFFFFFFL
-            val low = memory.read32(address + 4).toLong() and 0xFFFFFFFFL
-            val command = (high shl 32) or low
-            val opcode = ((command ushr 58) and 0x3FL).toInt()
-            val commandBytes = N64RdpCommandLength.bytesForOpcode(opcode)
-            val remainingBytes = endAddressExclusive - address
-            require(commandBytes <= remainingBytes) {
-                "Truncated RDP command 0x${opcode.toString(16)} at 0x${address.toString(16)}: " +
-                    "requires $commandBytes bytes, only $remainingBytes remain."
-            }
-            if (commandBytes != COMMAND_BYTES) {
+        val packets = N64RdpCommandStreamParser.parse(
+            memory = memory,
+            startAddress = startAddress,
+            endAddressExclusive = endAddressExclusive,
+            rdramSize = rdramSize,
+            maxCommandBytes = maxCommandBytes
+        )
+        // Parse and validate the entire stream before dispatching any supported
+        // command. Multiword payload is now preserved, but execution remains unsupported.
+        val commands = packets.map { packet ->
+            if (!packet.isSingleWord) {
                 throw UnsupportedOperationException(
-                    "RDP command 0x${opcode.toString(16)} requires $commandBytes bytes; " +
+                    "RDP command 0x${packet.opcode.toString(16)} requires ${packet.byteLength} bytes; " +
                         "multiword command execution is not implemented."
                 )
             }
-            commands.add(command)
-            address += commandBytes
+            packet.firstWord
         }
 
         val rdpResult = rdp.execute(commands)
