@@ -1,20 +1,37 @@
 # CONTINUIDADE DO PROJETO — N64 Android
 
-> Documento de passagem de contexto para qualquer novo chat ou colaborador. Leia este arquivo antes de alterar código. Atualize-o sempre que houver mudança relevante, teste, build, log ou decisão técnica.
+> Documento de passagem de contexto. Leia antes de alterar o código. Registre cada avanço real com data, horário, fuso, commit, arquivos, testes, CI e limitações.
 
-**Última atualização:** 2026-11-01 (transferências COP2 e primeiro subconjunto LWC2/SWC2)  
+**Última organização deste documento:** 2026-11-01 às 10:31:28 (UTC−03:00, horário de Brasília).  
 **Repositório:** https://github.com/jovemaprendz55-byte/N64-Android  
 **Branch de trabalho obrigatória:** `dev/n64-clean-start`  
-**Último commit de código da etapa 44 enviado:** `e187a2757551ac000ccc5a4b9e4b244b36dc02c4` (tela de teste visual VI; aguarda CI).
-**Último commit documental antes desta atualização:** `cefe58ed989b8ac37d1488c4df9611910463aebf`.
-**Commit da auditoria documental:** `eac1f8350c66eb50510b3661e969699840abcd4a`.  
-**Commit da integração do coletor:** `3e88607b7011630bc9063f2aa1059cfb2c8563a8`.
-**Commits da etapa 43:** `b299c364b7b02ea085a05fac3123b1c66c730874` (componente), `f44aea64089fe95bc3fd31e58dac19cf949ddb81` (testes iniciais), `07705544128ca997102de6a2465a615389f30c12` (integração Activity), `81f64a0190a993fc9917995f6792afc5557e349e` (ajuste do teste).
-**HEAD conhecido antes desta atualização documental:** `cefe58ed989b8ac37d1488c4df9611910463aebf` (documentação da etapa 42). O próximo chat deve sempre conferir o HEAD real.
-**CI anterior concluído:** build #708, run ID `41235044776`, sucesso; build/testes e upload do APK debug concluídos. A build #707, para o último commit de código, também terminou com sucesso.
-**CI da auditoria documental:** build #709, run ID `41240222394`, sucesso.  
-**CI da etapa 42:** build #711 (run ID `41250019688`) e build #712 (run ID `41250044868`) concluíram com **success**. **Etapa 43:** build #714 (run ID `41250243896`) passou para compilação do componente; builds intermediárias #715 e #716 falharam por um endereço incorreto no cenário de teste, corrigido no commit `81f64a0...`; build #717 (run ID `41250293247`) concluiu com **success**, incluindo Build and test e Upload debug APK. Build #718 (run ID `41250358376`) valida esta atualização documental.
-**Estado documental confirmado:** CI #719 (run ID `41250393284`) concluiu com sucesso, incluindo Build and test e Upload debug APK. A etapa 44 teve os workflows de código #720, #721 e #722 concluídos com sucesso; o workflow documental #723 concluiu com sucesso.
+**Branch protegida:** `main` — não modificar, mesclar, resetar ou enviar commits sem autorização explícita.  
+**Arquivo:** `docs/CONTINUIDADE_CHAT.md`
+
+## Situação resumida
+
+- O projeto continua sendo um emulador Nintendo 64 próprio para Android, em Kotlin.
+- O trabalho documentado mais recente avançou no caminho SP/OSTask → RSP, sincronização DPC/RDP e apresentação VI na tela Android.
+- CPU R4300, RSP, RDP, HLE, periféricos e vídeo continuam parciais; a existência de componentes e testes sintéticos não prova compatibilidade com jogos comerciais.
+- Ainda não há comprovação documentada de um frame real do GoldenEye 007 originado da execução completa da ROM.
+- O último registro técnico no fim deste documento inclui o bombeamento cooperativo do RSP, controles de execução experimental, diagnóstico contínuo, auditorias de vídeo/RSP/RDP e o teste RSP validado pelo CI #940.
+- O HEAD real da branch e o CI mais recente devem ser conferidos no GitHub antes de qualquer alteração de código. Os SHAs e builds antigos abaixo são histórico, não devem ser tratados automaticamente como HEAD/CI atuais.
+
+## Índice rápido
+
+1. Objetivo e regras do projeto
+2. Estado técnico, HLE, logs e testes
+3. Histórico de implementação e validações
+4. Estado dos subsistemas CPU, SP/RSP, DPC/RDP e VI
+5. Próxima ação técnica e instruções para o próximo chat
+
+## Regra para datas e horários
+
+- A partir desta atualização, todo novo registro deve usar **data + horário + fuso UTC−03:00**.
+- Para commits e workflows, usar o horário real fornecido pelo GitHub e indicar a conversão para UTC−03:00 quando aplicável.
+- Registros antigos que só guardam a data continuarão com a data original. O horário será indicado como **não registrado** quando não houver fonte confiável; nunca inventar horários retroativos.
+- Não criar planos de trabalho com quantidades fixas de tarefas. Registrar o trabalho por mudanças técnicas reais, relacionadas e testáveis.
+
 
 ---
 
@@ -231,6 +248,7 @@ Mensagem de arranque recomendada:
 > Continue o projeto N64 Android a partir de `docs/CONTINUIDADE_CHAT.md` na branch `dev/n64-clean-start`. Confira o HEAD real e o CI #717 antes de editar. A etapa 43 extraiu `N64HleCopyLoopTrace` da Activity e adicionou testes para limites, amostragem e janela de 64 instruções após a saída do laço. Preserve o formato e a ordem dos logs. Continue com pequenas extrações testáveis, sem tocar em `main`. CI verde não comprova jogo funcionando no aparelho.
 
 ## 10. Histórico de atualização deste documento
+
 
 - **2026-10-31:** criado documento inicial de passagem de contexto; registrado handoff HLE experimental, auditoria, testes, limitações, branch/commit e build #592.
 - **2026-10-31:** diagnóstico HLE ampliado com eventos PI/SP DMA, escritas RDRAM, estado dos registradores SI e snapshot PIF RAM; build #595 concluída com sucesso e APK de diagnóstico gerada.
@@ -1031,7 +1049,7 @@ Retirar de `MainActivity.runHleBootDiagnostic()` o estado e a formatação dos t
 3. Em seguida, considerar extrair os checkpoints e as primeiras 48 instruções para o runner, mantendo limites e ordem.
 4. Não confundir CI verde com boot ou renderização funcional do GoldenEye.
 
-## 11. Etapa 44 — primeiro teste visual sintético do VI (2026-10-31)
+## 44. Etapa 44 — primeiro teste visual sintético do VI (2026-10-31)
 
 ### Objetivo
 
@@ -1085,7 +1103,7 @@ Não comprova:
 - 2026-10-31 — teste no aparelho confirmado pelo usuário: tela “TESTE DE VÍDEO”, framebuffer 320x240, RGBA5551, origem 0x1000; o usuário confirmou que a tela com a mensagem de frame sintético lido pelo VI e exibido pelo Android apareceu. Ainda não foi enviado screenshot da área da imagem para confirmar cada barra de cor.
 
 
-## 12. Etapa 45 — primeiro processador isolado de preenchimento RDP (2026-10-31)
+## 45. Etapa 45 — primeiro processador isolado de preenchimento RDP (2026-10-31)
 
 ### Objetivo
 Começar a substituir a geração artificial de pixels por operações gráficas determinísticas que escrevem diretamente em RDRAM. Esta etapa cria um subconjunto pequeno e isolado do RDP, sem fingir que a lista de comandos já vem do RSP/DPC.
@@ -1130,7 +1148,7 @@ Começar a substituir a geração artificial de pixels por operações gráficas
 
 
 
-## 13. Revisão corretiva do processador RDP — 2026-10-31
+## 46. Revisão corretiva do processador RDP — 2026-10-31
 
 Uma revisão do código após a etapa 45 encontrou um erro na extração do campo `cycle_type` do comando `SetOtherModes`: a implementação lia os bits 21:20 da palavra baixa, mas o campo pertence à palavra alta do comando RDP (bits globais 53:52). O teste inicial repetia a codificação incorreta e, por isso, não detectava o problema.
 
@@ -1158,7 +1176,7 @@ Uma revisão do código após a etapa 45 encontrou um erro na extração do camp
 - Fazer uma revisão técnica de coordenadas inclusivas/exclusivas, scissor, alinhamento e limites da imagem antes de ampliar o subconjunto.
 - Só depois desenhar a ligação a DPC/RSP, com estado e semântica reais. O processador continua isolado e não renderiza ROMs.
 
-## 14. Estado de continuidade atualizado — etapa 46 (2026-10-31)
+## 47. Estado de continuidade atualizado — etapa 46 (2026-10-31)
 
 > **Este bloco é o estado mais recente e prevalece sobre metadados antigos e próximos passos históricos das seções anteriores.** Antes de continuar, confira o HEAD e o Actions na branch. Não presuma que os números de CI abaixo já terminaram.
 
@@ -1238,7 +1256,7 @@ Limitações deliberadas:
 - O novo chat deve começar lendo esta seção 14, conferir HEAD/CI, e então executar o passo 1 acima. Não recriar o DPC command processor nem os testes já feitos.
 
 
-## 17. Decodificação de comprimentos RDP antes da leitura DPC (2026-10-31)
+## 48. Decodificação de comprimentos RDP antes da leitura DPC (2026-10-31)
 
 ### Resultado confirmado das etapas anteriores
 - Build #744, run `41255289872`, commit `048b89d850c2b901f2505a573668113a99f82767`: **success**.
@@ -1296,7 +1314,7 @@ Testes:
 5. Manter a integração DPC/RDP síncrona como modelo experimental, não FIFO completa. Não afirmar que uma ROM é renderizada.
 
 
-## 18. Validação integral do stream DPC e cobertura de truncamento (2026-10-31)
+## 49. Validação integral do stream DPC e cobertura de truncamento (2026-10-31)
 
 ### CI confirmada
 - Build #746, run `41255553298`, commit de código `a5558895b53132a47e40c7190927d2ed4f0ec1ec`: **success**.
@@ -1327,7 +1345,7 @@ Testes:
 5. Manter `dev/n64-clean-start` como branch de trabalho e `main` intocada.
 
 
-## 19. Pacotes completos do stream RDP (2026-11-01)
+## 50. Pacotes completos do stream RDP (2026-11-01)
 
 ### CI da etapa anterior confirmada
 - Build #749, run `41255996859`, commit `14e78041e4eaf419f7fade63b82696b6027a44dd`: **success** (Build and test + Upload debug APK).
@@ -1382,7 +1400,7 @@ Integração:
 - Branch obrigatória: `dev/n64-clean-start`. Manter `main` intocada.
 
 
-## 20. Correção final dos testes do parser RDP e CI aprovada (2026-11-01)
+## 51. Correção final dos testes do parser RDP e CI aprovada (2026-11-01)
 
 ### Resultado final confirmado
 - HEAD de código validado: `e6dba5d3c60ed4d79105f158ef0c90c7f8804ea5`.
@@ -1426,7 +1444,7 @@ Integração:
 - Não prometer mensagem espontânea fora de uma conversa ativa; o aviso é feito enquanto o usuário estiver conversando.
 
 
-## 21. Pacotes RDP com snapshot efetivamente não modificável (2026-11-01)
+## 52. Pacotes RDP com snapshot efetivamente não modificável (2026-11-01)
 
 ### Implementação
 - Commit `f822503373dbb2545a7573dfb3591eba1642e0c6`: `N64RdpCommandPacket` deixou de ser data class com referência direta à lista recebida.
@@ -1458,7 +1476,7 @@ Integração:
 5. Encerrar a sessão somente depois da CI documental verde e do checkpoint registrado; ao parar, avisar explicitamente o usuário que o trabalho do dia terminou.
 
 
-## 22. Início do pipeline de geometria RDP: decoder de triângulos (2026-11-01)
+## 53. Início do pipeline de geometria RDP: decoder de triângulos (2026-11-01)
 
 ### Objetivo desta etapa
 Começar a substituir o caminho de teste sintético por processamento gráfico real, sem afirmar que já existe renderização de ROM. A imagem colorida continua sendo gerada exclusivamente por `N64VideoTestPattern.createFrame()` quando o usuário aciona o botão de teste de vídeo.
@@ -1507,7 +1525,7 @@ Começar a substituir o caminho de teste sintético por processamento gráfico r
 - A CI #763 está verde. Atualizar esta seção documental após cada nova etapa e incluir commit, workflow, status e APK somente quando o artefato existir.
 
 
-## 23. Edge-walking experimental para triângulos RDP (2026-11-01)
+## 54. Edge-walking experimental para triângulos RDP (2026-11-01)
 
 ### Implementação
 - Criado `N64RdpTriangleEdgeWalker.kt`.
@@ -1537,7 +1555,7 @@ Começar a substituir o caminho de teste sintético por processamento gráfico r
 5. Em paralelo, planejar/implementar o RSP e microcode F3DEX; sem o RSP, jogos não geram display lists reais para o RDP.
 
 
-## 24. Primeiro rasterizador flat e caminho RDP sintético até a tela Android (2026-11-01)
+## 55. Primeiro rasterizador flat e caminho RDP sintético até a tela Android (2026-11-01)
 
 ### Estratégia de desenvolvimento
 A partir desta etapa, priorizar fatias verticais pequenas e demonstráveis: gerar pixels, armazená-los em RDRAM, capturá-los pelo VI e apresentá-los no Android. Não acumular decoders isolados sem integração. Todo código é implementação própria; documentação de hardware pode orientar formatos, sem copiar código de outros emuladores.
@@ -1573,7 +1591,7 @@ A partir desta etapa, priorizar fatias verticais pequenas e demonstráveis: gera
 6. Só depois de uma ROM produzir pixels, remover a distinção de demonstração sintética da UI.
 
 
-## 25. Execução de triângulo flat através de display list DPC (2026-11-01)
+## 56. Execução de triângulo flat através de display list DPC (2026-11-01)
 
 ### Integração concluída
 - O parser continua lendo e validando pacotes completos de RDP em big-endian antes da execução.
@@ -1612,7 +1630,7 @@ A partir desta etapa, priorizar fatias verticais pequenas e demonstráveis: gera
 - Continuação da interface em 2026-11-01, commit `f43ef6518b3f377680bd38eaecfc77c66f207839`: ao carregar uma ROM válida, a tela inicial passa a exibir o nome real do arquivo (via `OpenableColumns.DISPLAY_NAME`), tamanho e formato, em vez de colocar o relatório técnico extenso do inspetor no menu. O relatório detalhado deixa de ser mostrado nesse status principal; falhas de leitura/carregamento continuam exibidas.
 
 
-## 26. Primeiro núcleo escalar próprio do RSP — 2026-11-01
+## 57. Primeiro núcleo escalar próprio do RSP — 2026-11-01
 
 ### Implementação
 - Criado `N64RspCore.kt`, um interpretador escalar independente para o processador RSP. Não reutiliza o núcleo R4300 e não incorpora código de outros emuladores.
@@ -1641,7 +1659,7 @@ A partir desta etapa, priorizar fatias verticais pequenas e demonstráveis: gera
 5. Só então iniciar subset vetorial e microcode gráfico; manter a demonstração sintética separada do caminho de ROM.
 
 
-## 27. COP0 mínimo do SP e semântica de BREAK — 2026-11-01
+## 58. COP0 mínimo do SP e semântica de BREAK — 2026-11-01
 
 - O RSP agora decodifica MFC0 e MTC0 para o subconjunto de registradores SP: MEM_ADDR, DRAM_ADDR, RD_LEN, WR_LEN, STATUS, DMA_FULL, DMA_BUSY e SEMAPHORE.
 - Escritas em DMA_FULL/DMA_BUSY são ignoradas por serem registradores somente de leitura; os demais passam pelo mapa MMIO já existente no barramento.
@@ -1656,7 +1674,7 @@ Commits:
 
 Próximo passo: validar CI; depois implementar registradores vetoriais/accumulator e operações COP2 de forma incremental, com testes de largura, saturação e flags, antes de abordar microcode gráfico.
 
-## 28. Estado vetorial inicial do RSP — 2026-11-01
+## 59. Estado vetorial inicial do RSP — 2026-11-01
 
 ### Implementação
 - Criado `N64RspVectorUnit.kt`, separado do núcleo escalar, com 32 registradores vetoriais × 8 lanes de 16 bits e accumulator de 48 bits por lane.
@@ -1683,7 +1701,7 @@ Próximo passo: validar CI; depois implementar registradores vetoriais/accumulat
 5. Conectar execução SP task → RSP → display list → DPC/RDP; manter demonstração sintética separada do caminho de ROM.
 
 
-## 29. Primeiro decoder COP2 vetorial integrado ao RSP — 2026-11-01
+## 60. Primeiro decoder COP2 vetorial integrado ao RSP — 2026-11-01
 
 ### Implementação
 - O `N64RspCore` agora possui uma instância `N64RspVectorUnit` e despacha instruções cujo opcode primário é COP2 (`0x12`) para um decoder vetorial separado.
@@ -1712,7 +1730,7 @@ Próximo passo: validar CI; depois implementar registradores vetoriais/accumulat
 5. Manter a demonstração sintética separada e não declarar ROM/jogo funcional sem imagem originada de ROM no aparelho.
 
 
-## 30. Transferências COP2 entre unidade escalar e vetorial — 2026-11-01
+## 61. Transferências COP2 entre unidade escalar e vetorial — 2026-11-01
 
 ### Implementação
 - `N64RspCore.executeCop2` agora diferencia as quatro instruções de movimento pelo campo `rs`: MFC2 (0), CFC2 (2), MTC2 (4) e CTC2 (6), sem confundi-las com o formato aritmético vetorial (`rs=0x10..0x1F`).
@@ -1744,7 +1762,7 @@ Próximo passo: validar CI; depois implementar registradores vetoriais/accumulat
 - Próxima fatia: implementar LBV/LSV/LLV/LDV e SBV/SSV/SLV/SDV (subconjunto escalar de LWC2/SWC2), com cálculo de endereço, escala de offset e regras de wrap/no-wrap testadas; depois avançar para LQV/SQV.
 
 
-## 31. Primeiro subconjunto de memória vetorial LWC2/SWC2 — 2026-11-01
+## 62. Primeiro subconjunto de memória vetorial LWC2/SWC2 — 2026-11-01
 
 ### Implementação
 - O decoder principal reconhece LWC2 (`0x32`) e SWC2 (`0x3A`).
@@ -1780,7 +1798,7 @@ Próximo passo: validar CI; depois implementar registradores vetoriais/accumulat
 4. Criar ciclo de vida mínimo de task SP: ler task descriptor, carregar IMEM/DMEM por DMA, executar RSP até BREAK, reconhecer interrupção SP e encaminhar display-list para DPC.
 
 
-## 32. Primeiro subconjunto RSP LQV/LRV/SQV/SRV — 2026-11-01
+## 63. Primeiro subconjunto RSP LQV/LRV/SQV/SRV — 2026-11-01
 
 ### Implementação
 - `N64RspCore.executeVectorMemory` agora reconhece os subopcodes 4 e 5 para LQV/LRV e SQV/SRV.
@@ -1814,7 +1832,7 @@ Próximo passo: validar CI; depois implementar registradores vetoriais/accumulat
 4. Depois implementar DMA/tarefa SP e conectar execução RSP a display lists reais.
 
 
-## 33. Primeiros loads vetoriais packed LPV/LUV — 2026-11-01
+## 64. Primeiros loads vetoriais packed LPV/LUV — 2026-11-01
 
 ### Implementação
 - `N64RspCore.executeVectorMemory` reconhece os subopcodes 6 (LPV) e 7 (LUV) no caminho LWC2.
@@ -1846,7 +1864,7 @@ Próximo passo: validar CI; depois implementar registradores vetoriais/accumulat
 4. Depois avançar para LHV/SHV e completar o ciclo de tarefas SP/DMA.
 
 
-## 34. Primeiros stores packed SPV/SUV — 2026-11-01
+## 65. Primeiros stores packed SPV/SUV — 2026-11-01
 
 ### Implementação
 - `N64RspCore.executeVectorMemory` agora reconhece os subopcodes 6 (SPV) e 7 (SUV) no caminho SWC2, mantendo LPV/LUV no caminho LWC2.
@@ -1879,7 +1897,7 @@ Próximo passo: validar CI; depois implementar registradores vetoriais/accumulat
 4. Depois avançar para DMA real de IMEM/DMEM e ciclo de vida de task SP.
 
 
-## 35. Confirmação do CI SPV/SUV e cobertura das fronteiras — 2026-11-01
+## 66. Confirmação do CI SPV/SUV e cobertura das fronteiras — 2026-11-01
 
 - Build #822 (run `41297665219`), commit `f9afacecd6c96cf9f5c2ccaed23a6751c715ca9b`: **success**.
 - Job `build`: etapas `Build and test` e `Upload debug APK` concluídas com sucesso.
@@ -1891,7 +1909,7 @@ Próximo passo: validar CI; depois implementar registradores vetoriais/accumulat
 - Nenhuma ROM/jogo foi validado.
 
 
-## 36. LHV/SHV — primeira fatia com element=0 — 2026-11-01
+## 67. LHV/SHV — primeira fatia com element=0 — 2026-11-01
 
 - Build #823 (run `41297999903`), commit `ed6f92f0a85dbd4acc4b4d0225ce5b3e5d025143`: **success**.
 - Job `build`, testes e upload do APK concluídos; artefato `n64-android-debug-apk`, ID `13080495353`, SHA-256 `9d47673f6fb1f4f28d0776fcd1fa563fc701a4f38a7604cba4dd08909640c3dc`.
@@ -1904,7 +1922,7 @@ Próximo passo: validar CI; depois implementar registradores vetoriais/accumulat
 - Nenhuma ROM/jogo foi validado.
 
 
-## 37. Correção do endereço efetivo no LHV — 2026-11-01
+## 68. Correção do endereço efetivo no LHV — 2026-11-01
 
 ### Correção
 - Revisado o caminho LHV em `N64RspCore.executeVectorMemory`.
@@ -1924,7 +1942,7 @@ Próximo passo: validar CI; depois implementar registradores vetoriais/accumulat
 3. Avançar para as demais transferências vetoriais e o DMA/tarefa SP; ainda não há execução de microcode de jogo nem ROM validada.
 
 
-## 38. Ciclo de 8 tarefas — validação de endereços RSP e DMA SP — 2026-11-01
+## 69. Ciclo de 8 tarefas — validação de endereços RSP e DMA SP — 2026-11-01
 
 ### As oito tarefas executadas neste ciclo
 1. **Inspeção:** confirmado o trabalho na branch `dev/n64-clean-start`, sem tocar em `main`.
@@ -1945,107 +1963,7 @@ Próximo passo: validar CI; depois implementar registradores vetoriais/accumulat
 Construir o ciclo de vida de task SP: leitura do descriptor em RDRAM, carregamento IMEM/DMEM por DMA, execução do RSP até BREAK, atualização de status/interrupt e encaminhamento da display list para DPC, com testes de integração em vez de mais alterações isoladas no decoder.
 
 
-## 39. Plano híbrido de 64 tarefas — 2026-11-01
-
-### Regras de execução
-- Branch exclusiva: `dev/n64-clean-start`; `main` permanece intocada.
-- 8 frentes de 8 tarefas. Paralelismo apenas entre arquivos/módulos independentes; integração sempre sequencial.
-- Cada tarefa deve produzir código, teste, evidência de auditoria ou documentação verificável. Uma tarefa planejada não será marcada como concluída.
-- Após cada integração: executar testes/build, conferir GitHub Actions e registrar SHA/resultado.
-- Prioridade máxima: caminho real ROM → CPU R4300 → task SP → RSP → display list → DPC/RDP → VI → imagem no app.
-- A demonstração de framebuffer/test pattern nunca será usada como prova de que uma ROM foi renderizada.
-- Não incorporar código de outros emuladores; implementar e testar o nosso próprio código com base em especificações e referências arquiteturais.
-
-### Grupo 1 — Base, contratos e ciclo de vida SP (tarefas 1–8)
-1. Confirmar branch, HEAD, histórico e estado de CI antes de qualquer alteração. **Concluída nesta rodada.**
-2. Inventariar os módulos reais de CPU, barramento, SP/RSP, DPC/RDP e VI presentes na branch. **Concluída nesta rodada.**
-3. Auditar o mapa atual dos registradores SP, DMA e status, separando comportamento implementado de placeholders. **Auditoria inicial concluída; detalhes por registrador pendentes.**
-4. Auditar o caminho RSP atual: decoder, vetores, loads/stores, BREAK e limitações explícitas. **Concluída nesta rodada.**
-5. Auditar o caminho DPC/RDP/VI existente e identificar onde ainda há execução isolada sem ligação com ROM. **Concluída nesta rodada.**
-6. Definir contrato mínimo de task SP: descriptor, origem/destino, tamanhos, flags e endereços de microcode/display-list, conforme evidência arquitetural. **Concluída: decoder OSTask de 64 bytes + testes de offsets e limites.**
-7. Definir estados e transições de task: idle, carregamento DMA, execução, BREAK, conclusão, interrupção e erro. **Concluída como modelo determinístico isolado, com testes; ainda não conectado ao hardware.**
-8. Criar testes de integração do ciclo SP usando descriptor sintético, sem alegar compatibilidade de jogo. **Em andamento: bootstrap DMA + início RSP testados; execução até BREAK e ligação DPC ainda pendentes.**
-
-### Grupo 2 — RSP e transferências vetoriais (tarefas 9–16)
-9. Validar o mapeamento exato dos campos de task e do PC do RSP antes de iniciar execução.
-10. Implementar o sequenciador de execução RSP com limite de instruções e parada determinística.
-11. Implementar status HALT/BROKE e transições de CLEAR_HALT/SET_HALT com testes.
-12. Modelar SP DMA busy/full e restrições de escrita nos registradores.
-13. Adicionar conclusão de DMA e sinalização de interrupção SP no MI.
-14. Auditar e corrigir delay slots, branch/jump e comportamento BREAK do RSP.
-15. Validar SHV e demais transferências vetoriais pendentes com testes de bytes/lane e casos de fronteira.
-16. Criar testes de regressão de task RSP completa: carregar IMEM/DMEM, executar até BREAK e verificar estado final.
-
-### Grupo 3 — DPC e ligação da display list (tarefas 17–24)
-17. Auditar registradores DPC START, END, CURRENT, STATUS e CLOCK já existentes no barramento.
-18. Implementar semântica de START/END/CURRENT com alinhamento, limites e estado de comando.
-19. Conectar conclusão da task SP ao envio do endereço de display list para DPC.
-20. Implementar leitura de comandos via RDRAM e via XBUS/DMEM quando aplicável.
-21. Modelar DPC status, freeze, flush e busy de forma testável.
-22. Implementar interrupção DPC→MI e acknowledgement correto.
-23. Criar teste integrado SP→DPC com lista sintética residente em RDRAM.
-24. Garantir que comandos inválidos/truncados não escrevam parcialmente no framebuffer.
-
-### Grupo 4 — RDP: comandos e rasterização (tarefas 25–32)
-25. Auditar tabela de tamanhos dos comandos RDP e confrontar todos os opcodes suportados.
-26. Completar decodificação dos comandos de estado necessários antes de triângulos/texturas.
-27. Implementar registro de cor, ciclo, scissor e modos de renderização com testes isolados.
-28. Implementar primitivas de retângulo e fill com regras de formato e alinhamento.
-29. Validar setup de triângulos, edge walker e rasterização contra fixtures independentes.
-30. Implementar interpolação de atributos e cobertura de pixels para triângulos.
-31. Criar caminho inicial de textura: TMEM, tile descriptors, load tile/block e leitura de texels.
-32. Criar teste integrado DPC→RDP→framebuffer com comandos reais de display list sintética.
-
-### Grupo 5 — VI e imagem na tela (tarefas 33–40)
-33. Auditar registradores VI e o leitor de framebuffer já presentes.
-34. Implementar stride/origin e dimensões de saída com validação de limites de RDRAM.
-35. Implementar formatos de pixel adicionais e regras de conversão verificadas.
-36. Modelar blanking, interrupt/current line e atualização de frame de forma determinística.
-37. Ligar o framebuffer produzido pelo RDP ao leitor VI, sem usar test pattern como fonte.
-38. Publicar frames para a camada Android sem bloquear a thread de emulação.
-39. Criar teste end-to-end DPC→RDP→VI que compare pixels esperados.
-40. Exibir no diagnóstico a origem do frame (ROM/RDP ou padrão sintético), endereço, formato e dimensões.
-
-### Grupo 6 — CPU R4300 e boot real (tarefas 41–48)
-41. Fazer inventário de instruções MIPS III/R4300 implementadas e ausentes com base no decoder atual.
-42. Priorizar instruções que o bootcode e o código de jogo realmente alcançam, usando logs de ROM.
-43. Corrigir semântica de 64 bits, overflow, loads/stores e alinhamento com testes arquiteturais.
-44. Completar exceções, delay slots e estado COP0 necessário ao boot.
-45. Validar TLB, mapeamento físico/virtual e acessos a MMIO com testes de integração.
-46. Auditar FPU/COP1 e implementar operações exigidas pelo caminho observado, sem inventar cobertura total.
-47. Revalidar o handoff HLE/CIC/PIF com logs reproduzíveis e estado arquitetural documentado.
-48. Executar ROM real em diagnóstico, corrigir o primeiro bloqueio comprovado e registrar logs antes/depois.
-
-### Grupo 7 — Periféricos, áudio e controles (tarefas 49–56)
-49. Auditar PI DMA, cartucho e limites de acesso à ROM.
-50. Completar SI/PIF RAM e protocolo Joybus necessário para comandos observados.
-51. Implementar resposta HLE de controles e testar leitura de estado de botões.
-52. Completar temporização/estado básico de AI e fila de áudio.
-53. Implementar caminho de áudio inicial com formato e taxa derivados dos registradores AI.
-54. Ligar eventos de interrupção de periféricos ao MI com máscaras e acknowledgement.
-55. Adicionar testes de integração para PI/SI/AI e garantir isolamento entre dispositivos.
-56. Expor diagnóstico de periféricos e contadores sem gerar logs por byte em excesso.
-
-### Grupo 8 — Integração, desempenho e entrega (tarefas 57–64)
-57. Criar suíte de regressão única para CPU, bus, SP/RSP, DPC/RDP e VI.
-58. Medir custo por lote de instruções e por frame em aparelho Android real.
-59. Reduzir alocações/logs no hot path sem alterar resultados arquiteturais.
-60. Implementar sincronização segura entre worker de emulação e renderização Android.
-61. Testar cancelamento, pausa, retomada e troca de ROM sem estado residual.
-62. Gerar APK debug e validar instalação/abertura em aparelho físico.
-63. Executar uma ROM de referência do início ao primeiro frame originado do RDP; guardar ROM apenas localmente e registrar evidência/log.
-64. Consolidar relatório de compatibilidade: o que funciona, o que falha, testes, APK e próximo bloqueio; não declarar jogo funcional sem prova visual originada da ROM.
-
-### Estado desta rodada
-- Tarefas 1, 2, 4 e 5: auditoria inicial concluída.
-- Tarefa 3: auditoria inicial dos registradores e do DMA concluída em nível geral; revisão detalhada ainda pendente.
-- Tarefa 6: concluída com decoder OSTask de 64 bytes e testes; tarefas 7–64 seguem pendentes.
-- CI #832, #833 e #834: **success**; HEAD confirmado em `b34be16cd97769f1f3d9bb3cd07c128544158a0c`.
-- O estado atual contém componentes experimentais de RDP/VI e RSP, mas o caminho integrado task SP→display list→RDP→VI ainda não está comprovado.
-- Próxima execução: completar tarefa 8 conectando o bootstrap ao executor RSP e ao BREAK; depois ligar conclusão/interrupção ao MI e encaminhar display list ao DPC.
-
-
-## 40. Primeiro contrato de OSTask — decoder do cabeçalho SP — 2026-11-01
+## 70. Primeiro contrato de OSTask — decoder do cabeçalho SP — 2026-11-01
 
 ### Implementação
 - Criado `N64SpTaskDescriptor.kt` para decodificar o cabeçalho OSTask de 64 bytes (16 palavras de 32 bits) em SP DMEM.
@@ -2075,7 +1993,7 @@ Construir o ciclo de vida de task SP: leitura do descriptor em RDRAM, carregamen
 - CI dos commits de código deve ser confirmada antes de integrar scheduler ou alterar estado SP.
 
 
-## 41. Modelo explícito de estados da task SP — 2026-11-01
+## 71. Modelo explícito de estados da task SP — 2026-11-01
 
 ### Implementação
 - Criado `N64SpTaskLifecycle.kt` como máquina de estados determinística e sem efeitos colaterais de hardware.
@@ -2104,7 +2022,7 @@ Construir o ciclo de vida de task SP: leitura do descriptor em RDRAM, carregamen
 - Tarefa 7 concluída como modelo/testes isolados; tarefa 8 exige o primeiro teste de integração com barramento, descriptor, DMA, execução RSP e BREAK.
 
 
-## 42. Bootstrap SP com DMA do OSTask e boot microcode — 2026-11-01
+## 72. Bootstrap SP com DMA do OSTask e boot microcode — 2026-11-01
 
 ### Implementação
 - Criado `N64SpTaskBootstrap.kt`.
@@ -2129,7 +2047,7 @@ Construir o ciclo de vida de task SP: leitura do descriptor em RDRAM, carregamen
 - Tarefa 8 permanece em andamento, não concluída.
 
 
-## 43. Primeira ponte de execução SP → RSP — 2026-11-01
+## 73. Primeira ponte de execução SP → RSP — 2026-11-01
 
 ### Implementação
 - Criado `N64SpTaskRunner.kt` para encadear o bootstrap OSTask já existente com a instância de `N64RspCore` ligada ao mesmo `N64Bus`.
@@ -2156,7 +2074,7 @@ Construir o ciclo de vida de task SP: leitura do descriptor em RDRAM, carregamen
 - Tarefa 8 continua em andamento: próximo passo é testar boot microcode que realmente carrega task microcode, estabelecer um critério observável e arquitetural para entrada na task, então integrar BREAK, SP interrupt e DP_WAIT/DPC sem simular conclusões.
 - Nenhuma ROM real foi declarada funcional e nenhum frame real foi produzido por esta etapa.
 
-## 44. DPC Full Sync e interrupção DP no MI — 2026-11-01
+## 74. DPC Full Sync e interrupção DP no MI — 2026-11-01
 
 ### Implementação
 - O pipeline DPC já existente foi confirmado: escrita em DPC_END lê a lista end-exclusive em RDRAM, faz parsing dos pacotes e encaminha o subconjunto suportado ao processador RDP; o VI captura o framebuffer resultante da mesma RDRAM.
@@ -2188,7 +2106,7 @@ Construir o ciclo de vida de task SP: leitura do descriptor em RDRAM, carregamen
 - Depois, ligar o estado de conclusão do DPC ao lifecycle SP com DP_WAIT, sem marcar drain antes do processamento real da lista.
 - Expandir a execução RDP a partir dos comandos de textura e triângulo, mantendo testes de framebuffer.
 
-## 45. Coordenação de DP_WAIT com DPC Full Sync — 2026-11-01
+## 75. Coordenação de DP_WAIT com DPC Full Sync — 2026-11-01
 
 ### Implementação
 - `N64Bus` agora permite registrar um callback de drain DP síncrono, disparado somente depois que uma lista DPC contendo Full Sync (`0x29`) foi processada e os bits MI DP foram levantados.
@@ -2213,7 +2131,7 @@ Construir o ciclo de vida de task SP: leitura do descriptor em RDRAM, carregamen
 - O `N64SpTaskRunner` ainda não identifica por si só o ponto de entrada do task microcode em todos os casos, nem chama automaticamente o coordenador. A integração do evento de BREAK ao scheduler deve esperar um critério arquitetural verificável para distinguir boot microcode e task microcode.
 - Próximo passo: modelar a transição de handoff boot→task usando evidência de execução/DMA do RSP, depois conectar o BREAK do task microcode ao coordenador sem heurísticas frágeis.
 
-## 46. Observação estruturada da conclusão de SP DMA — 2026-11-01
+## 76. Observação estruturada da conclusão de SP DMA — 2026-11-01
 
 ### Objetivo
 Criar uma evidência de hardware observável para a próxima etapa de identificação da transição boot microcode → task microcode. O scheduler precisa saber exatamente qual DMA terminou, sem interpretar strings de diagnóstico nem inferir a transição apenas pelo PC.
@@ -2243,7 +2161,7 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 - CI dos commits de código #865 (run 41302042402) e #866 (run 41302055039) concluiu com success, incluindo Build and test e Upload debug APK.
 - Nenhuma ROM comercial ou imagem originada de jogo foi validada nesta etapa.
 
-## 47. Handoff observável boot microcode → task microcode — 2026-11-01
+## 77. Handoff observável boot microcode → task microcode — 2026-11-01
 
 ### Implementação
 - N64RspCore agora permite registrar um observador opcional chamado depois da execução de cada instrução, recebendo o PC de busca e a instrução. O observador não altera o estado da CPU.
@@ -2276,7 +2194,7 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 - Nenhuma ROM comercial foi validada nesta etapa; nenhum frame real de jogo foi produzido.
 
 
-## 48. Reconhecimento de task microcode carregado em fragmentos DMA — 2026-11-01
+## 78. Reconhecimento de task microcode carregado em fragmentos DMA — 2026-11-01
 
 ### Implementação
 - O tracker de handoff agora agrega transferências RDRAM→IMEM separadas, inclusive fora de ordem.
@@ -2302,7 +2220,7 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 - Confirmar CI deste commit; depois, exercitar a integração runner + coordenador com task sintética que emita Full Sync pelo caminho DPC e finalize BREAK/DP_WAIT na ordem arquitetural correta.
 
 
-## 49. DP_WAIT ligado à conclusão observável do trabalho RDP — 2026-11-01
+## 79. DP_WAIT ligado à conclusão observável do trabalho RDP — 2026-11-01
 
 ### Integração adicional
 - Adicionado teste combinado ao coordenador SP/DP: task sintética entra em TASK_MICROCODE_RUNNING, sinaliza BREAK e permanece em WAITING_FOR_DP.
@@ -2319,7 +2237,7 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 - Confirmar o CI deste teste. Depois, priorizar o caminho de apresentação de frames: VI framebuffer com stride/origin/pixel size e integração com a tela Android, mantendo separado o framebuffer de teste e o frame originado de ROM real.
 
 
-## 50. VI com stride de framebuffer independente da largura visível — 2026-11-01
+## 80. VI com stride de framebuffer independente da largura visível — 2026-11-01
 
 ### Implementação
 - `N64ViFramebufferReader.capture` agora aceita `stridePixels` separado da largura visível.
@@ -2343,7 +2261,7 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 - Confirmar CI. Em seguida, implementar derivação explícita da janela horizontal VI_H_START com escala X e integrar a captura a uma apresentação atualizável na tela Android, mantendo a distinção entre frames sintéticos e frames originados de ROM.
 
 
-## 51. VI calcula largura ativa por H_START e X_SCALE — 2026-11-01
+## 81. VI calcula largura ativa por H_START e X_SCALE — 2026-11-01
 
 ### Implementação
 - Adicionados os offsets VI_H_START (0x24) e VI_X_SCALE (0x30).
@@ -2370,7 +2288,7 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 - O CI do primeiro commit de VI horizontal falhou somente em `N64RdpFlatTriangleRasterizerTest.syntheticPipelineProducesViFrameContainingRasterizedTriangle`; compilação e montagem do APK haviam passado. A correção está no commit `4816592a78dccadfaf9baa97177e6e2d9e2595c2` e deve ser validada pelo workflow subsequente.
 
 
-## 52. Apresentador Android reutilizável para frames VI — 2026-11-01
+## 82. Apresentador Android reutilizável para frames VI — 2026-11-01
 
 ### Implementação
 - Criada `N64VideoPresenterView`, uma View Android dedicada a receber frames `N64VideoFrame` por `submitFrame`.
@@ -2394,7 +2312,7 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 - Isso evita acumular tarefas/Bitmaps na fila principal quando a produção de frames for mais rápida que a apresentação.
 - A sincronização protege substituição, desenho e liberação ao remover a View da janela.
 
-## 53. Sessão contínua de CPU com publicação de frames VI — 2026-11-01
+## 83. Sessão contínua de CPU com publicação de frames VI — 2026-11-01
 
 ### Implementação
 - Criada `N64RomVideoSession`, uma sessão reutilizável que executa instruções reais do R4300 em lotes canceláveis e consulta o VI a cada intervalo configurável.
@@ -2415,7 +2333,7 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 ### Próximo passo prioritário
 - Próximo passo prioritário: ligar a liberação do SP/OSTask ao executor RSP, preservando DMEM/IMEM e coordenando SP/DP; sem esse caminho, o framebuffer de jogo não será produzido.
 
-## 54. Controles de execução experimental de ROM na Activity — 2026-11-01
+## 84. Controles de execução experimental de ROM na Activity — 2026-11-01
 
 ### Implementação
 - Adicionado botão principal "EXECUTAR ROM — VÍDEO EXPERIMENTAL", habilitado após carregar uma ROM reconhecida.
@@ -2429,7 +2347,7 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 - Se o microcode do jogo atingir uma instrução RSP ainda não implementada, a sessão registra a falha e interrompe o SP; se a ROM não produzir/configurar um framebuffer VI válido, a tela continuará sem imagem.
 - Nenhum frame de GoldenEye foi validado ainda. O próximo bloqueio real é ampliar a compatibilidade do RSP e completar os comandos RDP usados pelo microcode do jogo.
 
-## 55. Bombeamento cooperativo do RSP durante execução da ROM — 2026-11-01
+## 85. Bombeamento cooperativo do RSP durante execução da ROM — 2026-11-01
 
 ### Implementação
 - `N64RomVideoSession` agora consulta SP_STATUS em intervalos de instruções da CPU.
@@ -2450,7 +2368,7 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 ### Próximo passo prioritário
 - Executar GoldenEye com o novo worker e coletar PC/última instrução/erro RSP. Usar o primeiro opcode não suportado como alvo para ampliar o RSP, depois implementar os comandos RDP efetivamente emitidos pelo microcode.
 
-## 58. Auditoria técnica do caminho de vídeo — 2026-11-01
+## 86. Auditoria técnica do caminho de vídeo — 2026-11-01
 
 ### Conclusão
 - A tela preta é compatível com o estado incompleto do emulador; não há evidência de defeito isolado na View Android.
@@ -2479,7 +2397,7 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 - A alteração melhora observabilidade; não corrige sozinha a tela preta.
 - Não declarar GoldenEye funcional até verificar frames originados da ROM real.
 
-## 57. Diagnóstico contínuo durante tela preta — 2026-11-01
+## 87. Diagnóstico contínuo durante tela preta — 2026-11-01
 
 ### Implementação
 - A sessão de ROM agora chama um observador de progresso a cada 50.000 instruções CPU, mesmo quando nenhum frame VI é produzido.
@@ -2495,7 +2413,7 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 - O snapshot de registradores é diagnóstico, não prova de renderização.
 - Nenhuma ROM comercial ou frame real de GoldenEye foi validado por esta alteração.
 
-## 56. Menu inicial unificado em um único controle — 2026-11-01
+## 88. Menu inicial unificado em um único controle — 2026-11-01
 
 ### Interface
 - Removidos do menu inicial os botões separados de CPU, vídeo sintético, pipeline RDP, diagnóstico IPL3, diagnóstico HLE e execução experimental.
@@ -2576,35 +2494,6 @@ Executar CI. Se aprovado, iniciar a auditoria do RDP: parser/command lengths, de
 **Próximo trabalho de código:** começar por decodificadores de estado de imagem/tiles e testes puros, sem ainda alegar renderização texturizada.
 
 
-## Plano sequencial de 1.000 tarefas — RSP → RDP
-
-O trabalho é sequencial, nunca em paralelo por subsistema. A numeração é um limite de planejamento, não uma alegação de que 1.000 correções são conhecidas antecipadamente. Cada item só é concluído após implementação, teste e CI.
-
-### Tarefa 001 — registradores HI/LO e multiplicação escalar RSP
-- Implementados MFHI, MTHI, MFLO, MTLO, MULT e MULTU no interpretador escalar.
-- MULT calcula produto signed de 32×32 bits e separa os 64 bits em HI/LO.
-- MULTU calcula produto unsigned e separa os 64 bits em HI/LO.
-- HI/LO são zerados em reset; movimentos leem/escrevem os registradores especiais.
-- Testes cobrem produto negativo, produto unsigned com bit alto, movimentos HI/LO e leitura de resultados.
-- Limite: DIV/DIVU e semântica/latência da unidade de divisão RSP permanecem para tarefas próprias; não foram simuladas como divisão MIPS genérica.
-- Estado: aguardando CI.
-
-### Sequência de conclusão do RSP
-Próximos blocos: DIV/DIVU e divisão especial RSP; instruções escalares restantes; transferências COP2; ALU vetorial completa (multiplicação/acumulação, comparações, min/max, carry/flags, conversões, reciprocal/sqrt); memória vetorial com casos de alinhamento e wrap; DMA/semáforo/interrupções; scheduler e latência; testes de microcódigo e traces reais. A ordem pode ser ajustada quando traces do jogo mostrarem uma prioridade diferente.
-
-### Sequência de conclusão do RDP
-Só começa após o marco RSP estar validado. Blocos: enquadramento e decodificação de comandos; estado de imagens e tiles; TMEM e carregamentos; sampler e formatos; combiner; triângulos shaded/textured/Z; coverage, depth, blending e antialias; sincronização DPC; testes de referência de pixels e traces reais.
-
-**Regra de encerramento:** não declarar RSP ou RDP concluído enquanto houver instruções/comandos exigidos pelo caminho real do jogo sem implementação ou teste. As 1.000 tarefas não significam 1.000 mudanças arbitrárias; podem ser menos ou mais tarefas técnicas relevantes, com a sequência documentada.
-
-
-### Atualização da execução sequencial
-
-- **Tarefa 001 — HI/LO, MULT e MULTU:** CI concluída com sucesso no workflow `41309965846` (build, testes e upload do APK).
-- **Tarefa 002 — BLTZ e BGEZ:** implementadas comparações assinadas no opcode REGIMM e adicionados testes para condição verdadeira/falsa e execução do delay slot. Aguardando CI antes de iniciar a tarefa 003.
-- Commits da tarefa 002: core `ca67ed9959befb34a3333ff48f8eed4ff937defc`; testes `fdb6a7c972b3255991cb1033edef183dfe4314a7`.
-
-
 ## Registro de continuidade — retomada acelerada (2026-11-01)
 
 ### Correção do teste RSP
@@ -2615,10 +2504,12 @@ Só começa após o marco RSP estar validado. Blocos: enquadramento e decodifica
 - CI Android build #940, run ID `41310733761`: **success**. Os passos Build and test e Upload debug APK terminaram com sucesso.
 - Link: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41310733761
 
-### Diretriz atual do usuário
-- O usuário cancelou explicitamente o plano de 1.000 tarefas. Não continuar numerando trabalho nem tratar aquele plano como ativo.
-- O bloco histórico “Plano sequencial de 1.000 tarefas — RSP → RDP” acima é legado; não deve orientar o trabalho futuro. A sequência numerada foi cancelada.
-- Continuar o desenvolvimento normal, agrupando correções relacionadas quando seguro, com prioridade em RSP/RDP e geração de frames reais de ROM, especialmente GoldenEye 007.
-- Não sacrificar testes nem declarar compatibilidade do GoldenEye sem evidência visual originada da ROM real.
-- Próximo passo: inspecionar o RSP e traces disponíveis para selecionar a lacuna de instrução/microcódigo de maior impacto; não presumir que o teste de desvio seja prova de microcódigo comercial completo.
+### Diretriz atual de continuidade
 
+- Não retomar planos de 1.000 ou 64 tarefas, nem filas artificiais numeradas.
+- Continuar o desenvolvimento normal, escolhendo a próxima lacuna técnica de maior impacto com base no código, testes e traces disponíveis.
+- Agrupar correções relacionadas quando isso mantiver clareza, testes e possibilidade de revisão.
+- Prioridades atuais: integração real SP/OSTask → RSP → DPC/RDP → VI, primeiro frame válido de uma ROM real e correção das lacunas reveladas pelos traces.
+- Antes de alterar código: conferir HEAD e CI da branch `dev/n64-clean-start`; preservar `main`.
+- Depois de cada avanço, registrar data, horário UTC−03:00, commit, arquivos, testes, CI, artefatos, evidências no aparelho e o próximo passo.
+- Não declarar GoldenEye funcional sem evidência visual originada da ROM real.
