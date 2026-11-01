@@ -1,0 +1,106 @@
+package com.jsr.n64android
+
+/**
+ * Own state and first arithmetic subset for the N64 Signal Processor vector unit.
+ *
+ * Lanes are numbered 0..7 in architectural element order. Values are stored as
+ * unsigned 16-bit bit patterns; signed interpretation is applied by arithmetic.
+ * This unit is intentionally separate until the RSP instruction decoder can
+ * dispatch COP2 vector formats without conflating scalar and vector fields.
+ */
+class N64RspVectorUnit {
+    private val registers = Array(32) { IntArray(8) }
+    private val accumulator = LongArray(8)
+
+    /** VCO low/high, VCC low/high and VCE are represented as eight-bit lane masks. */
+    var vcoLow: Int = 0
+        private set
+    var vcoHigh: Int = 0
+        private set
+    var vccLow: Int = 0
+        private set
+    var vccHigh: Int = 0
+        private set
+    var vce: Int = 0
+        private set
+
+    fun readLane(register: Int, lane: Int): Int {
+        checkRegister(register, lane)
+        return registers[register][lane]
+    }
+
+    fun writeLane(register: Int, lane: Int, value: Int) {
+        checkRegister(register, lane)
+        registers[register][lane] = value and 0xFFFF
+    }
+
+    fun readAccumulator(lane: Int): Long {
+        require(lane in 0..7)
+        return accumulator[lane]
+    }
+
+    /** Signed saturated lane addition; consumes VCO-low carry-in and clears VCO. */
+    fun add(destination: Int, left: Int, right: Int) {
+        checkVector(destination); checkVector(left); checkVector(right)
+        for (lane in 0..7) {
+            val carry = (vcoLow ushr lane) and 1
+            val sum = signed(registers[left][lane]) + signed(registers[right][lane]) + carry
+            accumulator[lane] = signExtend48(sum.toLong())
+            registers[destination][lane] = saturateSigned16(sum)
+        }
+        vcoLow = 0
+        vcoHigh = 0
+    }
+
+    /** Signed saturated lane subtraction; consumes VCO-low borrow-in and clears VCO. */
+    fun subtract(destination: Int, left: Int, right: Int) {
+        checkVector(destination); checkVector(left); checkVector(right)
+        for (lane in 0..7) {
+            val borrow = (vcoLow ushr lane) and 1
+            val difference = signed(registers[left][lane]) - signed(registers[right][lane]) - borrow
+            accumulator[lane] = signExtend48(difference.toLong())
+            registers[destination][lane] = saturateSigned16(difference)
+        }
+        vcoLow = 0
+        vcoHigh = 0
+    }
+
+    fun and(destination: Int, left: Int, right: Int) = logical(destination, left, right) { a, b -> a and b }
+    fun or(destination: Int, left: Int, right: Int) = logical(destination, left, right) { a, b -> a or b }
+    fun xor(destination: Int, left: Int, right: Int) = logical(destination, left, right) { a, b -> a xor b }
+    fun nor(destination: Int, left: Int, right: Int) = logical(destination, left, right) { a, b -> (a or b).inv() }
+
+    /** Explicit flag injection is useful for testing carry/borrow data paths. */
+    fun setVco(low: Int, high: Int = 0) {
+        vcoLow = low and 0xFF
+        vcoHigh = high and 0xFF
+    }
+
+    fun setCompareFlags(low: Int, high: Int, extension: Int = 0) {
+        vccLow = low and 0xFF
+        vccHigh = high and 0xFF
+        vce = extension and 0xFF
+    }
+
+    private inline fun logical(destination: Int, left: Int, right: Int, operation: (Int, Int) -> Int) {
+        checkVector(destination); checkVector(left); checkVector(right)
+        for (lane in 0..7) {
+            val result = operation(registers[left][lane], registers[right][lane]) and 0xFFFF
+            registers[destination][lane] = result
+            accumulator[lane] = signExtend48(result.toLong())
+        }
+    }
+
+    private fun checkVector(register: Int) = require(register in 0..31)
+    private fun checkRegister(register: Int, lane: Int) {
+        checkVector(register)
+        require(lane in 0..7)
+    }
+
+    private fun signed(value: Int): Int = value.toShort().toInt()
+    private fun saturateSigned16(value: Int): Int = value.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()) and 0xFFFF
+    private fun signExtend48(value: Long): Long {
+        val masked = value and 0x0000_FFFF_FFFF_FFFFL
+        return if ((masked and (1L shl 47)) != 0L) masked or -0x0001_0000_0000_0000L else masked
+    }
+}
