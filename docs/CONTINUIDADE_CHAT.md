@@ -2450,6 +2450,35 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 ### Próximo passo prioritário
 - Executar GoldenEye com o novo worker e coletar PC/última instrução/erro RSP. Usar o primeiro opcode não suportado como alvo para ampliar o RSP, depois implementar os comandos RDP efetivamente emitidos pelo microcode.
 
+## 58. Auditoria técnica do caminho de vídeo — 2026-11-01
+
+### Conclusão
+- A tela preta é compatível com o estado incompleto do emulador; não há evidência de defeito isolado na View Android.
+- HLE copia 1 MiB da ROM para RDRAM e define contexto inicial simplificado; não executa IPL3/PIF real nem modela calibração completa da RDRAM, caches, CIC/PIF e temporização.
+- R4300 não é implementação completa MIPS III: faltam instruções, semântica integral de delay-slot/exceções, COP0/TLB completo e operações de cache.
+- RSP é interpretador parcial MIPS-I/COP2; seleção de elementos vetoriais é limitada e opcodes não suportados geram exceção. Scheduler é aproximado, não cycle-accurate.
+- SP DMA é síncrono e sem temporização real; SI/Joybus e AI/audio são parciais.
+- DPC é síncrono, limitado a faixas RDRAM alinhadas, sem FIFO assíncrona, XBUS/DMEM DMA ou temporização.
+- RDP suporta fill-cycle e um caminho limitado de triângulo flat RGBA16; faltam texturas, shade, Z, coverage, blending, combiner e antialias completo.
+- VI lê framebuffer a partir de registradores, mas não cria pixels: CPU/RSP/RDP precisam gerar dados válidos na RDRAM.
+- Testes atuais comprovam componentes isolados e padrões sintéticos; não comprovam boot de ROM comercial nem frames de GoldenEye.
+
+### Diagnóstico ampliado
+- Exibe endereço e opcode da última instrução CPU, contadores de MMIO por dispositivo e último acesso MMIO.
+- Exibe exceção CPU/EPC e detalhes de falha TLB quando existentes.
+- Mantém SP, VI, contagem RSP e frames visíveis sem depender de imagem.
+
+### Ordem técnica
+1. Capturar o primeiro ponto de falha real do GoldenEye (opcode/PC CPU, TLB/exceção, MMIO e SP/RSP).
+2. Corrigir boot/CPU conforme os dados, sem adivinhar instruções.
+3. Implementar microcode/RSP exigido pela ROM, guiado por traces.
+4. Completar comandos RDP emitidos pelo microcode e validar pixels na RDRAM.
+5. Validar VI e frames sucessivos; depois áudio e controles.
+
+### Limites
+- A alteração melhora observabilidade; não corrige sozinha a tela preta.
+- Não declarar GoldenEye funcional até verificar frames originados da ROM real.
+
 ## 57. Diagnóstico contínuo durante tela preta — 2026-11-01
 
 ### Implementação
