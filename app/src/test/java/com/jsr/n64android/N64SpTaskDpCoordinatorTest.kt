@@ -52,7 +52,7 @@ class N64SpTaskDpCoordinatorTest {
 
     private fun submitFullSync(bus: N64Bus) {
         val start = 0x40
-        bus.write32(start, (N64DpcCommandProcessor.CMD_FULL_SYNC shl 24))
+        bus.write32(start, (N64DpcCommandProcessor.CMD_FULL_SYNC shl 26))
         bus.write32(start + 4, 0)
         bus.write32(N64Bus.DPC_START_REG, start)
         bus.write32(N64Bus.DPC_END_REG, start + N64DpcCommandProcessor.COMMAND_BYTES)
