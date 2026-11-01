@@ -1778,3 +1778,37 @@ Próximo passo: validar CI; depois implementar registradores vetoriais/accumulat
 2. Revisar e validar byte ordering com fixtures independentes.
 3. Implementar LQV/SQV e LRV/SRV, que são operações frequentes em microcodes.
 4. Criar ciclo de vida mínimo de task SP: ler task descriptor, carregar IMEM/DMEM por DMA, executar RSP até BREAK, reconhecer interrupção SP e encaminhar display-list para DPC.
+
+
+## 32. Primeiro subconjunto RSP LQV/LRV/SQV/SRV — 2026-11-01
+
+### Implementação
+- `N64RspCore.executeVectorMemory` agora reconhece os subopcodes 4 e 5 para LQV/LRV e SQV/SRV.
+- LQV/SQV usam deslocamento signed de 7 bits escalado por 16 e consideram o alinhamento de 16 bytes do endereço efetivo.
+- LQV carrega do endereço efetivo até o fim do bloco de 16 bytes, respeitando o byte inicial `element` e sem sobrescrever o restante do registrador vetorial.
+- LRV carrega os bytes do início do bloco alinhado até antes do endereço efetivo e os posiciona na parte final do registrador vetorial.
+- SQV/SRV implementam os stores complementares, com rotação dos bytes de origem pelo campo `element`.
+- Acesso à DMEM permanece big-endian e com wrap no espaço de 4 KiB.
+
+### Testes adicionados
+- LQV + LRV reconstroem uma janela de 16 bytes iniciada em endereço desalinhado.
+- LQV com elemento 4 preserva os bytes anteriores e posteriores ao trecho carregado.
+- SQV + SRV armazenam a janela desalinhada com rotação de origem.
+- LRV com endereço alinhado não altera o registrador vetorial.
+
+### Commits
+- `b0b8175fc45e2ee76fb1a10c22ee798fedcc3229`: implementação inicial LQV/LRV/SQV/SRV.
+- `f2c762f4b2aaa21cd8bc95fad55aae83e1a84f33`: testes de transferências quad/rest.
+
+### Validação e limites
+- A implementação foi guiada pelo SGI Nintendo 64 RSP Programmer's Guide e por descrições técnicas independentes das regras de alinhamento e elemento.
+- A CI dos commits desta seção deve ser consultada antes de considerar a fatia aprovada.
+- Os testes atuais são fixtures locais do nosso decoder; ainda é necessário comparar casos de borda com um conjunto independente de testes arquiteturais.
+- Permanecem ausentes LPV/LUV/LHV/LFV/LTV e stores correspondentes, além de semântica completa da unidade vetorial e do ciclo de vida de tarefas SP.
+- Nenhuma ROM/jogo foi validado com esta implementação.
+
+### Próximo passo
+1. Confirmar CI e artefato APK.
+2. Revisar casos de borda LRV/SRV com fixtures independentes, sobretudo `element != 0` e alinhamentos extremos.
+3. Avançar para LPV/LUV e SPV/SUV com testes de bytes/lane.
+4. Depois implementar DMA/tarefa SP e conectar execução RSP a display lists reais.
