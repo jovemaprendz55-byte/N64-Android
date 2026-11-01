@@ -170,6 +170,8 @@ class MainActivity : Activity() {
                         appendLine("Index=0x${diagnosticCpu.cop0[0].toUInt().toString(16).uppercase().padStart(8, '0')} Random=0x${diagnosticCpu.cop0[1].toUInt().toString(16).uppercase().padStart(8, '0')} Wired=0x${diagnosticCpu.cop0[6].toUInt().toString(16).uppercase().padStart(8, '0')} PageMask=0x${diagnosticCpu.cop0[5].toUInt().toString(16).uppercase().padStart(8, '0')}")
                         appendLine("Histórico TLBWI/TLBWR:")
                         appendLine(diagnosticCpu.diagnosticTlbWriteHistory.joinToString("\n").ifBlank { "Nenhuma escrita TLB registrada." })
+                        appendLine("Rotina de inicialização PTE (janela 0x700017C0–0x70001840):")
+                        appendLine(diagnosticCpu.diagnosticPteSetupHistory.joinToString("\\n").ifBlank { "Nenhuma instrução capturada nessa janela." })
                         appendLine("Histórico de exceções TLB e vetores:")
                         appendLine(diagnosticCpu.diagnosticTlbExceptionHistory.joinToString("\n").ifBlank { "Nenhuma exceção TLB registrada." })
                         appendLine("Instruções imediatamente anteriores à primeira exceção TLB:")
