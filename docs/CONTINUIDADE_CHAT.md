@@ -1844,3 +1844,36 @@ Próximo passo: validar CI; depois implementar registradores vetoriais/accumulat
 2. Implementar SPV/SUV com as regras específicas de lane/element (não espelhar simplesmente LPV/LUV).
 3. Acrescentar fixtures de fronteira e rotação para os stores packed.
 4. Depois avançar para LHV/SHV e completar o ciclo de tarefas SP/DMA.
+
+
+## 34. Primeiros stores packed SPV/SUV — 2026-11-01
+
+### Implementação
+- `N64RspCore.executeVectorMemory` agora reconhece os subopcodes 6 (SPV) e 7 (SUV) no caminho SWC2, mantendo LPV/LUV no caminho LWC2.
+- SPV/SUV escrevem oito bytes consecutivos em DMEM, com deslocamento signed de 7 bits escalado por 8.
+- O campo `element` percorre uma janela de 16 posições e faz wrap; não foi tratado como espelho simples dos loads packed.
+- Para posições 0..7, SPV extrai o byte alto da lane e SUV extrai bits 14..7. Para posições 8..15, a seleção é invertida.
+- O endereço de cada byte passa pelo helper de DMEM, preservando o wrap de 4 KiB.
+
+### Testes
+- SPV e SUV atravessam a fronteira de elemento 7→8 e comprovam a troca da regra de extração.
+- Os dois stores usam janelas de memória distintas no fixture para evitar que um resultado sobrescreva o outro.
+- Teste adicional verifica offset negativo escalado por oito e wrap do endereço de DMEM em `0xFFF` para `0x000`.
+
+### Referências e limites
+- A regra foi comparada com o SGI Nintendo 64 RSP Programmer's Guide e descrições técnicas independentes de packed stores.
+- As referências descrevem a diferença de mapeamento entre posições 0..7 e 8..15; os testes desta etapa são fixtures próprios do projeto, não um conjunto de testes de hardware.
+- Ainda é necessário validar todos os valores de `element` contra uma suíte independente de instruções RSP.
+- LHV/SHV, LFV/SFV, LTV/STV, SWV, operações vetoriais aritméticas completas, DMA scheduler e microcode continuam pendentes.
+- Nenhuma ROM/jogo foi validado.
+
+### Commits
+- `52d51feb1074cde2b390e4f349261dd8671c36d6`: implementação inicial SPV/SUV.
+- `bed2a17e8f13557020951648e0cca88bddecadb6`: primeiros testes SPV/SUV.
+- `2dbbfbe8afde1559a65671186c56c9a866ede12f` e `642f1066d1793bb735482e5e95f6dfd865e32e44`: ajustes dos fixtures para testar as duas janelas sem sobrescrita.
+
+### Próximo passo
+1. Executar CI e corrigir qualquer falha nos testes.
+2. Validar SPV/SUV com fixtures independentes de todos os elementos, sobretudo 0, 7, 8 e 15.
+3. Implementar LHV/SHV com padrão de acesso stride-2.
+4. Depois avançar para DMA real de IMEM/DMEM e ciclo de vida de task SP.
