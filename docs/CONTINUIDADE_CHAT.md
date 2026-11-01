@@ -1600,3 +1600,11 @@ A partir desta etapa, priorizar fatias verticais pequenas e demonstráveis: gera
 - O edge walker permanece experimental e necessita comparação de cobertura com vetores de referência independentes.
 - Próxima prioridade: testar o novo APK no aparelho; depois ligar a execução de display lists originadas pelo SP/RSP, começando por um microprograma controlado e expandindo até um microcode gráfico comum. Não declarar jogo funcional até uma ROM real produzir o framebuffer.
 - Desenvolvimento integralmente próprio; documentação técnica pode ser usada para compreender os formatos e registradores, sem copiar código-fonte de outros emuladores.
+
+## Atualização da interface inicial — 2026-11-01
+
+- O usuário instalou a build anterior e confirmou visualmente no aparelho a demonstração sintética do triângulo RDP. Isso valida somente o caminho de teste DPC → RDP → RDRAM → VI → ImageView; não é evidência de uma ROM/jogo funcionando.
+- A tela inicial foi reorganizada no commit `15532fe16646573aefeb9e42f7ac57e899f3fed6` na branch `dev/n64-clean-start`.
+- A tela principal agora prioriza um único botão “ADICIONAR JOGO”, mostra o estado da ROM e recolhe os testes internos em “FERRAMENTAS DE DESENVOLVIMENTO”.
+- CPU, padrão de cores, triângulo RDP, diagnóstico IPL3 e diagnóstico HLE continuam acessíveis dentro do painel; os dois diagnósticos dependentes de ROM permanecem desativados até carregar uma ROM.
+- Próximo passo: aguardar/verificar CI e APK desta alteração; instalar no Galaxy A15 e confirmar se o menu recolhido abre/fecha e se os testes continuam acessíveis. Depois, aprimorar biblioteca/lista de ROMs sem alegar suporte de execução antes de testar um jogo real.
