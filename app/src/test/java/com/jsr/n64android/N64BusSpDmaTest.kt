@@ -88,4 +88,25 @@ class N64BusSpDmaTest {
         assertEquals(0, bus.read32(N64Bus.SP_DMEM_BASE))
         assertEquals(0x004, bus.read32(N64Bus.SP_MEM_ADDR_REG))
     }
+
+    @Test
+    fun spReadLengthCanTargetImemAndWrapAtFourKiBBoundary() {
+        val ram = N64Memory(8 * 1024)
+        ram.write8(0x200, 0x11)
+        ram.write8(0x201, 0x22)
+        ram.write8(0x202, 0x33)
+        ram.write8(0x203, 0x44)
+        val bus = N64Bus(ram = ram)
+
+        bus.write32(N64Bus.SP_MEM_ADDR_REG, 0x1FFE)
+        bus.write32(N64Bus.SP_DRAM_ADDR_REG, 0x200)
+        bus.write32(N64Bus.SP_RD_LEN_REG, 3)
+
+        assertEquals(0x11, bus.read8(N64Bus.SP_IMEM_BASE + 0xFFE))
+        assertEquals(0x22, bus.read8(N64Bus.SP_IMEM_BASE + 0xFFF))
+        assertEquals(0x33, bus.read8(N64Bus.SP_IMEM_BASE))
+        assertEquals(0x44, bus.read8(N64Bus.SP_IMEM_BASE + 1))
+        assertEquals(0x1002, bus.read32(N64Bus.SP_MEM_ADDR_REG))
+        assertEquals(0x204, bus.read32(N64Bus.SP_DRAM_ADDR_REG))
+    }
 }
