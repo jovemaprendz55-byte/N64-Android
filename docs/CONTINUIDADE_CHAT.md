@@ -2187,3 +2187,28 @@ Construir o ciclo de vida de task SP: leitura do descriptor em RDRAM, carregamen
 - Rodar CI completo e corrigir qualquer falha.
 - Depois, ligar o estado de conclusão do DPC ao lifecycle SP com DP_WAIT, sem marcar drain antes do processamento real da lista.
 - Expandir a execução RDP a partir dos comandos de textura e triângulo, mantendo testes de framebuffer.
+
+## 45. Coordenação de DP_WAIT com DPC Full Sync — 2026-11-01
+
+### Implementação
+- `N64Bus` agora permite registrar um callback de drain DP síncrono, disparado somente depois que uma lista DPC contendo Full Sync (`0x29`) foi processada e os bits MI DP foram levantados.
+- Criado `N64SpTaskDpCoordinator` para ligar esse evento à máquina `N64SpTaskLifecycle`.
+- O coordenador trata as duas ordens possíveis: Full Sync antes do BREAK da task ou BREAK antes do Full Sync.
+- Com `OS_TASK_DP_WAIT`, a task só passa a COMPLETED quando ambos os eventos tiverem ocorrido. Sem a flag, completa no BREAK e ignora um Full Sync posterior.
+- O scheduler ainda precisa informar explicitamente início do boot microcode, entrada comprovada no task microcode e BREAK arquitetural da task. O coordenador não tenta adivinhar a fronteira pelo PC nem trata qualquer BREAK como conclusão gráfica.
+
+### Testes
+- DP_WAIT com Full Sync depois do BREAK.
+- DP_WAIT com Full Sync antes do BREAK.
+- Task sem DP_WAIT completa no BREAK e não reabre ao chegar Full Sync posterior.
+- Os testes usam uma lista DPC sintética de um comando Full Sync; não são prova de execução de ROM comercial.
+
+### Commits
+- `79f4521`: callback de drain DPC no barramento.
+- `cb3f0ff`: coordenador SP/DP_WAIT.
+- `31a9516`: testes das duas ordens de conclusão.
+
+### Limites e próximo passo
+- O callback representa drain imediato apenas no modelo DPC síncrono atual. Ainda não existe FIFO/latência assíncrona real.
+- O `N64SpTaskRunner` ainda não identifica por si só o ponto de entrada do task microcode em todos os casos, nem chama automaticamente o coordenador. A integração do evento de BREAK ao scheduler deve esperar um critério arquitetural verificável para distinguir boot microcode e task microcode.
+- Próximo passo: modelar a transição de handoff boot→task usando evidência de execução/DMA do RSP, depois conectar o BREAK do task microcode ao coordenador sem heurísticas frágeis.
