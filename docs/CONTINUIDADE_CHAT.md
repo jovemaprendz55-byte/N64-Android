@@ -1236,3 +1236,61 @@ Limitações deliberadas:
 ### Estado da documentação
 - Este documento deve ser atualizado a cada commit significativo, correção, CI e teste físico.
 - O novo chat deve começar lendo esta seção 14, conferir HEAD/CI, e então executar o passo 1 acima. Não recriar o DPC command processor nem os testes já feitos.
+
+
+## 17. Decodificação de comprimentos RDP antes da leitura DPC (2026-10-31)
+
+### Resultado confirmado das etapas anteriores
+- Build #744, run `41255289872`, commit `048b89d850c2b901f2505a573668113a99f82767`: **success**.
+- Build #745, run `41255324500`, commit documental `1d53ff32a4d3164b3d8de29303419709f17ebe3f`: **success**.
+- Portanto, o teste sintético DPC → RDP → RDRAM → VI e sua documentação passaram na CI.
+
+### Problema encontrado na auditoria
+O leitor DPC anterior assumia que cada comando RDP tinha exatamente 8 bytes. Isso é verdadeiro para os comandos de estado usados no subconjunto atual, mas não para todos os comandos do RDP. Triângulos têm payloads de tamanho variável e TextureRectangle/TextureRectangleFlip usam 16 bytes. Sem verificar comprimento, o leitor poderia interpretar palavras de payload de um comando multiword como se fossem novos opcodes.
+
+### Implementação
+Commit: `a5558895b53132a47e40c7190927d2ed4f0ec1ec`.
+
+Arquivos:
+- Criado `app/src/main/java/com/jsr/n64android/N64RdpCommandLength.kt`.
+- Atualizado `app/src/main/java/com/jsr/n64android/N64DpcCommandProcessor.kt`.
+- Criado `app/src/test/java/com/jsr/n64android/N64RdpCommandLengthTest.kt`.
+- Atualizado `app/src/test/java/com/jsr/n64android/N64DpcCommandProcessorTest.kt`.
+
+Comprimentos reconhecidos:
+- Triângulos 0x08–0x0F: 32, 48, 96, 112, 96, 112, 160 e 176 bytes, respectivamente.
+- TextureRectangle 0x24 e TextureRectangleFlip 0x25: 16 bytes.
+- Demais opcodes: 8 bytes nesta tabela de comprimentos.
+
+Comportamento:
+- O DPC lê o opcode de 6 bits do primeiro word e consulta a tabela antes de avançar.
+- Comandos de 8 bytes continuam sendo enviados ao RDP atual.
+- Comandos multiword reconhecidos são rejeitados com `UnsupportedOperationException` explícita até que seus payloads e execução sejam implementados.
+- Comando multiword truncado pelo END é rejeitado com mensagem de comprimento insuficiente.
+- Isso impede que os words de payload sejam interpretados como comandos independentes.
+- A implementação **não** decodifica ou rasteriza triângulos, retângulos texturizados ou qualquer comando multiword; apenas identifica o comprimento e recusa a execução com segurança.
+
+Testes:
+- Tabela dos oito comprimentos de triângulos.
+- Comprimento de 16 bytes dos dois comandos TextureRectangle.
+- Comandos de estado suportados com comprimento de 8 bytes.
+- Rejeição de opcode fora de 0..63.
+- DPC rejeita triângulo multiword em vez de interpretar payload como novos comandos.
+- DPC rejeita triângulo truncado pelo END.
+
+### Referências técnicas
+- Project64, tabela `rdp_command_length[64]` e despacho RDP, com os comprimentos dos opcodes 0x08–0x0F e 0x24–0x25: https://github.com/project64/project64/blob/develop/Source/Project64-video/rdp.cpp
+- Uma tabela independente com os mesmos comprimentos está reproduzida em documentação de código N64: https://cocalc.com/github/RishiRecon/exploits/blob/main/misc/emulator/n64/emulator/code/src/gles2n64/src/RDP.c
+- Essas tabelas foram usadas apenas para reconhecer tamanhos; a execução dos comandos continua deliberadamente não implementada.
+
+### CI
+- O commit de código `a5558895b53132a47e40c7190927d2ed4f0ec1ec` disparou um novo workflow após esta atualização; consultar o número/run atual e aguardar **Build and test** antes de considerar esta etapa validada.
+- Nenhum teste físico em aparelho foi feito nesta etapa.
+- Branch permanece `dev/n64-clean-start`; `main` intocada.
+
+### Próximo passo
+1. Verificar CI do commit de código e corrigir falhas se houver.
+2. Após aprovação, registrar o resultado da CI e atualizar o SHA documental.
+3. Antes de implementar comandos multiword, adicionar testes de parsing de stream para todos os comprimentos, limites e ENDs truncados.
+4. Depois implementar o primeiro comando multiword apenas com uma representação de payload explícita e testes; não começar a rasterização de triângulos sem cobrir corretamente interpolantes, clipping, texturas e limites.
+5. Manter a integração DPC/RDP síncrona como modelo experimental, não FIFO completa. Não afirmar que uma ROM é renderizada.
