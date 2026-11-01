@@ -25,6 +25,8 @@ class N64Bus(
     val diagnosticSpWriteHistory = ArrayDeque<String>()
     val diagnosticMmioCounts = linkedMapOf<String, Long>()
     fun setDiagnosticCpuPc(pc: Long) { diagnosticCpuPc = pc }
+    /** Reads SP status for the cooperative scheduler without recording a fake CPU MMIO access. */
+    fun diagnosticSpStatus(): Int = spStatus
     private fun mmioDevice(address: Int): String? = when (address) {
         in SP_REG_BASE until SP_REG_BASE + 0x20, SP_PC_REG -> "SP"
         in DPC_REG_BASE until DPC_REG_BASE + DPC_REG_SIZE -> "DPC"
