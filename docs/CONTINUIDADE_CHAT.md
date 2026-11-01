@@ -2212,3 +2212,33 @@ Construir o ciclo de vida de task SP: leitura do descriptor em RDRAM, carregamen
 - O callback representa drain imediato apenas no modelo DPC síncrono atual. Ainda não existe FIFO/latência assíncrona real.
 - O `N64SpTaskRunner` ainda não identifica por si só o ponto de entrada do task microcode em todos os casos, nem chama automaticamente o coordenador. A integração do evento de BREAK ao scheduler deve esperar um critério arquitetural verificável para distinguir boot microcode e task microcode.
 - Próximo passo: modelar a transição de handoff boot→task usando evidência de execução/DMA do RSP, depois conectar o BREAK do task microcode ao coordenador sem heurísticas frágeis.
+
+## 46. Observação estruturada da conclusão de SP DMA — 2026-11-01
+
+### Objetivo
+Criar uma evidência de hardware observável para a próxima etapa de identificação da transição boot microcode → task microcode. O scheduler precisa saber exatamente qual DMA terminou, sem interpretar strings de diagnóstico nem inferir a transição apenas pelo PC.
+
+### Implementação
+- N64Bus agora expõe SpDmaTransfer, com direção (toSp), endereço inicial em RDRAM, endereço inicial em SP (incluindo seleção DMEM/IMEM), tamanho de bloco, quantidade de blocos e skip entre blocos.
+- transferredBytes informa o total de bytes efetivamente transferidos (blockLength * blockCount).
+- setSpDmaListener registra um observador opcional, chamado somente depois que a transferência síncrona completa e os registradores de endereço são atualizados.
+- A observação cobre DMA RDRAM→SP e SP→RDRAM; não altera a cópia de dados nem o estado de timing/busy do DMA.
+
+### Teste
+- N64BusSpDmaTest valida evento de DMA RDRAM→IMEM com dois blocos, skip entre blocos, endereços, dimensões e conteúdo efetivamente copiado.
+- A fixture comprova que o callback recebe metadados após a cópia, não antes.
+
+### Limites e próximo passo
+- O callback ainda não está ligado ao N64SpTaskRunner ou ao N64SpTaskDpCoordinator.
+- A próxima etapa poderá comparar a transferência observada com descriptor.ucode/descriptor.ucodeSize e exigir evidência de execução a partir do IMEM carregado antes de marcar TASK_MICROCODE_RUNNING.
+- Um DMA para IMEM isoladamente não prova entrada no task microcode; o scheduler também precisa observar a transferência de controle para o código carregado.
+- BREAK durante boot microcode continua não sendo tratado como conclusão de task.
+- O DMA permanece síncrono e simplificado; não há latência, fila, busy/full real ou timing.
+
+### Commits
+- f319ea89fe5dd802c866ad63237592161c43f417 — evento estruturado de conclusão SP DMA no barramento.
+- f5d8c044dd47a0e3892049510145a5eae0bc6e60 — teste do evento e da cópia concluída.
+
+### Validação
+- CI acionado pelos commits acima; resultado ainda pendente nesta atualização. Não declarar testes/build aprovados até confirmar o workflow.
+- Nenhuma ROM comercial ou imagem originada de jogo foi validada nesta etapa.
