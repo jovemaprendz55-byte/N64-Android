@@ -2574,3 +2574,25 @@ Executar CI. Se aprovado, iniciar a auditoria do RDP: parser/command lengths, de
 5. Validar a lista de comandos realmente emitida pelo RSP do GoldenEye. Sem trace de ROM, não declarar que esta ordem cobre todos os comandos do jogo.
 
 **Próximo trabalho de código:** começar por decodificadores de estado de imagem/tiles e testes puros, sem ainda alegar renderização texturizada.
+
+
+## Plano sequencial de 1.000 tarefas — RSP → RDP
+
+O trabalho é sequencial, nunca em paralelo por subsistema. A numeração é um limite de planejamento, não uma alegação de que 1.000 correções são conhecidas antecipadamente. Cada item só é concluído após implementação, teste e CI.
+
+### Tarefa 001 — registradores HI/LO e multiplicação escalar RSP
+- Implementados MFHI, MTHI, MFLO, MTLO, MULT e MULTU no interpretador escalar.
+- MULT calcula produto signed de 32×32 bits e separa os 64 bits em HI/LO.
+- MULTU calcula produto unsigned e separa os 64 bits em HI/LO.
+- HI/LO são zerados em reset; movimentos leem/escrevem os registradores especiais.
+- Testes cobrem produto negativo, produto unsigned com bit alto, movimentos HI/LO e leitura de resultados.
+- Limite: DIV/DIVU e semântica/latência da unidade de divisão RSP permanecem para tarefas próprias; não foram simuladas como divisão MIPS genérica.
+- Estado: aguardando CI.
+
+### Sequência de conclusão do RSP
+Próximos blocos: DIV/DIVU e divisão especial RSP; instruções escalares restantes; transferências COP2; ALU vetorial completa (multiplicação/acumulação, comparações, min/max, carry/flags, conversões, reciprocal/sqrt); memória vetorial com casos de alinhamento e wrap; DMA/semáforo/interrupções; scheduler e latência; testes de microcódigo e traces reais. A ordem pode ser ajustada quando traces do jogo mostrarem uma prioridade diferente.
+
+### Sequência de conclusão do RDP
+Só começa após o marco RSP estar validado. Blocos: enquadramento e decodificação de comandos; estado de imagens e tiles; TMEM e carregamentos; sampler e formatos; combiner; triângulos shaded/textured/Z; coverage, depth, blending e antialias; sincronização DPC; testes de referência de pixels e traces reais.
+
+**Regra de encerramento:** não declarar RSP ou RDP concluído enquanto houver instruções/comandos exigidos pelo caminho real do jogo sem implementação ou teste. As 1.000 tarefas não significam 1.000 mudanças arbitrárias; podem ser menos ou mais tarefas técnicas relevantes, com a sequência documentada.
