@@ -172,6 +172,8 @@ class MainActivity : Activity() {
                         appendLine(diagnosticCpu.diagnosticTlbWriteHistory.joinToString("\n").ifBlank { "Nenhuma escrita TLB registrada." })
                         appendLine("Histórico de exceções TLB e vetores:")
                         appendLine(diagnosticCpu.diagnosticTlbExceptionHistory.joinToString("\n").ifBlank { "Nenhuma exceção TLB registrada." })
+                        appendLine("Instruções após exceções TLB e amostras do loop:")
+                        appendLine(diagnosticCpu.diagnosticTlbInstructionHistory.joinToString("\n").ifBlank { "Nenhuma instrução capturada." })
                         appendLine("Snapshot TLB no primeiro fault:")
                         appendLine(diagnosticCpu.lastTlbEntrySnapshot)
                     }
