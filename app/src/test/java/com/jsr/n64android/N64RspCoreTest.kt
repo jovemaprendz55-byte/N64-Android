@@ -13,6 +13,10 @@ class N64RspCoreTest {
         (0x12 shl 26) or ((0x10 or element) shl 21) or (vt shl 16) or
             (vs shl 11) or (vd shl 6) or function
 
+    private fun cop2Move(kind: Int, rt: Int, vectorRegister: Int, element: Int = 0) =
+        (0x12 shl 26) or (kind shl 21) or (rt shl 16) or
+            (vectorRegister shl 11) or (element shl 7)
+
     private fun setup(vararg instructions: Int): Pair<N64Bus, N64RspCore> {
         val bus = N64Bus()
         bus.write32(N64Bus.SP_STATUS_REG, N64Bus.SP_STATUS_CMD_CLR_HALT)
