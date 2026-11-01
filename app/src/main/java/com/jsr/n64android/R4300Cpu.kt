@@ -939,6 +939,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         if (diagnosticTlbWriteHistory.size > 64) diagnosticTlbWriteHistory.removeAt(0)
     }
 
+    /** Complete, side-effect-free dump of all initialized architectural TLB entries. */
+    fun diagnosticFullTlbSnapshot(): String = snapshotTlbEntriesForDiagnostic()
+
     private fun snapshotTlbEntriesForDiagnostic(): String {
         val lines = mutableListOf<String>()
         for (index in 0 until R4300Tlb.ENTRY_COUNT) {
