@@ -3473,3 +3473,38 @@ A captura ampliada já está na branch `dev/n64-clean-start`, mas este Log não 
 5. Inspecionar o segundo laço de stores byte em `0x7000181C–0x70001850` e sua relação com `PTEBase=0x7FC65BF0`.
 6. Investigar a anomalia de PADDR repetido no watchpoint de destino.
 7. Manter TLB Valid/PFN, SP HALT e DPC sem alterações artificiais. Nenhuma alteração foi feita em `main`.
+
+
+## 26. Ampliação da captura para auxiliares e rotinas PI DMA — 2026-11-01
+
+### Alterações implementadas na branch dev/n64-clean-start
+- `R4300Cpu.kt`: a captura de caminho agora inclui as janelas:
+  - `0x70004D20–0x70004D80`
+  - `0x70004DE0–0x70004E10`
+  - `0x70004EE0–0x70004F20`
+  - `0x7000D6D0–0x7000D790` (alvo chamado pela função `0x70005B60`)
+  - `0x7000DDD0–0x7000DE30`
+  - `0x70010B20–0x70010B80`
+  - `0x7000F6A0–0x7000F700`
+  - Mantidas as janelas anteriores de retorno, `0x70004E2C–0x70004EAC` e `0x70005B60–0x70005D60`.
+- Capacidade do histórico `diagnosticCallPathHistory` aumentada de 256 para 512 snapshots para reduzir perda de instruções nas novas janelas.
+- `R4300CpuTest.kt`: teste `capturesNewHelperAndPiDmaFunctionWindows` verifica captura nos sete novos intervalos.
+- `MainActivity.kt`: título da seção COPIAR LOGS atualizado para indicar captura de auxiliares e PI DMA.
+- Commits:
+  - `0065cef0800913b9d8b869b996a04f6855b3a33d` — janelas e capacidade.
+  - `f55ec3ce88c861924302a4e6af8c69599960af13` — teste das novas janelas.
+  - `a8c4598bc70a8efc141b14971026df7a6e6f331a` — título do relatório.
+- CI observada no momento do registro:
+  - Run #1063 (`41341147354`) para o commit de código `0065cef...`: build/test ainda em execução.
+  - Run #1064 (`41341171137`) para o commit de teste `f55ec3c...`: build/test ainda em execução.
+  - O commit da UI foi enviado após esses dois commits; não declarar CI final nem APK até verificar execução correspondente ao HEAD.
+- Nenhum código de emulação foi alterado: somente instrumentação diagnóstica, teste e rótulo do relatório.
+- Nenhuma alteração em `main`.
+
+### Objetivo da próxima captura
+1. Instalar somente o APK produzido por uma CI bem-sucedida do HEAD que contenha os três commits acima.
+2. Executar a mesma ROM e copiar o Log.
+3. Decodificar a rotina `0x7000D6D0`, que recebe A0=`0x800636F0`, A1=`0x800636E8` e A2=1.
+4. Decodificar `0x70004D20`, `0x70004DE0` e `0x70004EE0`, para determinar o papel dos buffers `0x80020000`, `0x800287B0` e `0x800232E0`.
+5. Examinar `0x70010B20`, `0x7000F6A0` e `0x7000DDD0` em conjunto com o DMA PI observado `CART 0x10034B30 -> DRAM 0x340000, 0x2000 bytes`.
+6. Continuar sem forçar TLB Valid/PFN, sem desabilitar SP HALT e sem inventar OSTask ou mapeamentos VA->PA.
