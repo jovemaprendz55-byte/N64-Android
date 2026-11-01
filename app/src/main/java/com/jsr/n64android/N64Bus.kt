@@ -145,7 +145,7 @@ class N64Bus(
     private fun recordPteTableWrite(address: Int, value: Int) {
         if (address !in 0x5DBF0 until 0x5E3F0) return
         diagnosticPteWriteCount++
-        if (diagnosticPteWriteHistory.size >= 2048) diagnosticPteWriteHistory.removeFirst()
+        if (diagnosticPteWriteHistory.size >= 6144) diagnosticPteWriteHistory.removeFirst()
         val instruction = diagnosticCpuInstructionWord
         val context = if (instruction != null) {
             " INST=0x${instruction.toUInt().toString(16).uppercase().padStart(8, '0')}" +
