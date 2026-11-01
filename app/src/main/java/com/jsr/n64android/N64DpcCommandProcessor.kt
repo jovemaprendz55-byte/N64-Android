@@ -22,7 +22,8 @@ class N64DpcCommandProcessor(
         val endAddressExclusive: Int,
         val commandsProcessed: Int,
         val rectanglesFilled: Int,
-        val pixelsWritten: Int
+        val pixelsWritten: Int,
+        val trianglesRasterized: Int = 0
     )
 
     init {
@@ -63,25 +64,15 @@ class N64DpcCommandProcessor(
             rdramSize = rdramSize,
             maxCommandBytes = maxCommandBytes
         )
-        // Parse and validate the entire stream before dispatching any supported
-        // command. Multiword payload is now preserved, but execution remains unsupported.
-        val commands = packets.map { packet ->
-            if (!packet.isSingleWord) {
-                throw UnsupportedOperationException(
-                    "RDP command 0x${packet.opcode.toString(16)} requires ${packet.byteLength} bytes; " +
-                        "multiword command execution is not implemented."
-                )
-            }
-            packet.firstWord
-        }
-
-        val rdpResult = rdp.execute(commands)
+        // The parser frames and validates every complete packet before any RDP command runs.
+        val rdpResult = rdp.executePackets(packets)
         return Result(
             startAddress = startAddress,
             endAddressExclusive = endAddressExclusive,
             commandsProcessed = rdpResult.commandsProcessed,
             rectanglesFilled = rdpResult.rectanglesFilled,
-            pixelsWritten = rdpResult.pixelsWritten
+            pixelsWritten = rdpResult.pixelsWritten,
+            trianglesRasterized = rdpResult.trianglesRasterized
         )
     }
 
