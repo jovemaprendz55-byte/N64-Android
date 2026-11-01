@@ -53,7 +53,7 @@ class N64Bus(
     /** Returns a side-effect-free snapshot of implemented device register state. */
     fun diagnosticDeviceSnapshot(): List<String> = buildList {
         add("SP: MEM_ADDR=0x${spMemAddress.toUInt().toString(16).uppercase()} DRAM_ADDR=0x${spDramAddress.toUInt().toString(16).uppercase()} STATUS=0x${spStatus.toUInt().toString(16).uppercase()} PC=0x${spPc.toUInt().toString(16).uppercase()} SEMAPHORE=0x${spSemaphore.toUInt().toString(16).uppercase()}")
-        add("MI: INIT_MODE=0x${miInitMode.toUInt().toString(16).uppercase()} INTR_MASK=0x${miInterruptMask.toUInt().toString(16).uppercase()} INTR=0x00000000")
+        add("MI: INIT_MODE=0x${miInitMode.toUInt().toString(16).uppercase()} INTR_MASK=0x${miInterruptMask.toUInt().toString(16).uppercase()} INTR=0x${miInterrupts.toUInt().toString(16).uppercase()}")
         add("PI: DRAM_ADDR=0x${piDramAddress.toUInt().toString(16).uppercase()} CART_ADDR=0x${piCartAddress.toUInt().toString(16).uppercase()} STATUS=0x${piStatus.toUInt().toString(16).uppercase()}")
         add("AI: DRAM_ADDR=0x${aiDramAddress.toUInt().toString(16).uppercase()} CONTROL=0x${aiControl.toUInt().toString(16).uppercase()} DACRATE=0x${aiDacRate.toUInt().toString(16).uppercase()} BITRATE=0x${aiBitRate.toUInt().toString(16).uppercase()} LEN=0 STATUS=0")
         add("SI: DRAM_ADDR=0x${siDramAddress.toUInt().toString(16).uppercase()} PIF_RD=0x${siPifReadAddress.toUInt().toString(16).uppercase()} PIF_WR=0x${siPifWriteAddress.toUInt().toString(16).uppercase()} STATUS=0x${siStatus.toUInt().toString(16).uppercase()}")
@@ -118,6 +118,7 @@ class N64Bus(
     // Minimal MIPS Interface state. Interrupt sources are not yet driven by emulated devices.
     private var miInitMode = 0
     private var miInterruptMask = 0
+    private var miInterrupts = 0
     // Minimal RI register state; these values are placeholders, not full RDRAM timing emulation.
     private val riRegisters = IntArray(RI_REGISTER_COUNT).also { it[RI_SELECT_OFFSET / 4] = RI_SELECT_RESET }
     // SI uses a 64-byte PIF RAM window and synchronous DMA; Joybus processing/timing remain unimplemented.
@@ -264,7 +265,7 @@ class N64Bus(
             PI_STATUS_REG -> return recordMmioRead(address, piStatus)
             MI_INIT_MODE_REG -> return recordMmioRead(address, miInitMode)
             MI_VERSION_REG -> return recordMmioRead(address, MI_VERSION_VALUE)
-            MI_INTR_REG -> return recordMmioRead(address, 0)
+            MI_INTR_REG -> return recordMmioRead(address, miInterrupts)
             MI_INTR_MASK_REG -> return recordMmioRead(address, miInterruptMask)
             in RI_REG_BASE until RI_REG_BASE + RI_REG_SIZE -> return recordMmioRead(address, riRegisters[(address - RI_REG_BASE) / 4])
             SI_DRAM_ADDR_REG -> return recordMmioRead(address, siDramAddress)
@@ -562,6 +563,10 @@ class N64Bus(
     /** Records the architectural effect of an RSP BREAK instruction. */
     fun signalSpBreak() {
         spStatus = spStatus or SP_STATUS_HALT or SP_STATUS_BROKE
+        if ((spStatus and SP_STATUS_INTR_BREAK) != 0) {
+            spStatus = spStatus or SP_STATUS_INTR
+            miInterrupts = miInterrupts or MI_INTR_SP
+        }
     }
 
     /** Applies the SP_STATUS write-one command bits to the readable status bits. */
@@ -569,8 +574,14 @@ class N64Bus(
         if ((command and SP_STATUS_CMD_CLR_HALT) != 0) spStatus = spStatus and SP_STATUS_HALT.inv()
         if ((command and SP_STATUS_CMD_SET_HALT) != 0) spStatus = spStatus or SP_STATUS_HALT
         if ((command and SP_STATUS_CMD_CLR_BROKE) != 0) spStatus = spStatus and SP_STATUS_BROKE.inv()
-        if ((command and SP_STATUS_CMD_CLR_INTR) != 0) spStatus = spStatus and SP_STATUS_INTR.inv()
-        if ((command and SP_STATUS_CMD_SET_INTR) != 0) spStatus = spStatus or SP_STATUS_INTR
+        if ((command and SP_STATUS_CMD_CLR_INTR) != 0) {
+            spStatus = spStatus and SP_STATUS_INTR.inv()
+            miInterrupts = miInterrupts and MI_INTR_SP.inv()
+        }
+        if ((command and SP_STATUS_CMD_SET_INTR) != 0) {
+            spStatus = spStatus or SP_STATUS_INTR
+            miInterrupts = miInterrupts or MI_INTR_SP
+        }
         if ((command and SP_STATUS_CMD_CLR_SSTEP) != 0) spStatus = spStatus and SP_STATUS_SSTEP.inv()
         if ((command and SP_STATUS_CMD_SET_SSTEP) != 0) spStatus = spStatus or SP_STATUS_SSTEP
         if ((command and SP_STATUS_CMD_CLR_INTR_BREAK) != 0) spStatus = spStatus and SP_STATUS_INTR_BREAK.inv()
@@ -687,6 +698,12 @@ class N64Bus(
         const val MI_INTR_REG = MI_REG_BASE + 0x08
         const val MI_INTR_MASK_REG = MI_REG_BASE + 0x0C
         const val MI_VERSION_VALUE = 0x02020102
+        const val MI_INTR_SP = 1 shl 0
+        const val MI_INTR_SI = 1 shl 1
+        const val MI_INTR_AI = 1 shl 2
+        const val MI_INTR_VI = 1 shl 3
+        const val MI_INTR_PI = 1 shl 4
+        const val MI_INTR_DP = 1 shl 5
         const val MI_INIT_MODE_INIT = 1 shl 7
         const val MI_INIT_MODE_EBUS = 1 shl 8
         const val MI_INIT_MODE_DP_INTR = 1 shl 11
