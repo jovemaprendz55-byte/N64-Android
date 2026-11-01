@@ -1963,7 +1963,7 @@ Construir o ciclo de vida de task SP: leitura do descriptor em RDRAM, carregamen
 4. Auditar o caminho RSP atual: decoder, vetores, loads/stores, BREAK e limitações explícitas. **Concluída nesta rodada.**
 5. Auditar o caminho DPC/RDP/VI existente e identificar onde ainda há execução isolada sem ligação com ROM. **Concluída nesta rodada.**
 6. Definir contrato mínimo de task SP: descriptor, origem/destino, tamanhos, flags e endereços de microcode/display-list, conforme evidência arquitetural. **Concluída: decoder OSTask de 64 bytes + testes de offsets e limites.**
-7. Definir estados e transições de task: idle, carregamento DMA, execução, BREAK, conclusão, interrupção e erro. **Planejada.**
+7. Definir estados e transições de task: idle, carregamento DMA, execução, BREAK, conclusão, interrupção e erro. **Concluída como modelo determinístico isolado, com testes; ainda não conectado ao hardware.**
 8. Criar testes de integração do ciclo SP usando descriptor sintético, sem alegar compatibilidade de jogo. **Planejada.**
 
 ### Grupo 2 — RSP e transferências vetoriais (tarefas 9–16)
@@ -2071,5 +2071,34 @@ Construir o ciclo de vida de task SP: leitura do descriptor em RDRAM, carregamen
 ### Limites e próximo passo
 - Ainda não há validação de type, flags, ponteiros, tamanhos ou conteúdo dos buffers.
 - O boot microcode deve ser executado para carregar o microcode de tarefa e os dados; não pular diretamente para `ucode`.
-- Tarefa 6 concluída. Tarefas 7 e 8 pendentes.
+- Tarefas 6 e 7 concluídas. Tarefa 7 é somente o modelo de estado; não está conectada ao barramento/RSP. Tarefa 8 pendente.
 - CI dos commits de código deve ser confirmada antes de integrar scheduler ou alterar estado SP.
+
+
+## 41. Modelo explícito de estados da task SP — 2026-11-01
+
+### Implementação
+- Criado `N64SpTaskLifecycle.kt` como máquina de estados determinística e sem efeitos colaterais de hardware.
+- Estados: IDLE, PREPARING, BOOT_MICROCODE_RUNNING, TASK_MICROCODE_RUNNING, WAITING_FOR_DP, COMPLETED e FAILED.
+- Transições explícitas: begin, startBootMicrocode, startTaskMicrocode, onTaskBreak, onDpDrainCompleted, fail e reset.
+- `OS_TASK_DP_WAIT` foi definido como `0x0002`, conforme `sptask.h`.
+- A task com DP_WAIT só chega a COMPLETED após BREAK e confirmação de drain do DP. Sem DP_WAIT, completa após BREAK.
+- O componente não executa DMA/RSP, não altera registradores SP/MI/DPC e não afirma que uma task real já foi processada.
+
+### Testes
+- Caminho completo com DP_WAIT.
+- Conclusão imediata após BREAK sem DP_WAIT.
+- Falha, reset e reutilização.
+- Rejeição de transições fora de ordem e de segundo begin enquanto ativo.
+
+### Commits
+- `14d30e66a1eb51034ea1cd30bc21ead74cdf8cd4`: modelo de estados.
+- `92c0e467a66cae1caebbd1f8b5ede31931704dc3`: testes de transição.
+
+### Base arquitetural
+- `OS_TASK_DP_WAIT = 0x0002` e flags do OSTask: sptask.h, documentação SDK: https://git.noest.dev/gijs/ogrebattle64/src/commit/f38c7a0f3e0d386efbf6d6bb3b344baebd98c195/include/ultra/PR/sptask.h
+- A documentação N64 indica que a conclusão de SP gera interrupção/evento SP e que gráficos podem aguardar o DP: https://ultra64.ca/files/documentation/online-manuals/functions_reference_manual_2.0i/os/OSTask.html
+
+### Limites e próximo passo
+- O modelo ainda não está ligado ao executor RSP, ao SP_STATUS, ao MI_INTR ou ao DPC.
+- Tarefa 7 concluída como modelo/testes isolados; tarefa 8 exige o primeiro teste de integração com barramento, descriptor, DMA, execução RSP e BREAK.
