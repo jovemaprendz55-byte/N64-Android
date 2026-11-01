@@ -49,6 +49,10 @@ class MainActivity : Activity() {
             text = "Testar vídeo (padrão de cores)"
             setOnClickListener { runVideoTest() }
         }
+        val trianglePipelineButton = Button(this).apply {
+            text = "Renderizar triângulo (RDP → RDRAM → VI)"
+            setOnClickListener { runTrianglePipelineDemo() }
+        }
         romTraceButton = Button(this).apply {
             text = "Executar diagnóstico de instruções da ROM (IPL3 direto)"
             setOnClickListener { runRomInstructionDiagnostic() }
@@ -72,6 +76,7 @@ class MainActivity : Activity() {
             addView(chooseRom)
             addView(cpuDiagnostic)
             addView(videoTestButton)
+            addView(trianglePipelineButton)
             addView(romTraceButton)
             addView(hleBootButton)
         }
@@ -1236,7 +1241,28 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun showVideoTestPage(frame: N64VideoFrame) {
+    private fun runTrianglePipelineDemo() {
+        try {
+            val result = N64TrianglePipelineDemo.createFrame()
+            showVideoTestPage(
+                result.frame,
+                title = "TRIÂNGULO RDP SINTÉTICO",
+                description = "Pipeline interno executado: spans do rasterizador → pixels RGBA5551 escritos na RDRAM → captura pelos registradores VI → imagem Android. " +
+                    "Spans: ${result.spansWritten}; pixels escritos: ${result.pixelsWritten}. " +
+                    "Isto ainda não é uma ROM nem um jogo emulado."
+            )
+        } catch (error: Exception) {
+            status.text = "Falha no pipeline de triângulo: ${error.javaClass.simpleName}: ${error.message}"
+            setContentView(mainLayout)
+        }
+    }
+
+    private fun showVideoTestPage(
+        frame: N64VideoFrame,
+        title: String = "TESTE DE VÍDEO",
+        description: String = "Imagem sintética lida pelos registradores VI e exibida pelo Android. " +
+            "Isto valida o caminho de vídeo de teste, não a renderização de um jogo."
+    ) {
         val bitmap = Bitmap.createBitmap(
             frame.argbPixels,
             frame.width,
@@ -1247,15 +1273,14 @@ class MainActivity : Activity() {
             setImageBitmap(bitmap)
             adjustViewBounds = true
             scaleType = ImageView.ScaleType.FIT_CENTER
-            contentDescription = "Padrão de cores de teste capturado pelo VI do Nintendo 64"
+            contentDescription = title
         }
         val details = TextView(this).apply {
-            text = "TESTE DE VÍDEO\n" +
-                "Framebuffer: ${frame.width}x${frame.height}\n" +
-                "Formato: RGBA5551 (16 bits)\n" +
-                "Origem RDRAM: 0x${frame.origin.toString(16).uppercase()}\n\n" +
-                "Imagem sintética lida pelos registradores VI e exibida pelo Android. " +
-                "Isto valida o caminho de vídeo de teste, não a renderização de um jogo."
+            text = title + "\\n" +
+                "Framebuffer: ${frame.width}x${frame.height}\\n" +
+                "Formato: RGBA5551 (16 bits)\\n" +
+                "Origem RDRAM: 0x${frame.origin.toString(16).uppercase()}\\n\\n" +
+                description
             textSize = 14f
             setPadding(16, 16, 16, 16)
         }
