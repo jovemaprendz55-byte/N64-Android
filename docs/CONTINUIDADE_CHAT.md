@@ -3060,3 +3060,46 @@ Este protocolo passa a valer para todas as próximas etapas do projeto. A finali
 - Seções 11–14 registram a investigação da tabela de páginas/TLB, a instrumentação, a leitura do Log e a validação do APK.
 - Próxima investigação técnica permanece: origem do limite `$2` no laço de inicialização e decodificação do handler que forma `EntryLo0=0x1` e `EntryLo1=0x41`.
 - Este protocolo não afirma que o defeito TLB foi corrigido; ele formaliza como cada passo futuro será documentado.
+
+
+## 16. Decodificação completa do refill TLB — 2026-11-01
+
+### Evidência nova do Log
+Fonte: `main/Log`, blob SHA `b9a3f9f1da2bfaf7fa7801a67ab3bfcd2c7b81d1`, seção `Instruções após a primeira exceção TLB` e histórico de acessos à memória do handler.
+
+Sequência executada no vetor de refill:
+
+| PC | Instrução | Decodificação | Efeito observado |
+|---|---|---|---|
+| `0x80000000` | `0x40802800` | `MTC0 $zero, PageMask` | PageMask recebe zero |
+| `0x80000008` | `0x401A2000` | `MFC0 $k0, Context` | $k0 recebe `0x003F8000` |
+| `0x8000000C` | `0x3C1B8006` | `LUI $k1, 0x8006` | prepara endereço-base |
+| `0x80000010` | `0x277BE4A4` | `ADDIU $k1, $k1, -0x1B5C` | $k1 passa a `0xFFFFFFFF8005E4A4` |
+| `0x80000014` | `0x8F7B0000` | `LW $k1, 0($k1)` | lê `0x7FC65BF0` (PTEBase) |
+| `0x80000018` | `0x035BD021` | `ADDU $k0, $k0, $k1` | soma BadVPN2 + PTEBase = `0xFFFFFFFF8005DBF0` |
+| `0x8000001C` | `0x8F5B0000` | `LW $k1, 0($k0)` | lê somente a palavra `0x00000001` em PA `0x0005DBF0` |
+| `0x80000020` | `0x409B1000` | `MTC0 $k1, EntryLo0` | EntryLo0 recebe `0x1` |
+| `0x80000028` | `0x277B0040` | `ADDIU $k1, $k1, 0x40` | $k1 passa de `0x1` para `0x41` |
+| `0x8000002C` | `0x409B1800` | `MTC0 $k1, EntryLo1` | EntryLo1 recebe `0x41` |
+| `0x80000034` | `0x42000006` | `TLBWR` | grava a entrada no índice 15 |
+
+Os endereços acima são apresentados em 32 bits para facilitar a leitura; o PC completo do log está em KSEG0 (`0xFFFFFFFF80000000` etc.).
+
+### Conclusão corrigida
+- **Origem de `EntryLo1=0x41` agora comprovada:** o handler não lê uma segunda PTE. Ele carrega `0x1`, soma `0x40` e escreve `0x41` no EntryLo1. Isso constrói PFNs consecutivos para as duas metades do par de páginas.
+- EntryLo usa bit 0 como G, bit 1 como V e bits 25:6 como PFN. Assim `0x1` e `0x41` têm G=1 e V=0; PFNs 0 e 1. As duas metades são inválidas, o que explica o TLB INVALID no fetch seguinte.
+- O handler soma o BadVPN2 de Context (`0x003F8000`) ao PTEBase lido de `0x8005E4A4` (`0x7FC65BF0`), chegando exatamente ao endereço da palavra `0x5DBF0` que a rotina de inicialização escreveu.
+- O word zero escrito pelo laço em `0x5DBF4` não é lido por essa sequência de refill. Não atribuir a ele a formação de EntryLo1.
+- **Hipótese anterior refutada:** o refill leria uma segunda PTE em `0x5DC30` para formar EntryLo1. O log atual mostra uma única leitura de dados da PTE (`LW` em `0x5DBF0`); `0x41` vem da soma imediata `+0x40`. Preservar a anotação histórica anterior, mas considerar esta decodificação como a conclusão atual baseada nas instruções.
+
+### Limite restante na captura da inicialização
+- A seção PTE exporta no máximo 512 instruções e mantém apenas as mais recentes. O log começa em `$3=0xFFFFFFFF8005DF50`, não no início do laço.
+- A sequência visível mostra `ADDIU $3,$3,0x10`, `SLTU $1,$3,$2`, `SW $4,-16($3)`, `BNE $1,$zero,-4` e o store no delay slot. Depois, a rotina passa a outro laço de stores byte.
+- Ainda falta capturar o início da janela e o valor de `$2`, para calcular o limite e a extensão total da inicialização sem extrapolar.
+- Próxima melhoria de diagnóstico: preservar um pequeno prefixo da captura PTE e um sufixo recente, incluir `$2` explicitamente e evitar que o histórico circular descarte a configuração inicial. Manter a quantidade total limitada.
+
+### Estado funcional e segurança
+- O refill foi decodificado; a causa raiz do valor inválido ainda não foi determinada.
+- Não mudar a regra arquitetural de V, não fabricar PFN, não modificar o handler da ROM e não contornar a exceção.
+- SP continua em HALT, RSP em zero instruções, DPC em zero e VI em zero frames no Log analisado.
+- Branch de trabalho: `dev/n64-clean-start`; `main` foi usada somente como fonte do Log e não foi modificada nesta etapa.
