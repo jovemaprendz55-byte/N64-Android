@@ -3567,3 +3567,18 @@ Reduzir a necessidade de pedir vários Logs separados. O botão existente `COPIA
 - O dump da ROM cobre o trecho PI conhecido e não a ROM inteira; o dump RDRAM cobre regiões selecionadas, não toda a RAM.
 - A coleta não consegue revelar estado interno de dispositivos ainda não implementados nem provar execução/renderização que não aconteceu.
 - Ao receber o próximo relatório, verificar primeiro se as seções estão presentes e se os contadores/históricos batem com o caminho observado. Se alguma captura estiver ausente, corrigir a instrumentação antes de pedir outro Log.
+
+
+### Complemento da coleta única
+- Acrescentado `diagnosticCartridgeDump` para exportar os bytes reais da ROM fonte no intervalo PI observado, comparáveis com o dump RDRAM destino.
+- Históricos de escrita RDRAM, destino de boot e acesso à janela de boot agora incluem contador, PC e palavra da instrução, para distinguir amostras repetidas do mesmo endereço e identificar a rotina escritora.
+- Exposto o total exato de acessos à janela de boot.
+- Incluído CIC seed detectado e dump dos 64 bytes de PIF RAM.
+- Ampliado o dump RDRAM para incluir os buffers físicos correspondentes aos endereços virtuais observados: `0x20000`, `0x232E0`, `0x287B0` e `0x636D0`, sem presumir que esses sejam mapeamentos TLB corretos; são apenas regiões físicas explicitamente inspecionadas.
+- Commits complementares:
+  - `4d0e6198527aa81fd2883c596ee593c68f67aa11` — dump da ROM e contexto PC/instrução em watchpoints.
+  - `7e61f47081187f43721326f5a90a73b0920e062a` — formatação do cabeçalho.
+  - `95c53cbc82d60d33e5413d60072463298277f64a` — fonte PI e total de acessos no log.
+  - `b2dcce5babbeeb62ed751c9cce5365ab4c32406b` — testes de ROM e watchpoint.
+  - `e240ebf19be41c6479aad7e95f17571a1f3a22df` — CIC e PIF RAM.
+  - `9f15d429ff2aaa3bd89695d58b3e747b7f36bc67` — buffers e PIF RAM no COPIAR LOGS.
