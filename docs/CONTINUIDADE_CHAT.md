@@ -2341,3 +2341,24 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 
 ### Próximo passo
 - Confirmar CI. Em seguida, implementar derivação explícita da janela horizontal VI_H_START com escala X e integrar a captura a uma apresentação atualizável na tela Android, mantendo a distinção entre frames sintéticos e frames originados de ROM.
+
+
+## 51. VI calcula largura ativa por H_START e X_SCALE — 2026-11-01
+
+### Implementação
+- Adicionados os offsets VI_H_START (0x24) e VI_X_SCALE (0x30).
+- `captureViFrameFromRegisters` agora calcula largura ativa a partir da janela horizontal e da escala X de ponto fixo (1024 = 1.0), além do cálculo vertical já existente (2048 = 1.0).
+- VI_WIDTH permanece como stride em pixels; se a largura calculada ultrapassar o stride ou os limites suportados, a captura automática retorna null em vez de ler memória incorretamente.
+- A captura explícita por altura continua compatível e pode receber outputWidth.
+
+### Testes
+- Largura ativa horizontal menor que VI_WIDTH, com padding de linha ignorado.
+- Janela horizontal vazia retorna null.
+- Fixture de barras de cor atualizada para programar H_START/X_SCALE e continuar produzindo 320x240.
+
+### Limites
+- A fórmula horizontal é uma aproximação de janela ativa/escala; não modela filtros VI, subpixel, serrilhado, serrate, gamma, divot, dither, anti-alias ou scanout em tempo real.
+- Ainda não existe geração contínua de frames nem apresentação de frames originados por ROM comercial.
+
+### Próximo passo
+- Confirmar CI. Depois, adicionar um apresentador de vídeo atualizável para Android que receba frames VI sucessivos sem reconstruir a Activity, e ligar esse apresentador apenas quando a execução real da ROM alimentar RDRAM/VI.
