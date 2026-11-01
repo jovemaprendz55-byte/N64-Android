@@ -3262,3 +3262,48 @@ O histórico imediatamente anterior mostra:
 - O teste foi corrigido para exigir as três linhas e validar o JAL na terceira posição.
 - Commit corretivo do teste: `fdbbfd40b970933ef318584e92f1394a92d59a1b`.
 - O CI do HEAD após esta correção ainda precisa ser confirmado; não declarar a etapa verde até o workflow concluir.
+
+
+## 21. Novo Log com captura real do caminho de chamada — 2026-11-01
+
+### Identificação e estado da execução
+- Arquivo analisado: `main/Log`.
+- Blob SHA: `38c890a19614ce04ccb1927271e2bf860273c939`.
+- ROM em memória: 12.582.912 bytes (12 MiB).
+- CPU: aproximadamente 17.176.185 instruções.
+- HLE: 1.048.576 bytes preparados.
+- RSP: 0 instruções; VI: 0 frames; DPC START/END/CURRENT = 0.
+- Exceção final: TLB INVALID em FETCH, VA/EPC de instrução `0x7F000BD0`.
+- SP_STATUS continua `0x1` (HALT), SP PC `0x0`.
+
+### A captura nova funcionou no aparelho
+O relatório contém a seção `Caminho de chamada para o destino 0x7F000BD0 (JR RA / JAL)`. A sequência observada inclui:
+1. `0x70005D40`: JAL `0x70004E2C`.
+2. `0x70005D48`: JAL `0x70005B60`.
+3. `0x70005D50`: JAL `0x700017E0`, com A0=`0xFFFFFFFF800636F0`, A1=`0xFFFFFFFF800636E8`, A2=1.
+4. A rotina em `0x700017E0` inicializa a região da tabela PTE e retorna por JR RA em `0x70001890`, RA=`0x70005D58`.
+5. O delay slot em `0x70001894` executa `SW $t0, -0x1B5C($at)`, armazenando o PTEBase `0x7FC65BF0` no endereço virtual `0xFFFFFFFF8005E4A4`.
+6. `0x70005D58`: JAL direto para `0x7F000BD0`; no instante anterior ao JAL, RA=`0x70005D58`, T9=`0xFFFFFFFF8005DBF0`, A0=1, A1=`0xFFFFFFFF800636E8`, A2=1, SP=`0xFFFFFFFF803B3868`, S0-S7=0.
+7. `0x70005D5C` é o delay slot (NOP). A busca de instrução em `0x7F000BD0` resulta em TLB MISS e depois TLB INVALID.
+
+### O que isso esclarece — e o que ainda não esclarece
+- A instrumentação registra a chamada real, seus argumentos e os registradores preservados; não é apenas uma reprodução de fixture.
+- O endereço de destino é codificado diretamente na instrução `0x0FC002F4`; T9 não é a origem do destino desse JAL.
+- A tabela de páginas é preparada imediatamente antes da chamada. O primeiro PTE lido pelo handler continua sendo `1`, com V=0; EntryLo0=`1`, EntryLo1=`0x41`, também com V=0.
+- A rotina chamada em `0x700017E0` recebe A0/A1/A2 indicados acima. A rotina que faz o JAL final apresenta A0=1, A1=`0x800636E8`, A2=1. Os nomes/funções semânticas desses argumentos ainda não foram identificados.
+- O fato de o JAL ocorrer imediatamente após a preparação da tabela não prova que o preenchimento de PTE deveria mapear `0x7F000BD0`; ainda é preciso entender a função chamada e a origem do código/segmento.
+- Histórico de DMA do log: não há DMA do SP; há uma transferência PI registrada de CART `0x10034B30` para DRAM `0x340000`, tamanho `0x2000`. Isso, isoladamente, não demonstra que o código esperado em `0x7F000BD0` foi carregado.
+- Não alterar Valid/PFN, não fabricar mapeamento, não desabilitar HALT e não inferir que VI/RSP estão operacionais.
+
+### CI e artefato relacionados à instrumentação
+- CI #1051 (run `41338982038`) — sucesso após corrigir a expectativa do delay slot no teste.
+- CI #1052 (run `41338995106`) — sucesso no HEAD `bf4d675d8ee8c7ef9eea6d56ff6a19d88aa474c6`.
+- Artefato `n64-android-debug-apk`, ID `13096401752`, 983.573 bytes, expira em 2026-11-15 18:55:46 UTC.
+- O novo Log comprova que um APK com a instrumentação foi executado no aparelho; não identifica sozinho o SHA do APK instalado, portanto não atribuir instalação a um artefato específico sem confirmação.
+
+### Próximas investigações
+1. Decodificar a rotina em `0x70005B60` e a cadeia em `0x70004E2C`, para descobrir por que ela prepara a tabela e depois chama `0x7F000BD0`.
+2. Rastrear origem dos argumentos A0/A1/A2 e do valor T9, incluindo leituras de memória que os formaram.
+3. Verificar se existe cópia/relocação do segmento associado a `0x7F000000` antes do JAL; o único DMA PI observado não basta para provar isso.
+4. Capturar bytes/palavras de instrução e dados no destino/segmento antes do salto, se a memória física correspondente puder ser localizada sem assumir um mapeamento virtual.
+5. Manter a hipótese em aberto até evidência; não forçar o TLB para fazer a execução avançar.
