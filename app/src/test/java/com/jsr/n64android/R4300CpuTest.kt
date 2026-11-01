@@ -3719,6 +3719,39 @@ class R4300CpuTest {
     }
 
 
+
+    @Test fun pteSetupTracePreservesInitialPrefixAndRecentTailWithGpr2() {
+        val memory = N64Memory(0x2000)
+        memory.write32(0x17C0, (0x09 shl 26) or (3 shl 21) or (3 shl 16) or 1) // addiu $v1, $v1, 1
+        memory.write32(0x17C4, (0x09 shl 26) or (2 shl 21) or (2 shl 16) or 0xFFFF) // addiu $v0, $v0, -1
+        memory.write32(0x17C8, (0x05 shl 26) or (2 shl 21) or 0xFFFD) // bne $v0, $zero, loop
+        memory.write32(0x17CC, 0) // delay-slot NOP
+
+        val cpu = R4300Cpu(memory)
+        cpu.tlb.write(
+            0,
+            R4300Tlb.Entry(
+                virtualPagePairBase = 0x70000000L,
+                asid = 0,
+                evenPage = R4300Tlb.Page(0, valid = true, dirty = true, global = true),
+                oddPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true)
+            )
+        )
+        cpu.tlbEnabled = true
+        cpu.setProgramCounter(0x700017C0L)
+        cpu.gpr[2] = 200L
+
+        repeat(800) { cpu.step() }
+
+        val trace = cpu.diagnosticPteSetupHistory
+        assertEquals(577, trace.size) // 64 prefix + marker + 512 recent instructions.
+        assertTrue(trace.first().contains("PC=0x700017C0"))
+        assertTrue(trace.first().contains("GPR2=0x00000000000000C8"))
+        assertTrue(trace[64].contains("instruções intermediárias omitidas"))
+        assertTrue(trace.last().contains("PC=0x700017CC"))
+        assertTrue(trace.last().contains("GPR2=0x0000000000000000"))
+    }
+
     @Test fun cop0Mtc0EntryLoClearsReservedHighBits() {
         val memory = N64Memory(32)
         memory.write32(0, (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (2 shl 11)) // MTC0 $t0, EntryLo0
