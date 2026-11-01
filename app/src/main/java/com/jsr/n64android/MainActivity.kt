@@ -25,9 +25,13 @@ class MainActivity : Activity() {
     private var cartridgeRomBytes: ByteArray? = null
     private var romTraceButton: Button? = null
     private var hleBootButton: Button? = null
+    private var playRomButton: Button? = null
     private lateinit var mainLayout: LinearLayout
     @Volatile private var hleStopRequested = false
     @Volatile private var hleWorker: N64ExecutionWorker? = null
+    @Volatile private var romVideoStopRequested = false
+    @Volatile private var romVideoSession: N64RomVideoSession? = null
+    @Volatile private var romVideoThread: Thread? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,6 +47,12 @@ class MainActivity : Activity() {
             text = "＋  ADICIONAR JOGO"
             textSize = 18f
             setOnClickListener { openRomPicker() }
+        }
+        playRomButton = Button(this).apply {
+            text = "▶ EXECUTAR ROM — VÍDEO EXPERIMENTAL"
+            textSize = 15f
+            isEnabled = false
+            setOnClickListener { startRomVideoExecution() }
         }
         val cpuDiagnostic = Button(this).apply {
             text = "Teste interno da CPU"
@@ -105,6 +115,10 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply { bottomMargin = 14 })
+            addView(playRomButton, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = 12 })
             addView(status, LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -134,8 +148,126 @@ class MainActivity : Activity() {
     override fun onDestroy() {
         hleStopRequested = true
         hleWorker?.requestStop()
+        romVideoStopRequested = true
+        romVideoSession?.requestStop()
         super.onDestroy()
     }
+
+
+    /**
+     * Experimental continuous ROM execution path.
+     * HLE prepares the R4300 entry point; the worker then runs CPU instructions
+     * and forwards changed VI frames to the Android presenter. RSP task dispatch
+     * is not yet automatic, so this is a bring-up path, not a playable-game claim.
+     */
+    private fun startRomVideoExecution() {
+        val bus = cartridgeBus
+        if (bus == null) {
+            status.text = "Selecione uma ROM primeiro."
+            return
+        }
+        if (romVideoThread?.isAlive == true) {
+            Toast.makeText(this, "A execução da ROM já está ativa.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        romVideoStopRequested = false
+        playRomButton?.isEnabled = false
+        val frameView = N64VideoPresenterView(this).apply {
+            contentDescription = "Vídeo experimental da ROM Nintendo 64"
+        }
+        val details = TextView(this).apply {
+            text = "Preparando HLE e aguardando frames VI da ROM..."
+            textSize = 14f
+            setPadding(12, 12, 12, 12)
+        }
+        val stopButton = Button(this).apply {
+            text = "PARAR EXECUÇÃO"
+            setOnClickListener {
+                romVideoStopRequested = true
+                romVideoSession?.requestStop()
+                details.text = "Solicitando parada segura entre instruções..."
+            }
+        }
+        val backButton = Button(this).apply {
+            text = "Voltar ao menu"
+            setOnClickListener {
+                romVideoStopRequested = true
+                romVideoSession?.requestStop()
+                setContentView(mainLayout)
+            }
+        }
+        val page = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(12, 12, 12, 12)
+            addView(frameView, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
+            ))
+            addView(details)
+            addView(stopButton)
+            addView(backButton)
+        }
+        setContentView(page)
+
+        val worker = Thread({
+            try {
+                val cpu = R4300Cpu(bus)
+                val boot = N64HleBoot.prepare(bus, cpu)
+                val session = N64RomVideoSession(
+                    bus = bus,
+                    cpu = cpu,
+                    onFrame = { frame ->
+                        frameView.submitFrame(frame)
+                        runOnUiThread {
+                            details.text =
+                                "HLE: ${boot.copiedBytes} bytes preparados" +
+                                "\\nCPU: ${sessionSafeInstructionCount(romVideoSession)} instruções" +
+                                "\\nFrames VI diferentes: ${sessionSafeFrameCount(romVideoSession)}" +
+                                "\\nPC: 0x${cpu.pc.toULong().toString(16).uppercase()}" +
+                                "\\nObservação: execução RSP automática ainda não integrada."
+                        }
+                    }
+                )
+                romVideoSession = session
+                if (romVideoStopRequested) session.requestStop()
+                runOnUiThread {
+                    details.text =
+                        "HLE concluído. CPU executando a ROM..." +
+                        "\\nAguardando o jogo configurar o VI e produzir pixels." +
+                        "\\nRSP automático ainda não integrado."
+                }
+                val result = session.execute()
+                runOnUiThread {
+                    details.text =
+                        "EXECUÇÃO FINALIZADA: ${result.state}" +
+                        "\\nInstruções: ${result.executedInstructions}" +
+                        "\\nFrames VI publicados: ${session.publishedFrameCount()}" +
+                        "\\nPC final: 0x${cpu.pc.toULong().toString(16).uppercase()}" +
+                        (result.failureMessage?.let { "\\nFalha: $it" } ?: "")
+                    playRomButton?.isEnabled = cartridgeBus != null
+                }
+            } catch (error: Throwable) {
+                runOnUiThread {
+                    details.text =
+                        "FALHA NA EXECUÇÃO DA ROM" +
+                        "\\n${error.javaClass.simpleName}: ${error.message ?: "sem detalhes"}" +
+                        "\\nAinda não foi possível iniciar o caminho de vídeo."
+                    playRomButton?.isEnabled = cartridgeBus != null
+                }
+            } finally {
+                romVideoSession = null
+                romVideoThread = null
+            }
+        }, "N64-ROM-VIDEO-CPU")
+        romVideoThread = worker
+        worker.start()
+    }
+
+    private fun sessionSafeInstructionCount(session: N64RomVideoSession?): Long =
+        session?.executedInstructionCount() ?: 0L
+
+    private fun sessionSafeFrameCount(session: N64RomVideoSession?): Long =
+        session?.publishedFrameCount() ?: 0L
 
     private fun runHleBootDiagnostic() {
         val bus = cartridgeBus
@@ -1398,6 +1530,7 @@ class MainActivity : Activity() {
                 cartridgeBus = N64Bus(cartridgeRom = result.rom.bytes)
                 romTraceButton?.isEnabled = true
                 hleBootButton?.isEnabled = true
+                playRomButton?.isEnabled = true
                 val displayName = contentResolver.query(
                     uri,
                     arrayOf(OpenableColumns.DISPLAY_NAME),
@@ -1416,6 +1549,7 @@ class MainActivity : Activity() {
                 cartridgeBus = null
                 romTraceButton?.isEnabled = false
                 hleBootButton?.isEnabled = false
+                playRomButton?.isEnabled = false
                 status.text = result.reason
             }
         }
