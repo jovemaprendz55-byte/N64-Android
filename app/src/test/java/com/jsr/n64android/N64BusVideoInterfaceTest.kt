@@ -44,6 +44,27 @@ class N64BusVideoInterfaceTest {
     }
 
 
+    @Test fun capturesVisibleWidthWithLargerViStride() {
+        val memory = N64Memory(128)
+        val bus = N64Bus(ram = memory)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_STATUS_OFFSET, 2)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_ORIGIN_OFFSET, 0x20)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_WIDTH_OFFSET, 4)
+        memory.write16(0x20, 0xF801)
+        memory.write16(0x22, 0x07C1)
+        memory.write16(0x24, 0xFFFF)
+        memory.write16(0x26, 0xFFFF)
+        memory.write16(0x28, 0x003F)
+        memory.write16(0x2A, 0xF83F)
+
+        val frame = bus.captureViFrame(height = 2, outputWidth = 2)
+
+        assertEquals(2, frame?.width)
+        assertEquals(2, frame?.height)
+        assertEquals(0xFF0000FF.toInt(), frame?.argbPixels?.get(2))
+        assertEquals(0xFFFF00FF.toInt(), frame?.argbPixels?.get(3))
+    }
+
     @Test fun derivesActiveHeightFromViVerticalWindowAndScale() {
         val memory = N64Memory(1024 * 1024)
         val bus = N64Bus(ram = memory)
