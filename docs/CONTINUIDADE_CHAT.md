@@ -2509,3 +2509,35 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 ### Observações
 - As rotinas internas de diagnóstico foram mantidas no código para desenvolvimento, mas não aparecem mais no menu principal.
 - Esta mudança reorganiza a navegação; não aumenta por si só a compatibilidade de jogos nem significa que GoldenEye já renderiza.
+
+
+## Auditoria do RSP — etapa de seleção vetorial
+
+**Data:** 2026-11-01  
+**Branch:** `dev/n64-clean-start`  
+**Base:** `8a560248b9c26e3113e5a919001bbb4c116fc0f1`
+
+### Resultado da inspeção
+
+O núcleo RSP existente é um interpretador parcial, não um RSP completo. A auditoria identificou:
+- Subconjunto escalar MIPS-I, sem exceções/temporização completas e sem cobertura integral das instruções.
+- COP0 SP com registradores básicos, DMA síncrono e sem fila/latência real.
+- COP2 limitado a MFC2/MTC2/CFC2/CTC2 e VADD/VSUB/VAND/VOR/VNOR/VXOR.
+- Unidade vetorial com 32 registradores e acumulador de 48 bits, mas sem a seleção arquitetural de elemento para operações ALU.
+- Memória vetorial parcial (LBV/LSV/LLV/LDV, LQV/LRV, LPV/LUV, LHV/SHV e stores correspondentes), com casos especiais ainda não validados por microcódigos comerciais.
+- Sem cobertura completa de VMUL/VMAC, comparações, min/max, operações de carry/flag, conversões, reciprocal/square-root, transposição e demais instruções vetoriais.
+- Scheduler RSP cooperativo do jogo é aproximado, não cycle-accurate; DMA e interrupções continuam parciais.
+
+### Correção desta etapa
+
+Foi implementada a seleção de elemento para o subconjunto de operações vetoriais já suportado:
+- Seletores 0..7: janela deslizante a partir da lane selecionada, repetindo a lane 7 no final.
+- Seletores 8..15: broadcast da lane 0..7 correspondente.
+- VADD, VSUB, VAND, VOR, VNOR e VXOR agora usam a lane selecionada de VT.
+- Adicionado teste de integração que verifica janela deslizante e broadcast através de instruções COP2 reais codificadas.
+
+**Limite explícito:** esta correção não completa o RSP inteiro e não comprova execução de microcódigo GoldenEye. A etapa de RSP só pode ser considerada encerrada quando o conjunto de instruções exigido pelo microcódigo observado estiver coberto e validado; esta entrega fecha apenas a lacuna de seleção de elemento no subconjunto atual.
+
+### Próximo passo
+
+Executar CI. Se aprovado, iniciar a auditoria do RDP: parser/command lengths, decodificação de todos os comandos emitidos, estado de imagem/scissor/combiner/textura/Z/coverage/blending, rasterização e validação do framebuffer. Não presumir que os comandos do GoldenEye já foram observados.
