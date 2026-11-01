@@ -172,6 +172,8 @@ class MainActivity : Activity() {
                         appendLine(diagnosticCpu.diagnosticTlbWriteHistory.joinToString("\n").ifBlank { "Nenhuma escrita TLB registrada." })
                         appendLine("Rotina de inicialização PTE (janela 0x700017C0–0x70001840):")
                         appendLine(diagnosticCpu.diagnosticPteSetupHistory.joinToString("\n").ifBlank { "Nenhuma instrução capturada nessa janela." })
+                        appendLine("Caminho de chamada para o destino 0x7F000BD0 (JR RA / JAL):")
+                        appendLine(diagnosticCpu.diagnosticCallPathHistory.joinToString("\n").ifBlank { "Nenhuma instrução capturada nas janelas 0x70001880–0x70001894 e 0x70005D40–0x70005D60." })
                         appendLine("Histórico de exceções TLB e vetores:")
                         appendLine(diagnosticCpu.diagnosticTlbExceptionHistory.joinToString("\n").ifBlank { "Nenhuma exceção TLB registrada." })
                         appendLine("Instruções imediatamente anteriores à primeira exceção TLB:")
