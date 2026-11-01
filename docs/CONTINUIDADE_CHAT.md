@@ -2606,3 +2606,14 @@ Esta diretriz foi reafirmada pelo usuário em 2026-11-01 após uma resposta que 
 - Esta instrumentação deve revelar a sequência que calculou/selecionou o endereço de busca inválido; ela não altera a tradução TLB nem simula uma correção.
 - O caminho SP/RSP continua pendente: identificar no código/traces qual OSTask deve ser submetida e em que ponto o jogo libera o SP. Não forçar HALT a ser limpo e não executar microcode arbitrário sem descriptor válido.
 - Toda investigação permanece dentro do HLE próprio, sem exigir firmware original, PIF ROM original ou execução do IPL3 original.
+
+### Validação da instrumentação pré-falha — 2026-11-01 12:58:52 (UTC−03:00)
+
+- Commit de código/documentação: `39744e99a85ffb7008ccb8cb24662595958c9ace`.
+- Arquivos: `R4300Cpu.kt`, `MainActivity.kt`, `R4300CpuTest.kt` e este documento.
+- Teste novo: `capturesInstructionsImmediatelyBeforeFirstTlbFetchFault`, que verifica LUI/JR/delay-slot e a captura das instruções anteriores a uma busca sem mapeamento.
+- CI Android build #966, run ID `41323741179`: **success**; Build and test e Upload debug APK concluídos.
+- Artifact `n64-android-debug-apk`, ID `13090261643`; APK `app-debug.apk`, 982.327 bytes; SHA-256 `11b139c62e50bdc37afdf468186986b1f72c8fa163316c56a80fce2e538f730d`.
+- Link CI: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41323741179
+- A build e o teste sintético passaram. Ainda não há confirmação de instalação/execução deste APK no aparelho nem log novo da ROM real.
+- Próximo passo após teste no aparelho: copiar os logs e analisar a seção de 64 instruções anteriores à falha TLB para determinar a origem do PC inválido. Manter HLE independente de firmware.
