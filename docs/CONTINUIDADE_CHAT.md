@@ -3786,3 +3786,49 @@ O próximo foco não é mudar os bits de EntryLo nem a função de tradução. �
 4. a decisão do handler geral após a falha INVALID.
 
 Nenhuma alteração funcional de código foi feita nesta etapa. O resultado é diagnóstico; a correção continua em aberto.
+
+
+---
+
+## 31. Rastreamento do PTEBase e correlação do alvo com o DMA (2026-11-01, 18:11:02 UTC−03:00)
+
+### 31.1. Como o jogo constrói o PTEBase
+
+Foi reexaminado o Log mais recente da branch `main` (somente leitura; nenhuma alteração nessa branch). A sequência em `0x70001880..0x70001894` permite reconstruir o ponteiro usado pelo handler:
+
+- `0x70001880: 0x2739DBF0` — com `T9=0xFFFFFFFF80060000`, calcula `T9=0xFFFFFFFF8005DBF0`.
+- `0x70001884: 0x34218000` — forma `AT=0xFFFFFFFFFFC08000`.
+- `0x70001888: 0x03214021` — soma os registradores e obtém `0x000000007FC65BF0`.
+- `0x70001894: 0xAC28E4A4` — no delay slot do retorno, grava esse ponteiro em `0x8005E4A4`.
+
+O valor gravado, `0x7FC65BF0`, coincide com o PTEBase lido pelo refill. Somado ao Context observado (`0x003F8000`), produz exatamente `0x8005DBF0`, endereço da PTE consultada para VA `0x7F000BD0`. Portanto, o cálculo de PTEBase/Context no caminho observado é internamente consistente; não há sinal de erro aritmético nessa montagem específica.
+
+### 31.2. Correlação entre o alvo virtual e o bloco PI DMA
+
+O Log confirma um DMA de `0x2000` bytes da ROM `0x34B30` para RDRAM física `0x340000`. O dump da RDRAM mostra que em `0x340BD0` existem bytes que decodificam como instruções MIPS plausíveis, começando por:
+
+```
+3C 04 80 05 24 82 93 00 8C 4E 00 00
+3C 01 00 FF 34 21 FF FF 34 07 FF FF
+01 C1 78 24 10 EF 00 14
+```
+
+O alvo de execução é `0x7F000BD0`: o deslocamento `0xBD0` dentro da página coincide com o deslocamento dos bytes executáveis encontrados em `0x340BD0`. Isso torna plausível a hipótese de que a página virtual `0x7F000000` deveria apontar para a página física `0x340000` (ou para uma região que a contenha). **Ainda é uma hipótese**, pois o Log não demonstra a tradução VA→PA esperada nem prova que esse código é exatamente a função chamada.
+
+### 31.3. O que a evidência confirma — e o que não confirma
+
+- O PI DMA copiou corretamente o bloco de 8 KiB, conforme a comparação byte a byte já registrada na seção 29.
+- A rotina de preparação inicializa as entradas da tabela como inválidas; a PTE consultada em `0x8005DBF0` permanece com valor `1` quando ocorre o refill.
+- O handler converte esse valor em `EntryLo0=0x1` e `EntryLo1=0x41`, ambos com V=0.
+- O Log de escritas monitoradas não mostra uma gravação posterior de PTE válida em `0x8005DBF0` antes da falha. O monitor cobre apenas a janela de endereços configurada, portanto não prova ausência de atualizações em todas as demais estruturas.
+- A sequência de chamada mostra que o jogo prepara a tabela em `0x700017E0` e, em seguida, executa JAL para `0x7F000BD0`. Não foi encontrada, nessa janela observada, uma escrita que associe a PTE consultada à página física do DMA.
+
+### 31.4. Próxima investigação
+
+1. Desmontar a rotina candidata em `0x340BD0` e seguir seus acessos/dados para confirmar se é o alvo esperado.
+2. Identificar a função chamada em `0x70005D58` e o papel do DMA `ROM 0x34B30 → RDRAM 0x340000`.
+3. Rastrear o handler geral de TLB INVALID em `0x80000180` e verificar se ele deveria executar um page-in/overlay loader ou tratar a falha como fatal.
+4. Procurar, em todo o fluxo anterior, a rotina que deveria preencher a PTE `0x8005DBF0`; não inventar um PFN nem forçar V=1 sem identificar a regra do jogo.
+5. Criar teste de reprodução antes de qualquer correção em CPU/TLB/barramento.
+
+**Resultado desta etapa:** descoberta diagnóstica adicional; nenhuma alteração funcional de código e nenhuma correção do GoldenEye. A branch de trabalho permanece `dev/n64-clean-start`; `main` foi consultada apenas para ler o Log fornecido pelo projeto.
