@@ -2959,3 +2959,30 @@ Fonte analisada: `main/Log`, atualizado após a instrumentação da branch `dev/
 - O Log analisado ainda termina com TLB INVALID em `0x7F000BD0`.
 - SP continua em HALT; RSP executou zero instruções; VI publicou zero frames.
 - Nenhum quadro real foi comprovado até esta etapa.
+
+## 13. Instrumentação focada da rotina PTE — 2026-11-01
+
+### Alteração
+- `R4300Cpu.kt` agora mantém `diagnosticPteSetupHistory`, limitado a 512 registros.
+- A captura só acontece quando o PC (normalizado para 32 bits) está entre `0x700017C0` e `0x70001840`.
+- Cada registro inclui PC, instrução, opcode, rs/rt/rd, valores de `$3` e `$4), Context, EntryHi, EntryLo0/1, PageMask e Status.
+- A lista é limpa no reset da CPU.
+- `MainActivity.kt` inclui essa seção no texto de COPIAR LOGS.
+- Fora da janela selecionada, não há formatação de strings nem crescimento dessa lista; a instrumentação é limitada ao trecho suspeito.
+
+### O que o próximo log deve responder
+1. Quais instruções carregam e alteram `$3` antes dos stores em `0x700017FC/0x70001804`.
+2. De onde vem `$4=1), e se ele permanece constante durante a inicialização.
+3. Se Context/EntryHi/EntryLo/PageMask mudam antes, durante ou depois desse loop.
+4. Se o trecho executa uma vez ou repete e com quais valores-base.
+
+### Como testar
+- Compilar/instalar o APK de debug mais recente da branch `dev/n64-clean-start`.
+- Executar a ROM até reproduzir a falha TLB.
+- Tocar em COPIAR LOGS e enviar o novo arquivo/texto `Log`.
+- Analisar a seção `Rotina de inicialização PTE` junto com watchpoint PTE e histórico do handler.
+
+### Limites
+- Instrumentação apenas; não muda semântica de CPU, TLB, RAM ou SP.
+- Ainda não identifica por si só o significado dos campos da estrutura.
+- Não força bit Valid nem cria mapeamentos. RSP/VI continuam sem quadro real comprovado até novo teste.
