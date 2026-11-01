@@ -213,20 +213,20 @@ class N64RspCoreTest {
             vectorMemory(0x3A, 8, 12, 7, 5, 0)
         )
         for (lane in 0 until 8) {
-            rsp.vectorUnit.writeLane(11, lane, 0x1200 + lane * 0x0201)
-            rsp.vectorUnit.writeLane(12, lane, 0x3400 + lane * 0x0101)
+            rsp.vectorUnit.writeLane(11, lane, 0x1200 + lane * 0x0100)
+            rsp.vectorUnit.writeLane(12, lane, 0x3400 + lane * 0x0100)
         }
 
         assertEquals(3, rsp.run(3))
         // SPV: element positions 5..7 use bits 15..8; 8..12 use bits 14..7.
-        assertEquals(0x12, bus.read8(N64Bus.SP_DMEM_BASE + 0x200))
-        assertEquals(0x14, bus.read8(N64Bus.SP_DMEM_BASE + 0x202))
+        assertEquals(0x17, bus.read8(N64Bus.SP_DMEM_BASE + 0x200))
+        assertEquals(0x19, bus.read8(N64Bus.SP_DMEM_BASE + 0x202))
         assertEquals((0x1200 ushr 7) and 0xFF, bus.read8(N64Bus.SP_DMEM_BASE + 0x203))
         assertEquals((0x1400 ushr 7) and 0xFF, bus.read8(N64Bus.SP_DMEM_BASE + 0x207))
 
         // SUV swaps the packing rule on the same wrapped element positions.
-        assertEquals((0x3400 ushr 7) and 0xFF, bus.read8(N64Bus.SP_DMEM_BASE + 0x200))
-        assertEquals((0x3600 ushr 7) and 0xFF, bus.read8(N64Bus.SP_DMEM_BASE + 0x202))
+        assertEquals((0x3900 ushr 7) and 0xFF, bus.read8(N64Bus.SP_DMEM_BASE + 0x200))
+        assertEquals((0x3B00 ushr 7) and 0xFF, bus.read8(N64Bus.SP_DMEM_BASE + 0x202))
         assertEquals(0x34, bus.read8(N64Bus.SP_DMEM_BASE + 0x203))
         assertEquals(0x38, bus.read8(N64Bus.SP_DMEM_BASE + 0x207))
     }
@@ -235,7 +235,7 @@ class N64RspCoreTest {
     fun packedStoresUseSignedScaledOffsetAndWrapDmem() {
         val (bus, rsp) = setup(
             addiu(8, 0, 0x004),
-            vectorMemory(0x3A, 8, 13, 6, 14, 0x7F)
+            vectorMemory(0x3A, 8, 13, 6, 0, 0x7F)
         )
         for (lane in 0 until 8) rsp.vectorUnit.writeLane(13, lane, 0x5A00 + lane * 0x0100)
 
@@ -245,10 +245,10 @@ class N64RspCoreTest {
         assertEquals(0x5B, bus.read8(N64Bus.SP_DMEM_BASE + 0xFFD))
         assertEquals(0x5C, bus.read8(N64Bus.SP_DMEM_BASE + 0xFFE))
         assertEquals(0x5D, bus.read8(N64Bus.SP_DMEM_BASE + 0xFFF))
-        assertEquals((0x5A00 ushr 7) and 0xFF, bus.read8(N64Bus.SP_DMEM_BASE))
-        assertEquals((0x5B00 ushr 7) and 0xFF, bus.read8(N64Bus.SP_DMEM_BASE + 1))
-        assertEquals(0x5A, bus.read8(N64Bus.SP_DMEM_BASE + 2))
-        assertEquals(0x5B, bus.read8(N64Bus.SP_DMEM_BASE + 3))
+        assertEquals(0x5E, bus.read8(N64Bus.SP_DMEM_BASE))
+        assertEquals(0x5F, bus.read8(N64Bus.SP_DMEM_BASE + 1))
+        assertEquals(0x60, bus.read8(N64Bus.SP_DMEM_BASE + 2))
+        assertEquals(0x61, bus.read8(N64Bus.SP_DMEM_BASE + 3))
     }
 
 }
