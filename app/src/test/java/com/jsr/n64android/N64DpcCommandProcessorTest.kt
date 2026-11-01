@@ -39,14 +39,36 @@ class N64DpcCommandProcessorTest {
     }
 
     @Test
-    fun rejectsMultiwordTriangleInsteadOfTreatingPayloadAsCommands() {
-        val memory = N64Memory(256)
-        val dpc = N64DpcCommandProcessor(memory, memory.size, N64RdpFillProcessor(memory, memory.size))
-        memory.write32(0x40, 0x20000000)
-        memory.write32(0x44, 0)
-        val error = runCatching { dpc.process(0x40, 0x60) }.exceptionOrNull()
-        assertTrue(error is UnsupportedOperationException)
-        assertTrue(error!!.message!!.contains("requires 32 bytes"))
+    fun dispatchesFlatTrianglePacketThroughDpcIntoRdram() {
+        val memory = N64Memory(4096)
+        val rdp = N64RdpFillProcessor(memory, memory.size)
+        val dpc = N64DpcCommandProcessor(memory, memory.size, rdp)
+        val commands = listOf(
+            command(N64RdpFillProcessor.CMD_SET_COLOR_IMAGE, high = (2L shl 19) or 7L, low = 0x100L),
+            command(
+                N64RdpFillProcessor.CMD_SET_SCISSOR,
+                high = 0L,
+                low = (8L shl 12) or 8L
+            ),
+            command(N64RdpFillProcessor.CMD_SET_PRIM_COLOR, low = 0xFF0000FFL)
+        )
+        writeCommands(memory, 0x40, commands)
+        val triangleHeader = (0x08L shl 58) or (32L shl 32) or (16L shl 16)
+        val triangleWords = listOf(
+            triangleHeader,
+            (6L shl 16) shl 32,
+            (1L shl 16) shl 32,
+            (4L shl 16) shl 32
+        )
+        writeWords(memory, 0x40 + commands.size * 8, triangleWords)
+
+        val result = dpc.process(0x40, 0x40 + commands.size * 8 + 32)
+
+        assertEquals(4, result.commandsProcessed)
+        assertEquals(1, result.trianglesRasterized)
+        assertTrue(result.pixelsWritten > 0)
+        assertEquals(0xF801, memory.read16(0x100 + (0 * 8 + 1) * 2))
+        assertEquals(0, memory.read16(0x100))
     }
 
     @Test
@@ -85,10 +107,10 @@ class N64DpcCommandProcessorTest {
             command(N64RdpFillProcessor.CMD_SET_FILL_COLOR, low = 0xF801F801L)
         )
         writeCommands(memory, 0x40, prefix)
-        memory.write32(0x58, 0x20000000)
+        memory.write32(0x58, 0x24000000)
         memory.write32(0x5C, 0)
 
-        val error = runCatching { dpc.process(0x40, 0x78) }.exceptionOrNull()
+        val error = runCatching { dpc.process(0x40, 0x88) }.exceptionOrNull()
 
         assertTrue(error is UnsupportedOperationException)
         assertEquals(0, memory.read16(0x100))
@@ -203,6 +225,14 @@ class N64DpcCommandProcessorTest {
         val error = runCatching { dpc.process(0x00, 0x10) }.exceptionOrNull()
 
         assertTrue(error is IllegalArgumentException)
+    }
+
+    private fun writeWords(memory: N64Memory, start: Int, words: List<Long>) {
+        words.forEachIndexed { index, word ->
+            val address = start + index * 8
+            memory.write32(address, (word ushr 32).toInt())
+            memory.write32(address + 4, word.toInt())
+        }
     }
 
     private fun writeCommands(memory: N64Memory, start: Int, commands: List<Long>) {
