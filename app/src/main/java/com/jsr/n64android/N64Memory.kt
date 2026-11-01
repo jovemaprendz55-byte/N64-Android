@@ -100,9 +100,8 @@ class N64Memory(ramSize: Int = DEFAULT_RAM_SIZE) : N64AddressSpace {
         val succeeds = reservationAddress == address &&
             reservationWidth == width &&
             reservationGranule == (address ushr RESERVATION_GRANULE_SHIFT)
-        clearReservation()
         if (!succeeds) return false
-        invalidateReservationForWrite(address, width)
+        // VR4300 LLbit is not cleared by SC itself; ERET or cache invalidation clears it.
         if (width == 4) {
             write32Raw(address, value.toInt())
         } else {
