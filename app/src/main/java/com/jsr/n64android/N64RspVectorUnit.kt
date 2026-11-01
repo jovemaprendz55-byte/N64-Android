@@ -156,6 +156,21 @@ class N64RspVectorUnit {
         return registers[register][sourceLane]
     }
 
+    /** Full bounded textual snapshot for a user-requested diagnostic export. */
+    fun diagnosticSnapshot(): String = buildString {
+        for (register in 0 until 32) {
+            append("V").append(register).append("=")
+            append((0..7).joinToString(",") { lane ->
+                "0x" + registers[register][lane].toString(16).uppercase().padStart(4, '0')
+            })
+            appendLine()
+        }
+        appendLine("ACC=" + (0..7).joinToString(" ") { lane ->
+            "0x" + accumulator[lane].toULong().toString(16).uppercase().padStart(16, '0')
+        })
+        appendLine("VCO_LOW=0x${vcoLow.toString(16)} VCO_HIGH=0x${vcoHigh.toString(16)} VCC_LOW=0x${vccLow.toString(16)} VCC_HIGH=0x${vccHigh.toString(16)} VCE=0x${vce.toString(16)}")
+    }
+
     private fun checkVector(register: Int) = require(register in 0..31)
     private fun checkRegister(register: Int, lane: Int) {
         checkVector(register)
