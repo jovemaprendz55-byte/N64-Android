@@ -1535,3 +1535,39 @@ Começar a substituir o caminho de teste sintético por processamento gráfico r
 3. Comparar os spans com uma implementação de referência ou fixtures derivadas do documento SGI RDP, documentando diferenças de cobertura.
 4. Depois implementar escrita de spans em RDRAM com estado de cor correto e só então integrar o pacote multiword no DPC.
 5. Em paralelo, planejar/implementar o RSP e microcode F3DEX; sem o RSP, jogos não geram display lists reais para o RDP.
+
+
+## 24. Primeiro rasterizador flat e caminho RDP sintético até a tela Android (2026-11-01)
+
+### Estratégia de desenvolvimento
+A partir desta etapa, priorizar fatias verticais pequenas e demonstráveis: gerar pixels, armazená-los em RDRAM, capturá-los pelo VI e apresentá-los no Android. Não acumular decoders isolados sem integração. Todo código é implementação própria; documentação de hardware pode orientar formatos, sem copiar código de outros emuladores.
+
+### Implementação desta etapa
+- Criado `N64RdpFlatTriangleRasterizer.kt`.
+- Consome o setup de triângulo e os spans do edge-walker experimental, grava pixels flat RGBA5551 em RDRAM e valida os limites do framebuffer antes da escrita.
+- Criado `N64TrianglePipelineDemo`: prepara framebuffer sintético, rasteriza um triângulo vermelho, configura VI e captura um `N64VideoFrame`.
+- Adicionado botão Android **Renderizar triângulo (RDP → RDRAM → VI)**, que mostra o frame retornado pelo VI e informa spans/pixels escritos.
+- Criados testes para escrita de pixels, proteção de limites e captura do triângulo no frame final.
+
+### Limites técnicos
+- É uma demonstração sintética, não uma ROM, jogo ou display list produzida pelo RSP.
+- O rasterizador ainda cobre somente triângulos flat RGBA5551 usando o edge-walker experimental. Não implementa coverage/antialiasing real, combiner, shade, textura, Z, blending, dither ou regras de subpixel completas.
+- O caminho de demonstração chama o rasterizador diretamente; ainda não está integrado ao parser/dispatcher DPC/RDP nem ao microcode RSP.
+- A imagem no aparelho, quando testada, comprova apenas o caminho sintético RDP-like → RDRAM → VI → Android. A primeira renderização de jogo só será declarada depois de uma ROM real gerar o framebuffer.
+
+### Commits e CI
+- Rasterizador: `8cc32503afae79bff4f8e146efd358b8708bce92`.
+- Testes: `fdf538752f98a567dddaecee2ac6c0c1050abfa1`.
+- Integração da tela Android: `67357a81b846aeed49ed48cac4aee2438be70ba2`.
+- Workflow #768 run `41292933449`, #769 run `41292937667` e #770 run `41292978215`: status a confirmar; não considerar verdes até conclusão.
+- Links: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41292933449
+  https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41292937667
+  https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41292978215
+
+### Próximas etapas rápidas
+1. Confirmar CI e corrigir qualquer falha antes de instalar o APK.
+2. Validar o triângulo no aparelho Android e comparar a imagem com os testes de framebuffer.
+3. Melhorar cobertura/edge rules com fixtures independentes e implementar mais formatos de cor/estado necessário.
+4. Integrar comandos multiword de triângulo ao parser/dispatcher DPC/RDP com validação integral antes de escrita.
+5. Implementar execução mínima de display-list via RSP/microcode para que o pipeline passe a receber comandos originados de uma ROM.
+6. Só depois de uma ROM produzir pixels, remover a distinção de demonstração sintética da UI.
