@@ -2656,3 +2656,44 @@ Esta diretriz foi reafirmada pelo usuário em 2026-11-01 após uma resposta que 
 - Estas correções não demonstram que GoldenEye 007 produz imagem. Não há frame real validado nesta etapa.
 - O caminho continua HLE próprio, sem PIF ROM original, sem firmware original e sem executar IPL3 original.
 - Próximo passo: revisar atomicidade LL/SC e o modelo de memória/reserva antes de implementar, ou avançar na semântica COP0/exceções. Não simular sucesso de SC nem ignorar invalidação da reserva.
+
+
+## Continuação da CPU R4300 — LL/SC, traps e LLbit (2026-11-01)
+
+### Instruções atômicas
+- Implementados LL, SC, LLD e SCD em `R4300Cpu.kt`.
+- `N64AddressSpace` expõe operações load-linked/store-conditional; `N64Memory` executa as operações de forma sincronizada e `N64Bus` encaminha as chamadas para a RDRAM.
+- O modelo mantém uma reserva associada a um bloco de 16 bytes, correspondente ao tamanho de linha da D-cache do VR4300. Escritas que atinjam esse bloco invalidam a reserva; os caminhos de DMA que escrevem na RDRAM usam as mesmas rotinas de escrita e também a invalidam.
+- SC/SCD traduzem o endereço como acesso de escrita antes de testar a reserva; uma falha não grava dados e devolve zero em rt. Uma operação bem-sucedida devolve um em rt.
+- A reserva não é limpa pelo próprio SC/SCD. No modelo VR4300, ERET limpa o LLbit; a entrada de uma exceção, por si só, não o limpa.
+- LL e LLD atualizam COP0 LLAddr (registo 17) com os bits físicos PA[31:4], conforme o manual VR4300.
+- A reserva de 16 bytes e a invalidação por escrita são uma aproximação conservadora enquanto a hierarquia de cache real não está implementada. Não equivalem a uma implementação completa de cache/coerência do hardware.
+
+### CACHE e LLbit
+- O decodificador CACHE agora separa corretamente os campos: operação em rt[4:2] e seletor de cache em rt[1:0].
+- Para operações de invalidação da D-cache (Index_Writeback_Invalidate, Hit_Invalidate e Hit_Writeback_Invalidate), o LLbit modelado é limpo. Index_Store_Tag da D-cache também limpa a reserva quando TagLo indica estado inválido.
+- Operações de dados/tags da cache continuam sem modelo funcional completo; apenas o efeito de LLbit da invalidação foi coberto.
+- Testes verificam que Hit_Invalidate D invalida a reserva e Hit_Invalidate I não invalida a reserva de dados.
+
+### Instruções trap
+- Implementados TGE, TGEU, TLT, TLTU, TEQ e TNE (SPECIAL), além de TGEI, TGEIU, TLTI, TLTIU, TEQI e TNEI (REGIMM).
+- Condições verdadeiras levantam exceção Trap (ExcCode 13); condições falsas seguem sem exceção.
+- Testes cobrem comparações signed/unsigned e imediatas sign-extended.
+
+### Testes e CI
+- Testes atômicos: LL/SC signed word, LLD/SCD doubleword, SC sem LL, reserva invalidada por outra escrita, reserva invalidada por PI DMA, SC repetido sem novo LL, ERET limpando LLbit e LLAddr.
+- Testes trap: comparações signed/unsigned e immediate.
+- Testes CACHE: invalidação D limpa LLbit; invalidação I não limpa LLbit.
+- CI #982, #983, #984, #985, #987, #988, #989, #991, #992, #993, #994, #995 e #998: **success**.
+- CI #990 falhou porque o teste ainda esperava que a entrada da exceção limpasse LLbit; o comportamento foi alinhado ao VR4300 e o teste passou na #991.
+- CI #996 e #997 falharam devido à codificação incorreta do subopcode CACHE nos testes; o campo foi corrigido e a CI #998 passou com todos os testes.
+- CI #998, run ID `41327435886`, valida o HEAD `be7b6c0be8efdee76005902fcf03e39599a976c8`.
+
+### Estado e próximo passo
+- Branch de desenvolvimento: `dev/n64-clean-start`.
+- HEAD antes deste registro documental: `be7b6c0be8efdee76005902fcf03e39599a976c8`.
+- Branch `main` permaneceu em `354642aa33322d21b11ecf49934bc021562d57aa`; não foi alterada.
+- CPU ainda não está completa. FPU aritmética, loads/stores COP1, exceções/interrupções completas, modelo integral das caches e temporização ainda faltam.
+- O projeto continua HLE próprio, sem firmware original, sem PIF ROM original e sem execução do IPL3 original.
+- Não há frame real de GoldenEye 007 validado nesta etapa.
+- Próxima investigação: arquitetura de FPU do VR4300 (modo FR, pares de FPR, FCR31, exceções e instruções aritméticas) antes de implementar LWC1/LDC1/SWC1/SDC1 isoladamente.
