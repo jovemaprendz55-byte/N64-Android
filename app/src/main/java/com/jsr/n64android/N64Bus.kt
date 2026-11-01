@@ -124,8 +124,8 @@ class N64Bus(
     var diagnosticRdramWriteCount: Long = 0
         private set
     val diagnosticRdramWriteHistory = ArrayDeque<String>()
-    // Exact watchpoint for the two page-table words read by the observed TLB refill handler.
-    // The first PTE is at 0x5DBF0 and the paired EntryLo1 PTE is at 0x5DC30.
+    // Watch the full 0x800-byte PTE structure inferred from the game's setup loop.
+    // Keep enough history for every byte in the range so later valid-entry writes are not missed.
     var diagnosticPteWriteCount: Long = 0
         private set
     val diagnosticPteWriteHistory = ArrayDeque<String>()
@@ -143,9 +143,9 @@ class N64Bus(
         }
     }
     private fun recordPteTableWrite(address: Int, value: Int) {
-        if (address !in 0x5DBF0 until 0x5DC34) return
+        if (address !in 0x5DBF0 until 0x5E3F0) return
         diagnosticPteWriteCount++
-        if (diagnosticPteWriteHistory.size >= 256) diagnosticPteWriteHistory.removeFirst()
+        if (diagnosticPteWriteHistory.size >= 2048) diagnosticPteWriteHistory.removeFirst()
         val instruction = diagnosticCpuInstructionWord
         val context = if (instruction != null) {
             " INST=0x${instruction.toUInt().toString(16).uppercase().padStart(8, '0')}" +
