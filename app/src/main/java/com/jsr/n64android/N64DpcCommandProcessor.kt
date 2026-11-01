@@ -74,7 +74,7 @@ class N64DpcCommandProcessor(
         return Result(
             startAddress = startAddress,
             endAddressExclusive = endAddressExclusive,
-            commandsProcessed = rdpResult.commandsProcessed,
+            commandsProcessed = rdpResult.commandsProcessed + fullSyncCommands,
             rectanglesFilled = rdpResult.rectanglesFilled,
             pixelsWritten = rdpResult.pixelsWritten,
             trianglesRasterized = rdpResult.trianglesRasterized,
