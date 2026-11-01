@@ -25,7 +25,7 @@ class MainActivity : Activity() {
     private var cartridgeRomBytes: ByteArray? = null
     private var romTraceButton: Button? = null
     private var hleBootButton: Button? = null
-    private var playRomButton: Button? = null
+    private var mainActionButton: Button? = null
     private lateinit var mainLayout: LinearLayout
     @Volatile private var hleStopRequested = false
     @Volatile private var hleWorker: N64ExecutionWorker? = null
@@ -43,91 +43,49 @@ class MainActivity : Activity() {
             setPadding(20, 18, 20, 18)
         }
 
-        val chooseRom = Button(this).apply {
-            text = "＋  ADICIONAR JOGO"
+        mainActionButton = Button(this).apply {
+            text = "ESCOLHER JOGO"
             textSize = 18f
-            setOnClickListener { openRomPicker() }
-        }
-        playRomButton = Button(this).apply {
-            text = "▶ EXECUTAR ROM — VÍDEO EXPERIMENTAL"
-            textSize = 15f
-            isEnabled = false
-            setOnClickListener { startRomVideoExecution() }
-        }
-        val cpuDiagnostic = Button(this).apply {
-            text = "Teste interno da CPU"
-            setOnClickListener { runCpuDiagnostic() }
-        }
-        val videoTestButton = Button(this).apply {
-            text = "Teste de vídeo (cores)"
-            setOnClickListener { runVideoTest() }
-        }
-        val trianglePipelineButton = Button(this).apply {
-            text = "Teste do renderizador RDP"
-            setOnClickListener { runTrianglePipelineDemo() }
-        }
-        romTraceButton = Button(this).apply {
-            text = "Diagnóstico IPL3 da ROM"
-            setOnClickListener { runRomInstructionDiagnostic() }
-            isEnabled = false
-        }
-        hleBootButton = Button(this).apply {
-            text = "Diagnóstico de inicialização HLE"
-            setOnClickListener { runHleBootDiagnostic() }
-            isEnabled = false
-        }
-
-        val toolsPanel = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            visibility = LinearLayout.GONE
-            addView(cpuDiagnostic)
-            addView(videoTestButton)
-            addView(trianglePipelineButton)
-            addView(romTraceButton)
-            addView(hleBootButton)
-        }
-        val toolsToggle = Button(this).apply {
-            text = "FERRAMENTAS DE DESENVOLVIMENTO  ▾"
+            isAllCaps = false
+            setPadding(18, 18, 18, 18)
             setOnClickListener {
-                val opening = toolsPanel.visibility != LinearLayout.VISIBLE
-                toolsPanel.visibility = if (opening) LinearLayout.VISIBLE else LinearLayout.GONE
-                text = if (opening) "OCULTAR FERRAMENTAS  ▴" else "FERRAMENTAS DE DESENVOLVIMENTO  ▾"
+                if (cartridgeBus == null) openRomPicker() else startRomVideoExecution()
+            }
+            setOnLongClickListener {
+                openRomPicker()
+                true
             }
         }
-
         mainLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            setPadding(22, 34, 22, 22)
+            gravity = Gravity.CENTER
+            setPadding(24, 36, 24, 28)
             addView(TextView(this@MainActivity).apply {
                 text = "N64 ANDROID"
-                textSize = 28f
+                textSize = 30f
                 gravity = Gravity.CENTER
-                setPadding(8, 18, 8, 4)
+                setPadding(8, 18, 8, 6)
             })
             addView(TextView(this@MainActivity).apply {
-                text = "SEU EMULADOR NINTENDO 64"
-                textSize = 12f
+                text = "EMULADOR NINTENDO 64"
+                textSize = 13f
                 gravity = Gravity.CENTER
-                setPadding(8, 0, 8, 22)
+                setPadding(8, 0, 8, 30)
             })
-            addView(chooseRom, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { bottomMargin = 14 })
-            addView(playRomButton, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { bottomMargin = 12 })
             addView(status, LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { bottomMargin = 18 })
-            addView(toolsToggle, LinearLayout.LayoutParams(
+            ).apply { bottomMargin = 24 })
+            addView(mainActionButton, LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ))
-            addView(toolsPanel)
+            addView(TextView(this@MainActivity).apply {
+                text = "Toque para escolher ou iniciar um jogo.\nMantenha pressionado para trocar a ROM."
+                textSize = 12f
+                gravity = Gravity.CENTER
+                setPadding(8, 18, 8, 8)
+            })
         }
         setContentView(mainLayout)
     }
@@ -172,7 +130,7 @@ class MainActivity : Activity() {
         }
 
         romVideoStopRequested = false
-        playRomButton?.isEnabled = false
+        mainActionButton?.isEnabled = false
         val frameView = N64VideoPresenterView(this).apply {
             contentDescription = "Vídeo experimental da ROM Nintendo 64"
         }
@@ -247,7 +205,7 @@ class MainActivity : Activity() {
                         "\\nPC final: 0x${cpu.pc.toULong().toString(16).uppercase()}" +
                         (session.rspFailureMessage()?.let { "\\nFalha RSP: $it" } ?: "") +
                         (result.failureMessage?.let { "\\nFalha CPU: $it" } ?: "")
-                    playRomButton?.isEnabled = cartridgeBus != null
+                    mainActionButton?.isEnabled = true
                 }
             } catch (error: Throwable) {
                 runOnUiThread {
@@ -255,7 +213,7 @@ class MainActivity : Activity() {
                         "FALHA NA EXECUÇÃO DA ROM" +
                         "\\n${error.javaClass.simpleName}: ${error.message ?: "sem detalhes"}" +
                         "\\nAinda não foi possível iniciar o caminho de vídeo."
-                    playRomButton?.isEnabled = cartridgeBus != null
+                    mainActionButton?.isEnabled = true
                 }
             } finally {
                 romVideoSession = null
@@ -1533,7 +1491,7 @@ class MainActivity : Activity() {
                 cartridgeBus = N64Bus(cartridgeRom = result.rom.bytes)
                 romTraceButton?.isEnabled = true
                 hleBootButton?.isEnabled = true
-                playRomButton?.isEnabled = true
+                mainActionButton?.apply { isEnabled = true; text = "▶ INICIAR JOGO" }
                 val displayName = contentResolver.query(
                     uri,
                     arrayOf(OpenableColumns.DISPLAY_NAME),
@@ -1552,7 +1510,7 @@ class MainActivity : Activity() {
                 cartridgeBus = null
                 romTraceButton?.isEnabled = false
                 hleBootButton?.isEnabled = false
-                playRomButton?.isEnabled = false
+                mainActionButton?.isEnabled = false
                 status.text = result.reason
             }
         }
