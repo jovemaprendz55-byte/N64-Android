@@ -4171,8 +4171,8 @@ class R4300CpuTest {
 
             val shouldAnnul = rt == 2 || rt == 3
             assertEquals("BC1 rt=$rt delay slot", if (shouldAnnul) 0L else 7L, cpu.gpr[2])
-            assertEquals("BC1 rt=$rt sequential", 9L, cpu.gpr[3])
-            assertEquals("BC1 rt=$rt PC", if (shouldAnnul) 12L else 12L, cpu.pc)
+            assertEquals("BC1 rt=$rt sequential", if (shouldAnnul) 9L else 0L, cpu.gpr[3])
+            assertEquals("BC1 rt=$rt PC", if (shouldAnnul) 12L else 8L, cpu.pc)
         }
     }
 
