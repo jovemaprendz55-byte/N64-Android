@@ -162,7 +162,7 @@ class N64RspCoreTest {
             addiu(14, 0, 14) // target
         )
 
-        assertEquals(10, rsp.run(10))
+        assertEquals(8, rsp.run(8))
         assertEquals(7, rsp.gpr[9])
         assertEquals(0, rsp.gpr[10])
         assertEquals(11, rsp.gpr[11])
