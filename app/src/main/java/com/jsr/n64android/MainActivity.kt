@@ -1246,12 +1246,9 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(16, 16, 16, 16)
             if (videoFrame != null) {
-                val bitmap = Bitmap.createBitmap(videoFrame.argbPixels, videoFrame.width, videoFrame.height, Bitmap.Config.ARGB_8888)
-                val frameView = ImageView(this@MainActivity).apply {
-                    setImageBitmap(bitmap)
-                    adjustViewBounds = true
-                    scaleType = ImageView.ScaleType.FIT_CENTER
+                val frameView = N64VideoPresenterView(this@MainActivity).apply {
                     contentDescription = "Framebuffer VI capturado no diagnóstico"
+                    submitFrame(videoFrame)
                 }
                 addView(frameView, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
             }
