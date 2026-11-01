@@ -2762,3 +2762,23 @@ Esta diretriz foi reafirmada pelo usuário em 2026-11-01 após uma resposta que 
 - CI #1001 (run ID 41329359974), no HEAD deste registro, terminou com sucesso. Isso valida build/testes automatizados, não compatibilidade com GoldenEye.
 - Branch de trabalho permanece `dev/n64-clean-start`; `main` não foi alterada.
 - O objetivo segue sendo HLE próprio, sem firmware original, sem PIF ROM original e sem executar IPL3 original.
+
+
+## Correção do diagnóstico: polling interno do scheduler SP — 2026-11-01
+
+### Problema encontrado
+- Antes desta correção, `N64RomVideoSession.pumpRsp()` consultava `SP_STATUS` com `bus.read32(SP_STATUS_REG)`.
+- Essa consulta interna do scheduler passava pelo mesmo registrador de diagnóstico usado pelas leituras da CPU R4300. Consequentemente, cada polling do scheduler era registrado como se fosse uma transação MMIO da CPU e recebia o último PC da CPU, embora a CPU não tivesse executado essa leitura.
+- Isso contaminava o histórico e a contagem de acessos SP. Portanto, o número SP do log anterior não deve ser interpretado como contagem exclusivamente de acessos realizados pelo jogo.
+
+### Correção aplicada
+- Adicionado `N64Bus.diagnosticSpStatus()`, leitura side-effect-free do estado interno, sem registrar uma transação MMIO.
+- `N64RomVideoSession.pumpRsp()` agora usa essa consulta interna para decidir se pode executar o RSP.
+- Leituras e escritas SP realizadas pela CPU continuam passando pelo caminho MMIO normal e permanecem registradas com PC.
+- Adicionado teste `schedulerStatusPollDoesNotAppearAsCpuMmioAccess`, que executa uma instrução CPU e um polling do scheduler e verifica que nenhuma leitura SP fictícia aparece no histórico.
+
+### Limites
+- Esta correção melhora a fidelidade do diagnóstico; não altera o estado HALT, não cria OSTask, não força SP_PC e não resolve por si só a ausência de submissão de tarefas.
+- O próximo log poderá distinguir melhor polling real da CPU de inspeções internas do scheduler. A causa anterior ao primeiro acesso SP ainda precisa ser reconstruída.
+- CI #1002, commit documental anterior `7e85f33e509e80b7b05578be49013f47fb043629`, terminou com sucesso. A CI da correção atual deve ser consultada separadamente.
+- Branch de trabalho: `dev/n64-clean-start`. Não alterar `main`.
