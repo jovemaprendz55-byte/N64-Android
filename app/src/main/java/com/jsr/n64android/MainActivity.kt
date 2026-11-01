@@ -1298,12 +1298,6 @@ class MainActivity : Activity() {
         description: String = "Imagem sintética lida pelos registradores VI e exibida pelo Android. " +
             "Isto valida o caminho de vídeo de teste, não a renderização de um jogo."
     ) {
-        val bitmap = Bitmap.createBitmap(
-            frame.argbPixels,
-            frame.width,
-            frame.height,
-            Bitmap.Config.ARGB_8888
-        )
         val image = N64VideoPresenterView(this).apply {
             contentDescription = title
             submitFrame(frame)
