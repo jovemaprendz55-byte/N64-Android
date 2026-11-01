@@ -107,7 +107,7 @@ class R4300CpuTest {
 
         assertEquals(0x12340000ABCD0000UL.toLong(), cpu.gpr[3])
         assertEquals(0xFFFF5678FFFFEF01UL.toLong(), cpu.gpr[4])
-        assertEquals(0xEDCB567854321F01UL.toLong(), cpu.gpr[5])
+        assertEquals(0xEDCB56785432EF01UL.toLong(), cpu.gpr[5])
         assertEquals(0x0000A987000010FEUL.toLong(), cpu.gpr[6])
     }
 
