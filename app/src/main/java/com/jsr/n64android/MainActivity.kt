@@ -169,7 +169,7 @@ class MainActivity : Activity() {
                         appendLine("Status=0x${diagnosticCpu.cop0[12].toUInt().toString(16).uppercase().padStart(8, '0')} Cause=0x${diagnosticCpu.cop0[13].toUInt().toString(16).uppercase().padStart(8, '0')} EPC=0x${diagnosticCpu.cop0[14].toUInt().toString(16).uppercase().padStart(8, '0')}")
                         appendLine("Index=0x${diagnosticCpu.cop0[0].toUInt().toString(16).uppercase().padStart(8, '0')} Random=0x${diagnosticCpu.cop0[1].toUInt().toString(16).uppercase().padStart(8, '0')} Wired=0x${diagnosticCpu.cop0[6].toUInt().toString(16).uppercase().padStart(8, '0')} PageMask=0x${diagnosticCpu.cop0[5].toUInt().toString(16).uppercase().padStart(8, '0')}")
                         appendLine("Histórico TLBWI/TLBWR:")
-                        appendLine(diagnosticCpu.diagnosticTlbWriteHistory.joinToString("\\n").ifBlank { "Nenhuma escrita TLB registrada." })
+                        appendLine(diagnosticCpu.diagnosticTlbWriteHistory.joinToString("\n").ifBlank { "Nenhuma escrita TLB registrada." })
                         appendLine("Snapshot TLB no primeiro fault:")
                         appendLine(diagnosticCpu.lastTlbEntrySnapshot)
                     }
