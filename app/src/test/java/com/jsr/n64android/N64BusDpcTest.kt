@@ -25,6 +25,29 @@ class N64BusDpcTest {
     }
 
     @Test
+    fun dpcRdpFramebufferIsCapturedByViFromTheSameRdram() {
+        val bus = N64Bus(ram = N64Memory(4096))
+        val start = 0x40
+        val end = start + 4 * N64DpcCommandProcessor.COMMAND_BYTES
+        writeCommands(bus, start, fillRectangleCommands())
+
+        bus.write32(N64Bus.DPC_START_REG, start)
+        bus.write32(N64Bus.DPC_END_REG, end)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_STATUS_OFFSET, N64ViFramebufferReader.VI_STATUS_PIXEL_SIZE_16)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_ORIGIN_OFFSET, 0x100)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_WIDTH_OFFSET, 4)
+
+        val frame = bus.captureViFrame(height = 4)
+
+        assertTrue(frame != null)
+        assertEquals(4, frame!!.width)
+        assertEquals(4, frame.height)
+        assertEquals(0xFFFF0000.toInt(), frame.argbPixels[1 * 4 + 1])
+        assertEquals(0xFFFF0000.toInt(), frame.argbPixels[2 * 4 + 2])
+        assertEquals(0x00000000, frame.argbPixels[0])
+    }
+
+    @Test
     fun emptyRangeLeavesCurrentAtEnd() {
         val bus = N64Bus(ram = N64Memory(1024))
         bus.write32(N64Bus.DPC_START_REG, 0x80)
