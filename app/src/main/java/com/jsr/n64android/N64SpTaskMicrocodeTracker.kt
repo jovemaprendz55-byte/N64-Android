@@ -30,7 +30,7 @@ class N64SpTaskMicrocodeTracker(
     }
 
     /** Returns true only on the first executed instruction inside the loaded task code. */
-    fun onInstructionExecuted(programCounter: Int, instruction: Int): Boolean {
+    fun onInstructionExecuted(programCounter: Int): Boolean {
         if (!matchingMicrocodeDmaObserved || taskMicrocodeEntryObserved) return false
         if (programCounter < 0 || programCounter >= descriptor.ucodeSize) return false
         if ((programCounter and 3) != 0) return false
