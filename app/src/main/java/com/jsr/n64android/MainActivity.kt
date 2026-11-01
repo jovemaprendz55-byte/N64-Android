@@ -223,8 +223,9 @@ class MainActivity : Activity() {
                                 "HLE: ${boot.copiedBytes} bytes preparados" +
                                 "\\nCPU: ${sessionSafeInstructionCount(romVideoSession)} instruções" +
                                 "\\nFrames VI diferentes: ${sessionSafeFrameCount(romVideoSession)}" +
+                                "\\nRSP: ${romVideoSession?.executedRspInstructionCount() ?: 0L} instruções" +
                                 "\\nPC: 0x${cpu.pc.toULong().toString(16).uppercase()}" +
-                                "\\nObservação: execução RSP automática ainda não integrada."
+                                (romVideoSession?.rspFailureMessage()?.let { "\\nFalha RSP: $it" } ?: "")
                         }
                     }
                 )
@@ -233,8 +234,8 @@ class MainActivity : Activity() {
                 runOnUiThread {
                     details.text =
                         "HLE concluído. CPU executando a ROM..." +
-                        "\\nAguardando o jogo configurar o VI e produzir pixels." +
-                        "\\nRSP automático ainda não integrado."
+                        "\\nAguardando o jogo configurar VI e produzir pixels." +
+                        "\\nRSP será executado em pequenos intervalos cooperativos."
                 }
                 val result = session.execute()
                 runOnUiThread {
@@ -242,8 +243,10 @@ class MainActivity : Activity() {
                         "EXECUÇÃO FINALIZADA: ${result.state}" +
                         "\\nInstruções: ${result.executedInstructions}" +
                         "\\nFrames VI publicados: ${session.publishedFrameCount()}" +
+                        "\\nInstruções RSP: ${session.executedRspInstructionCount()}" +
                         "\\nPC final: 0x${cpu.pc.toULong().toString(16).uppercase()}" +
-                        (result.failureMessage?.let { "\\nFalha: $it" } ?: "")
+                        (session.rspFailureMessage()?.let { "\\nFalha RSP: $it" } ?: "") +
+                        (result.failureMessage?.let { "\\nFalha CPU: $it" } ?: "")
                     playRomButton?.isEnabled = cartridgeBus != null
                 }
             } catch (error: Throwable) {
