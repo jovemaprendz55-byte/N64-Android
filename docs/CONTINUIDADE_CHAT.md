@@ -1877,3 +1877,15 @@ Próximo passo: validar CI; depois implementar registradores vetoriais/accumulat
 2. Validar SPV/SUV com fixtures independentes de todos os elementos, sobretudo 0, 7, 8 e 15.
 3. Implementar LHV/SHV com padrão de acesso stride-2.
 4. Depois avançar para DMA real de IMEM/DMEM e ciclo de vida de task SP.
+
+
+## 35. Confirmação do CI SPV/SUV e cobertura das fronteiras — 2026-11-01
+
+- Build #822 (run `41297665219`), commit `f9afacecd6c96cf9f5c2ccaed23a6751c715ca9b`: **success**.
+- Job `build`: etapas `Build and test` e `Upload debug APK` concluídas com sucesso.
+- Artefato `n64-android-debug-apk`, ID `13079962835`, tamanho 943.961 bytes, disponível até 2026-11-15.
+- Ampliada a cobertura dos stores packed para os elementos 0, 7, 8 e 15, incluindo wrap da janela vetorial e alternância SPV/SUV.
+- Esta cobertura é regressiva e baseada no modelo documentado; não substitui uma suíte independente/hardware.
+- Referência primária: SGI RSP Programmer's Guide descreve LPV/SPV como oito bytes consecutivos, LUV/SUV com alinhamento em bit 14, e LHV/SHV como acesso alternado. A descrição independente do emudev detalha a diferença entre loads packed e stores packed.
+- Próxima fatia: implementar LHV/SHV separando claramente os caminhos de load/store, com fixtures de endereços pares/ímpares, offset signed escalado por 16 e wrap de DMEM. Não declarar suporte completo até validar a semântica de elemento e endereçamento.
+- Nenhuma ROM/jogo foi validado.
