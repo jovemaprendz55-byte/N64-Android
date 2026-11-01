@@ -89,6 +89,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     private var diagnosticInstructionCount = 0L
 
     fun reset() {
+        memory.clearLoadLinkedReservation()
         gpr.fill(0L)
         hi = 0L
         lo = 0L
@@ -900,6 +901,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     }
 
     private fun enterException(instructionAddress: Long, exceptionCode: Int, branchAddress: Long?) {
+        memory.clearLoadLinkedReservation()
         lastExceptionInstructionAddress = instructionAddress
         lastExceptionCode = exceptionCode
         lastExceptionBranchAddress = branchAddress
