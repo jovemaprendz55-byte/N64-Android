@@ -795,12 +795,14 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 requireAligned(address, 4)
                 val physical = physicalAddress(address, R4300Tlb.Access.READ)
                 gpr[rt] = memory.loadLinked(physical, 4)
+                cop0[17] = (physical ushr 4).toLong() and 0x0FFFFFFFL // LLAddr diagnostic register.
             }
             0x34 -> { // LLD: load-linked doubleword.
                 val address = gpr[rs] + immediate
                 requireAligned(address, 8)
                 val physical = physicalAddress(address, R4300Tlb.Access.READ)
                 gpr[rt] = memory.loadLinked(physical, 8)
+                cop0[17] = (physical ushr 4).toLong() and 0x0FFFFFFFL // LLAddr diagnostic register.
             }
             0x38 -> { // SC: store word only if its LL reservation is still valid.
                 val address = gpr[rs] + immediate
