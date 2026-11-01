@@ -173,19 +173,16 @@ class N64RspCore(private val bus: N64Bus) {
         }
         if (rs !in 0x10..0x1F) unsupported(instruction)
         val element = rs and 0x0F
-        if (element != 0) {
-            throw UnsupportedOperationException("RSP COP2 vector element selection $element is not implemented.")
-        }
         val vt = (instruction ushr 16) and 31
         val vs = (instruction ushr 11) and 31
         val vd = (instruction ushr 6) and 31
         when (instruction and 63) {
-            0x10 -> vectorUnit.add(vd, vs, vt) // VADD, initial lane semantics
-            0x11 -> vectorUnit.subtract(vd, vs, vt) // VSUB, initial lane semantics
-            0x28 -> vectorUnit.and(vd, vs, vt) // VAND
-            0x2A -> vectorUnit.or(vd, vs, vt) // VOR
-            0x2B -> vectorUnit.nor(vd, vs, vt) // VNOR
-            0x2C -> vectorUnit.xor(vd, vs, vt) // VXOR
+            0x10 -> vectorUnit.add(vd, vs, vt, element) // VADD
+            0x11 -> vectorUnit.subtract(vd, vs, vt, element) // VSUB
+            0x28 -> vectorUnit.and(vd, vs, vt, element) // VAND
+            0x2A -> vectorUnit.or(vd, vs, vt, element) // VOR
+            0x2B -> vectorUnit.nor(vd, vs, vt, element) // VNOR
+            0x2C -> vectorUnit.xor(vd, vs, vt, element) // VXOR
             else -> unsupported(instruction)
         }
     }
