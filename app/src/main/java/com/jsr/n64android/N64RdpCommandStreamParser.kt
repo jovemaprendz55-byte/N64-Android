@@ -1,5 +1,7 @@
 package com.jsr.n64android
 
+import java.util.Collections
+
 /**
  * A complete command packet read from an end-exclusive RDRAM display-list range.
  *
@@ -7,11 +9,13 @@ package com.jsr.n64android
  * payload words. The list is detached from memory and cannot be used to mutate
  * the source address space.
  */
-data class N64RdpCommandPacket(
+class N64RdpCommandPacket(
     val opcode: Int,
     val byteLength: Int,
-    val words: List<Long>
+    words: List<Long>
 ) {
+    /** A defensive, unmodifiable copy of all words in this packet. */
+    val words: List<Long> = Collections.unmodifiableList(ArrayList(words))
     init {
         require(opcode in 0..0x3F) { "RDP opcode must be in 0..63." }
         require(byteLength > 0 && byteLength % N64RdpCommandLength.COMMAND_BYTES == 0) {
@@ -96,7 +100,7 @@ object N64RdpCommandStreamParser {
             )
             address += packetBytes
         }
-        return packets.toList()
+        return Collections.unmodifiableList(ArrayList(packets))
     }
 
     const val WORD_BYTES = 8
