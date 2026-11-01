@@ -199,27 +199,27 @@ class MainActivity : Activity() {
                 runOnUiThread {
                     details.text =
                         "HLE concluído. CPU executando a ROM..." +
-                        "\\nAguardando o jogo configurar VI e produzir pixels." +
-                        "\\nRSP será executado em pequenos intervalos cooperativos."
+                        "\nAguardando o jogo configurar VI e produzir pixels." +
+                        "\nRSP será executado em pequenos intervalos cooperativos."
                 }
                 val result = session.execute()
                 runOnUiThread {
                     details.text =
                         "EXECUÇÃO FINALIZADA: ${result.state}" +
-                        "\\nInstruções: ${result.executedInstructions}" +
-                        "\\nFrames VI publicados: ${session.publishedFrameCount()}" +
-                        "\\nInstruções RSP: ${session.executedRspInstructionCount()}" +
-                        "\\nPC final: 0x${cpu.pc.toULong().toString(16).uppercase()}" +
-                        (session.rspFailureMessage()?.let { "\\nFalha RSP: $it" } ?: "") +
-                        (result.failureMessage?.let { "\\nFalha CPU: $it" } ?: "")
+                        "\nInstruções: ${result.executedInstructions}" +
+                        "\nFrames VI publicados: ${session.publishedFrameCount()}" +
+                        "\nInstruções RSP: ${session.executedRspInstructionCount()}" +
+                        "\nPC final: 0x${cpu.pc.toULong().toString(16).uppercase()}" +
+                        (session.rspFailureMessage()?.let { "\nFalha RSP: $it" } ?: "") +
+                        (result.failureMessage?.let { "\nFalha CPU: $it" } ?: "")
                     mainActionButton?.isEnabled = true
                 }
             } catch (error: Throwable) {
                 runOnUiThread {
                     details.text =
                         "FALHA NA EXECUÇÃO DA ROM" +
-                        "\\n${error.javaClass.simpleName}: ${error.message ?: "sem detalhes"}" +
-                        "\\nAinda não foi possível iniciar o caminho de vídeo."
+                        "\n${error.javaClass.simpleName}: ${error.message ?: "sem detalhes"}" +
+                        "\nAinda não foi possível iniciar o caminho de vídeo."
                     mainActionButton?.isEnabled = true
                 }
             } finally {
@@ -808,8 +808,8 @@ class MainActivity : Activity() {
                 (if (stackRegionTrace.isEmpty()) "(nenhuma)" else stackRegionTrace.joinToString("\n")) +
                 "\n\nÚLTIMAS INSTRUÇÕES (máximo 80):\n" + trace.joinToString("\n") +
                 "\n\nREGISTRADORES FINAIS: " + watchedRegisters() +
-                "\\n\\nVERIFICAÇÃO INTEGRAL DA CÓPIA:\\n" + copyVerificationDiagnostics +
-                "\\n\\n" + transferMemoryDiagnostics +
+                "\n\nVERIFICAÇÃO INTEGRAL DA CÓPIA:\n" + copyVerificationDiagnostics +
+                "\n\n" + transferMemoryDiagnostics +
                 "\n\nHISTÓRICO DE DMA PI (até 64 solicitações):\n" +
                 (if (bus.diagnosticPiDmaHistory.isEmpty()) "(nenhuma transferência PI cartucho -> RDRAM observada)" else bus.diagnosticPiDmaHistory.joinToString("\n")) +
                 "\n\nHISTÓRICO DE DMA SP (até 64 transferências):\n" +
@@ -1186,7 +1186,7 @@ class MainActivity : Activity() {
                 " t2=0x" + faultHistoryT2[index].toULong().toString(16).uppercase() +
                 " t3=0x" + faultHistoryT3[index].toULong().toString(16).uppercase() +
                 " ra=0x" + faultHistoryRa[index].toULong().toString(16).uppercase()
-        }.joinToString("\\n")
+        }.joinToString("\n")
         // Decode the control transfer immediately before the delay slot when the next
         // fetch faults. Cover direct J/JAL and indirect JR/JALR instructions.
         val transferAnalysis = run {
@@ -1400,10 +1400,10 @@ class MainActivity : Activity() {
             submitFrame(frame)
         }
         val details = TextView(this).apply {
-            text = title + "\\n" +
-                "Framebuffer: ${frame.width}x${frame.height}\\n" +
-                "Formato: RGBA5551 (16 bits)\\n" +
-                "Origem RDRAM: 0x${frame.origin.toString(16).uppercase()}\\n\\n" +
+            text = title + "\n" +
+                "Framebuffer: ${frame.width}x${frame.height}\n" +
+                "Formato: RGBA5551 (16 bits)\n" +
+                "Origem RDRAM: 0x${frame.origin.toString(16).uppercase()}\n\n" +
                 description
             textSize = 14f
             setPadding(16, 16, 16, 16)
