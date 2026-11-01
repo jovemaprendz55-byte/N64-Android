@@ -78,6 +78,11 @@ class N64RomVideoSession(
 
     fun lastRspInstructionWord(): Int? = lastRspInstructionWord
 
+    /** Returns all current RSP scalar/vector state without advancing emulation. */
+    fun diagnosticRspSnapshot(): String =
+        rspCore?.diagnosticSnapshot() ?: "RSP core ainda não foi criado nesta sessão (SP HALT ou sem quantum executado)."
+
+
     /**
      * Gives the RSP a bounded execution quantum whenever the CPU has released SP.
      * The core is recreated after HALT so it reloads the architectural SP_PC for
