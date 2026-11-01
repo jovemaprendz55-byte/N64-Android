@@ -145,6 +145,39 @@ class R4300CpuTest {
         assertTrue(cpu.diagnosticCallPathHistory[1].contains("PC=0x70005B60"))
     }
 
+    @Test fun capturesNewHelperAndPiDmaFunctionWindows() {
+        val memory = N64Memory(0x12000)
+        val base = 0x70000000
+        val mappedMemory = object : N64AddressSpace {
+            private fun offset(address: Int) = address - base
+            override fun read8(address: Int) = memory.read8(offset(address))
+            override fun read16(address: Int) = memory.read16(offset(address))
+            override fun read32(address: Int) = memory.read32(offset(address))
+            override fun write8(address: Int, value: Int) = memory.write8(offset(address), value)
+            override fun write16(address: Int, value: Int) = memory.write16(offset(address), value)
+            override fun write32(address: Int, value: Int) = memory.write32(offset(address), value)
+        }
+        val cpu = R4300Cpu(mappedMemory)
+        val addresses = listOf(
+            0x70004D20L, 0x70004DE0L, 0x70004EE0L,
+            0x7000D6D0L, 0x7000DDD0L, 0x70010B20L, 0x7000F6A0L
+        )
+
+        addresses.forEach { address ->
+            cpu.setProgramCounter(address)
+            cpu.step()
+        }
+
+        assertEquals(addresses.size, cpu.diagnosticCallPathHistory.size)
+        addresses.forEachIndexed { index, address ->
+            assertTrue(
+                cpu.diagnosticCallPathHistory[index].contains(
+                    "PC=0x${address.toULong().toString(16).uppercase()}"
+                )
+            )
+        }
+    }
+
     @Test fun cop1ControlAndDataTransfersMoveRawWords() {
         val memory = N64Memory(32)
         // CFC1 $v0, $31 (the instruction reached by the latest GoldenEye report).
