@@ -196,6 +196,18 @@ class N64RspCore(private val bus: N64Bus) {
         val element = (instruction ushr 7) and 0x0F
         val rawOffset = instruction and 0x7F
         val offset = if ((rawOffset and 0x40) != 0) rawOffset - 0x80 else rawOffset
+        if (load && (operation == 6 || operation == 7)) {
+            // LPV/LUV: gather eight wrapped DMEM bytes into the eight vector lanes.
+            // LPV places the byte in bits 15..8; LUV places it in bits 14..7.
+            val address = (gpr[base] + offset * 8) and 0xFFF
+            for (lane in 0 until 8) {
+                val memoryIndex = ((16 - element + lane) and 0x0F)
+                val value = bus.read8(dmemAddress(address + memoryIndex))
+                val laneValue = if (operation == 6) value shl 8 else value shl 7
+                vectorUnit.writeLane(vectorRegister, lane, laneValue)
+            }
+            return
+        }
         if (operation == 4 || operation == 5) {
             val address = (gpr[base] + offset * 16) and 0xFFF
             val misalignment = address and 0x0F
