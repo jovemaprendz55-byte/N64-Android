@@ -2300,3 +2300,20 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 
 ### Próximo passo
 - Confirmar CI deste commit; depois, exercitar a integração runner + coordenador com task sintética que emita Full Sync pelo caminho DPC e finalize BREAK/DP_WAIT na ordem arquitetural correta.
+
+
+## 49. DP_WAIT ligado à conclusão observável do trabalho RDP — 2026-11-01
+
+### Integração adicional
+- Adicionado teste combinado ao coordenador SP/DP: task sintética entra em TASK_MICROCODE_RUNNING, sinaliza BREAK e permanece em WAITING_FOR_DP.
+- O teste submete à DPC uma display list que executa configuração de color image, fill color, fill rectangle e, por último, Full Sync.
+- A conclusão do lifecycle só ocorre depois que a escrita em DPC_END processa a lista; o teste verifica o pixel no framebuffer RDRAM e MI_INTR_DP após o drain.
+- Isso conecta em um único cenário o trabalho RDP anterior ao Full Sync e o desbloqueio de DP_WAIT, sem simular uma interrupção DP independente.
+
+### Limites
+- O cenário é sintético e usa o subconjunto RDP já implementado (fill-cycle RGBA16); não valida comandos de microcode comercial.
+- O modelo DPC permanece síncrono. O teste não representa FIFO, latência, busy/full, XBUS nem timing do hardware real.
+- O Full Sync ainda é fornecido por uma display list sintética, não por uma ROM N64 comercial.
+
+### Próximo passo
+- Confirmar o CI deste teste. Depois, priorizar o caminho de apresentação de frames: VI framebuffer com stride/origin/pixel size e integração com a tela Android, mantendo separado o framebuffer de teste e o frame originado de ROM real.
