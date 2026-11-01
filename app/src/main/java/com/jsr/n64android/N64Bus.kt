@@ -346,6 +346,22 @@ class N64Bus(
             (read8(address + 2) shl 8) or read8(address + 3)
     }
 
+    @Synchronized
+    override fun loadLinked(address: Int, width: Int): Long {
+        require(address >= 0 && address <= ram.size - width) {
+            "Load-linked must target installed RDRAM: address=0x${address.toString(16)}, width=$width."
+        }
+        return ram.loadLinked(address, width)
+    }
+
+    @Synchronized
+    override fun storeConditional(address: Int, width: Int, value: Long): Boolean {
+        require(address >= 0 && address <= ram.size - width) {
+            "Store-conditional must target installed RDRAM: address=0x${address.toString(16)}, width=$width."
+        }
+        return ram.storeConditional(address, width, value)
+    }
+
     override fun write8(address: Int, value: Int) {
         require(address >= 0) { "Negative physical address." }
         if (address < ram.size) {
