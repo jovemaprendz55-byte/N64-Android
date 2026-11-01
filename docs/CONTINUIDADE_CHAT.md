@@ -2931,3 +2931,31 @@ Fonte analisada: `main/Log`, atualizado após a instrumentação da branch `dev/
 2. Rastrear a origem do valor `$4=1` e a finalidade do passo `0x10`; comparar o layout de PTE esperado pelo handler com o layout escrito pelo inicializador.
 3. Examinar o código que escolhe o endereço de destino `0x7F000BD0` e a construção do Context `0x003F8000`; determinar se o HLE colocou o payload em uma região que exige mapeamento ainda não criado.
 4. Corrigir a origem do mapeamento/estrutura somente após confirmar o formato esperado. Não ligar o bit Valid artificialmente, não fabricar PFNs e não alterar a exceção para prosseguir.
+
+## 12. Verificação do registrador Context e CI — 2026-11-01
+
+### CI da última documentação
+- Commit: `e2d2789a6380dfb57c8af551e1695c7508ee55e4`.
+- GitHub Actions run `41334679524`: concluída com `success`.
+- URL: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41334679524
+- A validação confirma que a atualização documental está integrada à branch; não representa prova de correção do boot nem de execução gráfica.
+
+### Revisão do cálculo de Context
+- Em `R4300Cpu.enterTlbException`, o emulador atualiza:
+  `Context = (Context & 0xFF800000) | ((BadVAddr >> 9) & 0x007FFFF0)`.
+- Para `BadVAddr=0x7F000BD0`, o campo BadVPN2 calculado é `0x003F8000`, igual ao valor observado no Log.
+- O código preserva PTEBase (bits 31:23) e substitui BadVPN2 (bits 22:4), conforme o formato do registrador Context.
+- Os testes `tlbMissPreservesAsidAndUpdatesContextBadVpn2` e `tlbLoadMissSetsRefillVectorAndCoprocessorFaultRegisters` verificam a atualização de BadVPN2 e a preservação de PTEBase/ASID.
+- Conclusão limitada: não há evidência atual de que o cálculo de Context seja a causa. Isso não prova que o PTEBase, o layout da tabela, o ponteiro-base ou a interpretação da estrutura pelo handler estejam corretos.
+
+### Próximo passo técnico
+1. Rastrear a rotina que inicializa a estrutura em torno de `0x8005DBF0`: identificar as instruções anteriores ao loop e a origem dos registradores `$3` e `$4`.
+2. Registrar uma janela curta de instruções e registradores em torno de `0x700017D0–0x70001820`, incluindo alterações em `$3`, `$4`, `Context`, `EntryHi`, `EntryLo0/1` e `PageMask`.
+3. Comparar o endereço de PTE que o handler calcula com a estrutura realmente inicializada pelo loop; confirmar se o segundo half-page deveria vir do word seguinte ou de outra posição.
+4. Rastrear como o fluxo chega ao fetch virtual `0x7F000BD0` e se o payload/HLE espera que essa região já esteja mapeada.
+5. Só alterar a tradução após provar a origem e o formato dos dados. Não forçar Valid, PFN, TLB ou SP HALT.
+
+### Estado funcional permanece
+- O Log analisado ainda termina com TLB INVALID em `0x7F000BD0`.
+- SP continua em HALT; RSP executou zero instruções; VI publicou zero frames.
+- Nenhum quadro real foi comprovado até esta etapa.
