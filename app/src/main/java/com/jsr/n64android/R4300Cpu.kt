@@ -44,6 +44,13 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         private set
     var lastTlbFaultKind: R4300Tlb.FaultKind? = null
         private set
+    /** JR/JALR context frozen at the first TLB fault, before the handler changes it. */
+    var firstTlbFaultIndirectJumpAddress: Long? = null
+        private set
+    var firstTlbFaultIndirectJumpInstruction: Int? = null
+        private set
+    var firstTlbFaultIndirectTarget: Long? = null
+        private set
     private var instructionWordForCurrentStep: Int? = null
     private var instructionAddressForCurrentStep: Long? = null
     /** Exact instruction context retained when a bus access fails during execution. */
@@ -113,6 +120,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         lastTlbFaultVirtualAddress = null
         lastTlbFaultAccessType = null
         lastTlbFaultKind = null
+        firstTlbFaultIndirectJumpAddress = null
+        firstTlbFaultIndirectJumpInstruction = null
+        firstTlbFaultIndirectTarget = null
         diagnosticTlbWriteHistory.clear()
         diagnosticTlbExceptionHistory.clear()
         lastTlbEntrySnapshot = "(nenhuma entrada capturada)"
@@ -977,6 +987,11 @@ class R4300Cpu(private val memory: N64AddressSpace) {
 
     private fun enterTlbException(fault: R4300Tlb.TlbFault, branchAddress: Long?) {
         capturePreExceptionTlbTrace()
+        if (lastTlbFaultKind == null) {
+            firstTlbFaultIndirectJumpAddress = diagnosticLastIndirectJumpAddress
+            firstTlbFaultIndirectJumpInstruction = diagnosticLastIndirectJumpInstruction
+            firstTlbFaultIndirectTarget = diagnosticLastIndirectTarget
+        }
         lastTlbFaultVirtualAddress = fault.virtualAddress and 0xFFFFFFFFL
         lastTlbFaultAccessType = when (fault.access) {
             R4300Tlb.Access.FETCH -> "FETCH"
