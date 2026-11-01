@@ -532,17 +532,24 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 }
             }
             0x01 -> {
+                val branchLikely = rt == 0x02 || rt == 0x03 || rt == 0x12 || rt == 0x13
+                val link = rt == 0x10 || rt == 0x11 || rt == 0x12 || rt == 0x13
                 val takeBranch = when (rt) {
-                    0x00, 0x10 -> gpr[rs] < 0L // BLTZ / BLTZAL
-                    0x01, 0x11 -> gpr[rs] >= 0L // BGEZ / BGEZAL
+                    0x00, 0x10, 0x02, 0x12 -> gpr[rs] < 0L // BLTZ / BLTZAL / BLTZL / BLTZALL
+                    0x01, 0x11, 0x03, 0x13 -> gpr[rs] >= 0L // BGEZ / BGEZAL / BGEZL / BGEZALL
                     else -> throw ReservedInstructionFault(
                         "R4300 REGIMM rt=0x${rt.toString(16)} at 0x${instructionAddress.toString(16)}"
                     )
                 }
-                pendingDelaySlotBranchAddress = instructionAddress
-                if (takeBranch) {
-                    if (rt == 0x10 || rt == 0x11) gpr[31] = nextSequential + 4L
-                    delayedTarget = nextSequential + (immediate.toLong() shl 2)
+                if (branchLikely && !takeBranch) {
+                    // Likely branches annul the delay-slot instruction when not taken.
+                    directPc = instructionAddress + 8L
+                } else {
+                    pendingDelaySlotBranchAddress = instructionAddress
+                    if (takeBranch) {
+                        if (link) gpr[31] = nextSequential + 4L
+                        delayedTarget = nextSequential + (immediate.toLong() shl 2)
+                    }
                 }
             }
             0x02, 0x03 -> {
