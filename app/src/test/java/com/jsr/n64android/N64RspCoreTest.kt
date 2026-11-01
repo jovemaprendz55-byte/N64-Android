@@ -207,19 +207,35 @@ class N64RspCoreTest {
 
 
     @Test
-    fun lhvLoadsOddBytesFromAlignedSixteenByteWindowIntoBitSeven() {
+    fun lhvReadsFromEffectiveAddressWithStrideTwoIntoBitSeven() {
         val (bus, rsp) = setup(
             addiu(8, 0, 0x106),
             vectorMemory(0x32, 8, 15, 8, 0, 0)
         )
-        for (index in 0 until 16) {
+        for (index in 0 until 0x20) {
             bus.write8(N64Bus.SP_DMEM_BASE + 0x100 + index, 0x20 + index)
-            rsp.vectorUnit.writeLane(15, index % 8, 0xFFFF)
+        }
+        for (lane in 0 until 8) rsp.vectorUnit.writeLane(15, lane, 0xFFFF)
+
+        assertEquals(2, rsp.run(2))
+        for (lane in 0 until 8) {
+            assertEquals((0x26 + lane * 2) shl 7, rsp.vectorUnit.readLane(15, lane))
+        }
+    }
+
+    @Test
+    fun lhvWrapsDmemWhenStrideTwoCrossesTheEnd() {
+        val (bus, rsp) = setup(
+            addiu(8, 0, 0xFF8),
+            vectorMemory(0x32, 8, 17, 8, 0, 0)
+        )
+        for (index in 0 until 8) {
+            bus.write8(N64Bus.SP_DMEM_BASE + 0xFF8 + index * 2 and 0xFFF, 0x70 + index)
         }
 
         assertEquals(2, rsp.run(2))
         for (lane in 0 until 8) {
-            assertEquals((0x21 + lane * 2) shl 7, rsp.vectorUnit.readLane(15, lane))
+            assertEquals((0x70 + lane) shl 7, rsp.vectorUnit.readLane(17, lane))
         }
     }
 
