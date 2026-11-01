@@ -3944,3 +3944,21 @@ No momento deste registro, os workflows Android disparados pelos commits estavam
 ### Próxima etapa
 
 Após CI verde, instalar a APK de diagnóstico, executar o GoldenEye novamente e examinar todas as escritas entre `0x5DBF0` e `0x5E3EFF`. O objetivo é localizar uma gravação válida ou provar que nenhuma aparece antes da primeira execução em `0x7F000BD0`. Se nenhuma surgir, investigar o caminho de page-in/overlay e o estado de boot esperado; não forçar um PFN.
+
+
+---
+
+## 35. Captura estendida do helper PI em torno do salto 0x70010BAC (2026-11-01, 18:17:28 UTC−03:00)
+
+A inspeção do trecho de `R4300Cpu.kt` mostrou que o histórico de caminho de chamada capturava `0x70010B20..0x70010B80`. No Log, a função começa em `0x70010B20`, mas a sexta instrução é um branch em `0x70010B30` cujo destino calculado é `0x70010BAC`, fora da janela antiga. Isso explica por que a amostra disponível parava antes de registrar o caminho principal após esse branch.
+
+### Alteração
+
+- `R4300Cpu.kt`: janela `inPiTransfer` ampliada para `0x70010B20..0x70010C80`, incluindo o destino `0x70010BAC) e instruções seguintes.
+- A alteração só amplia a coleta de diagnóstico; não muda execução, tradução de endereço, DMA ou estado de CPU.
+
+### Próximo resultado esperado
+
+Na próxima execução, o relatório deve capturar o caminho tomado após o branch em `0x70010B30`, permitindo identificar o propósito do helper chamado pela rotina `0x70005B90`. Ainda não classificá-lo como rotina de cache, page-in ou mapeador TLB sem analisar as instruções adicionais.
+
+**Commit:** `f83a59bb98531c3b67c1bd74294f7e3b145c2e6b`. CI deste commit ainda precisa ser conferido.
