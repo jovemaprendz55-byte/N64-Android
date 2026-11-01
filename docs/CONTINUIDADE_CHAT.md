@@ -2541,3 +2541,36 @@ Foi implementada a seleção de elemento para o subconjunto de operações vetor
 ### Próximo passo
 
 Executar CI. Se aprovado, iniciar a auditoria do RDP: parser/command lengths, decodificação de todos os comandos emitidos, estado de imagem/scissor/combiner/textura/Z/coverage/blending, rasterização e validação do framebuffer. Não presumir que os comandos do GoldenEye já foram observados.
+
+
+## Auditoria inicial do RDP — próximo subsistema
+
+**Data:** 2026-11-01  
+**Base de código:** commits da etapa de seleção vetorial em `dev/n64-clean-start`.
+
+### O que já existe
+- DPC lê display list da RDRAM, em palavras big-endian de 64 bits, e o parser enquadra pacotes multiword.
+- Comprimentos de triângulos nativos 0x08..0x0F e retângulos de textura 0x24/0x25 estão tabelados; o parser rejeita pacote truncado.
+- Processador executa somente SET_OTHER_MODES, SET_COLOR_IMAGE, SET_SCISSOR, SET_FILL_COLOR, SET_PRIM_COLOR, FILL_RECTANGLE e triângulo 0x08.
+- Rasterizador de triângulo é experimental: flat, sem textura, RGBA16, sem cobertura/edge rules validadas.
+- Full Sync 0x29 é reconhecido no DPC e removido da lista de renderização antes da execução.
+- Testes cobrem parsing big-endian, tamanhos/truncamento, validação antes de executar prefixo, fill/scissor, triângulo sintético e caminho DPC→RDRAM→VI.
+
+### Lacunas confirmadas
+- Não há pipeline de textura: SET_TEXTURE_IMAGE, SET_TILE, SET_TILE_SIZE, LOAD_TILE, LOAD_BLOCK e LOAD_TLUT não são executados.
+- Não há combiner configurável: SET_COMBINE não é implementado.
+- Triângulos 0x09..0x0F são reconhecidos/framed, mas rejeitados na execução; faltam shade, texture e Z payloads/interpoladores.
+- Não há Z buffer, coverage buffer, antialias, blending, alpha compare, fog, keying ou conversão YUV.
+- O estado de outras imagens (texture/depth), tiles e TMEM não existe.
+- A rasterização atual não reproduz as regras exatas de subpixel/coverage e edge tie-break do hardware.
+- O DPC é síncrono: não modela FIFO, XBUS, DMA do DPC, clock, interrupções completas ou concorrência CPU/RDP.
+- A tabela de comprimento reconhece apenas os comandos multiword conhecidos; os demais opcodes são tratados como comandos de 8 bytes e depois rejeitados pelo executor se não suportados.
+
+### Ordem de implementação recomendada
+1. Criar testes de decodificação de estado para SET_TEXTURE_IMAGE, SET_TILE, SET_TILE_SIZE e LOAD_BLOCK/LOAD_TILE; validar campos e endereços antes de tocar TMEM.
+2. Implementar TMEM e carregamento de texels com formatos/tamanhos usados pelo microcódigo observado.
+3. Implementar SET_COMBINE e ciclo de textura simples, com testes de pixels de referência.
+4. Implementar variantes de triângulo shaded/textured e interpoladores; depois Z, coverage e blending.
+5. Validar a lista de comandos realmente emitida pelo RSP do GoldenEye. Sem trace de ROM, não declarar que esta ordem cobre todos os comandos do jogo.
+
+**Próximo trabalho de código:** começar por decodificadores de estado de imagem/tiles e testes puros, sem ainda alegar renderização texturizada.
