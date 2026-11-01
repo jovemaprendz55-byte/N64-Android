@@ -1304,11 +1304,9 @@ class MainActivity : Activity() {
             frame.height,
             Bitmap.Config.ARGB_8888
         )
-        val image = ImageView(this).apply {
-            setImageBitmap(bitmap)
-            adjustViewBounds = true
-            scaleType = ImageView.ScaleType.FIT_CENTER
+        val image = N64VideoPresenterView(this).apply {
             contentDescription = title
+            submitFrame(frame)
         }
         val details = TextView(this).apply {
             text = title + "\\n" +
