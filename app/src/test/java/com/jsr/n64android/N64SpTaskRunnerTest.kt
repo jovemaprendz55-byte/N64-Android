@@ -13,7 +13,7 @@ class N64SpTaskRunnerTest {
         val bootAddress = 0x2000
         val task = intArrayOf(
             1, 0,
-            bootAddress, 8,
+            bootAddress, 12,
             0x2100, 0x100,
             0x2200, 0x80,
             0x2300, 0x40,
