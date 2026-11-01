@@ -187,6 +187,11 @@ class MainActivity : Activity() {
                     appendLine("=== HISTÓRICO MMIO (mais recente) ===")
                     appendLine(bus.diagnosticMmioHistory.toList().joinToString("\n").ifBlank { "Vazio." })
                     appendLine()
+                    appendLine("=== MMIO SP (histórico dedicado de leituras e escritas) ===")
+                    appendLine(bus.diagnosticSpMmioCounts.entries.sortedBy { it.key }
+                        .joinToString("\n") { "${it.key}=${it.value}" }.ifBlank { "Nenhum acesso SP registrado." })
+                    appendLine(bus.diagnosticSpMmioHistory.toList().joinToString("\n").ifBlank { "Nenhum acesso SP registrado." })
+                    appendLine()
                     appendLine("=== ESCRITAS SP (histórico dedicado) ===")
                     appendLine(bus.diagnosticSpWriteHistory.toList().joinToString("\n").ifBlank { "Nenhuma escrita SP registrada." })
                     appendLine()
