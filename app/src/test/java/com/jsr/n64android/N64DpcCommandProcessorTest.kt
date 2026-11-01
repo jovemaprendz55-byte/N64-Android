@@ -108,6 +108,44 @@ class N64DpcCommandProcessorTest {
         assertEquals(0, memory.read16(0x100 + (1 * 4 + 1) * 2))
     }
 
+
+    @Test
+    fun rejectsEveryKnownMultiwordOpcodeWhenEndCutsOffItsPayload() {
+        val lengths = listOf(
+            0x08 to 32,
+            0x09 to 48,
+            0x0A to 96,
+            0x0B to 112,
+            0x0C to 96,
+            0x0D to 112,
+            0x0E to 160,
+            0x0F to 176,
+            0x24 to 16,
+            0x25 to 16
+        )
+
+        lengths.forEach { (opcode, commandBytes) ->
+            val memory = N64Memory(512)
+            val dpc = N64DpcCommandProcessor(
+                memory,
+                memory.size,
+                N64RdpFillProcessor(memory, memory.size)
+            )
+            memory.write32(0x40, opcode shl 26)
+            memory.write32(0x44, 0)
+
+            val error = runCatching {
+                dpc.process(0x40, 0x40 + commandBytes - 8)
+            }.exceptionOrNull()
+
+            assertTrue("opcode 0x${opcode.toString(16)}", error is IllegalArgumentException)
+            assertTrue(
+                "opcode 0x${opcode.toString(16)}",
+                error!!.message!!.contains("Truncated RDP command")
+            )
+        }
+    }
+
     @Test
     fun emptyCommandRangeDoesNotInvokeRdpOrChangeMemory() {
         val memory = N64Memory(256)
