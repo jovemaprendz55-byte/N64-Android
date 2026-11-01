@@ -3954,7 +3954,7 @@ A inspeção do trecho de `R4300Cpu.kt` mostrou que o histórico de caminho de c
 
 ### Alteração
 
-- `R4300Cpu.kt`: janela `inPiTransfer` ampliada para `0x70010B20..0x70010C80`, incluindo o destino `0x70010BAC) e instruções seguintes.
+- `R4300Cpu.kt`: janela `inPiTransfer` ampliada para `0x70010B20..0x70010C80`, incluindo o destino `0x70010BAC` e instruções seguintes.
 - A alteração só amplia a coleta de diagnóstico; não muda execução, tradução de endereço, DMA ou estado de CPU.
 
 ### Próximo resultado esperado
