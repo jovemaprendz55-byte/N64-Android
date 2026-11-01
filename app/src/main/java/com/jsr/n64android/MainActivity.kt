@@ -231,7 +231,7 @@ class MainActivity : Activity() {
                     appendLine("Total: ${bus.diagnosticRdramWriteCount}")
                     appendLine(bus.diagnosticRdramWriteHistory.toList().joinToString("\n").ifBlank { "Vazio." })
                     appendLine()
-                    appendLine("=== WATCHPOINT DA TABELA TLB (RDRAM 0x5DBF0–0x5DC33) ===")
+                    appendLine("=== WATCHPOINT DA TABELA PTE COMPLETA (RDRAM 0x5DBF0–0x5E3EF) ===")
                     appendLine("Total de bytes escritos pela CPU: ${bus.diagnosticPteWriteCount}")
                     appendLine(bus.diagnosticPteWriteHistory.toList().joinToString("\n").ifBlank { "Nenhuma escrita da CPU nessa faixa foi observada." })
                     appendLine()
