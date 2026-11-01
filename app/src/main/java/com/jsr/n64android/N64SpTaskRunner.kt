@@ -12,7 +12,8 @@ package com.jsr.n64android
  */
 class N64SpTaskRunner(
     private val bus: N64Bus,
-    rdramSize: Int
+    rdramSize: Int,
+    private val coordinator: N64SpTaskDpCoordinator? = null
 ) {
     private val bootstrap = N64SpTaskBootstrap(bus, rdramSize)
 
@@ -24,17 +25,30 @@ class N64SpTaskRunner(
         val spStatus: Int,
         val halted: Boolean,
         val broke: Boolean,
-        val instructionBudgetExhausted: Boolean
+        val instructionBudgetExhausted: Boolean,
+        val taskMicrocodeEntryObserved: Boolean
     )
 
     fun startAndRun(taskAddress: Int, maxInstructions: Int): Result {
         require(maxInstructions > 0) { "RSP instruction budget must be positive." }
         val boot = bootstrap.startFromRdram(taskAddress)
+        coordinator?.begin(boot.descriptor.flags)
+        coordinator?.startBootMicrocode()
+
+        val tracker = N64SpTaskMicrocodeTracker(boot.descriptor)
+        bus.setSpDmaListener(tracker::onSpDmaCompleted)
         val rsp = N64RspCore(bus)
+        rsp.setInstructionListener { pc, instruction ->
+            if (tracker.onInstructionExecuted(pc, instruction)) {
+                coordinator?.startTaskMicrocode()
+            }
+        }
         val executed = rsp.run(maxInstructions)
+        bus.setSpDmaListener(null)
         val status = bus.read32(N64Bus.SP_STATUS_REG)
         val halted = (status and N64Bus.SP_STATUS_HALT) != 0
         val broke = (status and N64Bus.SP_STATUS_BROKE) != 0
+        if (tracker.taskMicrocodeEntryObserved && broke) coordinator?.onTaskBreak()
         return Result(
             bootstrap = boot,
             executedInstructions = executed,
@@ -43,7 +57,8 @@ class N64SpTaskRunner(
             spStatus = status,
             halted = halted,
             broke = broke,
-            instructionBudgetExhausted = !halted && executed == maxInstructions
+            instructionBudgetExhausted = !halted && executed == maxInstructions,
+            taskMicrocodeEntryObserved = tracker.taskMicrocodeEntryObserved
         )
     }
 }
