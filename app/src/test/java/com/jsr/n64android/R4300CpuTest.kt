@@ -4841,4 +4841,24 @@ class R4300CpuTest {
         assertEquals(0L, cpu.cop0[13] and 0x7CL)
     }
 
+    @Test fun fullTlbDiagnosticSnapshotIncludesEveryInitializedEntry() {
+        val cpu = R4300Cpu(N64Memory(64))
+        cpu.tlb.write(
+            3,
+            R4300Tlb.Entry(
+                virtualPagePairBase = 0x70000000L,
+                asid = 0x12,
+                evenPage = R4300Tlb.Page(0x123, valid = true, dirty = true),
+                oddPage = R4300Tlb.Page(0x124, valid = false, dirty = false)
+            )
+        )
+
+        val snapshot = cpu.diagnosticFullTlbSnapshot()
+        assertTrue(snapshot.contains("TLB[3]"))
+        assertTrue(snapshot.contains("VPN2=0x70000000"))
+        assertTrue(snapshot.contains("ASID=0x12"))
+        assertTrue(snapshot.contains("Lo0=0x"))
+        assertTrue(snapshot.contains("Lo1=0x"))
+    }
+
 }
