@@ -203,17 +203,17 @@ class N64RspCore(private val bus: N64Bus) {
                 throw UnsupportedOperationException("RSP LHV/SHV currently supports element=0 only.")
             }
             val address = (gpr[base] + offset * 16) and 0xFFF
-            val alignedStart = address and 0xFF0
             if (load) {
-                // LHV gathers the odd byte of each halfword in the aligned 128-bit block.
+                // LHV reads from the effective address, advancing two DMEM bytes per lane.
+                // The effective address itself selects the alternating byte parity.
                 for (lane in 0 until 8) {
-                    val value = bus.read8(dmemAddress(alignedStart + lane * 2 + 1))
+                    val value = bus.read8(dmemAddress(address + lane * 2))
                     vectorUnit.writeLane(vectorRegister, lane, value shl 7)
                 }
             } else {
-                // SHV writes the odd byte of each vector halfword to alternating DMEM bytes.
-                // The source mapping is intentionally restricted to element=0 pending
-                // exhaustive fixtures for the rotated-register edge cases.
+                // SHV remains limited to the initial element=0 fixture. Its exact
+                // rotated source mapping is intentionally isolated for later validation.
+                val alignedStart = address and 0xFF0
                 for (lane in 0 until 8) {
                     val value = (vectorUnit.readLane(vectorRegister, lane) ushr 7) and 0xFF
                     bus.write8(dmemAddress(alignedStart + lane * 2 + 1), value)
