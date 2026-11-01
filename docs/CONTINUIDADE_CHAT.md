@@ -2317,3 +2317,27 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 
 ### Próximo passo
 - Confirmar o CI deste teste. Depois, priorizar o caminho de apresentação de frames: VI framebuffer com stride/origin/pixel size e integração com a tela Android, mantendo separado o framebuffer de teste e o frame originado de ROM real.
+
+
+## 50. VI com stride de framebuffer independente da largura visível — 2026-11-01
+
+### Implementação
+- `N64ViFramebufferReader.capture` agora aceita `stridePixels` separado da largura visível.
+- A leitura começa em cada linha usando `origin + y * stridePixels * bytesPerPixel`; pixels de padding entre linhas não aparecem na imagem.
+- A validação de limites usa o último byte visível da última linha, evitando assumir que todas as linhas visíveis são contíguas.
+- `N64Bus.captureViFrame(height, outputWidth)` usa VI_WIDTH como stride e permite largura de saída explícita menor ou igual ao stride. Sem outputWidth, mantém o comportamento anterior.
+- A captura automática ainda usa VI_WIDTH como largura visível porque VI_H_START e o recorte horizontal ainda não foram implementados.
+
+### Testes
+- RGBA5551 com largura visível 2 e stride 4, verificando que o padding não aparece na segunda linha.
+- Rejeição de stride menor que a largura de saída.
+- Verificação de limite de RDRAM considerando o stride da última linha.
+- Integração no barramento com VI_WIDTH maior que a largura visível.
+
+### Limites
+- O VI continua sendo uma captura pontual, sem VBlank, scanout, VI_CURRENT temporizado ou geração contínua de frames.
+- A largura visível automática ainda não é derivada de VI_H_START; por padrão continua igual a VI_WIDTH.
+- Não prova que uma ROM comercial já produz framebuffer utilizável; o teste de stride usa dados sintéticos.
+
+### Próximo passo
+- Confirmar CI. Em seguida, implementar derivação explícita da janela horizontal VI_H_START com escala X e integrar a captura a uma apresentação atualizável na tela Android, mantendo a distinção entre frames sintéticos e frames originados de ROM.
