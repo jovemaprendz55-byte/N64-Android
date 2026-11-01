@@ -1247,8 +1247,8 @@ class MainActivity : Activity() {
             showVideoTestPage(
                 result.frame,
                 title = "TRIÂNGULO RDP SINTÉTICO",
-                description = "Pipeline interno executado: spans do rasterizador → pixels RGBA5551 escritos na RDRAM → captura pelos registradores VI → imagem Android. " +
-                    "Spans: ${result.spansWritten}; pixels escritos: ${result.pixelsWritten}. " +
+                description = "Lista de comandos sintética lida pelo DPC → RDP flat triangle → pixels RGBA5551 na RDRAM → captura pelos registradores VI → imagem Android. " +
+                    "Comandos processados: ${result.commandsProcessed}; triângulos: ${result.trianglesRasterized}; pixels escritos: ${result.pixelsWritten}. " +
                     "Isto ainda não é uma ROM nem um jogo emulado."
             )
         } catch (error: Exception) {
