@@ -25,6 +25,39 @@ class N64BusMiRegisterTest {
         assertEquals(0, bus.read32(N64Bus.MI_INTR_REG))
     }
 
+
+    @Test
+    fun rspBreakRaisesSpInterruptOnlyWhenInterruptOnBreakIsEnabled() {
+        val bus = N64Bus(ram = N64Memory(8 * 1024))
+
+        bus.write32(N64Bus.SP_STATUS_REG, N64Bus.SP_STATUS_CMD_SET_INTR_BREAK)
+        bus.signalSpBreak()
+
+        assertEquals(
+            N64Bus.SP_STATUS_HALT or N64Bus.SP_STATUS_BROKE or
+                N64Bus.SP_STATUS_INTR or N64Bus.SP_STATUS_INTR_BREAK,
+            bus.read32(N64Bus.SP_STATUS_REG)
+        )
+        assertEquals(N64Bus.MI_INTR_SP, bus.read32(N64Bus.MI_INTR_REG))
+
+        bus.write32(N64Bus.SP_STATUS_REG, N64Bus.SP_STATUS_CMD_CLR_INTR)
+        assertEquals(0, bus.read32(N64Bus.MI_INTR_REG))
+        assertEquals(
+            N64Bus.SP_STATUS_HALT or N64Bus.SP_STATUS_BROKE or N64Bus.SP_STATUS_INTR_BREAK,
+            bus.read32(N64Bus.SP_STATUS_REG)
+        )
+    }
+
+    @Test
+    fun rspBreakDoesNotRaiseMiInterruptWhenInterruptOnBreakIsDisabled() {
+        val bus = N64Bus(ram = N64Memory(8 * 1024))
+
+        bus.signalSpBreak()
+
+        assertEquals(N64Bus.SP_STATUS_HALT or N64Bus.SP_STATUS_BROKE, bus.read32(N64Bus.SP_STATUS_REG))
+        assertEquals(0, bus.read32(N64Bus.MI_INTR_REG))
+    }
+
     @Test
     fun miInitModeAcceptsWriteOneCommands() {
         val bus = N64Bus(ram = N64Memory(8 * 1024))
