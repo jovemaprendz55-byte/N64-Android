@@ -2125,5 +2125,5 @@ Construir o ciclo de vida de task SP: leitura do descriptor em RDRAM, carregamen
 ### Limites
 - O bootstrap ainda não executa RSP até BREAK, não sinaliza MI_INTR_SP e não encaminha display list para DPC.
 - DMA é síncrono/simplificado e não modela latência, fila, busy/full ou timing de hardware.
-- CI dos commits #842 e #843 estava `in_progress` no momento deste registro; não declarar a integração aprovada até consultar o resultado final.
+- CI #836–#844: **success** na consulta de 2026-11-01; os testes do decoder, ciclo de vida e bootstrap passaram no workflow de build.
 - Tarefa 8 permanece em andamento, não concluída.
