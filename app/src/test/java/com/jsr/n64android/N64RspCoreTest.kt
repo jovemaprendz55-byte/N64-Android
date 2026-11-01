@@ -209,15 +209,16 @@ class N64RspCoreTest {
     fun spvAndSuvUseDifferentPackingAcrossTheEightToSixteenElementBoundary() {
         val (bus, rsp) = setup(
             addiu(8, 0, 0x200),
+            addiu(9, 0, 0x210),
             vectorMemory(0x3A, 8, 11, 6, 5, 0),
-            vectorMemory(0x3A, 8, 12, 7, 5, 0)
+            vectorMemory(0x3A, 9, 12, 7, 5, 0)
         )
         for (lane in 0 until 8) {
             rsp.vectorUnit.writeLane(11, lane, 0x1200 + lane * 0x0100)
             rsp.vectorUnit.writeLane(12, lane, 0x3400 + lane * 0x0100)
         }
 
-        assertEquals(3, rsp.run(3))
+        assertEquals(4, rsp.run(4))
         // SPV: element positions 5..7 use bits 15..8; 8..12 use bits 14..7.
         assertEquals(0x17, bus.read8(N64Bus.SP_DMEM_BASE + 0x200))
         assertEquals(0x19, bus.read8(N64Bus.SP_DMEM_BASE + 0x202))
@@ -225,10 +226,10 @@ class N64RspCoreTest {
         assertEquals((0x1400 ushr 7) and 0xFF, bus.read8(N64Bus.SP_DMEM_BASE + 0x207))
 
         // SUV swaps the packing rule on the same wrapped element positions.
-        assertEquals((0x3900 ushr 7) and 0xFF, bus.read8(N64Bus.SP_DMEM_BASE + 0x200))
-        assertEquals((0x3B00 ushr 7) and 0xFF, bus.read8(N64Bus.SP_DMEM_BASE + 0x202))
-        assertEquals(0x34, bus.read8(N64Bus.SP_DMEM_BASE + 0x203))
-        assertEquals(0x38, bus.read8(N64Bus.SP_DMEM_BASE + 0x207))
+        assertEquals((0x3900 ushr 7) and 0xFF, bus.read8(N64Bus.SP_DMEM_BASE + 0x210))
+        assertEquals((0x3B00 ushr 7) and 0xFF, bus.read8(N64Bus.SP_DMEM_BASE + 0x212))
+        assertEquals(0x34, bus.read8(N64Bus.SP_DMEM_BASE + 0x213))
+        assertEquals(0x38, bus.read8(N64Bus.SP_DMEM_BASE + 0x217))
     }
 
     @Test
