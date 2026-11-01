@@ -2782,3 +2782,30 @@ Esta diretriz foi reafirmada pelo usuário em 2026-11-01 após uma resposta que 
 - O próximo log poderá distinguir melhor polling real da CPU de inspeções internas do scheduler. A causa anterior ao primeiro acesso SP ainda precisa ser reconstruída.
 - CI #1002, commit documental anterior `7e85f33e509e80b7b05578be49013f47fb043629`, terminou com sucesso. A CI da correção atual deve ser consultada separadamente.
 - Branch de trabalho: `dev/n64-clean-start`. Não alterar `main`.
+
+
+## Diagnóstico dedicado de MMIO do SP — 2026-11-01
+
+### Implementação
+- `N64Bus` agora mantém `diagnosticSpMmioHistory` separado do histórico MMIO geral, com capacidade de 512 eventos.
+- Cada acesso CPU ao bloco SP registra nome do registrador, tipo R/W, PC virtual, endereço físico e valor.
+- Contadores separados por registrador: SP_MEM_ADDR, SP_DRAM_ADDR, SP_RD_LEN, SP_WR_LEN, SP_STATUS, SP_DMA_FULL, SP_DMA_BUSY, SP_PC e SP_SEMAPHORE.
+- O histórico geral e o histórico de escritas SP foram preservados; o novo histórico evita que acessos MI/VI/PI/SI expulsem os eventos SP relevantes.
+- `MainActivity` inclui a nova seção e os contadores no botão COPIAR LOGS.
+
+### Teste
+- Criado `N64BusSpDiagnosticsTest.dedicatedSpHistoryRetainsCpuReadsAndWritesAfterOtherMmioTraffic`.
+- O teste gera uma leitura SP_STATUS e uma escrita SP_PC, depois 300 leituras MI; verifica que os dois eventos SP continuam disponíveis, com PC e valor corretos.
+
+### Commits desta etapa
+- `e0d78b2867353efda147a6f64a5c31b3417eaa24` — histórico dedicado de MMIO SP.
+- `dee388a149c9429564c3ce94ef2a7d7271720213` — teste do histórico dedicado.
+- `09f585ab13abc1f73ec7b6913c3eaf5b0916e0ec` — inclusão do diagnóstico nos logs copiados.
+- O status de CI ainda não foi confirmado nesta atualização; não declarar build/testes aprovados até consultar o GitHub Actions.
+- Nenhuma alteração foi feita em `main`.
+
+### Próximo passo
+1. Consultar o resultado da CI para o commit de código e corrigir qualquer falha antes de solicitar teste no aparelho.
+2. Gerar novo APK e executar GoldenEye 007 até o polling persistente.
+3. Copiar os logs e analisar o histórico dedicado MMIO SP para distinguir se a ROM leu/escreveu SP_STATUS, SP_PC ou os registradores DMA.
+4. Se continuar sem submissão SP, avançar para a captura do fluxo R4300 anterior ao loop e dos valores lidos pelo refill TLB; não liberar HALT nem fabricar OSTask.
