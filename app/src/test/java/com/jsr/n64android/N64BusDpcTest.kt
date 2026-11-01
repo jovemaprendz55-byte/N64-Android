@@ -37,9 +37,10 @@ class N64BusDpcTest {
         bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_ORIGIN_OFFSET, 0x100)
         bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_WIDTH_OFFSET, 4)
 
-        val frame = bus.captureViFrame(height = 4) ?: error("VI did not capture the configured framebuffer.")
+        val frame = bus.captureViFrame(height = 4)
 
-        assertEquals(4, frame.width)
+        assertTrue(frame != null)
+        assertEquals(4, frame!!.width)
         assertEquals(4, frame.height)
         assertEquals(0xFFFF0000.toInt(), frame.argbPixels[1 * 4 + 1])
         assertEquals(0xFFFF0000.toInt(), frame.argbPixels[2 * 4 + 2])

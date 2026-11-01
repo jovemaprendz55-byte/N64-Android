@@ -39,6 +39,28 @@ class N64DpcCommandProcessorTest {
     }
 
     @Test
+    fun rejectsMultiwordTriangleInsteadOfTreatingPayloadAsCommands() {
+        val memory = N64Memory(256)
+        val dpc = N64DpcCommandProcessor(memory, memory.size, N64RdpFillProcessor(memory, memory.size))
+        memory.write32(0x40, 0x20000000)
+        memory.write32(0x44, 0)
+        val error = runCatching { dpc.process(0x40, 0x60) }.exceptionOrNull()
+        assertTrue(error is UnsupportedOperationException)
+        assertTrue(error!!.message!!.contains("requires 32 bytes"))
+    }
+
+    @Test
+    fun rejectsTruncatedMultiwordTriangle() {
+        val memory = N64Memory(256)
+        val dpc = N64DpcCommandProcessor(memory, memory.size, N64RdpFillProcessor(memory, memory.size))
+        memory.write32(0x40, 0x20000000)
+        memory.write32(0x44, 0)
+        val error = runCatching { dpc.process(0x40, 0x58) }.exceptionOrNull()
+        assertTrue(error is IllegalArgumentException)
+        assertTrue(error!!.message!!.contains("Truncated RDP command"))
+    }
+
+    @Test
     fun emptyCommandRangeDoesNotInvokeRdpOrChangeMemory() {
         val memory = N64Memory(256)
         val dpc = N64DpcCommandProcessor(

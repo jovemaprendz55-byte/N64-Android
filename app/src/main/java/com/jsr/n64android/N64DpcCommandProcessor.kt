@@ -34,7 +34,7 @@ class N64DpcCommandProcessor(
 
     /**
      * Processes commands in [startAddress, endAddressExclusive).
-     * Every currently supported RDP command occupies exactly 8 bytes.
+     * Reads command lengths from the RDP opcode table. Only 8-byte commands are currently dispatched; recognized multiword commands are rejected safely rather than treating payload words as new opcodes.
      */
     fun process(startAddress: Int, endAddressExclusive: Int): Result {
         require(startAddress >= 0) { "DPC start address cannot be negative." }
@@ -61,8 +61,22 @@ class N64DpcCommandProcessor(
         while (address < endAddressExclusive) {
             val high = memory.read32(address).toLong() and 0xFFFFFFFFL
             val low = memory.read32(address + 4).toLong() and 0xFFFFFFFFL
-            commands.add((high shl 32) or low)
-            address += COMMAND_BYTES
+            val command = (high shl 32) or low
+            val opcode = ((command ushr 58) and 0x3FL).toInt()
+            val commandBytes = N64RdpCommandLength.bytesForOpcode(opcode)
+            val remainingBytes = endAddressExclusive - address
+            require(commandBytes <= remainingBytes) {
+                "Truncated RDP command 0x${opcode.toString(16)} at 0x${address.toString(16)}: " +
+                    "requires $commandBytes bytes, only $remainingBytes remain."
+            }
+            if (commandBytes != COMMAND_BYTES) {
+                throw UnsupportedOperationException(
+                    "RDP command 0x${opcode.toString(16)} requires $commandBytes bytes; " +
+                        "multiword command execution is not implemented."
+                )
+            }
+            commands.add(command)
+            address += commandBytes
         }
 
         val rdpResult = rdp.execute(commands)
