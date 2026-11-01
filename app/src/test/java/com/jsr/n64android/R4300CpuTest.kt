@@ -4279,7 +4279,7 @@ class R4300CpuTest {
     @Test fun vr4300DataCacheInvalidationClearsLlbit() {
         val memory = N64Memory(64)
         memory.write32(0, iType(0x30, 1, 2, 0)) // LL
-        memory.write32(4, (0x2F shl 26) or (1 shl 16) or (4 shl 16)) // CACHE Hit_Invalidate D (subop 12).
+        memory.write32(4, (0x2F shl 26) or (0x11 shl 16)) // CACHE Hit_Invalidate D (subop 12).
         memory.write32(8, iType(0x38, 1, 2, 0)) // SC
         memory.write32(16, 0x11223344)
         val cpu = R4300Cpu(memory)
@@ -4298,7 +4298,7 @@ class R4300CpuTest {
     @Test fun vr4300InstructionCacheInvalidationDoesNotClearLlbit() {
         val memory = N64Memory(64)
         memory.write32(0, iType(0x30, 1, 2, 0)) // LL
-        memory.write32(4, (0x2F shl 26) or (4 shl 16)) // CACHE Hit_Invalidate I (subop 4).
+        memory.write32(4, (0x2F shl 26) or (0x10 shl 16)) // CACHE Hit_Invalidate I (subop 4).
         memory.write32(8, iType(0x38, 1, 2, 0)) // SC
         memory.write32(16, 0x11223344)
         val cpu = R4300Cpu(memory)
