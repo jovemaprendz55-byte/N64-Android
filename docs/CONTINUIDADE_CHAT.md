@@ -3338,3 +3338,39 @@ O Log da seção 21 provou o salto direto em `0x70005D58`, mas a captura anterio
 2. Gerar APK somente após CI verde e executar no aparelho.
 3. Enviar o novo `Log` para decodificar a sequência de instruções nas janelas novas, especialmente a formação dos argumentos A0–A3 e T9.
 4. Cruzar eventuais leituras/escritas de memória e DMA com os valores efetivamente usados antes do JAL para `0x7F000BD0`.
+
+
+## 23. Atualização do Log principal e confirmação do APK ainda antigo — 2026-11-01
+
+### Fonte e identificação
+- Foi consultado o arquivo `Log` da branch `main`.
+- O commit `01589a6f340ebc761eccfc50a251b77d71778f2b` atualizou a contagem para 17.150.000 instruções e acrescentou a seção de caminho de chamada ao Log.
+- O diff desse commit mostra que a seção adicionada contém somente os pontos de chamada em `0x70005D40–0x70005D5C` e o retorno `0x70001880–0x70001894`. Não contém instruções internas das funções `0x70004E2C` e `0x70005B60`.
+- O commit `2b052bc1510e8fd8229dd7a438cc7f6acb9fc9da` também atualizou o arquivo `Log`, mas o conector não disponibilizou diff para esse commit.
+
+### Dados atualizados observados
+- CPU: 17.150.000 instruções.
+- Frames VI: 0.
+- RSP: 0 instruções.
+- SP_STATUS: `0x1` (HALT).
+- DPC START/END/CURRENT: `0x0`.
+- Exceção continua `TLB INVALID FETCH` em `0x7F000BD0`.
+- TLBWI/TLBWR posterior ainda registra entrada de `EntryHi=0x7F000000`, `EntryLo0=0x1`, `EntryLo1=0x41`, com V=0 em ambos.
+- O contador Random mudou de `0x14` para `0x0E` no Log atualizado; isso é estado do registrador COP0, não evidência de correção.
+
+### Leitura da cadeia de chamadas
+- Em `0x70005D40`, a ROM executa JAL para `0x70004E2C`, com A0=`0xFFFFFFFF8005DA40`, A1=`0xFFFFFFFF8005DB18`, A2=`0xFFFFFFFF8005D9A0`.
+- Em seguida, em `0x70005D48`, executa JAL para `0x70005B60`; no instante capturado, A0=1, A1=0, A2=0.
+- Em `0x70005D50`, executa JAL para `0x700017E0`, passando A0=`0xFFFFFFFF800636F0`, A1=`0xFFFFFFFF800636E8`, A2=1.
+- A rotina de inicialização PTE retorna e o caller salta para `0x7F000BD0`.
+- Isso comprova a ordem dos call sites e os registradores observados antes das chamadas, mas não revela as instruções internas das duas funções chamadas nem a semântica dos argumentos.
+
+### Conclusão operacional
+A captura ampliada já está na branch `dev/n64-clean-start`, mas este Log não mostra as novas janelas `0x70004E2C–0x70004EAC` e `0x70005B60–0x70005D60`. Portanto, ele não comprova que o APK com a instrumentação ampliada foi instalado/executado. Não é seguro tentar decodificar as funções sem essas instruções reais.
+
+### Próximo passo
+1. Confirmar CI/build da branch e gerar o APK com a captura ampliada.
+2. Instalar esse APK e executar a mesma ROM.
+3. Enviar o novo Log; verificar se aparecem instruções em ambas as janelas ampliadas.
+4. Só então decodificar os loads/stores, branches, chamadas e formação dos argumentos.
+5. Manter a investigação TLB sem correções artificiais.
