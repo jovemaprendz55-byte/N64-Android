@@ -2596,3 +2596,10 @@ Próximos blocos: DIV/DIVU e divisão especial RSP; instruções escalares resta
 Só começa após o marco RSP estar validado. Blocos: enquadramento e decodificação de comandos; estado de imagens e tiles; TMEM e carregamentos; sampler e formatos; combiner; triângulos shaded/textured/Z; coverage, depth, blending e antialias; sincronização DPC; testes de referência de pixels e traces reais.
 
 **Regra de encerramento:** não declarar RSP ou RDP concluído enquanto houver instruções/comandos exigidos pelo caminho real do jogo sem implementação ou teste. As 1.000 tarefas não significam 1.000 mudanças arbitrárias; podem ser menos ou mais tarefas técnicas relevantes, com a sequência documentada.
+
+
+### Atualização da execução sequencial
+
+- **Tarefa 001 — HI/LO, MULT e MULTU:** CI concluída com sucesso no workflow `41309965846` (build, testes e upload do APK).
+- **Tarefa 002 — BLTZ e BGEZ:** implementadas comparações assinadas no opcode REGIMM e adicionados testes para condição verdadeira/falsa e execução do delay slot. Aguardando CI antes de iniciar a tarefa 003.
+- Commits da tarefa 002: core `ca67ed9959befb34a3333ff48f8eed4ff937defc`; testes `fdb6a7c972b3255991cb1033edef183dfe4314a7`.
