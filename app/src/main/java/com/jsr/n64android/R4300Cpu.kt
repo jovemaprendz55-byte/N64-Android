@@ -412,10 +412,10 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     }
                 }
                 0x23 -> gpr[rd] = (gpr[rs].toInt() - gpr[rt].toInt()).toLong() // SUBU wraps without trapping.
-                0x24 -> gpr[rd] = (gpr[rs].toInt() and gpr[rt].toInt()).toLong()
-                0x25 -> gpr[rd] = (gpr[rs].toInt() or gpr[rt].toInt()).toLong()
-                0x26 -> gpr[rd] = (gpr[rs].toInt() xor gpr[rt].toInt()).toLong()
-                0x27 -> gpr[rd] = (gpr[rs].toInt() or gpr[rt].toInt()).inv().toLong()
+                0x24 -> gpr[rd] = gpr[rs] and gpr[rt]
+                0x25 -> gpr[rd] = gpr[rs] or gpr[rt]
+                0x26 -> gpr[rd] = gpr[rs] xor gpr[rt]
+                0x27 -> gpr[rd] = (gpr[rs] or gpr[rt]).inv()
                 0x2A -> gpr[rd] = if (gpr[rs] < gpr[rt]) 1L else 0L
                 0x2B -> gpr[rd] = if (java.lang.Long.compareUnsigned(gpr[rs], gpr[rt]) < 0) 1L else 0L
                 else -> throw ReservedInstructionFault("R4300 SPECIAL funct 0x${funct.toString(16)} at 0x${instructionAddress.toString(16)}")
