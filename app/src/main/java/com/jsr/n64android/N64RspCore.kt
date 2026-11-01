@@ -50,7 +50,7 @@ class N64RspCore(private val bus: N64Bus) {
 
     /** Full scalar and vector state for a single diagnostic export. */
     fun diagnosticSnapshot(): String = buildString {
-        appendLine("RSP PC=0x${pc.toUInt().toString(16).uppercase().padStart(4, '0')} LAST=0x${lastInstruction.toUInt().toString(16).uppercase().padStart(8, '0')} COUNT=$executedInstructions HI=0x${hi.toUInt().toString(16).uppercase()} LO=0x${lo.toUInt().toString(16).uppercase()} HALTED=$halted")
+        appendLine("RSP PC=0x${pc.toUInt().toString(16).uppercase().padStart(4, '0')} LAST=0x${lastInstruction.toUInt().toString(16).uppercase().padStart(8, '0')} COUNT=$executedInstructions HI=0x${hi.toUInt().toString(16).uppercase()} LO=0x${lo.toUInt().toString(16).uppercase()} HALTED=${(bus.diagnosticSpStatus() and N64Bus.SP_STATUS_HALT) != 0}")
         appendLine("RSP GPR:")
         for (index in 0 until 32) appendLine("RSP GPR[$index]=0x${gpr[index].toUInt().toString(16).uppercase().padStart(8, '0')}")
         appendLine("RSP VECTOR UNIT:")
