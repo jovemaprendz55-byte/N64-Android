@@ -101,6 +101,29 @@ class N64RomVideoSessionTest {
         assertEquals(0L, result.executedInstructions)
     }
     @Test
+    fun schedulerStatusPollDoesNotAppearAsCpuMmioAccess() {
+        val memory = N64Memory(1024)
+        val bus = N64Bus(ram = memory)
+        memory.write32(0, 0) // R4300 NOP
+        val cpu = R4300Cpu(bus)
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
+
+        val session = N64RomVideoSession(
+            bus = bus,
+            cpu = cpu,
+            instructionLimit = 1,
+            rspPollInterval = 1,
+            framePollInterval = 100,
+            onFrame = {}
+        )
+
+        val result = session.execute()
+
+        assertEquals(N64ExecutionSession.State.COMPLETED, result.state)
+        assertTrue(bus.diagnosticMmioHistory.none { it.startsWith("R SP ") })
+    }
+
+    @Test
     fun pumpsRspWhenCpuHasReleasedSpAndObservesBreak() {
         val memory = N64Memory(1024)
         val bus = N64Bus(ram = memory)
