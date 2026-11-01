@@ -4079,3 +4079,36 @@ Essa é uma melhoria de diagnóstico, não uma correção funcional do emulador.
 5. Não alterar PFN/V, não desativar TLB e não tratar o loop CACHE como se fosse atualização de PTE.
 
 **Conclusão desta etapa:** o novo Log confirma a rotina CACHE pós-DMA e confirma os 128 marcadores PTE inválidos. A instrumentação foi ampliada para preservar todos os 5.120 eventos da sequência na próxima execução. Nenhuma correção funcional do GoldenEye foi aplicada.
+
+
+## 38. CI confirmado e captura dos registradores T0/T1 no loop PI (2026-11-01)
+
+**Data/hora do registro:** 2026-11-01 19:48:31 (UTC−03:00), correspondente ao commit de instrumentação criado às 22:48:31 UTC.
+
+### 38.1. Confirmação dos builds anteriores
+
+Foram consultadas as execuções do GitHub Actions na branch `dev/n64-clean-start`:
+
+- Run `41358642474`, commit `b4aedddf1a34b328af1b33abe28e847f597a1b4a`: concluído com sucesso; artefato APK disponível.
+- Run `41358645910`, commit `607b638c95e17a087147bb27d85fc37f324db5b2`: concluído com sucesso; artefato APK disponível.
+- Run `41358661269`, commit `e1b79cd1cfd8e7be4b844486d327b38bcc6f331a` (documentação da seção 37): concluído com sucesso; artefato APK disponível.
+
+Artefato da revisão documentada mais recente: ID `13103857915`, nome `n64-android-debug-apk`, tamanho 991.671 bytes, SHA-256 `b120e26f05c104bc7ffcca8961ae8d55281da2c048110bfad70f024b859c8455`. Expiração informada pelo GitHub: 2026-11-15 22:45:55 UTC. Esse APK antecede a nova captura T0/T1 desta seção.
+
+### 38.2. Instrumentação adicional
+
+A inspeção de `recordCallPathDiagnostic` mostrou que a linha de diagnóstico já registrava RA, T9, V0, V1, A0–A3, SP e S0–S7, mas não registrava T0/T1. Isso impedia confirmar diretamente o início e o limite do loop observado em `0x70010BB4..0x70010BC4`.
+
+Alteração aplicada em `R4300Cpu.kt`:
+
+- Adicionados os campos `T0` (GPR8) e `T1` (GPR9) à linha de captura do caminho de execução.
+- A captura continua limitada às janelas de código já configuradas; não foi introduzido logging global por instrução.
+- Nenhuma semântica de CACHE, TLB, PFN ou PTE foi alterada.
+
+Commit: `f557ee2fc1bc68aa872e42f16e9d5cffea8383f2` — `Capture T0 and T1 in PI call-path diagnostics`.
+
+### 38.3. Estado e próxima ação
+
+A mudança acima é exclusivamente diagnóstica e ainda precisa passar pelo CI. Após o build, instalar a APK gerada, reproduzir a inicialização do GoldenEye e enviar o novo Log. A leitura de T0/T1 nas instruções CACHE/SLTU/BNE/ADDIU permitirá verificar o intervalo percorrido e quantas linhas de cache são processadas. Não assumir que CACHE escreve PTEs.
+
+A investigação funcional continua em aberto: descobrir por que a execução chega a `0x7F000BD0` com o PTE ainda marcado como inválido. Não forçar bits V/PFN e não desativar o TLB.
