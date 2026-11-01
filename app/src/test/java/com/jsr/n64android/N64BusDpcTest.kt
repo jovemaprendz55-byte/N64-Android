@@ -47,6 +47,41 @@ class N64BusDpcTest {
         assertEquals(0x00000000, frame.argbPixels[0])
     }
 
+
+    @Test
+    fun fullSyncCommandRaisesDpInterruptAndMiAcknowledgementClearsIt() {
+        val bus = N64Bus(ram = N64Memory(4096))
+        val start = 0x40
+        val commands = fillRectangleCommands() + command(N64DpcCommandProcessor.CMD_FULL_SYNC)
+        val end = start + commands.size * N64DpcCommandProcessor.COMMAND_BYTES
+        writeCommands(bus, start, commands)
+
+        bus.write32(N64Bus.DPC_START_REG, start)
+        bus.write32(N64Bus.DPC_END_REG, end)
+
+        assertEquals(N64Bus.MI_INTR_DP, bus.read32(N64Bus.MI_INTR_REG))
+        assertEquals(N64Bus.MI_INIT_MODE_DP_INTR, bus.read32(N64Bus.MI_INIT_MODE_REG))
+
+        bus.write32(N64Bus.MI_INIT_MODE_REG, N64Bus.MI_INIT_MODE_CLR_DP_INTR)
+        assertEquals(0, bus.read32(N64Bus.MI_INTR_REG))
+        assertEquals(0, bus.read32(N64Bus.MI_INIT_MODE_REG))
+    }
+
+    @Test
+    fun displayListWithoutFullSyncDoesNotRaiseDpInterrupt() {
+        val bus = N64Bus(ram = N64Memory(4096))
+        val start = 0x40
+        val commands = fillRectangleCommands()
+        val end = start + commands.size * N64DpcCommandProcessor.COMMAND_BYTES
+        writeCommands(bus, start, commands)
+
+        bus.write32(N64Bus.DPC_START_REG, start)
+        bus.write32(N64Bus.DPC_END_REG, end)
+
+        assertEquals(0, bus.read32(N64Bus.MI_INTR_REG))
+        assertEquals(0, bus.read32(N64Bus.MI_INIT_MODE_REG))
+    }
+
     @Test
     fun emptyRangeLeavesCurrentAtEnd() {
         val bus = N64Bus(ram = N64Memory(1024))
