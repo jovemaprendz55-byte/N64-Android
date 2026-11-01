@@ -2362,3 +2362,9 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 
 ### Próximo passo
 - Confirmar CI. Depois, adicionar um apresentador de vídeo atualizável para Android que receba frames VI sucessivos sem reconstruir a Activity, e ligar esse apresentador apenas quando a execução real da ROM alimentar RDRAM/VI.
+
+
+### Correção pós-CI da etapa 51
+- O primeiro CI da mudança horizontal revelou que o demo sintético de triângulo ainda programava apenas os registradores verticais; por isso `captureViFrameFromRegisters` retornava null.
+- O demo agora programa VI_H_START e VI_X_SCALE para sua largura de 320 pixels.
+- O CI do primeiro commit de VI horizontal falhou somente em `N64RdpFlatTriangleRasterizerTest.syntheticPipelineProducesViFrameContainingRasterizedTriangle`; compilação e montagem do APK haviam passado. A correção está no commit `4816592a78dccadfaf9baa97177e6e2d9e2595c2` e deve ser validada pelo workflow subsequente.
