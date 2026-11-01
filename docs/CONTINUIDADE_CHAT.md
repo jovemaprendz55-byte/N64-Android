@@ -2583,3 +2583,26 @@ Uma ROM deve poder ser carregada e executada pelo emulador usando apenas os dado
 
 Esta diretriz foi reafirmada pelo usuário em 2026-11-01 após uma resposta que mencionou IPL3 como comparação diagnóstica. A comparação/execução do IPL3 original não deve ser proposta como próximo passo. A investigação dos problemas atuais deve continuar dentro do HLE próprio.
 
+## Diagnóstico de controle de fluxo antes da falha TLB — 2026-11-01 12:56:13 (UTC−03:00)
+
+### Evidência revisada
+
+- A última captura disponível da branch `main` mostra que a CPU chega a `0x7F000BD0` e sofre falha TLB de busca.
+- O vetor de refill executa código da própria ROM e chega a `TLBWR`; os valores carregados para EntryLo0/EntryLo1 aparecem como `0x00000001` e `0x00000041`, ambos sem o bit Valid. Isso demonstra que o handler tentou instalar uma tradução inválida; isoladamente, não prova defeito na implementação do TLB.
+- O handler geral também executa depois da falha inválida. Portanto, não atribuir o bloqueio automaticamente ao cálculo de PageMask/TLB sem rastrear como o fluxo chegou ao endereço.
+- No mesmo log, SP permanece HALT (`SP_STATUS=1`), sem escritas SP e sem DMA SP registrados. A sessão de vídeo atual só bombeia o RSP quando HALT está limpo.
+- `N64SpTaskRunner` e seus testes existem, mas a execução real da ROM na Activity usa `N64RomVideoSession`; a ponte de tarefa OSTask não está integrada automaticamente ao fluxo da ROM.
+
+### Próxima instrumentação implementada nesta etapa
+
+- Adicionar uma janela circular leve de 64 instruções executadas antes da primeira exceção TLB.
+- Guardar somente valores primitivos durante a execução normal e formatar o texto apenas quando ocorrer a primeira falha, evitando gerar strings a cada instrução.
+- Incluir PC, palavra da instrução, opcode, registradores GPR usados como rs/rt e Status em cada linha.
+- Exibir essa seção no botão COPIAR LOGS, antes do rastro pós-exceção.
+- Cobrir o comportamento com teste sintético que executa LUI/JR/delay-slot e falha ao buscar o destino sem mapeamento.
+
+### Interpretação e limites
+
+- Esta instrumentação deve revelar a sequência que calculou/selecionou o endereço de busca inválido; ela não altera a tradução TLB nem simula uma correção.
+- O caminho SP/RSP continua pendente: identificar no código/traces qual OSTask deve ser submetida e em que ponto o jogo libera o SP. Não forçar HALT a ser limpo e não executar microcode arbitrário sem descriptor válido.
+- Toda investigação permanece dentro do HLE próprio, sem exigir firmware original, PIF ROM original ou execução do IPL3 original.

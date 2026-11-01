@@ -4292,6 +4292,31 @@ class R4300CpuTest {
     }
 
 
+
+    @Test fun capturesInstructionsImmediatelyBeforeFirstTlbFetchFault() {
+        val memory = N64Memory(0x1000)
+        memory.write32(0, (0x0F shl 26) or (8 shl 16) or 0x0040) // LUI $t0,0x0040
+        memory.write32(4, (8 shl 21) or 0x08) // JR $t0
+        memory.write32(8, 0) // Delay slot.
+
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
+        repeat(3) { cpu.step() }
+        assertEquals(0x00400000L, cpu.pc)
+
+        cpu.step() // Instruction fetch at 0x00400000 raises a TLB miss.
+
+        val trace = cpu.diagnosticTlbPreExceptionHistory
+        assertEquals(3, trace.size)
+        assertTrue(trace[0].contains("PC=0xFFFFFFFF80000000"))
+        assertTrue(trace[0].contains("INST=0x3C080040"))
+        assertTrue(trace[1].contains("INST=0x01000008"))
+        assertTrue(trace[2].contains("PC=0xFFFFFFFF80000008"))
+        assertTrue(trace[2].contains("INST=0x00000000"))
+        assertEquals(2, cpu.lastExceptionCode)
+    }
+
     @Test fun goldenEyeIpl3CacheScanLoopTerminatesAtUnsignedEndAddress() {
         val memory = N64Memory(64)
         // Exact four-instruction loop observed at IPL3 SP-DMEM 0xA4000428:

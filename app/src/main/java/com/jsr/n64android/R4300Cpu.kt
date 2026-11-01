@@ -75,6 +75,16 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         private set
     /** Short instruction trace after TLB exceptions plus sparse snapshots during later loops. */
     val diagnosticTlbInstructionHistory: MutableList<String> = mutableListOf()
+    /** Instructions executed immediately before the first TLB fault, frozen in a bounded ring. */
+    val diagnosticTlbPreExceptionHistory: MutableList<String> = mutableListOf()
+    private val preTlbFaultPc = LongArray(TLB_PRE_EXCEPTION_TRACE_CAPACITY)
+    private val preTlbFaultInstruction = IntArray(TLB_PRE_EXCEPTION_TRACE_CAPACITY)
+    private val preTlbFaultGprRs = LongArray(TLB_PRE_EXCEPTION_TRACE_CAPACITY)
+    private val preTlbFaultGprRt = LongArray(TLB_PRE_EXCEPTION_TRACE_CAPACITY)
+    private val preTlbFaultStatus = LongArray(TLB_PRE_EXCEPTION_TRACE_CAPACITY)
+    private var preTlbFaultWriteIndex = 0
+    private var preTlbFaultCount = 0
+    private var preTlbFaultTraceCaptured = false
     private var diagnosticTlbTraceRemaining = 0
     private var diagnosticInstructionCount = 0L
 
@@ -100,6 +110,15 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         diagnosticTlbExceptionHistory.clear()
         lastTlbEntrySnapshot = "(nenhuma entrada capturada)"
         diagnosticTlbInstructionHistory.clear()
+        diagnosticTlbPreExceptionHistory.clear()
+        preTlbFaultPc.fill(0L)
+        preTlbFaultInstruction.fill(0)
+        preTlbFaultGprRs.fill(0L)
+        preTlbFaultGprRt.fill(0L)
+        preTlbFaultStatus.fill(0L)
+        preTlbFaultWriteIndex = 0
+        preTlbFaultCount = 0
+        preTlbFaultTraceCaptured = false
         diagnosticTlbTraceRemaining = 0
         diagnosticInstructionCount = 0L
         instructionWordForCurrentStep = null
@@ -813,6 +832,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     }
 
     private fun enterTlbException(fault: R4300Tlb.TlbFault, branchAddress: Long?) {
+        capturePreExceptionTlbTrace()
         lastTlbFaultVirtualAddress = fault.virtualAddress and 0xFFFFFFFFL
         lastTlbFaultAccessType = when (fault.access) {
             R4300Tlb.Access.FETCH -> "FETCH"
@@ -861,16 +881,50 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         diagnosticTlbTraceRemaining = 256
     }
 
+    /** Formats the last successfully fetched instructions once, on the first TLB fault. */
+    private fun capturePreExceptionTlbTrace() {
+        if (preTlbFaultTraceCaptured) return
+        preTlbFaultTraceCaptured = true
+        val first = (preTlbFaultWriteIndex - preTlbFaultCount + TLB_PRE_EXCEPTION_TRACE_CAPACITY) %
+            TLB_PRE_EXCEPTION_TRACE_CAPACITY
+        repeat(preTlbFaultCount) { offset ->
+            val index = (first + offset) % TLB_PRE_EXCEPTION_TRACE_CAPACITY
+            val instruction = preTlbFaultInstruction[index]
+            val opcode = (instruction ushr 26) and 0x3F
+            val rs = (instruction ushr 21) and 0x1F
+            val rt = (instruction ushr 16) and 0x1F
+            diagnosticTlbPreExceptionHistory.add(
+                "PC=0x${preTlbFaultPc[index].toULong().toString(16).uppercase()} " +
+                    "INST=0x${instruction.toUInt().toString(16).uppercase().padStart(8, '0')} " +
+                    "OP=0x${opcode.toString(16).uppercase()} rs=$rs rt=$rt " +
+                    "GPRrs=0x${preTlbFaultGprRs[index].toULong().toString(16).uppercase().padStart(16, '0')} " +
+                    "GPRrt=0x${preTlbFaultGprRt[index].toULong().toString(16).uppercase().padStart(16, '0')} " +
+                    "Status=0x${preTlbFaultStatus[index].toUInt().toString(16).uppercase().padStart(8, '0')}"
+            )
+        }
+    }
+
     private fun recordTlbDiagnosticInstruction(address: Long, instruction: Int) {
         diagnosticInstructionCount++
-        val captureBurst = diagnosticTlbTraceRemaining > 0
-        val captureSample = diagnosticTlbExceptionHistory.isNotEmpty() && diagnosticInstructionCount % 250_000L == 0L
-        if (!captureBurst && !captureSample) return
-        if (captureBurst) diagnosticTlbTraceRemaining--
         val opcode = (instruction ushr 26) and 0x3F
         val rs = (instruction ushr 21) and 0x1F
         val rt = (instruction ushr 16) and 0x1F
         val rd = (instruction ushr 11) and 0x1F
+
+        // Keep a primitive-only rolling window on every successful fetch. Avoid
+        // allocating diagnostic strings on the hot path; format only on fault.
+        preTlbFaultPc[preTlbFaultWriteIndex] = address
+        preTlbFaultInstruction[preTlbFaultWriteIndex] = instruction
+        preTlbFaultGprRs[preTlbFaultWriteIndex] = gpr[rs]
+        preTlbFaultGprRt[preTlbFaultWriteIndex] = gpr[rt]
+        preTlbFaultStatus[preTlbFaultWriteIndex] = cop0[12]
+        preTlbFaultWriteIndex = (preTlbFaultWriteIndex + 1) % TLB_PRE_EXCEPTION_TRACE_CAPACITY
+        if (preTlbFaultCount < TLB_PRE_EXCEPTION_TRACE_CAPACITY) preTlbFaultCount++
+
+        val captureBurst = diagnosticTlbTraceRemaining > 0
+        val captureSample = diagnosticTlbExceptionHistory.isNotEmpty() && diagnosticInstructionCount % 250_000L == 0L
+        if (!captureBurst && !captureSample) return
+        if (captureBurst) diagnosticTlbTraceRemaining--
         val line = (if (captureSample && !captureBurst) "SAMPLE " else "") +
             "PC=0x${address.toULong().toString(16).uppercase()} INST=0x${instruction.toUInt().toString(16).uppercase().padStart(8, '0')} " +
             "OP=0x${opcode.toString(16).uppercase()} rs=$rs rt=$rt rd=$rd " +
@@ -976,6 +1030,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     }
 
     companion object {
+        private const val TLB_PRE_EXCEPTION_TRACE_CAPACITY = 64
         const val RESET_VECTOR: Long = -0x40400000L
     }
 }
