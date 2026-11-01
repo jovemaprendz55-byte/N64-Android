@@ -3139,3 +3139,22 @@ A seção PTE anterior mantinha somente as 512 instruções mais recentes. O la�
 2. Se ambos passarem, usar o APK do commit final para repetir a ROM e copiar o novo Log.
 3. Conferir o início do laço, `GPR2`, `GPR3` e o marcador; calcular a faixa inicial/final com evidência direta.
 4. Continuar sem alterar a semântica de TLB, sem forçar Valid/PFN e sem criar tarefa SP artificial.
+
+
+## 18. Validação da captura PTE e artefatos — 2026-11-01
+
+### CI de código e teste
+- Run `41336463306`, commit `208586abfdd8ff594046a8f0d74e6d00cdb185f9`: **success**. Build and test e Upload debug APK passaram.
+- Run `41336525296`, commit `10cb126a70699af42e4e3500cfadf67b024eb24f`: **success**. Build and test e Upload debug APK passaram; inclui o teste `pteSetupTracePreservesInitialPrefixAndRecentTailWithGpr2`.
+- Artefato da run final de código/teste: `n64-android-debug-apk`, ID `13095294171`, 982.316 bytes, SHA-256 `1070bc551632e8e2125e452e92242abd5dbfc65d3574fa727cd733499870adf8`, expira em 2026-11-15 18:26:08 UTC.
+- Link da build validada: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41336525296
+- Artefato anterior do commit de código: ID `13095437657`, SHA-256 `0aff13950ad3775cfa4403ca646a5404faf2487ff1dcffa12b9e7430c87473d9`; o artefato do commit de teste é o preferido porque contém código + teste integrados.
+
+### CI documental
+- Run `41336594228`, commit documental `a1b8c1bbc16640ef0e1ff11b330d044cc5820616`, foi consultada e ainda estava `in_progress` no momento deste registro. Atualizar o estado somente depois da conclusão.
+
+### Estado
+- A implementação e o teste automatizado foram compilados e aprovados no GitHub Actions.
+- APK foi gerado e está disponível como artefato; **não há confirmação de instalação no aparelho**.
+- Nenhum teste da ROM real com esta nova captura foi recebido ainda.
+- Próximo passo prático: instalar a APK da run `41336525296`, executar a mesma ROM, copiar os logs e conferir o prefixo, o marcador de omissão, `GPR2` e o sufixo recente.
