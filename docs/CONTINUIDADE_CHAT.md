@@ -2851,3 +2851,13 @@ Esta diretriz foi reafirmada pelo usuário em 2026-11-01 após uma resposta que 
 - Histórico limitado a 512 entradas e limpo no reset. A instrumentação é inativa fora da janela de diagnóstico para não gerar log contínuo no caminho normal.
 - Próximo passo: expor esse histórico no botão de copiar logs, compilar/testar e executar a ROM para identificar o endereço físico e o conteúdo real das PTEs consultadas pelo handler.
 - Ainda não registra LDL/LDR, LWL/LWR, SDL/SDR, SWL/SWR, SD, LL/LLD ou SC/SCD; se o handler usar essas instruções, ampliar a cobertura após examinar o novo log.
+
+
+## Watchpoint de escrita da tabela de páginas TLB (01/11/2026)
+
+- O log `main/Log` mostrou o handler TLB lendo `0x00000001` em RDRAM física `0x0005DBF0` e lendo o PTE pareado em `0x0005DC30` (Context `0x003F8000`, ponteiro-base observado em `0x7FC65BF0`).
+- O histórico de acessos do handler começa após a exceção; portanto, não identifica quem escreveu o PTE antes do fault.
+- Foi adicionado um watchpoint de escritas CPU na faixa `0x5DBF0..0x5DC33`, cobrindo os dois words consultados pelo refill. Cada byte registra PC virtual, endereço físico e valor; histórico limitado a 256 entradas.
+- O watchpoint não altera a memória, a TLB, EntryLo ou o fluxo da CPU. Só observa escritas via `N64Bus.write8`; transferências DMA diretas que escrevam nessa faixa não são classificadas como escritas CPU.
+- O painel de logs copia o contador e o histórico do watchpoint. Teste unitário verifica PC e bytes de um `SW`.
+- Próxima validação: compilar, instalar o APK da branch `dev/n64-clean-start`, executar a mesma ROM e procurar `CPU W PTE`. Se vazio, investigar também DMA e inicialização anterior da região.
