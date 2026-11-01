@@ -4112,3 +4112,41 @@ Commit: `f557ee2fc1bc68aa872e42f16e9d5cffea8383f2` — `Capture T0 and T1 in PI 
 A mudança acima é exclusivamente diagnóstica e ainda precisa passar pelo CI. Após o build, instalar a APK gerada, reproduzir a inicialização do GoldenEye e enviar o novo Log. A leitura de T0/T1 nas instruções CACHE/SLTU/BNE/ADDIU permitirá verificar o intervalo percorrido e quantas linhas de cache são processadas. Não assumir que CACHE escreve PTEs.
 
 A investigação funcional continua em aberto: descobrir por que a execução chega a `0x7F000BD0` com o PTE ainda marcado como inválido. Não forçar bits V/PFN e não desativar o TLB.
+
+
+## 39. Análise do novo arquivo Log enviado pelo usuário (2026-11-01)
+
+**Data/hora do registro:** 2026-11-01 19:49:32 (UTC−03:00), baseada no horário de criação do artefato do build associado.
+
+### 39.1. Identificação da captura
+
+- Arquivo analisado: `main/Log`.
+- Blob SHA: `6b668a7ba493a9c2d84ac3dcec4fdaf312365502`.
+- 6.020 linhas.
+- Resumo da sessão: 28.506.428 instruções de CPU, 0 instruções RSP, 0 frames VI publicados e exceção final TLB INVALID FETCH em `0x7F000BD0`.
+
+### 39.2. Esta captura ainda não contém T0/T1
+
+A busca no arquivo inteiro não encontrou `T0=` nem `T1=`. As linhas do loop em `0x70010BB4..0x70010BC0` continuam exibindo RA, T9, V0/V1, A0–A3, SP e S0–S7, mas não os registradores T0/T1.
+
+A branch já contém a instrumentação T0/T1 no commit `f557ee2fc1bc68aa872e42f16e9d5cffea8383f2`, e o CI desse commit terminou com sucesso. Portanto, este Log não comprova a captura pela nova APK; é compatível com uma execução feita com APK anterior à instrumentação, ou com arquivo Log ainda não substituído após instalar a APK nova. Não concluir que o código novo falhou sem testar a APK do commit indicado.
+
+APK com a instrumentação T0/T1:
+- Run `41358978115`, conclusão `success`.
+- Artefato ID `13104681674`, nome `n64-android-debug-apk`, 991.699 bytes.
+- SHA-256 `c97a5f3d7b26c17feaa77a43ed8e0a7b89154183a244903fe48ac8973f7da093`.
+- Expira em `2026-11-15 22:49:31 UTC`.
+
+### 39.3. Confirmações adicionais deste Log
+
+- O watchpoint PTE reporta 5.120 bytes escritos pela CPU, consistente com a sequência já documentada: dois clears de 0x800 bytes (4.096 bytes) e inicialização dos 128 registros com duas palavras por registro (1.024 bytes).
+- O primeiro acesso inválido continua sendo FETCH em VA `0x7F000BD0`; EPC de instrução `0x7F000BD0`, código de exceção 2.
+- O histórico TLB mostra `TLBWR` no PC físico `0xFFFFFFFF80000034`, índice 15, `EntryHi=0x7F000000`, `EntryLo0=0x1`, `EntryLo1=0x41`; ambos sem bit V.
+- O histórico também registra várias instruções `TLBWI` no PC `0x7000D3EC`, preenchendo índices 2–31 com `EntryLo0=0` e `EntryLo1=0`. O índice 15 aparece novamente depois do TLBWR. É necessário reconstruir a ordem temporal e o propósito dessa rotina antes de atribuir causalidade; não presumir que seja erro do TLB.
+- O estado final continua sem vídeo: VI frames = 0; RSP = 0 instruções; DPC START/END/CURRENT = 0.
+
+### 39.4. Próxima ação
+
+Instalar a APK do artefato `13104681674`, executar novamente o GoldenEye e gerar/substituir o arquivo Log. Confirmar que as linhas do loop PI agora contêm `T0=` e `T1=`. Com os valores será possível calcular o início, fim e número de iterações do loop de CACHE (incremento de 16 bytes), e depois correlacionar com o chamador em `0x70005BAC`.
+
+Investigar separadamente a rotina de `TLBWI` em `0x7000D3EC` e a cronologia do índice 15. Não modificar o mapeamento, não forçar bit V e não desativar TLB. Nenhuma correção funcional do GoldenEye foi confirmada nesta etapa.
