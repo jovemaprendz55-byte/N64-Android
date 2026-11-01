@@ -20,24 +20,33 @@ data class N64VideoFrame(
  * Active-height/timing calculation is intentionally not inferred here yet.
  */
 class N64ViFramebufferReader(private val memory: N64AddressSpace, private val rdramSize: Int) {
-    fun capture(origin: Int, width: Int, height: Int, viStatus: Int): N64VideoFrame {
+    fun capture(
+        origin: Int,
+        width: Int,
+        height: Int,
+        viStatus: Int,
+        stridePixels: Int = width
+    ): N64VideoFrame {
         require(width in 1..MAX_WIDTH) { "Unsupported VI width: $width" }
         require(height in 1..MAX_HEIGHT) { "Unsupported VI height: $height" }
+        require(stridePixels in width..MAX_WIDTH) { "Invalid VI stride: $stridePixels for output width $width" }
         val pixelSize = viStatus and VI_STATUS_PIXEL_SIZE_MASK
         require(pixelSize == VI_STATUS_PIXEL_SIZE_16 || pixelSize == VI_STATUS_PIXEL_SIZE_32) {
             "Unsupported VI pixel size: $pixelSize"
         }
 
         val bytesPerPixel = if (pixelSize == VI_STATUS_PIXEL_SIZE_16) 2 else 4
-        val byteCount = width.toLong() * height.toLong() * bytesPerPixel
+        val byteCount = ((height - 1L) * stridePixels.toLong() + width.toLong()) * bytesPerPixel
         val start = origin.toLong() and RDRAM_ADDRESS_MASK
         require(start + byteCount <= rdramSize.toLong()) {
             "VI framebuffer exceeds RDRAM: origin=0x${start.toString(16)}, bytes=$byteCount, RDRAM=$rdramSize"
         }
 
         val pixels = IntArray(width * height)
-        var address = start.toInt()
-        for (index in pixels.indices) {
+        for (y in 0 until height) {
+            var address = start.toInt() + y * stridePixels * bytesPerPixel
+            for (x in 0 until width) {
+                val index = y * width + x
             pixels[index] = if (pixelSize == VI_STATUS_PIXEL_SIZE_16) {
                 val value = (memory.read8(address) shl 8) or memory.read8(address + 1)
                 address += 2
@@ -54,6 +63,7 @@ class N64ViFramebufferReader(private val memory: N64AddressSpace, private val rd
                 val alpha = memory.read8(address + 3)
                 address += 4
                 (alpha shl 24) or (red shl 16) or (green shl 8) or blue
+                }
             }
         }
         return N64VideoFrame(width, height, pixels, start.toInt(), pixelSize)
