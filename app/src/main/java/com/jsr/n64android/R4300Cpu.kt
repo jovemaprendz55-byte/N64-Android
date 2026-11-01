@@ -79,6 +79,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     val diagnosticTlbPreExceptionHistory: MutableList<String> = mutableListOf()
     /** Effective-address and value trace for data accesses while the TLB refill handler runs. */
     val diagnosticTlbMemoryAccessHistory: MutableList<String> = mutableListOf()
+    /** Narrow trace of the ROM routine that initializes the suspected page-table area. */
+    val diagnosticPteSetupHistory: MutableList<String> = mutableListOf()
     private val preTlbFaultPc = LongArray(TLB_PRE_EXCEPTION_TRACE_CAPACITY)
     private val preTlbFaultInstruction = IntArray(TLB_PRE_EXCEPTION_TRACE_CAPACITY)
     private val preTlbFaultGprRs = LongArray(TLB_PRE_EXCEPTION_TRACE_CAPACITY)
@@ -115,6 +117,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         diagnosticTlbInstructionHistory.clear()
         diagnosticTlbPreExceptionHistory.clear()
         diagnosticTlbMemoryAccessHistory.clear()
+        diagnosticPteSetupHistory.clear()
         preTlbFaultPc.fill(0L)
         preTlbFaultInstruction.fill(0)
         preTlbFaultGprRs.fill(0L)
@@ -1045,6 +1048,25 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         val rs = (instruction ushr 21) and 0x1F
         val rt = (instruction ushr 16) and 0x1F
         val rd = (instruction ushr 11) and 0x1F
+
+        // Capture only the small code window implicated by the PTE initialization
+        // watchpoint. This is inactive outside that address range.
+        val lowAddress = address and 0xFFFFFFFFL
+        if (lowAddress in 0x700017C0L..0x70001840L) {
+            val line = "PC=0x${address.toULong().toString(16).uppercase()} " +
+                "INST=0x${instruction.toUInt().toString(16).uppercase().padStart(8, '0')} " +
+                "OP=0x${opcode.toString(16).uppercase()} rs=$rs rt=$rt rd=$rd " +
+                "GPR3=0x${gpr[3].toULong().toString(16).uppercase().padStart(16, '0')} " +
+                "GPR4=0x${gpr[4].toULong().toString(16).uppercase().padStart(16, '0')} " +
+                "Context=0x${cop0[4].toUInt().toString(16).uppercase().padStart(8, '0')} " +
+                "EntryHi=0x${cop0[10].toUInt().toString(16).uppercase().padStart(8, '0')} " +
+                "EntryLo0=0x${cop0[2].toUInt().toString(16).uppercase().padStart(8, '0')} " +
+                "EntryLo1=0x${cop0[3].toUInt().toString(16).uppercase().padStart(8, '0')} " +
+                "PageMask=0x${cop0[5].toUInt().toString(16).uppercase().padStart(8, '0')} " +
+                "Status=0x${cop0[12].toUInt().toString(16).uppercase().padStart(8, '0')}"
+            diagnosticPteSetupHistory.add(line)
+            if (diagnosticPteSetupHistory.size > 512) diagnosticPteSetupHistory.removeAt(0)
+        }
 
         // Keep a primitive-only rolling window on every successful fetch. Avoid
         // allocating diagnostic strings on the hot path; format only on fault.
