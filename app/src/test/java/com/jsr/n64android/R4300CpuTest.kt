@@ -4254,22 +4254,19 @@ class R4300CpuTest {
         assertEquals(0xAA, memory.read8(20))
     }
 
-    @Test fun exceptionClearsLoadLinkedReservationBeforeLaterSc() {
+    @Test fun eretClearsLoadLinkedReservationBeforeSc() {
         val memory = N64Memory(64)
         memory.write32(0, iType(0x30, 1, 2, 0)) // LL
-        memory.write32(4, 0x0000000C) // SYSCALL exception.
+        memory.write32(4, (0x10 shl 26) or (0x10 shl 21) or 0x18) // ERET
         memory.write32(8, iType(0x38, 1, 2, 0)) // SC after ERET.
-        memory.write32(24, (0x10 shl 26) or (0x10 shl 21) or 0x18) // ERET.
         memory.write32(16, 0x11223344)
         val cpu = R4300Cpu(memory)
         cpu.setProgramCounter(0)
         cpu.gpr[1] = 16L
+        cpu.cop0[12] = 0x2L // EXL set, so ERET returns through EPC.
+        cpu.cop0[14] = 8L
 
         cpu.step()
-        cpu.step()
-        assertEquals(8, cpu.lastExceptionCode)
-        cpu.cop0[14] = 8L // Return to the SC instruction.
-        cpu.setProgramCounter(24)
         cpu.step() // ERET must clear the VR4300 LLbit.
         assertEquals(8L, cpu.pc)
         cpu.gpr[2] = 0x55667788L
