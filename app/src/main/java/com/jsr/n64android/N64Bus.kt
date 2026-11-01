@@ -105,6 +105,11 @@ class N64Bus(
     var diagnosticRdramWriteCount: Long = 0
         private set
     val diagnosticRdramWriteHistory = ArrayDeque<String>()
+    // Exact watchpoint for the two page-table words read by the observed TLB refill handler.
+    // The first PTE is at 0x5DBF0 and the paired EntryLo1 PTE is at 0x5DC30.
+    var diagnosticPteWriteCount: Long = 0
+        private set
+    val diagnosticPteWriteHistory = ArrayDeque<String>()
     private var diagnosticBootMemoryAccessCount: Long = 0
     private fun recordRdramWrite(address: Int, value: Int) {
         diagnosticRdramWriteCount++
@@ -116,6 +121,16 @@ class N64Bus(
                 "W RDRAM paddr=0x${address.toString(16).uppercase()} value=0x${value.toString(16).uppercase().padStart(2, '0')}"
             )
         }
+    }
+    private fun recordPteTableWrite(address: Int, value: Int) {
+        if (address !in 0x5DBF0 until 0x5DC34) return
+        diagnosticPteWriteCount++
+        if (diagnosticPteWriteHistory.size >= 256) diagnosticPteWriteHistory.removeFirst()
+        diagnosticPteWriteHistory.addLast(
+            "CPU W PTE PC=0x${diagnosticCpuPc.toULong().toString(16).uppercase()} " +
+                "PADDR=0x${address.toString(16).uppercase().padStart(8, '0')} " +
+                "VALUE=0x${(value and 0xFF).toString(16).uppercase().padStart(2, '0')}"
+        )
     }
     private fun recordBootDestinationWrite(address: Int, value: Int) {
         if (address !in 0x1EE400..0x20159F) return
@@ -394,6 +409,7 @@ class N64Bus(
         if (address < ram.size) {
             ram.write8(address, value)
             recordRdramWrite(address, value and 0xFF)
+            recordPteTableWrite(address, value and 0xFF)
             recordBootMemoryAccess("W", address, value and 0xFF)
             recordBootDestinationWrite(address, value and 0xFF)
             return
