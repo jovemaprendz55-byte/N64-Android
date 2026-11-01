@@ -32,6 +32,7 @@ class MainActivity : Activity() {
     @Volatile private var romVideoStopRequested = false
     @Volatile private var romVideoSession: N64RomVideoSession? = null
     @Volatile private var lastRomVideoSession: N64RomVideoSession? = null
+    @Volatile private var romVideoCpu: R4300Cpu? = null
     @Volatile private var romVideoThread: Thread? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -132,6 +133,7 @@ class MainActivity : Activity() {
 
         romVideoStopRequested = false
         lastRomVideoSession = null
+        romVideoCpu = null
         mainActionButton?.isEnabled = false
         val frameView = N64VideoPresenterView(this).apply {
             contentDescription = "Vídeo experimental da ROM Nintendo 64"
@@ -146,6 +148,7 @@ class MainActivity : Activity() {
             isAllCaps = false
             setOnClickListener {
                 val activeSession = romVideoSession ?: lastRomVideoSession
+                val diagnosticCpu = romVideoCpu
                 val log = buildString {
                     appendLine("=== N64 ANDROID — LOGS DA EXECUÇÃO ===")
                     appendLine("ROM em memória: ${cartridgeRomBytes?.size ?: 0} bytes")
@@ -153,6 +156,23 @@ class MainActivity : Activity() {
                     appendLine()
                     appendLine("=== PAINEL DA EXECUÇÃO ===")
                     appendLine(details.text.toString())
+                    appendLine()
+                    appendLine("=== CPU / COP0 / TLB ===")
+                    if (diagnosticCpu == null) {
+                        appendLine("CPU ainda não disponível.")
+                    } else {
+                        appendLine("PC=0x${diagnosticCpu.pc.toULong().toString(16).uppercase()}")
+                        appendLine("TLB habilitada=${diagnosticCpu.tlbEnabled}")
+                        appendLine("Exceção=${diagnosticCpu.lastExceptionCode ?: "nenhuma"} EPC-instrução=0x${diagnosticCpu.lastExceptionInstructionAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A"}")
+                        appendLine("Falha TLB=${diagnosticCpu.lastTlbFaultKind ?: "nenhuma"} acesso=${diagnosticCpu.lastTlbFaultAccessType ?: "N/A"} VA=0x${diagnosticCpu.lastTlbFaultVirtualAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A"}")
+                        appendLine("BadVAddr=0x${diagnosticCpu.cop0[8].toUInt().toString(16).uppercase().padStart(8, '0')} Context=0x${diagnosticCpu.cop0[4].toUInt().toString(16).uppercase().padStart(8, '0')} EntryHi=0x${diagnosticCpu.cop0[10].toUInt().toString(16).uppercase().padStart(8, '0')}")
+                        appendLine("Status=0x${diagnosticCpu.cop0[12].toUInt().toString(16).uppercase().padStart(8, '0')} Cause=0x${diagnosticCpu.cop0[13].toUInt().toString(16).uppercase().padStart(8, '0')} EPC=0x${diagnosticCpu.cop0[14].toUInt().toString(16).uppercase().padStart(8, '0')}")
+                        appendLine("Index=0x${diagnosticCpu.cop0[0].toUInt().toString(16).uppercase().padStart(8, '0')} Random=0x${diagnosticCpu.cop0[1].toUInt().toString(16).uppercase().padStart(8, '0')} Wired=0x${diagnosticCpu.cop0[6].toUInt().toString(16).uppercase().padStart(8, '0')} PageMask=0x${diagnosticCpu.cop0[5].toUInt().toString(16).uppercase().padStart(8, '0')}")
+                        appendLine("Histórico TLBWI/TLBWR:")
+                        appendLine(diagnosticCpu.diagnosticTlbWriteHistory.joinToString("\\n").ifBlank { "Nenhuma escrita TLB registrada." })
+                        appendLine("Snapshot TLB no primeiro fault:")
+                        appendLine(diagnosticCpu.lastTlbEntrySnapshot)
+                    }
                     appendLine()
                     appendLine("=== CONTADORES MMIO ===")
                     appendLine(bus.diagnosticMmioCounts.entries.sortedBy { it.key }
@@ -230,6 +250,7 @@ class MainActivity : Activity() {
         val worker = Thread({
             try {
                 val cpu = R4300Cpu(bus)
+                romVideoCpu = cpu
                 val boot = N64HleBoot.prepare(bus, cpu)
                 val session = N64RomVideoSession(
                     bus = bus,
