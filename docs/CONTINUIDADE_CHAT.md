@@ -2697,3 +2697,32 @@ Esta diretriz foi reafirmada pelo usuário em 2026-11-01 após uma resposta que 
 - O projeto continua HLE próprio, sem firmware original, sem PIF ROM original e sem execução do IPL3 original.
 - Não há frame real de GoldenEye 007 validado nesta etapa.
 - Próxima investigação: arquitetura de FPU do VR4300 (modo FR, pares de FPR, FCR31, exceções e instruções aritméticas) antes de implementar LWC1/LDC1/SWC1/SDC1 isoladamente.
+
+
+## Análise do log GoldenEye 007 — CI #999 (2026-11-01 14:01:49 UTC−03:00)
+
+### Rastreamento da primeira falha TLB
+
+- Log analisado: `https://github.com/jovemaprendz55-byte/N64-Android/blob/main/Log`, enviado pelo usuário após executar o APK da CI #999 (run ID `41327585291`).
+- A primeira falha é `TLB MISS FETCH VA=0x7F000BD0`. O vetor refill normal é executado em `0xFFFFFFFF80000000`.
+- Decodificação confirmada da instrução `0x40802800`: COP0 `MTC0`, rt=`$zero`, rd=5 (`PageMask`). Portanto, a leitura anterior que a chamou de MFC0 estava incorreta; o handler está zerando PageMask.
+- O handler lê Context (COP0[4]), usa o ponteiro de tabela calculado e carrega duas palavras da RDRAM. Pelos registradores observados no trace, os valores carregados são `0x00000001` e `0x00000041`; são escritos em EntryLo0/EntryLo1 por MTC0 e instalados com TLBWR no índice 15.
+- Em EntryLo, o bit V é bit 1. Nos dois valores observados esse bit está zerado; ambos descrevem páginas inválidas. O ERET do handler é seguido por uma segunda falha TLB do tipo INVALID no mesmo endereço.
+- Isso mostra que a lógica de refill executada pela ROM está lendo PTEs que, naquele momento, representam páginas inválidas. Não prova, por si só, defeito em `R4300Tlb.translate`, em `writeTlbEntry` ou no decoder COP0. Não alterar artificialmente os bits V nem criar um mapeamento físico inventado.
+- O caminho observado é coerente com um refill que não conseguiu obter uma página válida e encaminhou a exceção ao vetor geral `0xFFFFFFFF80000180`. A investigação seguinte deve descobrir por que o jogo tem esses PTEs e qual estado/memória o código de inicialização espera que já exista.
+
+### Caminho de exceção e SP/RSP
+
+- Após a falha INVALID, o vetor geral salta para `0x700101A0`; o trace mostra a rotina salvando estado e chamando código do jogo. Mais tarde a execução chega ao endereço `0x70000720`, onde o fetch registrado é a palavra zero e o programa passa a consultar repetidamente `SP_STATUS`.
+- O log não registra nenhuma escrita nos registradores SP, nenhum SP DMA e nenhuma instrução RSP. DPC permanece START/END/CURRENT=0 e VI não publica quadros.
+- O código atual de `N64Bus` inicializa `spStatus` com HALT, implementa comandos de escrita de SP_STATUS e DMA SP, mas contém comentário explícito de que o núcleo RSP ainda não está emulado. Assim, zero instruções RSP é uma limitação real do projeto atual; não deve ser “corrigida” apenas limpando HALT.
+- Não há evidência no log de que o jogo tenha submetido uma OSTask antes de ficar preso. A próxima auditoria deve seguir o fluxo de exceção até `0x70000720`, verificar as instruções e os endereços de retorno, e determinar se o HLE deixou ausente algum estado de boot/serviço que o jogo espera. Em paralelo, planejar o núcleo RSP e o ciclo real de submissão/execução de OSTask; não executar microcode arbitrário nem fabricar uma tarefa.
+- A preparação HLE atual copia 1 MiB da ROM para RDRAM e define parâmetros de boot, mas a própria documentação de `N64HleBoot` declara que calibração RDRAM, caches, CIC/PIF completo e temporização ainda não são modelados. Essas lacunas devem ser avaliadas como possíveis causas de estado inicial incompleto, não presumidas como causa já comprovada.
+
+### Decisões e limites
+
+- Manter o objetivo original: HLE próprio, sem exigir firmware original, sem PIF ROM original e sem executar IPL3 original.
+- Não desabilitar a TLB, não marcar PTE inválido como válido, não alterar PC/registradores para saltar o problema e não limpar HALT sem uma causa arquitetural demonstrada.
+- Nenhuma alteração de código foi feita nesta análise. O log da CI #999 continua sem quadro real; build/testes sintéticos não comprovam compatibilidade com GoldenEye.
+- Branch de desenvolvimento permanece `dev/n64-clean-start`; `main` não foi alterada nesta etapa.
+- Próximo passo técnico: instrumentar/validar o conteúdo das duas PTEs e a origem do ponteiro da tabela em RDRAM, depois reconstruir a sequência de instruções do vetor geral até o loop SP. Adicionar testes sintéticos para os comportamentos COP0/TLB só quando uma divergência arquitetural concreta for identificada.
