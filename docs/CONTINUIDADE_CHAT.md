@@ -3024,3 +3024,39 @@ Fonte analisada: `main/Log`, atualizado após a instrumentação da branch `dev/
 3. Comparar a estrutura de 16 bytes inicializada pela ROM com o formato de PTE que o handler realmente espera.
 4. Só depois decidir se existe erro de HLE, de inicialização da estrutura ou de interpretação da tabela.
 5. Não modificar `main`; não forçar Valid, PFN, TLB, SP HALT ou OSTask.
+
+
+## 15. Protocolo permanente de rastreabilidade — 2026-11-01
+
+Este protocolo passa a valer para todas as próximas etapas do projeto. A finalidade é permitir que outro chat ou uma sessão futura reconstrua o que foi feito, inclusive quando uma alteração introduzir um erro ou uma hipótese for descartada.
+
+### O que registrar em cada avanço
+1. **Identificação:** data, horário de Brasília (UTC−03:00), branch, commit anterior e novo commit.
+2. **Motivo:** sintoma observado, pergunta técnica e evidência que justificou investigar aquele ponto.
+3. **Alterações:** arquivos modificados e descrição objetiva do comportamento antes/depois.
+4. **Testes:** nomes dos testes adicionados/alterados, comandos ou jobs executados e resultados reais; registrar também falhas, não apenas sucessos.
+5. **CI e APK:** URL e run ID do GitHub Actions, SHA testado, resultado de cada job, artefato/ID, tamanho, hash e expiração quando fornecidos pelo GitHub.
+6. **Teste no aparelho:** versão/commit do APK instalado somente quando o usuário confirmar; ROM/cenário usado, sintomas e log recebido. Nunca presumir instalação.
+7. **Conclusão:** o que foi comprovado, o que é hipótese, o que foi refutado e o que continua desconhecido.
+8. **Próximo passo:** uma ação técnica específica, com a evidência que deverá ser coletada.
+9. **Segurança de regressão:** registrar qualquer comportamento preservado, limitação conhecida e motivo para não aplicar uma correção especulativa.
+
+### Registro de erros e tentativas
+- Não apagar tentativas malsucedidas do histórico documental.
+- Para cada falha, guardar commit, teste/job, mensagem relevante, causa identificada (se comprovada) e correção posterior.
+- Se uma hipótese for descartada, marcar explicitamente como **refutada** e explicar qual evidência levou a isso.
+- Se uma alteração for revertida, registrar o commit que introduziu a mudança, o motivo da reversão e o commit que a reverteu.
+- Diferenciar sempre: **implementado**, **compilado**, **testes automatizados aprovados**, **APK gerado**, **instalado no aparelho** e **comportamento real confirmado**. São etapas distintas.
+- Nunca converter uma build verde em afirmação de que um jogo funciona.
+
+### Organização para consulta futura
+- Manter este documento como índice principal de continuidade.
+- Manter as seções históricas; acrescentar novos registros numerados, sem sobrescrever evidências antigas.
+- Quando um log novo contradisser uma conclusão anterior, preservar a conclusão antiga como histórico e acrescentar a revisão com a nova evidência.
+- Manter links para commits, arquivos e workflows sempre que disponíveis.
+- Trabalhar exclusivamente em `dev/n64-clean-start`; `main` continua apenas como referência até autorização explícita.
+
+### Estado inicial deste protocolo
+- Seções 11–14 registram a investigação da tabela de páginas/TLB, a instrumentação, a leitura do Log e a validação do APK.
+- Próxima investigação técnica permanece: origem do limite `$2` no laço de inicialização e decodificação do handler que forma `EntryLo0=0x1` e `EntryLo1=0x41`.
+- Este protocolo não afirma que o defeito TLB foi corrigido; ele formaliza como cada passo futuro será documentado.
