@@ -758,6 +758,30 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 // CACHE: this early core has no modeled cache hierarchy.
                 // Treat cache maintenance as a no-op for bring-up, not as accurate cache emulation.
             }
+            0x30 -> { // LL: load-linked signed word.
+                val address = gpr[rs] + immediate
+                requireAligned(address, 4)
+                val physical = physicalAddress(address, R4300Tlb.Access.READ)
+                gpr[rt] = memory.loadLinked(physical, 4)
+            }
+            0x34 -> { // LLD: load-linked doubleword.
+                val address = gpr[rs] + immediate
+                requireAligned(address, 8)
+                val physical = physicalAddress(address, R4300Tlb.Access.READ)
+                gpr[rt] = memory.loadLinked(physical, 8)
+            }
+            0x38 -> { // SC: store word only if its LL reservation is still valid.
+                val address = gpr[rs] + immediate
+                requireAligned(address, 4, store = true)
+                val physical = physicalAddress(address, R4300Tlb.Access.WRITE)
+                gpr[rt] = if (memory.storeConditional(physical, 4, gpr[rt])) 1L else 0L
+            }
+            0x3C -> { // SCD: store doubleword only if its LLD reservation is still valid.
+                val address = gpr[rs] + immediate
+                requireAligned(address, 8, store = true)
+                val physical = physicalAddress(address, R4300Tlb.Access.WRITE)
+                gpr[rt] = if (memory.storeConditional(physical, 8, gpr[rt])) 1L else 0L
+            }
             0x28 -> memory.write8(physicalAddress(gpr[rs] + immediate, R4300Tlb.Access.WRITE), gpr[rt].toInt())
             0x29 -> {
                 val address = gpr[rs] + immediate
