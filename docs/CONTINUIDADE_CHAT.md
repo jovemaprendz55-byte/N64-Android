@@ -1505,3 +1505,33 @@ Começar a substituir o caminho de teste sintético por processamento gráfico r
 ### Branch e encerramento
 - Branch de trabalho: `dev/n64-clean-start`; manter `main` intocada.
 - A CI #763 está verde. Atualizar esta seção documental após cada nova etapa e incluir commit, workflow, status e APK somente quando o artefato existir.
+
+
+## 23. Edge-walking experimental para triângulos RDP (2026-11-01)
+
+### Implementação
+- Criado `N64RdpTriangleEdgeWalker.kt`.
+- Recebe `N64RdpTriangleSetup`, dimensões de framebuffer e retângulo de clipping; produz spans horizontais [xStart, xEndExclusive) por linha.
+- Usa amostragem no centro do pixel, coordenadas Y 12.2 e X/slope 16.16; escolhe a aresta menor superior/inferior conforme YM e inverte esquerda/direita pelo bit right-major.
+- Inclui clipping ao framebuffer e ao retângulo fornecido.
+- Testes em `N64RdpTriangleEdgeWalkerTest.kt`: spans superior/inferior, clipping, orientação right-major, inclinação e faixa vertical degenerada.
+
+### Limite importante
+- O edge-walker é experimental e ainda não foi validado contra hardware ou uma implementação de referência pixel a pixel. As regras de cobertura/subpixel e empates precisam de validação adicional.
+- Ele apenas produz spans; não escreve pixels na RDRAM e ainda não está ligado ao dispatcher RDP.
+- Não representa vídeo real de ROM. Não remover o padrão de cores da UI até existir pipeline de pixels de ROM validado.
+
+### Commits e workflows
+- Commit `d23925d2cd55f52449d59fff3e5bdd6a062762ee`: edge-walker.
+- Build #765, run `41292429433`: verificar status final.
+- Commit `fcdb3da829c61219e8a60caf3688d1ce9ff83d24`: testes.
+- Build #766, run `41292439111`: verificar status final e artefato.
+- Compilação #765: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41292429433
+- Compilação #766: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41292439111
+
+### Próximo passo
+1. Confirmar #765/#766 verdes e obter o APK de #766 se o upload passar.
+2. Criar testes de referência para triângulos com orientação esquerda/direita, Y fracionário, inclinação positiva/negativa, clipping e limites de framebuffer.
+3. Comparar os spans com uma implementação de referência ou fixtures derivadas do documento SGI RDP, documentando diferenças de cobertura.
+4. Depois implementar escrita de spans em RDRAM com estado de cor correto e só então integrar o pacote multiword no DPC.
+5. Em paralelo, planejar/implementar o RSP e microcode F3DEX; sem o RSP, jogos não geram display lists reais para o RDP.
