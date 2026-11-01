@@ -4227,6 +4227,7 @@ class R4300CpuTest {
 
         cpu.step()
         assertEquals(0xFFFFFFFF80000001UL.toLong(), cpu.gpr[2])
+        assertEquals(1L, cpu.cop0[17]) // LLAddr stores physical address bits 31:4.
         cpu.gpr[2] = 0x12345678L
         cpu.step()
 
@@ -4326,6 +4327,7 @@ class R4300CpuTest {
 
         cpu.step()
         assertEquals(0x0123456789ABCDEFL, cpu.gpr[2])
+        assertEquals(1L, cpu.cop0[17])
         cpu.gpr[2] = 0xFEDCBA9876543210UL.toLong()
         cpu.step()
 
