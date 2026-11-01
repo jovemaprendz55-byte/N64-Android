@@ -142,8 +142,28 @@ class N64Bus(
     // Optional SP task coordinator callback; invoked after synchronous DPC Full Sync processing.
     private var dpDrainListener: (() -> Unit)? = null
 
+    /** Completed SP DMA metadata, reported after all bytes have been transferred. */
+    data class SpDmaTransfer(
+        val toSp: Boolean,
+        val dramStartAddress: Int,
+        val spStartAddress: Int,
+        val blockLength: Int,
+        val blockCount: Int,
+        val dramSkip: Int
+    ) {
+        val transferredBytes: Int
+            get() = blockLength * blockCount
+    }
+
+    // Optional observer used by the SP scheduler to identify descriptor-matching microcode DMA.
+    private var spDmaListener: ((SpDmaTransfer) -> Unit)? = null
+
     fun setDpDrainListener(listener: (() -> Unit)?) {
         dpDrainListener = listener
+    }
+
+    fun setSpDmaListener(listener: ((SpDmaTransfer) -> Unit)?) {
+        spDmaListener = listener
     }
     private val dpcCommandProcessor by lazy {
         N64DpcCommandProcessor(this, ram.size, N64RdpFillProcessor(this, ram.size))
@@ -547,6 +567,16 @@ class N64Bus(
         )
         spMemAddress = memorySelect or memoryOffset
         spDramAddress = dramAddress and 0x00FFFFFF
+        spDmaListener?.invoke(
+            SpDmaTransfer(
+                toSp = toSp,
+                dramStartAddress = dramStartAddress,
+                spStartAddress = spStartAddress,
+                blockLength = blockLength,
+                blockCount = blockCount,
+                dramSkip = dramSkip
+            )
+        )
     }
 
     /** Applies MI_INIT_MODE write-one command bits; reset and device side effects remain partial. */
