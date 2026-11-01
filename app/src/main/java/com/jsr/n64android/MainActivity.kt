@@ -7,6 +7,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
+import android.provider.OpenableColumns
 import android.os.Bundle
 import android.view.Gravity
 import android.widget.Button
@@ -1408,12 +1409,19 @@ class MainActivity : Activity() {
                 cartridgeBus = N64Bus(cartridgeRom = result.rom.bytes)
                 romTraceButton?.isEnabled = true
                 hleBootButton?.isEnabled = true
-                val info = N64RomInspector.inspect(result.rom.bytes)
-                status.text = "ROM carregada no barramento: ${result.rom.byteSize} bytes" +
+                val displayName = contentResolver.query(
+                    uri,
+                    arrayOf(OpenableColumns.DISPLAY_NAME),
+                    null,
+                    null,
+                    null
+                )?.use { cursor ->
+                    if (cursor.moveToFirst()) cursor.getString(0) else null
+                } ?: "ROM selecionada"
+                status.text = "JOGO SELECIONADO\n$displayName" +
+                    "\nTamanho: ${result.rom.byteSize} bytes" +
                     "\nFormato: ${result.rom.format}" +
-                    "\nEndereço físico: 0x10000000" +
-                    "\n\n" + info.toDisplayText() +
-                    "\n\nROM pronta. Use Boot HLE experimental para testar a inicialização sem firmware PIF externo."
+                    "\n\nROM carregada no barramento. Inicialização e execução de jogos ainda são experimentais."
             }
             is RomLoadResult.Failure -> {
                 cartridgeBus = null
