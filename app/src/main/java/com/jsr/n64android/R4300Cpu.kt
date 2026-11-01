@@ -380,6 +380,20 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     }
                     // The single-threaded bus has no outstanding asynchronous CPU memory operations to drain.
                 }
+                0x30, 0x31, 0x32, 0x33, 0x34, 0x36 -> { // TGE/TGEU/TLT/TLTU/TEQ/TNE
+                    val trap = when (funct) {
+                        0x30 -> gpr[rs] >= gpr[rt]
+                        0x31 -> java.lang.Long.compareUnsigned(gpr[rs], gpr[rt]) >= 0
+                        0x32 -> gpr[rs] < gpr[rt]
+                        0x33 -> java.lang.Long.compareUnsigned(gpr[rs], gpr[rt]) < 0
+                        0x34 -> gpr[rs] == gpr[rt]
+                        else -> gpr[rs] != gpr[rt]
+                    }
+                    if (trap) {
+                        enterException(instructionAddress, 13, branchAddressForCurrentInstruction)
+                        directPc = exceptionVector()
+                    }
+                }
                 0x08 -> { // JR: rt, rd and shamt are reserved.
                     if (rt != 0 || rd != 0 || shamt != 0) throw ReservedInstructionFault("Malformed JR reserved fields")
                     pendingDelaySlotBranchAddress = instructionAddress
@@ -557,23 +571,39 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 }
             }
             0x01 -> {
-                val branchLikely = rt == 0x02 || rt == 0x03 || rt == 0x12 || rt == 0x13
-                val link = rt == 0x10 || rt == 0x11 || rt == 0x12 || rt == 0x13
-                val takeBranch = when (rt) {
-                    0x00, 0x10, 0x02, 0x12 -> gpr[rs] < 0L // BLTZ / BLTZAL / BLTZL / BLTZALL
-                    0x01, 0x11, 0x03, 0x13 -> gpr[rs] >= 0L // BGEZ / BGEZAL / BGEZL / BGEZALL
-                    else -> throw ReservedInstructionFault(
-                        "R4300 REGIMM rt=0x${rt.toString(16)} at 0x${instructionAddress.toString(16)}"
-                    )
-                }
-                if (branchLikely && !takeBranch) {
-                    // Likely branches annul the delay-slot instruction when not taken.
-                    directPc = instructionAddress + 8L
+                if (rt == 0x08 || rt == 0x09 || rt == 0x0A || rt == 0x0B || rt == 0x0C || rt == 0x0E) {
+                    val signedImmediate = immediate.toLong()
+                    val trap = when (rt) {
+                        0x08 -> gpr[rs] >= signedImmediate // TGEI
+                        0x09 -> java.lang.Long.compareUnsigned(gpr[rs], signedImmediate) >= 0 // TGEIU
+                        0x0A -> gpr[rs] < signedImmediate // TLTI
+                        0x0B -> java.lang.Long.compareUnsigned(gpr[rs], signedImmediate) < 0 // TLTIU
+                        0x0C -> gpr[rs] == signedImmediate // TEQI
+                        else -> gpr[rs] != signedImmediate // TNEI
+                    }
+                    if (trap) {
+                        enterException(instructionAddress, 13, branchAddressForCurrentInstruction)
+                        directPc = exceptionVector()
+                    }
                 } else {
-                    pendingDelaySlotBranchAddress = instructionAddress
-                    if (takeBranch) {
-                        if (link) gpr[31] = nextSequential + 4L
-                        delayedTarget = nextSequential + (immediate.toLong() shl 2)
+                    val branchLikely = rt == 0x02 || rt == 0x03 || rt == 0x12 || rt == 0x13
+                    val link = rt == 0x10 || rt == 0x11 || rt == 0x12 || rt == 0x13
+                    val takeBranch = when (rt) {
+                        0x00, 0x10, 0x02, 0x12 -> gpr[rs] < 0L // BLTZ / BLTZAL / BLTZL / BLTZALL
+                        0x01, 0x11, 0x03, 0x13 -> gpr[rs] >= 0L // BGEZ / BGEZAL / BGEZL / BGEZALL
+                        else -> throw ReservedInstructionFault(
+                            "R4300 REGIMM rt=0x${rt.toString(16)} at 0x${instructionAddress.toString(16)}"
+                        )
+                    }
+                    if (branchLikely && !takeBranch) {
+                        // Likely branches annul the delay-slot instruction when not taken.
+                        directPc = instructionAddress + 8L
+                    } else {
+                        pendingDelaySlotBranchAddress = instructionAddress
+                        if (takeBranch) {
+                            if (link) gpr[31] = nextSequential + 4L
+                            delayedTarget = nextSequential + (immediate.toLong() shl 2)
+                        }
                     }
                 }
             }
