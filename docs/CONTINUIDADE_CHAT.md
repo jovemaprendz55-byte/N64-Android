@@ -2809,3 +2809,36 @@ Esta diretriz foi reafirmada pelo usuário em 2026-11-01 após uma resposta que 
 2. Gerar novo APK e executar GoldenEye 007 até o polling persistente.
 3. Copiar os logs e analisar o histórico dedicado MMIO SP para distinguir se a ROM leu/escreveu SP_STATUS, SP_PC ou os registradores DMA.
 4. Se continuar sem submissão SP, avançar para a captura do fluxo R4300 anterior ao loop e dos valores lidos pelo refill TLB; não liberar HALT nem fabricar OSTask.
+
+## Auditoria do log da branch main e caminho de refill TLB — 2026-11-01
+
+### Correção de hipótese anterior
+- A hipótese de que o vetor TLB em 0x80000000 estaria vazio foi refutada pelo próprio log da branch main.
+- O primeiro refill executa instruções reais em 0xFFFFFFFF80000000, 0x80000008, etc.; portanto, existe código de handler disponível no vetor e ele é executado.
+- Não instalar um handler sintético nem alterar BEV/Status sem evidência.
+
+### Sequência confirmada no log main
+- Primeira exceção: TLB MISS, access=FETCH, faultVA/faultPC=0x7F000BD0, vetor=0xFFFFFFFF80000000.
+- O handler de refill executa MTC0 PageMask, lê Context e consulta a estrutura de page table.
+- O handler escreve EntryLo0=0x00000001 e EntryLo1=0x00000041, executa TLBWR no índice 15 e ERET.
+- Ambos os EntryLo têm V=0 (bit 1), logo as páginas instaladas são inválidas.
+- A repetição da busca em 0x7F000BD0 gera TLB INVALID e vai ao vetor geral 0xFFFFFFFF80000180.
+- O handler geral prossegue para código em 0x700101A0; mais tarde o jogo fica no polling de SP_STATUS e não submete tarefa SP.
+
+### Interpretação técnica
+- O defeito observado no refill não é falta de código no vetor: é a page table consultada pelo handler devolver PTEs 0x1 e 0x41, sem bit Valid.
+- Isso pode ser resultado de inicialização incompleta do estado de boot/HLE, de page table/segmento ainda não mapeado ou de erro anterior no fluxo da ROM. O log isolado não distingue essas causas.
+- A rotina anterior à primeira exceção está num loop de escrita de bytes em torno de 0x8005E484–0x8005E4A4. É necessário preservar a janela de instruções e observar os valores efetivos lidos pelo handler, incluindo o endereço da PTE e a região de memória correspondente.
+- O cálculo arquitetural do vetor de refill em R4300Cpu.enterTlbException (miss com EXL=0 seleciona 0x80000000 quando BEV=0; falta subsequente/EXL seleciona 0x80000180) está coerente com a distinção esperada. Não mudar essa seleção sem evidência nova.
+
+### Próxima etapa
+1. No diagnóstico da branch dev, capturar a leitura física da PTE no handler de refill e os valores dos registradores Context, EntryHi, EntryLo0/1, Index e Random em cada passo.
+2. Capturar escritas na região de page table próxima de 0x8005E4A4 antes da primeira exceção, sem registrar toda a RAM.
+3. Comparar os parâmetros de boot HLE e o estado de memória que o jogo usa para criar/consultar suas page tables.
+4. Não forçar Valid, não fabricar mapeamentos TLB, não limpar HALT e não criar OSTask artificialmente.
+
+### Estado
+- Esta etapa foi auditoria do log e do código; nenhuma correção funcional foi aplicada.
+- CI do HEAD 65718f29129e58479387d611b4b0a6f9a2191cf9 terminou com sucesso (run 41330705658).
+- CI do commit de código 09f585ab13abc1f73ec7b6913c3eaf5b0916e0ec terminou com sucesso (run 41330658835).
+- Branch dev/n64-clean-start; main permanece intocada.
