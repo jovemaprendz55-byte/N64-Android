@@ -51,7 +51,8 @@ class N64RdpFlatTriangleRasterizerTest {
 
         assertEquals(320, result.frame.width)
         assertEquals(240, result.frame.height)
-        assertTrue(result.spansWritten > 0)
+        assertEquals(4, result.commandsProcessed)
+        assertEquals(1, result.trianglesRasterized)
         assertTrue(result.pixelsWritten > 0)
         assertEquals(0xFFFF0000.toInt(), result.frame.argbPixels[100 * 320 + 100])
         assertEquals(0xFF000000.toInt(), result.frame.argbPixels[10 * 320 + 10])
