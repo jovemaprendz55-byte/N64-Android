@@ -5,6 +5,28 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class N64DpcCommandProcessorTest {
+
+    @Test
+    fun busRetainsLastDpcRangeAndSuccessfulDispatchSummary() {
+        val memory = N64Memory(4096)
+        val bus = N64Bus(ram = memory)
+        // RDP Full Sync (0x29), encoded as one big-endian 64-bit command.
+        memory.write32(0x40, 0xA4000000.toInt())
+        memory.write32(0x44, 0)
+
+        bus.write32(N64Bus.DPC_START_REG, 0x40)
+        bus.write32(N64Bus.DPC_END_REG, 0x48)
+
+        val snapshot = bus.diagnosticDpcSnapshot()
+        assertTrue(snapshot.contains("START=0x40"))
+        assertTrue(snapshot.contains("END=0x48"))
+        assertTrue(snapshot.contains("CURRENT=0x48"))
+        assertTrue(snapshot.contains("commands=1"))
+        assertTrue(snapshot.contains("fullSync=1"))
+        assertEquals(null, bus.diagnosticLastDpcFailure)
+    }
+
+
     @Test
     fun readsBigEndianRdramCommandListAndDispatchesItToRdp() {
         val memory = N64Memory(4096)
