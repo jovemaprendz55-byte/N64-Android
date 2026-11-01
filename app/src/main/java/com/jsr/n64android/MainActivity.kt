@@ -223,6 +223,7 @@ class MainActivity : Activity() {
                     appendLine(bus.diagnosticPiDmaHistory.toList().joinToString("\n").ifBlank { "Vazio." })
                     appendLine()
                     appendLine("=== ACESSOS DE MEMÓRIA DO BOOT ===")
+                    appendLine("Total exato de acessos observados: ${bus.diagnosticBootMemoryAccessTotal}")
                     appendLine(bus.diagnosticBootMemoryAccessHistory.toList().joinToString("\n").ifBlank { "Vazio." })
                     appendLine()
                     appendLine("=== ESCRITAS RDRAM ===")
@@ -244,6 +245,8 @@ class MainActivity : Activity() {
                     appendLine(bus.diagnosticDeviceSnapshot().joinToString("\n"))
                     appendLine("=== SNAPSHOT RSP COMPLETO (GPR, HI/LO, VEC, ACC E FLAGS) ===")
                     appendLine(activeSession?.diagnosticRspSnapshot() ?: "Sessão RSP indisponível.")
+                    appendLine("=== BYTES ORIGINAIS DA ROM — FONTE DO DMA PI ===")
+                    appendLine(bus.diagnosticCartridgeDump(listOf(0x34B30..0x36B2F)))
                     appendLine("=== DUMP DE MEMÓRIA RDRAM — REGIÕES DE INVESTIGAÇÃO ===")
                     appendLine(bus.diagnosticMemoryDump(listOf(
                         0x0000..0x003F,
