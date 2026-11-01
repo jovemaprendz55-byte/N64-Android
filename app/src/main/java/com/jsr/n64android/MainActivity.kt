@@ -182,6 +182,9 @@ class MainActivity : Activity() {
                             .joinToString(" ") { it.key + "=" + it.value }
                         val lastMmio = bus.diagnosticMmioHistory.lastOrNull()
                         val failure = romVideoSession?.rspFailureMessage()
+                        val rspPc = romVideoSession?.lastRspInstructionAddress()
+                        val rspWord = romVideoSession?.lastRspInstructionWord()
+                        val dpcSnapshot = bus.diagnosticDpcSnapshot()
                         val lastPc = cpu.diagnosticInstructionAddress
                         val lastOpcode = cpu.diagnosticInstructionWord
                         val exception = cpu.lastExceptionCode?.let { "CPU EXCEPTION code=" + it + " EPC=0x" + (cpu.lastExceptionInstructionAddress ?: 0L).toULong().toString(16).uppercase() }
@@ -192,6 +195,8 @@ class MainActivity : Activity() {
                                 "\nCPU: $count instruções" +
                                 "\nFrames VI: ${sessionSafeFrameCount(romVideoSession)}" +
                                 "\nRSP: ${romVideoSession?.executedRspInstructionCount() ?: 0L} instruções" +
+                                "\nÚltima RSP: " + (rspPc?.let { "0x" + it.toString(16).uppercase().padStart(4, '0') } ?: "N/A") + " / " + (rspWord?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A") +
+                                "\n" + dpcSnapshot +
                                 "\nPC: 0x${cpu.pc.toULong().toString(16).uppercase()}" +
                                 "\nÚltima instrução: " + (lastPc?.let { "0x" + it.toULong().toString(16).uppercase() } ?: "N/A") + " / " + (lastOpcode?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A") +
                                 "\nMMIO: " + mmioCounts.ifBlank { "nenhum acesso registrado" } +
@@ -221,6 +226,8 @@ class MainActivity : Activity() {
                         "\nInstruções: ${result.executedInstructions}" +
                         "\nFrames VI publicados: ${session.publishedFrameCount()}" +
                         "\nInstruções RSP: ${session.executedRspInstructionCount()}" +
+                        "\nÚltima RSP: " + (session.lastRspInstructionAddress()?.let { "0x" + it.toString(16).uppercase().padStart(4, '0') } ?: "N/A") + " / " + (session.lastRspInstructionWord()?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A") +
+                        "\n" + bus.diagnosticDpcSnapshot() +
                         "\nPC final: 0x${cpu.pc.toULong().toString(16).uppercase()}" +
                         (session.rspFailureMessage()?.let { "\nFalha RSP: $it" } ?: "") +
                         (result.failureMessage?.let { "\nFalha CPU: $it" } ?: "")
