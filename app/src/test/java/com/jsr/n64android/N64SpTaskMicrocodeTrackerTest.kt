@@ -6,35 +6,60 @@ import org.junit.Test
 
 class N64SpTaskMicrocodeTrackerTest {
     @Test
-    fun requiresMatchingImemDmaBeforeAcceptingExecutedInstruction() {
+    fun requiresFullMatchingImemCoverageBeforeAcceptingExecutedInstruction() {
         val tracker = N64SpTaskMicrocodeTracker(taskDescriptor())
         assertFalse(tracker.onInstructionExecuted(0))
-        assertFalse(tracker.taskMicrocodeEntryObserved)
-
-        assertTrue(tracker.onSpDmaCompleted(matchingTransfer()))
+        assertFalse(tracker.onSpDmaCompleted(fragment(0, 0x20)))
+        assertFalse(tracker.onInstructionExecuted(0))
+        assertTrue(tracker.onSpDmaCompleted(fragment(0x20, 0x60)))
         assertTrue(tracker.onInstructionExecuted(0))
         assertTrue(tracker.taskMicrocodeEntryObserved)
         assertFalse(tracker.onInstructionExecuted(4))
     }
 
     @Test
-    fun rejectsDmaWithWrongAddressSizeDirectionOrImemOffset() {
+    fun acceptsFragmentsLoadedOutOfOrderButNotWithGaps() {
         val tracker = N64SpTaskMicrocodeTracker(taskDescriptor())
-        assertFalse(tracker.onSpDmaCompleted(matchingTransfer().copy(dramStartAddress = 0x500)))
-        assertFalse(tracker.onSpDmaCompleted(matchingTransfer().copy(blockLength = 0x40, blockCount = 1)))
-        assertFalse(tracker.onSpDmaCompleted(matchingTransfer().copy(toSp = false)))
-        assertFalse(tracker.onSpDmaCompleted(matchingTransfer().copy(spStartAddress = 0)))
-        assertFalse(tracker.taskMicrocodeEntryObserved)
+        assertFalse(tracker.onSpDmaCompleted(fragment(0x40, 0x40)))
+        assertFalse(tracker.onInstructionExecuted(0))
+        assertTrue(tracker.onSpDmaCompleted(fragment(0, 0x40)))
+        assertTrue(tracker.onInstructionExecuted(0))
     }
 
     @Test
-    fun requiresExecutedPcInsideAlignedLoadedCodeRange() {
+    fun rejectsWrongSourceAndLaterWrongDmaInvalidatesOverwrittenBytes() {
         val tracker = N64SpTaskMicrocodeTracker(taskDescriptor())
-        tracker.onSpDmaCompleted(matchingTransfer())
+        assertFalse(tracker.onSpDmaCompleted(fragment(0, 0x80).copy(dramStartAddress = 0x4100)))
+        assertFalse(tracker.onInstructionExecuted(0))
+        assertTrue(tracker.onSpDmaCompleted(fragment(0, 0x80)))
+        assertTrue(tracker.onInstructionExecuted(0))
 
-        assertFalse(tracker.onInstructionExecuted(0x100))
+        val notYetEntered = N64SpTaskMicrocodeTracker(taskDescriptor())
+        assertTrue(notYetEntered.onSpDmaCompleted(fragment(0, 0x80)))
+        assertFalse(notYetEntered.onSpDmaCompleted(fragment(0x20, 0x20).copy(dramStartAddress = 0x4020 + 1)))
+        assertFalse(notYetEntered.onInstructionExecuted(0))
+        assertTrue(notYetEntered.onSpDmaCompleted(fragment(0x20, 0x20)))
+        assertTrue(notYetEntered.onInstructionExecuted(0))
+    }
+
+    @Test
+    fun ignoresDmasToDmemOrFromSpAndRejectsInvalidPc() {
+        val tracker = N64SpTaskMicrocodeTracker(taskDescriptor())
+        assertFalse(tracker.onSpDmaCompleted(fragment(0, 0x80).copy(spStartAddress = 0)))
+        assertFalse(tracker.onSpDmaCompleted(fragment(0, 0x80).copy(toSp = false)))
+        assertFalse(tracker.onInstructionExecuted(0))
+
+        assertTrue(tracker.onSpDmaCompleted(fragment(0, 0x80)))
+        assertFalse(tracker.onInstructionExecuted(0x80))
         assertFalse(tracker.onInstructionExecuted(2))
         assertTrue(tracker.onInstructionExecuted(0x20))
+    }
+
+    @Test
+    fun rejectsInvalidDescriptorSize() {
+        val tracker = N64SpTaskMicrocodeTracker(taskDescriptor().copy(ucodeSize = 0x1001))
+        assertFalse(tracker.onSpDmaCompleted(fragment(0, 0x80)))
+        assertFalse(tracker.onInstructionExecuted(0))
     }
 
     private fun taskDescriptor() = N64SpTaskDescriptor(
@@ -56,11 +81,11 @@ class N64SpTaskMicrocodeTrackerTest {
         yieldDataSize = 0
     )
 
-    private fun matchingTransfer() = N64Bus.SpDmaTransfer(
+    private fun fragment(offset: Int, size: Int) = N64Bus.SpDmaTransfer(
         toSp = true,
-        dramStartAddress = 0x4000,
-        spStartAddress = 0x1000,
-        blockLength = 0x80,
+        dramStartAddress = 0x4000 + offset,
+        spStartAddress = 0x1000 + offset,
+        blockLength = size,
         blockCount = 1,
         dramSkip = 0
     )
