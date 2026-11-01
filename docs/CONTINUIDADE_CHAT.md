@@ -2393,3 +2393,25 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 - Se a thread de emulação enviar vários frames antes da UI desenhar, os pendentes antigos são reciclados e somente o frame mais recente é aplicado.
 - Isso evita acumular tarefas/Bitmaps na fila principal quando a produção de frames for mais rápida que a apresentação.
 - A sincronização protege substituição, desenho e liberação ao remover a View da janela.
+
+## 53. Sessão contínua de CPU com publicação de frames VI — 2026-11-01
+
+### Implementação
+- Criada `N64RomVideoSession`, uma sessão reutilizável que executa instruções reais do R4300 em lotes canceláveis e consulta o VI a cada intervalo configurável.
+- A sessão publica frames somente quando o conteúdo ARGB muda, evitando enviar repetidamente o mesmo bitmap ao apresentador Android.
+- O limite padrão é `Long.MAX_VALUE`; a execução deve ocorrer em worker dedicado e ser encerrada cooperativamente pelo usuário.
+- A sessão expõe contagem de instruções executadas e frames publicados para diagnóstico.
+
+### Testes
+- Teste com loop MIPS real no R4300, VI configurado e framebuffer sintético em RDRAM; confirma publicação de frame durante a execução.
+- Teste de cancelamento cooperativo antes do primeiro passo.
+
+### Limites importantes
+- Esta etapa cria o motor de execução contínua da CPU e a ponte de captura/publicação VI; ainda não liga o motor à interface principal.
+- O chamador deve preparar CPU/barramento antes da sessão (HLE atual ainda é uma preparação separada).
+- **Ainda não existe despacho automático de tarefas RSP quando o jogo libera o SP.** Portanto, esta etapa sozinha não faz GoldenEye renderizar: o RSP precisa executar o boot/task microcode, produzir comandos DPC/RDP e atualizar o framebuffer VI.
+- Não declarar ROM comercial, GoldenEye ou vídeo real funcional com base nos testes sintéticos desta etapa.
+
+### Próximo passo prioritário
+- Integrar a sessão à Activity com controles Iniciar/Parar e apresentação de frames.
+- Em seguida, ligar a liberação do SP/OSTask ao executor RSP, preservando DMEM/IMEM e coordenando SP/DP; sem esse caminho, o framebuffer de jogo não será produzido.
