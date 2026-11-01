@@ -178,7 +178,14 @@ class MainActivity : Activity() {
                         val deviceLines = bus.diagnosticDeviceSnapshot()
                             .filter { it.startsWith("SP:") || it.startsWith("VI:") }
                             .joinToString("\n")
+                        val mmioCounts = bus.diagnosticMmioCounts.entries.sortedBy { it.key }
+                            .joinToString(" ") { it.key + "=" + it.value }
+                        val lastMmio = bus.diagnosticMmioHistory.lastOrNull()
                         val failure = romVideoSession?.rspFailureMessage()
+                        val lastPc = cpu.diagnosticInstructionAddress
+                        val lastOpcode = cpu.diagnosticInstructionWord
+                        val exception = cpu.lastExceptionCode?.let { "CPU EXCEPTION code=" + it + " EPC=0x" + (cpu.lastExceptionInstructionAddress ?: 0L).toULong().toString(16).uppercase() }
+                        val tlbFault = cpu.lastTlbFaultVirtualAddress?.let { "TLB " + cpu.lastTlbFaultKind + " " + cpu.lastTlbFaultAccessType + " VA=0x" + it.toULong().toString(16).uppercase() }
                         runOnUiThread {
                             details.text =
                                 "HLE: ${boot.copiedBytes} bytes preparados" +
@@ -186,6 +193,11 @@ class MainActivity : Activity() {
                                 "\nFrames VI: ${sessionSafeFrameCount(romVideoSession)}" +
                                 "\nRSP: ${romVideoSession?.executedRspInstructionCount() ?: 0L} instruções" +
                                 "\nPC: 0x${cpu.pc.toULong().toString(16).uppercase()}" +
+                                "\nÚltima instrução: " + (lastPc?.let { "0x" + it.toULong().toString(16).uppercase() } ?: "N/A") + " / " + (lastOpcode?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A") +
+                                "\nMMIO: " + mmioCounts.ifBlank { "nenhum acesso registrado" } +
+                                (lastMmio?.let { "\nÚltimo MMIO: " + it } ?: "") +
+                                (exception?.let { "\n" + it } ?: "") +
+                                (tlbFault?.let { "\n" + it } ?: "") +
                                 "\n$deviceLines" +
                                 (failure?.let { "\nFalha RSP: $it" } ?: "")
                         }
