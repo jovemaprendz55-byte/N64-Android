@@ -71,6 +71,53 @@ class R4300CpuTest {
         assertEquals(0x7F000BD0L, cpu.pc)
     }
 
+    @Test fun capturesRegistersAcrossObservedJrRaAndJalCallPath() {
+        val memory = N64Memory(0x6000)
+        memory.write32(0x1890, (31 shl 21) or 0x08) // JR $ra
+        memory.write32(0x1894, 0) // Delay slot
+        memory.write32(0x5D58, 0x0FC002F4) // JAL 0x7F000BD0
+        memory.write32(0x5D5C, 0) // Delay slot
+        val base = 0x70000000
+        val mappedMemory = object : N64AddressSpace {
+            private fun offset(address: Int) = address - base
+            override fun read8(address: Int) = memory.read8(offset(address))
+            override fun read16(address: Int) = memory.read16(offset(address))
+            override fun read32(address: Int) = memory.read32(offset(address))
+            override fun write8(address: Int, value: Int) = memory.write8(offset(address), value)
+            override fun write16(address: Int, value: Int) = memory.write16(offset(address), value)
+            override fun write32(address: Int, value: Int) = memory.write32(offset(address), value)
+        }
+        val cpu = R4300Cpu(mappedMemory)
+        cpu.gpr[31] = 0x70005D58L
+        cpu.gpr[25] = 0x7F001234L
+        cpu.gpr[4] = 0x1111L
+        cpu.gpr[5] = 0x2222L
+        cpu.gpr[6] = 0x3333L
+        cpu.gpr[7] = 0x4444L
+        cpu.gpr[29] = 0x7000F000L
+        cpu.gpr[16] = 0xAAAAL
+        cpu.setProgramCounter(0x70001890L)
+
+        cpu.step() // JR $ra: return path into the call site.
+        cpu.step() // Delay slot.
+        cpu.step() // JAL to the unmapped target.
+
+        val trace = cpu.diagnosticCallPathHistory
+        assertEquals(2, trace.size)
+        assertTrue(trace[0].contains("PC=0x70001890"))
+        assertTrue(trace[0].contains("RA=0x0000000070005D58"))
+        assertTrue(trace[1].contains("PC=0x70005D58"))
+        assertTrue(trace[1].contains("JAL_TARGET=0x7F000BD0"))
+        assertTrue(trace[1].contains("T9=0x000000007F001234"))
+        assertTrue(trace[1].contains("A0=0x0000000000001111"))
+        assertTrue(trace[1].contains("A3=0x0000000000004444"))
+        assertTrue(trace[1].contains("SP=0x000000007000F000"))
+        assertTrue(trace[1].contains("S0=0x000000000000AAAA"))
+
+        cpu.reset()
+        assertTrue(cpu.diagnosticCallPathHistory.isEmpty())
+    }
+
     @Test fun cop1ControlAndDataTransfersMoveRawWords() {
         val memory = N64Memory(32)
         // CFC1 $v0, $31 (the instruction reached by the latest GoldenEye report).
