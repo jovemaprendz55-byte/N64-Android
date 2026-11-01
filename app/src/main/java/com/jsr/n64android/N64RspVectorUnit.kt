@@ -34,6 +34,47 @@ class N64RspVectorUnit {
         registers[register][lane] = value and 0xFFFF
     }
 
+    /** Read/write the architectural byte view used by MFC2/MTC2. */
+    fun readByte(register: Int, byteIndex: Int): Int {
+        checkVector(register)
+        require(byteIndex in 0..15)
+        val lane = byteIndex ushr 1
+        return if ((byteIndex and 1) == 0) {
+            (registers[register][lane] ushr 8) and 0xFF
+        } else {
+            registers[register][lane] and 0xFF
+        }
+    }
+
+    fun writeByte(register: Int, byteIndex: Int, value: Int) {
+        checkVector(register)
+        require(byteIndex in 0..15)
+        val lane = byteIndex ushr 1
+        val current = registers[register][lane]
+        registers[register][lane] = if ((byteIndex and 1) == 0) {
+            ((current and 0x00FF) or ((value and 0xFF) shl 8))
+        } else {
+            (current and 0xFF00) or (value and 0xFF)
+        }
+    }
+
+    /** Packed control-register view: VCO=0, VCC=1, VCE=2. */
+    fun readControl(register: Int): Int = when (register) {
+        0 -> (vcoHigh shl 8) or vcoLow
+        1 -> (vccHigh shl 8) or vccLow
+        2 -> vce
+        else -> throw UnsupportedOperationException("Unsupported RSP vector control register $register.")
+    }
+
+    fun writeControl(register: Int, value: Int) {
+        when (register) {
+            0 -> setVco(value and 0xFF, (value ushr 8) and 0xFF)
+            1 -> setCompareFlags(value and 0xFF, (value ushr 8) and 0xFF, vce)
+            2 -> setCompareFlags(vccLow, vccHigh, value and 0xFF)
+            else -> throw UnsupportedOperationException("Unsupported RSP vector control register $register.")
+        }
+    }
+
     fun readAccumulator(lane: Int): Long {
         require(lane in 0..7)
         return accumulator[lane]
