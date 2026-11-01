@@ -150,7 +150,7 @@ class MainActivity : Activity() {
                 val activeSession = romVideoSession ?: lastRomVideoSession
                 val diagnosticCpu = romVideoCpu
                 val log = buildString {
-                    appendLine("=== N64 ANDROID — LOGS DA EXECUÇÃO ===")
+                    appendLine("=== N64 ANDROID — PACOTE DIAGNÓSTICO COMPLETO ===")
                     appendLine("ROM em memória: ${cartridgeRomBytes?.size ?: 0} bytes")
                     appendLine("Estado: ${if (romVideoThread?.isAlive == true) "EM EXECUÇÃO" else "PARADA/FINALIZADA"}")
                     appendLine()
@@ -274,8 +274,8 @@ class MainActivity : Activity() {
                     appendLine("=== FIM DOS LOGS ===")
                 }
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                clipboard.setPrimaryClip(ClipData.newPlainText("N64 Android logs", log))
-                Toast.makeText(this@MainActivity, "Logs copiados. Volte ao chat e cole aqui.", Toast.LENGTH_LONG).show()
+                clipboard.setPrimaryClip(ClipData.newPlainText("N64 Android diagnóstico completo", log))
+                Toast.makeText(this@MainActivity, "Diagnóstico completo copiado. Cole aqui no chat.", Toast.LENGTH_LONG).show()
             }
         }
         val stopButton = Button(this).apply {
