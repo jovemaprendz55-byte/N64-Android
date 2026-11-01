@@ -362,6 +362,11 @@ class N64Bus(
         return ram.storeConditional(address, width, value)
     }
 
+    @Synchronized
+    override fun clearLoadLinkedReservation() {
+        ram.clearLoadLinkedReservation()
+    }
+
     override fun write8(address: Int, value: Int) {
         require(address >= 0) { "Negative physical address." }
         if (address < ram.size) {
