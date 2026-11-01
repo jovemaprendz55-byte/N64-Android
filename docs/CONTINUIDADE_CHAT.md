@@ -2617,3 +2617,42 @@ Esta diretriz foi reafirmada pelo usuário em 2026-11-01 após uma resposta que 
 - Link CI: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41323741179
 - A build e o teste sintético passaram. Ainda não há confirmação de instalação/execução deste APK no aparelho nem log novo da ROM real.
 - Próximo passo após teste no aparelho: copiar os logs e analisar a seção de 64 instruções anteriores à falha TLB para determinar a origem do PC inválido. Manter HLE independente de firmware.
+
+
+## Auditoria adicional da CPU R4300 — branches REGIMM/COP1 e SYNC (2026-11-01)
+
+### Correção de operações lógicas de 64 bits
+- Commits: `40f6b5ca4c21c44159571edbd261b867242413a0`, `0e82deb0684cd49058da67a2bd8912c8d19367d1` e `057919c48d5065090ef61bbaf1312b5cb464e21f`.
+- AND, OR, XOR e NOR SPECIAL agora operam diretamente em `Long`, sem truncar os 32 bits superiores dos GPRs de 64 bits.
+- Teste `logicalRegisterInstructionsPreserveAll64Bits` valida os quatro resultados com operandos de 64 bits.
+- CI #970, run ID `41325237587`: **success**.
+
+### Instruções REGIMM branch-likely
+- Commits: `15d283f5e2a672a8dae5835971f02fdc73a504c3` e `bb2bcede64abef13da1174f01399fd96b7b0bac0`.
+- Implementados BLTZL, BGEZL, BLTZALL e BGEZALL.
+- Quando a condição não é satisfeita, o delay slot é anulado; nas variantes de link, GPR[31] só é atualizado quando o branch é tomado.
+- Testes cobrem anulação, execução do delay slot, destino e endereço de retorno.
+- CI #971 e #972: **success**.
+
+### Branches COP1
+- Commits: `66cdf915d264913fc8cf53466f091138c89e89a4`, `5b1b91e7541aa488782422f040ea087f2947c489` e `e103db3b6d4b24feeb9c08461c2f375a2c9ceaff`.
+- Implementados BC1F, BC1T, BC1FL e BC1TL para FCC0 (bit 23 de FCR31).
+- Branches likely anulam o delay slot quando não tomados; branches normais preservam o delay slot.
+- Condições de código FCC diferentes de zero ainda são rejeitadas como instrução reservada; isso é uma limitação explícita, não suporte completo a todos os condition codes.
+- O primeiro conjunto de testes teve uma expectativa incorreta para o caminho de branch normal não tomado; a expectativa foi corrigida. CI #974 falhou nesse teste; CI #975, com a expectativa corrigida, passou (**success**). CI #973 para a implementação também passou.
+
+### Instrução SYNC
+- Commits: `04f4467b50801d01177d17c7035b84fc3e07fbc5` e `6c4ca51644ebbf6e6b355cae0f8058efb820eeec`.
+- SYNC agora é aceito como operação ordenadora sem efeito adicional no modelo atual, pois o interpretador executa os acessos de memória de forma síncrona e serializada.
+- Os campos reservados rs/rt/rd são validados; o campo stype é aceito como hint.
+- Teste `syncActsAsOrderedNoOpInSingleThreadedCpu` verifica avanço do PC, preservação dos GPRs e ausência de exceção.
+- CI #976 e #977: **success**.
+
+### Estado e limites
+- HEAD de `dev/n64-clean-start` após estas alterações: `6c4ca51644ebbf6e6b355cae0f8058efb820eeec` (antes deste registro documental).
+- CI #977, run ID `41325806621`: **success**, incluindo compilação e testes unitários; CI #975 também confirmou os testes COP1 corrigidos.
+- Branch `main` permaneceu em `354642aa33322d21b11ecf49934bc021562d57aa`; não foi alterada.
+- A CPU continua incompleta: LL/SC/LLD/SCD, traps, FPU aritmética e loads/stores COP1, além de semântica completa de exceções, caches e temporização, ainda exigem auditoria/implementação.
+- Estas correções não demonstram que GoldenEye 007 produz imagem. Não há frame real validado nesta etapa.
+- O caminho continua HLE próprio, sem PIF ROM original, sem firmware original e sem executar IPL3 original.
+- Próximo passo: revisar atomicidade LL/SC e o modelo de memória/reserva antes de implementar, ou avançar na semântica COP0/exceções. Não simular sucesso de SC nem ignorar invalidação da reserva.
