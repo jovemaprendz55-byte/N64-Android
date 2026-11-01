@@ -4276,6 +4276,44 @@ class R4300CpuTest {
         assertEquals(0x11223344, memory.read32(16))
     }
 
+    @Test fun vr4300DataCacheInvalidationClearsLlbit() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x30, 1, 2, 0)) // LL
+        memory.write32(4, (0x2F shl 26) or (1 shl 16) or (4 shl 16)) // CACHE Hit_Invalidate D (subop 12).
+        memory.write32(8, iType(0x38, 1, 2, 0)) // SC
+        memory.write32(16, 0x11223344)
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 16L
+
+        cpu.step()
+        cpu.step()
+        cpu.gpr[2] = 0x55667788L
+        cpu.step()
+
+        assertEquals(0L, cpu.gpr[2])
+        assertEquals(0x11223344, memory.read32(16))
+    }
+
+    @Test fun vr4300InstructionCacheInvalidationDoesNotClearLlbit() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x30, 1, 2, 0)) // LL
+        memory.write32(4, (0x2F shl 26) or (4 shl 16)) // CACHE Hit_Invalidate I (subop 4).
+        memory.write32(8, iType(0x38, 1, 2, 0)) // SC
+        memory.write32(16, 0x11223344)
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[1] = 16L
+
+        cpu.step()
+        cpu.step()
+        cpu.gpr[2] = 0x55667788L
+        cpu.step()
+
+        assertEquals(1L, cpu.gpr[2])
+        assertEquals(0x55667788, memory.read32(16))
+    }
+
     @Test fun vr4300ScDoesNotClearLlbitByItself() {
         val memory = N64Memory(64)
         memory.write32(0, iType(0x30, 1, 2, 0)) // LL
