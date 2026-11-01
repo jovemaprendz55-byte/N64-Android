@@ -1943,3 +1943,103 @@ Próximo passo: validar CI; depois implementar registradores vetoriais/accumulat
 
 ### Próximo bloco recomendado
 Construir o ciclo de vida de task SP: leitura do descriptor em RDRAM, carregamento IMEM/DMEM por DMA, execução do RSP até BREAK, atualização de status/interrupt e encaminhamento da display list para DPC, com testes de integração em vez de mais alterações isoladas no decoder.
+
+
+## 39. Plano híbrido de 64 tarefas — 2026-11-01
+
+### Regras de execução
+- Branch exclusiva: `dev/n64-clean-start`; `main` permanece intocada.
+- 8 frentes de 8 tarefas. Paralelismo apenas entre arquivos/módulos independentes; integração sempre sequencial.
+- Cada tarefa deve produzir código, teste, evidência de auditoria ou documentação verificável. Uma tarefa planejada não será marcada como concluída.
+- Após cada integração: executar testes/build, conferir GitHub Actions e registrar SHA/resultado.
+- Prioridade máxima: caminho real ROM → CPU R4300 → task SP → RSP → display list → DPC/RDP → VI → imagem no app.
+- A demonstração de framebuffer/test pattern nunca será usada como prova de que uma ROM foi renderizada.
+- Não incorporar código de outros emuladores; implementar e testar o nosso próprio código com base em especificações e referências arquiteturais.
+
+### Grupo 1 — Base, contratos e ciclo de vida SP (tarefas 1–8)
+1. Confirmar branch, HEAD, histórico e estado de CI antes de qualquer alteração. **Concluída nesta rodada.**
+2. Inventariar os módulos reais de CPU, barramento, SP/RSP, DPC/RDP e VI presentes na branch. **Concluída nesta rodada.**
+3. Auditar o mapa atual dos registradores SP, DMA e status, separando comportamento implementado de placeholders. **Auditoria inicial concluída; detalhes por registrador pendentes.**
+4. Auditar o caminho RSP atual: decoder, vetores, loads/stores, BREAK e limitações explícitas. **Concluída nesta rodada.**
+5. Auditar o caminho DPC/RDP/VI existente e identificar onde ainda há execução isolada sem ligação com ROM. **Concluída nesta rodada.**
+6. Definir contrato mínimo de task SP: descriptor, origem/destino, tamanhos, flags e endereços de microcode/display-list, conforme evidência arquitetural. **Planejada.**
+7. Definir estados e transições de task: idle, carregamento DMA, execução, BREAK, conclusão, interrupção e erro. **Planejada.**
+8. Criar testes de integração do ciclo SP usando descriptor sintético, sem alegar compatibilidade de jogo. **Planejada.**
+
+### Grupo 2 — RSP e transferências vetoriais (tarefas 9–16)
+9. Validar o mapeamento exato dos campos de task e do PC do RSP antes de iniciar execução.
+10. Implementar o sequenciador de execução RSP com limite de instruções e parada determinística.
+11. Implementar status HALT/BROKE e transições de CLEAR_HALT/SET_HALT com testes.
+12. Modelar SP DMA busy/full e restrições de escrita nos registradores.
+13. Adicionar conclusão de DMA e sinalização de interrupção SP no MI.
+14. Auditar e corrigir delay slots, branch/jump e comportamento BREAK do RSP.
+15. Validar SHV e demais transferências vetoriais pendentes com testes de bytes/lane e casos de fronteira.
+16. Criar testes de regressão de task RSP completa: carregar IMEM/DMEM, executar até BREAK e verificar estado final.
+
+### Grupo 3 — DPC e ligação da display list (tarefas 17–24)
+17. Auditar registradores DPC START, END, CURRENT, STATUS e CLOCK já existentes no barramento.
+18. Implementar semântica de START/END/CURRENT com alinhamento, limites e estado de comando.
+19. Conectar conclusão da task SP ao envio do endereço de display list para DPC.
+20. Implementar leitura de comandos via RDRAM e via XBUS/DMEM quando aplicável.
+21. Modelar DPC status, freeze, flush e busy de forma testável.
+22. Implementar interrupção DPC→MI e acknowledgement correto.
+23. Criar teste integrado SP→DPC com lista sintética residente em RDRAM.
+24. Garantir que comandos inválidos/truncados não escrevam parcialmente no framebuffer.
+
+### Grupo 4 — RDP: comandos e rasterização (tarefas 25–32)
+25. Auditar tabela de tamanhos dos comandos RDP e confrontar todos os opcodes suportados.
+26. Completar decodificação dos comandos de estado necessários antes de triângulos/texturas.
+27. Implementar registro de cor, ciclo, scissor e modos de renderização com testes isolados.
+28. Implementar primitivas de retângulo e fill com regras de formato e alinhamento.
+29. Validar setup de triângulos, edge walker e rasterização contra fixtures independentes.
+30. Implementar interpolação de atributos e cobertura de pixels para triângulos.
+31. Criar caminho inicial de textura: TMEM, tile descriptors, load tile/block e leitura de texels.
+32. Criar teste integrado DPC→RDP→framebuffer com comandos reais de display list sintética.
+
+### Grupo 5 — VI e imagem na tela (tarefas 33–40)
+33. Auditar registradores VI e o leitor de framebuffer já presentes.
+34. Implementar stride/origin e dimensões de saída com validação de limites de RDRAM.
+35. Implementar formatos de pixel adicionais e regras de conversão verificadas.
+36. Modelar blanking, interrupt/current line e atualização de frame de forma determinística.
+37. Ligar o framebuffer produzido pelo RDP ao leitor VI, sem usar test pattern como fonte.
+38. Publicar frames para a camada Android sem bloquear a thread de emulação.
+39. Criar teste end-to-end DPC→RDP→VI que compare pixels esperados.
+40. Exibir no diagnóstico a origem do frame (ROM/RDP ou padrão sintético), endereço, formato e dimensões.
+
+### Grupo 6 — CPU R4300 e boot real (tarefas 41–48)
+41. Fazer inventário de instruções MIPS III/R4300 implementadas e ausentes com base no decoder atual.
+42. Priorizar instruções que o bootcode e o código de jogo realmente alcançam, usando logs de ROM.
+43. Corrigir semântica de 64 bits, overflow, loads/stores e alinhamento com testes arquiteturais.
+44. Completar exceções, delay slots e estado COP0 necessário ao boot.
+45. Validar TLB, mapeamento físico/virtual e acessos a MMIO com testes de integração.
+46. Auditar FPU/COP1 e implementar operações exigidas pelo caminho observado, sem inventar cobertura total.
+47. Revalidar o handoff HLE/CIC/PIF com logs reproduzíveis e estado arquitetural documentado.
+48. Executar ROM real em diagnóstico, corrigir o primeiro bloqueio comprovado e registrar logs antes/depois.
+
+### Grupo 7 — Periféricos, áudio e controles (tarefas 49–56)
+49. Auditar PI DMA, cartucho e limites de acesso à ROM.
+50. Completar SI/PIF RAM e protocolo Joybus necessário para comandos observados.
+51. Implementar resposta HLE de controles e testar leitura de estado de botões.
+52. Completar temporização/estado básico de AI e fila de áudio.
+53. Implementar caminho de áudio inicial com formato e taxa derivados dos registradores AI.
+54. Ligar eventos de interrupção de periféricos ao MI com máscaras e acknowledgement.
+55. Adicionar testes de integração para PI/SI/AI e garantir isolamento entre dispositivos.
+56. Expor diagnóstico de periféricos e contadores sem gerar logs por byte em excesso.
+
+### Grupo 8 — Integração, desempenho e entrega (tarefas 57–64)
+57. Criar suíte de regressão única para CPU, bus, SP/RSP, DPC/RDP e VI.
+58. Medir custo por lote de instruções e por frame em aparelho Android real.
+59. Reduzir alocações/logs no hot path sem alterar resultados arquiteturais.
+60. Implementar sincronização segura entre worker de emulação e renderização Android.
+61. Testar cancelamento, pausa, retomada e troca de ROM sem estado residual.
+62. Gerar APK debug e validar instalação/abertura em aparelho físico.
+63. Executar uma ROM de referência do início ao primeiro frame originado do RDP; guardar ROM apenas localmente e registrar evidência/log.
+64. Consolidar relatório de compatibilidade: o que funciona, o que falha, testes, APK e próximo bloqueio; não declarar jogo funcional sem prova visual originada da ROM.
+
+### Estado desta rodada
+- Tarefas 1, 2, 4 e 5: auditoria inicial concluída.
+- Tarefa 3: auditoria inicial dos registradores e do DMA concluída em nível geral; revisão detalhada ainda pendente.
+- Tarefas 6–64: planejadas, não concluídas.
+- CI #832, #833 e #834: **success**; HEAD confirmado em `b34be16cd97769f1f3d9bb3cd07c128544158a0c`.
+- O estado atual contém componentes experimentais de RDP/VI e RSP, mas o caminho integrado task SP→display list→RDP→VI ainda não está comprovado.
+- Próxima execução: tarefa 6, formalizar o contrato da task SP com base no código e nas referências arquiteturais; depois tarefas 7–8 e primeira integração testável.
