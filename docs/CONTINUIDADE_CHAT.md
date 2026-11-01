@@ -2603,3 +2603,22 @@ Só começa após o marco RSP estar validado. Blocos: enquadramento e decodifica
 - **Tarefa 001 — HI/LO, MULT e MULTU:** CI concluída com sucesso no workflow `41309965846` (build, testes e upload do APK).
 - **Tarefa 002 — BLTZ e BGEZ:** implementadas comparações assinadas no opcode REGIMM e adicionados testes para condição verdadeira/falsa e execução do delay slot. Aguardando CI antes de iniciar a tarefa 003.
 - Commits da tarefa 002: core `ca67ed9959befb34a3333ff48f8eed4ff937defc`; testes `fdb6a7c972b3255991cb1033edef183dfe4314a7`.
+
+
+## Registro de continuidade — retomada acelerada (2026-11-01)
+
+### Correção do teste RSP
+- Commit: `b67db18dc769659d471ecda93078057ffbe45c5b`.
+- Arquivo alterado: `app/src/test/java/com/jsr/n64android/N64RspCoreTest.kt`.
+- Ajuste: o teste do desvio REGIMM passou a executar 8 instruções no orçamento do teste, em vez de 10, para verificar o caminho e o delay slot sem avançar além do trecho esperado.
+- Não houve alteração na implementação do núcleo RSP nesta correção; foi ajustado somente o limite de execução do teste.
+- CI Android build #940, run ID `41310733761`: **success**. Os passos Build and test e Upload debug APK terminaram com sucesso.
+- Link: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41310733761
+
+### Diretriz atual do usuário
+- O usuário cancelou explicitamente o plano de 1.000 tarefas. Não continuar numerando trabalho nem tratar aquele plano como ativo.
+- O bloco histórico “Plano sequencial de 1.000 tarefas — RSP → RDP” acima é legado; não deve orientar o trabalho futuro. A sequência numerada foi cancelada.
+- Continuar o desenvolvimento normal, agrupando correções relacionadas quando seguro, com prioridade em RSP/RDP e geração de frames reais de ROM, especialmente GoldenEye 007.
+- Não sacrificar testes nem declarar compatibilidade do GoldenEye sem evidência visual originada da ROM real.
+- Próximo passo: inspecionar o RSP e traces disponíveis para selecionar a lacuna de instrução/microcódigo de maior impacto; não presumir que o teste de desvio seja prova de microcódigo comercial completo.
+
