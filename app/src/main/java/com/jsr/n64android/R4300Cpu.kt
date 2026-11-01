@@ -68,6 +68,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     private var randomResetByWiredWrite = false
     /** Bounded record of actual TLBWI/TLBWR operations for ROM diagnostics. */
     val diagnosticTlbWriteHistory: MutableList<String> = mutableListOf()
+    /** Bounded architectural TLB exception trace, including the selected exception vector. */
+    val diagnosticTlbExceptionHistory: MutableList<String> = mutableListOf()
     /** TLB contents frozen when the first architectural TLB fault is delivered. */
     var lastTlbEntrySnapshot: String = "(nenhuma entrada capturada)"
         private set
@@ -91,6 +93,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         lastTlbFaultAccessType = null
         lastTlbFaultKind = null
         diagnosticTlbWriteHistory.clear()
+        diagnosticTlbExceptionHistory.clear()
         lastTlbEntrySnapshot = "(nenhuma entrada capturada)"
         instructionWordForCurrentStep = null
         instructionAddressForCurrentStep = null
@@ -837,6 +840,15 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         }
         delayedTarget = null
         pendingDelaySlotBranchAddress = null
+        val trace = "TLB EXCEPTION kind=${fault.kind} access=${lastTlbFaultAccessType} " +
+            "faultVA=0x${badAddress.toString(16).uppercase()} " +
+            "faultPC=0x${(instructionAddressForCurrentStep ?: pc).toULong().toString(16).uppercase()} " +
+            "instruction=0x${(instructionWordForCurrentStep ?: 0).toUInt().toString(16).uppercase().padStart(8, '0')} " +
+            "vector=0x${pc.toULong().toString(16).uppercase()} " +
+            "Status=0x${cop0[12].toString(16).uppercase()} Cause=0x${cop0[13].toString(16).uppercase()} " +
+            "EPC=0x${cop0[14].toULong().toString(16).uppercase()} EntryHi=0x${cop0[10].toString(16).uppercase()}"
+        diagnosticTlbExceptionHistory.add(trace)
+        if (diagnosticTlbExceptionHistory.size > 64) diagnosticTlbExceptionHistory.removeAt(0)
     }
 
     private fun exceptionVector(): Long {
