@@ -4,7 +4,8 @@ package com.jsr.n64android
  * Synchronous bridge for the currently supported DPC-to-RDP command-list subset.
  *
  * Reads an end-exclusive, 8-byte-aligned command range from physical RDRAM as
- * big-endian 64-bit words and submits it to the isolated RDP fill processor.
+ * big-endian 64-bit words, frames complete packets, then submits the supported subset
+ * to the RDP processor (fill-cycle commands and flat RGBA16 opcode 0x08 triangles).
  *
  * This is deliberately not a complete DPC: MMIO registers, double-buffered
  * START/END state, XBUS/DMEM DMA, timing, interrupts and asynchronous FIFO
@@ -35,7 +36,8 @@ class N64DpcCommandProcessor(
 
     /**
      * Processes commands in [startAddress, endAddressExclusive).
-     * Reads command lengths from the RDP opcode table. Only 8-byte commands are currently dispatched; recognized multiword commands are rejected safely rather than treating payload words as new opcodes.
+     * Reads packet lengths from the RDP opcode table and validates the complete stream
+     * before dispatch. Supported multiword execution is currently limited to opcode 0x08.
      */
     fun process(startAddress: Int, endAddressExclusive: Int): Result {
         require(startAddress >= 0) { "DPC start address cannot be negative." }
