@@ -1294,3 +1294,34 @@ Testes:
 3. Antes de implementar comandos multiword, adicionar testes de parsing de stream para todos os comprimentos, limites e ENDs truncados.
 4. Depois implementar o primeiro comando multiword apenas com uma representação de payload explícita e testes; não começar a rasterização de triângulos sem cobrir corretamente interpolantes, clipping, texturas e limites.
 5. Manter a integração DPC/RDP síncrona como modelo experimental, não FIFO completa. Não afirmar que uma ROM é renderizada.
+
+
+## 18. Validação integral do stream DPC e cobertura de truncamento (2026-10-31)
+
+### CI confirmada
+- Build #746, run `41255553298`, commit de código `a5558895b53132a47e40c7190927d2ed4f0ec1ec`: **success**.
+- Build #747, run `41255572693`, commit documental `409c8c4fe483ce1ebce3041b2d375060e06f228a`: **success**.
+- Build #748, run `41255714778`, commit `4050cb0ec3309a8dc30b4a8cb4d4cb206f32b13d`: **success**, incluindo Build and test e Upload debug APK.
+
+### Testes adicionados no commit `4050cb0ec3309a8dc30b4a8cb4d4cb206f32b13d`
+- Lista com prefixo de comandos RDP de 8 bytes seguido de triângulo multiword: confirma que o DPC rejeita antes de chamar `rdp.execute`, portanto o prefixo não modifica estado nem framebuffer.
+- TextureRectangle (opcode `0x24`) com END antes dos 16 bytes exigidos: confirma rejeição de comando truncado.
+- A validação do stream ocorre antes do despacho da lista completa. A implementação ainda não cria pacotes multiword nem executa seus payloads.
+
+### Cobertura adicional no commit `14e78041e4eaf419f7fade63b82696b6027a44dd`
+- Teste parametrizado para todos os opcodes multiword conhecidos: `0x08`–`0x0F`, `0x24` e `0x25`.
+- Para cada opcode, o END é colocado 8 bytes antes do comprimento total; o teste exige `IllegalArgumentException` com identificação de comando truncado.
+- Build #749, run `41255996859`, disparado para este commit. Na atualização desta seção estava **queued/in progress**; conferir o resultado no GitHub antes de declarar a cobertura aprovada.
+
+### Limites preservados
+- O leitor continua reconhecendo comprimento, validando END e rejeitando comandos multiword. Ainda não há representação `RdpCommandPacket` nem execução de triângulos/retângulos texturizados.
+- A tabela de comprimentos não substitui a implementação de payload, interpolantes, clipping, textura/TMEM, Z-buffer ou rasterização.
+- O processador DPC continua síncrono e experimental; não é uma FIFO DPC completa.
+- Nenhuma ROM foi confirmada como renderizada no aparelho nesta etapa.
+
+### Próximo passo técnico
+1. Confirmar CI #749 e registrar seu resultado.
+2. Fazer uma pequena abstração pura de parsing: pacote com opcode, comprimento e lista imutável de words (incluindo payload), sem executar comandos multiword.
+3. Testar parsing de listas mistas, todos os comprimentos, END exclusivo, truncamento e limite máximo antes de ligar qualquer pacote multiword ao RDP.
+4. Só então escolher um comando multiword para implementação; não iniciar triângulos sem planejar corretamente o pipeline gráfico.
+5. Manter `dev/n64-clean-start` como branch de trabalho e `main` intocada.
