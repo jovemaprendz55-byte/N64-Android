@@ -2386,3 +2386,10 @@ Criar uma evidência de hardware observável para a próxima etapa de identifica
 
 ### Próximo passo
 - Confirmar compilação/testes no CI. Depois integrar a submissão de frames ao ciclo de execução real, com atualização limitada e descarte de frames antigos para não acumular Bitmaps.
+
+
+### Ajuste de fluxo para frames sucessivos
+- O apresentador usa agora uma mailbox latest-frame-wins: mantém no máximo um bitmap atual, um bitmap pendente e uma tarefa de atualização agendada.
+- Se a thread de emulação enviar vários frames antes da UI desenhar, os pendentes antigos são reciclados e somente o frame mais recente é aplicado.
+- Isso evita acumular tarefas/Bitmaps na fila principal quando a produção de frames for mais rápida que a apresentação.
+- A sincronização protege substituição, desenho e liberação ao remover a View da janela.
