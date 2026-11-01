@@ -1902,3 +1902,23 @@ Próximo passo: validar CI; depois implementar registradores vetoriais/accumulat
 - Fontes técnicas: SGI RSP Programmer's Guide (LHV e nota element=0) e emudev RSP Vector Instructions (padrões de stride e distinção load/store).
 - Próxima etapa: revisar SHV byte a byte com exemplos SGI, ampliar testes para wrap 0xFFF/0x000 e só então liberar elementos não zero.
 - Nenhuma ROM/jogo foi validado.
+
+
+## 37. Correção do endereço efetivo no LHV — 2026-11-01
+
+### Correção
+- Revisado o caminho LHV em `N64RspCore.executeVectorMemory`.
+- LHV agora lê em `EA + lane * 2`, usando o endereço efetivo calculado por `GPR[base] + sign_extend(offset) * 16`.
+- Removido o alinhamento indevido para o início do bloco de 16 bytes. A paridade dos bytes alternados passa a ser determinada pelo próprio endereço efetivo.
+- O byte carregado continua posicionado nos bits 14..7 da lane vetorial.
+- O caminho SHV foi mantido isolado e sem ampliação de suporte: sua rotação/mapeamento de origem ainda precisa de validação independente antes de qualquer correção mais ampla.
+
+### Testes
+- Atualizado o fixture LHV com endereço efetivo desalinhado em `0x106`, verificando leituras em `0x106, 0x108, ...`.
+- Adicionado teste de wrap de DMEM: leitura iniciada em `0xFF8` cruza `0xFFF` e continua em `0x000`.
+- Os testes são sintéticos do projeto e ainda não substituem validação em hardware ou suíte arquitetural independente.
+
+### Próximo passo
+1. Executar GitHub Actions e confirmar build/testes.
+2. Investigar a rotação e o mapeamento exatos do SHV com fixtures independentes.
+3. Avançar para as demais transferências vetoriais e o DMA/tarefa SP; ainda não há execução de microcode de jogo nem ROM validada.
