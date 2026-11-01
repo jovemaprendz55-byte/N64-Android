@@ -4150,6 +4150,58 @@ class R4300CpuTest {
         }
     }
 
+    @Test fun cop1BranchLikelyVariantsAnnulDelaySlotWhenNotTaken() {
+        val cases = listOf(
+            0 to true,  // BC1F: condition true, so not taken.
+            1 to false, // BC1T: condition false, so not taken.
+            2 to true,  // BC1FL: condition true, likely branch not taken.
+            3 to false  // BC1TL: condition false, likely branch not taken.
+        )
+        for ((rt, conditionTrue) in cases) {
+            val memory = N64Memory(32)
+            memory.write32(0, (0x11 shl 26) or (0x08 shl 21) or (rt shl 16) or 2)
+            memory.write32(4, iType(0x09, 0, 2, 7)) // Annulled for likely variants.
+            memory.write32(8, iType(0x09, 0, 3, 9))
+            val cpu = R4300Cpu(memory)
+            cpu.setProgramCounter(0)
+            cpu.fcr[31] = if (conditionTrue) (1L shl 23) else 0L
+
+            cpu.step()
+            cpu.step()
+
+            val shouldAnnul = rt == 2 || rt == 3
+            assertEquals("BC1 rt=$rt delay slot", if (shouldAnnul) 0L else 7L, cpu.gpr[2])
+            assertEquals("BC1 rt=$rt sequential", 9L, cpu.gpr[3])
+            assertEquals("BC1 rt=$rt PC", if (shouldAnnul) 12L else 12L, cpu.pc)
+        }
+    }
+
+    @Test fun cop1BranchVariantsExecuteDelaySlotAndReachTargetWhenTaken() {
+        val cases = listOf(
+            0 to false, // BC1F
+            1 to true,  // BC1T
+            2 to false, // BC1FL
+            3 to true   // BC1TL
+        )
+        for ((rt, conditionTrue) in cases) {
+            val memory = N64Memory(32)
+            memory.write32(0, (0x11 shl 26) or (0x08 shl 21) or (rt shl 16) or 2)
+            memory.write32(4, iType(0x09, 0, 2, 7))
+            memory.write32(8, iType(0x09, 0, 3, 8))
+            memory.write32(12, iType(0x09, 0, 4, 10))
+            val cpu = R4300Cpu(memory)
+            cpu.setProgramCounter(0)
+            cpu.fcr[31] = if (conditionTrue) (1L shl 23) else 0L
+
+            repeat(3) { cpu.step() }
+
+            assertEquals("BC1 rt=$rt delay slot", 7L, cpu.gpr[2])
+            assertEquals("BC1 rt=$rt skipped", 0L, cpu.gpr[3])
+            assertEquals("BC1 rt=$rt target", 10L, cpu.gpr[4])
+            assertEquals("BC1 rt=$rt PC", 16L, cpu.pc)
+        }
+    }
+
     @Test fun branchLikelyNotTakenAnnulsDelaySlot() {
         val memory = N64Memory(32)
         memory.write32(0, iType(0x14, 1, 0, 2)) // beql $at, $zero, target
