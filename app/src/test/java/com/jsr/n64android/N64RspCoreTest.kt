@@ -252,4 +252,35 @@ class N64RspCoreTest {
         assertEquals(0x61, bus.read8(N64Bus.SP_DMEM_BASE + 3))
     }
 
+    @Test
+    fun packedStoresCoverAllElementWindowBoundaries() {
+        val instructions = mutableListOf<Int>()
+        for (index in 0 until 4) {
+            instructions += addiu(8 + index, 0, 0x300 + index * 0x10)
+            instructions += vectorMemory(0x3A, 8 + index, 14, if (index % 2 == 0) 6 else 7,
+                listOf(0, 7, 8, 15)[index], 0)
+        }
+        val (bus, rsp) = setup(*instructions.toIntArray())
+        for (lane in 0 until 8) rsp.vectorUnit.writeLane(14, lane, 0x1200 + lane * 0x0100)
+
+        assertEquals(8, rsp.run(8))
+        val elements = listOf(0, 7, 8, 15)
+        for (caseIndex in elements.indices) {
+            val element = elements[caseIndex]
+            val operation = if (caseIndex % 2 == 0) 6 else 7
+            val address = 0x300 + caseIndex * 0x10
+            for (byteIndex in 0 until 8) {
+                val vectorElement = (element + byteIndex) and 0x0F
+                val lane = vectorElement and 7
+                val upperHalf = vectorElement < 8
+                val useHighByte = if (operation == 6) upperHalf else !upperHalf
+                val laneValue = 0x1200 + lane * 0x0100
+                val expected = if (useHighByte) (laneValue ushr 8) and 0xFF
+                    else (laneValue ushr 7) and 0xFF
+                assertEquals("element=$element byte=$byteIndex", expected,
+                    bus.read8(N64Bus.SP_DMEM_BASE + address + byteIndex))
+            }
+        }
+    }
+
 }
