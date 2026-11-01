@@ -32,7 +32,7 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         status = TextView(this).apply {
-            text = "Nenhum jogo selecionado.\\nEscolha uma ROM para começar."
+            text = "Nenhum jogo selecionado.\nEscolha uma ROM para começar."
             textSize = 15f
             gravity = Gravity.CENTER
             setPadding(20, 18, 20, 18)
