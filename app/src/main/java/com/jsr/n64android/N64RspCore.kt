@@ -79,7 +79,7 @@ class N64RspCore(private val bus: N64Bus) {
                 0x07 -> gpr[rd] = b shr (a and 31)
                 0x08 -> delayedTarget = a and PC_MASK
                 0x09 -> { gpr[rd] = pc; delayedTarget = a and PC_MASK }
-                0x0D -> { bus.write32(N64Bus.SP_STATUS_REG, N64Bus.SP_STATUS_CMD_SET_HALT); delayedTarget = null }
+                0x0D -> { bus.signalSpBreak(); delayedTarget = null }
                 0x21 -> gpr[rd] = a + b
                 0x23 -> gpr[rd] = a - b
                 0x24 -> gpr[rd] = a and b
@@ -88,6 +88,11 @@ class N64RspCore(private val bus: N64Bus) {
                 0x27 -> gpr[rd] = a.inv() and b.inv()
                 0x2A -> gpr[rd] = if (a < b) 1 else 0
                 0x2B -> gpr[rd] = if (a.toUInt() < b.toUInt()) 1 else 0
+                else -> unsupported(i)
+            }
+            0x10 -> when (rs) {
+                0x00 -> gpr[rt] = readSpCop0(rd) // MFC0
+                0x04 -> writeSpCop0(rd, b) // MTC0
                 else -> unsupported(i)
             }
             0x02, 0x03 -> {
@@ -116,6 +121,40 @@ class N64RspCore(private val bus: N64Bus) {
             else -> unsupported(i)
         }
     }
+
+
+    /** SP COP0 register subset: DMA address/length, status and semaphore. */
+    private fun readSpCop0(register: Int): Int {
+        val address = when (register) {
+            0 -> N64Bus.SP_MEM_ADDR_REG
+            1 -> N64Bus.SP_DRAM_ADDR_REG
+            2 -> N64Bus.SP_RD_LEN_REG
+            3 -> N64Bus.SP_WR_LEN_REG
+            4 -> N64Bus.SP_STATUS_REG
+            5 -> N64Bus.SP_DMA_FULL_REG
+            6 -> N64Bus.SP_DMA_BUSY_REG
+            7 -> N64Bus.SP_SEMAPHORE_REG
+            else -> unsupportedCop0(register)
+        }
+        return bus.read32(address)
+    }
+
+    private fun writeSpCop0(register: Int, value: Int) {
+        val address = when (register) {
+            0 -> N64Bus.SP_MEM_ADDR_REG
+            1 -> N64Bus.SP_DRAM_ADDR_REG
+            2 -> N64Bus.SP_RD_LEN_REG
+            3 -> N64Bus.SP_WR_LEN_REG
+            4 -> N64Bus.SP_STATUS_REG
+            7 -> N64Bus.SP_SEMAPHORE_REG
+            5, 6 -> return // DMA_FULL and DMA_BUSY are read-only.
+            else -> unsupportedCop0(register)
+        }
+        bus.write32(address, value)
+    }
+
+    private fun unsupportedCop0(register: Int): Nothing =
+        throw UnsupportedOperationException("Unsupported SP COP0 register $register.")
 
     private fun load8(address: Int): Int = bus.read8(dmemAddress(address))
     private fun load16(address: Int): Int = bus.read16(dmemAddress(address) and -2)
