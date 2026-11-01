@@ -186,6 +186,18 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         val funct = instruction and 0x3F
         val immediate = instruction.toShort().toInt()
         val unsignedImmediate = instruction and 0xFFFF
+        val diagnosticEffectiveAddress = if (opcode in setOf(0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x38, 0x3C, 0x3F)) {
+            gpr[rs] + immediate.toLong()
+        } else null
+        (memory as? N64Bus)?.setDiagnosticCpuInstructionContext(
+            pc = instructionAddress,
+            instruction = instruction,
+            rs = rs,
+            rt = rt,
+            rsValue = gpr[rs],
+            rtValue = gpr[rt],
+            effectiveAddress = diagnosticEffectiveAddress
+        )
         val nextSequential = instructionAddress + 4L
         var directPc: Long? = null
 
