@@ -139,6 +139,63 @@ class MainActivity : Activity() {
             textSize = 14f
             setPadding(12, 12, 12, 12)
         }
+        val copyLogsButton = Button(this).apply {
+            text = "COPIAR LOGS"
+            isAllCaps = false
+            setOnClickListener {
+                val activeSession = romVideoSession
+                val log = buildString {
+                    appendLine("=== N64 ANDROID — LOGS DA EXECUÇÃO ===")
+                    appendLine("ROM em memória: ${cartridgeRomBytes?.size ?: 0} bytes")
+                    appendLine("Estado: ${if (romVideoThread?.isAlive == true) "EM EXECUÇÃO" else "PARADA/FINALIZADA"}")
+                    appendLine()
+                    appendLine("=== PAINEL DA EXECUÇÃO ===")
+                    appendLine(details.text.toString())
+                    appendLine()
+                    appendLine("=== CONTADORES MMIO ===")
+                    appendLine(bus.diagnosticMmioCounts.entries.sortedBy { it.key }
+                        .joinToString("\n") { "${it.key}=${it.value}" }.ifBlank { "Nenhum acesso MMIO registrado." })
+                    appendLine()
+                    appendLine("=== HISTÓRICO MMIO (mais recente) ===")
+                    appendLine(bus.diagnosticMmioHistory.toList().joinToString("\n").ifBlank { "Vazio." })
+                    appendLine()
+                    appendLine("=== TRANSFERÊNCIAS DMA DO SP ===")
+                    appendLine(bus.diagnosticSpDmaHistory.toList().joinToString("\n").ifBlank { "Vazio." })
+                    appendLine()
+                    appendLine("=== TRANSFERÊNCIAS DMA DO PI ===")
+                    appendLine(bus.diagnosticPiDmaHistory.toList().joinToString("\n").ifBlank { "Vazio." })
+                    appendLine()
+                    appendLine("=== ACESSOS DE MEMÓRIA DO BOOT ===")
+                    appendLine(bus.diagnosticBootMemoryAccessHistory.toList().joinToString("\n").ifBlank { "Vazio." })
+                    appendLine()
+                    appendLine("=== ESCRITAS RDRAM ===")
+                    appendLine("Total: ${bus.diagnosticRdramWriteCount}")
+                    appendLine(bus.diagnosticRdramWriteHistory.toList().joinToString("\n").ifBlank { "Vazio." })
+                    appendLine()
+                    appendLine("=== ESCRITAS NA REGIÃO DE DESTINO DO BOOT ===")
+                    appendLine("Total: ${bus.diagnosticBootDestinationWriteCount}")
+                    appendLine(bus.diagnosticBootDestinationWriteHistory.toList().joinToString("\n").ifBlank { "Vazio." })
+                    appendLine()
+                    appendLine("=== REGISTRADORES DOS DISPOSITIVOS ===")
+                    appendLine(bus.diagnosticDeviceSnapshot().joinToString("\n"))
+                    appendLine()
+                    appendLine("=== DPC / RDP ===")
+                    appendLine(bus.diagnosticDpcSnapshot())
+                    appendLine()
+                    appendLine("=== RESUMO DA SESSÃO ===")
+                    appendLine("CPU instruções: ${activeSession?.executedInstructionCount() ?: "indisponível"}")
+                    appendLine("RSP instruções: ${activeSession?.executedRspInstructionCount() ?: "indisponível"}")
+                    appendLine("Último RSP PC: ${activeSession?.lastRspInstructionAddress()?.let { "0x" + it.toString(16).uppercase() } ?: "N/A"}")
+                    appendLine("Última instrução RSP: ${activeSession?.lastRspInstructionWord()?.let { "0x" + it.toUInt().toString(16).uppercase().padStart(8, '0') } ?: "N/A"}")
+                    appendLine("Falha RSP: ${activeSession?.rspFailureMessage() ?: "nenhuma registrada"}")
+                    appendLine("Frames VI publicados: ${activeSession?.publishedFrameCount() ?: 0}")
+                    appendLine("=== FIM DOS LOGS ===")
+                }
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("N64 Android logs", log))
+                Toast.makeText(this@MainActivity, "Logs copiados. Volte ao chat e cole aqui.", Toast.LENGTH_LONG).show()
+            }
+        }
         val stopButton = Button(this).apply {
             text = "PARAR EXECUÇÃO"
             setOnClickListener {
@@ -162,6 +219,7 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
             ))
             addView(details)
+            addView(copyLogsButton)
             addView(stopButton)
             addView(backButton)
         }
