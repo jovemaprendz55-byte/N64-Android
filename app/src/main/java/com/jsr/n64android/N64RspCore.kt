@@ -196,15 +196,32 @@ class N64RspCore(private val bus: N64Bus) {
         val element = (instruction ushr 7) and 0x0F
         val rawOffset = instruction and 0x7F
         val offset = if ((rawOffset and 0x40) != 0) rawOffset - 0x80 else rawOffset
-        if (load && (operation == 6 || operation == 7)) {
-            // LPV/LUV: gather eight wrapped DMEM bytes into the eight vector lanes.
-            // LPV places the byte in bits 15..8; LUV places it in bits 14..7.
+        if (operation == 6 || operation == 7) {
+            // Packed transfers use an 8-byte-scaled signed displacement.
             val address = (gpr[base] + offset * 8) and 0xFFF
-            for (lane in 0 until 8) {
-                val memoryIndex = ((16 - element + lane) and 0x0F)
-                val value = bus.read8(dmemAddress(address + memoryIndex))
-                val laneValue = if (operation == 6) value shl 8 else value shl 7
-                vectorUnit.writeLane(vectorRegister, lane, laneValue)
+            if (load) {
+                // LPV/LUV gather eight bytes from a 16-byte window rotated by element.
+                for (lane in 0 until 8) {
+                    val memoryIndex = ((16 - element + lane) and 0x0F)
+                    val value = bus.read8(dmemAddress(address + memoryIndex))
+                    val laneValue = if (operation == 6) value shl 8 else value shl 7
+                    vectorUnit.writeLane(vectorRegister, lane, laneValue)
+                }
+            } else {
+                // SPV/SUV emit eight consecutive bytes. The element cursor wraps
+                // over 16 byte positions; positions 8..15 use the opposite packing.
+                for (index in 0 until 8) {
+                    val vectorElement = (element + index) and 0x0F
+                    val lane = vectorElement and 0x07
+                    val upperHalf = vectorElement < 8
+                    val useHighByte = if (operation == 6) upperHalf else !upperHalf
+                    val value = if (useHighByte) {
+                        vectorUnit.readByte(vectorRegister, lane * 2)
+                    } else {
+                        (vectorUnit.readLane(vectorRegister, lane) ushr 7) and 0xFF
+                    }
+                    bus.write8(dmemAddress(address + index), value)
+                }
             }
             return
         }
