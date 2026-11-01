@@ -130,6 +130,7 @@ class N64Bus(
         private set
     val diagnosticPteWriteHistory = ArrayDeque<String>()
     private var diagnosticBootMemoryAccessCount: Long = 0
+    val diagnosticBootMemoryAccessTotal: Long get() = diagnosticBootMemoryAccessCount
     private fun recordRdramWrite(address: Int, value: Int) {
         diagnosticRdramWriteCount++
         // Keep the total exact, but avoid allocating a formatted String for every
@@ -137,7 +138,7 @@ class N64Bus(
         if (diagnosticRdramWriteCount <= 16L || diagnosticRdramWriteCount % 256L == 0L) {
             if (diagnosticRdramWriteHistory.size >= 128) diagnosticRdramWriteHistory.removeFirst()
             diagnosticRdramWriteHistory.addLast(
-                "W RDRAM paddr=0x${address.toString(16).uppercase()} value=0x${value.toString(16).uppercase().padStart(2, '0')}"
+                "W RDRAM #$diagnosticRdramWriteCount PC=0x${diagnosticCpuPc.toULong().toString(16).uppercase()} INST=${diagnosticCpuInstructionWord?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"} paddr=0x${address.toString(16).uppercase()} value=0x${value.toString(16).uppercase().padStart(2, '0')}"
             )
         }
     }
@@ -171,7 +172,7 @@ class N64Bus(
         if (diagnosticBootDestinationWriteCount <= 16L || diagnosticBootDestinationWriteCount % 256L == 0L) {
             if (diagnosticBootDestinationWriteHistory.size >= 96) diagnosticBootDestinationWriteHistory.removeFirst()
             diagnosticBootDestinationWriteHistory.addLast(
-                "W paddr=0x${address.toString(16).uppercase()} value=0x${value.toString(16).uppercase().padStart(2, '0')}"
+                "W #$diagnosticBootDestinationWriteCount PC=0x${diagnosticCpuPc.toULong().toString(16).uppercase()} INST=${diagnosticCpuInstructionWord?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"} paddr=0x${address.toString(16).uppercase()} value=0x${value.toString(16).uppercase().padStart(2, '0')}"
             )
         }
     }
@@ -181,7 +182,7 @@ class N64Bus(
         if (diagnosticBootMemoryAccessCount <= 16L || diagnosticBootMemoryAccessCount % 64L == 0L) {
             if (diagnosticBootMemoryAccessHistory.size >= 256) diagnosticBootMemoryAccessHistory.removeFirst()
             diagnosticBootMemoryAccessHistory.addLast(
-                "$kind paddr=0x${address.toString(16).uppercase()} value=0x${value.toString(16).uppercase().padStart(2, '0')}"
+                "$kind #$diagnosticBootMemoryAccessCount PC=0x${diagnosticCpuPc.toULong().toString(16).uppercase()} INST=${diagnosticCpuInstructionWord?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"} paddr=0x${address.toString(16).uppercase()} value=0x${value.toString(16).uppercase().padStart(2, '0')}"
             )
         }
     }
@@ -331,6 +332,26 @@ class N64Bus(
                 for (byteAddress in address..end) {
                     append(peek8ForDiagnostic(byteAddress).toString(16).uppercase().padStart(2, '0')).append(' ')
                 }
+                appendLine()
+                address = end + 1
+            }
+        }
+    }
+
+    /** Exact bytes from the loaded cartridge image for PI-DMA source comparison. */
+    fun diagnosticCartridgeDump(ranges: List<IntRange>): String = buildString {
+        val image = cartridge ?: return "Cartridge não carregado."
+        for (range in ranges) {
+            appendLine("CART RANGE offset=0x${range.first.toString(16).uppercase()}..0x${range.last.toString(16).uppercase()}")
+            if (range.first < 0 || range.last < range.first || range.last >= image.size) {
+                appendLine("FORA DA ROM CARREGADA (bytes=${image.size})")
+                continue
+            }
+            var address = range.first
+            while (address <= range.last) {
+                val end = minOf(address + 15, range.last)
+                append("0x").append(address.toString(16).uppercase().padStart(8, '0')).append(": ")
+                for (index in address..end) append((image[index].toInt() and 0xFF).toString(16).uppercase().padStart(2, '0')).append(' ')
                 appendLine()
                 address = end + 1
             }
