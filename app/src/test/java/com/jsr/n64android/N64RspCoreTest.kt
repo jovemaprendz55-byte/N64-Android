@@ -487,4 +487,18 @@ class N64RspCoreTest {
         }
     }
 
+    @Test
+    fun diagnosticSnapshotIncludesScalarAndVectorStateWithoutMmioSideEffects() {
+        val (bus, rsp) = setup(addiu(8, 0, 7))
+        rsp.vectorUnit.writeLane(4, 2, 0x1234)
+        val mmioBefore = bus.diagnosticMmioHistory.size
+
+        val snapshot = rsp.diagnosticSnapshot()
+
+        assertTrue(snapshot.contains("RSP GPR[8]=0x00000000"))
+        assertTrue(snapshot.contains("V4="))
+        assertTrue(snapshot.contains("0x1234"))
+        assertEquals(mmioBefore, bus.diagnosticMmioHistory.size)
+    }
+
 }
