@@ -145,9 +145,12 @@ class N64SpTaskRunnerTest {
         }
 
         val bus = N64Bus(ram = ram)
-        val result = N64SpTaskRunner(bus, ram.size).startAndRun(taskAddress, 32)
+        val coordinator = N64SpTaskDpCoordinator(bus)
+        val result = N64SpTaskRunner(bus, ram.size, coordinator).startAndRun(taskAddress, 32)
 
         assertEquals(11, result.executedInstructions)
+        assertTrue(result.taskMicrocodeEntryObserved)
+        assertEquals(N64SpTaskLifecycle.State.COMPLETED, coordinator.lifecycle.state)
         assertEquals(99, bus.read32(N64Bus.SP_DMEM_BASE + 4))
         assertTrue(result.halted)
         assertTrue(result.broke)
