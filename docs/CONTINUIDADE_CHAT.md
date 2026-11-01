@@ -1424,3 +1424,35 @@ Integração:
 - Encerrar o dia somente em ponto seguro: alteração registrada, testes/CI verificados quando houver commit e documentação atualizada com o próximo passo.
 - Avisar explicitamente ao usuário na conversa: “Por hoje está bom. Amanhã continuamos daqui.”
 - Não prometer mensagem espontânea fora de uma conversa ativa; o aviso é feito enquanto o usuário estiver conversando.
+
+
+## 21. Pacotes RDP com snapshot efetivamente não modificável (2026-11-01)
+
+### Implementação
+- Commit `f822503373dbb2545a7573dfb3591eba1642e0c6`: `N64RdpCommandPacket` deixou de ser data class com referência direta à lista recebida.
+- O construtor agora cria uma cópia defensiva dos words e a expõe por `Collections.unmodifiableList`.
+- O parser também retorna a coleção de pacotes envolvida por `Collections.unmodifiableList`, impedindo mutações por cast para `MutableList`.
+- A memória RDRAM de origem continua independente dos words armazenados no pacote.
+- Commit `9fe75a0b3f9116710c595f9b7f0e8da898c7ae3c`: adiciona teste de que alterar a lista fonte não altera o pacote, mutar `packet.words` lança `UnsupportedOperationException`, e limpar a coleção de pacotes também lança `UnsupportedOperationException`.
+
+### CI e APK
+- Build #758, run `41291578677`, documentação da seção 20: **success**.
+- Build #759, run `41291665346`, commit `f822503373dbb2545a7573dfb3591eba1642e0c6`: **success** (Build and test + Upload debug APK).
+- Build #760, run `41291676979`, commit `9fe75a0b3f9116710c595f9b7f0e8da898c7ae3c`: **success** (Build and test + Upload debug APK).
+- Artefato #760: `n64-android-debug-apk`, ID `13076943692`, 925.297 bytes, expira em 2026-11-15.
+- Compilação #760: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41291676979
+- APK #760: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41291676979/artifacts/13076943692
+- Commit da alteração de código: https://github.com/jovemaprendz55-byte/N64-Android/commit/9fe75a0b3f9116710c595f9b7f0e8da898c7ae3c
+
+### Estado e limites
+- A lista de words de cada pacote e a lista de pacotes retornada pelo parser são agora cópias protegidas contra mutação.
+- Isso não implementa comandos multiword: triângulos e retângulos texturizados continuam sem execução/rasterização.
+- A ponte DPC segue síncrona e experimental; não é uma FIFO DPC completa.
+- Não houve confirmação de ROM renderizada em aparelho nesta etapa.
+
+### Próximo passo
+1. Confirmar CI da atualização documental.
+2. Adicionar testes de parsing para todos os opcodes multiword em listas mistas, conferindo que o parser salta exatamente o payload e encontra o comando seguinte.
+3. Escolher um comando multiword simples e documentado para implementação, com fixtures independentes; evitar iniciar triângulos sem planejamento do pipeline completo.
+4. Manter a branch `dev/n64-clean-start` e nunca alterar `main`.
+5. Encerrar a sessão somente depois da CI documental verde e do checkpoint registrado; ao parar, avisar explicitamente o usuário que o trabalho do dia terminou.
