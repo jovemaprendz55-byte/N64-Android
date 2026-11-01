@@ -508,8 +508,27 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     )
                 }
             }
-            0x11 -> { // COP1 register/control transfers (initial subset)
+            0x11 -> { // COP1 transfers and condition-code branches (partial FPU)
                 when (rs) {
+                    0x08 -> { // BC1F/T/FL/TL; this R4300 subset models FCC0 only.
+                        if ((rt and 0x1C) != 0) {
+                            throw ReservedInstructionFault("R4300 BC1 condition code $rt is not supported")
+                        }
+                        val conditionTrue = (fcr[31] and (1L shl 23)) != 0L
+                        val branchKind = rt and 0x03
+                        val takeBranch = if (branchKind == 0 || branchKind == 2) {
+                            !conditionTrue // BC1F / BC1FL
+                        } else {
+                            conditionTrue // BC1T / BC1TL
+                        }
+                        val branchLikely = branchKind == 2 || branchKind == 3
+                        if (branchLikely && !takeBranch) {
+                            directPc = instructionAddress + 8L
+                        } else {
+                            pendingDelaySlotBranchAddress = instructionAddress
+                            if (takeBranch) delayedTarget = nextSequential + (immediate.toLong() shl 2)
+                        }
+                    }
                     0x00 -> { // MFC1 rt, fs
                         if ((instruction and 0x7FF) != 0) throw ReservedInstructionFault("Malformed MFC1 reserved fields")
                         gpr[rt] = fpr[rd].toInt().toLong()
