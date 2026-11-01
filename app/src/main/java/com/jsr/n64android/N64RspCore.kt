@@ -196,6 +196,31 @@ class N64RspCore(private val bus: N64Bus) {
         val element = (instruction ushr 7) and 0x0F
         val rawOffset = instruction and 0x7F
         val offset = if ((rawOffset and 0x40) != 0) rawOffset - 0x80 else rawOffset
+        if (operation == 8) {
+            // LHV/SHV use a 16-byte-scaled displacement and alternate DMEM bytes.
+            // SGI specifies element=0 for LHV; non-zero element behavior remains unsupported.
+            if (element != 0) {
+                throw UnsupportedOperationException("RSP LHV/SHV currently supports element=0 only.")
+            }
+            val address = (gpr[base] + offset * 16) and 0xFFF
+            val alignedStart = address and 0xFF0
+            if (load) {
+                // LHV gathers the odd byte of each halfword in the aligned 128-bit block.
+                for (lane in 0 until 8) {
+                    val value = bus.read8(dmemAddress(alignedStart + lane * 2 + 1))
+                    vectorUnit.writeLane(vectorRegister, lane, value shl 7)
+                }
+            } else {
+                // SHV writes the odd byte of each vector halfword to alternating DMEM bytes.
+                // The source mapping is intentionally restricted to element=0 pending
+                // exhaustive fixtures for the rotated-register edge cases.
+                for (lane in 0 until 8) {
+                    val value = (vectorUnit.readLane(vectorRegister, lane) ushr 7) and 0xFF
+                    bus.write8(dmemAddress(alignedStart + lane * 2 + 1), value)
+                }
+            }
+            return
+        }
         if (operation == 6 || operation == 7) {
             // Packed transfers use an 8-byte-scaled signed displacement.
             val address = (gpr[base] + offset * 8) and 0xFFF
