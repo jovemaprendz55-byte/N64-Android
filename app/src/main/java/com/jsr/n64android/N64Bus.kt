@@ -22,6 +22,9 @@ class N64Bus(
     // CPU-originated MMIO trace. The caller supplies the current virtual PC before each step.
     private var diagnosticCpuPc: Long = 0L
     val diagnosticMmioHistory = ArrayDeque<String>()
+    /** Dedicated SP-only MMIO trace; it cannot be evicted by accesses to other devices. */
+    val diagnosticSpMmioHistory = ArrayDeque<String>()
+    val diagnosticSpMmioCounts = linkedMapOf<String, Long>()
     val diagnosticSpWriteHistory = ArrayDeque<String>()
     val diagnosticMmioCounts = linkedMapOf<String, Long>()
     fun setDiagnosticCpuPc(pc: Long) { diagnosticCpuPc = pc }
@@ -42,11 +45,28 @@ class N64Bus(
         val device = mmioDevice(address) ?: return
         diagnosticMmioCounts[device] = (diagnosticMmioCounts[device] ?: 0L) + 1L
         if (diagnosticMmioHistory.size >= 256) diagnosticMmioHistory.removeFirst()
-        diagnosticMmioHistory.addLast(
+        val traceLine =
             "$kind $device PC=0x${diagnosticCpuPc.toULong().toString(16).uppercase()} " +
                 "PADDR=0x${address.toString(16).uppercase().padStart(8, '0')} " +
                 "VALUE=0x${value.toUInt().toString(16).uppercase().padStart(8, '0')}"
-        )
+        diagnosticMmioHistory.addLast(traceLine)
+        if (device == "SP") {
+            val register = when (address) {
+                SP_MEM_ADDR_REG -> "SP_MEM_ADDR"
+                SP_DRAM_ADDR_REG -> "SP_DRAM_ADDR"
+                SP_RD_LEN_REG -> "SP_RD_LEN"
+                SP_WR_LEN_REG -> "SP_WR_LEN"
+                SP_STATUS_REG -> "SP_STATUS"
+                SP_DMA_FULL_REG -> "SP_DMA_FULL"
+                SP_DMA_BUSY_REG -> "SP_DMA_BUSY"
+                SP_PC_REG -> "SP_PC"
+                SP_SEMAPHORE_REG -> "SP_SEMAPHORE"
+                else -> "SP_UNKNOWN"
+            }
+            diagnosticSpMmioCounts[register] = (diagnosticSpMmioCounts[register] ?: 0L) + 1L
+            if (diagnosticSpMmioHistory.size >= 512) diagnosticSpMmioHistory.removeFirst()
+            diagnosticSpMmioHistory.addLast("$register $traceLine")
+        }
         if (kind == "W" && device == "SP") {
             if (diagnosticSpWriteHistory.size >= 256) diagnosticSpWriteHistory.removeFirst()
             diagnosticSpWriteHistory.addLast(
