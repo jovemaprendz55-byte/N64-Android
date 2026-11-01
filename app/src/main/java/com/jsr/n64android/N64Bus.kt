@@ -314,7 +314,7 @@ class N64Bus(
         }
         return "ROM_BYTES=${image.size} MAGIC=0x${word(0)} CRC1=0x${word(0x10)} CRC2=0x${word(0x14)} " +
             "TITLE_BYTES[0x20..0x33]=" + (0x20 until minOf(0x34, image.size)).map { image[it].toInt().toChar() }.joinToString("") +
-            "\\nHEADER_0x00_0x3F=$header\\nPIF_ROM_PRESENT=${pif != null}"
+            "\nHEADER_0x00_0x3F=$header\nPIF_ROM_PRESENT=${pif != null}"
     }
 
     /** Dumps explicitly selected physical RDRAM/cartridge ranges without changing MMIO histories. */
