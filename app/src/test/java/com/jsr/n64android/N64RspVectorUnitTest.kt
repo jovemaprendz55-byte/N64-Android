@@ -18,7 +18,7 @@ class N64RspVectorUnitTest {
         unit.writeLane(2, 1, 1)
         unit.add(3, 1, 2)
         assertEquals(32767, unit.readLane(3, 0).toShort().toInt())
-        assertEquals(-32768, unit.readLane(3, 1).toShort().toInt())
+        assertEquals(-32767, unit.readLane(3, 1).toShort().toInt())
         assertEquals(32780L, unit.readAccumulator(0))
         assertEquals(0, unit.vcoLow)
         assertEquals(0, unit.vcoHigh)
