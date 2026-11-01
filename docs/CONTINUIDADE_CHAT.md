@@ -4150,3 +4150,40 @@ APK com a instrumentação T0/T1:
 Instalar a APK do artefato `13104681674`, executar novamente o GoldenEye e gerar/substituir o arquivo Log. Confirmar que as linhas do loop PI agora contêm `T0=` e `T1=`. Com os valores será possível calcular o início, fim e número de iterações do loop de CACHE (incremento de 16 bytes), e depois correlacionar com o chamador em `0x70005BAC`.
 
 Investigar separadamente a rotina de `TLBWI` em `0x7000D3EC` e a cronologia do índice 15. Não modificar o mapeamento, não forçar bit V e não desativar TLB. Nenhuma correção funcional do GoldenEye foi confirmada nesta etapa.
+
+
+---
+
+## 40. Correção do fechamento ao exportar logs — 2026-11-01
+
+### 40.1. Causa provável identificada no código
+
+O botão `COPIAR LOGS` em `MainActivity.kt` montava um relatório diagnóstico extenso dentro do callback da interface e, em seguida, enviava o relatório inteiro de uma vez para `ClipboardManager.setPrimaryClip()`. O processo acontecia na thread principal do Android.
+
+O relatório agrega snapshots completos de CPU/COP0/TLB/RSP, históricos MMIO/DMA, watchpoints de memória, dumps da ROM/RDRAM e resumo da sessão. Isso cria trabalho de formatação e alocação de memória na UI e pode causar congelamento/encerramento pelo sistema. A causa exata do crash ainda precisa ser confirmada no aparelho com a nova APK; esta é a causa provável sustentada pela inspeção do código.
+
+### 40.2. Alteração implementada
+
+- O relatório completo agora é montado em uma thread de trabalho chamada `N64-Log-Export`, não na thread principal.
+- O texto do painel é capturado na UI antes de iniciar a thread, evitando ler o `TextView` no worker.
+- O botão é desabilitado durante a exportação para impedir duas exportações simultâneas e reabilitado no retorno à UI.
+- O relatório é gravado como arquivo TXT em `Download/N64Android`, com nome único baseado no horário.
+- O fluxo completo não envia mais o grande relatório para a área de transferência.
+- Erros de criação/gravação são mostrados em Toast, em vez de encerrar silenciosamente a ação.
+
+Commits:
+- `37e0c6a5a8e6d279e9a91541e4905d1c0185d0dc` — exportar logs fora da thread principal e salvar em Downloads.
+- `9362b35bf64f14cdde8342fd2b66f7797a6a04b6` — capturar o texto do painel antes de iniciar o worker e usar referência estável ao botão.
+
+### 40.3. Validação pendente
+
+O GitHub Actions foi iniciado para o commit `37e0c6a5a8e6d279e9a91541e4905d1c0185d0dc` (run `41360436024`), mas o estado observado era `in_progress`. O commit seguinte `9362b35bf64f14cdde8342fd2b66f7797a6a04b6` também aciona nova compilação. Não declarar a correção validada até o CI mais recente concluir com sucesso.
+
+Após a APK atualizada ser instalada, testar:
+1. Executar GoldenEye até o estado em que normalmente ocorre o problema.
+2. Pressionar `COPIAR LOGS` uma única vez.
+3. Confirmar que o emulador permanece aberto e mostra a mensagem de exportação concluída.
+4. Abrir o gerenciador de arquivos em `Downloads/N64Android` e verificar o TXT gerado.
+5. Enviar o TXT ou o conteúdo relevante para análise.
+
+Esta alteração é uma correção do caminho de exportação de diagnóstico, não uma correção do boot/TLB/vídeo do GoldenEye. A exportação ainda constrói o texto completo em memória dentro do worker; se o teste ainda provocar OOM, a próxima etapa será converter o gerador para escrita incremental em stream e reduzir os dumps mais volumosos.
