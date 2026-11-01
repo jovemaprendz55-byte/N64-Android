@@ -139,6 +139,24 @@ class N64Bus(
     private var dpcStart = 0
     private var dpcEnd = 0
     private var dpcCurrent = 0
+    var diagnosticLastDpcResult: N64DpcCommandProcessor.Result? = null
+        private set
+    var diagnosticLastDpcFailure: String? = null
+        private set
+
+    /** Side-effect-free DPC register/result summary for ROM execution diagnostics. */
+    fun diagnosticDpcSnapshot(): String {
+        val result = diagnosticLastDpcResult
+        return "DPC: START=0x${dpcStart.toString(16).uppercase()} " +
+            "END=0x${dpcEnd.toString(16).uppercase()} " +
+            "CURRENT=0x${dpcCurrent.toString(16).uppercase()} " +
+            (result?.let {
+                "commands=${it.commandsProcessed} rectangles=${it.rectanglesFilled} " +
+                    "triangles=${it.trianglesRasterized} pixels=${it.pixelsWritten} fullSync=${it.fullSyncCommands}"
+            } ?: "result=none") +
+            (diagnosticLastDpcFailure?.let { " failure=$it" } ?: "")
+    }
+
     // Optional SP task coordinator callback; invoked after synchronous DPC Full Sync processing.
     private var dpDrainListener: (() -> Unit)? = null
 
@@ -369,8 +387,17 @@ class N64Bus(
             }
             DPC_END_REG -> {
                 dpcEnd = value and DPC_ADDRESS_MASK
-                val result = dpcCommandProcessor.process(dpcStart, dpcEnd)
-                dpcCurrent = result.endAddressExclusive
+                try {
+                    val result = dpcCommandProcessor.process(dpcStart, dpcEnd)
+                    diagnosticLastDpcResult = result
+                    diagnosticLastDpcFailure = null
+                    dpcCurrent = result.endAddressExclusive
+                } catch (error: Throwable) {
+                    diagnosticLastDpcFailure =
+                        "${error.javaClass.simpleName}: ${error.message ?: "no details"}"
+                    throw error
+                }
+                val result = diagnosticLastDpcResult ?: return
                 if (result.fullSyncCommands > 0) {
                     miInitMode = miInitMode or MI_INIT_MODE_DP_INTR
                     miInterrupts = miInterrupts or MI_INTR_DP
