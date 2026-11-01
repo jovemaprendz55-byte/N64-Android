@@ -1064,8 +1064,10 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     private fun recordCallPathDiagnostic(address: Long, instruction: Int) {
         val lowAddress = address and 0xFFFFFFFFL
         val inReturnSite = lowAddress in 0x70001880L..0x70001894L
+        val inOuterCaller = lowAddress in 0x70004E2CL..0x70004EACL
+        val inInnerCaller = lowAddress in 0x70005B60L..0x70005D60L
         val inCallSite = lowAddress in 0x70005D40L..0x70005D60L
-        if (!inReturnSite && !inCallSite) return
+        if (!inReturnSite && !inOuterCaller && !inInnerCaller && !inCallSite) return
 
         val opcode = (instruction ushr 26) and 0x3F
         val directTarget = if (opcode == 0x03 || opcode == 0x1D) {
@@ -1249,7 +1251,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         private const val TLB_PRE_EXCEPTION_TRACE_CAPACITY = 64
         private const val PTE_TRACE_PREFIX_CAPACITY = 64
         private const val PTE_TRACE_RECENT_CAPACITY = 512
-        private const val CALL_PATH_TRACE_CAPACITY = 64
+        private const val CALL_PATH_TRACE_CAPACITY = 256
         const val RESET_VECTOR: Long = -0x40400000L
     }
 }
