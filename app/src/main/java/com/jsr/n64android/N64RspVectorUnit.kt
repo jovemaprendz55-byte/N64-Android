@@ -81,11 +81,13 @@ class N64RspVectorUnit {
     }
 
     /** Signed saturated lane addition; consumes VCO-low carry-in and clears VCO. */
-    fun add(destination: Int, left: Int, right: Int) {
+    fun add(destination: Int, left: Int, right: Int, element: Int = 0) {
         checkVector(destination); checkVector(left); checkVector(right)
+        require(element in 0..15)
         for (lane in 0..7) {
             val carry = (vcoLow ushr lane) and 1
-            val sum = signed(registers[left][lane]) + signed(registers[right][lane]) + carry
+            val selectedRight = selectedLane(right, lane, element)
+            val sum = signed(registers[left][lane]) + signed(selectedRight) + carry
             accumulator[lane] = signExtend48(sum.toLong())
             registers[destination][lane] = saturateSigned16(sum)
         }
@@ -94,11 +96,13 @@ class N64RspVectorUnit {
     }
 
     /** Signed saturated lane subtraction; consumes VCO-low borrow-in and clears VCO. */
-    fun subtract(destination: Int, left: Int, right: Int) {
+    fun subtract(destination: Int, left: Int, right: Int, element: Int = 0) {
         checkVector(destination); checkVector(left); checkVector(right)
+        require(element in 0..15)
         for (lane in 0..7) {
             val borrow = (vcoLow ushr lane) and 1
-            val difference = signed(registers[left][lane]) - signed(registers[right][lane]) - borrow
+            val selectedRight = selectedLane(right, lane, element)
+            val difference = signed(registers[left][lane]) - signed(selectedRight) - borrow
             accumulator[lane] = signExtend48(difference.toLong())
             registers[destination][lane] = saturateSigned16(difference)
         }
@@ -106,10 +110,14 @@ class N64RspVectorUnit {
         vcoHigh = 0
     }
 
-    fun and(destination: Int, left: Int, right: Int) = logical(destination, left, right) { a, b -> a and b }
-    fun or(destination: Int, left: Int, right: Int) = logical(destination, left, right) { a, b -> a or b }
-    fun xor(destination: Int, left: Int, right: Int) = logical(destination, left, right) { a, b -> a xor b }
-    fun nor(destination: Int, left: Int, right: Int) = logical(destination, left, right) { a, b -> (a or b).inv() }
+    fun and(destination: Int, left: Int, right: Int, element: Int = 0) =
+        logical(destination, left, right, element) { a, b -> a and b }
+    fun or(destination: Int, left: Int, right: Int, element: Int = 0) =
+        logical(destination, left, right, element) { a, b -> a or b }
+    fun xor(destination: Int, left: Int, right: Int, element: Int = 0) =
+        logical(destination, left, right, element) { a, b -> a xor b }
+    fun nor(destination: Int, left: Int, right: Int, element: Int = 0) =
+        logical(destination, left, right, element) { a, b -> (a or b).inv() }
 
     /** Explicit flag injection is useful for testing carry/borrow data paths. */
     fun setVco(low: Int, high: Int = 0) {
@@ -123,13 +131,29 @@ class N64RspVectorUnit {
         vce = extension and 0xFF
     }
 
-    private inline fun logical(destination: Int, left: Int, right: Int, operation: (Int, Int) -> Int) {
+    private inline fun logical(
+        destination: Int,
+        left: Int,
+        right: Int,
+        element: Int,
+        operation: (Int, Int) -> Int
+    ) {
         checkVector(destination); checkVector(left); checkVector(right)
+        require(element in 0..15)
         for (lane in 0..7) {
-            val result = operation(registers[left][lane], registers[right][lane]) and 0xFFFF
+            val result = operation(registers[left][lane], selectedLane(right, lane, element)) and 0xFFFF
             registers[destination][lane] = result
             accumulator[lane] = signExtend48(result.toLong())
         }
+    }
+
+    /**
+     * RSP element selector: 0..7 selects a sliding window ending at lane 7;
+     * 8..15 broadcasts lane 0..7 respectively.
+     */
+    private fun selectedLane(register: Int, destinationLane: Int, element: Int): Int {
+        val sourceLane = if (element < 8) minOf(destinationLane + element, 7) else element - 8
+        return registers[register][sourceLane]
     }
 
     private fun checkVector(register: Int) = require(register in 0..31)
