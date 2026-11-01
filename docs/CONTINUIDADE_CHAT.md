@@ -2555,3 +2555,31 @@ Executar CI. Se aprovado, iniciar a auditoria do RDP: parser/command lengths, de
 - Próximo passo: instalar o APK #962, executar GoldenEye USA, deixar avançar até estabilizar o loop e usar COPIAR LOGS. Conferir especialmente as instruções após MISS/INVALID, o vetor de exceção, EntryHi/EntryLo, EPC, BadVAddr e amostras do PC no loop.
 - A correção da instrumentação não é uma correção funcional do TLB nem prova que o jogo executa. HLE permanece obrigatório; não desativar TLB nem usar PIF ROM original como atalho.
 - Branch de trabalho: `dev/n64-clean-start`. `main` não foi alterada.
+
+## Diretriz fundamental do projeto: emulação independente de firmware — 2026-11-01 12:44:15 (UTC−03:00)
+
+### Objetivo confirmado diretamente pelo usuário
+
+O objetivo do N64 Android é desenvolver um emulador próprio capaz de executar ROMs do Nintendo 64 **sem exigir a firmware original do console**. O usuário não possui essa firmware e não quer que ela seja um requisito para usar o emulador.
+
+O projeto deve seguir exclusivamente o caminho de **HLE próprio (High-Level Emulation)** para substituir, em software, os serviços de inicialização necessários do console.
+
+### Regras obrigatórias
+
+1. **Não trocar o HLE pelo IPL3 original.** Não usar execução do IPL3 original como caminho alternativo, padrão, solução temporária ou atalho para fazer o jogo avançar.
+2. **Não exigir a firmware original do Nintendo 64**, PIF ROM original ou arquivos extraídos de um console para inicializar ou executar ROMs.
+3. Não orientar o usuário a obter firmware original como pré-requisito do projeto.
+4. Implementar no próprio emulador, por HLE, os serviços necessários de inicialização e as funções de PIF/CIC que forem exigidas pelas ROMs.
+5. Corrigir e completar a emulação dos componentes reais necessários — CPU R4300/COP0/TLB, memória, barramentos, PI/SP DMA, SP/RSP, DPC/RDP, VI, áudio e controles — sem depender de firmware externa.
+6. O objetivo é compatibilidade com ROMs comerciais do Nintendo 64; GoldenEye 007 USA permanece como ROM de teste atual, mas não deve ser declarado funcional sem evidência de execução e imagem real.
+7. Diagnósticos e testes podem estudar os dados e o comportamento da ROM, mas não podem converter o projeto em dependente do IPL3/PIF ROM original.
+8. Qualquer solução proposta para TLB, SP/RSP ou inicialização deve preservar essa arquitetura HLE independente de firmware.
+
+### Critério de aceitação
+
+Uma ROM deve poder ser carregada e executada pelo emulador usando apenas os dados da própria ROM e as implementações internas do N64 Android, sem solicitar firmware original do Nintendo 64. A ausência dessa firmware não pode ser tratada como impedimento para o objetivo do projeto.
+
+### Nota de continuidade
+
+Esta diretriz foi reafirmada pelo usuário em 2026-11-01 após uma resposta que mencionou IPL3 como comparação diagnóstica. A comparação/execução do IPL3 original não deve ser proposta como próximo passo. A investigação dos problemas atuais deve continuar dentro do HLE próprio.
+
