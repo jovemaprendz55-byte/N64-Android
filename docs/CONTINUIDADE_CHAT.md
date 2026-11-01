@@ -3867,3 +3867,48 @@ Isso torna a falha anterior ao handler geral o ponto prioritário: a PTE para `0
 4. Não alterar a rotina de exceção nem forçar uma entrada TLB válida sem demonstrar a regra de mapeamento esperada.
 
 **Resultado:** confirmação do destino do vetor geral e da natureza fatal do caminho observado. Nenhuma alteração funcional de código; nenhuma correção do jogo ainda.
+
+
+---
+
+## 33. Watchpoint confirma a inicialização explícita das PTEs como inválidas (2026-11-01, 18:15:47 UTC−03:00)
+
+### 33.1. Reconstrução das 172 escritas monitoradas
+
+O bloco completo `WATCHPOINT DA TABELA TLB` do Log contém 172 escritas:
+
+| PC de origem | Quantidade | Interpretação |
+|---|---:|---|
+| `0x0` | 68 bytes | Dados preexistentes; origem não identificada |
+| `0xFFFFFFFF80000414` | 36 bytes | `SW R0,0(R8)`, zera o primeiro word dos registros observados |
+| `0xFFFFFFFF80000418` | 32 bytes | `SW R0,4(R8)`, zera o segundo word dos registros observados |
+| `0x700017FC` | 20 bytes | `SW R4,-16(R3)`, grava `1` no primeiro word |
+| `0x70001804` | 16 bytes | `SW R0,-12(R3)`, grava `0` no segundo word |
+
+A janela monitorada cobre somente `0x5DBF0..0x5DC33` (68 bytes). Os 20 e 16 bytes refletem apenas os registros dentro dessa janela, não o tamanho completo do laço.
+
+### 33.2. O que o código faz
+
+O laço em `0x700017F0..0x70001804` incrementa o ponteiro R3 em `0x10` por iteração. Para cada registro, grava `1` no word inicial e `0` no word seguinte. O primeiro registro observado começa em `0x8005DBF0`; portanto, a entrada consultada pelo refill recebe explicitamente `1` em `0x8005DBF0` e `0` em `0x8005DBF4`.
+
+Isso explica diretamente por que o refill lê `1` e produz `EntryLo0=1` e `EntryLo1=0x41`, ambos com V=0.
+
+### 33.3. Limites da conclusão
+
+A ausência de uma gravação PTE válida continua confirmada apenas dentro da janela monitorada: as gravações do laço observado colocam o marcador `1` e o word seguinte `0`, não um EntryLo com V=1. Agora há evidência direta de que o marcador inválido é escrito pelo próprio código do jogo.
+
+Os 68 bytes iniciais atribuídos a `PC=0x0` contêm valores não nulos, mas a origem não é identificada pelo Log. Depois, o boot em `0xFFFFFFFF80000414/418` zera a região. Não tratar esses dados iniciais como PTEs válidas nem concluir que o HLE os corrompeu sem rastrear sua origem.
+
+### 33.4. Relação com a rotina do DMA
+
+A rotina `0x70005B90` recebe `A0=0xFFFFFFFF80340000` (destino KSEG1 para físico `0x340000`), `A1=0x34B30` (offset ROM) e `A2=0x2000` (comprimento). Ela chama `0x70010B20` com `A0=0x80340000` e `A1=0x2000`. A amostra contém apenas as seis primeiras instruções dessa função; seu propósito exato permanece desconhecido. Não há base para classificá-la como page-in, mapeador TLB ou rotina de cache.
+
+### 33.5. Próximas ações
+
+1. Encontrar a função que efetivamente escreve entradas válidas na tabela, incluindo endereços fora da janela curta monitorada.
+2. Identificar a estrutura completa de registros de 16 bytes e o limite do laço.
+3. Desmontar mais de `0x70010B20` para identificar sua finalidade.
+4. Correlacionar `0x70005B90` com a conclusão do PI DMA e o salto para `0x7F000BD0`.
+5. Não alterar CPU/TLB sem uma reprodução concreta de erro.
+
+**Resultado:** o marcador inválido `1` é escrito explicitamente pelo laço de inicialização do jogo. Nenhuma correção funcional foi feita; ainda falta identificar quem deveria substituí-lo por uma entrada válida.
