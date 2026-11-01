@@ -174,17 +174,24 @@ class MainActivity : Activity() {
                 val session = N64RomVideoSession(
                     bus = bus,
                     cpu = cpu,
-                    onFrame = { frame ->
-                        frameView.submitFrame(frame)
+                    onProgress = { count ->
+                        val deviceLines = bus.diagnosticDeviceSnapshot()
+                            .filter { it.startsWith("SP:") || it.startsWith("VI:") }
+                            .joinToString("\n")
+                        val failure = romVideoSession?.rspFailureMessage()
                         runOnUiThread {
                             details.text =
                                 "HLE: ${boot.copiedBytes} bytes preparados" +
-                                "\\nCPU: ${sessionSafeInstructionCount(romVideoSession)} instruções" +
-                                "\\nFrames VI diferentes: ${sessionSafeFrameCount(romVideoSession)}" +
-                                "\\nRSP: ${romVideoSession?.executedRspInstructionCount() ?: 0L} instruções" +
-                                "\\nPC: 0x${cpu.pc.toULong().toString(16).uppercase()}" +
-                                (romVideoSession?.rspFailureMessage()?.let { "\\nFalha RSP: $it" } ?: "")
+                                "\nCPU: $count instruções" +
+                                "\nFrames VI: ${sessionSafeFrameCount(romVideoSession)}" +
+                                "\nRSP: ${romVideoSession?.executedRspInstructionCount() ?: 0L} instruções" +
+                                "\nPC: 0x${cpu.pc.toULong().toString(16).uppercase()}" +
+                                "\n$deviceLines" +
+                                (failure?.let { "\nFalha RSP: $it" } ?: "")
                         }
+                    },
+                    onFrame = { frame ->
+                        frameView.submitFrame(frame)
                     }
                 )
                 romVideoSession = session
