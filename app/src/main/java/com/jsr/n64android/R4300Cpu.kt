@@ -1110,6 +1110,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             if (directTarget != null) append(" JAL_TARGET=0x${directTarget.toString(16).uppercase()}")
             append(" RA=0x${gpr[31].toULong().toString(16).uppercase().padStart(16, '0')}")
             append(" T9=0x${gpr[25].toULong().toString(16).uppercase().padStart(16, '0')}")
+            append(" T0=0x${gpr[8].toULong().toString(16).uppercase().padStart(16, '0')}")
+            append(" T1=0x${gpr[9].toULong().toString(16).uppercase().padStart(16, '0')}")
             append(" V0=0x${gpr[2].toULong().toString(16).uppercase().padStart(16, '0')}")
             append(" V1=0x${gpr[3].toULong().toString(16).uppercase().padStart(16, '0')}")
             for (index in 4..7) append(" A${index - 4}=0x${gpr[index].toULong().toString(16).uppercase().padStart(16, '0')}")
