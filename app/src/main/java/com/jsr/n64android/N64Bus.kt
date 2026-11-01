@@ -301,6 +301,58 @@ class N64Bus(
         }
     }
 
+    /** Cartridge metadata and header bytes, captured only when the user exports diagnostics. */
+    fun diagnosticCartridgeSummary(): String {
+        val image = cartridge ?: return "Cartridge: não carregado."
+        fun word(offset: Int): String = if (offset + 4 <= image.size) {
+            (0..3).fold(0L) { value, index -> (value shl 8) or (image[offset + index].toLong() and 0xFFL) }
+                .toString(16).uppercase().padStart(8, '0')
+        } else "N/A"
+        val header = (0 until minOf(0x40, image.size)).joinToString(" ") {
+            image[it].toUByte().toString(16).uppercase().padStart(2, '0')
+        }
+        return "ROM_BYTES=${image.size} MAGIC=0x${word(0)} CRC1=0x${word(0x10)} CRC2=0x${word(0x14)} " +
+            "TITLE_BYTES[0x20..0x33]=" + (0x20 until minOf(0x34, image.size)).map { image[it].toInt().toChar() }.joinToString("") +
+            "\\nHEADER_0x00_0x3F=$header\\nPIF_ROM_PRESENT=${pif != null}"
+    }
+
+    /** Dumps explicitly selected physical RDRAM/cartridge ranges without changing MMIO histories. */
+    fun diagnosticMemoryDump(ranges: List<IntRange>): String = buildString {
+        for (range in ranges) {
+            appendLine("RANGE 0x${range.first.toString(16).uppercase()}..0x${range.last.toString(16).uppercase()}")
+            if (range.first < 0 || range.last < range.first || range.last >= ram.size) {
+                appendLine("FORA DA RDRAM DISPONÍVEL (bytes=${ram.size})")
+                continue
+            }
+            var address = range.first
+            while (address <= range.last) {
+                val end = minOf(address + 15, range.last)
+                append("0x").append(address.toString(16).uppercase().padStart(8, '0')).append(": ")
+                for (byteAddress in address..end) {
+                    append(peek8ForDiagnostic(byteAddress).toString(16).uppercase().padStart(2, '0')).append(' ')
+                }
+                appendLine()
+                address = end + 1
+            }
+        }
+    }
+
+    /** Full SP scratchpad snapshot, read-only and only on explicit log export. */
+    fun diagnosticSpMemoryDump(): String = buildString {
+        appendLine("SP DMEM 0x04000000..0x04000FFF")
+        for (offset in 0 until SP_MEM_SIZE step 16) {
+            append("0x").append(offset.toString(16).uppercase().padStart(4, '0')).append(": ")
+            for (index in offset until offset + 16) append((spDmem[index].toInt() and 0xFF).toString(16).uppercase().padStart(2, '0')).append(' ')
+            appendLine()
+        }
+        appendLine("SP IMEM 0x04001000..0x04001FFF")
+        for (offset in 0 until SP_MEM_SIZE step 16) {
+            append("0x").append(offset.toString(16).uppercase().padStart(4, '0')).append(": ")
+            for (index in offset until offset + 16) append((spImem[index].toInt() and 0xFF).toString(16).uppercase().padStart(2, '0')).append(' ')
+            appendLine()
+        }
+    }
+
     /** Reads memory for report generation without polluting CPU-access diagnostic histories. */
     fun peek8ForDiagnostic(address: Int): Int {
         require(address >= 0) { "Negative physical address." }
