@@ -2861,3 +2861,26 @@ Esta diretriz foi reafirmada pelo usuário em 2026-11-01 após uma resposta que 
 - O watchpoint não altera a memória, a TLB, EntryLo ou o fluxo da CPU. Só observa escritas via `N64Bus.write8`; transferências DMA diretas que escrevam nessa faixa não são classificadas como escritas CPU.
 - O painel de logs copia o contador e o histórico do watchpoint. Teste unitário verifica PC e bytes de um `SW`.
 - Próxima validação: compilar, instalar o APK da branch `dev/n64-clean-start`, executar a mesma ROM e procurar `CPU W PTE`. Se vazio, investigar também DMA e inicialização anterior da região.
+
+---
+
+## 9. Contexto da instrução nas escritas da tabela TLB — 2026-11-01
+
+Foi ampliado o watchpoint de RDRAM `0x5DBF0–0x5DC33` para registrar também o contexto da instrução MIPS no instante da escrita.
+
+### Alterações
+- `R4300Cpu.kt`: antes de executar cada instrução, envia ao `N64Bus` a palavra MIPS, PC, índices RS/RT, valores dos registradores-base/fonte e endereço efetivo calculado para instruções de store.
+- `N64Bus.kt`: cada byte observado no watchpoint agora inclui `INST`, `OP`, `RS`, `RT`, `BASE`, `RTVAL` e `EA`, além de PC, endereço físico e byte gravado.
+- `N64BusSpDiagnosticsTest.kt`: novo teste `pteWatchpointIncludesDecodedStoreInstructionAndSourceRegisters` valida o contexto de uma instrução SW sintética.
+- `MainActivity.kt`: nenhuma mudança necessária; a seção já exporta o histórico integral do watchpoint.
+
+### Limitações
+- A instrumentação é observacional e não modifica valores de RAM, TLB ou fluxo da CPU.
+- O contexto mostra o estado de RS/RT antes da instrução, permitindo interpretar stores como SW/SB/SH e stores parciais.
+- SC/SCD gravam diretamente via `storeConditional` e não passam pelo `write8` do barramento; portanto, ainda não aparecem no watchpoint atual. Transferências DMA também permanecem fora deste watchpoint.
+- O endereço efetivo é calculado para opcodes de store suportados listados no código; instruções não-store exibem apenas o contexto sem EA.
+
+### Próximo passo
+Executar o APK desta branch com a mesma ROM e examinar a nova seção `WATCHPOINT DA TABELA TLB`. Interpretar a instrução MIPS e os registradores antes de decidir qualquer correção de TLB. Não forçar o bit Valid nem fabricar mapeamentos.
+
+**Validação:** pendente do GitHub Actions após os commits desta etapa.
