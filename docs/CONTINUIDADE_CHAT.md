@@ -1456,3 +1456,52 @@ Integração:
 3. Escolher um comando multiword simples e documentado para implementação, com fixtures independentes; evitar iniciar triângulos sem planejamento do pipeline completo.
 4. Manter a branch `dev/n64-clean-start` e nunca alterar `main`.
 5. Encerrar a sessão somente depois da CI documental verde e do checkpoint registrado; ao parar, avisar explicitamente o usuário que o trabalho do dia terminou.
+
+
+## 22. Início do pipeline de geometria RDP: decoder de triângulos (2026-11-01)
+
+### Objetivo desta etapa
+Começar a substituir o caminho de teste sintético por processamento gráfico real, sem afirmar que já existe renderização de ROM. A imagem colorida continua sendo gerada exclusivamente por `N64VideoTestPattern.createFrame()` quando o usuário aciona o botão de teste de vídeo.
+
+### Implementação
+- Criado `N64RdpTriangleSetup.kt`.
+- O decoder reconhece os opcodes de triângulo nativos `0x08..0x0F` e decodifica o prefixo de quatro words de coeficientes de aresta.
+- Campos decodificados: opcode, flag right-major, tile, YL/YM/YH (signed 12.2), XL/DxLDy, XH/DxHDy e XM/DxMDy (signed 16.16).
+- O decoder aceita o pacote completo conforme o comprimento indicado por `N64RdpCommandLength`, mas interpreta somente o grupo inicial de edge coefficients. Coeficientes shade/texture/Z ainda não são decodificados.
+- Testes em `N64RdpTriangleSetupTest.kt`: campos/fixed-point e sinal, flag de orientação, todos os oito opcodes e rejeição de comando não-triângulo.
+- Isso é somente decodificação. Não rasteriza triângulos, não escreve pixels e ainda não é conectado ao despacho DPC/RDP.
+
+### Referências técnicas usadas para o layout
+- SGI/Nintendo Ultra64 RDP Command Summary, versão 2.0, tabelas 11 e 12 (triangle command groups e edge coefficients): https://ultra64.ca/files/documentation/silicon-graphics/SGI_RDP_Command_Summary.pdf
+- Project64 RDP implementation (referência independente para layout/consumo dos coeficientes): https://github.com/project64/project64/blob/develop/Source/Project64-video/rdp.cpp
+- Não copiar nem integrar núcleo de emulador externo; usar as referências somente para entender o formato de hardware.
+
+### Commits e CI
+- Commit `cd07ab0797eac13b03589d877f4b1cdfecb2addc`: decoder de coeficientes de aresta.
+- Build #762, run `41292274237`: **success**; Build and test + Upload debug APK.
+- Artefato #762 `n64-android-debug-apk`, ID `13077772829`, 927.664 bytes.
+- Commit `e467b9b69bab2c05827044f808d0e101cf610781`: testes do decoder.
+- Build #763, run `41292283769`: **success**; Build and test + Upload debug APK.
+- Artefato #763 `n64-android-debug-apk`, ID `13077329604`, 927.661 bytes.
+- Compilação #763: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41292283769
+- APK #763: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41292283769/artifacts/13077329604
+
+### Limitações reais encontradas no caminho de vídeo
+- `N64VideoTestPattern.createFrame()` gera explicitamente as barras de cor sintéticas.
+- `N64RdpFillProcessor` executa apenas SetOtherModes, SetColorImage, SetScissor, SetFillColor e FillRectangle; não rasteriza triângulos nem texturas.
+- `N64DpcCommandProcessor` ainda rejeita todos os pacotes multiword antes de executar comandos; o novo decoder não foi integrado ao DPC.
+- Não existe ainda implementação de RSP/microcode que execute as tarefas gráficas F3D/F3DEX e produza display lists de ROM para o RDP.
+- A captura VI atual é uma captura única após o diagnóstico HLE; não existe loop de frames/VBlank nem apresentação contínua de vídeo.
+- Portanto, nenhum quadro de jogo foi produzido nesta etapa. O APK #763 não deve ser anunciado como renderizador de jogos.
+
+### Próximos passos do pipeline real
+1. Integrar os pacotes de triângulo ao dispatcher RDP, mantendo validação completa do stream antes de qualquer escrita.
+2. Implementar rasterização flat/unshaded de triângulos com edge-walking, clipping e testes de pixels contra fixtures independentes. Registrar explicitamente o subset não suportado.
+3. Implementar o estado de cor/combiner necessário para produzir pixels corretos; não assumir que o flat color por si só cobre jogos.
+4. Implementar o núcleo RSP e a execução de microcode de display-list (instruções escalares e vetoriais necessárias), além do caminho SP task → DPC.
+5. Ligar a captura VI a quadros efetivamente produzidos pelo RDP e criar apresentação contínua no Android; remover o padrão de cores do caminho de jogo.
+6. Validar primeiro com display lists sintéticas, depois com ROM no aparelho. Só declarar renderização real quando houver imagem capturada no dispositivo originada de uma ROM.
+
+### Branch e encerramento
+- Branch de trabalho: `dev/n64-clean-start`; manter `main` intocada.
+- A CI #763 está verde. Atualizar esta seção documental após cada nova etapa e incluir commit, workflow, status e APK somente quando o artefato existir.
