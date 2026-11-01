@@ -205,6 +205,41 @@ class N64RspCoreTest {
     }
 
 
+
+    @Test
+    fun lhvLoadsOddBytesFromAlignedSixteenByteWindowIntoBitSeven() {
+        val (bus, rsp) = setup(
+            addiu(8, 0, 0x106),
+            vectorMemory(0x32, 8, 15, 8, 0, 0)
+        )
+        for (index in 0 until 16) {
+            bus.write8(N64Bus.SP_DMEM_BASE + 0x100 + index, 0x20 + index)
+            rsp.vectorUnit.writeLane(15, index % 8, 0xFFFF)
+        }
+
+        assertEquals(2, rsp.run(2))
+        for (lane in 0 until 8) {
+            assertEquals((0x21 + lane * 2) shl 7, rsp.vectorUnit.readLane(15, lane))
+        }
+    }
+
+    @Test
+    fun shvStoresOddBytesFromVectorIntoAlternatingDmemAddresses() {
+        val (bus, rsp) = setup(
+            addiu(8, 0, 0x106),
+            vectorMemory(0x3A, 8, 16, 8, 0, 0)
+        )
+        for (index in 0 until 16) bus.write8(N64Bus.SP_DMEM_BASE + 0x100 + index, 0xCC)
+        for (lane in 0 until 8) rsp.vectorUnit.writeLane(16, lane, 0x1200 + lane * 0x0100)
+
+        assertEquals(2, rsp.run(2))
+        for (lane in 0 until 8) {
+            assertEquals((0x1200 + lane * 0x0100 ushr 7) and 0xFF,
+                bus.read8(N64Bus.SP_DMEM_BASE + 0x101 + lane * 2))
+            assertEquals(0xCC, bus.read8(N64Bus.SP_DMEM_BASE + 0x100 + lane * 2))
+        }
+    }
+
     @Test
     fun spvAndSuvUseDifferentPackingAcrossTheEightToSixteenElementBoundary() {
         val (bus, rsp) = setup(
