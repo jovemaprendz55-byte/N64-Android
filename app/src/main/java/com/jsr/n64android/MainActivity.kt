@@ -253,11 +253,16 @@ class MainActivity : Activity() {
                         0x02A0..0x02E0,
                         0x0400..0x0440,
                         0x1000..0x103F,
+                        0x20000..0x20080,
+                        0x232E0..0x23320,
+                        0x287B0..0x287F0,
                         0x340000..0x342000,
                         0x5DBF0..0x5E4A4,
                         0x636D0..0x63710,
                         0x201460..0x2014C0
                     )))
+                    appendLine("=== PIF RAM (64 BYTES) ===")
+                    appendLine(bus.diagnosticPifRamDump())
                     appendLine("=== SP DMEM E IMEM COMPLETAS ===")
                     appendLine(bus.diagnosticSpMemoryDump())
                     appendLine()
