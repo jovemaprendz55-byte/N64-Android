@@ -1325,3 +1325,58 @@ Testes:
 3. Testar parsing de listas mistas, todos os comprimentos, END exclusivo, truncamento e limite máximo antes de ligar qualquer pacote multiword ao RDP.
 4. Só então escolher um comando multiword para implementação; não iniciar triângulos sem planejar corretamente o pipeline gráfico.
 5. Manter `dev/n64-clean-start` como branch de trabalho e `main` intocada.
+
+
+## 19. Pacotes completos do stream RDP (2026-11-01)
+
+### CI da etapa anterior confirmada
+- Build #749, run `41255996859`, commit `14e78041e4eaf419f7fade63b82696b6027a44dd`: **success** (Build and test + Upload debug APK).
+- Build #750, run `41256025839`, commit documental `3d390770a99decb96a9ebf029cf7ed1e171ed027`: **success**.
+- HEAD da branch antes desta etapa: `3d390770a99decb96a9ebf029cf7ed1e171ed027`.
+
+### Implementação
+Arquivos:
+- Criado `app/src/main/java/com/jsr/n64android/N64RdpCommandStreamParser.kt`.
+- Atualizado `app/src/main/java/com/jsr/n64android/N64DpcCommandProcessor.kt`.
+- Criado `app/src/test/java/com/jsr/n64android/N64RdpCommandStreamParserTest.kt`.
+
+Modelo:
+- `N64RdpCommandPacket` contém opcode de 6 bits, comprimento em bytes e lista de words de 64 bits.
+- `N64RdpCommandStreamParser` lê o intervalo RDRAM [START, END exclusivo], com words big-endian.
+- Para cada opcode, consulta `N64RdpCommandLength` e recolhe todas as palavras do pacote, incluindo payload.
+- O parser valida alinhamento, ordem do intervalo, limite declarado da RDRAM, limite configurável de 1 MiB e comprimento integral de cada pacote.
+- O retorno é uma lista separada da memória original; o parser não executa comandos nem altera RDRAM.
+
+Integração:
+- O `N64DpcCommandProcessor` agora chama o parser para obter a lista inteira antes de despachar qualquer comando.
+- Comandos de 8 bytes seguem para o `N64RdpFillProcessor` como antes.
+- Comandos multiword são preservados como pacotes, mas continuam rejeitados com `UnsupportedOperationException` antes de qualquer dispatch. Não há execução multiword ainda.
+
+### Testes novos
+- Preservação de todos os quatro words de um triângulo de 32 bytes e leitura correta do comando seguinte.
+- Preservação dos dois words do TextureRectangle de 16 bytes.
+- Snapshot dos words não muda quando a memória de origem é alterada após o parsing.
+- Rejeição de comando multiword truncado pelo END.
+- Rejeição de START desalinhado e intervalo fora da RDRAM.
+- Aceitação de intervalo vazio.
+- Os testes antigos do DPC continuam cobrindo que uma lista inteira é validada antes do dispatch, sem executar prefixo válido se houver multiword não suportado depois.
+
+### Commits de código
+- `a1ac897672e4e003ad5f5a4e30b4083552e0cf9d` — adiciona parser e modelo de pacote RDP.
+- `7be5560c121cfcca392de4090372b75fa6b99eea` — integra parser ao DPC.
+- `399bd9fc086309c10dcddbe03239d5736afc1094` — adiciona testes de preservação de payload e validação.
+
+### CI desta etapa
+- Build #751, run `41290765794`, parser: em execução na hora desta atualização.
+- Build #752, run `41290768232`, integração DPC: em execução na hora desta atualização.
+- Build #753, run `41290780039`, testes: em execução na hora desta atualização.
+- Confirmar todos os runs e o HEAD atual antes de considerar a etapa aprovada; se houver falha, buscar logs, corrigir no HEAD atual e aguardar nova CI.
+- A criação de três commits em sequência disparou workflows separados. O HEAD da branch deve ser conferido; o commit de teste foi o último observado.
+
+### Limites e próximo passo
+- Reconhecer e preservar payload não é implementar a execução de triângulos nem retângulos texturizados.
+- Não há decodificação de interpolantes, clipping, textura/TMEM, Z-buffer, rasterização de triângulos ou pipeline RDP completo.
+- O DPC continua síncrono e experimental, sem FIFO real, timing, DMA XBUS/DMEM ou IRQ.
+- Nenhuma ROM foi confirmada como renderizada no aparelho nesta etapa.
+- Próxima etapa, depois de CI verde: revisar se a API do pacote deve ser endurecida para imutabilidade efetiva e adicionar testes de todos os comprimentos multiword em listas mistas. Depois escolher um comando multiword de baixa complexidade para implementar com especificação e fixtures independentes; não começar rasterização de triângulos sem o pipeline gráfico planejado.
+- Branch obrigatória: `dev/n64-clean-start`. Manter `main` intocada.
