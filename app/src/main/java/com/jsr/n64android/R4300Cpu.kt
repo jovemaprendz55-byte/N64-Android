@@ -1007,8 +1007,56 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             else -> throw ReservedInstructionFault("R4300 opcode 0x${opcode.toString(16)} at 0x${instructionAddress.toString(16)}")
         }
 
+        recordGenericControlFlow(instructionAddress, instruction, opcode, rs, rt, funct, directPc)
         pc = directPc ?: targetFromPreviousBranch ?: nextSequential
         gpr[0] = 0L
+    }
+
+    /**
+     * Records only control-transfer instructions, keeping diagnostic overhead out
+     * of the normal arithmetic/load-store path. The bounded history is diagnostic
+     * only and never participates in branch decisions or guest state.
+     */
+    private fun recordGenericControlFlow(
+        address: Long,
+        instruction: Int,
+        opcode: Int,
+        rs: Int,
+        rt: Int,
+        funct: Int,
+        directPc: Long?
+    ) {
+        val kind = when {
+            opcode == 0 && funct == 0x08 -> "JR"
+            opcode == 0 && funct == 0x09 -> "JALR"
+            opcode == 0x02 -> "J"
+            opcode == 0x03 -> "JAL"
+            opcode == 0x01 && rt !in setOf(0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0E) ->
+                when (rt) {
+                    0x00 -> "BLTZ"; 0x01 -> "BGEZ"; 0x02 -> "BLTZL"; 0x03 -> "BGEZL"
+                    0x10 -> "BLTZAL"; 0x11 -> "BGEZAL"; 0x12 -> "BLTZALL"; 0x13 -> "BGEZALL"
+                    else -> null
+                }
+            opcode == 0x11 && rs == 0x08 -> "BC1"
+            opcode in setOf(0x04, 0x05, 0x06, 0x07, 0x14, 0x15, 0x16, 0x17) ->
+                when (opcode) {
+                    0x04 -> "BEQ"; 0x05 -> "BNE"; 0x06 -> "BLEZ"; 0x07 -> "BGTZ"
+                    0x14 -> "BEQL"; 0x15 -> "BNEL"; 0x16 -> "BLEZL"; else -> "BGTZL"
+                }
+            else -> null
+        } ?: return
+
+        val taken = delayedTarget != null
+        val target = delayedTarget ?: directPc ?: (address + 8L)
+        val line = "FLOW kind=$kind PC=0x\${address.toULong().toString(16).uppercase()} " +
+            "INST=0x\${instruction.toUInt().toString(16).uppercase().padStart(8, '0')} " +
+            "taken=$taken target=0x\${target.toULong().toString(16).uppercase()} " +
+            "RA=0x\${gpr[31].toULong().toString(16).uppercase()} " +
+            "A0=0x\${gpr[4].toULong().toString(16).uppercase()} " +
+            "A1=0x\${gpr[5].toULong().toString(16).uppercase()} " +
+            "A2=0x\${gpr[6].toULong().toString(16).uppercase()} " +
+            "A3=0x\${gpr[7].toULong().toString(16).uppercase()}"
+        recordControlFlowEvent(line)
     }
 
     /** Random cycles down through the replaceable TLB indices [Wired, 31]. */
