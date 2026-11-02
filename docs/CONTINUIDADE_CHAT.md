@@ -4842,3 +4842,66 @@ Isso valida build/testes desses commits, não o funcionamento completo de Golden
 5. Manter separadas as falhas TLB e a ausência de submissão SP; só corrigir uma quando houver evidência específica e teste reproduzível.
 
 **Estado:** interrupções/ERET rastreados; VI programada; GoldenEye ainda não publica frame; nenhum comando SP/DPC foi emitido no log; causa exata da ausência de tarefa ainda não identificada. `main` permanece intocada.
+
+
+---
+
+## 50. Análise aprofundada do log GoldenEye — 2026-11-02
+
+**Log:** `N64-Android-logs-1793610943089.txt`, publicado pelo usuário na branch `main`.  
+**Branch de código/documentação analisada:** `dev/n64-clean-start`.  
+**HEAD da branch durante a inspeção:** `1db840516a7a429ff290b2c2774c29c75e916b23` (confirmar HEAD atual antes de novas alterações).  
+**Arquivo de log:** 1.286.589 caracteres, 10.018 linhas. Nenhum código foi alterado nesta etapa.
+
+### 50.1. Resultado da sessão
+
+- CPU: 34.147.851 instruções.
+- RSP: 0 instruções; sem último PC/instrução RSP.
+- Frames VI publicados: 0.
+- SP: MEM_ADDR=0, DRAM_ADDR=0, STATUS=0x1 (HALT), PC=0.
+- Histórico dedicado SP: nenhum acesso, nenhuma escrita e nenhum DMA SP.
+- DPC/RDP: START=END=CURRENT=0; sem resultado.
+- O problema de ausência de submissão SP continua confirmado neste log.
+
+### 50.2. Falhas TLB: dados adicionais
+
+O log registra falhas de busca de instrução (FETCH) em:
+- 0x7F000BD0
+- 0x7F0B37C0
+- 0x7F0CFF30
+- 0x7F0D0A3C
+- 0x7F0BCC28
+
+Em alguns endereços há sequência MISS → INVALID → MISS. Para a falha final 0x7F0BCC28, o EntryHi capturado é 0x7F0BC000.
+
+O snapshot TLB no primeiro fault contém entradas válidas para VPN2 0x7F000000, 0x7F0B2000, 0x7F0CE000 e 0x7F0D0000, mas não contém 0x7F0BC000. Logo, o endereço 0x7F0BCC28 realmente não tinha uma entrada correspondente no snapshot capturado. Isso é evidência de tradução ausente para aquela página naquele instante, não prova isolada de bug no algoritmo de tradução.
+
+O histórico também mostra:
+- TLBWR em 0xFFFFFFFF80000034, index 16, EntryHi=0x7F000000.
+- TLBWI para páginas 0x7F0B2000, 0x7F0CE000 e 0x7F0D0000 em índices diferentes.
+- Uma sequência de TLBWI em 0x7000D3EC escrevendo EntryHi=0x80000000 e EntryLo0/1=0 para vários índices, aparentemente uma rotina de invalidação/limpeza de entradas; confirmar semântica e registradores antes de concluir.
+
+### 50.3. Correção importante da hipótese anterior
+
+A inspeção do código em `R4300Cpu.kt` mostra que já existe tratamento de `R4300Tlb.TlbFault` em `step()`, com `enterTlbException()`, atualização de BadVAddr/Context/EntryHi, Cause/EPC/EXL e seleção do vetor de refill ou vetor geral. O decodificador COP0 implementa TLBWI, TLBWR, TLBP, TLBR e ERET; `R4300Tlb.kt` implementa probe e tradução de páginas pareadas.
+
+Portanto, não é correto dizer que o projeto simplesmente não possui tratamento de exceção TLB. A hipótese a investigar agora é mais específica: se o handler/refill da ROM e a implementação CPU/MMU concordam sobre o preenchimento, substituição, validade e retorno das entradas para a página que contém 0x7F0BCC28.
+
+### 50.4. O que NÃO concluir
+
+- Não desativar TLB para contornar o erro.
+- Não inserir PFN/EntryLo artificial para 0x7F0BC000.
+- Não mudar Random/Wired ou a rotina de TLBWI sem teste que reproduza a divergência.
+- Não afirmar que o TLB é a causa única da ausência de SP; o log não mostra acesso SP e não demonstra que a falha TLB seja o caminho causal até a falta de OSTask.
+- Não confundir PC do loop idle 0x7000071C com o endereço da falha FETCH 0x7F0BCC28; são observações distintas no diagnóstico.
+
+### 50.5. Próxima investigação técnica
+
+1. Ler no log completo a seção de exceções TLB, os eventos CPU, os acessos de memória durante o refill, o histórico de setup de PTE e as instruções executadas no handler após cada MISS.
+2. Reconstruir especificamente a sequência para VPN2 0x7F0BC000: valor de EntryHi/Context, endereço e conteúdo da PTE lida, EntryLo escrito, índice Random/Wired, TLBWR/TLBWI e resultado de TLBP após o retorno.
+3. Conferir a semântica de Random/Wired e o algoritmo de substituição contra os testes existentes, sem presumir que a sequência de TLBWI em 0x7000D3EC seja defeito.
+4. Verificar se o handler retorna ao PC de fault e se o segundo FETCH é MISS, INVALID ou sucesso; comparar o estado completo da entrada antes/depois.
+5. Em paralelo, manter a investigação SP: identificar o caminho de criação/submissão OSTask e adicionar observabilidade de escrita SP/DPC sem gerar tarefas sintéticas.
+6. Criar testes unitários para qualquer divergência confirmada antes de alterar o comportamento da CPU.
+
+**Estado:** o log confirma TLB misses reais e ausência total de atividade SP/RSP/DPC/frame. O código já contém o caminho básico de exceções TLB; a causa da página não mapeada e a causa da ausência de OSTask permanecem abertas e devem ser investigadas separadamente. `main` não foi modificada.
