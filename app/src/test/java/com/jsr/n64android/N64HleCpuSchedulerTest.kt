@@ -43,7 +43,8 @@ class N64HleCpuSchedulerTest {
         assertEquals(0x1010L, cpu.pc)
         assertEquals(0xAAAAL, cpu.gpr[8])
         assertNotNull(scheduler.savedContext(2))
-        assertEquals(2, scheduler.activeThreadId()?.let { 2 } ?: 0)
+        assertEquals(0x2010L, scheduler.savedContext(2)?.pc)
+        assertEquals(1, scheduler.activeThreadId())
     }
 
     @Test(expected = IllegalArgumentException::class)
