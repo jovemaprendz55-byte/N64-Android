@@ -34,13 +34,13 @@ object N64HleAutoDiagnostic {
         }
 
         val spHalted = (bus.diagnosticSpStatus() and N64Bus.SP_STATUS_HALT) != 0
-        val spWrites = bus.diagnosticSpWriteHistory.size
-        val dpcWrites = bus.diagnosticMmioHistory.count { it.startsWith("W DPC ") }
+        val spWrites = bus.diagnosticMmioWriteCounts["SP"] ?: 0L
+        val dpcWrites = bus.diagnosticMmioWriteCounts["DPC"] ?: 0L
         if (spHalted) {
             appendLine("OBSERVAÇÃO: SP está em HALT.")
             if (spWrites == 0) appendLine("EVIDÊNCIA: nenhuma escrita CPU nos registradores SP foi registrada nesta sessão.")
         }
-        appendLine("MMIO RECENTE: escritas SP=$spWrites | escritas DPC=$dpcWrites (buffers limitados)")
+        appendLine("MMIO ACUMULADO: escritas SP=$spWrites | escritas DPC=$dpcWrites (contadores totais; histórico visual permanece limitado)")
         appendLine("ESTADO DOS DISPOSITIVOS:")
         bus.diagnosticDeviceSnapshot().forEach { appendLine("  $it") }
         appendLine("ÚLTIMOS EVENTOS SP:")
