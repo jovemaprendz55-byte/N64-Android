@@ -4707,3 +4707,67 @@ Depois que o CI do HEAD passar e o APK correspondente estiver disponível:
 7. Não declarar GoldenEye compatível sem frame real originado pela execução completa da ROM.
 
 **Estado final deste registro:** código VI implementado; CI do código concluído com sucesso; APK debug gerado, mas ainda não instalado/testado em aparelho; branch `main` não modificada.
+
+
+
+---
+
+## 48. Rastro de entrada/saída de interrupções e ERET — 2026-11-02
+
+**Branch:** `dev/n64-clean-start`.  
+**HEAD anterior à instrumentação:** `31ba96ba0fb1f387af08661f5f4a48b66ae18f26`.  
+**Log que motivou a etapa:** `N64-Android-logs-1793608630965.txt`, publicado pelo usuário na branch `main`.  
+**Objetivo:** distinguir uma interrupção VI apenas sinalizada de uma interrupção realmente entregue, acompanhar o endereço do vetor e registrar o retorno COP0 ERET.
+
+### 48.1. Auditoria do caminho CPU
+
+A inspeção do código confirmou que:
+- `R4300Cpu.step()` amostra a linha agregada MI antes de cada instrução.
+- A fonte MI pendente é refletida em `Cause.IP2` (bit 10).
+- Quando IE, IM e níveis de exceção permitem, o CPU chama `enterException(..., 0, ...)`, define o vetor e limpa o estado interno de branch-delay pendente.
+- O decodificador COP0 já implementa ERET, limpando EXL ou ERL e selecionando EPC ou ErrorEPC.
+- Até esta etapa, o exportador do log da sessão ROM não preservava um histórico cronológico dessas entradas/saídas; o snapshot final de COP0 não permitia reconstruir sozinho o caminho.
+
+### 48.2. Instrumentação adicionada
+
+Arquivos alterados:
+- `app/src/main/java/com/jsr/n64android/R4300Cpu.kt`
+- `app/src/main/java/com/jsr/n64android/MainActivity.kt`
+- `app/src/test/java/com/jsr/n64android/R4300MiInterruptTest.kt`
+
+Implementação:
+1. `R4300Cpu.diagnosticControlFlowHistory` mantém uma janela limitada aos últimos 64 eventos.
+2. Cada exceção registrada inclui código, PC da instrução, branch de origem quando aplicável, vetor, Status, Cause e EPC.
+3. Cada ERET inclui PC da instrução, destino escolhido (EPC/ErrorEPC), Status após limpar EXL/ERL, Cause e EPC.
+4. O exportador de logs da sessão ROM inclui a seção `EVENTOS CPU: INTERRUPÇÕES, EXCEÇÕES E ERET`.
+5. Testes verificam que a interrupção de hardware é registrada com vetor geral e que ERET registra o destino e limpa EXL.
+
+A instrumentação não altera a decisão de interrupção, não simula execução do handler, não cria tarefas SP e não modifica TLB/PFN.
+
+### 48.3. Commits desta etapa
+
+- `08b95bab23fc151fee168f7bb0aa72cbc4cbc3cf` — registra eventos de exceção e ERET no R4300.
+- `146827e038bf2b97bf409b9d239251a2cd38be63` — primeira ligação da seção ao diagnóstico (posteriormente ajustada para o exportador usado pela sessão ROM).
+- `7749854118f3db83c0c785215f309765ea6df65f` — teste de ERET e alvo de retorno.
+- `0cf79cb5cb097226a2ccf1bbb2d4563578fc7405` — exporta os eventos CPU no log da sessão ROM.
+- `c4a28d928b7b7667edc9c1d57ec6f7da88312050` — teste também exige que a interrupção de hardware apareça no histórico.
+
+### 48.4. CI e validação
+
+- Workflow Android run `41415483125` foi iniciado para `7749854...`.
+- Workflow Android run `41415585811` foi iniciado para `0cf79cb...`.
+- Os commits posteriores `c4a28d9...` e este registro documental também acionam workflows.
+- **No momento deste registro, não há resultado final de CI confirmado para o HEAD mais recente.** Consultar os runs no GitHub antes de distribuir APK.
+- Nenhum APK novo foi gerado/instalado/testado no aparelho nesta etapa.
+- A branch `main` não foi modificada por esta etapa.
+
+### 48.5. Próxima validação
+
+Após CI verde e APK correspondente:
+1. Instalar a build nova e executar a mesma ROM.
+2. Exportar o log completo.
+3. Conferir a sequência `EXCEPTION code=0` → vetor `0xFFFFFFFF80000180` → instruções executadas no handler → `ERET target=...`.
+4. Verificar se o EPC/retorno se repete e se o PC volta ao loop `0x7000071C`.
+5. Correlacionar os eventos com `MI_INTR_REG`, `Cause.IP2`, limpeza VI_CURRENT, escritas SP/DMA e DPC.
+6. Se o histórico não mostrar ERET, verificar se o handler cai em outra exceção, fica em loop ou não executa ERET.
+7. Não declarar renderização funcional até aparecer frame VI originado pela execução da ROM.
