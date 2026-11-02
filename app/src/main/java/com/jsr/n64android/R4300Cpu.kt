@@ -1031,14 +1031,15 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             opcode == 0 && funct == 0x09 -> "JALR"
             opcode == 0x02 -> "J"
             opcode == 0x03 -> "JAL"
-            opcode == 0x01 && rt !in setOf(0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0E) ->
+            opcode == 0x01 && rt != 0x08 && rt != 0x09 && rt != 0x0A && rt != 0x0B && rt != 0x0C && rt != 0x0E ->
                 when (rt) {
                     0x00 -> "BLTZ"; 0x01 -> "BGEZ"; 0x02 -> "BLTZL"; 0x03 -> "BGEZL"
                     0x10 -> "BLTZAL"; 0x11 -> "BGEZAL"; 0x12 -> "BLTZALL"; 0x13 -> "BGEZALL"
                     else -> null
                 }
             opcode == 0x11 && rs == 0x08 -> "BC1"
-            opcode in setOf(0x04, 0x05, 0x06, 0x07, 0x14, 0x15, 0x16, 0x17) ->
+            (opcode == 0x04 || opcode == 0x05 || opcode == 0x06 || opcode == 0x07 ||
+                opcode == 0x14 || opcode == 0x15 || opcode == 0x16 || opcode == 0x17) ->
                 when (opcode) {
                     0x04 -> "BEQ"; 0x05 -> "BNE"; 0x06 -> "BLEZ"; 0x07 -> "BGTZ"
                     0x14 -> "BEQL"; 0x15 -> "BNEL"; 0x16 -> "BLEZL"; else -> "BGTZL"
