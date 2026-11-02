@@ -446,10 +446,6 @@ class MainActivity : Activity() {
         worker.start()
     }
 
-    companion object {
-        private const val LOG_EXPORT_STOP_TIMEOUT_MS = 5_000L
-    }
-
     private fun sessionSafeInstructionCount(session: N64RomVideoSession?): Long =
         session?.executedInstructionCount() ?: 0L
 
@@ -1747,5 +1743,6 @@ class MainActivity : Activity() {
 
     companion object {
         private const val REQUEST_ROM = 640
+        private const val LOG_EXPORT_STOP_TIMEOUT_MS = 5_000L
     }
 }
