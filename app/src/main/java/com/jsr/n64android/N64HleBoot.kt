@@ -26,6 +26,7 @@ object N64HleBoot {
     const val BOOT_FLAG_ROM_TYPE = BOOT_FLAGS_ADDRESS + 0x04
     const val BOOT_FLAG_ROM_BASE = BOOT_FLAGS_ADDRESS + 0x08
     const val BOOT_FLAG_RESET_TYPE = BOOT_FLAGS_ADDRESS + 0x0C
+    const val BOOT_FLAG_CIC_ID = BOOT_FLAGS_ADDRESS + 0x10
     const val BOOT_FLAG_IPL2_VERSION = BOOT_FLAGS_ADDRESS + 0x14
     const val BOOT_FLAG_RDRAM_SIZE = BOOT_FLAGS_ADDRESS + 0x18
 
@@ -75,10 +76,17 @@ object N64HleBoot {
         }
 
         // IPL3's low-memory parameters consumed by libultra/game startup code.
+        // osCicId is not the IPL3 seed: 6102 leaves it zero; 6105 writes 6105.
+        val cicId = when (seed) {
+            0x3F -> 0
+            0x91 -> 6105
+            else -> error("Seed CIC sem mapeamento HLE: 0x${seed.toString(16)}")
+        }
         bus.write32(BOOT_FLAG_TV_TYPE, tvType)
         bus.write32(BOOT_FLAG_ROM_TYPE, 0) // Cartridge, not 64DD.
         bus.write32(BOOT_FLAG_ROM_BASE, 0xB0000000.toInt()) // KSEG1 cartridge window.
         bus.write32(BOOT_FLAG_RESET_TYPE, 0) // Cold boot.
+        bus.write32(BOOT_FLAG_CIC_ID, cicId)
         bus.write32(BOOT_FLAG_IPL2_VERSION, 0)
         bus.write32(BOOT_FLAG_RDRAM_SIZE, N64Memory.DEFAULT_RAM_SIZE)
 
