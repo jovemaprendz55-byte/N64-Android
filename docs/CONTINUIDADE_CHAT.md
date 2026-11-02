@@ -5081,7 +5081,7 @@ KDocs atualizados sem mudança de comportamento:
 - `N64RomVideoSession.kt`: alimenta o rastro após cada instrução CPU; expõe snapshot recente e ciclo repetido sem alterar a execução.
 - Novo `N64HleAutoDiagnostic.kt`: gera relatório curto com contagem CPU/RSP/VI, estado SP, escritas SP/DPC no histórico disponível, última falha TLB/exceção e interpretação baseada em evidências.
 - `MainActivity.kt`: exportação passa a colocar o diagnóstico automático e até 24 instruções recentes logo no início do arquivo, depois do painel da execução. O restante do log completo continua preservado.
-- Testes novos: `N64InstructionTraceTest.kt` cobre ciclo branch+delay-slot, ausência de falso positivo e limite da janela; `N64HleAutoDiagnosticTest.kt` verifica a separação entre observações e causa raiz.
+- Testes novos: `N64InstructionTraceTest.kt` cobre ciclo branch+delay-slot, ausência de falso positivo e limite da janela; `N64HleAutoDiagnosticTest.kt` verifica a separação entre observações e causa raiz. `N64RomVideoSessionTraceTest.kt` verifica que a sessão contínua captura um loop BEQ real com delay slot.
 
 ### Commits desta etapa
 
@@ -5104,3 +5104,5 @@ KDocs atualizados sem mudança de comportamento:
 - Não afirmar ainda que o diagnóstico encontrou a causa do loop `0x7000071C`; a nova APK precisa gerar um log de teste.
 
 **Próximo passo:** verificar a compilação/testes automatizados; corrigir qualquer falha; depois gerar APK e pedir ao usuário um único teste de ROM para comparar o diagnóstico curto com o log completo.
+
+- Teste de integração da sessão: commit `0820acc4df143cf6e35e1e6337b8fabab12d2c7b`.
