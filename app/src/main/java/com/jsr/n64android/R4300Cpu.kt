@@ -278,6 +278,16 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             enterTlbException(fault, branchAddressForFault)
         } catch (fault: AddressFault) {
             enterAddressException(fault, branchAddressForFault)
+        } catch (fault: CoprocessorUnusableFault) {
+            enterException(
+                instructionAddressForCurrentStep ?: pc,
+                11,
+                branchAddressForFault,
+                coprocessorNumber = fault.coprocessorNumber
+            )
+            pc = exceptionVector()
+            delayedTarget = null
+            pendingDelaySlotBranchAddress = null
         } catch (_: ReservedInstructionFault) {
             // Unsupported encodings raise the architectural Reserved Instruction exception (RI).
             enterException(instructionAddressForCurrentStep ?: pc, 10, branchAddressForFault)
@@ -676,6 +686,10 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 }
             }
             0x11 -> { // COP1 transfers and condition-code branches (partial FPU)
+                // Status.CU1 (bit 29) controls whether the R4300 may execute COP1.
+                if ((cop0[12] and (1L shl 29)) == 0L) {
+                    throw CoprocessorUnusableFault(1)
+                }
                 when (rs) {
                     0x08 -> { // BC1F/T/FL/TL; this R4300 subset models FCC0 only.
                         if ((rt and 0x1C) != 0) {
@@ -1126,7 +1140,12 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         return if (lines.isEmpty()) "(nenhuma entrada TLB inicializada)" else lines.joinToString("\n")
     }
 
-    private fun enterException(instructionAddress: Long, exceptionCode: Int, branchAddress: Long?) {
+    private fun enterException(
+        instructionAddress: Long,
+        exceptionCode: Int,
+        branchAddress: Long?,
+        coprocessorNumber: Int? = null
+    ) {
         lastExceptionInstructionAddress = instructionAddress
         lastExceptionCode = exceptionCode
         lastExceptionBranchAddress = branchAddress
@@ -1140,6 +1159,11 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         var cause = cop0[13] and branchDelayBit.inv() and exceptionCodeMask.inv()
         cause = cause or (exceptionCode.toLong() shl 2)
         if (branchAddress != null) cause = cause or branchDelayBit
+        if (coprocessorNumber != null) {
+            val coprocessorErrorMask = 0x3L shl 28
+            cause = (cause and coprocessorErrorMask.inv()) or
+                ((coprocessorNumber.toLong() and 0x3L) shl 28)
+        }
         cop0[13] = cause
         cop0[12] = status or 0x2L // Set EXL.
         recordControlFlowEvent("EXCEPTION code=$exceptionCode pc=0x${instructionAddress.toULong().toString(16).uppercase()} " +
@@ -1364,6 +1388,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     }
 
     private class ReservedInstructionFault(message: String) : RuntimeException(message)
+
+    private class CoprocessorUnusableFault(val coprocessorNumber: Int) : RuntimeException()
 
     private class AddressFault(val virtualAddress: Long, val store: Boolean) : RuntimeException()
 
