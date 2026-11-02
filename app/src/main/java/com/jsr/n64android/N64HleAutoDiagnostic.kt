@@ -38,7 +38,7 @@ object N64HleAutoDiagnostic {
         val dpcWrites = bus.diagnosticMmioWriteCounts["DPC"] ?: 0L
         if (spHalted) {
             appendLine("OBSERVAÇÃO: SP está em HALT.")
-            if (spWrites == 0) appendLine("EVIDÊNCIA: nenhuma escrita CPU nos registradores SP foi registrada nesta sessão.")
+            if (spWrites == 0L) appendLine("EVIDÊNCIA: nenhuma escrita CPU nos registradores SP foi registrada nesta sessão.")
         }
         appendLine("MMIO ACUMULADO: escritas SP=$spWrites | escritas DPC=$dpcWrites (contadores totais; histórico visual permanece limitado)")
         appendLine("ESTADO DOS DISPOSITIVOS:")
@@ -58,7 +58,7 @@ object N64HleAutoDiagnostic {
         when {
             loop != null && spHalted && rspInstructionCount == 0L && frameCount == 0L ->
                 appendLine("Há repetição de PC+opcode enquanto SP permanece em HALT; RSP e frames ainda não avançaram. Isso é um indício, não prova de estado idêntico. Investigar progresso dos registradores, condição de saída e entrega de interrupções.")
-            spHalted && spWrites == 0 ->
+            spHalted && spWrites == 0L ->
                 appendLine("Não há evidência de submissão/liberação do SP nesta sessão. Investigar o fluxo de inicialização/scheduler antes de atribuir falha ao RSP.")
             cpu.lastTlbFaultKind != null ->
                 appendLine("Há uma falha TLB registrada. Reconstruir o refill e o retorno antes de alterar a MMU.")
