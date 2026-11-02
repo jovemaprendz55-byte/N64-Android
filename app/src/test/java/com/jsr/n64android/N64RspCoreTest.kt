@@ -593,4 +593,18 @@ class N64RspCoreTest {
         assertEquals(saved.pc, rsp.pc)
     }
 
-}
+
+    @Test fun executesVsarFromAccumulator() {
+        val bus = N64Bus()
+        val rsp = N64RspCore(bus)
+        rsp.vectorUnit.writeLane(1, 0, 0x4000)
+        rsp.vectorUnit.writeLane(2, 0, 0x4000)
+        rsp.vectorUnit.multiplyFractional(3, 1, 2)
+        // VSAR vd=v4, element=9 (middle accumulator slice), function=0x1D.
+        val instruction = (0x12 shl 26) or (9 shl 21) or (3 shl 16) or (4 shl 11) or 0x1D
+        bus.write32(N64Bus.SP_IMEM_BASE, instruction)
+        rsp.reset(0)
+        rsp.step()
+        assertEquals(0x8008, rsp.vectorUnit.readLane(4, 0))
+    }
+\n}\n
