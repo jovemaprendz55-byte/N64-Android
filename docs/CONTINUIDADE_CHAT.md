@@ -4187,3 +4187,95 @@ Após a APK atualizada ser instalada, testar:
 5. Enviar o TXT ou o conteúdo relevante para análise.
 
 Esta alteração é uma correção do caminho de exportação de diagnóstico, não uma correção do boot/TLB/vídeo do GoldenEye. A exportação ainda constrói o texto completo em memória dentro do worker; se o teste ainda provocar OOM, a próxima etapa será converter o gerador para escrita incremental em stream e reduzir os dumps mais volumosos.
+
+
+---
+
+## 41. Auditoria do histórico, falhas e correções da documentação — 2026-11-01
+
+**Data/hora:** 2026-11-01 21:36:08 (UTC−03:00, horário de Brasília).  
+**Branch de trabalho:** `dev/n64-clean-start`.  
+**Arquivo auditado:** `docs/CONTINUIDADE_CHAT.md`.  
+**Escopo:** leitura do histórico completo disponível, revisão das seções de implementação e diagnóstico, e conferência do log real de GitHub Actions associado à correção da exportação de logs.  
+**Alterações no código do emulador:** nenhuma nesta auditoria.  
+**Branch `main`:** não modificada.
+
+### 41.1. Visão geral do histórico recuperado
+
+O documento possui aproximadamente 335 mil caracteres e registra a evolução do projeto desde o boot HLE inicial até os trabalhos de CPU R4300, TLB, SP/RSP, OSTask, DPC/RDP, VI, interface, execução contínua e instrumentação de diagnóstico.
+
+A auditoria confirma que já existem implementações e testes para várias partes do hardware, mas elas são parciais. Testes unitários, pipelines sintéticos, builds verdes e apresentação de triângulos artificiais não comprovam compatibilidade com GoldenEye 007. Até este registro, não há comprovação de frame real do jogo originado pela execução completa da ROM.
+
+### 41.2. Trabalhos já registrados — não reimplementar do zero
+
+- **HLE:** preparação experimental do estado inicial e staging do payload em RDRAM, sem afirmar que o boot real do jogo está resolvido.
+- **CPU R4300:** execução em sessões, worker cancelável, observadores de instrução, rastros limitados e preservação de falhas.
+- **TLB/COP0:** tradução, PageMask, ASID, Global, faults, operações TLB e watchpoints da tabela PTE.
+- **Diagnóstico de memória:** captura de escritas PTE, histórico ampliado, contexto MIPS e registradores de chamadas.
+- **PI DMA:** instrumentação do caminho de DMA, captura de helpers e tentativa de correlacionar o código transferido com os endereços virtuais.
+- **SP/RSP:** núcleo escalar inicial, COP0 mínimo, estado vetorial, operações COP2, transferências e subconjuntos de loads/stores vetoriais.
+- **OSTask:** decoder de cabeçalho, estados de task, bootstrap por DMA e ponte de execução SP → RSP.
+- **DPC/RDP:** Full Sync, interrupção DP, parsing de comandos, validação de streams, decoder de triângulos e rasterizador experimental.
+- **VI/vídeo:** captura de framebuffer, cálculo de dimensões/stride, apresentação Android e sessão de CPU com publicação de frames.
+- **Interface:** menu inicial unificado e controles de execução experimental.
+
+Esses itens são componentes existentes no histórico; a cobertura funcional e a compatibilidade com software comercial continuam incompletas.
+
+### 41.3. Problema TLB/PTE ainda não resolvido
+
+A investigação documentada encontrou inicialização de 128 registros PTE com marcadores inválidos e o primeiro FETCH inválido em VA `0x7F000BD0`.
+
+Na captura analisada:
+- A execução de CPU chega a aproximadamente 28,5 milhões de instruções.
+- O acesso final é TLB INVALID FETCH em `0x7F000BD0`.
+- O histórico contém `TLBWR` com `EntryHi=0x7F000000`, `EntryLo0=0x1` e `EntryLo1=0x41`.
+- Também aparecem operações `TLBWI` no PC `0x7000D3EC`, com entradas zeradas.
+- O watchpoint registra 5.120 bytes escritos na região PTE.
+- O estado final dessa captura ainda não mostra progresso de vídeo: RSP = 0 instruções, frames VI = 0 e DPC sem comandos.
+
+Interpretação: o bit Valid ausente explica o INVALID observado para a página selecionada, mas não identifica sozinho a causa raiz. É necessário reconstruir a rotina que inicializa e atualiza as PTEs, a sequência temporal de `TLBWR/TLBWI`, o caminho PI DMA e a origem do salto para `0x7F000BD0`.
+
+**Não fazer:** forçar o bit V, inventar PFN, desativar TLB ou alterar o mapeamento sem evidência da PTE correta. A correção funcional do GoldenEye permanece não comprovada.
+
+### 41.4. Correção da exportação de logs — falha de CI identificada nesta auditoria
+
+O histórico da seção 40 descrevia a exportação fora da thread principal, mas ainda deixava a validação pendente. Nesta auditoria foi consultado o log detalhado do job associado à execução `41360436024`.
+
+Resultado real encontrado:
+- A tarefa `gradle testDebugUnitTest assembleDebug` falhou durante `compileDebugKotlin`.
+- Arquivo: `app/src/main/java/com/jsr/n64android/MainActivity.kt`.
+- Erros nas linhas 152 e 311:
+  - `Unresolved reference 'copyLogsButton'`.
+  - `Unresolved reference 'copyLogsButton'`.
+- O build terminou com `BUILD FAILED` e exit code 1.
+
+Portanto, o commit `37e0c6a5a8e6d279e9a91541e4905d1c0185d0dc` não passou nessa execução de CI. A seção 40 dizia que o commit seguinte `9362b35bf64f14cdde8342fd2b66f7797a6a04b6` acionaria nova compilação, mas esta auditoria não conseguiu confirmar uma execução bem-sucedida desse commit. Não declarar a correção concluída até verificar o estado atual da branch, a referência do botão no código e uma execução verde de `testDebugUnitTest` e `assembleDebug`.
+
+A hipótese técnica original continua sendo que gerar e copiar um relatório muito grande na thread principal poderia travar/fechar o app. A mudança para worker e arquivo TXT é uma tentativa de correção coerente, mas o crash no aparelho só será considerado resolvido após teste real com a APK corrigida.
+
+### 41.5. Problemas de organização encontrados no documento
+
+- O cabeçalho/resumo inicial não reflete integralmente o histórico mais recente.
+- A sequência de etapas chega à seção 88 e, depois, há títulos com numeração reiniciada em 9, 10, 11 etc. A numeração precisa ser normalizada ou os registros posteriores precisam receber uma hierarquia distinta.
+- A seção 40 não havia registrado o erro específico de compilação; esta auditoria acrescenta o diagnóstico confirmado.
+- Alguns estados de CI aparecem como pendentes em registros antigos e precisam ser tratados como fotografias históricas, não como estado atual.
+- É necessário manter distinção explícita entre implementação, teste unitário, CI, APK instalada e teste em aparelho.
+
+### 41.6. Próximos passos recomendados
+
+1. Conferir o HEAD atual de `dev/n64-clean-start` e verificar se o commit `9362b35bf64f14cdde8342fd2b66f7797a6a04b6` está incorporado e se existe commit corretivo posterior.
+2. Corrigir qualquer referência não resolvida a `copyLogsButton`, sem remover o controle correto da página de diagnóstico.
+3. Executar e confirmar `testDebugUnitTest` e `assembleDebug`; guardar run ID, commit, resultado e artefato APK.
+4. Instalar a APK corrigida no aparelho e repetir o teste de exportação: app não fecha, TXT é criado em `Downloads/N64Android` e conteúdo pode ser enviado para análise.
+5. Retomar a investigação TLB/PTE a partir da rotina de inicialização das 128 PTEs e da sequência `TLBWI` em `0x7000D3EC`; correlacionar com o PI DMA e o salto para `0x7F000BD0`.
+6. Só depois de obter logs novos da APK correta, decidir correções funcionais de TLB, PI, RSP ou vídeo.
+
+### 41.7. Estado desta auditoria
+
+- Documento lido e histórico técnico revisado.
+- Log de CI consultado e erro de compilação identificado.
+- Nenhum arquivo Kotlin foi alterado.
+- Nenhum commit de código foi criado nesta auditoria.
+- Nenhuma alteração foi feita em `main`.
+- Esta seção registra o trabalho de auditoria realizado nesta conversa e preserva os erros, correções tentadas, evidências e pendências para continuidade.
+
