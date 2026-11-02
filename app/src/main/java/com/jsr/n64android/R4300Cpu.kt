@@ -320,6 +320,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     private fun stepInstruction() {
         val instructionAddress = pc
         instructionAddressForCurrentStep = instructionAddress
+        // Instruction fetches must be word-aligned; report AdEL instead of leaking a host memory exception.
+        requireAligned(instructionAddress, 4)
         val instruction = memory.read32(physicalAddress(instructionAddress, R4300Tlb.Access.FETCH))
         instructionWordForCurrentStep = instruction
         recordTlbDiagnosticInstruction(instructionAddress, instruction)
