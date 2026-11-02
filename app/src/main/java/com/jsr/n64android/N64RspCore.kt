@@ -272,6 +272,7 @@ class N64RspCore(private val bus: N64Bus) {
             0x2A -> vectorUnit.or(vd, vs, vt, element) // VOR
             0x2B -> vectorUnit.nor(vd, vs, vt, element) // VNOR
             0x2C -> vectorUnit.xor(vd, vs, vt, element) // VXOR
+            0x1D -> vectorUnit.accumulatorSlice(vd, element) // VSAR
             else -> unsupported(instruction)
         }
     }
