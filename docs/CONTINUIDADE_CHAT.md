@@ -4560,3 +4560,79 @@ O histórico MMIO do log contém escrita `0xAAA` em MI_INTR_MASK_REG, que config
 - Nenhum APK deste HEAD foi instalado ou testado em aparelho.
 - A nova implementação ainda não foi validada contra a ROM real. É necessário repetir o log e confirmar se a interrupção PI chega ao COP0, se o handler do sistema operacional é executado e se a PTE `0x8005DBF0` passa a conter uma entrada válida antes do JAL para `0x7F000BD0`.
 - Não afirmar que o defeito de vídeo foi resolvido; esta é uma correção arquitetural parcial, com validação de ROM pendente.
+
+
+---
+
+## 46. Novo log: páginas PI carregadas e tradução TLB válida, mas sem execução gráfica — 2026-11-02
+
+**Branch de documentação/código:** `dev/n64-clean-start`.  
+**HEAD antes do registro:** `e03d2a9ad6be4dee8f11f49c823a01a4f9cc40f8`.  
+**Log analisado:** `N64-Android-logs-1793607289350.txt`, enviado à branch `main`; blob SHA `b4aa756f75a4604c4b0a3e0972b5b0aed8978f62`.  
+**Tamanho:** 1.272.519 caracteres; 9.855 linhas.
+
+### 46.1. Resumo da execução
+
+- ROM em memória: 12.582.912 bytes.
+- HLE preparado: 1.048.576 bytes.
+- CPU: 26.516.570 instruções no resumo final.
+- RSP: 0 instruções.
+- Frames VI publicados: 0.
+- SP: nenhum acesso MMIO registrado; nenhuma transferência DMA SP.
+- DPC: START/END/CURRENT = 0; nenhum comando processado.
+- Painel registra PC `0x70000720`, última instrução em `0x7000071C`, word `0x1000FFFF`.
+- A instrução `0x1000FFFF` é `BEQ $zero,$zero,-1`, um desvio incondicional para o próprio endereço; amostras repetidas confirmam que o processador permanece nesse loop.
+
+### 46.2. Progresso importante: refill inicialmente inválido, depois válido
+
+A falha inicial reportada é `TLB MISS FETCH VA=0x7F0BCC28`, EPC indicado no painel como `0x7F0BCC28`. O histórico mostra o primeiro refill instalando temporariamente EntryLo0=`0x1` e EntryLo1=`0x41`, ambos sem bit Valid. Isso corresponde ao primeiro estado inválido da página, não ao estado final de toda a execução.
+
+Mais adiante, o histórico registra:
+- `TLBWR` para EntryHi `0x7F0BC000`.
+- EntryLo0=`0x0000DB9F`.
+- EntryLo1=`0x0000DBDF`.
+- Entrada TLB final mostrada no dump: índice 28, VPN2 `0x7F0BC000`, Lo0 `0xDB87` no snapshot do painel e histórico de refill `0xDB9F/0xDBDF` em outra amostra.
+
+Os valores de EntryLo `0xDB9F` e `0xDBDF` têm bit Valid ativo e PFNs `0x36E` e `0x36F`, respectivamente. Portanto, a tradução do par de páginas virtuais `0x7F0BC000/0x7F0BD000` passa a apontar para as páginas físicas `0x36E000/0x36F000`.
+
+### 46.3. Correlação PI DMA com a página que passou a executar
+
+O log lista cinco transferências PI de 8 KiB:
+- ROM `0x34B30` → RDRAM `0x340000`.
+- ROM `0xE6B30` → RDRAM `0x398000`.
+- ROM `0x102B30` → RDRAM `0x37A000`.
+- ROM `0x104B30` → RDRAM `0x39A000`.
+- ROM `0xF0B30` → RDRAM `0x36E000`.
+
+A última transferência cobre exatamente as páginas físicas `0x36E000–0x36FFF F` (8 KiB), que correspondem aos PFNs presentes no TLBWR válido para o par virtual `0x7F0BC000/0x7F0BD000`. O offset `0xC28` da falha virtual corresponde a PA `0x36EC28` sob essa tradução.
+
+Além disso, o trace contém instruções executadas em PCs `0x7F0BCC48`, `0x7F0BCC80`, `0x7F0BCC84`, `0x7F0BCC98` e seguintes. Isso demonstra que o fluxo chegou a executar código na região virtual depois da instalação da tradução válida. A primeira mensagem de TLB MISS do painel é, portanto, um evento anterior do histórico e não prova que a tradução permaneceu inválida até o fim.
+
+**Conclusão limitada:** há forte evidência de que o caminho de carregamento PI e o refill TLB conseguiram disponibilizar pelo menos essa página nesta execução. A correlação entre DMA e PFN é exata para a última transferência, mas o log não registra explicitamente `MI_INTR_PI`, `Cause.IP2`, exceção externa `ExcCode=0` nem escrita em `PI_STATUS_REG`. Assim, não é possível atribuir causalmente o progresso à nova entrega de interrupção MI apenas com este arquivo.
+
+### 46.4. Bloqueio atual após o progresso de TLB
+
+Apesar da execução de código na região `0x7F0BC000`, não há atividade de SP/RSP, nenhuma OSTask/DMA SP observada, nenhum comando DPC/RDP e nenhum frame VI. O painel final mostra o CPU em loop próprio na ROM:
+- PC atual reportado: `0x70000720`.
+- Instrução anterior: `0x1000FFFF` em `0x7000071C`.
+- As amostras repetidas do trace mostram a mesma instrução, compatível com loop infinito.
+
+O próximo foco deve ser descobrir por que a ROM chega a esse loop após executar o código carregado: rastrear o caminho de retorno para `0x7000071C`, os registradores/condições que o antecedem e se o loop aguarda algum evento que ainda não está sendo produzido. Também é necessário descobrir por que o SO ainda não inicia tarefas SP/RSP ou escreve comandos DPC.
+
+### 46.5. Instrumentação necessária na próxima execução
+
+1. Registrar eventos PI de forma explícita: conclusão DMA, `MI_INTR_REG` antes/depois, máscara MI, `Cause.IP2`, entrada em exceção externa e limpeza via `PI_STATUS_REG`.
+2. Registrar escritas/leituras das PTEs que alimentam o refill de `0x7F0BC000`, com endereço físico, valor e timestamp/ordem.
+3. Rastrear instruções e registradores em torno de `0x70000700–0x70000730`, incluindo delay slot e origem de cada retorno ao loop.
+4. Capturar transições de SP_STATUS, SP_MEM_ADDR, SP_DRAM_ADDR, SP DMA, OSTask descriptor, DPC START/END e VI_CURRENT.
+5. Não alterar PFN, bit Valid, algoritmo TLB, nem suprimir exceções com base apenas neste log.
+
+### 46.6. Estado e validação
+
+- Análise do novo log concluída; nenhuma alteração Kotlin foi feita nesta etapa.
+- O CI do commit de testes `d8a2f82daee59bf8b14c92e7579ca61a37d03560` foi confirmado como `success` no run `41410860386`.
+- HEAD da branch de trabalho/documentação antes deste registro: `e03d2a9ad6be4dee8f11f49c823a01a4f9cc40f8`.
+- O log novo não contém os campos explícitos de interrupção MI/COP0 necessários para provar que a IRQ PI foi entregue.
+- Nenhum frame real foi publicado; não declarar compatibilidade visual com GoldenEye.
+- Nenhum APK foi instalado/testado por esta análise.
+- A branch `main` não foi modificada por esta etapa; o log já havia sido enviado pelo usuário a essa branch. Este registro será gravado somente em `dev/n64-clean-start`.
