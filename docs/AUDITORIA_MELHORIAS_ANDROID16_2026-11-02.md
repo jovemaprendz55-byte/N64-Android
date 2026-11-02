@@ -81,3 +81,17 @@
 - Alterações de integração HLE e seu teste estão nos commits 710b13d e f529f3f; aguardar CI do HEAD mais recente antes de distribuir APK.
 - COP1 ainda é parcial: aritmética FPU, conversões, comparações, LWC1/LDC1/SWC1/SDC1 quando CU1 está habilitado e semântica completa de FCR31 não estão implementadas.
 - Nenhum teste automatizado substitui execução de ROM real no aparelho Android 16.
+
+## Auditoria COP0 — privilégio de acesso — 2026-11-02
+
+### Defeito confirmado e correção enviada
+- A decodificação COP0 aceitava MFC0/MTC0/TLBR/TLBWI/TLBWR/TLBP/ERET sem verificar o modo de privilégio.
+- No VR4300, CP0 é sempre utilizável em Kernel mode; em User/Supervisor mode depende de Status.CU0. Com CU0=0, a instrução COP0 deve gerar Coprocessor Unusable (ExcCode 11, Cause.CE=0).
+- A instrução CACHE (opcode 0x2F) compartilha a restrição de acesso a CP0; a verificação é feita antes do decoder para não cair incorretamente em Reserved Instruction quando CU0 está indisponível.
+- A detecção de Kernel mode considera KSU=00 ou EXL/ERL ativos, conforme o manual NEC VR4300.
+- Testes adicionados para User mode, Supervisor mode e acesso permitido em Kernel mode com CU0=0.
+
+### Referência arquitetural e limites
+- Referência: NEC MIPS VR4300 Microprocessor User's Manual, capítulo 4, Status Register, especialmente páginas 98–101 (CU0, KSU, EXL/ERL e modos de operação).
+- Esta alteração não implementa ainda a execução funcional das operações CACHE nem a validação completa de todos os campos reservados de Status.
+- Aguardando CI verde para considerar a correção aprovada.
