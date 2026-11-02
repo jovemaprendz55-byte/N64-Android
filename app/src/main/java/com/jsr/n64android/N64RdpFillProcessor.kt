@@ -174,10 +174,8 @@ class N64RdpFillProcessor(
                 )
             }
             check(colorImageWidth > 0) { "SetColorImage must precede a triangle." }
-            check(colorImageSize == IMAGE_SIZE_16) {
-                "Flat triangle rasterization currently requires an RGBA16 color image."
-            }
-            val availableHeight = (rdramSize - colorImageAddress) / (colorImageWidth * 2)
+            val bytesPerPixel = if (colorImageSize == IMAGE_SIZE_16) 2 else 4
+            val availableHeight = (rdramSize - colorImageAddress) / (colorImageWidth * bytesPerPixel)
             require(availableHeight > 0) { "Triangle color image has no available RDRAM rows." }
             val height = minOf(N64ViFramebufferReader.MAX_HEIGHT, availableHeight)
             val setup = N64RdpTriangleSetup.decode(packet)
@@ -189,6 +187,8 @@ class N64RdpFillProcessor(
                 width = colorImageWidth,
                 height = height,
                 colorRgba5551 = rgba8888ToRgba5551(primitiveColor),
+                colorImageSize = colorImageSize,
+                colorRgba8888 = primitiveColor,
                 clipLeft = scissorLeft,
                 clipTop = scissorTop,
                 clipRightExclusive = minOf(scissorRight, colorImageWidth),
