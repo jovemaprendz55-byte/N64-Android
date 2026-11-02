@@ -120,4 +120,37 @@ class N64RspVectorUnitTest {
         assertEquals(0, unit.readLane(3, 2))
     }
 
+
+    @Test fun snapshotRestoresVectorRegistersAccumulatorAndFlags() {
+        val source = N64RspVectorUnit()
+        source.writeLane(7, 3, 0xABCD)
+        source.writeLane(8, 3, 0x1234)
+        source.addCarry(9, 7, 8)
+        source.setCompareFlags(0x12, 0x34, 0x56)
+        val saved = source.snapshot()
+
+        val resumed = N64RspVectorUnit()
+        resumed.restore(saved)
+
+        assertEquals(saved, resumed.snapshot())
+        assertEquals(0xBE01, resumed.readLane(9, 3))
+        assertEquals(0xABCD + 0x1234, resumed.readAccumulator(3).toInt())
+    }
+
+    @Test fun invalidSnapshotDoesNotPartiallyMutateVectorState() {
+        val unit = N64RspVectorUnit()
+        unit.writeLane(1, 2, 0xCAFE)
+        val before = unit.snapshot()
+        val invalid = before.copy(
+            registers = before.registers.mapIndexed { index, lanes ->
+                if (index == 31) lanes.drop(1) else lanes
+            }
+        )
+
+        org.junit.Assert.assertThrows(IllegalArgumentException::class.java) {
+            unit.restore(invalid)
+        }
+        assertEquals(before, unit.snapshot())
+    }
+
 }
