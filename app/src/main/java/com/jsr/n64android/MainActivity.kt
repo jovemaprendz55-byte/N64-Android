@@ -1750,14 +1750,14 @@ class MainActivity : Activity() {
                         }
                         val metadata = try {
                             if (result.rom.byteSize >= 0x60) {
-                                "\\n\\n" + N64RomInspector.inspect(result.rom.bytes).toDisplayText()
+                                "\n\n" + N64RomInspector.inspect(result.rom.bytes).toDisplayText()
                             } else ""
                         } catch (_: Exception) { "" }
-                        status.text = "JOGO SELECIONADO\\n$displayName" +
-                            "\\nTamanho: ${result.rom.byteSize} bytes" +
-                            "\\nFormato: ${result.rom.format}" +
+                        status.text = "JOGO SELECIONADO\n$displayName" +
+                            "\nTamanho: ${result.rom.byteSize} bytes" +
+                            "\nFormato: ${result.rom.format}" +
                             metadata +
-                            "\\n\\nROM pronta. Toque em INICIAR JOGO para testar a execução experimental."
+                            "\n\nROM pronta. Toque em INICIAR JOGO para testar a execução experimental."
                     }
                     is RomLoadResult.Failure -> {
                         if (restoring) getSharedPreferences(ROM_PREFS, MODE_PRIVATE).edit().remove(KEY_LAST_ROM_URI).apply()
