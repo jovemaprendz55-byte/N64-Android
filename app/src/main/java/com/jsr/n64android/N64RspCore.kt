@@ -216,6 +216,9 @@ class N64RspCore(private val bus: N64Bus) {
         when (instruction and 63) {
             0x10 -> vectorUnit.add(vd, vs, vt, element) // VADD
             0x11 -> vectorUnit.subtract(vd, vs, vt, element) // VSUB
+            0x13 -> vectorUnit.absolute(vd, vs, vt, element) // VABS
+            0x14 -> vectorUnit.addCarry(vd, vs, vt, element) // VADDC
+            0x15 -> vectorUnit.subtractCarry(vd, vs, vt, element) // VSUBC
             0x28 -> vectorUnit.and(vd, vs, vt, element) // VAND
             0x2A -> vectorUnit.or(vd, vs, vt, element) // VOR
             0x2B -> vectorUnit.nor(vd, vs, vt, element) // VNOR
