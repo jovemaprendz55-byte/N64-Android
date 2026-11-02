@@ -503,3 +503,39 @@ Commits:
 - `f8458bbe23c0c3d2a55a45b68869a347a278a97d` — ajuste da asserção de PC no teste.
 
 CI da correção TLB `d0029fa8a96ed33ef412c2c53b4ee3cd00d60f4d`: success. CI dos commits de contexto ainda em execução na última consulta. Próximo passo: ligar o snapshot ao kernel HLE em um dispatcher explícito sem fingir que isso já é ABI guest; depois implementar layouts guest OSThread validados.
+
+
+## 17. Expansão incremental HLE / RSP / RDP (2026-11-02)
+
+### HLE + CPU R4300
+- Adicionado `N64HleCpuScheduler`: registra contexto inicial por thread, salva contexto ativo e restaura o contexto da próxima thread em yield, bloqueio e término.
+- Adicionados `startThread()` e `runQuantum(maxInstructions)`: execução cooperativa limitada por orçamento de instruções, sempre entre fronteiras de instrução. Não é preempção por timer.
+- O scheduler exige contexto inicial explícito com PC igual ao entry point; ainda não constrói estruturas guest `OSThread`, stack ABI, nem intercepta chamadas libultra.
+- Teste adicional executa instruções guest em quantum limitado e verifica registradores/PC.
+
+### RSP
+- Adicionado VMULF (multiplicação vetorial fracionária signed): produto dobrado, bias de arredondamento 0x8000, acumulador de 48 bits e saturação signed 16-bit.
+- Decoder COP2 vector agora despacha funct 0x00 para VMULF.
+- Testes de aritmética, acumulador, saturação e decode adicionados.
+- Ainda faltam VMULU, famílias VMUD/VMAC, comparações/seleção, muitas operações de memória e microcódigos gráficos completos.
+
+### RDP
+- Rasterizador de triângulo flat agora aceita color image RGBA16 e RGBA32.
+- Para RGBA32 grava os 32 bits RGBA da primitive color; RGBA16 continua usando conversão RGBA5551.
+- Mantidas limitações: sem textura, Z, coverage, blender, combiner, perspectiva e edge rules completos. Triângulo flat é subconjunto experimental, não compatibilidade geral.
+
+### TLB
+- O modelo já tinha 32 entradas, PageMask variável suportado, ASID/global, faults MISS/INVALID/MODIFIED, probe, metadados, snapshot/restore atômico.
+- CPU já implementa TLBR, TLBWI, TLBWR e TLBP em subset COP0. A próxima ampliação deve validar semântica Random/Wired e testes de exceção/refill; não declarar MMU completa.
+
+Commits desta etapa:
+- `8fb8ae5` — VMULF vector unit.
+- `0262eeb` — decode VMULF.
+- `618dc92` — rasterizer RGBA32.
+- `d705681` — dispatch RDP RGBA32.
+- `45bfa43` — execução cooperativa HLE/CPU.
+- `fea39d4` — teste triângulo RGBA32.
+- `0cac748` — teste VMULF.
+- `9debc82` — teste decode VMULF.
+- `2dbfce7` — teste quantum HLE.
+- CI do commit final desta etapa ainda precisa ser conferida.
