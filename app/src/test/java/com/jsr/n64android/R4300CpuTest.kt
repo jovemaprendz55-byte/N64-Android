@@ -4454,7 +4454,7 @@ class R4300CpuTest {
         assertEquals(0x55667788, memory.read32(16))
     }
 
-    @Test fun vr4300ScDoesNotClearLlbitByItself() {
+    @Test fun vr4300ScConsumesLlbitAfterTheFirstAttempt() {
         val memory = N64Memory(64)
         memory.write32(0, iType(0x30, 1, 2, 0)) // LL
         memory.write32(4, iType(0x38, 1, 2, 0)) // SC
@@ -4468,11 +4468,14 @@ class R4300CpuTest {
         cpu.gpr[2] = 0x55667788L
         cpu.step()
         assertEquals(1L, cpu.gpr[2])
+        assertEquals(0x55667788, memory.read32(16))
+
         cpu.gpr[2] = 0x12345678L
         cpu.step()
 
-        assertEquals(1L, cpu.gpr[2])
-        assertEquals(0x12345678, memory.read32(16))
+        // The first SC consumed the reservation; a second SC must fail.
+        assertEquals(0L, cpu.gpr[2])
+        assertEquals(0x55667788, memory.read32(16))
     }
 
     @Test fun scWithoutPriorLlFailsAndDoesNotWrite() {
