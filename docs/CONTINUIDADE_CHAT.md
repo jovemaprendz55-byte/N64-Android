@@ -489,3 +489,17 @@ Commits:
 Documento: `docs/HLE_TLB_EXPANSAO_2026-11-02.md`.
 
 Limite: TLB snapshot não é ainda contexto completo R4300; kernel permanece host-side e não intercepta ABI guest. CI desses commits precisa terminar antes de declarar aprovação.
+
+
+## 16. Snapshot/restauração de contexto R4300 (2026-11-02)
+
+Adicionados `R4300Cpu.snapshotContext()` e `restoreContext()` para capturar/restaurar GPR, HI/LO, COP0, FPR/FCR, TLB, TLB enable, PC, branch/delay slot pendente e estado interno Random/Wired. Restore valida estrutura/alinhamento antes de alterar estado, restaura TLB e limpa reserva LL/SC. Históricos diagnósticos não fazem parte do contexto.
+
+Testes cobrem MULT (HI/LO), TLB, COP0/FPR/FCR e um J com delay slot pendente, além de rejeição de snapshots inválidos sem mutação.
+
+Commits:
+- `36c8fda2437107336344784efa6ae37dd8e12e35` — snapshot/restore do contexto R4300.
+- `a69726cc6a93b7137e60b0825d6a9341f16e5128` — testes de contexto.
+- `f8458bbe23c0c3d2a55a45b68869a347a278a97d` — ajuste da asserção de PC no teste.
+
+CI da correção TLB `d0029fa8a96ed33ef412c2c53b4ee3cd00d60f4d`: success. CI dos commits de contexto ainda em execução na última consulta. Próximo passo: ligar o snapshot ao kernel HLE em um dispatcher explícito sem fingir que isso já é ABI guest; depois implementar layouts guest OSThread validados.
