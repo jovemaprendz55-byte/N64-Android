@@ -1197,7 +1197,8 @@ class R4300CpuTest {
             virtualPagePairBase = 0x00400000L,
             asid = 7,
             evenPage = R4300Tlb.Page(1, valid = true, dirty = true, global = true),
-            oddPage = R4300Tlb.Page(2, valid = true, dirty = true, global = true)        ))
+            oddPage = R4300Tlb.Page(2, valid = true, dirty = true, global = true)
+        ))
         cpu.cop0[10] = 0x00400005L // ASID 5 differs, but both G bits allow a match.
         cpu.setProgramCounter(0)
 
@@ -2396,7 +2397,8 @@ class R4300CpuTest {
 
         assertEquals(0x89ABCDEFu.toLong(), memory.read32(0x1000).toUInt().toLong())
         assertEquals(4L, cpu.pc)
-        assertEquals(0L, cpu.cop0[13] and (0x1FL shl 2)) // No exception was raised.    }
+        assertEquals(0L, cpu.cop0[13] and (0x1FL shl 2)) // No exception was raised.
+    }
 
 
     @Test fun loadsUnsignedWordZeroExtendsHighBitThroughValidOddTlbPage() {
@@ -3595,7 +3597,8 @@ class R4300CpuTest {
         memory.write32(0, cop0Co(0x01)) // TLBR
         val cpu = R4300Cpu(memory)
         cpu.cop0[0] = 11L // Index selects an unwritten entry.
-        cpu.cop0[10] = 0x00600025L        cpu.cop0[2] = 0x00012347L
+        cpu.cop0[10] = 0x00600025L
+        cpu.cop0[2] = 0x00012347L
         cpu.cop0[3] = 0x00023456L
         cpu.setProgramCounter(0)
 
@@ -4878,7 +4881,7 @@ class R4300CpuTest {
         ))
         cpu.tlbEnabled = true
 
-        cpu.setProgramCounter(0) // Start this isolated CPU test at the supplied instruction buffer.
+        cpu.setProgramCounter(0)
         cpu.step() // MULT updates HI/LO.
         cpu.step() // J leaves its delay slot pending.
         val saved = cpu.snapshotContext()
