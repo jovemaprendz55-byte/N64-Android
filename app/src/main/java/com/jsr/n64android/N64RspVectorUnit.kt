@@ -189,6 +189,26 @@ class N64RspVectorUnit {
         vcoHigh = 0
     }
 
+    /**
+     * Signed fractional multiply with unsigned destination saturation (VMULU).
+     * The product and 48-bit accumulator match VMULF; only the destination
+     * interpretation differs: the rounded high half is clamped to 0..65535.
+     */
+    fun multiplyFractionalUnsigned(destination: Int, left: Int, right: Int, element: Int = 0) {
+        checkVector(destination); checkVector(left); checkVector(right)
+        require(element in 0..15)
+        for (lane in 0..7) {
+            val product = signed(registers[left][lane]).toLong() *
+                signed(selectedLane(right, lane, element)).toLong()
+            val accumulated = signExtend48((product shl 1) + 0x8000L)
+            accumulator[lane] = accumulated
+            val rounded = (accumulated shr 16).coerceIn(0L, 0xFFFFL)
+            registers[destination][lane] = rounded.toInt()
+        }
+        vcoLow = 0
+        vcoHigh = 0
+    }
+
     /** Unsigned lane addition: stores low 16 bits and records carry-out in VCO low. */
     fun addCarry(destination: Int, left: Int, right: Int, element: Int = 0) {
         checkVector(destination); checkVector(left); checkVector(right)
