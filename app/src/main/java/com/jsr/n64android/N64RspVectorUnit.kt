@@ -119,6 +119,60 @@ class N64RspVectorUnit {
     fun nor(destination: Int, left: Int, right: Int, element: Int = 0) =
         logical(destination, left, right, element) { a, b -> (a or b).inv() }
 
+    /** Unsigned lane addition: stores low 16 bits and records carry-out in VCO low. */
+    fun addCarry(destination: Int, left: Int, right: Int, element: Int = 0) {
+        checkVector(destination); checkVector(left); checkVector(right)
+        require(element in 0..15)
+        var carries = 0
+        for (lane in 0..7) {
+            val a = registers[left][lane]
+            val b = selectedLane(right, lane, element)
+            val sum = a + b
+            registers[destination][lane] = sum and 0xFFFF
+            accumulator[lane] = signExtend48(sum.toLong())
+            if (sum > 0xFFFF) carries = carries or (1 shl lane)
+        }
+        vcoLow = carries
+        vcoHigh = 0
+    }
+
+    /** Unsigned lane subtraction: VCO low records borrow and VCO high records inequality. */
+    fun subtractCarry(destination: Int, left: Int, right: Int, element: Int = 0) {
+        checkVector(destination); checkVector(left); checkVector(right)
+        require(element in 0..15)
+        var borrows = 0
+        var nonZero = 0
+        for (lane in 0..7) {
+            val a = registers[left][lane]
+            val b = selectedLane(right, lane, element)
+            val difference = a - b
+            registers[destination][lane] = difference and 0xFFFF
+            accumulator[lane] = signExtend48(difference.toLong())
+            if (a < b) borrows = borrows or (1 shl lane)
+            if (a != b) nonZero = nonZero or (1 shl lane)
+        }
+        vcoLow = borrows
+        vcoHigh = nonZero
+    }
+
+    /** Signed absolute/select operation used by the RSP VABS instruction. */
+    fun absolute(destination: Int, signSource: Int, valueSource: Int, element: Int = 0) {
+        checkVector(destination); checkVector(signSource); checkVector(valueSource)
+        require(element in 0..15)
+        for (lane in 0..7) {
+            val sign = signed(registers[signSource][lane])
+            val value = signed(selectedLane(valueSource, lane, element))
+            val result = when {
+                sign < 0 -> -value
+                sign > 0 -> value
+                else -> 0
+            }
+            val saturated = result.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+            registers[destination][lane] = saturated and 0xFFFF
+            accumulator[lane] = signExtend48(result.toLong())
+        }
+    }
+
     /** Explicit flag injection is useful for testing carry/borrow data paths. */
     fun setVco(low: Int, high: Int = 0) {
         vcoLow = low and 0xFF
