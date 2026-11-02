@@ -52,6 +52,40 @@ class N64RomVideoSessionTest {
     }
 
     @Test
+    fun advancesViAndDeliversScanlineInterruptDuringCpuExecution() {
+        val memory = N64Memory(0x2000)
+        memory.write32(0, 0) // NOP at KSEG0 start.
+        val bus = N64Bus(ram = memory)
+        bus.write32(N64Bus.MI_INTR_MASK_REG, N64Bus.MI_INTR_MASK_VI_SET)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_INTR_OFFSET, 1)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_SYNC_OFFSET, 525)
+
+        val cpu = R4300Cpu(bus)
+        val startPc = 0xFFFFFFFF80000000UL.toLong()
+        cpu.setProgramCounter(startPc)
+        cpu.cop0[12] = 0x401L // IE=1 and IM[2]=1.
+
+        val session = N64RomVideoSession(
+            bus = bus,
+            cpu = cpu,
+            instructionLimit = N64Bus.VI_INSTRUCTIONS_PER_SCANLINE + 1L,
+            batchSize = 128,
+            rspPollInterval = 100_000,
+            framePollInterval = 100_000,
+            onFrame = {}
+        )
+
+        val result = session.execute()
+
+        assertEquals(N64ExecutionSession.State.COMPLETED, result.state)
+        assertEquals(N64Bus.VI_INSTRUCTIONS_PER_SCANLINE + 1L, result.executedInstructions)
+        assertEquals(0, cpu.lastExceptionCode)
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+        assertTrue((cpu.cop0[13] and (1L shl 10)) != 0L)
+        assertEquals(N64Bus.MI_INTR_VI, bus.read32(N64Bus.MI_INTR_REG) and N64Bus.MI_INTR_VI)
+    }
+
+    @Test
     fun reportsCpuProgressEvenWhenNoViFrameExists() {
         val memory = N64Memory(64)
         memory.write32(0, 0x08000000)
