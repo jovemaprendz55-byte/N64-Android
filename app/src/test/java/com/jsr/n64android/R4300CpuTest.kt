@@ -63,13 +63,56 @@ class R4300CpuTest {
         cpu.setProgramCounter(startPc)
         cpu.gpr[9] = 0x08000508L
 
-        assertThrows(UnsupportedOperationException::class.java) { cpu.step() }
+        cpu.step()
 
+        assertEquals(7L, (cpu.cop0[13] ushr 2) and 0x1FL) // DBE.
+        assertEquals(startPc, cpu.cop0[14])
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+        assertEquals("READ", cpu.lastExceptionAccessType)
         assertEquals(startPc, cpu.diagnosticInstructionAddress)
         assertEquals(instruction, cpu.diagnosticInstructionWord)
         assertEquals(0x08000508L, cpu.diagnosticVirtualAddress)
         assertEquals(0x08000508, cpu.diagnosticPhysicalAddress)
         assertEquals("READ", cpu.diagnosticAccessType)
+    }
+
+    @Test fun unmappedInstructionFetchRaisesInstructionBusError() {
+        val bus = N64Bus(ram = N64Memory(8 * 1024))
+        val cpu = R4300Cpu(bus)
+        val startPc = 0xFFFFFFFF80008000UL.toLong()
+        cpu.setProgramCounter(startPc)
+
+        cpu.step()
+
+        assertEquals(6L, (cpu.cop0[13] ushr 2) and 0x1FL) // IBE.
+        assertEquals(startPc, cpu.cop0[14])
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+        assertEquals("FETCH", cpu.lastExceptionAccessType)
+        assertEquals(startPc, cpu.diagnosticVirtualAddress)
+        assertEquals(0x8000, cpu.diagnosticPhysicalAddress)
+        assertEquals("FETCH", cpu.diagnosticAccessType)
+        assertEquals(null, cpu.diagnosticInstructionWord)
+    }
+
+    @Test fun unmappedDataReadInBranchDelaySlotRaisesBusErrorWithBranchEpc() {
+        val bus = N64Bus(ram = N64Memory(8 * 1024))
+        val branch = iType(0x04, 0, 0, 2) // beq $zero, $zero, target
+        val load = iType(0x23, 9, 8, 0) // lw $t0, 0($t1)
+        bus.write32(0, branch)
+        bus.write32(4, load)
+        val cpu = R4300Cpu(bus)
+        val startPc = 0xFFFFFFFF80000000UL.toLong()
+        cpu.setProgramCounter(startPc)
+        cpu.gpr[9] = 0x08000508L
+
+        cpu.step()
+        cpu.step()
+
+        assertEquals(7L, (cpu.cop0[13] ushr 2) and 0x1FL) // DBE.
+        assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L) // BD.
+        assertEquals(startPc, cpu.cop0[14]) // EPC points to the branch, not the load.
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+        assertEquals("READ", cpu.lastExceptionAccessType)
     }
 
     @Test fun indirectJumpDiagnosticSurvivesSubsequentInstructions() {
