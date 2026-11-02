@@ -29,6 +29,38 @@ class N64HleCpuScheduler(
         contexts[threadId] = context
     }
 
+    /** Starts a registered stopped thread without inventing guest ABI memory. */
+    @Synchronized
+    fun startThread(threadId: Int) {
+        check(threadId in contexts) { "Register an initial R4300 context before starting thread $threadId." }
+        kernel.startThread(threadId)
+    }
+
+    /**
+     * Executes a bounded cooperative quantum for the active guest thread.
+     * The caller regains control after [maxInstructions] or when an HLE call
+     * blocks/terminates/yields the current thread. No preemption timer is implied.
+     */
+    @Synchronized
+    fun runQuantum(maxInstructions: Int): Int {
+        require(maxInstructions >= 0) { "Instruction budget must be non-negative." }
+        check(activeThreadId != null) { "Dispatch a runnable thread before executing a CPU quantum." }
+        var executed = 0
+        while (executed < maxInstructions) {
+            val current = kernel.currentThread()
+            if (current?.id != activeThreadId ||
+                current.state != N64HleOsKernel.ThreadState.RUNNING
+            ) break
+            cpu.step()
+            executed++
+            val after = kernel.currentThread()
+            if (after?.id != activeThreadId ||
+                after.state != N64HleOsKernel.ThreadState.RUNNING
+            ) break
+        }
+        return executed
+    }
+
     /** Selects the next runnable thread and restores its saved R4300 state. */
     @Synchronized
     fun dispatch(): N64HleOsKernel.ThreadSnapshot? {
