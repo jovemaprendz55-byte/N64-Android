@@ -2,20 +2,25 @@
 
 > Documento de passagem de contexto. Leia antes de alterar o código. Registre cada avanço real com data, horário, fuso, commit, arquivos, testes, CI e limitações.
 
-**Última organização deste documento:** 2026-11-01 às 18:03:00 (UTC−03:00, horário de Brasília).  
+**Última auditoria/organização:** 2026-11-02 (UTC−03:00; horário exato não registrado).  
 **Repositório:** https://github.com/jovemaprendz55-byte/N64-Android  
 **Branch de trabalho obrigatória:** `dev/n64-clean-start`  
 **Branch protegida:** `main` — não modificar, mesclar, resetar ou enviar commits sem autorização explícita.  
 **Arquivo:** `docs/CONTINUIDADE_CHAT.md`
 
-## Situação resumida
+## Situação resumida — estado auditado em 2026-11-02
 
-- O projeto continua sendo um emulador Nintendo 64 próprio para Android, em Kotlin.
-- O trabalho documentado mais recente avançou no caminho SP/OSTask → RSP, sincronização DPC/RDP e apresentação VI na tela Android.
-- CPU R4300, RSP, RDP, HLE, periféricos e vídeo continuam parciais; a existência de componentes e testes sintéticos não prova compatibilidade com jogos comerciais.
-- Ainda não há comprovação documentada de um frame real do GoldenEye 007 originado da execução completa da ROM.
-- O último registro técnico no fim deste documento inclui o bombeamento cooperativo do RSP, controles de execução experimental, diagnóstico contínuo, auditorias de vídeo/RSP/RDP e o teste RSP validado pelo CI #940.
-- O HEAD real da branch e o CI mais recente devem ser conferidos no GitHub antes de qualquer alteração de código. Os SHAs e builds antigos abaixo são histórico, não devem ser tratados automaticamente como HEAD/CI atuais.
+- **Branch obrigatória:** `dev/n64-clean-start`. **Não tocar na `main`** sem autorização explícita.
+- **HEAD documental/código confirmado nesta auditoria:** `cb444ce638c4b60cb70c803aaa8d5fffb8506690`.
+- **CI do HEAD:** workflow Android run `41420072821`, concluído com `success`. Isso valida o pipeline automatizado desse commit, não a compatibilidade do GoldenEye no aparelho.
+- **Último log analisado:** `N64-Android-logs-1793610943089.txt`, na `main`. Ele registra 34.147.851 instruções CPU, 0 instruções RSP, 0 frames publicados, SP em HALT sem acessos/dma e DPC zerado.
+- **Falhas TLB são evidência real, mas não há prova de que sejam a causa única do bloqueio gráfico.** O log anterior `1793607289350` mostra uma tradução posterior válida para `0x7F0BC000` e execução nessa região; o log `1793610943089` é outra sessão e mostra essa página ausente no snapshot do primeiro fault. Não misturar as duas capturas.
+- O R4300 já tem caminho básico de exceções TLB, TLBWI/TLBWR/TLBP/TLBR, ERET e entrega MI/IP2; isso não significa emulação completa MIPS III/VR4300.
+- O caminho PI→MI→CPU e a temporização VI aproximada foram implementados e passaram por CI. VI usa contagem de instruções, não ciclos reais.
+- Existem componentes de OSTask/bootstrap, RSP escalar/vetorial parcial e RDP experimental, mas a sessão de ROM não descobre nem agenda automaticamente uma OSTask. No log atual, a CPU não escreveu nos registradores SP/DPC.
+- **Não existe comprovação de frame real do GoldenEye.** Testes unitários, triângulos sintéticos, RSP/RDP isolados e CI verde não equivalem a jogo renderizado.
+- Esta auditoria é documental/estática: nenhum Kotlin foi alterado, nenhum APK foi instalado e a `main` não foi modificada.
+- O histórico abaixo é preservado; números de build, HEADs e estados de CI em seções antigas são registros históricos, não o estado atual.
 
 ## Índice rápido
 
@@ -56,7 +61,7 @@ A meta HLE não significa remover a emulação do hardware do N64. Continuam nec
 9. Depois de cada avanço significativo, atualizar este documento com commit, arquivos, testes, build, evidências, problemas e próximo passo.
 10. Não tratar uma build verde como prova de compatibilidade do jogo: ela prova apenas que os passos automatizados daquela build passaram.
 
-## 3. Estado atual confirmado
+## 3. Estado registrado em 2026-10-31 (histórico; não usar como estado atual)
 
 **Nota de histórico:** o commit abaixo era o estado registrado numa versão anterior deste documento; não é mais o HEAD atual.
 
@@ -65,7 +70,7 @@ A meta HLE não significa remover a emulação do hardware do N64. Continuam nec
 Make HLE entry fetch test use deterministic NOP payload
 ```
 
-**Estado atual confirmado na revisão de 2026-10-31 durante a etapa 43:** último commit de código conhecido `81f64a0190a993fc9917995f6792afc5557e349e`; última documentação anterior a este registro `cefe58ed989b8ac37d1488c4df9611910463aebf`. CI #714 passou para o novo componente; CI #717 ainda valida testes e integração completa. Consulte sempre o HEAD real da branch antes de continuar.
+**Snapshot histórico da revisão de 2026-10-31 durante a etapa 43 (superado pelos registros posteriores):** último commit de código conhecido `81f64a0190a993fc9917995f6792afc5557e349e`; última documentação anterior a este registro `cefe58ed989b8ac37d1488c4df9611910463aebf`. CI #714 passou para o novo componente; CI #717 ainda valida testes e integração completa. Consulte sempre o HEAD real da branch antes de continuar.
 
 O arquivo `N64HleBoot.kt` contém um handoff experimental que:
 
@@ -237,15 +242,20 @@ Links:
 - Preservar UI portrait e o botão de copiar log na página de diagnóstico.
 - Não presumir instalação do APK.
 
-## 9. Como o próximo chat deve continuar
+## 9. Como o próximo chat deve continuar — atualizado pela auditoria de 2026-11-02
 
-A primeira ação é ler este documento e conferir o HEAD real de `dev/n64-clean-start`. Confirmar o resultado de CI #717 antes de editar novamente. Inspecionar `N64HleCopyLoopTrace.kt`, seus testes e o fluxo `runHleBootDiagnostic()`.
+Antes de alterar código:
+1. Ler a situação resumida no início e as etapas 45–51 no fim.
+2. Confirmar o HEAD real e o status do CI em `dev/n64-clean-start`.
+3. Preservar a separação entre os logs `1793607289350`, `1793609634078` e `1793610943089`; são sessões diferentes.
+4. Não reimplementar PI→MI, entrega MI/IP2, ERET, temporização VI, decoder/runner SP/RSP ou instrumentação já existentes sem primeiro conferir o código e os testes atuais.
+5. Priorizar a reconstrução cronológica do refill TLB para `0x7F0BCC28` no log mais recente e, em uma linha independente, descobrir por que o software não submete OSTask nem escreve SP/DPC.
+6. Não forçar HALT, não fabricar OSTask/PFN/EntryLo, não desligar TLB e não afirmar que o jogo funciona sem frame real no aparelho.
+7. Após cada mudança de código, adicionar teste reproduzível, executar CI, registrar SHA/run/artefato e separar explicitamente validação automatizada de validação no aparelho.
 
-**Não alterar `main`. Não presumir que o APK foi instalado. Não dizer que GoldenEye ou outro jogo já funciona.**
+**Mensagem de arranque recomendada:**
 
-Mensagem de arranque recomendada:
-
-> Continue o projeto N64 Android a partir de `docs/CONTINUIDADE_CHAT.md` na branch `dev/n64-clean-start`. Confira o HEAD real e o CI #717 antes de editar. A etapa 43 extraiu `N64HleCopyLoopTrace` da Activity e adicionou testes para limites, amostragem e janela de 64 instruções após a saída do laço. Preserve o formato e a ordem dos logs. Continue com pequenas extrações testáveis, sem tocar em `main`. CI verde não comprova jogo funcionando no aparelho.
+> Continue o emulador N64 Android somente na branch `dev/n64-clean-start`. Leia primeiro a situação resumida e a auditoria etapa 51 de `docs/CONTINUIDADE_CHAT.md`. O HEAD documental atual registrado é `cb444ce638c4b60cb70c803aaa8d5fffb8506690`; confirme no GitHub antes de editar. Não tocar em `main`. O log mais recente confirma CPU ativa, RSP=0, SP sem acessos e DPC=0. Separe os três logs de 2/11; a tradução de `0x7F0BC000` foi válida em uma sessão e ausente no snapshot inicial de outra. Reconstrua o refill e investigue a ausência de submissão OSTask sem inventar tarefa nem alterar estado artificialmente.
 
 ## 10. Histórico de atualização deste documento
 
@@ -4905,3 +4915,86 @@ Portanto, não é correto dizer que o projeto simplesmente não possui tratament
 6. Criar testes unitários para qualquer divergência confirmada antes de alterar o comportamento da CPU.
 
 **Estado:** o log confirma TLB misses reais e ausência total de atividade SP/RSP/DPC/frame. O código já contém o caminho básico de exceções TLB; a causa da página não mapeada e a causa da ausência de OSTask permanecem abertas e devem ser investigadas separadamente. `main` não foi modificada.
+
+
+---
+
+## 51. Auditoria integral do documento de continuidade — 2026-11-02
+
+**Escopo:** leitura do documento completo na branch `dev/n64-clean-start`, conferência do histórico de commits do próprio documento, comparação dos registros recentes com o código atual e consulta dos workflows mais recentes.  
+**Documento auditado:** 4.908 linhas / aproximadamente 386 mil caracteres antes desta atualização.  
+**HEAD antes da auditoria:** `cb444ce638c4b60cb70c803aaa8d5fffb8506690`.  
+**CI desse HEAD:** run `41420072821`, concluído com sucesso.  
+**Resultado:** auditoria documental e estática. Nenhum arquivo Kotlin foi alterado; nenhuma APK foi instalada; a branch `main` permaneceu intocada.
+
+### 51.1. Conclusões técnicas consolidadas
+
+1. **HLE:** o objetivo do projeto é iniciar sem executar IPL3. O fluxo atual `N64HleBoot.prepare` copia o payload para RDRAM e começa em KSEG0; a detecção CIC ainda consulta bytes do IPL3 para classificar a família, mas não o executa. Não confundir logs do antigo caminho IPL3 com logs do HLE atual.
+2. **CPU/TLB:** o código atual tem `R4300Tlb`, tradução por páginas pareadas/PageMask, faults MISS/INVALID/MODIFIED, tratamento em `enterTlbException`, COP0 TLBWI/TLBWR/TLBP/TLBR e ERET. A cobertura continua parcial e não equivale a uma MMU/CPU VR4300 completa.
+3. **PI/MI:** a lacuna histórica de conclusão PI e interrupção MI foi implementada depois do diagnóstico inicial. A conclusão PI levanta MI_INTR_PI, PI_STATUS limpa a interrupção, o bus agrega a linha MI e o R4300 reflete IP2/entrega a interrupção quando Status permite. Não reimplementar essa parte sem nova evidência de regressão.
+4. **VI:** o avanço de scanline e a IRQ VI estão integrados à sessão, mas a temporização é aproximada por contagem de instruções (5661 instruções por scanline), não por ciclos reais. A existência de VI/framebuffer sintético não prova scanout correto de jogo.
+5. **SP/OSTask/RSP:** existem decoder do descritor OSTask, bootstrap, runner, tracker de microcode, núcleo RSP escalar e subconjunto vetorial. Esses componentes são principalmente caminhos isolados/experimentais. A sessão contínua `N64RomVideoSession` apenas consulta SP_STATUS em polling; se HALT está ativo, não cria/agenda uma tarefa. O bootstrap/runner não são um scheduler automático da ROM.
+6. **DPC/RDP:** há parser/processamento parcial, pacote de triângulo e caminho sintético de rasterização, com testes. Isso não demonstra que a ROM tenha submetido uma display list nem que o pipeline comercial esteja completo.
+7. **Resultado real do GoldenEye:** nos logs recentes examinados não há execução RSP, comandos DPC nem frame VI publicado. O bloqueio observado está antes da execução do RSP, mas a causa raiz da ausência de submissão SP ainda não foi identificada.
+
+### 51.2. Achados de consistência e correções necessárias
+
+**A. Resumo e instruções iniciais estavam obsoletos — corrigido nesta atualização.**
+- O cabeçalho ainda dizia que a última organização era 2026-11-01 18:03 e citava o estágio do CI #940 como último avanço.
+- A seção 3 e a seção 9 ainda orientavam o próximo chat a confirmar CI #717 e continuar a extração do coletor HLE, apesar de haver dezenas de etapas posteriores.
+- O resumo inicial e a instrução de continuidade foram atualizados para o HEAD `cb444ce...`, CI `41420072821` e estado técnico atual.
+
+**B. Numeração duplicada e estrutura histórica confusa — identificado; histórico preservado.**
+- O documento contém uma sequência histórica inicial, depois etapas numeradas de novo (por exemplo, 1–41) e outra sequência 45–50.
+- Existem títulos de seções em inglês e português, além de títulos repetidos/ambíguos.
+- Não renumerar ou apagar automaticamente: commits e referências anteriores podem depender desses números. A solução segura é manter as seções antigas como arquivo cronológico e usar o resumo inicial + índice atualizado como entrada principal.
+
+**C. Contradição aparente entre logs TLB — esclarecida; não é uma contradição de uma mesma execução.**
+- Log `1793607289350` (etapa 46): há evidência de TLBWR válido para `0x7F0BC000` e execução de instruções em `0x7F0BCCxx` depois do refill.
+- Log `1793610943089` (etapa 50): em outra sessão, o snapshot capturado no primeiro fault em `0x7F0BCC28` não contém `0x7F0BC000`; há eventos posteriores de TLBWI que limpam entradas para VPN2 `0x80000000`.
+- Não afirmar que o mapeamento está sempre inválido nem que a TLB está sempre correta. A pergunta útil é reconstruir a sequência temporal de PTE → EntryLo → TLBWR/TLBWI → probe/fetch para cada log separadamente.
+
+**D. Hipótese PI sem IRQ — superada como lacuna de implementação, ainda exige validação de ROM.**
+- A etapa 45.1–45.6 documenta corretamente o estado anterior à implementação PI/MI.
+- As etapas 45.7–45.9 registram a implementação posterior e os testes/CI. A etapa 48 confirma o caminho geral de entrega de interrupção/ERET.
+- Ler a etapa 45 inteira em ordem; não tomar 45.6 como estado atual nem tratar a correção como prova de que a ROM completou todo o fluxo PI.
+
+**E. Comentários KDoc do código estão desatualizados — pendência de manutenção, não corrigida nesta auditoria.**
+- O cabeçalho de `R4300Cpu.kt` ainda afirma que a entrega completa de exceções COP0/TLB não está ligada, e o comentário de `tlb` diz que o modelo é opt-in até as exceções arquiteturais serem ligadas. O código abaixo já contém `enterTlbException`, TLBWI/TLBWR/TLBP/TLBR e ERET; `N64HleBoot.prepare` ativa `cpu.tlbEnabled = true`.
+- O cabeçalho de `N64Bus.kt` ainda lista interrupções como ausentes, embora o arquivo contenha MI/PI/VI e a linha agregada MI.
+- O KDoc de `N64RomVideoSession` diz que o agendamento RSP não é implicado pela sessão; a formulação precisa ser mais exata: ela faz polling e execução cooperativa do RSP quando SP já foi liberado, mas não descobre nem agenda OSTask.
+- Recomenda-se corrigir apenas os comentários em commit separado, sem alterar comportamento, com revisão do diff e CI.
+
+### 51.3. Evidências e limites que devem ser preservados
+
+- **CI verde:** comprova compilação/testes automatizados daquele SHA e upload de artefato quando o job correspondente passa; não comprova jogo funcionando no aparelho.
+- **Testes sintéticos:** comprovam os contratos isolados cobertos pelos testes; não comprovam que GoldenEye submete OSTask nem que gera frame.
+- **Logs:** são snapshots de sessões distintas. Registrar sempre nome exato, ROM, tamanho, SHA do APK quando conhecido, data, contagem CPU/RSP/frame e estado final SP/DPC.
+- **Aparelho:** até esta auditoria, não há confirmação de instalação/teste da APK gerada pelo run `41420072821`.
+- **Branch:** a `main` contém logs enviados pelo usuário; isso não autoriza commits de código/documentação nela. O trabalho permanece em `dev/n64-clean-start`.
+
+### 51.4. Prioridades técnicas resultantes da auditoria
+
+**Prioridade 1 — reconstruir TLB no log mais recente, sem presumir defeito na MMU.**
+- Ler a sequência completa do primeiro fault em `0x7F0BCC28`, incluindo PTE lida, valor físico, EntryHi/Context, EntryLo0/1, índice Random/Wired, TLBWR/TLBWI e eventual TLBP.
+- Identificar se o handler de refill tenta mapear a página, se escreve uma entrada inválida, se outra rotina limpa a entrada, ou se o snapshot é apenas anterior ao refill.
+- Comparar com a sessão `1793607289350`, onde a mesma página virtual chegou a executar depois de um refill válido.
+- Adicionar teste só depois de identificar uma divergência arquitetural reproduzível.
+
+**Prioridade 2 — descobrir por que não há submissão de OSTask.**
+- Rastrear a CPU antes e depois do retorno ao loop `0x7000071C`, incluindo GPRs, pilha, chamadas de scheduler/threads e estruturas de fila.
+- Verificar se o fluxo do sistema operacional inicializa thread gráfica/áudio e se a fila recebe descritor válido.
+- Instrumentar contagem total e eventos de escritas SP/DPC sem depender apenas de um buffer limitado.
+- Não chamar `N64SpTaskRunner.startAndRun` com endereço inventado; não forçar SP_STATUS_HALT a ser limpo.
+
+**Prioridade 3 — limpar a documentação e os comentários.**
+- Manter uma única seção de estado atual no topo.
+- Tratar as etapas numeradas antigas como histórico imutável, evitando referências do tipo “última etapa” sem SHA/data.
+- Corrigir os KDocs obsoletos em commit separado.
+- Futuramente, considerar dividir o histórico em arquivo de arquivo cronológico e manter este documento como índice/estado atual, sem apagar evidências nem SHAs.
+
+### 51.5. Próxima ação recomendada
+
+Primeiro, fazer uma leitura cronológica completa do log `N64-Android-logs-1793610943089.txt` especificamente em torno de `0x7F0BCC28` e da rotina `0x7000D3EC`, correlacionando PTE, EntryLo e TLBWI. Em paralelo, preparar um rastro de scheduler/OSTask que revele por que o software nunca escreve nos registradores SP/DPC. Não alterar o comportamento da CPU até existir uma falha arquitetural reproduzível e um teste que a capture.
+
+**Estado final desta auditoria:** resumo e instruções de continuidade atualizados; contradições históricas qualificadas; pendências priorizadas. Nenhum código Kotlin alterado, nenhum APK instalado, nenhum commit na `main`.
