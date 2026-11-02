@@ -131,4 +131,24 @@ class N64HleOsKernelTest {
         assertFalse(os.sendMessage(6, 3L))
     }
 
+
+    @Test
+    fun diagnosticSnapshotListsThreadsAndQueuesWithoutChangingSchedulerState() {
+        val os = N64HleOsKernel()
+        os.createThread(2, 4, 0x80002000L)
+        os.createThread(1, 2, 0x80001000L)
+        os.createMessageQueue(7, 3)
+        os.sendMessage(7, 0x55L)
+        os.startThread(2)
+        val before = os.currentThread()
+        val report = os.diagnosticSnapshot()
+
+        assertNull(before)
+        assertEquals(listOf(1, 2), os.allThreadSnapshots().map { it.id })
+        assertTrue(report.contains("THREAD id=1 priority=2 state=STOPPED"))
+        assertTrue(report.contains("QUEUE id=7 capacity=3 messages=1"))
+        assertNull(os.currentThread())
+        assertEquals(N64HleOsKernel.ThreadState.RUNNABLE, os.threadSnapshot(2).state)
+    }
+
 }
