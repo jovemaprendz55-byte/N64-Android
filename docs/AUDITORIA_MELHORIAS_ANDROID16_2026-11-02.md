@@ -120,3 +120,22 @@
 - Testes atualizados para cobrir leituras byte/halfword/word e gravações em 0x07000720, mantendo 0x0700071C como caso de regressão.
 - Commit do teste: 2ffe1a1de8b760d7d246fe7eddd13c570d31fdbf.
 - A alteração é cobertura de teste, não mudança do código de execução. Aguardar CI verde; ainda não há validação no aparelho nem confirmação da tradução TLB real de 0x70000720.
+
+
+## Auditoria geral da execução R4300 — erro de barramento — 2026-11-02
+
+### Defeito confirmado e corrigido
+- A CPU deixava escapar UnsupportedOperationException quando N64Bus recebia uma leitura/gravação física sem mapeamento. Isso fazia a sessão de execução falhar no host em vez de entregar uma exceção arquitetural MIPS.
+- Corrigido em R4300Cpu.step(): falha de busca de instrução gera IBE (ExcCode 6); falha de acesso a dados gera DBE (ExcCode 7).
+- A correção preserva o endereço/instrução diagnósticos, preenche lastExceptionAccessType, atualiza Cause/EPC/EXL pelo caminho comum de exceção, seleciona o vetor geral e limpa o estado de delay slot pendente.
+- Não grava BadVAddr para bus error; BadVAddr permanece reservado aos tipos de exceção de endereço/TLB que o atual modelo já trata.
+
+### Testes de regressão adicionados
+- Leitura de dados sem mapeamento gera DBE e mantém VA/PA/instrução em diagnóstico.
+- Busca de instrução sem mapeamento gera IBE e registra FETCH.
+- DBE no delay slot preserva Cause.BD e EPC apontando para a instrução de branch.
+
+### Commits e validação
+- Código: 78977193bf4a7a346767d787adf7d02e9e660461.
+- Testes: a0d72640ff07dcf3058c4708daeeb2ade5783117.
+- Aguardar CI do HEAD atualizado. Nenhuma validação em dispositivo foi realizada nesta etapa.
