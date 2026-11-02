@@ -48,3 +48,16 @@ Semântica da API host-side: nas operações bloqueantes, retorno `false` (send)
 - Integração do kernel host-side com chamadas da ROM.
 
 Nenhuma destas alterações prova compatibilidade com ROM real nem execução no Poco C85. A validação depende do CI Android e, posteriormente, teste no dispositivo.
+
+
+## Contexto arquitetural R4300 para troca de threads
+
+Foi acrescentado a `R4300Cpu`:
+- `snapshotContext()` captura GPR, HI/LO, COP0, FPR/FCR, snapshot da TLB, TLB enable, PC e estado de branch/delay slot pendente, além do estado Random/Wired interno.
+- `restoreContext()` valida tamanhos dos bancos de registradores e alinhamento de PC/targets antes de restaurar; restaura a TLB de forma validada, preserva delay slot pendente e força GPR[0] a zero.
+- A reserva LL/SC é limpa ao restaurar contexto, para que uma reserva de uma thread anterior não seja carregada para outra.
+- Históricos diagnósticos não são parte do contexto arquitetural e não são restaurados.
+
+Testes cobrem ida/volta de contexto com MULT atualizando HI/LO, TLB preenchida, COP0/FPR/FCR e um J com delay slot pendente; também rejeitam PC desalinhado e bancos de registradores incompletos sem alterar o contexto atual.
+
+Limite importante: isto fornece snapshot/restore de estado arquitetural no limite entre instruções; ainda não é context switch integrado ao scheduler, não cria ABI guest OSThread e não prova compatibilidade com ROM.
