@@ -327,7 +327,7 @@ class MainActivity : Activity() {
                     writer.appendLine("=== ÚLTIMAS INSTRUÇÕES CPU (JANELA CIRCULAR) ===")
                     writer.appendLine(
                         activeSession?.diagnosticInstructionTraceSnapshot()?.takeLast(24)
-                            ?.joinToString("\\n") { entry ->
+                            ?.joinToString("\n") { entry ->
                                 "PC=0x${entry.pc.toULong().toString(16).uppercase().padStart(16, '0')} INST=0x${entry.instruction.toUInt().toString(16).uppercase().padStart(8, '0')}"
                             }?.ifBlank { "Nenhuma instrução capturada." } ?: "Sessão indisponível."
                     )
