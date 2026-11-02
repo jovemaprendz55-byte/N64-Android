@@ -242,4 +242,74 @@ class R4300TlbTest {
         assertEquals(null, tlb.probe(0x7F000BD0L, 0))
     }
 
+
+
+    @Test fun snapshotRestorePreservesAllSlotsAndTranslation() {
+        val original = R4300Tlb()
+        original.write(0, R4300Tlb.Entry(
+            0x00400000L, 7,
+            R4300Tlb.Page(0x12345, true, true, global = true),
+            R4300Tlb.Page(0x23456, true, false, global = true),
+            pageMask = 0x6000L
+        ))
+        original.write(31, R4300Tlb.Entry(
+            0x70000000L, 3,
+            R4300Tlb.Page(0x34567, true, true),
+            R4300Tlb.Page(0x45678, false, false)
+        ))
+        val snapshot = original.snapshot()
+
+        original.clear()
+        val restored = R4300Tlb()
+        restored.restore(snapshot)
+
+        assertEquals(32, restored.size)
+        assertEquals(original.snapshot(), restored.snapshot())
+        assertEquals(0x12345034, restored.translate(0x00400034L, 9, R4300Tlb.Access.READ))
+        assertEquals(31, restored.probe(0x70000000L, 3))
+    }
+
+    @Test fun restoreRejectsWrongSizeAndInvalidEntryWithoutPartialMutation() {
+        val tlb = R4300Tlb()
+        val stable = R4300Tlb.Entry(
+            0x10000L, 1,
+            R4300Tlb.Page(1, true, true),
+            R4300Tlb.Page(2, true, true)
+        )
+        tlb.write(0, stable)
+        val before = tlb.snapshot()
+
+        assertThrows(IllegalArgumentException::class.java) {
+            tlb.restore(R4300Tlb.Snapshot(listOf(null)))
+        }
+        assertEquals(before, tlb.snapshot())
+
+        val invalid = stable.copy(asid = 0x100)
+        val invalidSnapshot = R4300Tlb.Snapshot(
+            List(32) { index -> if (index == 0) invalid else null }
+        )
+        assertThrows(IllegalArgumentException::class.java) { tlb.restore(invalidSnapshot) }
+        assertEquals(before, tlb.snapshot())
+    }
+
+    @Test fun translationMetadataReportsSlotPageSizeAndGlobalMatch() {
+        val tlb = R4300Tlb()
+        tlb.write(12, R4300Tlb.Entry(
+            0x01000000L, 4,
+            R4300Tlb.Page(0x200, true, true, global = true),
+            R4300Tlb.Page(0x300, true, true, global = true),
+            pageMask = 0x1E000L
+        ))
+
+        val translated = tlb.translateWithMetadata(
+            0x01010044L, 9, R4300Tlb.Access.FETCH
+        )
+        assertEquals(0x00300044, translated.physicalAddress)
+        assertEquals(12, translated.entryIndex)
+        assertEquals(0x10000L, translated.pageSize)
+        assertEquals(true, translated.oddPage)
+        assertEquals(4, translated.asid)
+        assertEquals(true, translated.global)
+    }
+
 }
