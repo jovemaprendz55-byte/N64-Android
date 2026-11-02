@@ -76,6 +76,25 @@ class R4300CpuTest {
         assertEquals("READ", cpu.diagnosticAccessType)
     }
 
+    @Test fun unalignedIndirectJumpTargetRaisesAddressErrorInsteadOfHostCrash() {
+        val memory = N64Memory(0x100)
+        memory.write32(0, (8 shl 21) or 0x08) // jr $t0
+        memory.write32(4, 0) // delay-slot NOP
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[8] = 0x21L
+        cpu.setProgramCounter(0)
+
+        cpu.step() // JR schedules the unaligned target.
+        cpu.step() // Delay slot completes.
+        cpu.step() // Fetch at 0x21 must raise AdEL.
+
+        assertEquals(4L, (cpu.cop0[13] ushr 2) and 0x1FL) // AdEL.
+        assertEquals(0x21L, cpu.cop0[8]) // BadVAddr.
+        assertEquals(0x21L, cpu.cop0[14]) // EPC points to the failed target fetch.
+        assertEquals(0L, (cpu.cop0[13] ushr 31) and 1L) // Not a delay-slot exception.
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+    }
+
     @Test fun unmappedInstructionFetchRaisesInstructionBusError() {
         val bus = N64Bus(ram = N64Memory(8 * 1024))
         val cpu = R4300Cpu(bus)
