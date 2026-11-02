@@ -54,7 +54,8 @@ class N64RomVideoSessionTest {
     @Test
     fun advancesViAndDeliversScanlineInterruptDuringCpuExecution() {
         val memory = N64Memory(0x2000)
-        memory.write32(0, 0) // NOP at KSEG0 start.
+        memory.write32(0, 0x08000000) // J 0 keeps the CPU inside installed RDRAM.
+        memory.write32(4, 0) // Branch delay slot.
         val bus = N64Bus(ram = memory)
         bus.write32(N64Bus.MI_INTR_MASK_REG, N64Bus.MI_INTR_MASK_VI_SET)
         bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_INTR_OFFSET, 1)
