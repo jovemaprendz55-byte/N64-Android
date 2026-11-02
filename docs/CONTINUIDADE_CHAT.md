@@ -5184,3 +5184,14 @@ KDocs atualizados sem mudança de comportamento:
 - Interpretação atual: a CPU alcançou um loop de espera e recebeu ao menos uma interrupção MI/IP2; não há evidência neste log de submissão/início de OSTask no SP. A próxima investigação deve seguir a rotina que deveria criar/enfileirar/iniciar tarefas SP (OS task scheduler / osSpTaskStartGo ou equivalente) e verificar por que o caminho ativo da sessão não entrega um OSTask real ao SP. Não fabricar descritor nem forçar SP HALT.
 - Este log foi produzido por uma APK anterior ao snapshot de GPR adicionado nos commits `07cb5b56e5608047e0ea3f21798107195f97f470` e `b2ba6b936e7ed0d4b2311b85d66fc1248c452c75`; o pacote completo antigo já contém GPR/COP0 no bloco detalhado, mas o novo cabeçalho automático ainda não aparece nele.
 - Nenhuma correção funcional aplicada a partir deste log; a hipótese TLB foi rebaixada e o foco mudou para despacho de tarefas SP e comportamento do scheduler.
+
+
+## 59. Refinamento do estado final e das máscaras MI — 2026-11-02
+
+- O dump detalhado do log `1793616296890` mostra GPR[26] (`$k0`) = `0xA430000C`, endereço KSEG1 do registrador físico `MI_INTR_MASK_REG=0x0430000C`; GPR[27] (`$k1`) = `0xAAA`; GPR[29] (`$sp`) = `0xFFFFFFFF803AB738`; GPR[31] (`$ra`) = `0x70010A80`. Os demais GPR aparecem zerados no snapshot final.
+- Histórico MMIO confirma escritas em `MI_INTR_MASK_REG` nos PCs `0x70010A68` com `0xAAA` e `0x7000DD9C` com `0x555`. Pela codificação MI_INTR_MASK, `0xAAA` contém os comandos SET para as seis fontes (SP, SI, AI, VI, PI, DP); `0x555` contém os comandos CLEAR para as seis fontes. Isto demonstra atividade real da rotina de controle de interrupções; não demonstra que uma OSTask foi criada ou enviada ao SP.
+- O estado final `MI_INTR_MASK=0x3F` é consistente com todas as seis máscaras habilitadas no snapshot. `MI_INTR=0` é apenas o valor final, não invalida interrupções anteriores.
+- O PC final permanece no branch de espera `0x7000071C` (`BEQ $zero,$zero,-1`), com EPC `0x7000071C` e Cause `0x80000000` no snapshot COP0. O log detalhado registra uma exceção de interrupção anterior com BD/IP2 e retorno ERET; não há prova de que o loop seja o defeito.
+- Evidência negativa mantida: nenhum MMIO SP, nenhuma escrita SP, nenhum SP DMA, RSP não criado. A atividade MI observada é controle de máscaras, não inicialização SP.
+- Próximo passo: mapear a função de espera/idle e o chamador que deixa o PC em `0x7000071C`; correlacionar a rotina de escalonamento/entrega de mensagens com o caminho de submissão de OSTask. Procurar em memória a estrutura OSTask e referências a `ucodeBoot`, `ucode`, `ucodeData` e `dataPtr`, sem assumir um endereço fixo nem iniciar tarefa artificialmente.
+- Nenhuma alteração funcional aplicada; esta seção registra apenas fatos adicionais do dump e do histórico MMIO.
