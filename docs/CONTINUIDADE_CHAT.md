@@ -5212,3 +5212,14 @@ Auditoria direta dos arquivos na branch `dev/n64-clean-start`:
 - Conclusão refinada: não é correto dizer que o runner existente deveria ter iniciado a tarefa automaticamente; o runtime atual foi deliberadamente implementado como polling cooperativo e espera que o guest libere SP HALT. O próximo diagnóstico precisa localizar por que o software guest chegou ao loop de espera sem efetuar qualquer acesso SP. O candidato prioritário é o caminho de inicialização/escalonamento do próprio guest, não um endereço OSTask presumido.
 - Próxima instrumentação útil: capturar um histórico limitado de saltos/calls/retornos e de writes RDRAM relevantes no intervalo anterior à primeira entrada em `0x7000071C`, além de registrar o primeiro acesso SP caso ocorra. Não implementar auto-dispatch nem forçar CLR_HALT até existir evidência de uma OSTask válida.
 - Nenhuma alteração funcional nesta etapa; auditoria de fonte e testes existentes apenas.
+
+
+## 61. Leitura do call-path já presente no log GoldenEye — 2026-11-02
+
+- O dump antigo contém uma seção `Caminho de chamada e auxiliares`, gerada por `R4300Cpu.recordCallPathDiagnostic()`. Ela não é um stack trace genérico: coleta apenas janelas de PC codificadas manualmente (incluindo `0x70004D20–0x70004F20`, `0x70005B60–0x70005D60`, helpers PI DMA e retorno/JAL).
+- Dentro dessa janela, `0x70004DF0` executa `JAL 0x70004D80`; depois `0x70004E70` chama `0x70004D20`; `0x70004D44` chama repetidamente `0x7000A84C`. Os argumentos A0 mudam por endereço, A1 permanece `0xFFFFFFFF80029390`, A2=`0x14`. O trecho usa loads/stores e laço de bytes; é atividade de helper/cópia/transformação de dados, mas sem símbolos não atribuir nome/semântica exata.
+- A rotina observada retorna por `JR RA` em `0x70004E90`, com RA=`0x7F0BD47C`. Isto confirma retorno para código virtual TLB-mapeado, mas não identifica a função chamadora que estaciona no idle loop.
+- Importante: o próprio filtro de `recordCallPathDiagnostic()` não inclui `0x7000071C`, `0x70010A80` ou janelas gerais de scheduler. Portanto a ausência de um call-chain até o idle loop no relatório atual é uma limitação da instrumentação, não prova de que não houve chamadas intermediárias.
+- A evidência anterior de zero SP MMIO/RSP/DMA continua sem contradição. O trecho observado mostra trabalho de CPU e PI/memória, não submissão de OSTask.
+- Próxima melhoria diagnóstica proposta: substituir/estender a captura por um ring buffer genérico de eventos de controle (J/JAL, JR/JALR, branches tomados e ERET), com PC, alvo efetivo após delay slot, RA e registradores A0–A3/SP, sem filtrar por endereços fixos. Capturar também primeiro acesso a registradores SP. Formatar apenas ao gerar o relatório; evitar strings/locks por instrução. Ainda não implementado nesta etapa.
+- Nenhuma mudança funcional ou diagnóstico de código foi feita; esta seção registra análise do call-path existente.
