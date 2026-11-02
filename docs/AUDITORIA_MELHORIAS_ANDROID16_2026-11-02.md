@@ -61,3 +61,23 @@
 - CI do HEAD 0a7b5f271c2f982e27023f5f6205305e0ead0b44 iniciada; aguardar success antes de declarar a correção aprovada ou distribuir APK.
 - A CPU R4300 permanece parcial: operações aritméticas FPU/COP1, comportamento completo de COP0, exceções de bus/cache e fidelidade de ciclos ainda não estão completos.
 - CI unitária não substitui execução de ROM real no Poco C85 Android 16.
+
+## Auditoria COP1 / estado de boot HLE — 2026-11-02
+
+### Defeito confirmado: CU1 não era respeitado
+- A CPU executava instruções COP1 mesmo com Status.CU1 (bit 29) desligado.
+- Corrigido no decoder: COP1 e opcodes de memória LWC1/LDC1/SWC1/SDC1 verificam CU1 antes de qualquer acesso/efeito.
+- Quando CU1 está desligado, gera Coprocessor Unusable (ExcCode 11), Cause.CE=1, vetor de exceção e preserva o estado da instrução que não executou.
+- Testes: cop1DisabledRaisesCoprocessorUnusableAndIdentifiesCop1, cop1DisabledInBranchDelaySlotSetsBdAndBranchEpc, cop1MemoryInstructionAlsoRequiresCu1.
+- Testes COP1 que precisam executar normalmente agora ligam CU1 explicitamente.
+
+### Integração HLE corrigida
+- N64HleBoot.prepare entrega o controle no entry point pós-IPL3; o IPL3 real habilita o coprocessador antes da transferência para o jogo.
+- HLE agora modela Status.CU1=1 no estado inicial da CPU, sem executar nem alegar executar IPL3.
+- Teste HLE atualizado para iniciar com MFC1 real no entry point e confirmar que o handoff executa COP1 sem exceção.
+
+### Estado e limites
+- CI run 41538406114 (commit c249e6994a359a71450426d3f5ded47123f4efd9): success, build e testes unitários passaram.
+- Alterações de integração HLE e seu teste estão nos commits 710b13d e f529f3f; aguardar CI do HEAD mais recente antes de distribuir APK.
+- COP1 ainda é parcial: aritmética FPU, conversões, comparações, LWC1/LDC1/SWC1/SDC1 quando CU1 está habilitado e semântica completa de FCR31 não estão implementadas.
+- Nenhum teste automatizado substitui execução de ROM real no aparelho Android 16.
