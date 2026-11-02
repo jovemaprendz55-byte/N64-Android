@@ -29,6 +29,8 @@ class N64HleAutoDiagnosticTest {
         assertTrue(report.contains("PADRÃO REPETIDO: mesmos PCs e opcodes"))
         assertTrue(report.contains("Isso não prova, sozinho"))
         assertTrue(report.contains("SP está em HALT"))
+        assertTrue(report.contains("REGISTRADORES CPU (snapshot no fim da sessão):"))
+        assertTrue(report.contains("COP0_STATUS="))
         assertTrue(report.contains("ESTADO DOS DISPOSITIVOS:"))
         assertTrue(report.contains("ÚLTIMOS EVENTOS SP:"))
         assertTrue(report.contains("SP_PC"))
