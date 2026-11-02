@@ -43,8 +43,13 @@ class N64SpTaskRunner(
                 coordinator?.startTaskMicrocode()
             }
         }
-        val executed = rsp.run(maxInstructions)
-        bus.setSpDmaListener(null)
+        val executed = try {
+            rsp.run(maxInstructions)
+        } finally {
+            // A failed RSP instruction must not leave a stale task tracker
+            // attached to the shared bus for a later DMA operation.
+            bus.setSpDmaListener(null)
+        }
         val status = bus.read32(N64Bus.SP_STATUS_REG)
         val halted = (status and N64Bus.SP_STATUS_HALT) != 0
         val broke = (status and N64Bus.SP_STATUS_BROKE) != 0
