@@ -8,6 +8,82 @@ import java.math.BigInteger
  * full delay-slot exception semantics, complete COP0/TLB behavior, cache operations and full N64 devices remain unimplemented.
  */
 class R4300Cpu(private val memory: N64AddressSpace) {
+    /**
+     * Architectural state needed to suspend and resume a guest thread at an
+     * instruction boundary. Diagnostic histories are intentionally excluded.
+     */
+    data class ContextSnapshot(
+        val gpr: List<Long>,
+        val hi: Long,
+        val lo: Long,
+        val cop0: List<Long>,
+        val fpr: List<Long>,
+        val fcr: List<Long>,
+        val tlb: R4300Tlb.Snapshot,
+        val tlbEnabled: Boolean,
+        val pc: Long,
+        val delayedTarget: Long?,
+        val pendingDelaySlotBranchAddress: Long?,
+        val randomResetByWiredWrite: Boolean
+    )
+
+    fun snapshotContext(): ContextSnapshot = ContextSnapshot(
+        gpr = gpr.toList(),
+        hi = hi,
+        lo = lo,
+        cop0 = cop0.toList(),
+        fpr = fpr.toList(),
+        fcr = fcr.toList(),
+        tlb = tlb.snapshot(),
+        tlbEnabled = tlbEnabled,
+        pc = pc,
+        delayedTarget = delayedTarget,
+        pendingDelaySlotBranchAddress = pendingDelaySlotBranchAddress,
+        randomResetByWiredWrite = randomResetByWiredWrite
+    )
+
+    /**
+     * Restores architectural state atomically after validating all register
+     * banks and addresses. LL/SC reservation is cleared so it cannot leak
+     * from a previously running guest thread into the resumed thread.
+     */
+    fun restoreContext(snapshot: ContextSnapshot) {
+        require(snapshot.gpr.size == 32) { "GPR snapshot must contain 32 registers." }
+        require(snapshot.cop0.size == 32) { "COP0 snapshot must contain 32 registers." }
+        require(snapshot.fpr.size == 32) { "FPR snapshot must contain 32 registers." }
+        require(snapshot.fcr.size == 32) { "FCR snapshot must contain 32 registers." }
+        require(snapshot.pc and 3L == 0L) { "Context PC must be 4-byte aligned." }
+        require(snapshot.delayedTarget == null || snapshot.delayedTarget and 3L == 0L) {
+            "Delayed branch target must be 4-byte aligned."
+        }
+        require(snapshot.pendingDelaySlotBranchAddress == null ||
+            snapshot.pendingDelaySlotBranchAddress and 3L == 0L) {
+            "Delay-slot branch address must be 4-byte aligned."
+        }
+
+        // TLB restore validates every entry before mutating the live TLB.
+        tlb.restore(snapshot.tlb)
+        snapshot.gpr.forEachIndexed { index, value -> gpr[index] = value }
+        gpr[0] = 0L
+        hi = snapshot.hi
+        lo = snapshot.lo
+        snapshot.cop0.forEachIndexed { index, value -> cop0[index] = value }
+        snapshot.fpr.forEachIndexed { index, value -> fpr[index] = value }
+        snapshot.fcr.forEachIndexed { index, value -> fcr[index] = value }
+        tlbEnabled = snapshot.tlbEnabled
+        pc = snapshot.pc
+        delayedTarget = snapshot.delayedTarget
+        pendingDelaySlotBranchAddress = snapshot.pendingDelaySlotBranchAddress
+        randomResetByWiredWrite = snapshot.randomResetByWiredWrite
+
+        memory.clearLoadLinkedReservation()
+        instructionWordForCurrentStep = null
+        instructionAddressForCurrentStep = null
+        diagnosticVirtualAddress = null
+        diagnosticPhysicalAddress = null
+        diagnosticAccessType = null
+    }
+
     val gpr: LongArray = LongArray(32)
     var hi: Long = 0L
         private set
