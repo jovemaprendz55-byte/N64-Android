@@ -48,13 +48,13 @@ class N64HleCpuScheduler(
         var executed = 0
         while (executed < maxInstructions) {
             val current = kernel.currentThread()
-            if (current?.id != activeThreadId ||
+            if (current == null || current.id != activeThreadId ||
                 current.state != N64HleOsKernel.ThreadState.RUNNING
             ) break
             cpu.step()
             executed++
             val after = kernel.currentThread()
-            if (after?.id != activeThreadId ||
+            if (after == null || after.id != activeThreadId ||
                 after.state != N64HleOsKernel.ThreadState.RUNNING
             ) break
         }
