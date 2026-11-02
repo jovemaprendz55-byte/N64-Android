@@ -51,7 +51,7 @@ class R4300CpuTest {
 
         assertEquals(0L, cpu.cop0[13] and 0x7CL)
         assertEquals(0x12L, cpu.gpr[2])
-        assertEquals(0xFFFFFFFF80000004UL.toLong(), cpu.pc)
+        assertEquals(4L, cpu.pc)
     }
 
     @Test fun unmappedDataReadKeepsTheFaultingInstructionInDiagnosticContext() {
