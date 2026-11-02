@@ -159,6 +159,43 @@ class N64RomVideoSessionTest {
     }
 
     @Test
+    fun rspFailurePropagatesWithoutForcingSpHalt() {
+        val memory = N64Memory(1024)
+        val bus = N64Bus(ram = memory)
+        memory.write32(0, 0) // R4300 NOP
+        val cpu = R4300Cpu(bus)
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
+
+        // Unsupported RSP opcode at IMEM[0]. The CPU releases SP HALT.
+        bus.write32(N64Bus.SP_IMEM_BASE, 0xFFFFFFFF.toInt())
+        bus.write32(N64Bus.SP_PC_REG, 0)
+        bus.write32(N64Bus.SP_STATUS_REG, N64Bus.SP_STATUS_CMD_CLR_HALT)
+
+        val session = N64RomVideoSession(
+            bus = bus,
+            cpu = cpu,
+            instructionLimit = 1,
+            rspPollInterval = 1,
+            rspInstructionQuantum = 1,
+            framePollInterval = 100,
+            onFrame = {}
+        )
+
+        var failure: UnsupportedOperationException? = null
+        try {
+            session.execute()
+        } catch (error: UnsupportedOperationException) {
+            failure = error
+        }
+
+        assertNotNull(failure)
+        assertTrue(failure!!.message!!.contains("RSP instruction"))
+        assertEquals(N64ExecutionSession.State.FAILED, session.snapshot().state)
+        assertTrue(session.rspFailureMessage()!!.contains("UnsupportedOperationException"))
+        assertEquals(0, bus.read32(N64Bus.SP_STATUS_REG) and N64Bus.SP_STATUS_HALT)
+    }
+
+    @Test
     fun pumpsRspWhenCpuHasReleasedSpAndObservesBreak() {
         val memory = N64Memory(1024)
         val bus = N64Bus(ram = memory)
