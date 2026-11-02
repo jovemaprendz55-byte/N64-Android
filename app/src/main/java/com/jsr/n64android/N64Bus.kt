@@ -35,6 +35,9 @@ class N64Bus(
     val diagnosticMmioCounts = linkedMapOf<String, Long>()
     fun setDiagnosticCpuPc(pc: Long) { diagnosticCpuPc = pc }
     /** Supplies the decoded CPU instruction context used by narrow memory watchpoints. */
+    /** True when at least one enabled MI source is asserting the VR4300 external interrupt line. */
+    fun isMiInterruptPending(): Boolean = (miInterrupts and miInterruptMask) != 0
+
     fun setDiagnosticCpuInstructionContext(
         pc: Long, instruction: Int, rs: Int, rt: Int,
         rsValue: Long, rtValue: Long, effectiveAddress: Long?
