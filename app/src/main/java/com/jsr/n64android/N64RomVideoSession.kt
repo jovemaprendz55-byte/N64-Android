@@ -7,8 +7,9 @@ import java.util.concurrent.atomic.AtomicLong
  *
  * The caller must prepare the CPU/bus (currently via N64HleBoot.prepare) before
  * constructing this session. It runs on a dedicated worker through the
- * N64ExecutionWorker and publishes only changed VI frames. RSP scheduling,
- * device timing and audio are deliberately not implied by this class.
+ * N64ExecutionWorker and publishes only changed VI frames. It polls SP cooperatively and runs a bounded RSP quantum only after
+ * software clears SP HALT. It does not discover, queue, or schedule OSTasks on behalf
+ * of libultra; device timing and audio remain approximate or unimplemented.
  */
 class N64RomVideoSession(
     private val bus: N64Bus,
