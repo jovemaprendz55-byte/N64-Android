@@ -34,6 +34,7 @@ class N64RdpFillProcessor(
         var pixels = 0
         commands.forEach { command ->
             when (((command ushr 58) and 0x3FL).toInt()) {
+                CMD_LOAD_SYNC, CMD_PIPE_SYNC, CMD_TILE_SYNC -> Unit
                 CMD_SET_OTHER_MODES -> {
                     cycleType = ((command ushr 52) and 0x3L).toInt()
                 }
@@ -127,6 +128,9 @@ class N64RdpFillProcessor(
     /** Validates support for every packet before the first state change or pixel write. */
     fun validatePackets(packets: List<N64RdpCommandPacket>) {
         val singleWordOpcodes = setOf(
+            CMD_LOAD_SYNC,
+            CMD_PIPE_SYNC,
+            CMD_TILE_SYNC,
             CMD_SET_OTHER_MODES,
             CMD_SET_COLOR_IMAGE,
             CMD_SET_SCISSOR,
@@ -208,6 +212,9 @@ class N64RdpFillProcessor(
             if (alpha >= 128) 1 else 0
     }
     companion object {
+        const val CMD_LOAD_SYNC = 0x26
+        const val CMD_PIPE_SYNC = 0x27
+        const val CMD_TILE_SYNC = 0x28
         const val CMD_SET_COLOR_IMAGE = 0x3F
         const val CMD_SET_SCISSOR = 0x2D
         const val CMD_SET_FILL_COLOR = 0x37
