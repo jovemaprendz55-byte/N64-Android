@@ -71,6 +71,25 @@ class N64RspVectorUnitTest {
         N64RspVectorUnit().readLane(0, 8)
     }
 
+    @Test fun fractionalMultiplyRoundsAccumulatesAndSaturates() {
+        val unit = N64RspVectorUnit()
+        unit.writeLane(1, 0, 0x4000)
+        unit.writeLane(2, 0, 0x4000)
+        unit.writeLane(1, 1, -0x4000)
+        unit.writeLane(2, 1, 0x4000)
+        unit.writeLane(1, 2, -32768)
+        unit.writeLane(2, 2, -32768)
+
+        unit.multiplyFractional(3, 1, 2)
+
+        assertEquals(8192, unit.readLane(3, 0).toShort().toInt())
+        assertEquals(-8192, unit.readLane(3, 1).toShort().toInt())
+        assertEquals(32767, unit.readLane(3, 2).toShort().toInt())
+        assertEquals(536903680L, unit.readAccumulator(0))
+        assertEquals(0, unit.vcoLow)
+        assertEquals(0, unit.vcoHigh)
+    }
+
     @Test fun addCarryWritesLowHalfAndSetsPerLaneCarryFlags() {
         val unit = N64RspVectorUnit()
         unit.writeLane(1, 0, 0xFFFF)
