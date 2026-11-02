@@ -61,14 +61,14 @@ class R4300CpuTest {
         val cpu = R4300Cpu(bus)
         val startPc = 0xFFFFFFFF80000000UL.toLong()
         cpu.setProgramCounter(startPc)
-        cpu.gpr[9] = 0x07000508L
+        cpu.gpr[9] = 0x08000508L
 
         assertThrows(UnsupportedOperationException::class.java) { cpu.step() }
 
         assertEquals(startPc, cpu.diagnosticInstructionAddress)
         assertEquals(instruction, cpu.diagnosticInstructionWord)
-        assertEquals(0x07000508L, cpu.diagnosticVirtualAddress)
-        assertEquals(0x07000508, cpu.diagnosticPhysicalAddress)
+        assertEquals(0x08000508L, cpu.diagnosticVirtualAddress)
+        assertEquals(0x08000508, cpu.diagnosticPhysicalAddress)
         assertEquals("READ", cpu.diagnosticAccessType)
     }
 
