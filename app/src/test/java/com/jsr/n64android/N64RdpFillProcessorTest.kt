@@ -141,4 +141,5 @@ class N64RdpFillProcessorTest {
         assertEquals(0x78ABCDEF, processor.snapshotState().blendColor)
         assertTrue(processor.diagnosticSnapshot().contains("BLEND=0x78ABCDEF"))
     }
-\n}\n
+\
+}
