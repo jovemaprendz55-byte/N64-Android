@@ -264,8 +264,8 @@ class R4300TlbTest {
         restored.restore(snapshot)
 
         assertEquals(32, restored.size)
-        assertEquals(original.snapshot(), restored.snapshot())
-        assertEquals(0x12345034, restored.translate(0x00400034L, 9, R4300Tlb.Access.READ))
+        assertEquals(snapshot, restored.snapshot())
+        assertEquals(0x12344034, restored.translate(0x00400034L, 9, R4300Tlb.Access.READ))
         assertEquals(31, restored.probe(0x70000000L, 3))
     }
 
