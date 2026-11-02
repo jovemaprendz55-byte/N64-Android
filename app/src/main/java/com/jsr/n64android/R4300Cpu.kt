@@ -317,6 +317,16 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         val funct = instruction and 0x3F
         val immediate = instruction.toShort().toInt()
         val unsignedImmediate = instruction and 0xFFFF
+
+        // All COP1 encodings, including floating-point memory operations, trap
+        // before address translation or memory side effects when CU1 is disabled.
+        if ((opcode == 0x11 || opcode == 0x31 || opcode == 0x35 ||
+                opcode == 0x39 || opcode == 0x3D) &&
+            (cop0[12] and (1L shl 29)) == 0L
+        ) {
+            throw CoprocessorUnusableFault(1)
+        }
+
         val diagnosticEffectiveAddress = if (
             opcode == 0x28 || opcode == 0x29 || opcode == 0x2A || opcode == 0x2B ||
             opcode == 0x2C || opcode == 0x2D || opcode == 0x2E || opcode == 0x38 ||
@@ -686,10 +696,6 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 }
             }
             0x11 -> { // COP1 transfers and condition-code branches (partial FPU)
-                // Status.CU1 (bit 29) controls whether the R4300 may execute COP1.
-                if ((cop0[12] and (1L shl 29)) == 0L) {
-                    throw CoprocessorUnusableFault(1)
-                }
                 when (rs) {
                     0x08 -> { // BC1F/T/FL/TL; this R4300 subset models FCC0 only.
                         if ((rt and 0x1C) != 0) {
