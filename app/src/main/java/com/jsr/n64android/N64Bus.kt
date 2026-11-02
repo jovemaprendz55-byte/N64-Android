@@ -601,7 +601,16 @@ class N64Bus(
             // WR_LEN writes cartridge data into RDRAM; RD_LEN reads RDRAM data to the cartridge.
             PI_RD_LEN_REG -> { dmaRdramToCartridge((value and 0x00FFFFFF) + 1); return }
             PI_WR_LEN_REG -> { dmaCartridgeToRam((value and 0x00FFFFFF) + 1); return }
-            PI_STATUS_REG -> { piStatus = piStatus and (value.inv() and 0x3); return }
+            PI_STATUS_REG -> {
+                if ((value and PI_STATUS_RESET_CONTROLLER) != 0) {
+                    // This synchronous PI model has no in-flight request to abort.
+                    piStatus = piStatus and (PI_STATUS_DMA_BUSY or PI_STATUS_IO_BUSY or PI_STATUS_ERROR).inv()
+                }
+                if ((value and PI_STATUS_CLEAR_INTR) != 0) {
+                    miInterrupts = miInterrupts and MI_INTR_PI.inv()
+                }
+                return
+            }
             MI_INIT_MODE_REG -> { writeMiInitModeCommand(value); return }
             MI_INTR_MASK_REG -> { writeMiInterruptMaskCommand(value); return }
             in RI_REG_BASE until RI_REG_BASE + RI_REG_SIZE -> {
@@ -661,12 +670,15 @@ class N64Bus(
             "PI_WR_LEN cart=0x${piCartAddress.toUInt().toString(16).uppercase()} romOffset=0x${offset.toString(16).uppercase()} " +
                 "dram=0x${piDramAddress.toString(16).uppercase()} length=0x${length.toString(16).uppercase()}"
         )
+        piStatus = piStatus or PI_STATUS_DMA_BUSY
         for (index in 0 until length) {
             ram.write8(piDramAddress + index, image[offset + index].toInt() and 0xFF)
         }
         piDramAddress = (piDramAddress + length) and 0x00FFFFFF
         piCartAddress += length
         piStatus = piStatus and PI_STATUS_DMA_BUSY.inv()
+        // PI completion is latched in MI_INTR_REG until PI_STATUS.CLEAR_INTR is written.
+        miInterrupts = miInterrupts or MI_INTR_PI
     }
 
     /**
@@ -686,9 +698,11 @@ class N64Bus(
         // A ROM cannot be changed by this DMA direction. Model the transfer as
         // ignored writes rather than aborting CPU execution; save-device writes
         // need a separate writable cartridge-device implementation.
+        piStatus = piStatus or PI_STATUS_DMA_BUSY
         piDramAddress = (piDramAddress + length) and 0x00FFFFFF
         piCartAddress += length
         piStatus = piStatus and PI_STATUS_DMA_BUSY.inv()
+        miInterrupts = miInterrupts or MI_INTR_PI
     }
 
     /** Copies exactly 64 bytes from RDRAM into PIF RAM (SI write DMA). */
@@ -958,6 +972,10 @@ class N64Bus(
         const val PI_WR_LEN_REG = PI_REG_BASE + 0x0C
         const val PI_STATUS_REG = PI_REG_BASE + 0x10
         const val PI_STATUS_DMA_BUSY = 0x01
+        const val PI_STATUS_IO_BUSY = 0x02
+        const val PI_STATUS_ERROR = 0x04
+        const val PI_STATUS_RESET_CONTROLLER = 0x01
+        const val PI_STATUS_CLEAR_INTR = 0x02
         const val MI_REG_BASE = 0x04300000
         const val MI_INIT_MODE_REG = MI_REG_BASE
         const val MI_VERSION_REG = MI_REG_BASE + 0x04
