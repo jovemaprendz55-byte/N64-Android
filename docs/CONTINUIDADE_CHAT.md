@@ -471,3 +471,21 @@ Próxima etapa recomendada: snapshot/restauração completo do contexto R4300 e 
 Documento: `docs/ARQUITETURA_HLE_SEM_FIRMWARE_2026-11-02.md`.
 
 CI do HEAD anterior `6205cb66b87d33bec55889164393e5a72312a5e6`: workflow run `41520420713` — success. O commit de documentação desta seção ainda precisa de seu próprio workflow.
+
+
+## 15. Expansão HLE + TLB (2026-11-02)
+
+Na branch `dev/n64-clean-start`:
+- `R4300Tlb`: adicionados snapshot de todos os slots e restore atômico com validação prévia; tradução detalhada reporta slot, tamanho de página, par/ímpar, ASID e Global. O método `translate()` permanece compatível.
+- `N64HleOsKernel`: implementadas esperas reais no modelo host-side para envio/recebimento de mensagens; sender bloqueado guarda mensagem pendente, receiver bloqueado acorda na chegada, e FIFO de senders é respeitada.
+- Testes adicionados para snapshot/restore, metadados de tradução, wakeup de send/receive e justiça FIFO.
+
+Commits:
+- `e4bafddaa84f8f123b08a31117ae8ae5ffd8706e` — snapshot e metadados TLB.
+- `cf181127568ec1d8b2dc651d104b6054d383d273` — testes TLB.
+- `18ab5965e65e3563869fd8fb00d53787b9054473` — operações bloqueantes HLE.
+- `f460cfa7ad41dcfa8db5fcc18051af523e318c18` — testes HLE.
+
+Documento: `docs/HLE_TLB_EXPANSAO_2026-11-02.md`.
+
+Limite: TLB snapshot não é ainda contexto completo R4300; kernel permanece host-side e não intercepta ABI guest. CI desses commits precisa terminar antes de declarar aprovação.
