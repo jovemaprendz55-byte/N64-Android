@@ -278,6 +278,19 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             enterTlbException(fault, branchAddressForFault)
         } catch (fault: AddressFault) {
             enterAddressException(fault, branchAddressForFault)
+        } catch (_: UnsupportedOperationException) {
+            // Unmapped physical accesses are architectural bus errors, not host-side crashes.
+            val accessType = diagnosticAccessType ?: "READ"
+            lastExceptionAccessType = accessType
+            val exceptionCode = if (accessType == "FETCH") 6 else 7 // IBE / DBE.
+            enterException(
+                instructionAddressForCurrentStep ?: pc,
+                exceptionCode,
+                branchAddressForFault
+            )
+            pc = exceptionVector()
+            delayedTarget = null
+            pendingDelaySlotBranchAddress = null
         } catch (fault: CoprocessorUnusableFault) {
             enterException(
                 instructionAddressForCurrentStep ?: pc,
