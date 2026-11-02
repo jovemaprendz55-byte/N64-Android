@@ -32,6 +32,33 @@ class R4300MiInterruptTest {
     }
 
     @Test
+    fun enabledViScanlineInterruptRaisesCop0Ip2AndEntersGeneralVector() {
+        val memory = N64Memory(0x2000)
+        memory.write32(0, 0) // NOP at KSEG0 start.
+        val bus = N64Bus(ram = memory)
+        bus.write32(N64Bus.MI_INTR_MASK_REG, N64Bus.MI_INTR_MASK_VI_SET)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_INTR_OFFSET, 1)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_SYNC_OFFSET, 525)
+        bus.advanceViInstructions(N64Bus.VI_INSTRUCTIONS_PER_SCANLINE)
+
+        val cpu = R4300Cpu(bus)
+        val startPc = 0xFFFFFFFF80000000UL.toLong()
+        cpu.setProgramCounter(startPc)
+        cpu.cop0[12] = 0x401L // IE=1 and IM[2]=1.
+
+        cpu.step()
+
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+        assertEquals(0, cpu.lastExceptionCode)
+        assertEquals(startPc, cpu.cop0[14])
+        assertTrue((cpu.cop0[13] and (1L shl 10)) != 0L) // Cause.IP2.
+        assertEquals(N64Bus.MI_INTR_VI, bus.read32(N64Bus.MI_INTR_REG) and N64Bus.MI_INTR_VI)
+
+        bus.write32(N64Bus.VI_CURRENT_REG, 0)
+        assertEquals(0, bus.read32(N64Bus.MI_INTR_REG) and N64Bus.MI_INTR_VI)
+    }
+
+    @Test
     fun maskedPiDmaInterruptDoesNotEnterCpuException() {
         val bus = N64Bus(
             ram = N64Memory(0x2000),
