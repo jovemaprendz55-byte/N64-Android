@@ -501,4 +501,37 @@ class N64RspCoreTest {
         assertEquals(mmioBefore, bus.diagnosticMmioHistory.size)
     }
 
+
+    @Test
+    fun decodesVaddcAndVsubcAndPreservesTheirCarryFlags() {
+        val (bus, rsp) = setup(
+            vectorOp(0x14, vd = 3, vs = 1, vt = 2),
+            vectorOp(0x15, vd = 4, vs = 1, vt = 2)
+        )
+        rsp.vectorUnit.writeLane(1, 0, 0xFFFF)
+        rsp.vectorUnit.writeLane(2, 0, 1)
+        rsp.vectorUnit.writeLane(1, 1, 9)
+        rsp.vectorUnit.writeLane(2, 1, 4)
+
+        assertEquals(2, rsp.run(2))
+        assertEquals(0, rsp.vectorUnit.readLane(3, 0))
+        assertEquals(1, rsp.vectorUnit.vcoLow)
+        assertEquals(0xFFFE, rsp.vectorUnit.readLane(4, 0))
+        assertEquals(0, rsp.vectorUnit.vcoLow)
+        assertEquals(1 shl 1, rsp.vectorUnit.vcoHigh)
+    }
+
+    @Test
+    fun decodesVabsThroughCop2VectorInstruction() {
+        val (_, rsp) = setup(vectorOp(0x13, vd = 3, vs = 1, vt = 2))
+        rsp.vectorUnit.writeLane(1, 0, -1)
+        rsp.vectorUnit.writeLane(2, 0, -20)
+        rsp.vectorUnit.writeLane(1, 1, 0)
+        rsp.vectorUnit.writeLane(2, 1, 100)
+
+        assertEquals(1, rsp.run(1))
+        assertEquals(20, rsp.vectorUnit.readLane(3, 0))
+        assertEquals(0, rsp.vectorUnit.readLane(3, 1))
+    }
+
 }
