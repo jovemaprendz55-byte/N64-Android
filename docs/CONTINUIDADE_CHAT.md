@@ -514,10 +514,10 @@ CI da correção TLB `d0029fa8a96ed33ef412c2c53b4ee3cd00d60f4d`: success. CI dos
 - Teste adicional executa instruções guest em quantum limitado e verifica registradores/PC.
 
 ### RSP
-- Adicionado VMULF (multiplicação vetorial fracionária signed): produto dobrado, bias de arredondamento 0x8000, acumulador de 48 bits e saturação signed 16-bit.
-- Decoder COP2 vector agora despacha funct 0x00 para VMULF.
-- Testes de aritmética, acumulador, saturação e decode adicionados.
-- Ainda faltam VMULU, famílias VMUD/VMAC, comparações/seleção, muitas operações de memória e microcódigos gráficos completos.
+- Adicionados VMULF e VMULU. Ambos usam produto signed dobrado, bias 0x8000 e acumulador de 48 bits; VMULF satura o resultado em signed 16-bit e VMULU em unsigned 16-bit.
+- Decoder COP2 vector despacha funct 0x00 para VMULF e 0x01 para VMULU.
+- Testes cobrem arredondamento, acumulador, saturação negativa/positiva e decode de VMULU.
+- Ainda faltam famílias VMUD/VMAC, comparações/seleção, muitas operações de memória e microcódigos gráficos completos.
 
 ### RDP
 - Rasterizador de triângulo flat agora aceita color image RGBA16 e RGBA32.
@@ -539,3 +539,10 @@ Commits desta etapa:
 - `9debc82` — teste decode VMULF.
 - `2dbfce7` — teste quantum HLE.
 - CI do commit final desta etapa ainda precisa ser conferida.
+
+
+## 18. VMULU no RSP (2026-11-02)
+- Implementada a operação VMULU no vetor unit: multiplicação fracionária signed com acumulador de 48 bits e saturação unsigned do resultado para 0..65535.
+- Decoder COP2 mapeia funct 0x01 para VMULU; VMULF permanece em funct 0x00.
+- Testes unitários verificam resultado positivo, clamp de produto negativo para zero, acumulador e execução via decoder.
+- Isso amplia o subconjunto aritmético, mas não implementa o restante do conjunto vetorial nem qualquer microcódigo completo.
