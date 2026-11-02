@@ -215,6 +215,7 @@ class N64RspCore(private val bus: N64Bus) {
         val vd = (instruction ushr 6) and 31
         when (instruction and 63) {
             0x00 -> vectorUnit.multiplyFractional(vd, vs, vt, element) // VMULF
+            0x01 -> vectorUnit.multiplyFractionalUnsigned(vd, vs, vt, element) // VMULU
             0x10 -> vectorUnit.add(vd, vs, vt, element) // VADD
             0x11 -> vectorUnit.subtract(vd, vs, vt, element) // VSUB
             0x13 -> vectorUnit.absolute(vd, vs, vt, element) // VABS
