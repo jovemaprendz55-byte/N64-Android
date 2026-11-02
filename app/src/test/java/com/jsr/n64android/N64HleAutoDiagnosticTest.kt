@@ -26,7 +26,8 @@ class N64HleAutoDiagnosticTest {
             loop = loop
         )
 
-        assertTrue(report.contains("CONFIRMADO: sequência de instruções repetida"))
+        assertTrue(report.contains("PADRÃO REPETIDO: mesmos PCs e opcodes"))
+        assertTrue(report.contains("Isso não prova, sozinho"))
         assertTrue(report.contains("SP está em HALT"))
         assertTrue(report.contains("ESTADO DOS DISPOSITIVOS:"))
         assertTrue(report.contains("ÚLTIMOS EVENTOS SP:"))
