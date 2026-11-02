@@ -28,6 +28,7 @@ class R4300MiInterruptTest {
         assertEquals(startPc, cpu.cop0[14])
         assertTrue((cpu.cop0[13] and (1L shl 10)) != 0L) // Cause.IP2.
         assertTrue((cpu.cop0[12] and 0x2L) != 0L) // Status.EXL.
+        assertTrue(cpu.diagnosticControlFlowHistory.any { it.startsWith("EXCEPTION code=0 ") && it.contains("vector=0xFFFFFFFF80000180") })
         assertEquals(N64Bus.MI_INTR_PI, bus.read32(N64Bus.MI_INTR_REG) and N64Bus.MI_INTR_PI)
     }
 
