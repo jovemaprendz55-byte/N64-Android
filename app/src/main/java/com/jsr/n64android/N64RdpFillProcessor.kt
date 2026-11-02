@@ -29,6 +29,35 @@ class N64RdpFillProcessor(
         val trianglesRasterized: Int = 0
     )
 
+
+    data class StateSnapshot(
+        val colorImageAddress: Int,
+        val colorImageWidth: Int,
+        val colorImageSize: Int,
+        val fillColor: Int,
+        val primitiveColor: Int,
+        val cycleType: Int,
+        val scissorLeft: Int,
+        val scissorTop: Int,
+        val scissorRight: Int,
+        val scissorBottom: Int
+    )
+
+    /** Captures command-processor state without reading or modifying RDRAM. */
+    fun snapshotState(): StateSnapshot = StateSnapshot(
+        colorImageAddress, colorImageWidth, colorImageSize, fillColor,
+        primitiveColor, cycleType, scissorLeft, scissorTop, scissorRight, scissorBottom
+    )
+
+    fun diagnosticSnapshot(): String {
+        val state = snapshotState()
+        return "RDP COLOR_IMAGE=0x${state.colorImageAddress.toUInt().toString(16).uppercase()} " +
+            "WIDTH=${state.colorImageWidth} SIZE=${state.colorImageSize} " +
+            "CYCLE=${state.cycleType} FILL=0x${state.fillColor.toUInt().toString(16).uppercase()} " +
+            "PRIM=0x${state.primitiveColor.toUInt().toString(16).uppercase()} " +
+            "SCISSOR=[${state.scissorLeft},${state.scissorTop}..${state.scissorRight},${state.scissorBottom}]"
+    }
+
     fun execute(commands: List<Long>): Result {
         var rectangles = 0
         var pixels = 0
