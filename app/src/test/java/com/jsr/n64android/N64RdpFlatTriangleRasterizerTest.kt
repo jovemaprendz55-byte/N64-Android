@@ -27,6 +27,34 @@ class N64RdpFlatTriangleRasterizerTest {
     }
 
     @Test
+    fun writesFlatTrianglePixelsToRgba8888Framebuffer() {
+        val memory = N64Memory(4096)
+        val setup = N64RdpTriangleSetup(
+            opcode = 0x08, rightMajor = false, tile = 0,
+            yLow = 8 * 4, yMiddle = 4 * 4, yHigh = 0,
+            xLow = 6 shl 16, dxLowDy = 0,
+            xHigh = 1 shl 16, dxHighDy = 0,
+            xMiddle = 4 shl 16, dxMiddleDy = 0
+        )
+
+        val result = N64RdpFlatTriangleRasterizer.render(
+            setup = setup,
+            memory = memory,
+            rdramSize = memory.size,
+            colorImageAddress = 0x100,
+            width = 8,
+            height = 8,
+            colorRgba5551 = 0,
+            colorImageSize = N64RdpFillProcessor.IMAGE_SIZE_32,
+            colorRgba8888 = 0x7F123456
+        )
+
+        assertTrue(result.pixelsWritten > 0)
+        assertEquals(0x7F123456, memory.read32(0x100 + (1 * 8 + 1) * 4))
+        assertEquals(0, memory.read32(0x100))
+    }
+
+    @Test
     fun rejectsFramebufferOutsideRdramBeforeWriting() {
         val memory = N64Memory(128)
         val setup = N64RdpTriangleSetup(
