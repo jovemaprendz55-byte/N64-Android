@@ -1499,8 +1499,14 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         } else {
             virtual32 // Compatibility mode for current unit tests and early bring-up.
         }
-        require(physical <= Int.MAX_VALUE.toLong()) {
-            "Address cannot be represented by this initial RAM bus: 0x${address.toString(16)}"
+        if (physical > Int.MAX_VALUE.toLong()) {
+            // The current bus API accepts signed Int addresses only. Treat an
+            // otherwise valid 32-bit guest physical address outside that range
+            // as a bus fault so step() delivers IBE/DBE instead of leaking
+            // IllegalArgumentException and terminating the execution worker.
+            throw UnsupportedOperationException(
+                "Physical address cannot be represented by this bus: 0x${physical.toString(16).uppercase()}"
+            )
         }
         diagnosticPhysicalAddress = physical.toInt()
         return physical.toInt()
