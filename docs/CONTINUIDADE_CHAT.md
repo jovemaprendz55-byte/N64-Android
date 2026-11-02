@@ -690,3 +690,12 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Alterações de código/teste: commits 3fc7bc1a38f6404cc57df9749a8f00c3ba258aba e 21997bbc8a5c92f8b22b7092261c8674ac5b95d5.
 - CI ainda precisa ser verificada; não declarar APK aprovado até success.
 - Próximo passo: verificar CI, depois obter dump TLB/ASID/EntryHi/EntryLo do contexto real para confirmar a tradução efetiva de 0x7000071C. Não alterar main.
+
+
+## 26. Auditoria de exceções de barramento R4300 — 2026-11-02
+
+- Encontrado defeito: acessos físicos sem mapeamento em N64Bus lançavam UnsupportedOperationException até o worker, interrompendo a sessão sem exceção MIPS.
+- R4300Cpu agora converte falha em FETCH para IBE (ExcCode 6) e falha em READ/WRITE para DBE (ExcCode 7), preservando diagnóstico e metadados de delay slot via enterException.
+- Testes: unmappedDataReadKeepsTheFaultingInstructionInDiagnosticContext, unmappedInstructionFetchRaisesInstructionBusError e unmappedDataReadInBranchDelaySlotRaisesBusErrorWithBranchEpc.
+- Commits: 78977193bf4a7a346767d787adf7d02e9e660461 (código), a0d72640ff07dcf3058c4708daeeb2ade5783117 (testes), 887f7630b8e1920b0637f62aeb6d3566ca5b60a4 (auditoria).
+- Aguardar CI do HEAD; não há teste em aparelho nesta rodada. Não alterar main.
