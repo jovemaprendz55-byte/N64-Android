@@ -151,4 +151,29 @@ class N64HleOsKernelTest {
         assertEquals(N64HleOsKernel.ThreadState.RUNNABLE, os.threadSnapshot(2).state)
     }
 
-}
+
+    @Test fun priorityChangeAffectsNextDispatchWithoutResettingWakeOrder() {
+        val os = N64HleOsKernel()
+        os.createThread(1, 10, 0x80001000L)
+        os.createThread(2, 5, 0x80002000L)
+        os.startThread(1)
+        os.startThread(2)
+        os.setThreadPriority(1, 1)
+        assertEquals(1, os.dispatch()?.id)
+    }
+
+    @Test fun typedEventOnlyWakesMatchingWaiter() {
+        val os = N64HleOsKernel()
+        os.createThread(1, 1, 0x80001000L)
+        os.createThread(2, 2, 0x80002000L)
+        os.startThread(1)
+        os.startThread(2)
+        assertEquals(1, os.dispatch()?.id)
+        os.blockCurrentForEvent(0x08)
+        assertEquals(2, os.dispatch()?.id)
+        os.blockCurrentForEvent(0x10)
+        os.postEvent(0x08, 0x55L)
+        assertEquals(N64HleOsKernel.ThreadState.RUNNABLE, os.threadSnapshot(1).state)
+        assertEquals(N64HleOsKernel.ThreadState.WAITING_EVENT, os.threadSnapshot(2).state)
+    }
+\n}\n
