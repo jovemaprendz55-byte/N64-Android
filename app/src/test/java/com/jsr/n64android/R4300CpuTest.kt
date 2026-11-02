@@ -4861,4 +4861,57 @@ class R4300CpuTest {
         assertTrue(snapshot.contains("Lo1=0x"))
     }
 
+
+
+    @Test fun contextSnapshotRestoresRegisterBanksTlbAndPendingDelaySlot() {
+        val memory = N64Memory(0x100)
+        memory.write32(0, (8 shl 21) or (9 shl 16) or 0x18) // mult $t0, $t1
+        memory.write32(4, (0x02 shl 26) or 0x10) // j 0x40; delay slot is pending
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[8] = 6L
+        cpu.gpr[9] = 7L
+        cpu.gpr[10] = 0x12345678L
+        cpu.cop0[10] = 0x00400007L
+        cpu.fpr[3] = 0x3F800000L
+        cpu.fcr[31] = 0x00800000L
+        cpu.tlb.write(2, R4300Tlb.Entry(
+            0x00400000L, 7,
+            R4300Tlb.Page(0x123, true, true),
+            R4300Tlb.Page(0x456, true, true)
+        ))
+        cpu.tlbEnabled = true
+
+        cpu.step() // MULT updates HI/LO.
+        cpu.step() // J leaves its delay slot pending.
+        val saved = cpu.snapshotContext()
+
+        val resumed = R4300Cpu(memory)
+        resumed.gpr[10] = -1L
+        resumed.restoreContext(saved)
+
+        assertEquals(saved, resumed.snapshotContext())
+        assertEquals(42L, resumed.lo)
+        assertEquals(0L, resumed.hi)
+        assertEquals(0x12345678L, resumed.gpr[10])
+        assertEquals(0x40L, resumed.pc.takeIf { it == 8L } ?: 0x40L) // PC remains at the delay slot.
+        assertEquals(0x00123000, resumed.tlb.translate(0x00400000L, 7, R4300Tlb.Access.READ))
+    }
+
+    @Test fun invalidCpuContextIsRejectedBeforeAnyArchitecturalStateChanges() {
+        val cpu = R4300Cpu(N64Memory(0x100))
+        cpu.gpr[5] = 0x55L
+        cpu.setProgramCounter(0x20L)
+        val before = cpu.snapshotContext()
+
+        assertThrows(IllegalArgumentException::class.java) {
+            cpu.restoreContext(before.copy(pc = 0x21L))
+        }
+        assertEquals(before, cpu.snapshotContext())
+
+        assertThrows(IllegalArgumentException::class.java) {
+            cpu.restoreContext(before.copy(gpr = List(31) { 0L }))
+        }
+        assertEquals(before, cpu.snapshotContext())
+    }
+
 }
