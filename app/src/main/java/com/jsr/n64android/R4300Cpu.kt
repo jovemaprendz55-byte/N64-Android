@@ -160,6 +160,31 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         pendingDelaySlotBranchAddress = null
     }
 
+    /**
+     * Samples the N64 MI aggregate interrupt line as Cause.IP2 before each instruction.
+     * The MI line is reflected in Cause even while Status masks or exception levels prevent service.
+     */
+    private fun serviceMiInterrupt(branchAddress: Long?): Boolean {
+        val miPending = (memory as? N64Bus)?.isMiInterruptPending()
+        val ip2Mask = 1L shl 10
+        if (miPending != null) {
+            cop0[13] = if (miPending) cop0[13] or ip2Mask else cop0[13] and ip2Mask.inv()
+        }
+
+        val status = cop0[12]
+        val pendingAndEnabled = (cop0[13] and status and 0x0000FF00L) != 0L
+        val globallyEnabled = (status and 0x1L) != 0L
+        val handlingException = (status and 0x2L) != 0L
+        val handlingError = (status and 0x4L) != 0L
+        if (!pendingAndEnabled || !globallyEnabled || handlingException || handlingError) return false
+
+        enterException(instructionAddressForCurrentStep ?: pc, 0, branchAddress)
+        pc = exceptionVector()
+        delayedTarget = null
+        pendingDelaySlotBranchAddress = null
+        return true
+    }
+
     /** Executes one instruction and converts address-translation faults into architectural COP0 exceptions. */
     fun step() {
         instructionWordForCurrentStep = null
@@ -167,6 +192,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         val branchAddressForFault = pendingDelaySlotBranchAddress
         randomResetByWiredWrite = false
         try {
+            if (serviceMiInterrupt(branchAddressForFault)) return
             stepInstruction()
             if (!randomResetByWiredWrite) advanceRandomRegister()
         } catch (fault: R4300Tlb.TlbFault) {
