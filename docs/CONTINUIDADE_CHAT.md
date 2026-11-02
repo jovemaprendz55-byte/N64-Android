@@ -5115,3 +5115,12 @@ KDocs atualizados sem mudança de comportamento:
 - Adicionado teste específico para o loop de uma única instrução `BEQ $zero,$zero,-1` em `0x7000071C`, além do teste de branch com delay slot.
 - Commits: `25b2979faa3a46e6bb4a0ab6cc7bfbf619ea879b` (remover sincronização por instrução); `ec0873332a47764a2b9dd42ae849796e8c574828` (teste de self-loop).
 - **Validação ainda pendente:** não foi possível confirmar nesta etapa o resultado de GitHub Actions para estes commits. Não gerar/entregar APK como validada até confirmar `testDebugUnitTest` e `assembleDebug`.
+
+
+### Diagnóstico com contexto de hardware — 2026-11-02
+
+- O relatório automático agora inclui o snapshot dos registradores implementados de SP, MI, PI, AI, SI, RI e VI, além dos últimos 12 eventos de acesso ao SP.
+- Isso reduz a necessidade de percorrer o log completo para saber se o software escreveu SP_PC, SP_STATUS ou registradores DMA, e permite correlacionar o estado do SP com interrupções MI/VI.
+- Teste de relatório atualizado para exigir a presença do snapshot e do histórico SP.
+- Commits: `5ae458f6bde2007563c2a76f468a99c9b65f2410` (contexto de hardware); `3994e67f5c51f391d22b54293f4fe380b24dbd81` (teste).
+- A causa do loop antigo `0x7000071C` ainda não foi determinada. O objetivo desta melhoria é tornar o próximo log mais conclusivo; não significa que o problema de execução já foi corrigido.
