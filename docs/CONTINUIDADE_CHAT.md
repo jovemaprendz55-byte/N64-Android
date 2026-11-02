@@ -5141,3 +5141,13 @@ KDocs atualizados sem mudança de comportamento:
 - Link da execução: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41428878901
 
 **Estado:** build e testes unitários automatizados verdes; APK debug gerada. Teste no aparelho continua pendente.
+
+
+### Precisão do detector de repetição — 2026-11-02
+
+- Revisão do significado do detector: ele compara somente PC+opcode, não o estado completo dos registradores, memória ou MMIO. Portanto, uma sequência repetida é um padrão observado e não prova, isoladamente, deadlock ou ausência de progresso.
+- Relatório ajustado para dizer “PADRÃO REPETIDO” e explicitar a limitação; interpretação do caso SP HALT/RSP 0/VI 0 agora classifica a repetição como indício e recomenda investigar progresso dos registradores, condição de saída e interrupções.
+- Teste do relatório atualizado para exigir a nova linguagem cautelosa.
+- Commits: `1f35c3e1348241b0d012b4e4cd5b90d607f04cc2` (relatório); `bf6c3746bd3ab66c1f9b0a56081431afd0d132d3` (teste).
+- O CI verde documentado na seção 56 refere-se ao HEAD anterior `1725f60fa659c05c72b830204b686fe48f3a2f7d`. As duas alterações acima são posteriores e ainda precisam de nova execução de `testDebugUnitTest assembleDebug`; status/checks para o commit mais recente ainda não foram retornados pela integração consultada.
+- Não tratar a APK da seção 56 como contendo esta correção de nomenclatura. O teste no aparelho continua pendente.
