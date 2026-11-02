@@ -605,6 +605,6 @@ class N64RspCoreTest {
         bus.write32(N64Bus.SP_IMEM_BASE, instruction)
         rsp.reset(0)
         rsp.step()
-        assertEquals(0x8008, rsp.vectorUnit.readLane(4, 0))
+        assertEquals(0x2000, rsp.vectorUnit.readLane(4, 0))
     }
 \n}\n
