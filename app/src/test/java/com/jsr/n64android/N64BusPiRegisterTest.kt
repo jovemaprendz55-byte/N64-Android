@@ -77,6 +77,42 @@ class N64BusPiRegisterTest {
     }
 
     @Test
+    fun piDmaCompletionRaisesMiInterruptUntilPiStatusClearInterrupt() {
+        val bus = N64Bus(
+            ram = N64Memory(8 * 1024),
+            cartridgeRom = byteArrayOf(0x12, 0x34)
+        )
+        bus.write32(N64Bus.PI_DRAM_ADDR_REG, 0x100)
+        bus.write32(N64Bus.PI_CART_ADDR_REG, N64Bus.CARTRIDGE_ROM_BASE)
+        bus.write32(N64Bus.PI_WR_LEN_REG, 1)
+
+        assertEquals(N64Bus.MI_INTR_PI, bus.read32(N64Bus.MI_INTR_REG) and N64Bus.MI_INTR_PI)
+        assertEquals(0, bus.read32(N64Bus.PI_STATUS_REG))
+
+        // Reset-controller and clear-interrupt are distinct PI_STATUS write commands.
+        bus.write32(N64Bus.PI_STATUS_REG, N64Bus.PI_STATUS_RESET_CONTROLLER)
+        assertEquals(N64Bus.MI_INTR_PI, bus.read32(N64Bus.MI_INTR_REG) and N64Bus.MI_INTR_PI)
+
+        bus.write32(N64Bus.PI_STATUS_REG, N64Bus.PI_STATUS_CLEAR_INTR)
+        assertEquals(0, bus.read32(N64Bus.MI_INTR_REG) and N64Bus.MI_INTR_PI)
+    }
+
+    @Test
+    fun piReadDmaCompletionAlsoRaisesMiInterrupt() {
+        val ram = N64Memory(8 * 1024)
+        ram.write32(0x100, 0x11223344)
+        val bus = N64Bus(ram = ram, cartridgeRom = byteArrayOf(0x12, 0x34))
+
+        bus.write32(N64Bus.PI_DRAM_ADDR_REG, 0x100)
+        bus.write32(N64Bus.PI_CART_ADDR_REG, N64Bus.CARTRIDGE_ROM_BASE)
+        bus.write32(N64Bus.PI_RD_LEN_REG, 3)
+
+        assertEquals(N64Bus.MI_INTR_PI, bus.read32(N64Bus.MI_INTR_REG) and N64Bus.MI_INTR_PI)
+        bus.write32(N64Bus.PI_STATUS_REG, N64Bus.PI_STATUS_CLEAR_INTR)
+        assertEquals(0, bus.read32(N64Bus.MI_INTR_REG) and N64Bus.MI_INTR_PI)
+    }
+
+    @Test
     fun piWriteDmaToReadOnlyRomIsIgnoredAndAdvancesAddressRegisters() {
         val ram = N64Memory(8 * 1024)
         ram.write32(0x100, 0x11223344)
