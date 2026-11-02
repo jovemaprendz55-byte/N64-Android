@@ -91,6 +91,11 @@ object N64HleBoot {
         bus.write32(BOOT_FLAG_RDRAM_SIZE, N64Memory.DEFAULT_RAM_SIZE)
 
         cpu.reset()
+        // HLE enters at the game's post-IPL3 entry point. The original boot
+        // sequence enables the R4300 floating-point coprocessor before handoff.
+        // Model that architectural state explicitly; do not bypass CU1 checks
+        // inside the CPU when guest software later disables the coprocessor.
+        cpu.cop0[12] = cpu.cop0[12] or (1L shl 29)
         // KUSEG/KSEG2/KSEG3 accesses must use the architectural TLB.
         // The game entry remains a direct-mapped KSEG0 address.
         cpu.tlbEnabled = true
