@@ -559,4 +559,38 @@ class N64RspCoreTest {
         assertEquals(0, rsp.vectorUnit.readLane(3, 1))
     }
 
+
+    @Test
+    fun rspContextSnapshotRestoresScalarVectorAndPendingBranchState() {
+        val (_, rsp) = setup(
+            addiu(8, 0, 41),
+            (0x04 shl 26) or (8 shl 21) or (8 shl 16) or 2,
+            addiu(9, 0, 7)
+        )
+        rsp.vectorUnit.writeLane(3, 2, 0xBEEF)
+        rsp.run(2)
+        val saved = rsp.snapshotContext()
+
+        rsp.reset(0)
+        rsp.vectorUnit.writeLane(3, 2, 0x1111)
+        rsp.restoreContext(saved)
+
+        assertEquals(saved.pc, rsp.pc)
+        assertEquals(saved.gpr[8], rsp.gpr[8])
+        assertEquals(saved.gpr[9], rsp.gpr[9])
+        assertEquals(0xBEEF, rsp.vectorUnit.readLane(3, 2))
+        assertEquals(saved.executedInstructions, rsp.executedInstructions)
+        assertEquals(saved.delayedTarget, rsp.snapshotContext().delayedTarget)
+    }
+
+    @Test
+    fun rspContextRejectsMisalignedProgramCounterWithoutChangingState() {
+        val (_, rsp) = setup(addiu(8, 0, 9))
+        val saved = rsp.snapshotContext()
+        val invalid = saved.copy(pc = 3)
+        val error = runCatching { rsp.restoreContext(invalid) }.exceptionOrNull()
+        assertTrue(error is IllegalArgumentException)
+        assertEquals(saved.pc, rsp.pc)
+    }
+
 }
