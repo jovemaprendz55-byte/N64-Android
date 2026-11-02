@@ -10,6 +10,11 @@ class N64Bus64DdAbsentTest {
         assertEquals(0xFF, bus.read8(0x05000508))
         assertEquals(0xFFFF, bus.read16(0x05000508))
         assertEquals(0xFFFFFFFF.toInt(), bus.read32(0x05000508))
+
+        // Domain 1 Address 1 is the absent 64DD IPL ROM window.
+        assertEquals(0xFF, bus.read8(0x0700071C))
+        assertEquals(0xFFFF, bus.read16(0x0700071C))
+        assertEquals(0xFFFFFFFF.toInt(), bus.read32(0x0700071C))
     }
 
     @Test fun writesToAbsent64DdWindowAreIgnored() {
@@ -20,5 +25,10 @@ class N64Bus64DdAbsentTest {
         bus.write32(0x05000508, 0x12345678)
 
         assertEquals(0xFFFFFFFF.toInt(), bus.read32(0x05000508))
+
+        bus.write8(0x0700071C, 0x12)
+        bus.write16(0x0700071C, 0x1234)
+        bus.write32(0x0700071C, 0x12345678)
+        assertEquals(0xFFFFFFFF.toInt(), bus.read32(0x0700071C))
     }
 }
