@@ -26,6 +26,7 @@ class N64RomVideoSession(
     private val instructionCount = AtomicLong(0L)
     private val publishedFrames = AtomicLong(0L)
     private val rspInstructions = AtomicLong(0L)
+    private val instructionTrace = N64InstructionTrace()
     @Volatile private var previousPixels: IntArray? = null
     @Volatile private var rspCore: N64RspCore? = null
     @Volatile private var rspFailure: String? = null
@@ -45,6 +46,7 @@ class N64RomVideoSession(
             beforeInstruction = { bus.setDiagnosticCpuPc(cpu.pc) },
             afterInstruction = {
                 val count = instructionCount.incrementAndGet()
+                instructionTrace.record(cpu.diagnosticInstructionAddress, cpu.diagnosticInstructionWord)
                 bus.advanceViInstructions()
                 if (count % rspPollInterval == 0L) pumpRsp()
                 if (count % progressPollInterval == 0L) onProgress(count)
@@ -73,6 +75,12 @@ class N64RomVideoSession(
     fun executedInstructionCount(): Long = instructionCount.get()
 
     fun executedRspInstructionCount(): Long = rspInstructions.get()
+
+    /** Recent successfully fetched CPU instructions, bounded to a small ring. */
+    fun diagnosticInstructionTraceSnapshot(): List<N64InstructionTrace.Entry> = instructionTrace.snapshot()
+
+    /** Returns a short exact repeated instruction cycle, if one is present. */
+    fun diagnosticRepeatedInstructionLoop(): N64InstructionTrace.Loop? = instructionTrace.detectLoop()
 
     fun rspFailureMessage(): String? = rspFailure
 
