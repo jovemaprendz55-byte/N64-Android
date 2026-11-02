@@ -699,3 +699,25 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Testes: unmappedDataReadKeepsTheFaultingInstructionInDiagnosticContext, unmappedInstructionFetchRaisesInstructionBusError e unmappedDataReadInBranchDelaySlotRaisesBusErrorWithBranchEpc.
 - Commits: 78977193bf4a7a346767d787adf7d02e9e660461 (código), a0d72640ff07dcf3058c4708daeeb2ade5783117 (testes), 887f7630b8e1920b0637f62aeb6d3566ca5b60a4 (auditoria).
 - Aguardar CI do HEAD; não há teste em aparelho nesta rodada. Não alterar main.
+
+
+## 27. Auditoria adicional da execução R4300 — endereços físicos altos e temporizador COP0 (2026-11-02)
+
+### Correção de falha no caminho de barramento
+- A auditoria encontrou outro caminho de exceção de host: após a tradução TLB, endereços físicos acima de `0x7FFFFFFF` não cabem na API atual do barramento (`Int` assinado). O código anterior usava `require`, que lançava `IllegalArgumentException` e escapava do tratamento arquitetural de IBE/DBE.
+- `R4300Cpu.physicalAddress()` agora lança `UnsupportedOperationException` para esse caso, que o `step()` já converte em IBE (FETCH, ExcCode 6) ou DBE (READ/WRITE, ExcCode 7). O diagnóstico mantém VA e access type, sem inventar PA.
+- Testes adicionados para busca de instrução e leitura de dados com PFN alto, verificando Cause, EPC, vetor e diagnóstico.
+- Commits: `bd32903a4f95c4aff9a3d62eb9004e70d08d367b` (correção) e `5ec2ee7f29d4048a393e804b361ac856076643d3` (testes).
+- CI dos dois commits: success. Runs `41544150406` e `41544157494`; ambos executaram build/test e publicaram APK debug. Artifacts: `13187204623` e `13188615457`.
+- Links: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41544150406 e https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41544157494.
+
+### Limitação confirmada: COP0 Count/Compare e interrupção de timer
+- A inspeção de `R4300Cpu.kt` não encontrou avanço do registrador Count (COP0 reg 9), comparação com Compare (reg 11), nem geração/limpeza automática de Cause.IP7 por timer. MFC0/MTC0 caem no armazenamento genérico do array COP0; isso não implementa temporização nem interrupção de timer.
+- Impacto: software convidado que depende do timer R4300 pode ficar esperando, agendar incorretamente ou não receber interrupções esperadas. A interrupção MI/IP2 existente não substitui IP7.
+- Não foi feita correção nesta rodada: o núcleo atual avança por instruções e os dispositivos têm temporização simplificada; implementar Count/Compare exige definir uma base temporal consistente e validar interação com Status.IM7, Cause.IP7, Compare write e scheduler. Simular timer por contagem arbitrária de instruções sem modelo temporal produziria falsa precisão.
+- Próxima auditoria: estabelecer o modelo de ciclos/ticks do R4300 e adicionar testes para Count rollover, Compare match/clear, máscara IM7, IE/EXL/ERL e entrega de interrupção antes da instrução seguinte. Não declarar temporizador implementado até isso passar.
+
+### Limites desta rodada
+- CI verde valida compilação e testes automatizados, não execução real de ROM no Poco C85 Android 16.
+- O APK debug está disponível nos artifacts dos dois runs acima; não foi instalado nem testado no aparelho nesta sessão.
+- Branch de trabalho permanece `dev/n64-clean-start`; `main` não foi alterada.
