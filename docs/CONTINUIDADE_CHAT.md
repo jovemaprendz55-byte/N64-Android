@@ -5042,3 +5042,17 @@ KDocs atualizados sem mudança de comportamento:
 
 **Limites:** nenhuma alteração foi feita em `main`; nenhum teste em aparelho foi executado nesta etapa; nenhum IPL3/PIF ROM original foi executado pelo HLE.
 
+
+
+## 53. Auditoria global do repositório e correção da exportação — 2026-11-02
+
+- Inventário recursivo confirmado: 117 entradas, 102 arquivos, 35 fontes de produção, 56 arquivos de testes, 5 documentos e 6 arquivos de configuração/README/workflow.
+- Auditoria estática dos subsistemas: Activity Android, loader/inspector ROM, HLE, CPU R4300/COP0/TLB, memória, barramento, DMA, SP/OSTask, RSP, DPC/RDP, VI, Gradle, manifesto, workflow e documentação.
+- CI do HEAD anterior 7c6835098f93767fadb73b82cc6f65ea52d7fb31 passou em 41423704321, incluindo testDebugUnitTest, assembleDebug e upload do APK.
+- Problema identificado: exportação de logs lia coleções mutáveis enquanto a thread da ROM ainda podia alterá-las. Corrigido para pedir parada cooperativa, aguardar a thread até 5 segundos e somente depois exportar os snapshots.
+- Primeiro commit da correção 0f515809a6c7666e5c94b2199baa61f7c39844da falhou na compilação por inserir um segundo companion object; falha diagnosticada nos logs do CI e corrigida em a04d44bd3fdd9167b9868e631ad6eb75c501bc05, movendo a constante para o companion object existente.
+- README corrigido no commit 6a055ed84acffd6b28e36a1884aee81ae553cc62 para refletir que HLE substitui parte do handoff sem executar IPL3/PIF e que RSP/RDP/VI são parciais.
+- Relatório completo: docs/AUDITORIA_COMPLETA_REPOSITORIO_2026-11-02.md (commit 6f1216c6dcb64b1aeeb01ffff683473faa0a0331).
+- Não alterar CPU/TLB/RSP/RDP por suposição; manter investigação da TLB refill e loop idle baseada em logs de sessões separadas.
+- Estado pendente: verificar CI do commit a04d44bd... e do HEAD documental atual antes de declarar build verde ou gerar APK. Nenhum APK atual foi gerado/testado após a correção de exportação.
+- main permanece intocada; objetivo segue HLE sem firmware original.
