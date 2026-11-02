@@ -834,3 +834,21 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Correção aplicada: `requireAligned(instructionAddress, 4)` agora é executado antes da tradução/busca; usa o caminho já existente de `AddressFault` para AdEL.
 - Teste adicionado: `unalignedIndirectJumpTargetRaisesAddressErrorInsteadOfHostCrash`; executa JR, delay slot e busca no endereço `0x21`, verificando ExcCode, BadVAddr, EPC, BD=0 e vetor de exceção.
 - Validar o commit por CI antes de considerar a correção aprovada. Não houve teste de ROM nem instalação no Poco C85 nesta rodada.
+
+
+## 34. Auditoria do caminho de memória R4300 — 2026-11-02
+
+### Verificações realizadas
+- Conferidos os caminhos de LB/LBU, LH/LHU, LW/LWU, LD, LL/LLD, SB/SH/SW/SD e as operações de merge LWL/LWR, SWL/SWR, LDL/LDR, SDL/SDR.
+- Loads/stores alinhados de 2, 4 e 8 bytes validam o alinhamento virtual antes da tradução física; os stores passam o indicador de escrita para gerar AdES (ExcCode 5), e os loads geram AdEL (ExcCode 4).
+- A tradução TLB recebe explicitamente o tipo READ ou WRITE, permitindo distinguir TLB miss/invalid de leitura e escrita e Modified em escrita.
+- Falhas de barramento físico não mapeado são convertidas pelo caminho de execução em DBE/IBE, enquanto falhas TLB e de alinhamento têm handlers arquiteturais próprios.
+- As operações de merge trabalham sobre endereço virtual alinhado à palavra/doubleword antes da tradução. Não foi encontrada nesta passagem uma falha reproduzível que justificasse alterar essas fórmulas sem testes adicionais.
+- Os acessos de 64 bits são divididos em transferências de 32 bits big-endian; o alinhamento de 8 bytes mantém os dois segmentos dentro da mesma página TLB normal, mas a temporização e a atomicidade de dispositivos ainda não são modeladas como hardware real.
+
+### Resultado e limitações
+- Nenhum defeito funcional novo foi confirmado nesta passagem; portanto, nenhum handler de memória foi alterado especulativamente.
+- A FPU continua incompleta: LWC1/LDC1/SWC1/SDC1 e operações aritméticas COP1 permanecem ausentes quando CU1 está habilitado, conforme documentado nas seções anteriores.
+- A auditoria foi estática, com inspeção do código e dos testes existentes. Não equivale a execução de ROM nem a teste no Poco C85.
+- CI #1475, #1476 e #1477 terminou com success, cobrindo os commits da correção de fetch desalinhado e sua documentação.
+- Branch dev/n64-clean-start; main permanece intacta.
