@@ -4978,4 +4978,23 @@ class R4300CpuTest {
         assertTrue(jumpEvent.contains("RA=0x44"))
     }
 
+
+    @Test fun sdUnalignedAddressRaisesStoreAddressError() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x3F, 1, 2, 0)) // sd $v0, 0($at)
+        memory.write32(32, 0x11223344)
+        memory.write32(36, 0x55667788)
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = 33L
+        cpu.gpr[2] = 0xAABBCCDDEEFF0011UL.toLong()
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(5L, (cpu.cop0[13] ushr 2) and 0x1FL) // AdES, not AdEL
+        assertEquals(33L, cpu.cop0[8]) // BadVAddr
+        assertEquals(0x11223344, memory.read32(32))
+        assertEquals(0x55667788, memory.read32(36))
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+    }
 }
