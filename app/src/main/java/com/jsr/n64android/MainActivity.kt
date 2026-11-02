@@ -304,18 +304,7 @@ class MainActivity : Activity() {
                 runOnUiThread {
                     Toast.makeText(this@MainActivity, "Logs salvos em Downloads/N64Android.", Toast.LENGTH_LONG).show()
                 }
-                            put(MediaStore.Downloads.DISPLAY_NAME, "N64-Android-logs-${System.currentTimeMillis()}.txt")
-                            put(MediaStore.Downloads.MIME_TYPE, "text/plain")
-                            put(MediaStore.Downloads.RELATIVE_PATH, "Download/N64Android")
-                        }
-                        val logUri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                            ?: throw IOException("Não foi possível criar o arquivo na pasta Downloads.")
-                        contentResolver.openOutputStream(logUri)?.bufferedWriter(Charsets.UTF_8)?.use { writer ->
-                            writer.write(log)
-                        } ?: throw IOException("Não foi possível gravar o arquivo de log.")
-                        runOnUiThread {
-                            Toast.makeText(this@MainActivity, "Logs salvos em Downloads/N64Android.", Toast.LENGTH_LONG).show()
-                        }
+
                     } catch (error: Exception) {
                         runOnUiThread {
                             Toast.makeText(this@MainActivity, "Falha ao exportar logs: ${error.message ?: error.javaClass.simpleName}", Toast.LENGTH_LONG).show()
