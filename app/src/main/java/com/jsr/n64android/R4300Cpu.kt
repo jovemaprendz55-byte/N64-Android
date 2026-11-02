@@ -297,6 +297,12 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         }
     }
 
+    private fun isKernelMode(): Boolean {
+        val status = cop0[12]
+        // EXL or ERL forces Kernel mode; otherwise KSU=00 selects Kernel.
+        return (status and 0x6L) != 0L || (status and 0x18L) == 0L
+    }
+
     /** Branches and jumps take effect after the delay slot. */
     private fun stepInstruction() {
         val instructionAddress = pc
@@ -317,6 +323,14 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         val funct = instruction and 0x3F
         val immediate = instruction.toShort().toInt()
         val unsignedImmediate = instruction and 0xFFFF
+
+        // On VR4300, COP0 is always usable in Kernel mode. In User/Supervisor
+        // mode it requires Status.CU0; CACHE is subject to the same restriction.
+        if ((opcode == 0x10 || opcode == 0x2F) &&
+            !isKernelMode() && (cop0[12] and (1L shl 28)) == 0L
+        ) {
+            throw CoprocessorUnusableFault(0)
+        }
 
         // All COP1 encodings, including floating-point memory operations, trap
         // before address translation or memory side effects when CU1 is disabled.
