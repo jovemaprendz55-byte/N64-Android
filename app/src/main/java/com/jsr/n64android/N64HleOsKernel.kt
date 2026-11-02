@@ -202,6 +202,32 @@ class N64HleOsKernel {
     @Synchronized
     fun pollEvent(): Event? = if (events.isEmpty()) null else events.removeFirst()
 
+
+    /** Immutable, id-ordered view of all guest threads for HLE scheduler diagnostics. */
+    @Synchronized
+    fun allThreadSnapshots(): List<ThreadSnapshot> =
+        threads.values.sortedBy { it.id }.map { it.snapshot() }
+
+    /** Reports thread scheduling state without dispatching or changing any thread. */
+    @Synchronized
+    fun diagnosticSnapshot(): String = buildString {
+        appendLine("HLE KERNEL sequence=$sequence currentThread=${currentThreadId ?: "NONE"}")
+        allThreadSnapshots().forEach { thread ->
+            appendLine(
+                "THREAD id=${thread.id} priority=${thread.priority} state=${thread.state} " +
+                    "entry=0x${thread.entryPoint.toULong().toString(16).uppercase()} " +
+                    "wake=${thread.wakeSequence}"
+            )
+        }
+        queues.toSortedMap().forEach { (id, queue) ->
+            appendLine(
+                "QUEUE id=$id capacity=${queue.capacity} messages=${queue.messages.size} " +
+                    "waitingSenders=${queue.waitingSenders.size} waitingReceivers=${queue.waitingReceivers.size}"
+            )
+        }
+        appendLine("EVENTS pending=${events.size}")
+    }
+
     @Synchronized
     fun currentThread(): ThreadSnapshot? = currentThreadId?.let(threads::get)?.snapshot()
 
