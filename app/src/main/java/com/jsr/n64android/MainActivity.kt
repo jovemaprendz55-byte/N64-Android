@@ -25,6 +25,7 @@ class MainActivity : Activity() {
     private lateinit var status: TextView
     private var cartridgeBus: N64Bus? = null
     private var cartridgeRomBytes: ByteArray? = null
+    @Volatile private var romLoadGeneration = 0
     private var romTraceButton: Button? = null
     private var hleBootButton: Button? = null
     private var mainActionButton: Button? = null
@@ -1709,6 +1710,8 @@ class MainActivity : Activity() {
 
     /** Reads and validates a document off the UI thread to keep large ROM loads responsive. */
     private fun loadRomFromUri(uri: Uri, rememberSelection: Boolean, restoring: Boolean = false) {
+        val loadGeneration = ++romLoadGeneration
+        if (rememberSelection) getSharedPreferences(ROM_PREFS, MODE_PRIVATE).edit().remove(KEY_LAST_ROM_URI).apply()
         mainActionButton?.isEnabled = false
         status.text = if (restoring) "Restaurando a última ROM..." else "Lendo e verificando a ROM..."
         cartridgeBus = null
@@ -1727,7 +1730,7 @@ class MainActivity : Activity() {
             } catch (_: Exception) { "ROM selecionada" }
 
             runOnUiThread {
-                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (isFinishing || isDestroyed || loadGeneration != romLoadGeneration) return@runOnUiThread
                 if (bytes == null) {
                     if (restoring) getSharedPreferences(ROM_PREFS, MODE_PRIVATE).edit().remove(KEY_LAST_ROM_URI).apply()
                     mainActionButton?.apply { isEnabled = true; text = "ESCOLHER JOGO" }
