@@ -265,6 +265,9 @@ class N64Bus(
     fun setSpDmaListener(listener: ((SpDmaTransfer) -> Unit)?) {
         spDmaListener = listener
     }
+
+    /** Side-effect-free diagnostic used to verify task-runner cleanup after failures. */
+    fun diagnosticHasSpDmaListener(): Boolean = spDmaListener != null
     private val dpcCommandProcessor by lazy {
         N64DpcCommandProcessor(this, ram.size, N64RdpFillProcessor(this, ram.size))
     }
