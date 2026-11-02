@@ -34,7 +34,12 @@ object N64HleAutoDiagnostic {
             appendLine("OBSERVAÇÃO: SP está em HALT.")
             if (spWrites == 0) appendLine("EVIDÊNCIA: nenhuma escrita CPU nos registradores SP foi registrada nesta sessão.")
         }
-        appendLine("MMIO: escritas SP registradas=$spWrites | escritas DPC registradas=$dpcWrites")
+        appendLine("MMIO RECENTE: SP=$spWrites eventos na janela | DPC=$dpcWrites eventos na janela")
+        appendLine("ESTADO DOS DISPOSITIVOS:")
+        bus.diagnosticDeviceSnapshot().forEach { appendLine("  $it") }
+        appendLine("ÚLTIMOS EVENTOS SP:")
+        bus.diagnosticSpMmioHistory.toList().takeLast(12).forEach { appendLine("  $it") }
+        if (bus.diagnosticSpMmioHistory.isEmpty()) appendLine("  Nenhum acesso SP registrado.")
 
         if (cpu.lastTlbFaultKind != null) {
             appendLine("EVIDÊNCIA: última falha TLB observada: ${cpu.lastTlbFaultKind} / ${cpu.lastTlbFaultAccessType} em VA=0x${cpu.lastTlbFaultVirtualAddress?.let(::hex64) ?: "N/A"}.")
