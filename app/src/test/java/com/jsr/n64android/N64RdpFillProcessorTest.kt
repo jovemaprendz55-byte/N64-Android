@@ -108,4 +108,29 @@ class N64RdpFillProcessorTest {
         val data = value ?: low
         return (opcode.toLong() shl 58) or (high shl 32) or (data and 0xFFFFFFFFL)
     }
+
+    @Test
+    fun stateSnapshotTracksColorImageFillModeAndScissorWithoutWritingMemory() {
+        val memory = N64Memory(512)
+        val processor = N64RdpFillProcessor(memory, memory.size)
+        processor.execute(listOf(
+            command(N64RdpFillProcessor.CMD_SET_OTHER_MODES, high = 3L shl 20),
+            command(N64RdpFillProcessor.CMD_SET_COLOR_IMAGE, high = (2L shl 19) or 7L, low = 0x80L),
+            command(N64RdpFillProcessor.CMD_SET_SCISSOR,
+                high = (4L shl 12) or 8L, low = (20L shl 12) or 24L),
+            command(N64RdpFillProcessor.CMD_SET_FILL_COLOR, low = 0xF801F801L)
+        ))
+        val state = processor.snapshotState()
+        assertEquals(0x80, state.colorImageAddress)
+        assertEquals(8, state.colorImageWidth)
+        assertEquals(N64RdpFillProcessor.IMAGE_SIZE_16, state.colorImageSize)
+        assertEquals(N64RdpFillProcessor.CYCLE_TYPE_FILL, state.cycleType)
+        assertEquals(1, state.scissorLeft)
+        assertEquals(2, state.scissorTop)
+        assertEquals(5, state.scissorRight)
+        assertEquals(6, state.scissorBottom)
+        assertEquals(0, memory.read16(0x80))
+        assertTrue(processor.diagnosticSnapshot().contains("RDP COLOR_IMAGE=0x80"))
+    }
+
 }
