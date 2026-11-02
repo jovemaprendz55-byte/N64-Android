@@ -47,6 +47,29 @@ class N64HleCpuSchedulerTest {
         assertEquals(1, scheduler.activeThreadId())
     }
 
+    @Test
+    fun boundedQuantumExecutesGuestInstructionsAndPreservesContext() {
+        val memory = N64Memory(0x1000)
+        val cpu = R4300Cpu(memory)
+        val kernel = N64HleOsKernel()
+        val scheduler = N64HleCpuScheduler(kernel, cpu)
+        val entry = 0xFFFFFFFF80000000UL.toLong()
+        memory.write32(0, (0x09 shl 26) or (8 shl 16) or 42) // addiu t0,zero,42
+        memory.write32(4, (0x09 shl 26) or (9 shl 16) or 43) // addiu t1,zero,43
+        memory.write32(8, 0) // nop
+
+        kernel.createThread(4, 1, entry)
+        scheduler.registerInitialContext(4, cpu.snapshotContext().copy(pc = entry))
+        scheduler.startThread(4)
+
+        assertEquals(4, scheduler.dispatch()?.id)
+        assertEquals(2, scheduler.runQuantum(2))
+        assertEquals(42L, cpu.gpr[8])
+        assertEquals(43L, cpu.gpr[9])
+        assertEquals(entry + 8L, cpu.pc)
+        assertEquals(0, scheduler.runQuantum(0))
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun initialContextMustStartAtThreadEntryPoint() {
         val cpu = R4300Cpu(N64Memory(0x100))
