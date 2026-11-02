@@ -312,4 +312,19 @@ class R4300TlbTest {
         assertEquals(true, translated.global)
     }
 
+
+    @Test
+    fun diagnosticSnapshotShowsIndexedEmptyAndPopulatedEntries() {
+        val tlb = R4300Tlb()
+        tlb.write(3, R4300Tlb.Entry(
+            0x00400000L, 7,
+            R4300Tlb.Page(0x123, true, true),
+            R4300Tlb.Page(0x456, true, false)
+        ))
+        val report = tlb.diagnosticSnapshot()
+        org.junit.Assert.assertTrue(report.contains("TLB[0]=EMPTY"))
+        org.junit.Assert.assertTrue(report.contains("TLB[3] VPN2=0x00400000 ASID=7"))
+        org.junit.Assert.assertTrue(report.contains("ODD(PFN=0x456,V=true,D=false)"))
+    }
+
 }
