@@ -534,6 +534,19 @@ class N64RspCoreTest {
     }
 
     @Test
+    fun decodesVmuluThroughCop2VectorInstruction() {
+        val (_, rsp) = setup(vectorOp(0x01, vd = 3, vs = 1, vt = 2))
+        rsp.vectorUnit.writeLane(1, 0, 0x4000)
+        rsp.vectorUnit.writeLane(2, 0, 0x4000)
+        rsp.vectorUnit.writeLane(1, 1, -0x4000)
+        rsp.vectorUnit.writeLane(2, 1, 0x4000)
+
+        assertEquals(1, rsp.run(1))
+        assertEquals(8192, rsp.vectorUnit.readLane(3, 0))
+        assertEquals(0, rsp.vectorUnit.readLane(3, 1))
+    }
+
+    @Test
     fun decodesVabsThroughCop2VectorInstruction() {
         val (_, rsp) = setup(vectorOp(0x13, vd = 3, vs = 1, vt = 2))
         rsp.vectorUnit.writeLane(1, 0, -1)
