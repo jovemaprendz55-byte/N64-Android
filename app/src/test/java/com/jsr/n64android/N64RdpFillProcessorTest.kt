@@ -133,4 +133,12 @@ class N64RdpFillProcessorTest {
         assertTrue(processor.diagnosticSnapshot().contains("RDP COLOR_IMAGE=0x80"))
     }
 
-}
+
+    @Test fun setBlendColorIsRetainedInRdpStateSnapshot() {
+        val processor = N64RdpFillProcessor(N64Memory(), 4 * 1024 * 1024)
+        val blend = 0x3912345678ABCDEFL
+        processor.execute(listOf(blend))
+        assertEquals(0x78ABCDEF, processor.snapshotState().blendColor)
+        assertTrue(processor.diagnosticSnapshot().contains("BLEND=0x78ABCDEF"))
+    }
+\n}\n
