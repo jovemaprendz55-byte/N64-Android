@@ -123,6 +123,24 @@ class N64RspVectorUnit {
         }
     }
 
+    /**
+     * VSAR exposes one 16-bit slice of the 48-bit accumulator in each lane.
+     * Element 8 selects bits 47..32, 9 selects bits 31..16, and 10 selects
+     * bits 15..0. Other element selectors are architecturally reserved.
+     */
+    fun accumulatorSlice(destination: Int, element: Int) {
+        checkVector(destination)
+        require(element in 8..10) { "VSAR element must be 8 (HI), 9 (MD), or 10 (LO)." }
+        val shift = when (element) {
+            8 -> 32
+            9 -> 16
+            else -> 0
+        }
+        for (lane in 0..7) {
+            registers[destination][lane] = ((accumulator[lane] shr shift) and 0xFFFFL).toInt()
+        }
+    }
+
     fun readAccumulator(lane: Int): Long {
         require(lane in 0..7)
         return accumulator[lane]
