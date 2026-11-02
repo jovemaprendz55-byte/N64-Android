@@ -679,3 +679,14 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - CI do HEAD f529f3f6bfa13e3b8ba8bbd859a0648c97d5682e: aguardando resultado.
 - Limitação atual: COP1 continua parcial; aritmética/conversões/comparações FPU, instruções de memória COP1 quando habilitado e semântica completa FCR31 ainda faltam.
 - Não houve validação de jogo real no Android 16; não confundir CI com compatibilidade de jogos.
+
+
+## 25. Auditoria do endereço 0x7000071C — 2026-11-02
+
+- Interpretado como endereço virtual MIPS KUSEG, portanto depende da TLB; se traduzido para 0x0700071C, aponta para a janela física 64DD Domain 1 Address 1 (0x06000000–0x07FFFFFF).
+- Bug encontrado em N64Bus: a janela Domain 2 Address 1 (0x05000000–0x05FFFFFF) estava coberta, mas Domain 1 Address 1 não; acessos podiam terminar em UnsupportedOperationException.
+- Corrigido o mapeamento das duas janelas ausentes: leituras devolvem open bus (0xFF por byte) e gravações são ignoradas.
+- Testes adicionados para byte/halfword/word e writes em 0x0700071C; também preservam cobertura de 0x05000508.
+- Alterações de código/teste: commits 3fc7bc1a38f6404cc57df9749a8f00c3ba258aba e 21997bbc8a5c92f8b22b7092261c8674ac5b95d5.
+- CI ainda precisa ser verificada; não declarar APK aprovado até success.
+- Próximo passo: verificar CI, depois obter dump TLB/ASID/EntryHi/EntryLo do contexto real para confirmar a tradução efetiva de 0x7000071C. Não alterar main.
