@@ -356,8 +356,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
 
         val diagnosticEffectiveAddress = if (
             opcode == 0x28 || opcode == 0x29 || opcode == 0x2A || opcode == 0x2B ||
-            opcode == 0x2C || opcode == 0x2D || opcode == 0x2E || opcode == 0x38 ||
-            opcode == 0x3C || opcode == 0x3F
+            opcode == 0x2C || opcode == 0x2D || opcode == 0x2E || opcode == 0x31 ||
+            opcode == 0x35 || opcode == 0x38 || opcode == 0x39 || opcode == 0x3C ||
+            opcode == 0x3D || opcode == 0x3F
         ) {
             gpr[rs] + immediate.toLong()
         } else null
