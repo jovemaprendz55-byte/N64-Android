@@ -109,3 +109,14 @@
 ### Limite da conclusão
 - A correção do barramento físico não prova, sozinha, que a TLB do estado de execução atual traduz 0x7000071C para 0x0700071C. Para fechar a trilha CPU completa, registrar o estado TLB/ASID/EntryHi/EntryLo no ponto real da falha.
 - Aguardando CI deste HEAD; sem teste instrumentado em dispositivo nesta rodada.
+
+
+## Auditoria do endereço 0x70000720 — 2026-11-02
+
+- O endereço virtual 0x70000720 também pertence a KUSEG e requer tradução pela TLB; não é correto assumir seu endereço físico sem capturar a entrada TLB ativa e o ASID no instante do acesso.
+- Se a tradução resultar em 0x07000720, o barramento já o inclui na janela Domain 1 Address 1 (0x06000000–0x07FFFFFF), tratada como 64DD IPL ROM ausente.
+- A inspeção do código confirmou que read8 retorna 0xFF nessa janela; read16/read32 compõem os valores abertos (0xFFFF/0xFFFFFFFF), e write8 ignora gravações. write16/write32 delegam aos acessos byte a byte.
+- Não foi encontrado defeito novo no mapeamento físico para 0x07000720. A lacuna era a ausência de teste explícito nesse endereço.
+- Testes atualizados para cobrir leituras byte/halfword/word e gravações em 0x07000720, mantendo 0x0700071C como caso de regressão.
+- Commit do teste: 2ffe1a1de8b760d7d246fe7eddd13c570d31fdbf.
+- A alteração é cobertura de teste, não mudança do código de execução. Aguardar CI verde; ainda não há validação no aparelho nem confirmação da tradução TLB real de 0x70000720.
