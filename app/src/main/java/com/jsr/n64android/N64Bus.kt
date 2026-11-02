@@ -33,6 +33,8 @@ class N64Bus(
     val diagnosticSpMmioCounts = linkedMapOf<String, Long>()
     val diagnosticSpWriteHistory = ArrayDeque<String>()
     val diagnosticMmioCounts = linkedMapOf<String, Long>()
+    /** Cumulative CPU-originated MMIO writes; unlike histories, these counters never evict old events. */
+    val diagnosticMmioWriteCounts = linkedMapOf<String, Long>()
     fun setDiagnosticCpuPc(pc: Long) { diagnosticCpuPc = pc }
     /** Supplies the decoded CPU instruction context used by narrow memory watchpoints. */
     /** True when at least one enabled MI source is asserting the VR4300 external interrupt line. */
@@ -66,6 +68,9 @@ class N64Bus(
     private fun recordMmio(kind: String, address: Int, value: Int) {
         val device = mmioDevice(address) ?: return
         diagnosticMmioCounts[device] = (diagnosticMmioCounts[device] ?: 0L) + 1L
+        if (kind == "W") {
+            diagnosticMmioWriteCounts[device] = (diagnosticMmioWriteCounts[device] ?: 0L) + 1L
+        }
         if (diagnosticMmioHistory.size >= 256) diagnosticMmioHistory.removeFirst()
         val traceLine =
             "$kind $device PC=0x${diagnosticCpuPc.toULong().toString(16).uppercase()} " +
