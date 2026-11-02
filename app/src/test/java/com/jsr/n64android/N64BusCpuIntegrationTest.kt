@@ -44,17 +44,21 @@ class N64BusCpuIntegrationTest {
     }
 
     @Test
-    fun cartridgeFetchPastEndFailsExplicitlyAtUnmappedBusBoundary() {
+    fun cartridgeFetchPastEndRaisesInstructionBusErrorAtUnmappedBusBoundary() {
         val bus = N64Bus(ram = N64Memory(8 * 1024), cartridgeRom = byteArrayOf(0, 0, 0, 0))
         val cpu = R4300Cpu(bus)
-        cpu.setProgramCounter(0xFFFFFFFFB0000004UL.toLong())
+        val faultingPc = 0xFFFFFFFFB0000004UL.toLong()
+        cpu.setProgramCounter(faultingPc)
 
-        try {
-            cpu.step()
-            throw AssertionError("Expected an unmapped cartridge read to fail explicitly.")
-        } catch (error: UnsupportedOperationException) {
-            assertEquals("Cartridge read is beyond the loaded ROM size at 0x10000004.", error.message)
-        }
+        cpu.step()
+
+        assertEquals(6L, (cpu.cop0[13] ushr 2) and 0x1FL) // IBE.
+        assertEquals(faultingPc, cpu.cop0[14])
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+        assertEquals("FETCH", cpu.lastExceptionAccessType)
+        assertEquals(faultingPc, cpu.diagnosticInstructionAddress)
+        assertEquals(0x10000004, cpu.diagnosticPhysicalAddress)
+        assertEquals("FETCH", cpu.diagnosticAccessType)
     }
     @Test
     fun cpuExecutesCartridgeCodeAfterPiDmaCopiesItIntoRdram() {
