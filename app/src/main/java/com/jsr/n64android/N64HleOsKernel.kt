@@ -3,13 +3,12 @@ package com.jsr.n64android
 /**
  * Host-side first-stage model of libultra-style OS scheduling primitives.
  *
- * This is deliberately not advertised as guest ABI interception: it does not
- * read/write guest OSThread/OSMesgQueue structures and does not switch R4300
- * register contexts. It provides deterministic semantics that can later be
- * connected to guest memory and CPU context save/restore.
+ * This remains a host model, not guest ABI interception: it does not read/write
+ * guest OSThread/OSMesgQueue structures or switch R4300 register contexts.
  */
 class N64HleOsKernel {
     enum class ThreadState { STOPPED, RUNNABLE, RUNNING, WAITING_MESSAGE, WAITING_EVENT, TERMINATED }
+    private enum class MessageWaitKind { SEND, RECEIVE }
 
     data class ThreadSnapshot(
         val id: Int,
@@ -35,7 +34,10 @@ class N64HleOsKernel {
         val entryPoint: Long,
         val argument: Long,
         var state: ThreadState = ThreadState.STOPPED,
-        var wakeSequence: Long = 0L
+        var wakeSequence: Long = 0L,
+        var waitingQueueId: Int? = null,
+        var messageWaitKind: MessageWaitKind? = null,
+        var pendingMessage: Long? = null
     )
 
     private data class QueueRecord(
@@ -55,7 +57,9 @@ class N64HleOsKernel {
     fun createThread(id: Int, priority: Int, entryPoint: Long, argument: Long = 0L) {
         require(id >= 0) { "Thread id must be non-negative." }
         require(priority >= 0) { "Thread priority must be non-negative." }
-        require(entryPoint != 0L && entryPoint and 3L == 0L) { "Thread entry point must be nonzero and 4-byte aligned." }
+        require(entryPoint != 0L && entryPoint and 3L == 0L) {
+            "Thread entry point must be nonzero and 4-byte aligned."
+        }
         require(id !in threads) { "Thread $id already exists." }
         threads[id] = ThreadRecord(id, priority, entryPoint, argument)
     }
@@ -109,31 +113,76 @@ class N64HleOsKernel {
         queues[id] = QueueRecord(capacity)
     }
 
-    /** Non-blocking send. Returns false when the bounded queue is full. */
+    /** Non-blocking send. Does not bypass senders already waiting for queue space. */
     @Synchronized
     fun sendMessage(queueId: Int, message: Long): Boolean {
         val queue = requireQueue(queueId)
-        if (queue.messages.size >= queue.capacity) return false
+        if (queue.messages.size >= queue.capacity || queue.waitingSenders.isNotEmpty()) return false
         queue.messages.addLast(message)
-        wakeOneReceiver(queue)
+        wakeOneReceiver(queueId, queue)
         return true
     }
 
-    /** Non-blocking receive. Returns null when the queue is empty. */
+    /** Non-blocking receive. Frees a slot for the oldest blocked sender. */
     @Synchronized
     fun receiveMessage(queueId: Int): Long? {
         val queue = requireQueue(queueId)
         if (queue.messages.isEmpty()) return null
         val message = queue.messages.removeFirst()
-        wakeOneSender(queue)
+        wakeOneSender(queueId, queue)
         return message
     }
 
-    /** Explicitly blocks/unblocks threads; actual wait-list integration is added in a later stage. */
+    /**
+     * Sends immediately when possible. If full, parks the current thread and
+     * retains its message until a receiver frees a queue slot. Returns false
+     * when the calling thread was blocked.
+     */
+    @Synchronized
+    fun sendMessageBlocking(queueId: Int, message: Long): Boolean {
+        val queue = requireQueue(queueId)
+        if (queue.messages.size < queue.capacity && queue.waitingSenders.isEmpty()) {
+            queue.messages.addLast(message)
+            wakeOneReceiver(queueId, queue)
+            return true
+        }
+        val thread = requireRunningThread()
+        thread.state = ThreadState.WAITING_MESSAGE
+        thread.waitingQueueId = queueId
+        thread.messageWaitKind = MessageWaitKind.SEND
+        thread.pendingMessage = message
+        queue.waitingSenders.addLast(thread.id)
+        currentThreadId = null
+        return false
+    }
+
+    /**
+     * Receives immediately when possible. If empty, parks the current thread
+     * until a sender posts a message. Returns null when the calling thread
+     * was blocked.
+     */
+    @Synchronized
+    fun receiveMessageBlocking(queueId: Int): Long? {
+        val queue = requireQueue(queueId)
+        if (queue.messages.isNotEmpty()) {
+            val message = queue.messages.removeFirst()
+            wakeOneSender(queueId, queue)
+            return message
+        }
+        val thread = requireRunningThread()
+        thread.state = ThreadState.WAITING_MESSAGE
+        thread.waitingQueueId = queueId
+        thread.messageWaitKind = MessageWaitKind.RECEIVE
+        queue.waitingReceivers.addLast(thread.id)
+        currentThreadId = null
+        return null
+    }
+
     @Synchronized
     fun blockCurrentForEvent() {
         val id = currentThreadId ?: return
         val thread = requireThread(id)
+        check(thread.state == ThreadState.RUNNING) { "Only a running thread can wait for an event." }
         thread.state = ThreadState.WAITING_EVENT
         currentThreadId = null
     }
@@ -141,8 +190,6 @@ class N64HleOsKernel {
     @Synchronized
     fun postEvent(type: Int, value: Long = 0L) {
         events.addLast(Event(type, value, ++sequence))
-        // Wake the oldest thread waiting for an event. Event delivery remains queued
-        // for the guest-facing dispatcher to consume in a later integration stage.
         threads.values
             .filter { it.state == ThreadState.WAITING_EVENT }
             .minByOrNull { it.wakeSequence }
@@ -172,26 +219,52 @@ class N64HleOsKernel {
         )
     }
 
-    private fun wakeOneReceiver(queue: QueueRecord) {
+    private fun wakeOneReceiver(queueId: Int, queue: QueueRecord) {
         while (queue.waitingReceivers.isNotEmpty()) {
             val thread = threads[queue.waitingReceivers.removeFirst()] ?: continue
-            if (thread.state == ThreadState.WAITING_MESSAGE) {
-                thread.state = ThreadState.RUNNABLE
-                thread.wakeSequence = ++sequence
+            if (thread.state == ThreadState.WAITING_MESSAGE &&
+                thread.waitingQueueId == queueId &&
+                thread.messageWaitKind == MessageWaitKind.RECEIVE
+            ) {
+                clearMessageWait(thread)
+                makeRunnable(thread)
                 break
             }
         }
     }
 
-    private fun wakeOneSender(queue: QueueRecord) {
-        while (queue.waitingSenders.isNotEmpty()) {
+    private fun wakeOneSender(queueId: Int, queue: QueueRecord) {
+        while (queue.waitingSenders.isNotEmpty() && queue.messages.size < queue.capacity) {
             val thread = threads[queue.waitingSenders.removeFirst()] ?: continue
-            if (thread.state == ThreadState.WAITING_MESSAGE) {
-                thread.state = ThreadState.RUNNABLE
-                thread.wakeSequence = ++sequence
+            if (thread.state == ThreadState.WAITING_MESSAGE &&
+                thread.waitingQueueId == queueId &&
+                thread.messageWaitKind == MessageWaitKind.SEND
+            ) {
+                val message = thread.pendingMessage ?: continue
+                queue.messages.addLast(message)
+                clearMessageWait(thread)
+                makeRunnable(thread)
                 break
             }
         }
+    }
+
+    private fun clearMessageWait(thread: ThreadRecord) {
+        thread.waitingQueueId = null
+        thread.messageWaitKind = null
+        thread.pendingMessage = null
+    }
+
+    private fun makeRunnable(thread: ThreadRecord) {
+        thread.state = ThreadState.RUNNABLE
+        thread.wakeSequence = ++sequence
+    }
+
+    private fun requireRunningThread(): ThreadRecord {
+        val id = checkNotNull(currentThreadId) { "A blocking message operation requires a running thread." }
+        val thread = requireThread(id)
+        check(thread.state == ThreadState.RUNNING) { "A blocking message operation requires a running thread." }
+        return thread
     }
 
     private fun requireThread(id: Int): ThreadRecord =
