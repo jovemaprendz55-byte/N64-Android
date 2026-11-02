@@ -663,7 +663,6 @@ class N64Bus(
             AI_STATUS_REG -> { return } // Write clears the AI interrupt; interrupts are not yet modeled.
             AI_DACRATE_REG -> { aiDacRate = value and 0x3FFF; return }
             AI_BITRATE_REG -> { aiBitRate = value and 0xF; return }
-            VI_CURRENT_REG -> { viCurrentLine = 0; return } // Writing CURRENT acknowledges VI interrupt; interrupts are not yet modeled.
             VI_CURRENT_REG -> {
                 // VI_CURRENT is read-only; writing it acknowledges the VI interrupt.
                 miInterrupts = miInterrupts and MI_INTR_VI.inv()
