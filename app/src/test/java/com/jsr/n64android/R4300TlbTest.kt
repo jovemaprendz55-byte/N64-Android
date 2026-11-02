@@ -345,5 +345,4 @@ class R4300TlbTest {
         assertEquals(1, tlb.invalidateNonGlobal())
         assertEquals(2, tlb.probe(0x18000L, 9))
     }
-\
 }
