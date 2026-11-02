@@ -3,6 +3,8 @@ package com.jsr.n64android
 /**
  * Small rolling trace of successfully fetched CPU instructions.
  * It is intentionally independent of emulation state and never changes execution.
+ * Writes happen on the emulation worker; snapshots are read after that worker is joined.
+ * This avoids a monitor/lock on every emulated instruction.
  */
 class N64InstructionTrace(private val capacity: Int = DEFAULT_CAPACITY) {
     data class Entry(val pc: Long, val instruction: Int)
@@ -14,14 +16,12 @@ class N64InstructionTrace(private val capacity: Int = DEFAULT_CAPACITY) {
         require(capacity >= 4) { "Trace capacity must be at least four instructions." }
     }
 
-    @Synchronized
     fun record(pc: Long?, instruction: Int?) {
         if (pc == null || instruction == null) return
         if (entries.size == capacity) entries.removeFirst()
         entries.addLast(Entry(pc, instruction))
     }
 
-    @Synchronized
     fun snapshot(): List<Entry> = entries.toList()
 
     /**
@@ -29,7 +29,6 @@ class N64InstructionTrace(private val capacity: Int = DEFAULT_CAPACITY) {
      * instructions. Three consecutive repetitions are required to avoid
      * flagging ordinary short code sequences as loops.
      */
-    @Synchronized
     fun detectLoop(maxPeriod: Int = MAX_PERIOD, repetitions: Int = MIN_REPETITIONS): Loop? {
         require(maxPeriod > 0)
         require(repetitions >= MIN_REPETITIONS)
