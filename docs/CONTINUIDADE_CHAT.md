@@ -721,3 +721,29 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - CI verde valida compilação e testes automatizados, não execução real de ROM no Poco C85 Android 16.
 - O APK debug está disponível nos artifacts dos dois runs acima; não foi instalado nem testado no aparelho nesta sessão.
 - Branch de trabalho permanece `dev/n64-clean-start`; `main` não foi alterada.
+
+
+## 28. Auditoria do relógio de execução e integração VI — 2026-11-02
+
+### Resultado da inspeção do caminho de execução
+- `N64RomVideoSession` chama `bus.advanceViInstructions()` no callback `afterInstruction`, uma vez por instrução executada. Portanto, o caminho contínuo de ROM/vídeo já avança o modelo aproximado do VI.
+- `N64CpuExecutionSession` apenas delega `cpu.step()` a `N64ExecutionSession`; não avança o VI por conta própria.
+- `N64HleCpuScheduler.runQuantum()` também chama somente `cpu.step()` e não avança relógio de dispositivos. Isso é uma lacuna se esse scheduler for usado como caminho autônomo de execução de ROM; não se deve duplicar o avanço no caminho `N64RomVideoSession`.
+- O método `N64Bus.advanceViInstructions()` declara explicitamente um modelo aproximado de uma unidade por instrução, não ciclos reais por opcode. A integração atual serve como temporização grosseira de VI, não como relógio completo do console.
+ 
+### COP0 Count/Compare — confirmação
+- `R4300Cpu.step()` não atualiza Count (COP0 reg 9) após uma instrução.
+- `MTC0 Compare` (reg 11) cai no armazenamento genérico e não limpa `Cause.IP7`; `MTC0 Count` (reg 9) também não tem semântica temporal específica.
+- `serviceMiInterrupt()` amostra a linha MI como IP2, mas não sintetiza nem entrega IP7 de timer.
+- Não corrigir Count usando simplesmente o contador de instruções: o VI atual já é explicitamente aproximado e não fornece ciclos R4300 por opcode. Definir um domínio temporal compartilhado é pré-requisito para implementar Count/Compare com comportamento verificável.
+
+### Próximas ações seguras
+1. Mapear todos os caminhos de execução realmente usados pela Activity e decidir se `N64HleCpuScheduler` será integrado ao loop contínuo ou permanecerá como scheduler cooperativo isolado.
+2. Se o scheduler for usado para executar ROM, injetar uma interface de avanço de dispositivos para evitar relógios divergentes e dupla contagem.
+3. Projetar um acumulador de ciclos R4300 (por opcode/estágio) e só então derivar Count/Compare e o avanço VI do mesmo relógio.
+4. Testar rollover de Count, match Compare, limpeza de IP7 ao escrever Compare, máscara IM7, IE/EXL/ERL e prioridade/entrega antes da instrução seguinte.
+
+### Estado
+- Nenhum código funcional foi alterado nesta auditoria; não há alegação de que timer COP0 esteja implementado.
+- CI #1468 para o commit `944298cbbbb2c31515610b27c14682050378b2d4` passou.
+- Branch `dev/n64-clean-start`; `main` intacta. Ainda não houve teste de ROM no aparelho nesta rodada.
