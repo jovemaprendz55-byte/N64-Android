@@ -34,7 +34,7 @@ object N64HleAutoDiagnostic {
             appendLine("OBSERVAÇÃO: SP está em HALT.")
             if (spWrites == 0) appendLine("EVIDÊNCIA: nenhuma escrita CPU nos registradores SP foi registrada nesta sessão.")
         }
-        appendLine("MMIO RECENTE: SP=$spWrites eventos na janela | DPC=$dpcWrites eventos na janela")
+        appendLine("MMIO RECENTE: escritas SP=$spWrites | escritas DPC=$dpcWrites (buffers limitados)")
         appendLine("ESTADO DOS DISPOSITIVOS:")
         bus.diagnosticDeviceSnapshot().forEach { appendLine("  $it") }
         appendLine("ÚLTIMOS EVENTOS SP:")
