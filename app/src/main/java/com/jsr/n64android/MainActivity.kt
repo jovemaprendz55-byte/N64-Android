@@ -154,8 +154,23 @@ class MainActivity : Activity() {
                 val panelText = details.text.toString()
                 Thread({
                     try {
-                        val activeSession = romVideoSession ?: lastRomVideoSession
-                val diagnosticCpu = romVideoCpu
+                        // Freeze the emulation thread before reading diagnostic collections.
+                        // CPU/TLB histories and bus ArrayDeque/LinkedHashMap instances are mutable
+                        // and are not designed for concurrent iteration during log export.
+                        val workerToJoin = romVideoThread
+                        val sessionAtExportStart = romVideoSession ?: lastRomVideoSession
+                        if (workerToJoin?.isAlive == true) {
+                            romVideoStopRequested = true
+                            sessionAtExportStart?.requestStop()
+                            workerToJoin.join(LOG_EXPORT_STOP_TIMEOUT_MS)
+                            if (workerToJoin.isAlive) {
+                                throw IOException(
+                                    "A execução não parou dentro de ${LOG_EXPORT_STOP_TIMEOUT_MS} ms; tente salvar os logs novamente."
+                                )
+                            }
+                        }
+                        val activeSession = lastRomVideoSession ?: sessionAtExportStart
+                        val diagnosticCpu = romVideoCpu
                 val values = ContentValues().apply {
                     put(MediaStore.Downloads.DISPLAY_NAME, "N64-Android-logs-${System.currentTimeMillis()}.txt")
                     put(MediaStore.Downloads.MIME_TYPE, "text/plain")
@@ -429,6 +444,10 @@ class MainActivity : Activity() {
         }, "N64-ROM-VIDEO-CPU")
         romVideoThread = worker
         worker.start()
+    }
+
+    companion object {
+        private const val LOG_EXPORT_STOP_TIMEOUT_MS = 5_000L
     }
 
     private fun sessionSafeInstructionCount(session: N64RomVideoSession?): Long =
