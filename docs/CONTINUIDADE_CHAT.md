@@ -558,3 +558,34 @@ Commits desta etapa:
 - O bloqueio funcional permanece: log anterior indicava CPU em loop idle `0x7000071C`, SP em HALT e nenhuma submissão SP/DPC observada. Não chamar `N64SpTaskRunner` com endereço presumido, não forçar HALT e não fabricar OSTask.
 - Próxima etapa depois da CI: melhorar rastreamento do fluxo CPU que leva ao idle loop (chamadas/retornos/contexto de thread), usando evidência de execução; comparar os contadores cumulativos de MMIO no novo relatório. Depois disso, implementar somente a primeira correção comprovada.
 - Estado desta etapa: alterações diagnósticas e testes enviados; compilação/CI dos commits acima ainda precisa ser confirmada. Nenhum APK novo desta correção deve ser anunciado até CI verde.
+
+## 11. Expansão dos subsistemas HLE / TLB / RSP / RDP — 2026-11-02
+
+Branch exclusiva: `dev/n64-clean-start`. A branch `main` não foi alterada.
+
+### Alterações implementadas nesta etapa
+
+- **HLE OS kernel:** adicionados `allThreadSnapshots()` e `diagnosticSnapshot()`, que expõem threads em ordem de ID, prioridades, estados, entry points, filas e quantidade de eventos sem disparar dispatch nem alterar estado. Teste de observabilidade adicionado.
+- **TLB R4300:** adicionado `diagnosticSnapshot()` indexado por slot, exibindo entradas vazias/preenchidas, VPN2, ASID, PageMask, G, PFN, V e D. Teste correspondente adicionado.
+- **RSP:** adicionado `ContextSnapshot` completo para salvar/restaurar GPRs, PC, HI/LO, branch delay pendente, estado vetorial (32 registradores, acumuladores e flags), contador de instruções e última instrução. A restauração valida alinhamento/faixa do PC e estado vetorial antes de aplicar o contexto; GPR0 é restaurado como zero e SP_PC é atualizado. Testes de round-trip e rejeição de PC inválido adicionados.
+- **RDP:** adicionado snapshot de estado de processamento com color image, largura/formato, fill/primitive color, cycle type e scissor; diagnóstico textual não escreve na memória. Teste correspondente adicionado.
+- **RSD:** não existe arquivo, classe, pacote ou documentação com esse identificador no repositório no HEAD consultado. Não foi criado um subsistema fictício. Solicitar ao usuário a expansão exata da sigla RSD antes de definir arquitetura ou código.
+
+### Commits desta etapa
+
+- RSP contexto: `9d2a6a6e668e29ce9480c9be429c0e9c081f019a`
+- RSP testes: `9200e25fd6a648f01124c6959c0baf083406a082`
+- TLB diagnóstico: `5c7eeba1234eab97b4312e0ea85654ba91e561fd`
+- TLB testes: `21a60ba8be43f31915808454d9a9807e9315e532`
+- RDP snapshot: `cf503cd1de10fde5b816f653a6cdff78b44faeea`
+- RDP testes: `8646bcba78139178eb772a08b62b29f499a4a7e7`
+- HLE diagnóstico: `6c7365513fbf1ca018be7a52bdafff0889b02b9f`
+- HLE testes: `9521d165947a17f56c47b0572f3eb5cf9970a446`
+
+### CI e limitações
+
+- A correção anterior de comparações Long/Int no relatório HLE foi aprovada: Actions run `41528059913`.
+- O teste do contexto RSP passou: Actions run `41528686538`.
+- As execuções dos demais commits estavam em andamento no último levantamento. Não anunciar APK novo nem expansão funcional validada até confirmar CI verde do HEAD final.
+- As alterações desta etapa ampliam estado de contexto e diagnóstico; não completam ainda o conjunto de microcódigos RSP, instruções TLB, comandos RDP ou ABI real de OSTask.
+- O bloqueio funcional anterior permanece: CPU em loop idle `0x7000071C`, SP em HALT e sem submissão SP/DPC observada. Próxima investigação continua sendo o fluxo de inicialização/threads/filas da ROM, sem forçar SP ou fabricar tarefa.
