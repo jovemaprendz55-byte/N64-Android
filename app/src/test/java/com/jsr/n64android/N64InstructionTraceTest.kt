@@ -20,6 +20,18 @@ class N64InstructionTraceTest {
         assertEquals(listOf(branch, delay), loop?.pattern)
     }
 
+    @Test fun detectsSingleInstructionSelfLoop() {
+        val trace = N64InstructionTrace()
+        repeat(3) { trace.record(0x7000071CL, 0x1000FFFF) }
+
+        val loop = trace.detectLoop()
+        assertEquals(1, loop?.period)
+        assertEquals(
+            listOf(N64InstructionTrace.Entry(0x7000071CL, 0x1000FFFF)),
+            loop?.pattern
+        )
+    }
+
     @Test fun doesNotReportLoopForNonRepeatingInstructions() {
         val trace = N64InstructionTrace()
         repeat(8) { index -> trace.record(index * 4L, 0x24000000 + index) }
