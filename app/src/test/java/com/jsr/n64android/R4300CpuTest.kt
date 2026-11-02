@@ -7,6 +7,53 @@ import org.junit.Test
 
 class R4300CpuTest {
 
+    @Test fun cop0InUserModeWithCu0DisabledRaisesCoprocessorUnusable() {
+        val memory = N64Memory(32)
+        val mfc0Status = (0x10 shl 26) or (2 shl 16) or (12 shl 11)
+        memory.write32(0, mfc0Status)
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 0x10L // KSU=10: User mode; CU0=0.
+        cpu.gpr[2] = 0x12345678L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(11L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(0L, (cpu.cop0[13] ushr 28) and 0x3L) // CE=0: COP0.
+        assertEquals(0L, cpu.cop0[14])
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+        assertEquals(0x12345678L, cpu.gpr[2])
+        assertEquals(0x12L, cpu.cop0[12] and 0x12L) // EXL set; KSU retained.
+    }
+
+    @Test fun cop0InSupervisorModeWithCu0DisabledRaisesCoprocessorUnusable() {
+        val memory = N64Memory(32)
+        memory.write32(0, (0x10 shl 26) or (2 shl 16) or (12 shl 11))
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 0x08L // KSU=01: Supervisor mode; CU0=0.
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(11L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(0L, (cpu.cop0[13] ushr 28) and 0x3L)
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+    }
+
+    @Test fun cop0RemainsUsableInKernelModeEvenWhenCu0IsDisabled() {
+        val memory = N64Memory(32)
+        memory.write32(0, (0x10 shl 26) or (2 shl 16) or (12 shl 11))
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 0x12L // KSU=10 but EXL=1 forces Kernel mode; CU0=0.
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0L, cpu.cop0[13] and 0x7CL)
+        assertEquals(0x12L, cpu.gpr[2])
+        assertEquals(0xFFFFFFFF80000004UL.toLong(), cpu.pc)
+    }
+
     @Test fun unmappedDataReadKeepsTheFaultingInstructionInDiagnosticContext() {
         val instruction = (0x23 shl 26) or (9 shl 21) or (8 shl 16) // lw $t0, 0($t1)
         val bus = N64Bus(ram = N64Memory(8 * 1024))
