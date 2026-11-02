@@ -57,6 +57,53 @@ class N64RspCore(private val bus: N64Bus) {
         append(vectorUnit.diagnosticSnapshot())
     }
 
+
+    /** Complete RSP architectural context for task save/restore at an instruction boundary. */
+    data class ContextSnapshot(
+        val gpr: List<Int>,
+        val pc: Int,
+        val hi: Int,
+        val lo: Int,
+        val delayedTarget: Int?,
+        val vector: N64RspVectorUnit.Snapshot,
+        val executedInstructions: Long,
+        val lastInstruction: Int
+    )
+
+    fun snapshotContext(): ContextSnapshot = ContextSnapshot(
+        gpr = gpr.toList(),
+        pc = pc,
+        hi = hi,
+        lo = lo,
+        delayedTarget = delayedTarget,
+        vector = vectorUnit.snapshot(),
+        executedInstructions = executedInstructions,
+        lastInstruction = lastInstruction
+    )
+
+    /** Validates the scalar context before restoring it and its independently validated vector state. */
+    fun restoreContext(snapshot: ContextSnapshot) {
+        require(snapshot.gpr.size == 32) { "RSP context must contain 32 scalar registers." }
+        require(snapshot.pc and 3 == 0 && snapshot.pc and PC_MASK == snapshot.pc) {
+            "RSP context PC must be aligned and inside the 4 KiB IMEM window."
+        }
+        require(snapshot.delayedTarget == null ||
+            (snapshot.delayedTarget and 3 == 0 && snapshot.delayedTarget and PC_MASK == snapshot.delayedTarget)) {
+            "RSP delayed target must be aligned and inside the 4 KiB IMEM window."
+        }
+        require(snapshot.executedInstructions >= 0L) { "RSP instruction count cannot be negative." }
+        vectorUnit.restore(snapshot.vector)
+        snapshot.gpr.forEachIndexed { index, value -> gpr[index] = value }
+        gpr[0] = 0
+        pc = snapshot.pc
+        hi = snapshot.hi
+        lo = snapshot.lo
+        delayedTarget = snapshot.delayedTarget
+        executedInstructions = snapshot.executedInstructions
+        lastInstruction = snapshot.lastInstruction
+        bus.write32(N64Bus.SP_PC_REG, pc)
+    }
+
     /** Executes one instruction; returns false when SP is halted. */
     fun step(): Boolean {
         if (halted) return false
