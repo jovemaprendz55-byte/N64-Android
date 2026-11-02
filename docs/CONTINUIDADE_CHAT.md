@@ -4535,3 +4535,28 @@ Não forçar bit Valid, não inventar PFN, não suprimir exceções e não mudar
 - Nenhum teste novo foi executado.
 - Nenhum APK foi gerado ou testado.
 - Branch `main` não foi modificada.
+
+
+### 45.7. Implementação inicial da interrupção PI/MI e entrega ao R4300
+
+Commits de código/testes na branch:
+- `08735abf04c8a61d5a17be4e045ce0543b4e95e2` — PI DMA passa a levantar MI_INTR_PI após conclusão, tanto em PI_WR_LEN como no sentido PI_RD_LEN; PI_STATUS passa a tratar RESET_CONTROLLER (bit 0) e CLEAR_INTR (bit 1) separadamente.
+- `b5bc09cea548b63aa1ac76ee2248851447dac6ed` — testes de conclusão PI e limpeza da interrupção.
+- `4bb5f6601b1565a81edbe5ed80b8f8fc679cea85` — expõe ao CPU se a linha MI está ativa após máscara.
+- `b691a91604f814c060311eed24fe24afa192887d` — R4300 amostra MI antes de cada instrução, atualiza Cause.IP2 (bit 10) e entrega exceção de interrupção (ExcCode 0) somente quando IE=1, EXL=0, ERL=0 e existe IP & IM habilitado.
+- `d8a2f82daee59bf8b14c92e7579ca61a37d03560` — testes de entrega PI→MI→Cause.IP2 e caso em que a máscara MI mantém a interrupção bloqueada.
+
+A implementação mantém o evento PI pendente em MI_INTR_REG mesmo quando MI_INTR_MASK_REG está desligado; a máscara controla apenas a linha agregada enviada ao CPU. O bit Cause.IP2 é atualizado a partir dessa linha agregada. A limpeza de PI ocorre por escrita do bit CLEAR_INTR em PI_STATUS_REG.
+
+### 45.8. Evidência adicional no log sobre a máscara PI
+
+O histórico MMIO do log contém escrita `0xAAA` em MI_INTR_MASK_REG, que configura os bits SET dos seis dispositivos (incluindo o comando SET PI, bit 9); a leitura subsequente retorna `0x3F`, com todas as seis máscaras habilitadas. Também aparecem escritas `0x555` para limpar as máscaras. Isso confirma que a máscara PI era habilitada em parte do fluxo observado; ainda é necessário alinhar temporalmente cada escrita com o DMA específico.
+
+### 45.9. Validação desta implementação
+
+- CI do commit `08735abf04c8a61d5a17be4e045ce0543b4e95e2`: concluído com sucesso; etapas Build and test e Upload debug APK passaram (run `41410776195`, job `125163081741`).
+- CI do commit `d8a2f82daee59bf8b14c92e7579ca61a37d03560`: em andamento no momento deste registro (run `41410860386`); resultado final ainda não confirmado.
+- Os runs intermediários de documentação e commits de código também estavam em andamento, sem conclusão final disponível nesta atualização.
+- Nenhum APK deste HEAD foi instalado ou testado em aparelho.
+- A nova implementação ainda não foi validada contra a ROM real. É necessário repetir o log e confirmar se a interrupção PI chega ao COP0, se o handler do sistema operacional é executado e se a PTE `0x8005DBF0` passa a conter uma entrada válida antes do JAL para `0x7F000BD0`.
+- Não afirmar que o defeito de vídeo foi resolvido; esta é uma correção arquitetural parcial, com validação de ROM pendente.
