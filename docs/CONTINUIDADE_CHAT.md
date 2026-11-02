@@ -5106,3 +5106,12 @@ KDocs atualizados sem mudança de comportamento:
 **Próximo passo:** verificar a compilação/testes automatizados; corrigir qualquer falha; depois gerar APK e pedir ao usuário um único teste de ROM para comparar o diagnóstico curto com o log completo.
 
 - Teste de integração da sessão: commit `0820acc4df143cf6e35e1e6337b8fabab12d2c7b`.
+
+
+### Revisão de desempenho do diagnóstico — 2026-11-02
+
+- Removido o monitor `@Synchronized` do caminho de captura por instrução em `N64InstructionTrace`. A captura é feita somente pela thread de emulação; a exportação já solicita parada e aguarda o worker antes de ler o snapshot. Isso evita adquirir lock em cada instrução emulada.
+- Mantida a janela limitada de 128 entradas; o detector continua comparando PC+opcode e exigindo três repetições exatas.
+- Adicionado teste específico para o loop de uma única instrução `BEQ $zero,$zero,-1` em `0x7000071C`, além do teste de branch com delay slot.
+- Commits: `25b2979faa3a46e6bb4a0ab6cc7bfbf619ea879b` (remover sincronização por instrução); `ec0873332a47764a2b9dd42ae849796e8c574828` (teste de self-loop).
+- **Validação ainda pendente:** não foi possível confirmar nesta etapa o resultado de GitHub Actions para estes commits. Não gerar/entregar APK como validada até confirmar `testDebugUnitTest` e `assembleDebug`.
