@@ -12,7 +12,7 @@ class N64HleOsKernel {
 
     data class ThreadSnapshot(
         val id: Int,
-        var priority: Int,
+        val priority: Int,
         val entryPoint: Long,
         val argument: Long,
         val state: ThreadState,
