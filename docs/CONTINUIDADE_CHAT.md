@@ -5124,3 +5124,5 @@ KDocs atualizados sem mudança de comportamento:
 - Teste de relatório atualizado para exigir a presença do snapshot e do histórico SP.
 - Commits: `5ae458f6bde2007563c2a76f468a99c9b65f2410` (contexto de hardware); `3994e67f5c51f391d22b54293f4fe380b24dbd81` (teste).
 - A causa do loop antigo `0x7000071C` ainda não foi determinada. O objetivo desta melhoria é tornar o próximo log mais conclusivo; não significa que o problema de execução já foi corrigido.
+
+- Ajuste de nomenclatura: o relatório identifica explicitamente os contadores SP/DPC como escritas em buffers limitados, evitando confundi-los com totais cumulativos. Commit `c407203b75739883abcfe424756bcaef84799f9c`.
