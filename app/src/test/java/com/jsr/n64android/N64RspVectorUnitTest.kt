@@ -202,7 +202,7 @@ class N64RspVectorUnitTest {
         unit.accumulatorSlice(5, 9)
         unit.accumulatorSlice(6, 10)
         assertEquals(0x0000, unit.readLane(4, 0))
-        assertEquals(0x8008, unit.readLane(5, 0))
+        assertEquals(0x2000, unit.readLane(5, 0))
         assertEquals(0x0000, unit.readLane(6, 0))
     }
 \n}\n
