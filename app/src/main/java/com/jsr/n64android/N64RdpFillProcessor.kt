@@ -16,6 +16,7 @@ class N64RdpFillProcessor(
     private var colorImageSize = 0
     private var fillColor = 0
     private var primitiveColor = 0xFFFFFFFF.toInt()
+    private var blendColor = 0
     private var cycleType = CYCLE_TYPE_ONE
     private var scissorLeft = 0
     private var scissorTop = 0
@@ -36,6 +37,7 @@ class N64RdpFillProcessor(
         val colorImageSize: Int,
         val fillColor: Int,
         val primitiveColor: Int,
+        val blendColor: Int,
         val cycleType: Int,
         val scissorLeft: Int,
         val scissorTop: Int,
@@ -46,7 +48,7 @@ class N64RdpFillProcessor(
     /** Captures command-processor state without reading or modifying RDRAM. */
     fun snapshotState(): StateSnapshot = StateSnapshot(
         colorImageAddress, colorImageWidth, colorImageSize, fillColor,
-        primitiveColor, cycleType, scissorLeft, scissorTop, scissorRight, scissorBottom
+        primitiveColor, blendColor, cycleType, scissorLeft, scissorTop, scissorRight, scissorBottom
     )
 
     fun diagnosticSnapshot(): String {
@@ -55,6 +57,7 @@ class N64RdpFillProcessor(
             "WIDTH=${state.colorImageWidth} SIZE=${state.colorImageSize} " +
             "CYCLE=${state.cycleType} FILL=0x${state.fillColor.toUInt().toString(16).uppercase()} " +
             "PRIM=0x${state.primitiveColor.toUInt().toString(16).uppercase()} " +
+            "BLEND=0x${state.blendColor.toUInt().toString(16).uppercase()} " +
             "SCISSOR=[${state.scissorLeft},${state.scissorTop}..${state.scissorRight},${state.scissorBottom}]"
     }
 
@@ -71,6 +74,7 @@ class N64RdpFillProcessor(
                 CMD_SET_SCISSOR -> configureScissor(command)
                 CMD_SET_FILL_COLOR -> fillColor = command.toInt()
                 CMD_SET_PRIM_COLOR -> primitiveColor = command.toInt()
+                CMD_SET_BLEND_COLOR -> blendColor = command.toInt()
                 CMD_FILL_RECTANGLE -> {
                     check(cycleType == CYCLE_TYPE_FILL) {
                         "FillRectangle requires RDP fill-cycle mode."
@@ -165,6 +169,7 @@ class N64RdpFillProcessor(
             CMD_SET_SCISSOR,
             CMD_SET_FILL_COLOR,
             CMD_SET_PRIM_COLOR,
+            CMD_SET_BLEND_COLOR,
             CMD_FILL_RECTANGLE
         )
         for (packet in packets) {
@@ -248,6 +253,7 @@ class N64RdpFillProcessor(
         const val CMD_SET_SCISSOR = 0x2D
         const val CMD_SET_FILL_COLOR = 0x37
         const val CMD_SET_PRIM_COLOR = 0x3A
+        const val CMD_SET_BLEND_COLOR = 0x39
         const val CMD_FILL_RECTANGLE = 0x36
         const val CMD_SET_OTHER_MODES = 0x2F
         const val IMAGE_FORMAT_RGBA = 0
