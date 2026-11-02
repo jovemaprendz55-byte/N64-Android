@@ -73,6 +73,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         private set
     private var pendingDelaySlotBranchAddress: Long? = null
     private var randomResetByWiredWrite = false
+    /** Bounded control-flow events for interrupt/exception/ERET diagnosis. */
+    val diagnosticControlFlowHistory: MutableList<String> = mutableListOf()
     /** Bounded record of actual TLBWI/TLBWR operations for ROM diagnostics. */
     val diagnosticTlbWriteHistory: MutableList<String> = mutableListOf()
     /** Bounded architectural TLB exception trace, including the selected exception vector. */
@@ -124,6 +126,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         firstTlbFaultIndirectJumpInstruction = null
         firstTlbFaultIndirectTarget = null
         diagnosticTlbWriteHistory.clear()
+        diagnosticControlFlowHistory.clear()
         diagnosticTlbExceptionHistory.clear()
         lastTlbEntrySnapshot = "(nenhuma entrada capturada)"
         diagnosticTlbInstructionHistory.clear()
@@ -580,6 +583,11 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                                     cop0[12] = status and 0x2L.inv() // clear EXL
                                     directPc = cop0[14] // EPC
                                 }
+                                recordControlFlowEvent("ERET pc=0x${instructionAddress.toULong().toString(16).uppercase()} " +
+                                    "target=0x${directPc!!.toULong().toString(16).uppercase()} " +
+                                    "status=0x${cop0[12].toULong().toString(16).uppercase()} " +
+                                    "cause=0x${cop0[13].toULong().toString(16).uppercase()} " +
+                                    "epc=0x${cop0[14].toULong().toString(16).uppercase()}")
                             }
                             else -> throw ReservedInstructionFault(
                                 "R4300 COP0 CO funct=0x${funct.toString(16)} at 0x${instructionAddress.toString(16)}"
@@ -1009,6 +1017,12 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         if (branchAddress != null) cause = cause or branchDelayBit
         cop0[13] = cause
         cop0[12] = status or 0x2L // Set EXL.
+        recordControlFlowEvent("EXCEPTION code=$exceptionCode pc=0x${instructionAddress.toULong().toString(16).uppercase()} " +
+            "branch=${branchAddress?.let { "0x" + it.toULong().toString(16).uppercase() } ?: "none"} " +
+            "vector=0x${exceptionVector().toULong().toString(16).uppercase()} " +
+            "status=0x${cop0[12].toULong().toString(16).uppercase()} " +
+            "cause=0x${cop0[13].toULong().toString(16).uppercase()} " +
+            "epc=0x${cop0[14].toULong().toString(16).uppercase()}")
     }
 
     private fun enterTlbException(fault: R4300Tlb.TlbFault, branchAddress: Long?) {
@@ -1203,6 +1217,11 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             "EntryLo1=0x${cop0[3].toUInt().toString(16).uppercase().padStart(8, '0')}"
         diagnosticTlbInstructionHistory.add(line)
         if (diagnosticTlbInstructionHistory.size > 512) diagnosticTlbInstructionHistory.removeAt(0)
+    }
+
+    private fun recordControlFlowEvent(event: String) {
+        diagnosticControlFlowHistory.add(event)
+        if (diagnosticControlFlowHistory.size > 64) diagnosticControlFlowHistory.removeAt(0)
     }
 
     private fun exceptionVector(): Long {
