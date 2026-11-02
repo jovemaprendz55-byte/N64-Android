@@ -309,6 +309,28 @@ class MainActivity : Activity() {
                     writer.appendLine("=== DPC / RDP ===")
                     writer.appendLine(bus.diagnosticDpcSnapshot())
                     writer.appendLine()
+                    writer.appendLine("=== DIAGNÓSTICO AUTOMÁTICO HLE ===")
+                    if (diagnosticCpu != null) {
+                        writer.appendLine(
+                            N64HleAutoDiagnostic.build(
+                                cpu = diagnosticCpu,
+                                bus = bus,
+                                instructionCount = activeSession?.executedInstructionCount() ?: 0L,
+                                rspInstructionCount = activeSession?.executedRspInstructionCount() ?: 0L,
+                                frameCount = activeSession?.publishedFrameCount() ?: 0L,
+                                loop = activeSession?.diagnosticRepeatedInstructionLoop()
+                            )
+                        )
+                    } else {
+                        writer.appendLine("CPU indisponível; não foi possível gerar o diagnóstico automático.")
+                    }
+                    writer.appendLine("=== ÚLTIMAS INSTRUÇÕES CPU (JANELA CIRCULAR) ===")
+                    writer.appendLine(
+                        activeSession?.diagnosticInstructionTraceSnapshot()?.takeLast(24)
+                            ?.joinToString("\\n") { entry ->
+                                "PC=0x${entry.pc.toULong().toString(16).uppercase().padStart(16, '0')} INST=0x${entry.instruction.toUInt().toString(16).uppercase().padStart(8, '0')}"
+                            }?.ifBlank { "Nenhuma instrução capturada." } ?: "Sessão indisponível."
+                    )
                     writer.appendLine("=== RESUMO DA SESSÃO ===")
                     writer.appendLine("CPU instruções: ${activeSession?.executedInstructionCount() ?: "indisponível"}")
                     writer.appendLine("RSP instruções: ${activeSession?.executedRspInstructionCount() ?: "indisponível"}")
