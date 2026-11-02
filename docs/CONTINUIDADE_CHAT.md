@@ -5056,3 +5056,14 @@ KDocs atualizados sem mudança de comportamento:
 - Não alterar CPU/TLB/RSP/RDP por suposição; manter investigação da TLB refill e loop idle baseada em logs de sessões separadas.
 - Estado pendente: verificar CI do commit a04d44bd... e do HEAD documental atual antes de declarar build verde ou gerar APK. Nenhum APK atual foi gerado/testado após a correção de exportação.
 - main permanece intocada; objetivo segue HLE sem firmware original.
+
+
+## 54. Build validado após correção da exportação — 2026-11-02
+
+- Commit de código `a04d44bd3fdd9167b9868e631ad6eb75c501bc05` passou na CI `41425820641`: `Build and test` e `Upload debug APK` concluíram com sucesso.
+- Artifact GitHub Actions: ID `13131703310`, nome `n64-android-debug-apk`, 996.192 bytes no ZIP; APK extraído com 1.003.227 bytes.
+- APK foi copiada e verificada no ambiente atual: `/mnt/data/N64-Android-HLE-debug-a04.apk`.
+- SHA-256 da APK: `e44a8dfb5248c1c97b3fd9274ed7fd2046da2093c772a7a7a9270617ca17855a`.
+- Esta APK contém a correção de exportação e o conserto do companion object. Os commits posteriores de README/auditoria/continuidade não alteram código executável.
+- HEAD documental atual após os relatórios: `aae9256f43ea0346ccf869dd78dc13ced6dda050`; CI `41426050893` estava `in_progress` na última consulta. Não declarar CI do HEAD verde até reconsultar.
+- Teste em aparelho ainda não realizado. Próxima validação do usuário: instalar esta APK, iniciar uma ROM, pressionar SALVAR LOGS durante a execução e confirmar se a aplicação interrompe a execução e grava o arquivo sem fechar inesperadamente.
