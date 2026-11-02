@@ -17,6 +17,12 @@ object N64HleAutoDiagnostic {
         appendLine("CPU: $instructionCount instruções | PC=0x${hex64(cpu.pc)}")
         appendLine("RSP: $rspInstructionCount instruções | VI: $frameCount frames publicados")
         appendLine("SP_STATUS=0x${bus.diagnosticSpStatus().toUInt().toString(16).uppercase().padStart(8, '0')}")
+        appendLine("REGISTRADORES CPU (snapshot no fim da sessão):")
+        cpu.gpr.forEachIndexed { index, value ->
+            if (value != 0L) appendLine("  GPR[$index]=0x${hex64(value)}")
+        }
+        appendLine("  HI=0x${hex64(cpu.hi)} LO=0x${hex64(cpu.lo)}")
+        appendLine("  COP0_STATUS=0x${hex64(cpu.cop0[12])} CAUSE=0x${hex64(cpu.cop0[13])} EPC=0x${hex64(cpu.cop0[14])}")
 
         if (loop != null) {
             appendLine("PADRÃO REPETIDO: mesmos PCs e opcodes por ${loop.repetitions} repetições; período de ${loop.period} instrução(ões). Isso não prova, sozinho, que o estado da CPU ficou preso.")
