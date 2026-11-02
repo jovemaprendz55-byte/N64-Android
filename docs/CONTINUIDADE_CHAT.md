@@ -5151,3 +5151,14 @@ KDocs atualizados sem mudança de comportamento:
 - Commits: `1f35c3e1348241b0d012b4e4cd5b90d607f04cc2` (relatório); `bf6c3746bd3ab66c1f9b0a56081431afd0d132d3` (teste).
 - O CI verde documentado na seção 56 refere-se ao HEAD anterior `1725f60fa659c05c72b830204b686fe48f3a2f7d`. As duas alterações acima são posteriores e ainda precisam de nova execução de `testDebugUnitTest assembleDebug`; status/checks para o commit mais recente ainda não foram retornados pela integração consultada.
 - Não tratar a APK da seção 56 como contendo esta correção de nomenclatura. O teste no aparelho continua pendente.
+
+
+## 57. Snapshot dos registradores CPU no diagnóstico — 2026-11-02
+
+- O relatório HLE agora inclui um snapshot de fim de sessão dos GPRs não nulos, HI/LO e COP0 Status/Cause/EPC.
+- O snapshot é gerado somente ao montar o relatório; não copia os 32 registradores a cada instrução e não adiciona custo ao loop principal da CPU.
+- Isso permite verificar se um loop de PC+opcode repetido coincide com registradores estáveis ou com estado que mudou durante a execução. É uma fotografia no fim da sessão, não um histórico temporal; portanto, não prova por si só se os registradores oscilaram durante o loop.
+- Teste atualizado para exigir as seções de registradores e COP0.
+- Commits: `07cb5b56e5608047e0ea3f21798107195f97f470` (relatório); `b2ba6b936e7ed0d4b2311b85d66fc1248c452c75` (teste).
+- Validação automatizada ainda pendente para esses commits: não afirmar que compilam ou passam nos testes até obter resultado do GitHub Actions.
+- Nenhuma alteração no comportamento de CPU, boot HLE, TLB, RSP ou SP; não executa IPL3/PIF ROM e não força tarefas.
