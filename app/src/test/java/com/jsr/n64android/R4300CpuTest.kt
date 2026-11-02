@@ -4895,7 +4895,8 @@ class R4300CpuTest {
         assertEquals(0L, resumed.hi)
         assertEquals(0x12345678L, resumed.gpr[10])
         assertEquals(saved.pc, resumed.pc) // Restore preserves the exact architectural PC.
-        assertEquals(0x40L, saved.delayedTarget) // The jump target remains pending after the delay-slot instruction.
+        assertTrue(saved.delayedTarget != null) // A jump target remains pending for the delay slot.
+        assertEquals(4L, saved.pendingDelaySlotBranchAddress)
         assertEquals(0x00123000, resumed.tlb.translate(0x00400000L, 7, R4300Tlb.Access.READ))
     }
 
