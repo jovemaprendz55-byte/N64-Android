@@ -4874,6 +4874,13 @@ class R4300CpuTest {
         cpu.cop0[10] = 0x00400007L
         cpu.fpr[3] = 0x3F800000L
         cpu.fcr[31] = 0x00800000L
+        // The test executes its instructions at virtual address 0 while the TLB is enabled.
+        // Map that code page explicitly so the MULT and J actually execute before snapshotting.
+        cpu.tlb.write(3, R4300Tlb.Entry(
+            0x00000000L, 7,
+            R4300Tlb.Page(0x000, true, true),
+            R4300Tlb.Page(0x001, true, true)
+        ))
         cpu.tlb.write(2, R4300Tlb.Entry(
             0x00400000L, 7,
             R4300Tlb.Page(0x123, true, true),
@@ -4895,7 +4902,7 @@ class R4300CpuTest {
         assertEquals(0L, resumed.hi)
         assertEquals(0x12345678L, resumed.gpr[10])
         assertEquals(saved.pc, resumed.pc) // Restore preserves the exact architectural PC.
-        assertTrue(saved.delayedTarget != null) // A jump target remains pending for the delay slot.
+        assertEquals(0x40L, saved.delayedTarget) // The exact J target remains pending for its delay slot.
         assertEquals(4L, saved.pendingDelaySlotBranchAddress)
         assertEquals(0x00123000, resumed.tlb.translate(0x00400000L, 7, R4300Tlb.Access.READ))
     }
