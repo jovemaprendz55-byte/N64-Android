@@ -4692,7 +4692,8 @@ Comportamento implementado:
 - `32bee7e`: CI falhou em teste de reconhecimento porque o handler antigo de VI_CURRENT ainda zerava a linha; corrigido removendo o handler duplicado em `f416b2e`.
 - `7a84d1d`: CI passou com testes de reconhecimento VI e entrega ao COP0.
 - `3bc8279`: teste da sessão falhou porque o teste executava NOPs para além do RDRAM alocado; corrigido para manter a CPU em `J 0` dentro da RAM no commit `f27055a`.
-- CI do commit `f27055ad81f007189ae924e1123032afe407ef38`: em execução no momento deste registro; verificar antes de declarar sucesso.
+- CI do commit `f27055ad81f007189ae924e1123032afe407ef38`: concluído com sucesso no run `41413136889` (Build and test + Upload debug APK).
+- Artifact debug APK gerado pelo run `41413136889`: artifact ID `13126108639` (`n64-android-debug-apk`, 995.029 bytes).
 
 ### 47.5. Próxima validação no aparelho
 
@@ -4705,4 +4706,4 @@ Depois que o CI do HEAD passar e o APK correspondente estiver disponível:
 6. Se a CPU sair do loop mas SP/RSP continuar parado, investigar o novo PC/caminho de execução; não forçar status SP nem fabricar OSTask.
 7. Não declarar GoldenEye compatível sem frame real originado pela execução completa da ROM.
 
-**Estado final deste registro:** código VI implementado; CI mais recente ainda pendente; nenhuma instalação/teste no aparelho; branch `main` não modificada.
+**Estado final deste registro:** código VI implementado; CI do código concluído com sucesso; APK debug gerado, mas ainda não instalado/testado em aparelho; branch `main` não modificada.
