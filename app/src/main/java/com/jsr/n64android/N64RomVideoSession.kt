@@ -44,6 +44,7 @@ class N64RomVideoSession(
             beforeInstruction = { bus.setDiagnosticCpuPc(cpu.pc) },
             afterInstruction = {
                 val count = instructionCount.incrementAndGet()
+                bus.advanceViInstructions()
                 if (count % rspPollInterval == 0L) pumpRsp()
                 if (count % progressPollInterval == 0L) onProgress(count)
                 if (count % framePollInterval == 0L) {
