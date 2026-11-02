@@ -1,7 +1,7 @@
 package com.jsr.n64android
 
 /**
- * First deliberately small RDP rasterization subset: flat RGBA5551 triangles.
+ * First deliberately small RDP rasterization subset: flat RGBA16/32 triangles.
  *
  * This consumes the decoded edge setup and writes pixels into RDRAM. It does
  * not implement coverage, combiner, blending, Z, texture, or edge tie-breaking
@@ -18,6 +18,8 @@ object N64RdpFlatTriangleRasterizer {
         width: Int,
         height: Int,
         colorRgba5551: Int,
+        colorImageSize: Int = N64RdpFillProcessor.IMAGE_SIZE_16,
+        colorRgba8888: Int = 0xFFFFFFFF.toInt(),
         clipLeft: Int = 0,
         clipTop: Int = 0,
         clipRightExclusive: Int = width,
@@ -27,7 +29,10 @@ object N64RdpFlatTriangleRasterizer {
         require(colorImageAddress >= 0)
         require(width in 1..N64ViFramebufferReader.MAX_WIDTH)
         require(height in 1..N64ViFramebufferReader.MAX_HEIGHT)
-        val end = colorImageAddress.toLong() + width.toLong() * height.toLong() * 2L
+        require(colorImageSize == N64RdpFillProcessor.IMAGE_SIZE_16 ||
+            colorImageSize == N64RdpFillProcessor.IMAGE_SIZE_32) { "Unsupported triangle color image size." }
+        val bytesPerPixel = if (colorImageSize == N64RdpFillProcessor.IMAGE_SIZE_16) 2 else 4
+        val end = colorImageAddress.toLong() + width.toLong() * height.toLong() * bytesPerPixel
         require(end <= rdramSize.toLong()) { "Triangle color image exceeds RDRAM." }
 
         val spans = N64RdpTriangleEdgeWalker.walk(
@@ -35,10 +40,14 @@ object N64RdpFlatTriangleRasterizer {
         )
         var pixelsWritten = 0
         for (span in spans) {
-            var address = colorImageAddress + (span.y * width + span.xStart) * 2
+            var address = colorImageAddress + (span.y * width + span.xStart) * bytesPerPixel
             for (x in span.xStart until span.xEndExclusive) {
-                memory.write16(address, colorRgba5551 and 0xFFFF)
-                address += 2
+                if (colorImageSize == N64RdpFillProcessor.IMAGE_SIZE_16) {
+                    memory.write16(address, colorRgba5551 and 0xFFFF)
+                } else {
+                    memory.write32(address, colorRgba8888)
+                }
+                address += bytesPerPixel
                 pixelsWritten++
             }
         }
