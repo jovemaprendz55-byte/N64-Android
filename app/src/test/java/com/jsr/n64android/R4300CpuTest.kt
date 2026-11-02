@@ -217,6 +217,20 @@ class R4300CpuTest {
         assertEquals(0x12345678L, cpu.gpr[2])
     }
 
+    @Test fun cop1MemoryInstructionAlsoRequiresCu1() {
+        val memory = N64Memory(32)
+        memory.write32(0, (0x31 shl 26) or (1 shl 21) or (2 shl 16)) // LWC1 $f2, 0($at)
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = 0x7FFFFFFFL
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(11L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(1L, (cpu.cop0[13] ushr 28) and 0x3L)
+        assertEquals(0L, cpu.cop0[14])
+    }
+
     @Test fun cop1DisabledInBranchDelaySlotSetsBdAndBranchEpc() {
         val memory = N64Memory(32)
         memory.write32(0, iType(0x04, 0, 0, 2)) // BEQ $zero, $zero, target
