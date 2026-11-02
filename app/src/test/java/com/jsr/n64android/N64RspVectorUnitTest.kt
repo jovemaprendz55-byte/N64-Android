@@ -116,7 +116,7 @@ class N64RspVectorUnitTest {
         unit.absolute(3, 1, 2)
 
         assertEquals(32767, unit.readLane(3, 0).toShort().toInt())
-        assertEquals(12, unit.readLane(3, 1))
+        assertEquals(-12, unit.readLane(3, 1).toShort().toInt())
         assertEquals(0, unit.readLane(3, 2))
     }
 
