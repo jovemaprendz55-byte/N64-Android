@@ -267,4 +267,26 @@ class N64DpcCommandProcessorTest {
 
     private fun command(opcode: Int, high: Long = 0L, low: Long = 0L): Long =
         (opcode.toLong() shl 58) or (high shl 32) or (low and 0xFFFFFFFFL)
+
+    @Test
+    fun acceptsLoadPipeAndTileSyncAsSynchronousNoOpsAndCountsFullSync() {
+        val memory = N64Memory(512)
+        val rdp = N64RdpFillProcessor(memory, memory.size)
+        val dpc = N64DpcCommandProcessor(memory, memory.size, rdp)
+        val commands = listOf(
+            command(0x26), // LOAD_SYNC
+            command(0x27), // PIPE_SYNC
+            command(0x28), // TILE_SYNC
+            command(N64DpcCommandProcessor.CMD_FULL_SYNC)
+        )
+        writeCommands(memory, 0x40, commands)
+
+        val result = dpc.process(0x40, 0x40 + commands.size * 8)
+
+        assertEquals(4, result.commandsProcessed)
+        assertEquals(1, result.fullSyncCommands)
+        assertEquals(0, result.pixelsWritten)
+        assertEquals(0, result.rectanglesFilled)
+    }
+
 }
