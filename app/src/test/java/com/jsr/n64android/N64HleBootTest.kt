@@ -20,8 +20,8 @@ class N64HleBootTest {
         for (i in 0 until N64HleBoot.BOOT_IMAGE_SIZE) {
             rom[N64HleBoot.BOOT_IMAGE_ROM_OFFSET + i] = ((i * 13 + 7) and 0xFF).toByte()
         }
-        // A NOP at the entry makes the first CPU fetch deterministic.
-        for (i in 0 until 4) rom[N64HleBoot.BOOT_IMAGE_ROM_OFFSET + i] = 0
+        // MFC1 $v0, $f4 proves the HLE handoff enables COP1 before game entry.
+        putWord(rom, N64HleBoot.BOOT_IMAGE_ROM_OFFSET, (0x11 shl 26) or (4 shl 16) or (4 shl 11))
 
         val bus = N64Bus(ram = N64Memory(), pifRom = null, cartridgeRom = rom)
         val cpu = R4300Cpu(bus)
@@ -34,6 +34,8 @@ class N64HleBootTest {
         assertEquals(N64HleBoot.BOOT_IMAGE_RAM_ADDRESS, result.ramAddress)
         assertEquals(N64HleBoot.ENTRY_PC, result.entryPc)
         assertEquals(N64HleBoot.ENTRY_PC, cpu.pc)
+        assertEquals(1L shl 29, cpu.cop0[12] and (1L shl 29))
+        cpu.fpr[4] = 0xFEDCBA98L
         assertEquals(N64HleBoot.INITIAL_STACK, cpu.gpr[29])
         assertEquals(0x3FL, cpu.gpr[22])
         assertEquals(0L, cpu.gpr[19])
@@ -64,9 +66,11 @@ class N64HleBootTest {
         assertEquals(0, bus.read32(N64HleBoot.BOOT_FLAG_CIC_ID))
         assertEquals(N64Memory.DEFAULT_RAM_SIZE, bus.read32(N64HleBoot.BOOT_FLAG_RDRAM_SIZE))
 
-        // The CPU must fetch the staged first instruction through KSEG0 -> RDRAM.
+        // The CPU must fetch and execute the staged COP1 instruction through KSEG0 -> RDRAM.
         cpu.step()
-        assertEquals(0, cpu.diagnosticInstructionWord)
+        assertEquals((0x11 shl 26) or (4 shl 16) or (4 shl 11), cpu.diagnosticInstructionWord)
+        assertEquals(0xFFFFFFFFFEDCBA98UL.toLong(), cpu.gpr[4])
+        assertEquals(null, cpu.lastExceptionCode)
         assertEquals(N64HleBoot.ENTRY_PC + 4L, cpu.pc)
 
         // IPL3 remains untouched in SP DMEM: HLE did not stage or execute it.
