@@ -195,6 +195,8 @@ class MainActivity : Activity() {
                         writer.appendLine("=== TODAS AS ENTRADAS TLB ATUAIS ===")
                         writer.appendLine(diagnosticCpu.diagnosticFullTlbSnapshot())
                         writer.appendLine("Exceção=${diagnosticCpu.lastExceptionCode ?: "nenhuma"} EPC-instrução=0x${diagnosticCpu.lastExceptionInstructionAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A"}")
+                        writer.appendLine("=== EVENTOS CPU: INTERRUPÇÕES, EXCEÇÕES E ERET (últimos 64) ===")
+                        writer.appendLine(diagnosticCpu.diagnosticControlFlowHistory.joinToString("\n").ifBlank { "Nenhuma entrada, saída ou exceção registrada." })
                         writer.appendLine("Falha TLB=${diagnosticCpu.lastTlbFaultKind ?: "nenhuma"} acesso=${diagnosticCpu.lastTlbFaultAccessType ?: "N/A"} VA=0x${diagnosticCpu.lastTlbFaultVirtualAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A"}")
                         writer.appendLine("JR/JALR antes da primeira falha TLB: PC=${diagnosticCpu.firstTlbFaultIndirectJumpAddress?.let { "0x" + it.toULong().toString(16).uppercase() } ?: "N/A"} INST=${diagnosticCpu.firstTlbFaultIndirectJumpInstruction?.let { "0x" + it.toUInt().toString(16).uppercase() } ?: "N/A"} DESTINO=${diagnosticCpu.firstTlbFaultIndirectTarget?.let { "0x" + it.toULong().toString(16).uppercase() } ?: "N/A"}")
                         writer.appendLine("BadVAddr=0x${diagnosticCpu.cop0[8].toUInt().toString(16).uppercase().padStart(8, '0')} Context=0x${diagnosticCpu.cop0[4].toUInt().toString(16).uppercase().padStart(8, '0')} EntryHi=0x${diagnosticCpu.cop0[10].toUInt().toString(16).uppercase().padStart(8, '0')}")
@@ -1454,8 +1456,6 @@ class MainActivity : Activity() {
             "\n\nENTRADAS TLB ATIVAS NO MOMENTO DA FALHA:\n" + cpu.lastTlbEntrySnapshot +
             "\n\nGRAVAÇÕES TLBWI/TLBWR (últimas 64):\n" + (if (cpu.diagnosticTlbWriteHistory.isEmpty()) "(nenhuma gravação TLB registrada)" else cpu.diagnosticTlbWriteHistory.joinToString("\n")) +
             "\nÚltima exceção registrada: código=" + (cpu.lastExceptionCode?.toString() ?: "nenhuma") +
-            "\n\nEVENTOS DE EXCEÇÃO / INTERRUPÇÃO / ERET (últimos 64):\n" +
-                (if (cpu.diagnosticControlFlowHistory.isEmpty()) "(nenhum evento registrado)" else cpu.diagnosticControlFlowHistory.joinToString("\n")) +
             " PC=0x" + (cpu.lastExceptionInstructionAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A") +
             " INST=0x" + (cpu.lastExceptionInstructionWord?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A") +
             " delay-slot da branch=0x" + (cpu.lastExceptionBranchAddress?.toULong()?.toString(16)?.uppercase() ?: "não") +
