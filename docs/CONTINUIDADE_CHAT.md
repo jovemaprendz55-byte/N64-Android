@@ -4336,3 +4336,57 @@ Em caso de sucesso, publica o artefato `n64-android-debug-apk`.
 - Nenhum teste em aparelho foi executado.
 - A branch `main` permanece intocada.
 - A correção histórica do escopo do botão foi confirmada por inspeção de código e diff; a validação de CI atual permanece pendente.
+
+
+---
+
+## 43. Exportação incremental do relatório de diagnóstico — 2026-11-01
+
+**Data/hora:** 2026-11-01 21:41:16 (UTC−03:00, horário de Brasília).  
+**Branch:** `dev/n64-clean-start`.  
+**Arquivo alterado:** `app/src/main/java/com/jsr/n64android/MainActivity.kt`.
+
+### 43.1. Problema atacado
+
+O relatório de diagnóstico era montado integralmente em uma única `String` por `buildString { ... }` e só depois gravado no arquivo. Mesmo executado em uma thread secundária, esse método mantinha o relatório completo na memória até a gravação terminar. Como o pacote inclui históricos, dumps de memória e snapshots de dispositivos, essa estratégia pode aumentar o pico de memória e contribuir para OOM em aparelhos com pouca memória disponível.
+
+Esta é uma hipótese técnica plausível para o fechamento durante a exportação, mas ainda não há Logcat/OOM reproduzido que prove que essa foi a causa observada no aparelho.
+
+### 43.2. Alteração implementada
+
+O relatório agora é escrito diretamente em um `BufferedWriter` aberto sobre o arquivo em `Downloads/N64Android`:
+
+- O arquivo é criado antes de gerar o relatório.
+- Cada seção é enviada ao writer por `writer.appendLine(...)`.
+- Foi removido o `buildString` que mantinha o relatório completo numa única String.
+- O writer é fechado por `use { ... }`, inclusive em caso de exceção.
+- O Toast de sucesso só é solicitado depois que o bloco de escrita termina e o writer é fechado.
+- A execução continua na thread `N64-Log-Export`, fora da UI thread.
+- A captura de `panelText` continua sendo feita na UI thread antes de iniciar o worker, evitando ler diretamente o TextView no worker.
+
+Algumas seções ainda usam `joinToString` para formar cada histórico individual antes de escrever a linha. Portanto, a mudança elimina a cópia integral do relatório, mas não transforma todos os dumps internos em streaming elemento a elemento.
+
+### 43.3. Commits desta tentativa
+
+- `88eb74daed6019491b8056449a70c71472eb3860` — primeira tentativa de converter o relatório para escrita incremental. A inspeção posterior detectou que um trecho antigo de gravação havia permanecido duplicado.
+- `804f4522e1dab12c1135e22966493d10a476b43c` — remoção do bloco antigo duplicado; este é o commit com a versão corrigida a validar.
+
+A primeira tentativa intermediária não deve ser tratada como versão final. A versão atual foi relida após o segundo commit e o bloco de gravação antigo duplicado não aparece mais.
+
+### 43.4. Validação e limitações
+
+- A inspeção textual confirmou que o relatório agora usa `BufferedWriter` e não contém mais `val log = buildString` no caminho de exportação.
+- A inspeção confirmou que o bloco antigo `writer.write(log)` foi removido.
+- Foi consultado o status combinado do commit `804f4522e1dab12c1135e22966493d10a476b43c`; naquele momento a API retornou uma lista vazia de status. Isso não comprova build verde nem build vermelho.
+- `gradle testDebugUnitTest assembleDebug` ainda precisa concluir em CI para validar compilação e testes.
+- Nenhuma APK foi instalada ou executada em aparelho nesta etapa.
+- A correção do fechamento do aplicativo ainda não está comprovada. O teste real deve verificar se o app permanece aberto, se o TXT é íntegro e se o conteúdo pode ser enviado.
+- Se houver novo fechamento, coletar Logcat e procurar especialmente `OutOfMemoryError`, `FATAL EXCEPTION`, `ANR` e falhas de escrita no MediaStore.
+
+### 43.5. Estado
+
+- Escrita incremental do relatório implementada na branch de trabalho.
+- Referência de botão corrigida historicamente e presente no código atual.
+- CI do commit final pendente de confirmação.
+- Teste em aparelho pendente.
+- Branch `main` não modificada.
