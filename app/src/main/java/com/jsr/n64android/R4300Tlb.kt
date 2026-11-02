@@ -59,6 +59,33 @@ class R4300Tlb(private val entryCount: Int = ENTRY_COUNT) {
         entries.fill(null)
     }
 
+    /** Invalidates non-global entries belonging to an address space; global mappings survive. */
+    fun invalidateAsid(asid: Int): Int {
+        require(asid in 0..0xFF) { "ASID must fit in 8 bits." }
+        var removed = 0
+        entries.indices.forEach { index ->
+            val entry = entries[index]
+            if (entry != null && entry.asid == asid && !isGlobal(entry)) {
+                entries[index] = null
+                removed++
+            }
+        }
+        return removed
+    }
+
+    /** Invalidates every non-global mapping while preserving architecturally global entries. */
+    fun invalidateNonGlobal(): Int {
+        var removed = 0
+        entries.indices.forEach { index ->
+            val entry = entries[index]
+            if (entry != null && !isGlobal(entry)) {
+                entries[index] = null
+                removed++
+            }
+        }
+        return removed
+    }
+
     /** Captures all indexed entries, including invalid/uninitialized slots. */
     fun snapshot(): Snapshot = Snapshot(entries.toList())
 
