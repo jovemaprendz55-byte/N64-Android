@@ -518,7 +518,7 @@ class N64RspCoreTest {
         assertEquals(1, rsp.vectorUnit.vcoLow)
         assertEquals(0xFFFE, rsp.vectorUnit.readLane(4, 0))
         assertEquals(0, rsp.vectorUnit.vcoLow)
-        assertEquals(1 shl 1, rsp.vectorUnit.vcoHigh)
+        assertEquals(3, rsp.vectorUnit.vcoHigh)
     }
 
     @Test
