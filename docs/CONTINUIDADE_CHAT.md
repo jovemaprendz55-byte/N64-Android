@@ -408,3 +408,31 @@ Aguardar CI. Se passar, avançar para instrumentação genérica e limitada de f
 **HEAD auditado inicialmente:** `d65a14b54ec626d7ba9a27b37963824f895807d7`  
 **Última CI confirmada:** run `41434025556` — success  
 **Alterações de código nesta auditoria:** nenhuma. Esta reconstrução substitui somente o conteúdo deste documento.
+
+## 12. Expansão do RSP e RDP — segunda rodada
+
+Branch: `dev/n64-clean-start`.
+
+### RSP — novas operações vetoriais
+
+Foram acrescentadas ao `N64RspVectorUnit` e decodificadas em `N64RspCore`:
+
+- `VABS` (função COP2 `0x13`): seleciona o valor de VT pelo sinal da lane correspondente em VS; o resultado de 16 bits é saturado, incluindo o caso especial de magnitude de -32768.
+- `VADDC` (`0x14`): soma lanes como valores sem sinal, grava os 16 bits inferiores e registra carry por lane em VCO low; limpa VCO high.
+- `VSUBC` (`0x15`): subtrai lanes sem sinal, grava os 16 bits inferiores e registra borrow em VCO low e desigualdade em VCO high.
+
+Testes adicionados:
+- Carry por lane, wrap dos 16 bits e limpeza de VCO high em VADDC.
+- Borrow e desigualdade por lane em VSUBC.
+- Saturação de magnitude 32768 e seleção por sinal em VABS.
+- Decodificação das três instruções pelo interpretador RSP.
+
+### RDP — comandos de sincronização
+
+O processador RDP síncrono agora reconhece `LOAD_SYNC` (0x26), `PIPE_SYNC` (0x27) e `TILE_SYNC` (0x28) como comandos sem efeito direto sobre pixels/estado de renderização neste modelo síncrono. Eles são aceitos pela validação de pacotes e contabilizados como comandos processados. `FULL_SYNC` (0x29) continua sendo contado pelo DPC separadamente, conforme o fluxo atual.
+
+Isso não implementa sincronização temporal/FIFO real, interrupção DP do hardware nem o pipeline RDP completo. Também não implementa texturização, Z, coverage, blending ou combiner. Os comandos ainda sem execução continuam explicitamente rejeitados.
+
+### Limites e validação
+
+As alterações estão no código da branch e os testes de regressão foram escritos. A aprovação depende do workflow Android após o último commit. Ainda não houve teste no Poco C85 nem validação com ROM real nesta rodada.
