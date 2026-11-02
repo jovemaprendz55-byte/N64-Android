@@ -4390,3 +4390,78 @@ A primeira tentativa intermediária não deve ser tratada como versão final. A 
 - CI do commit final pendente de confirmação.
 - Teste em aparelho pendente.
 - Branch `main` não modificada.
+
+
+
+---
+
+## 44. Rastreamento do primeiro TLB MISS e do preenchimento inválido — 2026-11-01
+
+**Data/hora:** 2026-11-01 21:51:35 (UTC−03:00, horário de Brasília).  
+**Branch:** `dev/n64-clean-start`.  
+**HEAD antes do registro:** `a7042b388a2f2d82855edf591668e9981defc40d`.  
+**Log analisado:** `N64-Android-logs-1793580393611.txt` (9.060 linhas; blob `c3aed7669468c6ebb45b81642a4d26148637939c`).  
+**Código inspecionado:** `R4300Tlb.kt`, `R4300Cpu.kt`, `N64HleBoot.kt`, `N64RomVideoSession.kt`.
+
+### 44.1. Correção de interpretação dos EntryLo
+
+A leitura correta do formato MIPS EntryLo é:
+- bit 0 = Global (G);
+- bit 1 = Valid (V);
+- bit 2 = Dirty (D);
+- bits 6–25 = PFN.
+
+Portanto, `EntryLo0=0x1` e `EntryLo1=0x41` têm V=0. O valor `0x41` representa G=1 e PFN=1, mas não tem o bit Valid. Ambos os lados da entrada instalada pelo TLBWR são inválidos. Esta correção substitui qualquer interpretação anterior que tenha considerado `0x41` válido.
+
+### 44.2. Sequência observada no log
+
+1. A primeira falha registrada é `TLB EXCEPTION kind=MISS access=FETCH faultVA=0x7F000BD0`, com vetor de refill `0xFFFFFFFF80000000`.
+2. O handler de refill lê uma palavra em VA `0xFFFFFFFF8005DBF0`, traduzida para PA `0x0005DBF0`, e o log registra valor `0x1`.
+3. O código do handler coloca esse valor em EntryLo0. Em seguida soma `0x40`, produzindo `0x41`, e coloca o resultado em EntryLo1.
+4. O handler executa `TLBWR` em PC `0xFFFFFFFF80000034`, index 15, EntryHi `0x7F000000`, EntryLo0 `0x1`, EntryLo1 `0x41`.
+5. A tentativa seguinte no mesmo VA termina em `TLB INVALID FETCH`, coerente com V=0 nos dois EntryLo.
+6. O log também mostra uma rotina de limpeza por `TLBWI` em PC `0x7000D3EC`, gravando entradas zeradas. A sequência e a finalidade dessa rotina precisam continuar sendo avaliadas temporalmente; não se deve assumir que a limpeza seja o defeito.
+7. A instrução em PC `0x70005D58`, word `0x0FC002F4`, é um JAL cujo destino calculado é `0x7F000BD0`. Portanto, o endereço que falha é o destino explícito de uma chamada, e não apenas um endereço aleatório produzido pela tradução.
+8. Antes desse salto, a rotina em `0x700017E0–0x70001850` prepara a região de tabela iniciando em `0x8005DBF0`. O loop escreve marcadores de página inválida (incluindo valor 1) em registros espaçados por 0x10 bytes.
+
+### 44.3. O que isso demonstra — e o que ainda não demonstra
+
+**Demonstrado pelo log:**
+- O erro inicial é MISS; o handler de refill consulta uma tabela em RAM e recebe `0x1`.
+- O handler forma `0x1` e `0x41` e instala ambos sem V.
+- A falha INVALID subsequente é consistente com os valores gravados.
+- A ROM executa um JAL para `0x7F000BD0`.
+- A rotina anterior escreve marcadores inválidos na área de tabela observada.
+
+**Ainda não demonstrado:**
+- Se o endereço `0x8005DBF0` é o PTE correto para VA `0x7F000BD0` ou se a indexação/tabela está desalinhada.
+- Se a página deveria estar presente e mapeada naquele instante, ou se a chamada para `0x7F000BD0` depende de uma etapa de carregamento/cópia que ainda não ocorreu.
+- Se a tabela de páginas é inicializada corretamente em todos os 128 registros e se outras rotinas posteriores deveriam tornar a PTE válida.
+- Se há divergência no cálculo do índice de PTE, no formato dos registros, no fluxo de carregamento ou na execução de instruções que alteram os registradores usados pelo handler.
+
+### 44.4. Auditoria do código do emulador
+
+- `N64HleBoot.prepare` habilita `cpu.tlbEnabled = true` para KUSEG/KSEG2/KSEG3; KSEG0/KSEG1 continuam com tradução direta.
+- `R4300Tlb.translate` escolhe página par/ímpar, verifica V e só então forma o endereço físico.
+- `R4300Cpu.decodeEntryLo` usa corretamente bit 1 para Valid e bit 0 para Global.
+- `writeTlbEntry` grava a entrada indicada e não liga/desliga o modo TLB.
+- A inspeção não identificou evidência suficiente para alterar o algoritmo de tradução, os bits de validade, o PFN ou o comportamento de TLBWI/TLBWR.
+
+### 44.5. Próxima investigação recomendada
+
+1. Decodificar a rotina do refill em `0xFFFFFFFF80000000` e identificar precisamente a fórmula que seleciona `0x8005DBF0` a partir de BadVAddr/Context.
+2. Correlacionar a tabela escrita por `0x700017E0–0x70001850` com a fórmula do refill: endereço inicial, stride de 0x10, campos em +0/+4 e faixa total.
+3. Rastrear a chamada JAL em `0x70005D58` e a origem lógica do destino `0x7F000BD0`; determinar por que o programa chama esse endereço antes de a PTE estar válida.
+4. Inspecionar operações de carregamento/cópia/PI DMA que deveriam fornecer o conteúdo da página, sem inventar mapeamento.
+5. Acrescentar instrumentação pontual para capturar todas as leituras e escritas na faixa da tabela de PTE e o índice calculado no handler, mantendo o trace limitado.
+6. Só propor mudança de código quando a correlação provar um erro do emulador. Não forçar V, não inventar PFN, não desativar TLB e não suprimir exceções.
+
+### 44.6. Estado desta etapa
+
+- Log completo reexaminado, incluindo refill, chamada JAL e rotina de inicialização PTE.
+- Corrigida a interpretação dos bits de `EntryLo1=0x41`.
+- Código de TLB/COP0 e configuração HLE inspecionados.
+- Nenhum arquivo Kotlin foi alterado.
+- Nenhuma correção funcional foi aplicada.
+- Nenhum teste novo foi executado.
+- Branch `main` não foi modificada.
