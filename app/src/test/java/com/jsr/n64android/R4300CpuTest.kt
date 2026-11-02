@@ -187,6 +187,7 @@ class R4300CpuTest {
         // MFC1 $a0, $f4
         memory.write32(8, (0x11 shl 26) or (0x00 shl 21) or (4 shl 16) or (4 shl 11))
         val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29 // Enable COP1 for this transfer test.
         cpu.fcr[31] = 0x80000001L
         cpu.gpr[3] = 0xFEDCBA98L
         cpu.setProgramCounter(0)
@@ -197,6 +198,42 @@ class R4300CpuTest {
         assertEquals(0xFEDCBA98L, cpu.fpr[4])
         assertEquals(0xFFFFFFFFFEDCBA98UL.toLong(), cpu.gpr[4])
         assertEquals(0L, cpu.cop0[13] and 0x7CL)
+    }
+
+    @Test fun cop1DisabledRaisesCoprocessorUnusableAndIdentifiesCop1() {
+        val memory = N64Memory(32)
+        memory.write32(0, (0x11 shl 26) or (0x00 shl 21) or (2 shl 16) or (4 shl 11)) // MFC1 $v0, $f4
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[2] = 0x12345678L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(11L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(1L, (cpu.cop0[13] ushr 28) and 0x3L)
+        assertEquals(0L, cpu.cop0[13] and (1L shl 31))
+        assertEquals(0L, cpu.cop0[14])
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+        assertEquals(0x12345678L, cpu.gpr[2])
+    }
+
+    @Test fun cop1DisabledInBranchDelaySlotSetsBdAndBranchEpc() {
+        val memory = N64Memory(32)
+        memory.write32(0, iType(0x04, 0, 0, 2)) // BEQ $zero, $zero, target
+        memory.write32(4, (0x11 shl 26) or (0x00 shl 21) or (2 shl 16) or (4 shl 11)) // MFC1
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[2] = 0xCAFEBABEL
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+        cpu.step()
+
+        assertEquals(11L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(1L, (cpu.cop0[13] ushr 28) and 0x3L)
+        assertEquals(1L, (cpu.cop0[13] ushr 31) and 1L)
+        assertEquals(0L, cpu.cop0[14])
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+        assertEquals(0xCAFEBABEL, cpu.gpr[2])
     }
 
     @Test fun logicalRegisterInstructionsPreserveAll64Bits() {
@@ -4304,6 +4341,7 @@ class R4300CpuTest {
             memory.write32(8, iType(0x09, 0, 3, 9))
             val cpu = R4300Cpu(memory)
             cpu.setProgramCounter(0)
+            cpu.cop0[12] = 1L shl 29 // Enable COP1 for branch tests.
             cpu.fcr[31] = if (conditionTrue) (1L shl 23) else 0L
 
             cpu.step()
@@ -4331,6 +4369,7 @@ class R4300CpuTest {
             memory.write32(12, iType(0x09, 0, 4, 10))
             val cpu = R4300Cpu(memory)
             cpu.setProgramCounter(0)
+            cpu.cop0[12] = 1L shl 29 // Enable COP1 for branch tests.
             cpu.fcr[31] = if (conditionTrue) (1L shl 23) else 0L
 
             repeat(3) { cpu.step() }
