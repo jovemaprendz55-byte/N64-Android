@@ -3,8 +3,8 @@ package com.jsr.n64android
 /**
  * Initial N64 physical bus.
  *
- * Maps RDRAM, cartridge/PIF ROM and a small initial PI register subset.
- * PIF RAM, other MMIO devices, timing, interrupts and full PI behavior remain absent.
+ * Maps RDRAM, optional cartridge/PIF ROM, and partial SP/DPC/MI/VI/AI/PI/SI/RI MMIO.
+ * PIF RAM protocol and full hardware behavior are not implemented. Device timing and several register side effects remain approximate or unimplemented.
  */
 class N64Bus(
     private val ram: N64Memory = N64Memory(),
