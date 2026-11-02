@@ -5126,3 +5126,18 @@ KDocs atualizados sem mudança de comportamento:
 - A causa do loop antigo `0x7000071C` ainda não foi determinada. O objetivo desta melhoria é tornar o próximo log mais conclusivo; não significa que o problema de execução já foi corrigido.
 
 - Ajuste de nomenclatura: o relatório identifica explicitamente os contadores SP/DPC como escritas em buffers limitados, evitando confundi-los com totais cumulativos. Commit `c407203b75739883abcfe424756bcaef84799f9c`.
+
+
+## 56. CI verde do diagnóstico automático e APK gerada — 2026-11-02
+
+- HEAD de código/documentação validado: `1725f60fa659c05c72b830204b686fe48f3a2f7d`.
+- GitHub Actions run `41428878901`, workflow `Android build`, branch `dev/n64-clean-start`: conclusão **success**.
+- Job `build`: passos `Build and test` e `Upload debug APK` concluíram com sucesso. O comando do workflow é `gradle testDebugUnitTest assembleDebug`; portanto, os testes unitários e a montagem debug passaram nessa revisão.
+- Artifact `n64-android-debug-apk`, ID `13132983191`, criado em 2026-11-02 10:28:09 UTC; expira em 2026-11-16 10:28:08 UTC.
+- APK extraída do artifact: `app-debug.apk`, tamanho 1.009.551 bytes; SHA-256 `76935661842d404fdf9cfd8e927c2ab3879680e09f67df3b9c6151cf4e76d53e`.
+- A APK foi extraída e o hash calculado no ambiente de trabalho. A CI confirma compilação/testes automatizados, não instalação, estabilidade ou compatibilidade de jogos no Android 16.
+- O código do diagnóstico automático e o teste branch+delay-slot estão incluídos no commit validado. Não houve alteração do boot HLE, não houve execução de IPL3/PIF ROM e nenhum task SP foi fabricado.
+- Próximo teste real: instalar a APK no Android 16, executar a ROM que reproduz o loop e exportar o log. Conferir no topo o ciclo CPU, PC/instrução, SP/MI/VI e último TLB fault; correlacionar com o log completo antes de corrigir qualquer comportamento.
+- Link da execução: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41428878901
+
+**Estado:** build e testes unitários automatizados verdes; APK debug gerada. Teste no aparelho continua pendente.
