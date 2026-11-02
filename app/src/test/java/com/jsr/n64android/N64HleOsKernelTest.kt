@@ -65,4 +65,70 @@ class N64HleOsKernelTest {
     fun rejectsUnalignedThreadEntryPoint() {
         N64HleOsKernel().createThread(1, 1, 0x80001002L)
     }
+
+
+    @Test
+    fun blockedReceiverWakesWhenMessageArrives() {
+        val os = N64HleOsKernel()
+        os.createMessageQueue(9, 1)
+        os.createThread(1, 1, 0x80001000L)
+        os.createThread(2, 2, 0x80002000L)
+        os.startThread(1)
+        os.startThread(2)
+
+        assertEquals(1, os.dispatch()?.id)
+        assertNull(os.receiveMessageBlocking(9))
+        assertEquals(N64HleOsKernel.ThreadState.WAITING_MESSAGE, os.threadSnapshot(1).state)
+        assertEquals(1, os.messageQueueSnapshot(9).waitingReceivers)
+        assertEquals(2, os.dispatch()?.id)
+
+        assertTrue(os.sendMessage(9, 0x77L))
+        assertEquals(N64HleOsKernel.ThreadState.RUNNABLE, os.threadSnapshot(1).state)
+        assertEquals(0, os.messageQueueSnapshot(9).waitingReceivers)
+        assertEquals(1, os.dispatch()?.id)
+        assertEquals(0x77L, os.receiveMessageBlocking(9))
+    }
+
+    @Test
+    fun blockedSenderIsQueuedWhenReceiverFreesCapacity() {
+        val os = N64HleOsKernel()
+        os.createMessageQueue(5, 1)
+        assertTrue(os.sendMessage(5, 0x11L))
+        os.createThread(1, 1, 0x80001000L)
+        os.createThread(2, 2, 0x80002000L)
+        os.startThread(1)
+        os.startThread(2)
+
+        assertEquals(1, os.dispatch()?.id)
+        assertFalse(os.sendMessageBlocking(5, 0x22L))
+        assertEquals(N64HleOsKernel.ThreadState.WAITING_MESSAGE, os.threadSnapshot(1).state)
+        assertEquals(1, os.messageQueueSnapshot(5).waitingSenders)
+        assertEquals(2, os.dispatch()?.id)
+
+        assertEquals(0x11L, os.receiveMessageBlocking(5))
+        assertEquals(listOf(0x22L), os.messageQueueSnapshot(5).queuedMessages)
+        assertEquals(0, os.messageQueueSnapshot(5).waitingSenders)
+        assertEquals(N64HleOsKernel.ThreadState.RUNNABLE, os.threadSnapshot(1).state)
+        assertEquals(1, os.dispatch()?.id)
+        assertEquals(0x22L, os.receiveMessageBlocking(5))
+    }
+
+    @Test
+    fun nonBlockingSenderCannotBypassAnOlderBlockedSender() {
+        val os = N64HleOsKernel()
+        os.createMessageQueue(6, 1)
+        assertTrue(os.sendMessage(6, 1L))
+        os.createThread(1, 1, 0x80001000L)
+        os.createThread(2, 2, 0x80002000L)
+        os.startThread(1)
+        os.startThread(2)
+
+        assertEquals(1, os.dispatch()?.id)
+        assertFalse(os.sendMessageBlocking(6, 2L))
+        assertEquals(2, os.dispatch()?.id)
+        assertEquals(1L, os.receiveMessage(6))
+        assertEquals(listOf(2L), os.messageQueueSnapshot(6).queuedMessages)
+        assertFalse(os.sendMessage(6, 3L))
+    }
+
 }
