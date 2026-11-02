@@ -92,6 +92,7 @@ class MainActivity : Activity() {
             })
         }
         setContentView(mainLayout)
+        restoreLastRomSelection()
     }
 
     /**
@@ -1694,77 +1695,93 @@ class MainActivity : Activity() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "*/*"
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
         }
         startActivityForResult(intent, REQUEST_ROM)
+    }
+
+    /** Restores the last ROM only when Android still grants persisted document access. */
+    private fun restoreLastRomSelection() {
+        val savedUri = getSharedPreferences(ROM_PREFS, MODE_PRIVATE)
+            .getString(KEY_LAST_ROM_URI, null) ?: return
+        loadRomFromUri(Uri.parse(savedUri), rememberSelection = false, restoring = true)
+    }
+
+    /** Reads and validates a document off the UI thread to keep large ROM loads responsive. */
+    private fun loadRomFromUri(uri: Uri, rememberSelection: Boolean, restoring: Boolean = false) {
+        mainActionButton?.isEnabled = false
+        status.text = if (restoring) "Restaurando a última ROM..." else "Lendo e verificando a ROM..."
+        cartridgeBus = null
+        cartridgeRomBytes = null
+
+        Thread({
+            val bytes = try {
+                contentResolver.openInputStream(uri)?.use { input -> N64RomLoader.readAllBytes(input) }
+            } catch (_: Exception) {
+                null
+            }
+            val displayName = try {
+                contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) cursor.getString(0) else null
+                } ?: "ROM selecionada"
+            } catch (_: Exception) { "ROM selecionada" }
+
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (bytes == null) {
+                    if (restoring) getSharedPreferences(ROM_PREFS, MODE_PRIVATE).edit().remove(KEY_LAST_ROM_URI).apply()
+                    mainActionButton?.apply { isEnabled = true; text = "ESCOLHER JOGO" }
+                    status.text = "Não foi possível ler a ROM. Verifique se o arquivo ainda está acessível."
+                    return@runOnUiThread
+                }
+                when (val result = N64RomLoader.load(bytes)) {
+                    is RomLoadResult.Success -> {
+                        cartridgeRomBytes = result.rom.bytes
+                        cartridgeBus = N64Bus(cartridgeRom = result.rom.bytes)
+                        romTraceButton?.isEnabled = true
+                        hleBootButton?.isEnabled = true
+                        mainActionButton?.apply { isEnabled = true; text = "▶ INICIAR JOGO" }
+                        if (rememberSelection) {
+                            getSharedPreferences(ROM_PREFS, MODE_PRIVATE).edit()
+                                .putString(KEY_LAST_ROM_URI, uri.toString()).apply()
+                        }
+                        status.text = "JOGO SELECIONADO\n$displayName" +
+                            "\nTamanho: ${result.rom.byteSize} bytes" +
+                            "\nFormato: ${result.rom.format}" +
+                            "\n\nROM pronta. Toque em INICIAR JOGO para testar a execução experimental."
+                    }
+                    is RomLoadResult.Failure -> {
+                        if (restoring) getSharedPreferences(ROM_PREFS, MODE_PRIVATE).edit().remove(KEY_LAST_ROM_URI).apply()
+                        romTraceButton?.isEnabled = false
+                        hleBootButton?.isEnabled = false
+                        mainActionButton?.apply { isEnabled = true; text = "ESCOLHER JOGO" }
+                        status.text = result.reason
+                    }
+                }
+            }
+        }, "N64-ROM-LOADER").start()
     }
 
     @Deprecated("Uses the platform Activity result API for the minimum dependency base.")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (resultCode != RESULT_OK) return
-        val uri: Uri = data?.data ?: return
-        if (requestCode != REQUEST_ROM) return
-        val bytes = try {
-            contentResolver.openInputStream(uri)?.use { input ->
-                val output = ByteArrayOutputStream()
-                val buffer = ByteArray(8192)
-                var total = 0
-                while (true) {
-                    val count = input.read(buffer)
-                    if (count < 0) break
-                    total += count
-                    if (total > N64RomLoader.MAX_ROM_SIZE_BYTES) {
-                        throw IOException("ROM maior que o limite suportado de 64 MiB.")
-                    }
-                    output.write(buffer, 0, count)
-                }
-                output.toByteArray()
-            }
-        } catch (error: IOException) {
-            status.text = error.message ?: "Erro ao ler o arquivo selecionado."
-            return
-        } catch (_: Exception) {
-            null
+        if (requestCode != REQUEST_ROM || resultCode != RESULT_OK) return
+        val uri = data?.data ?: return
+        var persisted = false
+        val grantedRead = data.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION
+        val persistable = data.flags and Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+        if (grantedRead != 0 && persistable != 0) {
+            try {
+                contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                persisted = true
+            } catch (_: SecurityException) { persisted = false }
         }
-        if (bytes == null) {
-            status.text = "Não foi possível ler o arquivo selecionado."
-            return
-        }
-        when (val result = N64RomLoader.load(bytes)) {
-            is RomLoadResult.Success -> {
-                cartridgeRomBytes = result.rom.bytes
-                cartridgeBus = N64Bus(cartridgeRom = result.rom.bytes)
-                romTraceButton?.isEnabled = true
-                hleBootButton?.isEnabled = true
-                mainActionButton?.apply { isEnabled = true; text = "▶ INICIAR JOGO" }
-                val displayName = contentResolver.query(
-                    uri,
-                    arrayOf(OpenableColumns.DISPLAY_NAME),
-                    null,
-                    null,
-                    null
-                )?.use { cursor ->
-                    if (cursor.moveToFirst()) cursor.getString(0) else null
-                } ?: "ROM selecionada"
-                status.text = "JOGO SELECIONADO\n$displayName" +
-                    "\nTamanho: ${result.rom.byteSize} bytes" +
-                    "\nFormato: ${result.rom.format}" +
-                    "\n\nTudo pronto. Toque em INICIAR JOGO para testar a execução experimental."
-            }
-            is RomLoadResult.Failure -> {
-                cartridgeBus = null
-                romTraceButton?.isEnabled = false
-                hleBootButton?.isEnabled = false
-                mainActionButton?.apply {
-                    isEnabled = true
-                    text = "ESCOLHER JOGO"
-                }
-                status.text = result.reason
-            }
-        }
+        if (!persisted) getSharedPreferences(ROM_PREFS, MODE_PRIVATE).edit().remove(KEY_LAST_ROM_URI).apply()
+        loadRomFromUri(uri, rememberSelection = persisted)
     }
-
     companion object {
+        private const val ROM_PREFS = "n64_rom_selection"
+        private const val KEY_LAST_ROM_URI = "last_rom_uri"
         private const val REQUEST_ROM = 640
         private const val LOG_EXPORT_STOP_TIMEOUT_MS = 5_000L
     }
