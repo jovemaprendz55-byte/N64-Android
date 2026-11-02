@@ -6,6 +6,7 @@ import org.junit.Test
 class N64HleAutoDiagnosticTest {
     @Test fun reportSeparatesObservedStateFromRootCause() {
         val bus = N64Bus()
+        bus.write32(N64Bus.SP_PC_REG, 0x1234)
         val cpu = R4300Cpu(bus)
         val loop = N64InstructionTrace.Loop(
             period = 2,
@@ -27,6 +28,9 @@ class N64HleAutoDiagnosticTest {
 
         assertTrue(report.contains("CONFIRMADO: sequência de instruções repetida"))
         assertTrue(report.contains("SP está em HALT"))
+        assertTrue(report.contains("ESTADO DOS DISPOSITIVOS:"))
+        assertTrue(report.contains("ÚLTIMOS EVENTOS SP:"))
+        assertTrue(report.contains("SP_PC"))
         assertTrue(report.contains("RSP e frames ainda não avançaram"))
         assertTrue(report.contains("CAUSA RAIZ: NÃO DETERMINADA AUTOMATICAMENTE"))
     }
