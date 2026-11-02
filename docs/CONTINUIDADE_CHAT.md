@@ -826,3 +826,11 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Limite importante: os handlers funcionais LWC1/LDC1/SWC1/SDC1 continuam ausentes; com CU1 habilitado, essas instruções ainda geram RI. Esta correção **não** implementa FPU nem faz jogos que dependem dela funcionarem.
 - O caminho real `N64RomVideoSession → R4300Cpu.step()` foi confirmado; ele avança VI por aproximação e consulta o RSP em quantum cooperativo. Ainda não há execução automática de OSTask no fluxo principal, nem temporização de hardware fiel.
 - Nenhum teste em aparelho/ROM foi realizado nesta rodada. Validar via CI após commit.
+
+## 33. Auditoria da busca de instrução — salto para endereço desalinhado
+
+- Defeito confirmado: `R4300Cpu.stepInstruction()` buscava a instrução com `memory.read32(physicalAddress(...))` sem validar previamente o alinhamento virtual de 4 bytes.
+- Um `JR`/`JALR` com alvo não alinhado podia deixar a exceção de alinhamento da implementação de memória escapar como exceção host, em vez de entregar AdEL (ExcCode 4) e atualizar BadVAddr/EPC.
+- Correção aplicada: `requireAligned(instructionAddress, 4)` agora é executado antes da tradução/busca; usa o caminho já existente de `AddressFault` para AdEL.
+- Teste adicionado: `unalignedIndirectJumpTargetRaisesAddressErrorInsteadOfHostCrash`; executa JR, delay slot e busca no endereço `0x21`, verificando ExcCode, BadVAddr, EPC, BD=0 e vetor de exceção.
+- Validar o commit por CI antes de considerar a correção aprovada. Não houve teste de ROM nem instalação no Poco C85 nesta rodada.
