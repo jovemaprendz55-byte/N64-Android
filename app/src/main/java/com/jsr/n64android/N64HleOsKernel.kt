@@ -37,7 +37,8 @@ class N64HleOsKernel {
         var wakeSequence: Long = 0L,
         var waitingQueueId: Int? = null,
         var messageWaitKind: MessageWaitKind? = null,
-        var pendingMessage: Long? = null
+        var pendingMessage: Long? = null,
+        var waitingEventType: Int? = null
     )
 
     private data class QueueRecord(
@@ -62,6 +63,13 @@ class N64HleOsKernel {
         }
         require(id !in threads) { "Thread $id already exists." }
         threads[id] = ThreadRecord(id, priority, entryPoint, argument)
+    }
+
+    /** Changes a thread's priority without discarding its FIFO wake order. */
+    @Synchronized
+    fun setThreadPriority(id: Int, priority: Int) {
+        require(priority >= 0) { "Thread priority must be non-negative." }
+        requireThread(id).priority = priority
     }
 
     @Synchronized
@@ -179,11 +187,12 @@ class N64HleOsKernel {
     }
 
     @Synchronized
-    fun blockCurrentForEvent() {
+    fun blockCurrentForEvent(type: Int? = null) {
         val id = currentThreadId ?: return
         val thread = requireThread(id)
         check(thread.state == ThreadState.RUNNING) { "Only a running thread can wait for an event." }
         thread.state = ThreadState.WAITING_EVENT
+        thread.waitingEventType = type
         currentThreadId = null
     }
 
@@ -191,10 +200,11 @@ class N64HleOsKernel {
     fun postEvent(type: Int, value: Long = 0L) {
         events.addLast(Event(type, value, ++sequence))
         threads.values
-            .filter { it.state == ThreadState.WAITING_EVENT }
+            .filter { it.state == ThreadState.WAITING_EVENT && (it.waitingEventType == null || it.waitingEventType == type) }
             .minByOrNull { it.wakeSequence }
             ?.let {
                 it.state = ThreadState.RUNNABLE
+                it.waitingEventType = null
                 it.wakeSequence = sequence
             }
     }
