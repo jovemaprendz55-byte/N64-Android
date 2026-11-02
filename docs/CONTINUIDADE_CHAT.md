@@ -5067,3 +5067,40 @@ KDocs atualizados sem mudança de comportamento:
 - Esta APK contém a correção de exportação e o conserto do companion object. Os commits posteriores de README/auditoria/continuidade não alteram código executável.
 - HEAD documental atual após os relatórios: `aae9256f43ea0346ccf869dd78dc13ced6dda050`; CI `41426050893` estava `in_progress` na última consulta. Não declarar CI do HEAD verde até reconsultar.
 - Teste em aparelho ainda não realizado. Próxima validação do usuário: instalar esta APK, iniciar uma ROM, pressionar SALVAR LOGS durante a execução e confirmar se a aplicação interrompe a execução e grava o arquivo sem fechar inesperadamente.
+
+
+---
+
+## 55. Diagnóstico automático HLE e rastro curto de CPU — 2026-11-02
+
+**Objetivo:** reduzir a dependência de leitura manual de logs extensos. Preservado o objetivo do projeto: HLE próprio, sem executar IPL3, sem PIF ROM/firmware original e sem fabricar OSTasks.
+
+### Implementação nesta etapa
+
+- Novo `N64InstructionTrace.kt`: janela circular limitada a 128 instruções efetivamente buscadas; identifica sequências exatas de PC+opcode repetidas por pelo menos três ciclos, considerando ciclos de 1 a 4 instruções. Isso permite detectar loops com delay slot, como o padrão de dois endereços esperado em um branch MIPS.
+- `N64RomVideoSession.kt`: alimenta o rastro após cada instrução CPU; expõe snapshot recente e ciclo repetido sem alterar a execução.
+- Novo `N64HleAutoDiagnostic.kt`: gera relatório curto com contagem CPU/RSP/VI, estado SP, escritas SP/DPC no histórico disponível, última falha TLB/exceção e interpretação baseada em evidências.
+- `MainActivity.kt`: exportação passa a colocar o diagnóstico automático e até 24 instruções recentes logo no início do arquivo, depois do painel da execução. O restante do log completo continua preservado.
+- Testes novos: `N64InstructionTraceTest.kt` cobre ciclo branch+delay-slot, ausência de falso positivo e limite da janela; `N64HleAutoDiagnosticTest.kt` verifica a separação entre observações e causa raiz.
+
+### Commits desta etapa
+
+- `d2437bdb03b1c7331a9e0159fc1ca5d0de2f0586` — rastro circular.
+- `deb65c3f0963edaad35d5cb7647361698deab8a8` — relatório automático.
+- `798b74b35c2c92fb0b2b428105924f5ead3d0b06` — testes do rastro.
+- `388259803f723a8d7751a2bff080797dc25186e3` — integração do rastro na sessão contínua.
+- `b56604d9cd12241b8c428ac8da965c4fa7312e6a` — inclusão do relatório na exportação.
+- `fa72d17d939652bbe848587e761bc5af9004e9df` — teste do relatório.
+- `3ac8be0553124768038b1d84b0835fabd976e003` — formatação das linhas do rastro.
+- `9a9195da09286f8785d963342d68e84bab53c441` — relatório movido para o início do log.
+
+### Limites e validação pendente
+
+- O detector confirma apenas repetição exata na janela recente; repetição não significa automaticamente defeito. Loops de espera podem ser comportamento normal do software.
+- O relatório não determina causa raiz sem evidência; distingue estado observado de interpretação e termina explicitamente com `CAUSA RAIZ: NÃO DETERMINADA AUTOMATICAMENTE`.
+- Contagens SP/DPC são baseadas nos históricos diagnósticos já existentes, não em um novo contador cumulativo independente.
+- Nenhuma tarefa SP é inventada, nenhum HALT é forçado a limpar e nenhum estado COP0/TLB é alterado pelo diagnóstico.
+- A instrumentação foi integrada ao arquivo exportado; ainda é necessário compilar/testar via CI e executar uma ROM no Android 16 para validar o relatório com dados reais.
+- Não afirmar ainda que o diagnóstico encontrou a causa do loop `0x7000071C`; a nova APK precisa gerar um log de teste.
+
+**Próximo passo:** verificar a compilação/testes automatizados; corrigir qualquer falha; depois gerar APK e pedir ao usuário um único teste de ROM para comparar o diagnóstico curto com o log completo.
