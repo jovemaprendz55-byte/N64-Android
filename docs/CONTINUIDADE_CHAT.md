@@ -5162,3 +5162,13 @@ KDocs atualizados sem mudança de comportamento:
 - Commits: `07cb5b56e5608047e0ea3f21798107195f97f470` (relatório); `b2ba6b936e7ed0d4b2311b85d66fc1248c452c75` (teste).
 - Validação automatizada ainda pendente para esses commits: não afirmar que compilam ou passam nos testes até obter resultado do GitHub Actions.
 - Nenhuma alteração no comportamento de CPU, boot HLE, TLB, RSP ou SP; não executa IPL3/PIF ROM e não força tarefas.
+
+
+
+### Verificação do snapshot de estado da CPU e exportação — 2026-11-02
+
+- Revisado `N64HleAutoDiagnostic.kt`: o relatório automático já imprime os GPR não-zero, HI/LO e COP0 Status/Cause/EPC no fim da sessão. Portanto, não é necessário duplicar um dump atual de registradores em `MainActivity`.
+- Revisado `MainActivity.kt`: antes de iterar os históricos mutáveis para exportar o log, o fluxo solicita parada da sessão e aguarda `romVideoThread.join(LOG_EXPORT_STOP_TIMEOUT_MS)`. Se a thread não parar, a exportação é interrompida com erro em vez de ler coleções concorrentes.
+- Revisado `N64ExecutionSession.execute()`: a contagem é incrementada após `stepInstruction()`; a captura de PC/opcode no callback posterior observa a instrução executada, salvo exceção não tratada que interrompa o fluxo.
+- Limitação importante: o dump GPR atual é um único snapshot no fim da sessão. Ele não prova se os registradores mudaram ao longo das 24,3 milhões de instruções. Para determinar progresso do loop, a próxima melhoria deve guardar snapshots amostrados e comparáveis (com intervalo configurável e custo limitado), sem calcular hash completo dos 32 GPR a cada instrução.
+- Nenhuma alteração de CPU/boot foi feita nesta revisão. Nenhuma APK nova foi gerada e o CI dos commits posteriores ao HEAD validado na seção 56 continua sem confirmação.
