@@ -19,12 +19,12 @@ object N64HleAutoDiagnostic {
         appendLine("SP_STATUS=0x${bus.diagnosticSpStatus().toUInt().toString(16).uppercase().padStart(8, '0')}")
 
         if (loop != null) {
-            appendLine("CONFIRMADO: sequência de instruções repetida; ciclo de ${loop.period} instrução(ões), ${loop.repetitions} repetições consecutivas.")
+            appendLine("PADRÃO REPETIDO: mesmos PCs e opcodes por ${loop.repetitions} repetições; período de ${loop.period} instrução(ões). Isso não prova, sozinho, que o estado da CPU ficou preso.")
             loop.pattern.forEachIndexed { index, entry ->
-                appendLine("  CICLO[$index] PC=0x${hex64(entry.pc)} INST=0x${hex32(entry.instruction)}")
+                appendLine("  PADRÃO[$index] PC=0x${hex64(entry.pc)} INST=0x${hex32(entry.instruction)}")
             }
         } else {
-            appendLine("LOOP: nenhum ciclo curto confirmado na janela recente.")
+            appendLine("PADRÃO: nenhuma repetição curta de PC+opcode detectada na janela recente.")
         }
 
         val spHalted = (bus.diagnosticSpStatus() and N64Bus.SP_STATUS_HALT) != 0
@@ -51,7 +51,7 @@ object N64HleAutoDiagnostic {
         appendLine("INTERPRETAÇÃO:")
         when {
             loop != null && spHalted && rspInstructionCount == 0L && frameCount == 0L ->
-                appendLine("A CPU repete um ciclo enquanto SP permanece em HALT; RSP e frames ainda não avançaram. Investigar a condição de saída do loop e o estado/entrega de interrupções.")
+                appendLine("Há repetição de PC+opcode enquanto SP permanece em HALT; RSP e frames ainda não avançaram. Isso é um indício, não prova de estado idêntico. Investigar progresso dos registradores, condição de saída e entrega de interrupções.")
             spHalted && spWrites == 0 ->
                 appendLine("Não há evidência de submissão/liberação do SP nesta sessão. Investigar o fluxo de inicialização/scheduler antes de atribuir falha ao RSP.")
             cpu.lastTlbFaultKind != null ->
