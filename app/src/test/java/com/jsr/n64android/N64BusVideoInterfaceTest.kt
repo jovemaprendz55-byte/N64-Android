@@ -150,4 +150,35 @@ class N64BusVideoInterfaceTest {
 
         assertEquals(0, bus.read32(N64Bus.VI_CURRENT_REG))
     }
+
+    @Test fun viTimingRaisesMaskedMiInterruptAtConfiguredScanline() {
+        val bus = N64Bus()
+        bus.write32(N64Bus.MI_INTR_MASK_REG, N64Bus.MI_INTR_MASK_VI_SET)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_INTR_OFFSET, 2)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_SYNC_OFFSET, 525)
+
+        bus.advanceViInstructions(2L * N64Bus.VI_INSTRUCTIONS_PER_SCANLINE - 1L)
+        assertEquals(0, bus.read32(N64Bus.MI_INTR_REG) and N64Bus.MI_INTR_VI)
+        assertEquals(1, bus.read32(N64Bus.VI_CURRENT_REG))
+
+        bus.advanceViInstructions(1L)
+
+        assertEquals(N64Bus.MI_INTR_VI, bus.read32(N64Bus.MI_INTR_REG) and N64Bus.MI_INTR_VI)
+        assertEquals(true, bus.isMiInterruptPending())
+    }
+
+    @Test fun writingViCurrentAcknowledgesViInterruptWithoutResettingScanline() {
+        val bus = N64Bus()
+        bus.write32(N64Bus.MI_INTR_MASK_REG, N64Bus.MI_INTR_MASK_VI_SET)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_INTR_OFFSET, 1)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_SYNC_OFFSET, 525)
+        bus.advanceViInstructions(N64Bus.VI_INSTRUCTIONS_PER_SCANLINE)
+
+        assertEquals(N64Bus.MI_INTR_VI, bus.read32(N64Bus.MI_INTR_REG) and N64Bus.MI_INTR_VI)
+        bus.write32(N64Bus.VI_CURRENT_REG, 0)
+
+        assertEquals(1, bus.read32(N64Bus.VI_CURRENT_REG))
+        assertEquals(0, bus.read32(N64Bus.MI_INTR_REG) and N64Bus.MI_INTR_VI)
+        assertEquals(false, bus.isMiInterruptPending())
+    }
 }
