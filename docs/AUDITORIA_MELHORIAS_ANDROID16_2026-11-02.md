@@ -46,3 +46,18 @@
 - Só marcar uma melhoria como aprovada depois de CI verde.
 - Só marcar o jogo como funcional depois de evidência de execução real no aparelho, com imagem e, quando implementado, áudio/controles.
 - Não alterar `main` sem autorização explícita.
+
+## Auditoria da execução R4300 — 2026-11-02
+
+### Defeito confirmado e correção enviada
+- Na instrução SD (opcode 0x3F), a verificação de alinhamento chamava requireAligned(address, 8) sem marcar a operação como gravação.
+- Isso classificava um endereço desalinhado como AdEL (ExcCode 4), quando a arquitetura exige AdES (ExcCode 5).
+- Corrigido para requireAligned(address, 8, store = true).
+- Adicionado teste de regressão sdUnalignedAddressRaisesStoreAddressError, que confirma ExcCode 5, BadVAddr, vetor de exceção e ausência de gravação parcial.
+- Revalidada a suspeita inicial sobre SWR/SDR: os testes existentes percorrem todos os offsets e os casos extremos; não foi encontrada falha nessas instruções e nenhum código delas foi alterado.
+
+### Validação e limites
+- Commits de correção/teste: e4407b6 e 0a7b5f2.
+- CI do HEAD 0a7b5f271c2f982e27023f5f6205305e0ead0b44 iniciada; aguardar success antes de declarar a correção aprovada ou distribuir APK.
+- A CPU R4300 permanece parcial: operações aritméticas FPU/COP1, comportamento completo de COP0, exceções de bus/cache e fidelidade de ciclos ainda não estão completos.
+- CI unitária não substitui execução de ROM real no Poco C85 Android 16.
