@@ -4771,3 +4771,74 @@ Após CI verde e APK correspondente:
 5. Correlacionar os eventos com `MI_INTR_REG`, `Cause.IP2`, limpeza VI_CURRENT, escritas SP/DMA e DPC.
 6. Se o histórico não mostrar ERET, verificar se o handler cai em outra exceção, fica em loop ou não executa ERET.
 7. Não declarar renderização funcional até aparecer frame VI originado pela execução da ROM.
+
+
+---
+
+## 49. Análise do log GoldenEye — 2026-11-02
+
+**Log:** `N64-Android-logs-1793609634078.txt` (publicado na branch `main`).  
+**ROM identificada pelo próprio cabeçalho:** GOLDENEYE, 12.582.912 bytes, CIC seed `0x3F`, PIF ROM externa ausente.  
+**Branch de desenvolvimento:** `dev/n64-clean-start`. Nenhum arquivo de código foi alterado nesta análise.
+
+### 49.1. Evidências confirmadas
+
+Resumo da sessão:
+- CPU: **34.952.313 instruções**.
+- VI frames publicados: **0**.
+- RSP: **0 instruções**, sem PC/instrução RSP.
+- SP final: `MEM_ADDR=0`, `DRAM_ADDR=0`, `STATUS=0x1` (HALT), `PC=0`.
+- O histórico dedicado registra **nenhum acesso MMIO ao SP**, nenhuma escrita SP e nenhuma transferência DMA SP.
+- DPC/RDP: START, END e CURRENT todos em zero; nenhum resultado de processamento.
+- MI=187 acessos, PI=27, SI=2, VI=104621.
+- Foram observadas cinco transferências PI DMA, incluindo cópias de 0x2000 bytes. Isso comprova atividade de carregamento pela PI, não execução RSP.
+- VI está configurada pelo software. No snapshot dos registradores, VI_CURRENT=0x183; mesmo assim nenhum frame foi publicado.
+
+### 49.2. Interrupções: o que o novo histórico esclarece
+
+O histórico cronológico confirma entradas de exceção de hardware no vetor `0xFFFFFFFF80000180` e retornos por ERET. Nos eventos do laço final:
+- A instrução de espera está em `0x7000071C` (`0x1000FFFF`, BEQ zero,zero,-1).
+- A interrupção ocorre no delay slot observado em `0x70000720`; o registro informa branch `0x7000071C`, EPC `0x7000071C` e Cause `0x80000400` (BD + IP2).
+- O handler executa ERET para `0x7000DE38` e depois o fluxo retorna a `0x7000071C`.
+- A sequência aparece repetidamente no buffer de 64 eventos.
+
+**Conclusão limitada:** a CPU recebe a interrupção, executa código de tratamento e retorna ao laço de espera. O retorno não está simplesmente ausente. O log não demonstra que o escalonador tenha colocado uma tarefa gráfica na fila nem que a ROM tenha solicitado execução do SP.
+
+### 49.3. Bloqueio gráfico localizado antes do RSP
+
+A implementação atual de `N64RomVideoSession.pumpRsp()` consulta SP_STATUS. Se SP_STATUS_HALT estiver ativo, limpa a referência do core RSP e retorna sem executar instruções. O core só é criado quando o SP deixa HALT.
+
+O log mostra exatamente o estado compatível com esse caminho:
+- SP_STATUS permanece `0x1` (HALT).
+- Não há escrita do jogo nos registradores SP.
+- Não há DMA SP.
+- Portanto, o RSP não chega a ser criado nesta sessão; o zero de instruções RSP não é evidência de falha em uma instrução do interpretador RSP.
+- Sem comandos DPC e sem frame publicado, ainda não há entrada comprovada no pipeline de renderização.
+
+**Próxima pergunta técnica:** por que o código executado pela CPU não chega a programar SP_MEM_ADDR, SP_DRAM_ADDR, SP_RD_LEN/SP_WR_LEN, SP_STATUS ou SP_PC? A investigação deve começar no escalonador/rotina de criação de OSTask e nos caminhos de chamada que antecedem o laço idle, sem fabricar tarefa ou forçar HALT a ser limpo.
+
+### 49.4. Outros sinais ainda relevantes
+
+O diagnóstico TLB registra falhas FETCH em `0x7F000BD0`, `0x7F0B37C0`, `0x7F0CFF30`, `0x7F0D0A3C` e `0x7F0BCC28`. Há sequências MISS/INVALID/MISS para alguns endereços. O snapshot final mostra entradas TLB atuais válidas para algumas dessas páginas, mas isso não prova que todas as traduções e retornos anteriores foram corretos. Preservar esse assunto como linha paralela de investigação; não alterar EntryLo/PFN ou desativar TLB sem reproduzir a falha e identificar a semântica exata.
+
+### 49.5. CI da instrumentação
+
+Os seguintes workflows foram confirmados como concluídos com sucesso:
+- `41415470269` — rastro de exceção/ERET.
+- `41415477981` — exportação inicial dos eventos.
+- `41415483125` — teste ERET.
+- `41415585811` — eventos no log da sessão ROM.
+- `41415618234` — teste de evento de interrupção.
+- `41415681363` — documentação da instrumentação.
+
+Isso valida build/testes desses commits, não o funcionamento completo de GoldenEye. O novo log veio da branch `main` e não identifica com certeza o SHA/APK instalado pelo usuário. Nenhum novo APK foi gerado ou testado no aparelho nesta análise.
+
+### 49.6. Próxima etapa
+
+1. Inspecionar a rotina de escalonamento e criação de tarefas no código da ROM, incluindo a fila de tarefas e a inicialização do OSTask.
+2. Rastrear, com janela limitada, as últimas instruções antes de cada retorno ao idle e os valores dos argumentos/estruturas que deveriam levar a uma tarefa SP.
+3. Adicionar watchpoints focados em escritas nos registradores SP e DPC, incluindo contagem total mesmo quando o histórico limitado estiver vazio.
+4. Correlacionar chamadas de rotina de áudio/gráficos e estruturas OSTask em RDRAM; validar os campos antes de qualquer tentativa de execução.
+5. Manter separadas as falhas TLB e a ausência de submissão SP; só corrigir uma quando houver evidência específica e teste reproduzível.
+
+**Estado:** interrupções/ERET rastreados; VI programada; GoldenEye ainda não publica frame; nenhum comando SP/DPC foi emitido no log; causa exata da ausência de tarefa ainda não identificada. `main` permanece intocada.
