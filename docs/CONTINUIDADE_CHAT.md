@@ -768,3 +768,25 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Auditoria estática confirmou a lacuna; nenhum código funcional foi alterado e nenhum suporte FPU novo foi declarado.
 - O CI #1469 do commit de documentação anterior `479bf6204fc22de1be1697932132ba94df4c51b9` terminou com success: https://github.com/jovemaprendiz55-byte/N64-Android/actions/runs/41545628743.
 - Próxima atualização de documentação/código deverá continuar na branch `dev/n64-clean-start`; `main` permanece intacta.
+
+
+## 30. Auditoria adicional do estado FPU e diagnóstico de memória — 2026-11-02
+
+### Achados confirmados na inspeção do código
+- O banco `fpr` tem 32 elementos do tipo `Long`, mas os comentários e as transferências MFC1/MTC1 tratam cada elemento como palavra bruta de 32 bits. Não há implementação visível do modo FR do Status nem do pareamento de registradores necessário para operações double no modelo atual.
+- `LDC1`/`SDC1` não podem ser implementados com segurança apenas lendo/escrevendo um `Long` por FPR sem primeiro definir FR=0/FR=1, regras de pares e endianness do VR4300.
+- `CTC1` grava o valor de 32 bits com extensão de sinal no array `fcr`; não foi encontrada validação/máscara específica de bits graváveis de cada FCR. `BC1` consulta somente FCC0 (bit 23 de FCR31), e o código rejeita os outros condition codes.
+- A montagem de `diagnosticEffectiveAddress` em `R4300Cpu.stepInstruction()` não inclui os opcodes 0x31/0x35/0x39/0x3D. Mesmo após adicionar handlers, o contexto de diagnóstico do barramento não registrará a EA desses acessos enquanto essa lista não for ampliada.
+- O CI #1470, run `41546164519`, do commit `610e8110590e96867dc8704779f0ad3f9fd825c6`, terminou com success. Isso valida o estado documentado e os testes existentes, não prova execução dos opcodes COP1 ausentes nem compatibilidade de ROM.
+
+### Próximas ações seguras
+1. Especificar FR=0/FR=1 e a representação física/lógica dos FPRs antes de mexer em LDC1/SDC1.
+2. Definir quais FCRs são implementados, bits graváveis e atualização de FCR31 (flags, causes, enables e FCC).
+3. Acrescentar os quatro opcodes COP1 de memória ao cálculo de EA de diagnóstico.
+4. Implementar cada acesso com teste de alinhamento, tradução TLB, exceção e ausência de efeitos parciais em falhas.
+5. Não declarar FPU completa até aritmética, conversões, comparações, exceções e condições estarem cobertas.
+
+### Estado
+- Esta etapa foi auditoria estática e documentação; nenhum código funcional foi alterado.
+- Branch `dev/n64-clean-start`; `main` permanece intacta.
+- Não houve instalação nem teste de ROM no Poco C85 nesta etapa.
