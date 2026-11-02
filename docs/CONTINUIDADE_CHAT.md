@@ -747,3 +747,24 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Nenhum código funcional foi alterado nesta auditoria; não há alegação de que timer COP0 esteja implementado.
 - CI #1468 para o commit `944298cbbbb2c31515610b27c14682050378b2d4` passou.
 - Branch `dev/n64-clean-start`; `main` intacta. Ainda não houve teste de ROM no aparelho nesta rodada.
+
+
+## 29. Auditoria da cobertura de instruções COP1 e acessos FPU — 2026-11-02
+
+### Resultado confirmado
+- `R4300Cpu.stepInstruction()` valida `Status.CU1` antes de instruções COP1 e das opcodes de memória COP1 (`LWC1` 0x31, `LDC1` 0x35, `SWC1` 0x39, `SDC1` 0x3D). Com CU1 desligado, o trap Coprocessor Unusable (CE=1) é esperado.
+- Com CU1 ligado, o `when(opcode)` não possui handlers para 0x31, 0x35, 0x39 ou 0x3D. Essas instruções chegam ao `else` final e geram Reserved Instruction (RI), em vez de acessar os registradores FPU/memória.
+- O handler COP1 (opcode 0x11) atualmente implementa transferências MFC1/CFC1/MTC1/CTC1 e branches BC1; o próprio código identifica a aritmética FPU como ainda não implementada.
+- O HLE boot habilita CU1, portanto ROMs que executem loads/stores COP1 podem alcançar RI em runtime. A ausência de FPU arithmetic é uma limitação adicional de compatibilidade, mesmo que os acessos de memória sejam implementados.
+- O teste existente `cop1MemoryInstructionAlsoRequiresCu1` cobre apenas o caso CU1 desabilitado; ele não comprova a execução dos quatro acessos quando CU1 está habilitado.
+
+### Próxima implementação sugerida
+1. Antes de codificar, confirmar o modelo de FPR (FR=0/FR=1, pareamento de registradores de 32 bits e endianness) e o tratamento de FCR31.
+2. Implementar LWC1/LDC1/SWC1/SDC1 com tradução TLB, exceções AdEL/AdES/IBE/DBE e preservação correta de bits.
+3. Criar testes de loads/stores em big-endian, alinhamento, TLB miss/invalid/dirty, CU1 disabled/enabled e delay slot.
+4. Só depois avançar para operações aritméticas COP1 e flags/causas FPU; não declarar suporte FPU completo após implementar somente transferências de memória.
+
+### Estado desta rodada
+- Auditoria estática confirmou a lacuna; nenhum código funcional foi alterado e nenhum suporte FPU novo foi declarado.
+- O CI #1469 do commit de documentação anterior `479bf6204fc22de1be1697932132ba94df4c51b9` terminou com success: https://github.com/jovemaprendiz55-byte/N64-Android/actions/runs/41545628743.
+- Próxima atualização de documentação/código deverá continuar na branch `dev/n64-clean-start`; `main` permanece intacta.
