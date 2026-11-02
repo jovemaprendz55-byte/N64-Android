@@ -112,7 +112,9 @@
 
 ### A2 — Falha do RSP é mascarada e altera estado do hardware
 
-**Evidência**
+<badge>Corrigido nesta branch em 2026-11-02</badge>
+
+**Evidência original**
 - Em `N64RomVideoSession.pumpRsp()`, o bloco `catch (error: Throwable)` guarda uma mensagem, escreve `SP_STATUS_CMD_SET_HALT` e descarta o core.
 - Isso captura também erros graves que não deveriam ser tratados como uma instrução RSP não suportada.
 
@@ -128,7 +130,9 @@
 
 ### A3 — Listener de DMA da OSTask não é removido em bloco finally
 
-**Evidência**
+<badge>Corrigido nesta branch em 2026-11-02</badge>
+
+**Evidência original**
 - `N64SpTaskRunner.startAndRun()` registra `bus.setSpDmaListener(tracker::onSpDmaCompleted)`.
 - A remoção `bus.setSpDmaListener(null)` ocorre somente após `rsp.run(maxInstructions)) retornar normalmente.
 
@@ -335,6 +339,42 @@ A próxima coleta deve mostrar a cadeia genérica de fluxo de controle anterior 
 - Sempre registrar SHA do commit, resultado da CI e se houve teste real no Android 16.
 - Toda alteração fica em `dev/n64-clean-start`; `main` permanece intocada.
 
+
+## 11. Expansão do núcleo — primeira rodada de correções
+
+**Implementação iniciada após a auditoria, em 2026-11-02.** Branch `dev/n64-clean-start`; `main` não foi alterada.
+
+### Correção C1 — falha RSP não fabrica SP HALT
+
+- Arquivo: `app/src/main/java/com/jsr/n64android/N64RomVideoSession.kt`.
+- Antes: `pumpRsp()` capturava `Throwable`, registrava texto, escrevia `SP_STATUS_CMD_SET_HALT` e permitia que a sessão CPU continuasse.
+- Agora: registra a falha, descarta a instância local do core e relança a exceção. A sessão geral passa a estado FAILED pelo tratamento existente em `N64ExecutionSession`; SP_STATUS não é alterado artificialmente.
+- Novo teste: `rspFailurePropagatesWithoutForcingSpHalt`, em `N64RomVideoSessionTest.kt`.
+- O teste usa opcode RSP não suportado, exige exceção, estado FAILED, mensagem diagnóstica e HALT ainda limpo.
+- Observação: a captura continua sendo `Throwable` somente para registrar e propagar; não é mais engolida. Futuramente podemos estreitar a captura se houver uma hierarquia de erros de emulação própria.
+
+### Correção C2 — listener de DMA sempre removido
+
+- Arquivo: `app/src/main/java/com/jsr/n64android/N64SpTaskRunner.kt`.
+- Antes: `setSpDmaListener(null)` só ocorria se `rsp.run()` terminasse normalmente.
+- Agora: a remoção está em `finally`, inclusive quando uma instrução RSP lança exceção.
+- `N64Bus.kt` ganhou `diagnosticHasSpDmaListener()`, consulta sem efeito colateral usada para verificar limpeza.
+- Novo teste: `dmaTrackerIsDetachedWhenRspExecutionThrows`, em `N64SpTaskRunnerTest.kt`.
+
+### Commits desta rodada
+
+- `5dc294d530871a5837e5aa67f1eb9d24d9177357` — propagar falha RSP sem fabricar HALT.
+- `c957286d3325719efb14decda6d594c0b455e3f5` — expor estado do listener para teste.
+- `6a00f81dc892e5a0141d59a191e94afb6e7a1d94` — remover listener em finally.
+- `3bc8a24e64e858af10933ad7cc882619a0da9279` — teste de falha RSP preservando SP.
+- `cf7a97d73a5f1c075aa549d46ef32880fcfaf096` — teste de limpeza do listener após falha.
+
+**Validação:** os testes foram adicionados ao código, mas ainda dependem da execução da CI do commit final. Não afirmar sucesso de compilação/testes antes de a execução terminar. Nenhum teste foi executado no Poco C85 nesta rodada.
+
+### Próximo passo
+
+Aguardar CI. Se passar, avançar para instrumentação genérica e limitada de fluxo de controle (branches, J/JAL/JR/JALR, ERET, RA e A0–A3), com ring buffer e testes de neutralidade arquitetural. Só depois gerar APK e recolher um log novo no Android 16. Não integrar OSTask scheduler até localizar o envio real da tarefa pelo guest.
+
 ## 9. Estado atual resumido
 
 | Área | Estado confirmado |
@@ -365,6 +405,6 @@ A próxima coleta deve mostrar a cadeia genérica de fluxo de controle anterior 
 
 **Última auditoria:** 2026-11-02  
 **Branch:** `dev/n64-clean-start`  
-**HEAD auditado:** `d65a14b54ec626d7ba9a27b37963824f895807d7`  
+**HEAD auditado inicialmente:** `d65a14b54ec626d7ba9a27b37963824f895807d7`  
 **Última CI confirmada:** run `41434025556` — success  
 **Alterações de código nesta auditoria:** nenhuma. Esta reconstrução substitui somente o conteúdo deste documento.
