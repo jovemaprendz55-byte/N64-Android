@@ -4465,3 +4465,73 @@ Portanto, `EntryLo0=0x1` e `EntryLo1=0x41` têm V=0. O valor `0x41` representa G
 - Nenhuma correção funcional foi aplicada.
 - Nenhum teste novo foi executado.
 - Branch `main` não foi modificada.
+
+
+---
+
+## 45. PI DMA sem interrupção e correlação com a página virtual 0x7F000BD0 — 2026-11-02
+
+**Data/hora:** 2026-11-02 05:02 (UTC−03:00, horário local informado).  
+**Branch:** `dev/n64-clean-start`.  
+**HEAD antes deste registro:** `7822b86f2604468d6db7048bc249aceaf2864675`.  
+**Log:** `N64-Android-logs-1793580393611.txt`, blob `c3aed7669468c6ebb45b81642a4d26148637939c`.
+
+### 45.1. Correlação ROM → RDRAM → chamada virtual
+
+O log registra uma única operação de leitura PI:
+- `PI_WR_LEN cart=0x10034B30`
+- `romOffset=0x34B30`
+- `dram=0x340000`
+- `length=0x2000`
+
+O caminho de execução contém um JAL em PC `0x70005D58`, instrução `0x0FC002F4`, com destino calculado `0x7F000BD0`. O contexto do chamador também contém `S3=0x7F000000`.
+
+A diferença entre o destino virtual e a base virtual é `0xBD0`; a transferência PI copia um bloco de 8 KiB para PA `0x340000`, cuja janela inclui o deslocamento `0xBD0`. Isso é uma correlação forte entre o bloco carregado e o destino chamado, mas ainda não prova, por si só, que o mapeamento pretendido seja VA `0x7F000000` → PA `0x340000`.
+
+### 45.2. Estado da PTE
+
+- O refill para VA `0x7F000BD0` calcula Context `0x003F8000`.
+- O handler carrega o ponteiro-base `0x7FC65BF0` e soma Context, chegando ao endereço efetivo `0x8005DBF0`.
+- A leitura nesse endereço retorna `0x1`; o handler forma EntryLo0 `0x1` e EntryLo1 `0x41`.
+- Os dois EntryLo têm V=0; por isso o TLBWR não cria uma tradução válida.
+- O histórico de escritas mostra a inicialização da PTE como inválida e não mostra atualização posterior dessa entrada para um valor válido.
+- A exceção INVALID segue para o vetor geral `0xFFFFFFFF80000180`, que salta para o handler da ROM em `0x700101A0`. O caminho observado registra o endereço defeituoso no contexto de exceção, mas não registra atualização da PTE antes de continuar o tratamento.
+
+### 45.3. Lacuna confirmada no PI
+
+Auditoria de `N64Bus.kt`:
+- `dmaCartridgeToRam` copia os bytes do cartucho para RDRAM, avança os registradores PI e limpa `PI_STATUS_DMA_BUSY`.
+- O comentário do método declara explicitamente que essa implementação não modela temporização nem interrupções.
+- `MI_INTR_PI` está definido como bit 4, mas a busca no arquivo encontrou somente a declaração da constante; não há caminho que levante esse bit ao concluir o PI DMA.
+- O tratamento de escrita em `PI_STATUS_REG` altera apenas `piStatus` com máscara `0x3`; não limpa `MI_INTR_PI` em `miInterrupts`.
+- A leitura de `MI_INTR_REG` retorna `miInterrupts`, portanto o PI atualmente não publica sua conclusão nesse registrador.
+
+A documentação técnica do RCP descreve que o PI levanta MI_INTR bit 4 ao concluir uma transferência e que o software reconhece/limpa a interrupção escrevendo bit 1 em PI_STATUS. Referências consultadas:
+- `https://n64.readthedocs.io/` — seção MI_INTR_REG.
+- `https://ultra64.ca/files/documentation/online-manuals/man/header/rcp.htm` — PI_STATUS_REG e semântica de clear interrupt.
+
+### 45.4. Consequência provável e limites
+
+A ausência de PI interrupt é uma lacuna real de hardware emulado e pode impedir que o sistema operacional conclua o fluxo de carregamento/gerenciamento do segmento, mesmo que os bytes do DMA já tenham sido copiados. Isso é compatível com a combinação observada: DMA executado, página virtual ainda inválida e chamada para essa página.
+
+Ainda não está provado que a ausência da interrupção seja a única causa do INVALID FETCH. Também não foi confirmado se o processador já entrega interrupções externas MI ao COP0: a inspeção de `R4300Cpu.kt` não encontrou consulta ao estado MI, teste de interrupção externa ou geração de exceção de interrupção. Portanto, adicionar apenas MI_INTR_PI ao bus não garante que o sistema operacional receba o evento.
+
+### 45.5. Próxima implementação proposta
+
+1. Corrigir a semântica de PI_STATUS: bit 0 deve representar reset do controlador; bit 1 deve limpar a interrupção PI pendente.
+2. Ao concluir PI DMA, limpar BUSY e levantar `MI_INTR_PI` (bit 4) em `miInterrupts`.
+3. Criar testes unitários para PI completion, leitura de MI_INTR_REG e clear-interrupt por PI_STATUS.
+4. Auditar e implementar, com testes isolados, a entrega de interrupção externa MI ao COP0 Cause/Status no R4300. O bit IP e a prioridade devem seguir a arquitetura do VR4300; não inferir nem inventar os bits.
+5. Reexecutar o mesmo cenário e verificar se o software atualiza a PTE `0x8005DBF0` e se o JAL em `0x70005D58` consegue buscar instruções em `0x7F000BD0`.
+
+Não forçar bit Valid, não inventar PFN, não suprimir exceções e não mudar TLBWI/TLBWR como atalho.
+
+### 45.6. Estado desta etapa
+
+- Confirmada a cópia PI de 8 KiB no log.
+- Confirmada a ausência de implementação de MI_INTR_PI no caminho de conclusão PI.
+- Confirmada a ausência de entrega de interrupção externa visível na implementação atual de `R4300Cpu.kt`.
+- Nenhum arquivo Kotlin foi alterado nesta etapa.
+- Nenhum teste novo foi executado.
+- Nenhum APK foi gerado ou testado.
+- Branch `main` não foi modificada.
