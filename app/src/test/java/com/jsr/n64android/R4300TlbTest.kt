@@ -331,7 +331,7 @@ class R4300TlbTest {
     @Test fun asidInvalidationPreservesGlobalAndOtherAddressSpaces() {
         val tlb = R4300Tlb()
         fun entry(asid: Int, global: Boolean = false) = R4300Tlb.Entry(
-            0x10000L + asid * 0x2000L, asid,
+            (if (global) 0x18000L else 0x10000L + asid * 0x2000L), asid,
             R4300Tlb.Page(1, true, true, global),
             R4300Tlb.Page(2, true, true, global)
         )
@@ -341,7 +341,7 @@ class R4300TlbTest {
         assertEquals(1, tlb.invalidateAsid(1))
         assertEquals(null, tlb.probe(0x12000L, 1))
         assertEquals(1, tlb.probe(0x14000L, 2))
-        assertEquals(2, tlb.probe(0x14000L, 9))
+        assertEquals(2, tlb.probe(0x18000L, 9))
         assertEquals(1, tlb.invalidateNonGlobal())
         assertEquals(2, tlb.probe(0x14000L, 9))
     }
