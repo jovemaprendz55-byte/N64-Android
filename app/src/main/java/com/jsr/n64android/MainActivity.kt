@@ -1454,6 +1454,8 @@ class MainActivity : Activity() {
             "\n\nENTRADAS TLB ATIVAS NO MOMENTO DA FALHA:\n" + cpu.lastTlbEntrySnapshot +
             "\n\nGRAVAÇÕES TLBWI/TLBWR (últimas 64):\n" + (if (cpu.diagnosticTlbWriteHistory.isEmpty()) "(nenhuma gravação TLB registrada)" else cpu.diagnosticTlbWriteHistory.joinToString("\n")) +
             "\nÚltima exceção registrada: código=" + (cpu.lastExceptionCode?.toString() ?: "nenhuma") +
+            "\n\nEVENTOS DE EXCEÇÃO / INTERRUPÇÃO / ERET (últimos 64):\n" +
+                (if (cpu.diagnosticControlFlowHistory.isEmpty()) "(nenhum evento registrado)" else cpu.diagnosticControlFlowHistory.joinToString("\n")) +
             " PC=0x" + (cpu.lastExceptionInstructionAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A") +
             " INST=0x" + (cpu.lastExceptionInstructionWord?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A") +
             " delay-slot da branch=0x" + (cpu.lastExceptionBranchAddress?.toULong()?.toString(16)?.uppercase() ?: "não") +
