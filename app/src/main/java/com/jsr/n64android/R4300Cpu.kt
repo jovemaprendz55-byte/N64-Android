@@ -5,7 +5,7 @@ import java.math.BigInteger
 /**
  * First executable R4300 subset for bring-up and unit tests.
  * This is not a complete MIPS III/R4300 implementation: remaining instructions,
- * full delay-slot exception semantics, complete COP0/TLB exception delivery, cache operations and full N64 devices remain unimplemented.
+ * full delay-slot exception semantics, complete COP0/TLB behavior, cache operations and full N64 devices remain unimplemented.
  */
 class R4300Cpu(private val memory: N64AddressSpace) {
     val gpr: LongArray = LongArray(32)
@@ -19,7 +19,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     val fpr: LongArray = LongArray(32)
     /** Floating-point control registers; FCR31 holds the FPU condition/status flags. */
     val fcr: LongArray = LongArray(32)
-    /** Initial 32-entry TLB model; opt-in until architectural TLB exceptions are wired. */
+    /** Basic 32-entry TLB model; HLE boot explicitly enables translation after CPU reset. */
     val tlb: R4300Tlb = R4300Tlb()
     var tlbEnabled: Boolean = false
     var pc: Long = RESET_VECTOR
