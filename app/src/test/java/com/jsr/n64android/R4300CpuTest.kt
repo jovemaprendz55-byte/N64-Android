@@ -5147,4 +5147,49 @@ class R4300CpuTest {
         assertEquals(0x55667788, memory.read32(36))
         assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
     }
+    @Test fun highPhysicalInstructionFetchRaisesInstructionBusErrorInsteadOfHostCrash() {
+        val cpu = R4300Cpu(N64Memory(64))
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0x00400000L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(0x80000, valid = true, dirty = true),
+            oddPage = R4300Tlb.Page(0x80001, valid = true, dirty = true)
+        ))
+        cpu.tlbEnabled = true
+        cpu.setProgramCounter(0x00400000L)
+
+        cpu.step()
+
+        assertEquals(6L, (cpu.cop0[13] ushr 2) and 0x1FL) // IBE.
+        assertEquals(0x00400000L, cpu.cop0[14])
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+        assertEquals("FETCH", cpu.lastExceptionAccessType)
+        assertEquals(0x00400000L, cpu.diagnosticVirtualAddress)
+        assertEquals(null, cpu.diagnosticPhysicalAddress)
+    }
+
+    @Test fun highPhysicalDataReadRaisesDataBusErrorInsteadOfHostCrash() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x23, 8, 2, 0)) // lw $v0, 0($t0)
+        val cpu = R4300Cpu(memory)
+        cpu.tlb.write(0, R4300Tlb.Entry(
+            virtualPagePairBase = 0x00400000L,
+            asid = 0,
+            evenPage = R4300Tlb.Page(0x80000, valid = true, dirty = true),
+            oddPage = R4300Tlb.Page(0x80001, valid = true, dirty = true)
+        ))
+        cpu.tlbEnabled = true
+        cpu.gpr[8] = 0x00400000L
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
+
+        cpu.step()
+
+        assertEquals(7L, (cpu.cop0[13] ushr 2) and 0x1FL) // DBE.
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.cop0[14])
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+        assertEquals("READ", cpu.lastExceptionAccessType)
+        assertEquals(0x00400000L, cpu.diagnosticVirtualAddress)
+        assertEquals(null, cpu.diagnosticPhysicalAddress)
+    }
+
 }
