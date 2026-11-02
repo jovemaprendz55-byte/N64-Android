@@ -5195,3 +5195,20 @@ KDocs atualizados sem mudança de comportamento:
 - Evidência negativa mantida: nenhum MMIO SP, nenhuma escrita SP, nenhum SP DMA, RSP não criado. A atividade MI observada é controle de máscaras, não inicialização SP.
 - Próximo passo: mapear a função de espera/idle e o chamador que deixa o PC em `0x7000071C`; correlacionar a rotina de escalonamento/entrega de mensagens com o caminho de submissão de OSTask. Procurar em memória a estrutura OSTask e referências a `ucodeBoot`, `ucode`, `ucodeData` e `dataPtr`, sem assumir um endereço fixo nem iniciar tarefa artificialmente.
 - Nenhuma alteração funcional aplicada; esta seção registra apenas fatos adicionais do dump e do histórico MMIO.
+
+
+## 60. Confirmação da lacuna de escalonamento SP no código-fonte — 2026-11-02
+
+Auditoria direta dos arquivos na branch `dev/n64-clean-start`:
+
+- `N64RomVideoSession.execute()` executa `cpu.step()`; a cada 4096 instruções chama `pumpRsp()`.
+- `pumpRsp()` apenas consulta `bus.diagnosticSpStatus()`. Se SP_STATUS.HALT estiver ativo, descarta a instância RSP e retorna. Só cria/executa `N64RspCore` se o software convidado já tiver limpado HALT.
+- O comentário da classe declara explicitamente que a sessão não descobre, enfileira ou escalona OSTasks em nome de libultra.
+- `N64SpTaskRunner.startAndRun(taskAddress, maxInstructions)` chama `N64SpTaskBootstrap.startFromRdram(taskAddress)`, mas não há chamada desse runner no fluxo `MainActivity -> N64RomVideoSession`. É uma ponte manual/testável, não um dispatcher conectado ao runtime.
+- `N64SpTaskBootstrap` exige endereço OSTask real, copia 64 bytes para DMEM e carrega o boot microcode; portanto não é seguro invocá-lo sem identificar a estrutura real.
+- `N64Bus.transferSpDma()` implementa cópia SP DMA e notifica tracker; `signalSpBreak()` sinaliza SP/MI ao ocorrer BREAK. Isso não cria tarefa nem inicia SP sozinho.
+- `R4300Cpu.serviceMiInterrupt()` amostra `N64Bus.isMiInterruptPending()` antes de cada instrução e reflete a linha MI em Cause.IP2; `R4300MiInterruptTest` cobre PI/VI, máscara e ERET. Assim, o retorno da interrupção MI visto no log tem suporte explícito no código e testes.
+- A evidência do log GoldenEye permanece: nenhum acesso/escrita SP, nenhum SP DMA, RSP não executado; CPU termina em `0x7000071C` com `BEQ $zero,$zero,-1`, RA `0x70010A80`, SP `0x803AB738`, Cause `0x80000000`. O snapshot final não contém IP2 pendente.
+- Conclusão refinada: não é correto dizer que o runner existente deveria ter iniciado a tarefa automaticamente; o runtime atual foi deliberadamente implementado como polling cooperativo e espera que o guest libere SP HALT. O próximo diagnóstico precisa localizar por que o software guest chegou ao loop de espera sem efetuar qualquer acesso SP. O candidato prioritário é o caminho de inicialização/escalonamento do próprio guest, não um endereço OSTask presumido.
+- Próxima instrumentação útil: capturar um histórico limitado de saltos/calls/retornos e de writes RDRAM relevantes no intervalo anterior à primeira entrada em `0x7000071C`, além de registrar o primeiro acesso SP caso ocorra. Não implementar auto-dispatch nem forçar CLR_HALT até existir evidência de uma OSTask válida.
+- Nenhuma alteração funcional nesta etapa; auditoria de fonte e testes existentes apenas.
