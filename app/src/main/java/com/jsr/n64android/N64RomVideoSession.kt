@@ -120,12 +120,11 @@ class N64RomVideoSession(
             if (core.halted) rspCore = null
         } catch (error: Throwable) {
             rspInstructions.addAndGet(core.executedInstructions - before)
-            rspFailure = "${error.javaClass.simpleName}: ${error.message ?: "instrução RSP não suportada"}"
-            bus.write32(
-                N64Bus.SP_STATUS_REG,
-                N64Bus.SP_STATUS_CMD_SET_HALT
-            )
+            rspFailure = "${error.javaClass.simpleName}: ${error.message ?: "falha sem detalhes"}"
+            // Preserve the guest-visible SP state. A failed host-side RSP step
+            // must not fabricate an SP HALT command or let CPU execution continue.
             rspCore = null
+            throw error
         }
     }
 
