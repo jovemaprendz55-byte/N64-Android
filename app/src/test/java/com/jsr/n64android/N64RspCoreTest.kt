@@ -603,5 +603,4 @@ class N64RspCoreTest {
         assertEquals(1, rsp.run(1))
         assertEquals(0x2000, rsp.vectorUnit.readLane(4, 0))
     }
-\
 }
