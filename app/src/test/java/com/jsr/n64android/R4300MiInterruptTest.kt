@@ -59,6 +59,22 @@ class R4300MiInterruptTest {
     }
 
     @Test
+    fun eretIsRecordedWithReturnTargetAndClearedExl() {
+        val memory = N64Memory(64)
+        memory.write32(0, 0x42000018) // ERET
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.cop0[12] = 0x3L // IE=1, EXL=1
+        cpu.cop0[14] = 0xFFFFFFFF80000400UL.toLong()
+
+        cpu.step()
+
+        assertEquals(0xFFFFFFFF80000400UL.toLong(), cpu.pc)
+        assertEquals(0x1L, cpu.cop0[12])
+        assertTrue(cpu.diagnosticControlFlowHistory.any { it.startsWith("ERET ") && it.contains("target=0xFFFFFFFF80000400") })
+    }
+
+    @Test
     fun maskedPiDmaInterruptDoesNotEnterCpuException() {
         val bus = N64Bus(
             ram = N64Memory(0x2000),
