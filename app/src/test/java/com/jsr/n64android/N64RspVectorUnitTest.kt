@@ -70,4 +70,54 @@ class N64RspVectorUnitTest {
     fun rejectsInvalidLane() {
         N64RspVectorUnit().readLane(0, 8)
     }
+
+    @Test fun addCarryWritesLowHalfAndSetsPerLaneCarryFlags() {
+        val unit = N64RspVectorUnit()
+        unit.writeLane(1, 0, 0xFFFF)
+        unit.writeLane(2, 0, 1)
+        unit.writeLane(1, 1, 0x1234)
+        unit.writeLane(2, 1, 1)
+
+        unit.addCarry(3, 1, 2)
+
+        assertEquals(0, unit.readLane(3, 0))
+        assertEquals(0x1235, unit.readLane(3, 1))
+        assertEquals(1, unit.vcoLow)
+        assertEquals(0, unit.vcoHigh)
+    }
+
+    @Test fun subtractCarryTracksBorrowAndUnequalLanesSeparately() {
+        val unit = N64RspVectorUnit()
+        unit.writeLane(1, 0, 0)
+        unit.writeLane(2, 0, 1)
+        unit.writeLane(1, 1, 5)
+        unit.writeLane(2, 1, 5)
+        unit.writeLane(1, 2, 9)
+        unit.writeLane(2, 2, 4)
+
+        unit.subtractCarry(3, 1, 2)
+
+        assertEquals(0xFFFF, unit.readLane(3, 0))
+        assertEquals(0, unit.readLane(3, 1))
+        assertEquals(5, unit.readLane(3, 2))
+        assertEquals(1, unit.vcoLow)
+        assertEquals(5, unit.vcoHigh)
+    }
+
+    @Test fun absoluteUsesSignSourceAndSaturatesNegative32768Magnitude() {
+        val unit = N64RspVectorUnit()
+        unit.writeLane(1, 0, -1)
+        unit.writeLane(2, 0, -32768)
+        unit.writeLane(1, 1, 1)
+        unit.writeLane(2, 1, -12)
+        unit.writeLane(1, 2, 0)
+        unit.writeLane(2, 2, 123)
+
+        unit.absolute(3, 1, 2)
+
+        assertEquals(32767, unit.readLane(3, 0).toShort().toInt())
+        assertEquals(12, unit.readLane(3, 1))
+        assertEquals(0, unit.readLane(3, 2))
+    }
+
 }
