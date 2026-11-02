@@ -213,9 +213,10 @@ class N64Bus(
     private var aiControl = 0
     private var aiDacRate = 0
     private var aiBitRate = 0
-    // Minimal VI register model: readable/writable configuration registers and a static current-line value.
+    // Minimal VI timing model: one approximate scanline per fixed R4300 instruction budget.
     private val viRegisters = IntArray(VI_REGISTER_COUNT)
     private var viCurrentLine = 0
+    private var viInstructionRemainder = 0L
     // Synchronous RDRAM-only DPC bridge; no XBUS, asynchronous FIFO, timing or IRQ.
     private var dpcStart = 0
     private var dpcEnd = 0
@@ -499,6 +500,27 @@ class N64Bus(
             (read8(address + 2) shl 8) or read8(address + 3)
     }
 
+    /**
+     * Advances the coarse VI timing model. One R4300 instruction is treated as one
+     * timing unit; this is intentionally approximate until per-opcode cycle timing exists.
+     * When VI_CURRENT reaches VI_INTR, the VI source is latched in MI_INTR_REG.
+     */
+    @Synchronized
+    fun advanceViInstructions(instructions: Long = 1L) {
+        require(instructions >= 0L) { "VI instruction advance cannot be negative." }
+        viInstructionRemainder += instructions
+        while (viInstructionRemainder >= VI_INSTRUCTIONS_PER_SCANLINE) {
+            viInstructionRemainder -= VI_INSTRUCTIONS_PER_SCANLINE
+            val programmedLines = viRegisters[VI_V_SYNC_OFFSET / 4] and VI_WINDOW_COORD_MASK
+            val totalLines = programmedLines.takeIf { it > 0 } ?: VI_DEFAULT_TOTAL_SCANLINES
+            viCurrentLine = (viCurrentLine + 1) % totalLines
+            val interruptLine = viRegisters[VI_INTR_OFFSET / 4] and VI_WINDOW_COORD_MASK
+            if (viCurrentLine == interruptLine) {
+                miInterrupts = miInterrupts or MI_INTR_VI
+            }
+        }
+    }
+
     @Synchronized
     override fun loadLinked(address: Int, width: Int): Long {
         require(address >= 0 && address <= ram.size - width) {
@@ -642,6 +664,11 @@ class N64Bus(
             AI_DACRATE_REG -> { aiDacRate = value and 0x3FFF; return }
             AI_BITRATE_REG -> { aiBitRate = value and 0xF; return }
             VI_CURRENT_REG -> { viCurrentLine = 0; return } // Writing CURRENT acknowledges VI interrupt; interrupts are not yet modeled.
+            VI_CURRENT_REG -> {
+                // VI_CURRENT is read-only; writing it acknowledges the VI interrupt.
+                miInterrupts = miInterrupts and MI_INTR_VI.inv()
+                return
+            }
             in VI_REG_BASE until VI_REG_BASE + VI_REG_SIZE -> {
                 viRegisters[(address - VI_REG_BASE) / 4] = value
                 return
@@ -1028,6 +1055,13 @@ class N64Bus(
         const val VI_STATUS_OFFSET = 0x00
         const val VI_ORIGIN_OFFSET = 0x04
         const val VI_WIDTH_OFFSET = 0x08
+        const val VI_INTR_OFFSET = 0x0C
+        const val VI_CURRENT_OFFSET = 0x10
+        const val VI_V_SYNC_OFFSET = 0x18
+        const val VI_INSTRUCTIONS_PER_SCANLINE = 5_661L
+        const val VI_DEFAULT_TOTAL_SCANLINES = 525
+        const val MI_INTR_MASK_VI_CLEAR = 1 shl 6
+        const val MI_INTR_MASK_VI_SET = 1 shl 7
         const val VI_H_START_OFFSET = 0x24
         const val VI_V_START_OFFSET = 0x28
         const val VI_X_SCALE_OFFSET = 0x30
