@@ -4279,3 +4279,60 @@ A hipótese técnica original continua sendo que gerar e copiar um relatório mu
 - Nenhuma alteração foi feita em `main`.
 - Esta seção registra o trabalho de auditoria realizado nesta conversa e preserva os erros, correções tentadas, evidências e pendências para continuidade.
 
+
+
+---
+
+## 42. Retomada da correção de exportação e confirmação do escopo do botão — 2026-11-01
+
+**Data/hora:** 2026-11-01 21:40:29 (UTC−03:00, horário de Brasília).  
+**Branch:** `dev/n64-clean-start`.  
+**Arquivo de código inspecionado:** `app/src/main/java/com/jsr/n64android/MainActivity.kt`.  
+**SHA do blob inspecionado:** `7a90dc0b44f8efa20b4d00323f7775714baba7be`.
+
+### 42.1. Reconstituição da falha de compilação
+
+A revisão dos diffs dos commits históricos confirmou a causa exata do erro de compilação registrado na seção 41:
+
+- No commit `37e0c6a5a8e6d279e9a91541e4905d1c0185d0dc`, a inicialização de `copyLogsButton` tentava referenciar `copyLogsButton` dentro do próprio `setOnClickListener`, inclusive ao desabilitar e reabilitar o botão. Essa autorreferência ocorre antes de a variável local estar inicializada e provocou `Unresolved reference 'copyLogsButton'`.
+- No commit `9362b35bf64f14cdde8342fd2b66f7797a6a04b6`, foi introduzida a referência local `val exportButton = this` dentro do `apply`, e as operações de habilitar/desabilitar passaram a usar `exportButton`. O texto do painel também passou a ser capturado antes da thread de exportação.
+
+### 42.2. Estado encontrado na branch de trabalho
+
+Na versão atual inspecionada de `MainActivity.kt`:
+
+- A variável local é declarada em `val copyLogsButton = Button(this).apply`.
+- Dentro do `apply`, o botão atual é capturado por `val exportButton = this`.
+- O listener desabilita `exportButton` antes de iniciar a thread.
+- O bloco `finally` reabilita `exportButton` por meio de `runOnUiThread`.
+- A variável `copyLogsButton` é usada posteriormente em `addView(copyLogsButton)`, dentro do mesmo método `startRomVideoExecution()` e fora do bloco `apply`, portanto dentro do escopo lexical correto.
+
+A correção da referência que causou a falha antiga já está presente no código atual. Não foi feita uma segunda alteração Kotlin redundante.
+
+### 42.3. Pipeline de validação
+
+O workflow `.github/workflows/android.yml` foi inspecionado. Ele é executado em pushes para `main` e `dev/**` e executa:
+
+```bash
+gradle testDebugUnitTest assembleDebug
+```
+
+Em caso de sucesso, publica o artefato `n64-android-debug-apk`.
+
+**Validação desta retomada:** o código foi inspecionado, mas ainda não há nesta etapa um novo resultado de CI confirmado para o HEAD atual. O erro histórico do commit `37e0c6a` não deve ser confundido com o estado atual após `9362b35`.
+
+### 42.4. Próximas ações
+
+1. Obter uma execução de CI referente ao estado atual da branch e verificar o resultado de `testDebugUnitTest` e `assembleDebug`.
+2. Se o build falhar, corrigir o primeiro erro real, preservando a funcionalidade e sem tocar em `main`.
+3. Repetir o ciclo até obter CI verde.
+4. Baixar/instalar a APK gerada e testar a exportação no aparelho; a CI não substitui o teste real do botão `SALVAR LOGS`.
+5. Se o aplicativo ainda fechar durante a exportação, coletar Logcat e investigar OOM/ANR e volume de memória; considerar escrita incremental em stream se os dados confirmarem pressão de memória.
+
+### 42.5. Limites e alterações
+
+- Nenhum arquivo Kotlin foi alterado nesta etapa.
+- Nenhuma correção de boot HLE, TLB, RSP, RDP ou VI foi realizada.
+- Nenhum teste em aparelho foi executado.
+- A branch `main` permanece intocada.
+- A correção histórica do escopo do botão foi confirmada por inspeção de código e diff; a validação de CI atual permanece pendente.
