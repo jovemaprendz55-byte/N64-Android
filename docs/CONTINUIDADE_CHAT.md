@@ -634,3 +634,12 @@ Priorizar rastreamento genérico e leve do fluxo de controle da CPU (J/JAL/JR/JA
 ### Próximo passo
 
 Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para identificar a sequência real de chamadas/retornos antes do loop idle. Se falhar, corrigir pela mensagem de teste/compilação. Ainda não há integração automática de OSTask nem prova de GoldenEye renderizando.
+
+
+## 21. Correção do rastreamento genérico de fluxo R4300 — 2026-11-02
+
+- A primeira execução da instrumentação genérica compilou, mas dois testes falharam porque as expressões Kotlin de interpolação foram escapadas como texto literal na montagem da linha diagnóstica.
+- Corrigido em `R4300Cpu.kt`: interpolação real para PC, instrução, destino, RA e A0–A3.
+- Commit da correção: `e6d30841ac7e1228e7a6887aadb97f653526d5f8`.
+- A falha não foi nos opcodes BEQ/BNE/JR nem nas decisões de branch; os testes não conseguiam encontrar os campos formatados porque a string continha os marcadores literais.
+- CI para este commit ainda precisa ser verificada. Não considerar a instrumentação validada até os testes e o APK passarem.
