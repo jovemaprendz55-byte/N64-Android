@@ -205,5 +205,4 @@ class N64RspVectorUnitTest {
         assertEquals(0x2000, unit.readLane(5, 0))
         assertEquals(0x0000, unit.readLane(6, 0))
     }
-\
 }
