@@ -811,10 +811,17 @@ class R4300CpuTest {
         assertEquals(0xFEDCBA98L, cpu.gpr[4])
     }
 
-    @Test fun resetVectorReportsMissingPifRomInsteadOfOutOfBoundsRam() {
+    @Test fun resetVectorWithoutPifRomRaisesInstructionBusError() {
         val cpu = R4300Cpu(N64Bus())
-        val error = assertThrows(UnsupportedOperationException::class.java) { cpu.step() }
-        assertTrue(error.message!!.contains("PIF boot ROM is not loaded"))
+
+        cpu.step()
+
+        assertEquals(6L, (cpu.cop0[13] ushr 2) and 0x1FL) // IBE.
+        assertEquals(R4300Cpu.RESET_VECTOR, cpu.cop0[14])
+        assertEquals("FETCH", cpu.lastExceptionAccessType)
+        assertEquals(R4300Cpu.RESET_VECTOR, cpu.diagnosticInstructionAddress)
+        assertEquals("FETCH", cpu.diagnosticAccessType)
+        assertEquals(0x1FC00000, cpu.diagnosticPhysicalAddress)
     }
 
     @Test fun busReadsPifRomWhenExplicitlyProvided() {
