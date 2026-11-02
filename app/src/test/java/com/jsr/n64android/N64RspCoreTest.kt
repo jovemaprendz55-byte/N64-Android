@@ -110,6 +110,17 @@ class N64RspCoreTest {
     }
 
     @Test
+    fun decodesVmulfIntoVectorUnit() {
+        val (_, rsp) = setup(vectorOp(0x00, vd = 3, vs = 1, vt = 2))
+        rsp.vectorUnit.writeLane(1, 0, 0x4000)
+        rsp.vectorUnit.writeLane(2, 0, 0x4000)
+
+        assertEquals(1, rsp.run(1))
+        assertEquals(8192, rsp.vectorUnit.readLane(3, 0).toShort().toInt())
+        assertEquals(536903680L, rsp.vectorUnit.readAccumulator(0))
+    }
+
+    @Test
     fun executesScalarImmediateArithmeticAndStopsOnBreak() {
         val (bus, rsp) = setup(
             addiu(8, 0, 42),
