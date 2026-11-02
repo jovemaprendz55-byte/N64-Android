@@ -40,6 +40,21 @@ class N64BusMmioDiagnosticTest {
     }
 
     @Test
+    fun cumulativeWriteCountersRemainExactAfterHistoryEviction() {
+        val bus = N64Bus()
+        repeat(300) { index ->
+            bus.setDiagnosticCpuPc(index.toLong())
+            bus.write32(N64Bus.SP_STATUS_REG, N64Bus.SP_STATUS_CMD_CLR_HALT)
+            bus.write32(N64Bus.DPC_START_REG, index)
+        }
+
+        assertEquals(256, bus.diagnosticMmioHistory.size)
+        assertEquals(300L, bus.diagnosticMmioWriteCounts["SP"])
+        assertEquals(300L, bus.diagnosticMmioWriteCounts["DPC"])
+        assertEquals(600L, bus.diagnosticMmioWriteCounts.values.sum())
+    }
+
+    @Test
     fun deviceSnapshotReportsImplementedStateWithoutAddingMmioEvents() {
         val bus = N64Bus()
         bus.write32(N64Bus.SP_STATUS_REG, N64Bus.SP_STATUS_CMD_CLR_HALT)
