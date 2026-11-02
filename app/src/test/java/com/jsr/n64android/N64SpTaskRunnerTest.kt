@@ -157,4 +157,29 @@ class N64SpTaskRunnerTest {
         assertEquals(0x0000000D, result.lastInstruction)
     }
 
+
+    @Test
+    fun dmaTrackerIsDetachedWhenRspExecutionThrows() {
+        val ram = N64Memory(0x4000)
+        val taskAddress = 0x100
+        val bootAddress = 0x2000
+        val task = intArrayOf(
+            1, 0, bootAddress, 4,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        )
+        task.forEachIndexed { index, word -> ram.write32(taskAddress + index * 4, word) }
+        ram.write32(bootAddress, 0xFFFFFFFF.toInt()) // Unsupported RSP opcode.
+
+        val bus = N64Bus(ram = ram)
+        var failure: UnsupportedOperationException? = null
+        try {
+            N64SpTaskRunner(bus, ram.size).startAndRun(taskAddress, 4)
+        } catch (error: UnsupportedOperationException) {
+            failure = error
+        }
+
+        assertTrue(failure != null)
+        assertFalse(bus.diagnosticHasSpDmaListener())
+    }
+
 }
