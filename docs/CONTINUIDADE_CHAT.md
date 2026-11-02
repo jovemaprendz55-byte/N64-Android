@@ -790,3 +790,30 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Esta etapa foi auditoria estática e documentação; nenhum código funcional foi alterado.
 - Branch `dev/n64-clean-start`; `main` permanece intacta.
 - Não houve instalação nem teste de ROM no Poco C85 nesta etapa.
+
+
+## 31. Auditoria do contexto de diagnóstico da CPU — 2026-11-02
+
+### CI anterior
+- CI #1471 do commit `ba5924d6a50dac627da69c5fdd881e0c28441ecc` terminou com success: build/teste automatizado concluído.
+- Isso não valida instruções COP1 que continuam sem handler e não equivale a teste de ROM no aparelho.
+
+### Defeito encontrado
+- Em `R4300Cpu.stepInstruction()`, o cálculo de `diagnosticEffectiveAddress` contempla vários loads/stores inteiros, mas omite explicitamente os opcodes COP1 de memória: LWC1 (0x31), LDC1 (0x35), SWC1 (0x39) e SDC1 (0x3D).
+- `N64Bus.setDiagnosticCpuInstructionContext()` armazena essa EA para compor o contexto das gravações de PTE. Portanto, se os handlers COP1 forem adicionados sem corrigir essa lista, os logs poderão mostrar PC/instrução/registradores-base, mas não a EA calculada para essas operações.
+- Este é um defeito de observabilidade/diagnóstico, não a causa direta do RI atual: os quatro opcodes ainda não têm handlers quando CU1 está habilitado.
+
+### Limitações funcionais rechecadas
+- O array FPR é explicitamente descrito no código como armazenamento de palavras brutas de 32 bits com semântica double pareada incompleta.
+- MTC1/MFC1 transferem palavras brutas de 32 bits; isso não constitui implementação de LDC1/SDC1 nem de aritmética FPU.
+- CTC1 grava FCR sem máscara específica por registrador; BC1 só aceita FCC0. O conjunto de controle FPU permanece parcial.
+
+### Próximo passo
+1. Ao implementar LWC1/LDC1/SWC1/SDC1, incluir esses quatro opcodes na EA de diagnóstico.
+2. Acrescentar teste de integração que confirme a EA observada para instruções COP1 de memória, além dos testes arquiteturais de TLB, alinhamento e exceções.
+3. Projetar FR/FPR e FCR31 antes de implementar operações de 64 bits ou declarar suporte FPU.
+
+### Estado
+- Esta rodada foi inspeção estática e atualização da documentação; nenhum código funcional foi alterado.
+- Commit de documentação na branch `dev/n64-clean-start`; `main` intacta.
+- Não houve execução de ROM nem teste no Poco C85 nesta rodada.
