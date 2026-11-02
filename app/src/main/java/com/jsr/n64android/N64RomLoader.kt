@@ -1,5 +1,9 @@
 package com.jsr.n64android
 
+import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.io.InputStream
+
 data class N64Rom(val bytes: ByteArray, val byteSize: Int, val format: RomFormat)
 
 enum class RomFormat { Z64_BIG_ENDIAN, V64_HALFWORD_SWAPPED, N64_WORD_SWAPPED }
@@ -13,6 +17,34 @@ object N64RomLoader {
     private const val HEADER_SIZE = 0x40
     const val MAX_ROM_SIZE_BYTES = 64 * 1024 * 1024
 
+    /**
+     * Reads a ROM stream without trusting provider-reported sizes. Handles streams
+     * that temporarily return zero bytes and enforces the cap before buffering.
+     * The caller owns and must close the stream.
+     */
+    @Throws(IOException::class)
+    fun readAllBytes(input: InputStream, maxBytes: Int = MAX_ROM_SIZE_BYTES): ByteArray {
+        require(maxBytes > 0) { "Maximum ROM size must be positive." }
+        val output = ByteArrayOutputStream(minOf(maxBytes, 1024 * 1024))
+        val buffer = ByteArray(8192)
+        var total = 0
+        while (true) {
+            val count = input.read(buffer)
+            if (count < 0) break
+            if (count == 0) {
+                val single = input.read()
+                if (single < 0) break
+                if (total == maxBytes) throw IOException("ROM maior que o limite suportado.")
+                output.write(single)
+                total++
+                continue
+            }
+            if (count > maxBytes - total) throw IOException("ROM maior que o limite suportado.")
+            output.write(buffer, 0, count)
+            total += count
+        }
+        return output.toByteArray()
+    }
     fun load(source: ByteArray): RomLoadResult {
         if (source.size < HEADER_SIZE) {
             return RomLoadResult.Failure("Arquivo pequeno demais para conter um cabeçalho N64 completo.")
