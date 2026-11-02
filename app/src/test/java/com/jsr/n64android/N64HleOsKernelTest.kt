@@ -176,5 +176,4 @@ class N64HleOsKernelTest {
         assertEquals(N64HleOsKernel.ThreadState.RUNNABLE, os.threadSnapshot(1).state)
         assertEquals(N64HleOsKernel.ThreadState.WAITING_EVENT, os.threadSnapshot(2).state)
     }
-\
 }
