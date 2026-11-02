@@ -167,6 +167,28 @@ class N64RspVectorUnit {
     fun nor(destination: Int, left: Int, right: Int, element: Int = 0) =
         logical(destination, left, right, element) { a, b -> (a or b).inv() }
 
+    /**
+     * Signed fractional multiply (VMULF): doubles the signed product, adds
+     * the architectural rounding bias, stores the signed 48-bit accumulator,
+     * and saturates the high accumulator half into the destination lane.
+     */
+    fun multiplyFractional(destination: Int, left: Int, right: Int, element: Int = 0) {
+        checkVector(destination); checkVector(left); checkVector(right)
+        require(element in 0..15)
+        for (lane in 0..7) {
+            val product = signed(registers[left][lane]).toLong() *
+                signed(selectedLane(right, lane, element)).toLong()
+            val accumulated = signExtend48((product shl 1) + 0x8000L)
+            accumulator[lane] = accumulated
+            val rounded = (accumulated shr 16).coerceIn(
+                Short.MIN_VALUE.toLong(), Short.MAX_VALUE.toLong()
+            )
+            registers[destination][lane] = rounded.toInt() and 0xFFFF
+        }
+        vcoLow = 0
+        vcoHigh = 0
+    }
+
     /** Unsigned lane addition: stores low 16 bits and records carry-out in VCO low. */
     fun addCarry(destination: Int, left: Int, right: Int, element: Int = 0) {
         checkVector(destination); checkVector(left); checkVector(right)
