@@ -128,6 +128,24 @@ class R4300Tlb(private val entryCount: Int = ENTRY_COUNT) {
         )
     }
 
+
+    /** Stable indexed view of every TLB slot, including empty slots, for debugging refill behavior. */
+    fun diagnosticSnapshot(): String = buildString {
+        appendLine("R4300 TLB entries=$entryCount")
+        entries.forEachIndexed { index, entry ->
+            if (entry == null) {
+                appendLine("TLB[$index]=EMPTY")
+            } else {
+                appendLine(
+                    "TLB[$index] VPN2=0x${entry.virtualPagePairBase.toString(16).uppercase().padStart(8, '0')} " +
+                        "ASID=${entry.asid} PageMask=0x${entry.pageMask.toString(16).uppercase().padStart(8, '0')} " +
+                        "G=${isGlobal(entry)} EVEN(PFN=0x${entry.evenPage.physicalFrameNumber.toString(16).uppercase()},V=${entry.evenPage.valid},D=${entry.evenPage.dirty}) " +
+                        "ODD(PFN=0x${entry.oddPage.physicalFrameNumber.toString(16).uppercase()},V=${entry.oddPage.valid},D=${entry.oddPage.dirty})"
+                )
+            }
+        }
+    }
+
     private fun normalizeEntry(entry: Entry): Entry {
         require(entry.asid in 0..0xFF) { "ASID must fit in 8 bits." }
         val pageMask = normalizePageMask(entry.pageMask)
