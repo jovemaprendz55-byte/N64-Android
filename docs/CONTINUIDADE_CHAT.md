@@ -4604,7 +4604,7 @@ O log lista cinco transferências PI de 8 KiB:
 - ROM `0x104B30` → RDRAM `0x39A000`.
 - ROM `0xF0B30` → RDRAM `0x36E000`.
 
-A última transferência cobre exatamente as páginas físicas `0x36E000–0x36FFF F` (8 KiB), que correspondem aos PFNs presentes no TLBWR válido para o par virtual `0x7F0BC000/0x7F0BD000`. O offset `0xC28` da falha virtual corresponde a PA `0x36EC28` sob essa tradução.
+A última transferência cobre exatamente as páginas físicas `0x36E000–0x36FFF` (8 KiB), que correspondem aos PFNs presentes no TLBWR válido para o par virtual `0x7F0BC000/0x7F0BD000`. O offset `0xC28` da falha virtual corresponde a PA `0x36EC28` sob essa tradução.
 
 Além disso, o trace contém instruções executadas em PCs `0x7F0BCC48`, `0x7F0BCC80`, `0x7F0BCC84`, `0x7F0BCC98` e seguintes. Isso demonstra que o fluxo chegou a executar código na região virtual depois da instalação da tradução válida. A primeira mensagem de TLB MISS do painel é, portanto, um evento anterior do histórico e não prova que a tradução permaneceu inválida até o fim.
 
