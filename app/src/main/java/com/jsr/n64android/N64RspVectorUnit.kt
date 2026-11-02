@@ -9,6 +9,54 @@ package com.jsr.n64android
  * dispatch COP2 vector formats without conflating scalar and vector fields.
  */
 class N64RspVectorUnit {
+    /** Complete architectural vector state, suitable for a task/context save. */
+    data class Snapshot(
+        val registers: List<List<Int>>,
+        val accumulator: List<Long>,
+        val vcoLow: Int,
+        val vcoHigh: Int,
+        val vccLow: Int,
+        val vccHigh: Int,
+        val vce: Int
+    )
+
+    fun snapshot(): Snapshot = Snapshot(
+        registers = registers.map { it.toList() },
+        accumulator = accumulator.toList(),
+        vcoLow = vcoLow,
+        vcoHigh = vcoHigh,
+        vccLow = vccLow,
+        vccHigh = vccHigh,
+        vce = vce
+    )
+
+    /** Validates the entire snapshot before changing any live vector state. */
+    fun restore(snapshot: Snapshot) {
+        require(snapshot.registers.size == 32) { "RSP snapshot must contain 32 vector registers." }
+        require(snapshot.registers.all { it.size == 8 }) { "Each RSP vector register must contain 8 lanes." }
+        require(snapshot.registers.all { lanes -> lanes.all { it in 0..0xFFFF } }) {
+            "RSP vector lanes must be unsigned 16-bit values."
+        }
+        require(snapshot.accumulator.size == 8) { "RSP accumulator snapshot must contain 8 lanes." }
+        val minAccumulator = -(1L shl 47)
+        val maxAccumulator = (1L shl 47) - 1L
+        require(snapshot.accumulator.all { it in minAccumulator..maxAccumulator }) {
+            "RSP accumulator values must fit the signed 48-bit architectural range."
+        }
+        require(snapshot.vcoLow in 0..0xFF && snapshot.vcoHigh in 0..0xFF &&
+            snapshot.vccLow in 0..0xFF && snapshot.vccHigh in 0..0xFF &&
+            snapshot.vce in 0..0xFF) { "RSP vector flags must be 8-bit lane masks." }
+
+        snapshot.registers.forEachIndexed { register, lanes ->
+            lanes.forEachIndexed { lane, value -> registers[register][lane] = value }
+        }
+        snapshot.accumulator.forEachIndexed { lane, value -> accumulator[lane] = value }
+        vcoLow = snapshot.vcoLow
+        vcoHigh = snapshot.vcoHigh
+        vccLow = snapshot.vccLow
+        vccHigh = snapshot.vccHigh
+        vce = snapshot.vce
+    }
     private val registers = Array(32) { IntArray(8) }
     private val accumulator = LongArray(8)
 
