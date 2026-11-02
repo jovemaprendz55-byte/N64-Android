@@ -3,9 +3,8 @@ package com.jsr.n64android
 /**
  * R4300 32-entry TLB model with variable paired-page sizes.
  *
- * PageMask follows the MIPS III encoding: 0x0000 for 4 KiB pages,
- * 0x6000 for 16 KiB, 0x1E000 for 64 KiB, and so on through 16 MiB.
- * This is an instruction-level model, not a cycle-accurate MMU.
+ * PageMask follows the MIPS III encoding. This is an instruction-level
+ * translation model, not a cycle-accurate MMU or a complete cache model.
  */
 class R4300Tlb(private val entryCount: Int = ENTRY_COUNT) {
     init {
@@ -32,6 +31,17 @@ class R4300Tlb(private val entryCount: Int = ENTRY_COUNT) {
         }
     }
 
+    data class Snapshot(val entries: List<Entry?>)
+
+    data class Translation(
+        val physicalAddress: Int,
+        val entryIndex: Int,
+        val pageSize: Long,
+        val oddPage: Boolean,
+        val asid: Int,
+        val global: Boolean
+    )
+
     enum class Access { READ, WRITE, FETCH }
     enum class FaultKind { MISS, INVALID, MODIFIED }
 
@@ -43,23 +53,30 @@ class R4300Tlb(private val entryCount: Int = ENTRY_COUNT) {
 
     private val entries = arrayOfNulls<Entry>(entryCount)
 
+    val size: Int get() = entryCount
+
     fun clear() {
         entries.fill(null)
     }
 
+    /** Captures all indexed entries, including invalid/uninitialized slots. */
+    fun snapshot(): Snapshot = Snapshot(entries.toList())
+
+    /**
+     * Restores a snapshot atomically. All entries are validated and normalized
+     * before the live TLB is changed.
+     */
+    fun restore(snapshot: Snapshot) {
+        require(snapshot.entries.size == entryCount) {
+            "TLB snapshot has ${snapshot.entries.size} entries; expected $entryCount."
+        }
+        val normalized = snapshot.entries.map { it?.let(::normalizeEntry) }
+        normalized.forEachIndexed { index, entry -> entries[index] = entry }
+    }
+
     fun write(index: Int, entry: Entry) {
         require(index in entries.indices) { "TLB index $index is out of range." }
-        require(entry.asid in 0..0xFF) { "ASID must fit in 8 bits." }
-        val pageMask = normalizePageMask(entry.pageMask)
-        val pairMask = pairAddressMask(pageMask)
-        val base = entry.virtualPagePairBase and 0xFFFFFFFFL
-        require(base and pairMask.inv() and 0xFFFFFFFFL == 0L) {
-            "TLB virtual pair base must be aligned for its PageMask."
-        }
-        entries[index] = entry.copy(
-            virtualPagePairBase = base and pairMask,
-            pageMask = pageMask
-        )
+        entries[index] = normalizeEntry(entry)
     }
 
     fun read(index: Int): Entry {
@@ -67,38 +84,65 @@ class R4300Tlb(private val entryCount: Int = ENTRY_COUNT) {
         return entries[index] ?: throw IllegalStateException("TLB entry $index is not initialized.")
     }
 
-    /** Returns the matching entry index, or null when VPN/ASID probing misses. */
+    /** Returns the matching indexed entry, or null when VPN/ASID probing misses. */
     fun probe(virtualAddress: Long, asid: Int): Int? {
         require(asid in 0..0xFF) { "ASID must fit in 8 bits." }
         val address = virtualAddress and 0xFFFFFFFFL
         return entries.indices.firstOrNull { index ->
             val entry = entries[index] ?: return@firstOrNull false
-            val mask = pairAddressMask(entry.pageMask)
-            (entry.virtualPagePairBase and mask) == (address and mask) &&
-                (entry.asid == asid || isGlobal(entry))
+            matches(entry, address, asid)
         }
     }
 
-    fun translate(virtualAddress: Long, asid: Int, access: Access): Int {
+    fun translate(virtualAddress: Long, asid: Int, access: Access): Int =
+        translateWithMetadata(virtualAddress, asid, access).physicalAddress
+
+    /** Returns the physical address plus the TLB slot/page metadata used for it. */
+    fun translateWithMetadata(virtualAddress: Long, asid: Int, access: Access): Translation {
         require(asid in 0..0xFF) { "ASID must fit in 8 bits." }
         val address = virtualAddress and 0xFFFFFFFFL
-        val entry = entries.firstOrNull {
-            it != null &&
-                (it.virtualPagePairBase and pairAddressMask(it.pageMask)) ==
-                    (address and pairAddressMask(it.pageMask)) &&
-                (it.asid == asid || isGlobal(it))
+        val index = entries.indices.firstOrNull { slot ->
+            val entry = entries[slot] ?: return@firstOrNull false
+            matches(entry, address, asid)
         } ?: throw TlbFault(FaultKind.MISS, virtualAddress, access)
+        val entry = entries[index]!!
 
         val pageSize = pageSize(entry.pageMask)
         val offset = address and (pageSize - 1L)
         val odd = (address and pageSize) != 0L
         val page = if (odd) entry.oddPage else entry.evenPage
         if (!page.valid) throw TlbFault(FaultKind.INVALID, virtualAddress, access)
-        if (access == Access.WRITE && !page.dirty) throw TlbFault(FaultKind.MODIFIED, virtualAddress, access)
+        if (access == Access.WRITE && !page.dirty) {
+            throw TlbFault(FaultKind.MODIFIED, virtualAddress, access)
+        }
 
         // PFN bits below the selected page size are ignored by hardware.
         val physicalPageBase = (page.physicalFrameNumber.toLong() shl PAGE_SHIFT) and -pageSize
-        return (physicalPageBase or offset).toInt()
+        return Translation(
+            physicalAddress = (physicalPageBase or offset).toInt(),
+            entryIndex = index,
+            pageSize = pageSize,
+            oddPage = odd,
+            asid = entry.asid,
+            global = isGlobal(entry)
+        )
+    }
+
+    private fun normalizeEntry(entry: Entry): Entry {
+        require(entry.asid in 0..0xFF) { "ASID must fit in 8 bits." }
+        val pageMask = normalizePageMask(entry.pageMask)
+        val pairMask = pairAddressMask(pageMask)
+        val base = entry.virtualPagePairBase and 0xFFFFFFFFL
+        require(base and pairMask.inv() and 0xFFFFFFFFL == 0L) {
+            "TLB virtual pair base must be aligned for its PageMask."
+        }
+        return entry.copy(virtualPagePairBase = base and pairMask, pageMask = pageMask)
+    }
+
+    private fun matches(entry: Entry, address: Long, asid: Int): Boolean {
+        val mask = pairAddressMask(entry.pageMask)
+        return (entry.virtualPagePairBase and mask) == (address and mask) &&
+            (entry.asid == asid || isGlobal(entry))
     }
 
     private fun isGlobal(entry: Entry): Boolean =
