@@ -95,3 +95,17 @@
 - Referência: NEC MIPS VR4300 Microprocessor User's Manual, capítulo 4, Status Register, especialmente páginas 98–101 (CU0, KSU, EXL/ERL e modos de operação).
 - Esta alteração não implementa ainda a execução funcional das operações CACHE nem a validação completa de todos os campos reservados de Status.
 - Aguardando CI verde para considerar a correção aprovada.
+
+
+## Auditoria do endereço 0x7000071C / janela física 64DD — 2026-11-02
+
+### Defeito confirmado e correção enviada
+- O endereço virtual 0x7000071C pertence ao segmento KUSEG (TLB-mapped). Se a TLB o traduzir para 0x0700071C, o endereço físico cai em Cartridge Domain 1 Address 1 (0x06000000–0x07FFFFFF), janela do IPL ROM do Nintendo 64DD.
+- O barramento só reconhecia 0x05000000–0x05FFFFFF como janela 64DD ausente e deixava 0x06000000–0x07FFFFFF sem mapeamento. Assim, uma leitura da segunda janela podia gerar UnsupportedOperationException em vez de open bus quando o 64DD não está conectado.
+- Corrigidos os intervalos e nomes: Domain 2 Address 1 = 0x05000000–0x05FFFFFF; Domain 1 Address 1 = 0x06000000–0x07FFFFFF.
+- Ambas as janelas retornam 0xFF em leitura de byte (logo 0xFFFF/0xFFFFFFFF em leituras maiores) e ignoram gravações quando o 64DD está ausente.
+- Testes estendidos para byte, halfword, word e gravações no endereço físico 0x0700071C, além da janela Domain 2 já coberta.
+
+### Limite da conclusão
+- A correção do barramento físico não prova, sozinha, que a TLB do estado de execução atual traduz 0x7000071C para 0x0700071C. Para fechar a trilha CPU completa, registrar o estado TLB/ASID/EntryHi/EntryLo no ponto real da falha.
+- Aguardando CI deste HEAD; sem teste instrumentado em dispositivo nesta rodada.
