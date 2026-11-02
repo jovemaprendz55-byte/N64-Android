@@ -192,4 +192,17 @@ class N64RspVectorUnitTest {
         assertEquals(before, unit.snapshot())
     }
 
-}
+
+    @Test fun accumulatorSliceSelectsHighMiddleAndLowSixteenBitWords() {
+        val unit = N64RspVectorUnit()
+        unit.writeLane(1, 0, 0x4000)
+        unit.writeLane(2, 0, 0x4000)
+        unit.multiplyFractional(3, 1, 2)
+        unit.accumulatorSlice(4, 8)
+        unit.accumulatorSlice(5, 9)
+        unit.accumulatorSlice(6, 10)
+        assertEquals(0x0000, unit.readLane(4, 0))
+        assertEquals(0x8008, unit.readLane(5, 0))
+        assertEquals(0x0000, unit.readLane(6, 0))
+    }
+\n}\n
