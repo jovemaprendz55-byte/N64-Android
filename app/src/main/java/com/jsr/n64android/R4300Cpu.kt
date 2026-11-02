@@ -1049,14 +1049,14 @@ class R4300Cpu(private val memory: N64AddressSpace) {
 
         val taken = delayedTarget != null
         val target = delayedTarget ?: directPc ?: (address + 8L)
-        val line = "FLOW kind=$kind PC=0x\${address.toULong().toString(16).uppercase()} " +
-            "INST=0x\${instruction.toUInt().toString(16).uppercase().padStart(8, '0')} " +
-            "taken=$taken target=0x\${target.toULong().toString(16).uppercase()} " +
-            "RA=0x\${gpr[31].toULong().toString(16).uppercase()} " +
-            "A0=0x\${gpr[4].toULong().toString(16).uppercase()} " +
-            "A1=0x\${gpr[5].toULong().toString(16).uppercase()} " +
-            "A2=0x\${gpr[6].toULong().toString(16).uppercase()} " +
-            "A3=0x\${gpr[7].toULong().toString(16).uppercase()}"
+        val line = "FLOW kind=$kind PC=0x${address.toULong().toString(16).uppercase()} " +
+            "INST=0x${instruction.toUInt().toString(16).uppercase().padStart(8, '0')} " +
+            "taken=$taken target=0x${target.toULong().toString(16).uppercase()} " +
+            "RA=0x${gpr[31].toULong().toString(16).uppercase()} " +
+            "A0=0x${gpr[4].toULong().toString(16).uppercase()} " +
+            "A1=0x${gpr[5].toULong().toString(16).uppercase()} " +
+            "A2=0x${gpr[6].toULong().toString(16).uppercase()} " +
+            "A3=0x${gpr[7].toULong().toString(16).uppercase()}"
         recordControlFlowEvent(line)
     }
 
