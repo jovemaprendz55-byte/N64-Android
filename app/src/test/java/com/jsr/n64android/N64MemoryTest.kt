@@ -29,6 +29,29 @@ class N64MemoryTest {
         assertEquals(0x55, memory.read8(3))
     }
 
+    @Test fun successfulStoreConditionalConsumesItsReservation() {
+        val memory = N64Memory(16)
+        memory.write32(4, 0x11223344)
+        assertEquals(0x11223344L, memory.loadLinked(4, 4))
+        assertEquals(true, memory.storeConditional(4, 4, 0x55667788L))
+        assertEquals(0x55667788, memory.read32(4))
+
+        // A second SC cannot reuse the reservation consumed by the first SC.
+        assertEquals(false, memory.storeConditional(4, 4, 0xAABBCCDDL))
+        assertEquals(0x55667788, memory.read32(4))
+    }
+
+    @Test fun failedStoreConditionalAlsoConsumesItsReservation() {
+        val memory = N64Memory(16)
+        memory.write32(4, 0x11223344)
+        memory.loadLinked(4, 4)
+
+        // An SC to a different address fails and consumes the outstanding LL.
+        assertEquals(false, memory.storeConditional(8, 4, 0x55667788L))
+        assertEquals(false, memory.storeConditional(4, 4, 0xAABBCCDDL))
+        assertEquals(0x11223344, memory.read32(4))
+    }
+
     @Test fun rejectsNegativeAndOverflowingRanges() {
         val memory = N64Memory(8)
         assertThrows(IllegalArgumentException::class.java) { memory.read32(-1) }
