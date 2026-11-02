@@ -25,6 +25,7 @@ class N64HleBootTest {
 
         val bus = N64Bus(ram = N64Memory(), pifRom = null, cartridgeRom = rom)
         val cpu = R4300Cpu(bus)
+        bus.write32(N64HleBoot.BOOT_FLAG_CIC_ID, 1234) // Must not retain stale RAM on a 6102 cold boot.
         val result = N64HleBoot.prepare(bus, cpu)
 
         assertEquals(0x3F, result.cicSeed)
@@ -60,6 +61,7 @@ class N64HleBootTest {
         assertEquals(0, bus.read32(N64HleBoot.BOOT_FLAG_ROM_TYPE))
         assertEquals(0xB0000000.toInt(), bus.read32(N64HleBoot.BOOT_FLAG_ROM_BASE))
         assertEquals(0, bus.read32(N64HleBoot.BOOT_FLAG_RESET_TYPE))
+        assertEquals(0, bus.read32(N64HleBoot.BOOT_FLAG_CIC_ID))
         assertEquals(N64Memory.DEFAULT_RAM_SIZE, bus.read32(N64HleBoot.BOOT_FLAG_RDRAM_SIZE))
 
         // The CPU must fetch the staged first instruction through KSEG0 -> RDRAM.
@@ -69,6 +71,31 @@ class N64HleBootTest {
 
         // IPL3 remains untouched in SP DMEM: HLE did not stage or execute it.
         assertEquals(0, bus.read8(0x04000040))
+    }
+
+
+    @Test
+    fun writesCic6105IdentifierSeparatelyFromItsBootSeed() {
+        val rom = ByteArray(N64HleBoot.BOOT_IMAGE_ROM_OFFSET + N64HleBoot.BOOT_IMAGE_SIZE)
+        // Synthetic IPL3 word sum for CIC 6105/7105: 0x11A49F60E96.
+        // 870 words are 0x47B1428E and the remaining 138 are 0x47B1428D.
+        for (word in 0 until 1008) {
+            putWord(rom, 0x40 + word * 4, if (word < 870) 0x47B1428E else 0x47B1428D)
+        }
+        putWord(rom, N64HleBoot.ROM_HEADER_ENTRY_OFFSET, 0x80000400.toInt())
+        rom[N64HleBoot.ROM_HEADER_REGION_OFFSET] = 'E'.code.toByte()
+
+        val bus = N64Bus(ram = N64Memory(), pifRom = null, cartridgeRom = rom)
+        val cpu = R4300Cpu(bus)
+        bus.write32(N64HleBoot.BOOT_FLAG_CIC_ID, 1234)
+
+        val result = N64HleBoot.prepare(bus, cpu)
+
+        assertEquals(0x91, result.cicSeed)
+        assertEquals(0x91L, cpu.gpr[22])
+        assertEquals(6105, bus.read32(N64HleBoot.BOOT_FLAG_CIC_ID))
+        assertNotEquals(result.cicSeed, bus.read32(N64HleBoot.BOOT_FLAG_CIC_ID))
+        assertFalse(result.pifRomUsed)
     }
 
     @Test
