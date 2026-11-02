@@ -4998,3 +4998,47 @@ Portanto, não é correto dizer que o projeto simplesmente não possui tratament
 Primeiro, fazer uma leitura cronológica completa do log `N64-Android-logs-1793610943089.txt` especificamente em torno de `0x7F0BCC28` e da rotina `0x7000D3EC`, correlacionando PTE, EntryLo e TLBWI. Em paralelo, preparar um rastro de scheduler/OSTask que revele por que o software nunca escreve nos registradores SP/DPC. Não alterar o comportamento da CPU até existir uma falha arquitetural reproduzível e um teste que a capture.
 
 **Estado final desta auditoria:** resumo e instruções de continuidade atualizados; contradições históricas qualificadas; pendências priorizadas. Nenhum código Kotlin alterado, nenhum APK instalado, nenhum commit na `main`.
+
+
+---
+
+## 52. Correção HLE do osCicId, APK validada e KDocs — 2026-11-02
+
+**Objetivo mantido:** boot HLE próprio, sem depender de PIF ROM, IPL3 executado ou firmware original. Referências ao comportamento de boot são usadas apenas para reproduzir o estado esperado pelo software.
+
+### 52.1. Correção CIC/osCicId
+
+- `N64HleBoot.kt`: adicionada constante `BOOT_FLAG_CIC_ID = 0x310`.
+- O HLE grava `osCicId=0` para seed `0x3F` (CIC 6102/7101) e `osCicId=6105` para seed `0x91` (CIC 6105/7105).
+- A seed continua separada em `$s6`; não é copiada para o campo `osCicId`.
+- Testes em `N64HleBootTest.kt`: zerar valor residual em 6102 e validar seed/ID distintos para 6105 com IPL3 sintético. Testes não exigem PIF ROM.
+- Commits: implementação `85a80b63af2651615fba78041d69ff63624a21f2`; testes `ea655678cf489c22cce0033697694a05ba5afe7a`.
+- Documento específico: [CORRECAO_HLE_OSCICID_2026-11-02.md](CORRECAO_HLE_OSCICID_2026-11-02.md), commit `d26443b0b3feda141c6b2ca68443e578e34b2281`.
+
+### 52.2. CI e APK
+
+- Workflow Android run `41423118943`, commit de código/testes `ea655678cf489c22cce0033697694a05ba5afe7a`: **conclusão success**, incluindo `Build and test` e `Upload debug APK`.
+- Artifact `n64-android-debug-apk`, ID `13131001379`, criado em 2026-11-02 09:45:50 UTC, expira em 2026-11-16 09:45:49 UTC.
+- APK extraída do artifact: `app-debug.apk`, SHA-256 `bf03baf66f0ffd59717c647d6aac594897f74d4e53973611eddc17de02d36ed9`.
+- Esse APK corresponde ao commit `ea655678` (correção + testes), antes dos commits de KDoc. Os commits seguintes só alteram comentários, não o comportamento executável.
+- CI verde e APK compilada não comprovam boot do GoldenEye no aparelho. A instalação/teste real continua pendente.
+
+### 52.3. Correções documentais no código
+
+KDocs atualizados sem mudança de comportamento:
+- `R4300Cpu.kt`: reconhece que existe tradução TLB e entrega básica de exceções TLB; esclarece que COP0/TLB completos e semântica de delay slot continuam incompletos; TLB é habilitada explicitamente pelo HLE.
+- `N64Bus.kt`: documenta MMIO parcial SP/DPC/MI/VI/AI/PI/SI/RI em vez de dizer que todos os dispositivos/interrupções estão ausentes.
+- `N64RomVideoSession.kt`: documenta polling cooperativo do SP e quantum RSP após software limpar HALT; não agenda nem descobre OSTasks.
+- Commits sequenciais: `9e7df232027119a140609a68e118f18ba7ba58c9`, `a458b7606b618f72bd8d0213bf8d85afc329a3ea`, `dd3c30addb36bac6ccfe43f5ba672c13d0b32fd5`.
+- Essas mudanças são comentários/KDoc apenas; não alteram o comportamento do emulador.
+
+### 52.4. Próximas ações
+
+1. Verificar CI do HEAD mais recente após os commits de KDoc.
+2. Entregar/testar a APK do commit `ea655678` no Android 16 e recolher log novo, identificando SHA da APK e ROM usada.
+3. Continuar o HLE sem firmware: revisar parâmetros restantes de boot, COP0/BEV/TLB, cache e memória, sem copiar valores não comprovados.
+4. Retomar o rastreamento TLB e scheduler/OSTask com sessões/logs separados; não inventar tarefas nem forçar SP HALT.
+5. A partir do teste no aparelho, determinar o primeiro bloqueio real; não confundir CI com compatibilidade de jogo.
+
+**Limites:** nenhuma alteração foi feita em `main`; nenhum teste em aparelho foi executado nesta etapa; nenhum IPL3/PIF ROM original foi executado pelo HLE.
+
