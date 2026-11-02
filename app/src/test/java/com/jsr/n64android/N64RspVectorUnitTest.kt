@@ -90,6 +90,26 @@ class N64RspVectorUnitTest {
         assertEquals(0, unit.vcoHigh)
     }
 
+    @Test fun fractionalMultiplyUnsignedClampsNegativeAndPreservesAccumulator() {
+        val unit = N64RspVectorUnit()
+        unit.writeLane(1, 0, 0x4000)
+        unit.writeLane(2, 0, 0x4000)
+        unit.writeLane(1, 1, -0x4000)
+        unit.writeLane(2, 1, 0x4000)
+        unit.writeLane(1, 2, -32768)
+        unit.writeLane(2, 2, -32768)
+
+        unit.multiplyFractionalUnsigned(3, 1, 2)
+
+        assertEquals(8192, unit.readLane(3, 0))
+        assertEquals(0, unit.readLane(3, 1))
+        assertEquals(32768, unit.readLane(3, 2))
+        assertEquals(536903680L, unit.readAccumulator(0))
+        assertEquals(-536838144L, unit.readAccumulator(1))
+        assertEquals(0, unit.vcoLow)
+        assertEquals(0, unit.vcoHigh)
+    }
+
     @Test fun addCarryWritesLowHalfAndSetsPerLaneCarryFlags() {
         val unit = N64RspVectorUnit()
         unit.writeLane(1, 0, 0xFFFF)
