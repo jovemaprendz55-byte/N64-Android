@@ -4924,4 +4924,55 @@ class R4300CpuTest {
         assertEquals(before, cpu.snapshotContext())
     }
 
+    @Test fun genericControlFlowTraceCapturesTakenBranchAndGuestArguments() {
+        val memory = N64Memory(64)
+        memory.write32(0, iType(0x04, 4, 5, 2)) // beq $a0, $a1, 0xC
+        val cpu = R4300Cpu(memory)
+        cpu.setProgramCounter(0)
+        cpu.gpr[4] = 0xA0L
+        cpu.gpr[5] = 0xA0L
+        cpu.gpr[6] = 0xA2L
+        cpu.gpr[7] = 0xA3L
+        cpu.gpr[31] = 0x1234L
+
+        cpu.step()
+
+        val event = cpu.diagnosticControlFlowHistory.last()
+        assertTrue(event.contains("FLOW kind=BEQ"))
+        assertTrue(event.contains("taken=true"))
+        assertTrue(event.contains("target=0xC"))
+        assertTrue(event.contains("RA=0x1234"))
+        assertTrue(event.contains("A0=0xA0"))
+        assertTrue(event.contains("A1=0xA0"))
+        assertTrue(event.contains("A2=0xA2"))
+        assertTrue(event.contains("A3=0xA3"))
+    }
+
+    @Test fun genericControlFlowTraceCapturesNotTakenBranchAndIndirectJump() {
+        val branchMemory = N64Memory(64)
+        branchMemory.write32(0, iType(0x05, 4, 5, 2)) // bne $a0, $a1; not taken
+        val branchCpu = R4300Cpu(branchMemory)
+        branchCpu.setProgramCounter(0)
+        branchCpu.gpr[4] = 7L
+        branchCpu.gpr[5] = 7L
+        branchCpu.step()
+        val branchEvent = branchCpu.diagnosticControlFlowHistory.last()
+        assertTrue(branchEvent.contains("FLOW kind=BNE"))
+        assertTrue(branchEvent.contains("taken=false"))
+        assertTrue(branchEvent.contains("target=0x8"))
+
+        val jumpMemory = N64Memory(64)
+        jumpMemory.write32(0, (8 shl 21) or 0x08) // jr $t0
+        val jumpCpu = R4300Cpu(jumpMemory)
+        jumpCpu.setProgramCounter(0)
+        jumpCpu.gpr[8] = 0x20L
+        jumpCpu.gpr[31] = 0x44L
+        jumpCpu.step()
+        val jumpEvent = jumpCpu.diagnosticControlFlowHistory.last()
+        assertTrue(jumpEvent.contains("FLOW kind=JR"))
+        assertTrue(jumpEvent.contains("taken=true"))
+        assertTrue(jumpEvent.contains("target=0x20"))
+        assertTrue(jumpEvent.contains("RA=0x44"))
+    }
+
 }
