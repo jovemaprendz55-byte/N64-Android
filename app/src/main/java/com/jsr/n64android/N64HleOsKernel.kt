@@ -30,7 +30,7 @@ class N64HleOsKernel {
 
     private data class ThreadRecord(
         val id: Int,
-        val priority: Int,
+        var priority: Int,
         val entryPoint: Long,
         val argument: Long,
         var state: ThreadState = ThreadState.STOPPED,
