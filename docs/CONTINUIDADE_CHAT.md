@@ -817,3 +817,12 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Esta rodada foi inspeção estática e atualização da documentação; nenhum código funcional foi alterado.
 - Commit de documentação na branch `dev/n64-clean-start`; `main` intacta.
 - Não houve execução de ROM nem teste no Poco C85 nesta rodada.
+
+## 32. Auditoria da execução — contexto de diagnóstico das operações COP1 de memória
+
+- CI anterior #1472 (run `41546789564`) confirmado como `success`; isso valida build/testes automatizados daquele commit, não execução de ROM no aparelho.
+- No `R4300Cpu.stepInstruction()`, a lista usada para calcular `diagnosticEffectiveAddress` incluía stores inteiros, mas omitia LWC1/LDC1/SWC1/SDC1 (opcodes `0x31`, `0x35`, `0x39`, `0x3D`).
+- Correção aplicada: os quatro opcodes COP1 de memória agora entram no cálculo diagnóstico da EA como `GPR[rs] + sign-extended immediate`. Isso melhora o contexto enviado ao barramento/watchpoint quando esses handlers forem executados.
+- Limite importante: os handlers funcionais LWC1/LDC1/SWC1/SDC1 continuam ausentes; com CU1 habilitado, essas instruções ainda geram RI. Esta correção **não** implementa FPU nem faz jogos que dependem dela funcionarem.
+- O caminho real `N64RomVideoSession → R4300Cpu.step()` foi confirmado; ele avança VI por aproximação e consulta o RSP em quantum cooperativo. Ainda não há execução automática de OSTask no fluxo principal, nem temporização de hardware fiel.
+- Nenhum teste em aparelho/ROM foi realizado nesta rodada. Validar via CI após commit.
