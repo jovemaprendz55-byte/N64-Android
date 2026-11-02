@@ -4636,3 +4636,73 @@ O próximo foco deve ser descobrir por que a ROM chega a esse loop após executa
 - Nenhum frame real foi publicado; não declarar compatibilidade visual com GoldenEye.
 - Nenhum APK foi instalado/testado por esta análise.
 - A branch `main` não foi modificada por esta etapa; o log já havia sido enviado pelo usuário a essa branch. Este registro será gravado somente em `dev/n64-clean-start`.
+
+
+---
+
+## 47. VI scanline timing and interrupt delivery — 2026-11-02
+
+**Branch:** `dev/n64-clean-start`.  
+**HEAD de código antes deste registro:** `f27055ad81f007189ae924e1123032afe407ef38`.  
+**Base de análise:** log `N64-Android-logs-1793607289350.txt` (seção 46).
+
+### 47.1. Evidência que direcionou a mudança
+
+O log registra:
+- VI_INTR (VI registrador R3) = `0x2`.
+- VI_CURRENT = `0x0` no snapshot final.
+- VI_V_SYNC (R6) = `0x20D` (525).
+- A ROM escreveu `0x00000AAA` em MI_INTR_MASK_REG no PC `0x70010A68`; o comando habilita os seis sources MI, incluindo VI.
+- SP_STATUS = `0x1` (HALT), SP_PC = `0`; nenhuma escrita SP ou transferência SP DMA registrada.
+- DPC START/END/CURRENT = 0; nenhum frame VI publicado.
+- CPU terminou no loop `BEQ $zero,$zero,-1` em `0x7000071C`, com Status `0xFF01` (IE e máscaras IM habilitadas) e Cause `0x8` (sem IP2 pendente no snapshot).
+
+A combinação de VI configurado/habilitado, CURRENT estático em zero e ausência de interrupção VI é compatível com uma thread ociosa aguardando eventos do sistema operacional. Não é prova de que esse loop seja exclusivamente a idle thread, mas identifica a falta de relógio/IRQ VI como uma lacuna concreta do modelo.
+
+### 47.2. Implementação
+
+Arquivos alterados:
+- `app/src/main/java/com/jsr/n64android/N64Bus.kt`
+- `app/src/main/java/com/jsr/n64android/N64RomVideoSession.kt`
+- `app/src/test/java/com/jsr/n64android/N64BusVideoInterfaceTest.kt`
+- `app/src/test/java/com/jsr/n64android/R4300MiInterruptTest.kt`
+- `app/src/test/java/com/jsr/n64android/N64RomVideoSessionTest.kt`
+
+Comportamento implementado:
+1. `N64Bus.advanceViInstructions()` acumula unidades de instrução e avança uma linha a cada `VI_INSTRUCTIONS_PER_SCANLINE = 5661`.
+2. O total de linhas usa VI_V_SYNC; se não estiver programado, usa 525 como fallback.
+3. Ao atingir VI_INTR, o bus trava `MI_INTR_VI` em MI_INTR_REG.
+4. `N64RomVideoSession` avança o VI a cada instrução executada pela CPU.
+5. Escrita em VI_CURRENT_REG reconhece/limpa MI_INTR_VI; o contador de linha não é artificialmente zerado.
+6. O R4300 já implementado atualiza Cause.IP2 e entrega a interrupção pelo vetor geral quando IE/IM permitem.
+
+**Limitação importante:** isto é temporização aproximada por contagem de instruções, não ciclos reais do R4300/RCP. Cada instrução é tratada como uma unidade de tempo. Latências, stalls, half-lines, interlace, PAL/NTSC e temporização exata ainda não estão modelados. O objetivo imediato é testar se o SO sai do loop de espera e começa a programar SP/RSP.
+
+### 47.3. Testes adicionados
+
+- VI chega à linha configurada e levanta MI_INTR_VI.
+- VI_CURRENT reconhece a interrupção sem reiniciar o contador de linha.
+- Interrupção VI habilitada chega ao R4300, atualiza Cause.IP2 e entra no vetor geral.
+- Sessão de execução avança VI automaticamente e entrega a interrupção durante a execução da CPU.
+
+### 47.4. Histórico de CI e correções
+
+- `cad9b60`: CI passou para a implementação de avanço de linha/IRQ no bus.
+- `3777e56`: CI passou para o avanço VI integrado à sessão.
+- `32bee7e`: CI falhou em teste de reconhecimento porque o handler antigo de VI_CURRENT ainda zerava a linha; corrigido removendo o handler duplicado em `f416b2e`.
+- `7a84d1d`: CI passou com testes de reconhecimento VI e entrega ao COP0.
+- `3bc8279`: teste da sessão falhou porque o teste executava NOPs para além do RDRAM alocado; corrigido para manter a CPU em `J 0` dentro da RAM no commit `f27055a`.
+- CI do commit `f27055ad81f007189ae924e1123032afe407ef38`: em execução no momento deste registro; verificar antes de declarar sucesso.
+
+### 47.5. Próxima validação no aparelho
+
+Depois que o CI do HEAD passar e o APK correspondente estiver disponível:
+1. Instalar o APK e executar a mesma ROM.
+2. Verificar se VI_CURRENT avança e se o handler reconhece VI_CURRENT.
+3. Verificar se Cause.IP2 é acionado, sem reentrada infinita.
+4. Verificar se a CPU deixa `0x7000071C` e se o SO passa a escrever SP_STATUS/SP_PC/SP_RD_LEN.
+5. Verificar execução RSP, DPC comandos e primeiro frame VI.
+6. Se a CPU sair do loop mas SP/RSP continuar parado, investigar o novo PC/caminho de execução; não forçar status SP nem fabricar OSTask.
+7. Não declarar GoldenEye compatível sem frame real originado pela execução completa da ROM.
+
+**Estado final deste registro:** código VI implementado; CI mais recente ainda pendente; nenhuma instalação/teste no aparelho; branch `main` não modificada.
