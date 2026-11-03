@@ -234,3 +234,17 @@ Commits de código/teste:
 - Correções de formatação intermediárias: `38d9bcffe89e7040e32b2b46bf13287d8245c72f` e `dd42fff048a0b2dcb7372f526f3453caacc65a6d`.
 
 Ainda não declarar boot equivalente: a inicialização de RI/RDRAM, caches, dispositivos e checksum da imagem de 1 MiB segue parcial. CI do commit final deve ser conferida antes de instalar APK.
+
+
+## Atualização HLE CIC 6102 e validação de CI — 2026-11-03 06:00 BRT
+
+Esta seção atualiza/corrige descrições anteriores do documento que ainda mencionavam destino fixo 0x400.
+
+- `N64RomChecksum` calcula CRC1/CRC2 CIC 6102/7101 sobre o payload de 1 MiB. O teste de referência para payload totalmente zerado espera CRC1 `0xF8CA4DDC` e CRC2 `0x303A4DDC`.
+- `N64HleBoot.prepare()` valida esses CRCs contra o cabeçalho da ROM antes de alterar CPU ou RDRAM. CRC inválido rejeita o boot sem mutação. Para seed 0x91 (CIC 6105), a validação ainda não está implementada e `checksumValidated=false` permanece explícito.
+- O payload da ROM em offset `0x1000` é copiado para o endereço físico derivado do entry point KSEG0 do cabeçalho, e não necessariamente para `0x400`. O valor padrão 0x80000400 continua resultando em destino físico 0x400.
+- O teste diagnóstico também foi atualizado para fornecer CRC válido; isso corrigiu a falha que apareceu após a introdução da validação de checksum.
+- Commit `c128a26b56d96ba8c6cf5dcbc4edfae5118c6478`: fixture diagnóstico compatível com CRC 6102. CI verde: [run 41606903787](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41606903787). Build, testes e upload do APK debug concluíram com sucesso; o artefato foi publicado com nome `n64-android-debug-apk`.
+- Teste adicional cobre entry point alternativo `0x80001000` e confirma cópia para RDRAM física `0x1000`. Commits: `519c7779a3b5105a67c0a9c2c7548a961b89fc9c` e limpeza `75ac1746cd9995c934f46929da49aeee941124b2`.
+
+**Estado:** HLE ainda não é equivalente completo ao IPL3: RDRAM calibration/controladores, caches, inicialização MMIO e caminho CIC 6105 continuam incompletos. CI verde comprova compilação/testes automatizados, não execução do GoldenEye no Poco C85.
