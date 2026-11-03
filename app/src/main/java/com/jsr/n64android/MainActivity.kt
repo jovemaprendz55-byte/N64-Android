@@ -1367,7 +1367,7 @@ class MainActivity : Activity() {
      * One focused diagnostic exporter shared by the ROM execution and diagnostic screens.
      * Stops the emulation worker before reading mutable CPU/bus diagnostic collections.
      */
-    private fun createDiagnosticExportButton(reportText: () -> String): Button {
+    private fun createCompleteDiagnosticButton(reportText: () -> String): Button {
         return Button(this).apply {
             text = "GERAR LOG COMPLETO DO EMULADOR"
             isAllCaps = false
@@ -1559,7 +1559,7 @@ class MainActivity : Activity() {
             setPadding(24, 24, 24, 24)
             movementMethod = ScrollingMovementMethod()
         }
-        val diagnosticExportButton = createDiagnosticExportButton { diagnosticText.text.toString() }
+        val diagnosticExportButton = createCompleteDiagnosticButton { diagnosticText.text.toString() }
         val backButton = Button(this).apply {
             text = "Voltar ao menu"
             setOnClickListener { setContentView(mainLayout) }
