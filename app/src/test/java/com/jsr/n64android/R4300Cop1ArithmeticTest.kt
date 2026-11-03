@@ -53,6 +53,52 @@ class R4300Cop1ArithmeticTest {
         assertEquals(-1L, cpu.fpr[2].toInt().toLong())
     }
 
+    @Test fun cvtLongAndCvtSingleFromWordUseSignedIntegerFormats() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x10, 0, 1, 2, 0x25)) // CVT.L.S f2, f1
+        memory.write32(4, cop1(0x14, 0, 3, 4, 0x20)) // CVT.S.W f4, f3
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = (1L shl 29) or (1L shl 26)
+        cpu.fpr[1] = java.lang.Float.floatToRawIntBits(123.75f).toLong()
+        cpu.fpr[3] = (-7).toLong() and 0xFFFFFFFFL
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+        assertEquals(124L, cpu.fpr[2])
+        cpu.step()
+        assertEquals(-7.0f, java.lang.Float.intBitsToFloat(cpu.fpr[4].toInt()), 0.0f)
+    }
+
+    @Test fun cvtDoubleFromLongUsesFr0RegisterPair() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x15, 0, 2, 4, 0x21)) // CVT.D.L f4, f2
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29 // FR=0, CU1=1
+        val source = 1234567890123L
+        cpu.fpr[2] = (source ushr 32) and 0xFFFFFFFFL
+        cpu.fpr[3] = source and 0xFFFFFFFFL
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        val resultBits = ((cpu.fpr[4] and 0xFFFFFFFFL) shl 32) or (cpu.fpr[5] and 0xFFFFFFFFL)
+        assertEquals(source.toDouble(), java.lang.Double.longBitsToDouble(resultBits), 0.0)
+    }
+
+    @Test fun cvtLongUsesFcr31RoundingMode() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x10, 0, 1, 2, 0x25)) // CVT.L.S f2, f1
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = (1L shl 29) or (1L shl 26)
+        cpu.fcr[31] = 3L // toward -infinity
+        cpu.fpr[1] = java.lang.Float.floatToRawIntBits(-2.2f).toLong()
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(-3L, cpu.fpr[2])
+    }
+
     @Test fun singlePrecisionAddAndMultiplyUseRawFprBits() {
         val memory = N64Memory(64)
         memory.write32(0, cop1(0x10, 2, 1, 3, 0x00)) // ADD.S f3, f1, f2
