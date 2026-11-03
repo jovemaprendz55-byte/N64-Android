@@ -11,6 +11,9 @@ class N64HleDiagnosticRunnerTest {
         for (word in 0 until 208) putWord(rom, 0x40 + word * 4, 0xFFFFFFFF.toInt())
         putWord(rom, 0x40 + 208 * 4, 0x57C85314)
         putWord(rom, N64HleBoot.ROM_HEADER_ENTRY_OFFSET, 0x80000400.toInt())
+        // The 1 MiB boot image is all zeroes; use the known CIC 6102 CRC vector.
+        putWord(rom, 0x10, 0xF8CA4DDC.toInt())
+        putWord(rom, 0x14, 0x303A4DDC)
         rom[N64HleBoot.ROM_HEADER_REGION_OFFSET] = 'E'.code.toByte()
 
         val bus = N64Bus(cartridgeRom = rom)
@@ -51,6 +54,7 @@ class N64HleDiagnosticRunnerTest {
         assertEquals(43L, cpu.gpr[9])
         assertEquals(listOf("before:0", "after:4", "before:4", "after:8"), events)
     }
+
     private fun putWord(bytes: ByteArray, offset: Int, value: Int) {
         bytes[offset] = (value ushr 24).toByte()
         bytes[offset + 1] = (value ushr 16).toByte()
