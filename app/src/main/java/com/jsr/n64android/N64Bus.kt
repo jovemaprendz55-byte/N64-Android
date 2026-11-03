@@ -894,13 +894,13 @@ class N64Bus(
                     "RDRAM=0x${dramStartAddress.toString(16).uppercase().padStart(8, '0')} " +
                     "TYPE=0x${task.type.toUInt().toString(16).uppercase()} " +
                     "FLAGS=0x${task.flags.toUInt().toString(16).uppercase()} " +
-                    "BOOT=0x${task.ucodeBoot.toUInt().toString(16).uppercase()} " +
+                    "BOOT=0x${task.ucodeBoot.toUInt().toString(16).uppercase().padStart(8, '0')} " +
                     "BOOT_SIZE=0x${task.ucodeBootSize.toUInt().toString(16).uppercase()} " +
-                    "UCODE=0x${task.ucode.toUInt().toString(16).uppercase()} " +
+                    "UCODE=0x${task.ucode.toUInt().toString(16).uppercase().padStart(8, '0')} " +
                     "UCODE_SIZE=0x${task.ucodeSize.toUInt().toString(16).uppercase()} " +
-                    "DATA=0x${task.dataPointer.toUInt().toString(16).uppercase()} " +
+                    "DATA=0x${task.dataPointer.toUInt().toString(16).uppercase().padStart(8, '0')} " +
                     "DATA_SIZE=0x${task.dataSize.toUInt().toString(16).uppercase()} " +
-                    "YIELD=0x${task.yieldData.toUInt().toString(16).uppercase()} " +
+                    "YIELD=0x${task.yieldData.toUInt().toString(16).uppercase().padStart(8, '0')} " +
                     "YIELD_SIZE=0x${task.yieldDataSize.toUInt().toString(16).uppercase()}"
             )
         }
