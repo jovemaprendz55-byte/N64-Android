@@ -88,3 +88,5 @@ Próxima leitura do log novo:
 4. Se não houver ASSERT de nenhuma fonte, o problema está antes da entrega de IRQ; continuar seguindo o caminho de inicialização/idle sem presumir falha TLB.
 
 **CI dos commits acima:** ainda precisa ser consultado após os pushes. Não há confirmação de execução real do GoldenEye no aparelho; é necessário gerar um log novo no Poco C85 com o APK desta revisão.
+
+- `b522ce356adb34fae6601726e1d9fc44a8a248bc` — teste explícito de que `R4300Cpu.reset()` limpa o histórico de IRQ entregue.
