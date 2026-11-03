@@ -5252,6 +5252,7 @@ class R4300CpuTest {
         val bus = N64Bus(N64Memory(32))
         bus.write32(N64Bus.SP_STATUS_REG, N64Bus.SP_STATUS_CMD_SET_INTR)
         bus.write32(N64Bus.MI_INTR_MASK_REG, 1 shl 1) // Set SP interrupt mask.
+        assertTrue("SP interrupt must reach the enabled MI line", bus.isMiInterruptPending())
         val cpu = R4300Cpu(bus)
         cpu.cop0[9] = 40L
         cpu.cop0[12] = 0x401L // IE + IM2.
