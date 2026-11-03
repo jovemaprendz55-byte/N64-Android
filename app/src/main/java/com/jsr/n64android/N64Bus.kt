@@ -52,6 +52,14 @@ class N64Bus(
         diagnosticCpuRtValue = rtValue
         diagnosticCpuEffectiveAddress = effectiveAddress
     }
+    /**
+     * Applies the RI_SELECT value written by the CIC 6102/7101 IPL3 cold-boot path
+     * immediately before its post-IPL3 handoff. This is not a complete RDRAM model.
+     */
+    fun applyCic6102PostIpl3RiHandoff() {
+        riRegisters[RI_SELECT_OFFSET / 4] = RI_SELECT_CIC6102_POST_IPL3
+    }
+
     /** Reads SP status for the cooperative scheduler without recording a fake CPU MMIO access. */
     fun diagnosticSpStatus(): Int = spStatus
     private fun mmioDevice(address: Int): String? = when (address) {
@@ -207,8 +215,9 @@ class N64Bus(
     private var miInitMode = 0
     private var miInterruptMask = 0
     private var miInterrupts = 0
-    // Minimal RI register state; these values are placeholders, not full RDRAM timing emulation.
-    private val riRegisters = IntArray(RI_REGISTER_COUNT).also { it[RI_SELECT_OFFSET / 4] = RI_SELECT_RESET }
+    // RI starts in power-on reset state. HLE applies only the verified RI_SELECT handoff value;
+    // other RI/RDRAM timing and module registers are still not fully modeled.
+    private val riRegisters = IntArray(RI_REGISTER_COUNT)
     // SI uses a 64-byte PIF RAM window and synchronous DMA; Joybus processing/timing remain unimplemented.
     private val pifRam = ByteArray(PIF_RAM_SIZE)
     private var siDramAddress = 0
@@ -1123,7 +1132,8 @@ class N64Bus(
         const val RI_REG_BASE = 0x04700000
         const val RI_REG_SIZE = 0x20
         const val RI_SELECT_OFFSET = 0x0C
-        const val RI_SELECT_RESET = 0x00000014
+        const val RI_SELECT_POWER_ON_RESET = 0x00000000
+        const val RI_SELECT_CIC6102_POST_IPL3 = 0x00000014
         const val RI_REGISTER_COUNT = RI_REG_SIZE / 4
         const val SI_REG_BASE = 0x04800000
         const val SI_DRAM_ADDR_REG = SI_REG_BASE
