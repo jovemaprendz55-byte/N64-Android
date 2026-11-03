@@ -245,3 +245,11 @@ As primeiras execuções dos testes W/L expuseram uma lacuna no decoder: embora 
 - Testes novos enviados no commit 994009656444241a8ded4cd6a88ab8cc5718ae3f: operação inválida 0/0, preservação de Flags sticky, overflow de multiplicação S e trap de Invalid habilitado com destino preservado.
 - O resultado de overflow usa o caminho de precisão simples, em que Float.MAX_VALUE multiplicado por 2 produz infinito; a classificação verifica operandos finitos e resultado infinito.
 - A CI do commit de testes está pendente. A implementação continua parcial e não comprova compatibilidade completa IEEE-754/VR4300 nem execução de ROM no Android 16.
+
+
+## Expansão da regressão COP1 Invalid — 2026-11-03
+
+- Adicionados testes para SQRT.S negativo com Invalid habilitado (FPE, Cause/Flag e destino preservado) e DIV.S infinito/infinito (Invalid sem trap quando Enable está desligado).
+- Commit: 3f3a6093e11e60de90daedcc2c20d791264a43d6.
+- Os testes cobrem cenários já tratados pela classificação parcial existente; não representam implementação completa de exceções IEEE-754.
+- CI ainda precisa ser confirmada. Underflow, Inexact, NaN signaling, Unimplemented e validação real de ROM no Android 16 permanecem pendentes.
