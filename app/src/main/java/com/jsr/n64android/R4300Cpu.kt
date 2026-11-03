@@ -662,6 +662,10 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                             10 -> { // EntryHi: VPN2 [31:13] and ASID [7:0] are writable.
                                 cop0[10] = value and 0xFFFFE0FFL
                             }
+                            11 -> { // Compare is writable; every write acknowledges the timer interrupt.
+                                cop0[11] = value
+                                cop0[13] = cop0[13] and (1L shl 15).inv() // Clear Cause.IP7.
+                            }
                             13 -> { // Cause: only software interrupt pending bits IP[1:0] are writable.
                                 cop0[13] = (cop0[13] and 0x300L.inv()) or (value and 0x300L)
                             }
