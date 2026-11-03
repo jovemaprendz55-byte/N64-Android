@@ -977,3 +977,29 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Auditoria COP0 Count/Compare continua aberta: Count ainda não avança e não há geração automática de Cause.IP7 por igualdade Count/Compare. Não inventar ticks por instrução.
 - Nenhuma execução visual de ROM nem instalação no Android 16 foi realizada nesta rodada.
 - Branch main permanece intacta.
+## 44. Primeira implementação COP0 Count/Compare e transferências COP1 — 2026-11-03
+
+### COP0 Count/Compare
+- R4300Cpu.kt: foi adicionado avanço determinístico de Count (COP0 reg. 9), com divisor de 2 ciclos por tick, registrador de 32 bits e wraparound.
+- advanceCountCycles(cpuCycles) permite avançar a base de ciclos explicitamente; quando Count incrementa e alcança Compare (reg. 11), Cause.IP7 (bit 15) é levantado.
+- MTC0 Count escreve os 32 bits baixos e reinicia a fase do divisor. A escrita em Compare continua limpando somente IP7.
+- Limitação importante: o interpretador ainda não possui tabela real de latência/stalls por instrução. Por enquanto, cada chamada de step() fornece dois ciclos-base, isto é, um tick de Count por instrução executada. A API de avanço explícito permite substituir essa aproximação quando o scheduler/modelo temporal passar a fornecer ciclos reais. Não considerar esta etapa timing cycle-accurate.
+
+### Transferências de memória COP1
+- Implementados LWC1 (0x31), LDC1 (0x35), SWC1 (0x39) e SDC1 (0x3D).
+- Operações usam ordem big-endian, tradução virtual/física do R4300, validação de alinhamento e os caminhos existentes de exceção AdEL/AdES e TLB.
+- LWC1/SWC1 manipulam os 32 bits baixos do slot FPR; LDC1/SDC1 manipulam o slot de 64 bits. A semântica completa FR=0/pairing do VR4300 ainda não está modelada.
+- O bloqueio CU1 continua sendo verificado antes de tradução/acesso à memória, preservando Coprocessor Unusable quando FPU está desabilitada.
+- Testes novos em R4300Cop1MemoryTest.kt: round-trip de palavra, round-trip de doubleword e desalinhamento LDC1 sem alteração do FPR.
+
+### FPU aritmética
+- Ainda pendente nesta rodada. Operações aritméticas S/D, conversões, comparações, flags/rounding e exceções IEEE/FCR31 não foram implementadas. Não anunciar a FPU como completa.
+
+### Commits
+- b08ee03d6e7bd7a425a6b3e706bc1f6ee3ec4c93 — transferências de memória COP1.
+- 8c1dda2ad881e313b0b564bf07cdf79a8ac81235 — testes de transferências COP1.
+- ce4dfc4ea7dc84a0b2bc28d8708ae6b3f743911b — avanço Count e timer IP7.
+- 478d760d8b77b97949627418cd4259447bd6905f — testes de Count/timer.
+- GitHub Actions run 41562510509 iniciou para o commit de testes; resultado ainda deve ser consultado antes de declarar aprovação.
+- Nenhum teste visual de ROM nem instalação no Android 16 foi realizado nesta etapa.
+- Branch dev/n64-clean-start; main permanece intacta.
