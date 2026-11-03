@@ -113,4 +113,21 @@ class R4300Cop1ArithmeticTest {
         assertEquals(10L, (cpu.cop0[13] ushr 2) and 0x1FL)
         assertEquals(0x12345678L, cpu.fpr[3])
     }
+    @Test fun doublePrecisionOddDestinationRegisterIsReservedWhenFr0WithoutChangingPair() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x11, 4, 2, 5, 0x00)) // ADD.D with odd fd in FR=0
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.fpr[2] = 0x3FF00000L
+        cpu.fpr[3] = 0L
+        cpu.fpr[4] = 0x40000000L
+        cpu.fpr[5] = 0x12345678L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(10L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(0x40000000L, cpu.fpr[4])
+        assertEquals(0x12345678L, cpu.fpr[5])
+    }
 }
