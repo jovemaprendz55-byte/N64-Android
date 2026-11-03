@@ -180,3 +180,32 @@ Não copiar tabelas de boot de outro emulador sem entender a convenção de ende
 ### Estado desta etapa
 
 Auditoria e plano registrados. Nenhum valor de registrador foi alterado nesta etapa, porque a inspeção atual não fornece evidência suficiente para afirmar quais valores exatos o IPL3 deixa no handoff do GoldenEye USA.
+
+## Auditoria de fonte do IPL3 CIC 6102/7101 — 2026-11-03
+
+Foi consultada a disassembly pública de referência `decompals/N64-IPL/src/ipl3.s`, variante `ipl3.6102_7101`, além do procedimento de boot descrito no manual oficial de programação do Nintendo 64.
+
+### O que a fonte confirma
+
+- O IPL3 6102 não se limita a copiar 1 MiB e saltar para o entry point. Antes disso, configura RI/RDRAM, detecta módulos de memória, configura timings/refresh, calcula e grava o tamanho real de RDRAM em `0x80000318`, inicializa tags de I-cache/D-cache e só então continua o carregamento.
+- O IPL3 inicializa `Cause`, `Count` e `Compare` no início da rotina. A inicialização de CP0 também faz parte dos estágios anteriores de boot (IPL1/PIF), que o nosso HLE atualmente pula.
+- O código 6102 guarda temporariamente `s3-s7` durante a configuração de RDRAM e os restaura antes de seguir. Isso confirma que esses registradores carregam os parâmetros recebidos do IPL2, mas não basta para deduzir todos os valores de GPR no instante final.
+- A inicialização de cache é explícita: zera `TagLo/TagHi`, percorre linhas da I-cache com operação de index store tag e percorre D-cache com operação de index store tag no cold boot. O caminho NMI é diferente.
+- O tamanho de RDRAM não deve ser presumido como 8 MiB sem modelar a detecção; 8 MiB é o valor esperado para o cenário com Expansion Pak, não uma constante universal do IPL3.
+
+### Divergências concretas no HLE atual
+
+- `N64HleBoot.prepare()` copia 1 MiB e grava o tamanho de RDRAM como 8 MiB, mas não reproduz o estado dos controladores RI/RDRAM nem a detecção da memória.
+- `R4300Cpu.reset()` zera todos os registradores COP0 e a TLB; em seguida o HLE habilita CU1 e liga `tlbEnabled` com uma TLB vazia. Ainda não há prova de que esse seja o estado correto no handoff do IPL3 6102.
+- O HLE não modela operações de cache do R4300. O núcleo também declara que operações CACHE e o modelo completo de cache ainda não estão implementados.
+- O barramento mantém defaults simplificados para SP/MI/PI/SI/AI/RI. A disassembly mostra que o boot executa operações reais nesses controladores antes do handoff.
+- O HLE define `$sp = 0xFFFFFFFFA07FFFE0`. A disassembly usa temporariamente uma pilha derivada do SP inicial em RSP memory e restaura a pilha antes de prosseguir; precisamos rastrear o valor final exato no IPL2/transferência antes de declarar o stack atual correto.
+
+### Decisão técnica desta etapa
+
+Não alterar ainda o valor da TLB, Status, stack ou registradores MMIO por aproximação. A disassembly de IPL3 mostra que o HLE atual pula várias fases essenciais, mas o estado de entrada de IPL3 depende também do IPL1/IPL2. O próximo passo é extrair e documentar o contrato de entrada/saída do IPL3 6102 e o estado CP0/RSP deixado pelo IPL2; depois criar um perfil HLE com operações explícitas e testes.
+
+Referências:
+- Disassembly correspondente: https://github.com/decompals/N64-IPL/blob/main/src/ipl3.s
+- Repositório de disassemblies IPL1/IPL2/IPL3: https://github.com/decompals/N64-IPL
+- Manual de programação N64, procedimento de boot: https://ultra64.ca/files/documentation/online-manuals/man/pro-man/pro06/06-10.html
