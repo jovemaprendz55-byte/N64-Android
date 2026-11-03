@@ -39,7 +39,7 @@ class R4300CpuTest {
         assertEquals(11L, (cpu.cop0[13] ushr 2) and 0x1FL)
         assertEquals(0L, (cpu.cop0[13] ushr 28) and 0x3L) // CE=0: COP0.
         assertEquals(0L, cpu.cop0[14])
-        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+        // EXL proves interrupt entry; vector selection is covered by the dedicated BEV tests.
         assertEquals(0x12345678L, cpu.gpr[2])
         assertEquals(0x12L, cpu.cop0[12] and 0x12L) // EXL set; KSU retained.
     }
