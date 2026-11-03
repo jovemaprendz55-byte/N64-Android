@@ -11,6 +11,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.os.Bundle
+import android.os.Build
 import android.view.Gravity
 import android.widget.Button
 import android.widget.ImageView
@@ -62,6 +63,7 @@ class MainActivity : Activity() {
                 true
             }
         }
+        val completeDiagnosticButton = createCompleteDiagnosticButton { status.text.toString() }
         mainLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
@@ -86,6 +88,10 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ))
+            addView(completeDiagnosticButton, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = 16 })
             addView(TextView(this@MainActivity).apply {
                 text = "Toque para escolher ou iniciar um jogo.\nMantenha pressionado para trocar a ROM."
                 textSize = 12f
@@ -148,7 +154,7 @@ class MainActivity : Activity() {
             textSize = 14f
             setPadding(12, 12, 12, 12)
         }
-        val diagnosticExportButton = createDiagnosticExportButton { details.text.toString() }
+        val diagnosticExportButton = createCompleteDiagnosticButton { details.text.toString() }
         val stopButton = Button(this).apply {
             text = "PARAR EXECUÇÃO"
             setOnClickListener {
@@ -1393,7 +1399,7 @@ class MainActivity : Activity() {
      */
     private fun createDiagnosticExportButton(reportText: () -> String): Button {
         return Button(this).apply {
-            text = "COLETAR E SALVAR DIAGNÓSTICO"
+            text = "GERAR LOG COMPLETO DO EMULADOR"
             isAllCaps = false
             setOnClickListener {
                 isEnabled = false
@@ -1417,13 +1423,24 @@ class MainActivity : Activity() {
                         val cpu = romVideoCpu
                         val session = lastRomVideoSession ?: sessionAtStart
                         val output = buildString {
-                            appendLine("N64 ANDROID — DIAGNÓSTICO DIRECIONADO")
-                            appendLine("Data: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date())}")
+                            appendLine("N64 ANDROID — LOG COMPLETO DE DIAGNÓSTICO V2")
+                            appendLine("Data: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS Z", java.util.Locale.US).format(java.util.Date())}")
+                            appendLine("Dispositivo: ${Build.MANUFACTURER} ${Build.MODEL} | Android ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT}) | ABI=${Build.SUPPORTED_ABIS.joinToString(",")}")
+                            appendLine("App: ${packageName} | versionCode=${runCatching { packageManager.getPackageInfo(packageName, 0).longVersionCode }.getOrDefault(-1L)}")
                             appendLine("ROM carregada: ${cartridgeRomBytes?.size ?: 0} bytes")
                             appendLine("Estado da execução: ${if (worker?.isAlive == true) "ATIVA" else "PARADA"}")
                             appendLine()
                             appendLine("=== TELA / CONTEXTO ===")
                             appendLine(screenReport)
+                            appendLine()
+                            appendLine("=== INTEGRIDADE / VOLUME DA COLETA ===")
+                            appendLine("MMIO total por dispositivo=${bus?.diagnosticMmioCounts?.entries?.sortedBy { it.key }?.joinToString { "${it.key}:${it.value}" } ?: "sem barramento"}")
+                            appendLine("MMIO eventos retidos=${bus?.diagnosticMmioHistory?.size ?: 0}; SP-MMIO retidos=${bus?.diagnosticSpMmioHistory?.size ?: 0}; SP writes retidos=${bus?.diagnosticSpWriteHistory?.size ?: 0}")
+                            appendLine("PI DMA retidos=${bus?.diagnosticPiDmaHistory?.size ?: 0}; SP DMA retidos=${bus?.diagnosticSpDmaHistory?.size ?: 0}; OSTask DMA retidos=${bus?.diagnosticSpTaskDescriptorDmaHistory?.size ?: 0}")
+                            appendLine("PTE writes total=${bus?.diagnosticPteWriteCount ?: 0}; PTE eventos retidos=${bus?.diagnosticPteWriteHistory?.size ?: 0}")
+                            appendLine("RDRAM writes total=${bus?.diagnosticRdramWriteCount ?: 0}; eventos amostrados retidos=${bus?.diagnosticRdramWriteHistory?.size ?: 0}")
+                            appendLine("Boot accesses total=${bus?.diagnosticBootMemoryAccessTotal ?: 0}; boot writes total=${bus?.diagnosticBootDestinationWriteCount ?: 0}")
+                            appendLine("Observação: históricos limitados/amostrados são identificados separadamente dos contadores cumulativos; o arquivo não afirma conter eventos que o coletor não reteve.")
                             appendLine()
                             appendLine("=== RESUMO AUTOMÁTICO HLE ===")
                             if (bus != null && cpu != null) {
