@@ -42,9 +42,9 @@ class R4300CpuTest {
         assertEquals(1, cpu.diagnosticCop0WriteHistory.size)
         val event = cpu.diagnosticCop0WriteHistory.single()
         assertTrue(event.contains("COP0[14]=EPC"))
-        assertTrue(event.contains("OLD=0x000000007F0BCC28"))
-        assertTrue(event.contains("INPUT=0x0000000070000718"))
-        assertTrue(event.contains("NEW=0x0000000070000718"))
+        assertTrue(event.contains("OLD=0x7F0BCC28"))
+        assertTrue(event.contains("INPUT=0x70000718"))
+        assertTrue(event.contains("NEW=0x70000718"))
     }
 
     @Test fun cop0InUserModeWithCu0DisabledRaisesCoprocessorUnusable() {
