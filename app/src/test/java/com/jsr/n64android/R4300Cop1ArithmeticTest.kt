@@ -130,4 +130,48 @@ class R4300Cop1ArithmeticTest {
         assertEquals(0x40000000L, cpu.fpr[4])
         assertEquals(0x12345678L, cpu.fpr[5])
     }
+    @Test fun singlePrecisionCompareLessThanSetsFcc0() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x10, 2, 1, 0, 0x3C)) // C.LT.S f1, f2
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.fpr[1] = java.lang.Float.floatToRawIntBits(1.0f).toLong()
+        cpu.fpr[2] = java.lang.Float.floatToRawIntBits(2.0f).toLong()
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(1L shl 23, cpu.fcr[31] and (1L shl 23))
+    }
+
+    @Test fun unorderedSinglePrecisionCompareSetsFcc0OnlyForUnorderedCondition() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x10, 2, 1, 0, 0x31)) // C.UN.S f1, f2
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.fpr[1] = java.lang.Float.floatToRawIntBits(Float.NaN).toLong()
+        cpu.fpr[2] = java.lang.Float.floatToRawIntBits(2.0f).toLong()
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(1L shl 23, cpu.fcr[31] and (1L shl 23))
+    }
+
+    @Test fun equalDoubleCompareInFr0UsesPairedRegisters() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x11, 4, 2, 0, 0x32)) // C.EQ.D f2, f4
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        val value = java.lang.Double.doubleToRawLongBits(5.0)
+        cpu.fpr[2] = (value ushr 32) and 0xFFFFFFFFL
+        cpu.fpr[3] = value and 0xFFFFFFFFL
+        cpu.fpr[4] = (value ushr 32) and 0xFFFFFFFFL
+        cpu.fpr[5] = value and 0xFFFFFFFFL
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(1L shl 23, cpu.fcr[31] and (1L shl 23))
+    }
 }
