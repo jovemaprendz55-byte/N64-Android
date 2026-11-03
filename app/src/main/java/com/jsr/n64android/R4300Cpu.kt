@@ -161,6 +161,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     private var countCycleRemainder = 0
     /** Bounded control-flow events for interrupt/exception/ERET diagnosis. */
     val diagnosticControlFlowHistory: MutableList<String> = mutableListOf()
+    /** Separate bounded history so repeated idle-loop branches cannot erase delivered MI interrupts. */
+    val diagnosticInterruptHistory: MutableList<String> = mutableListOf()
     /** Bounded record of actual TLBWI/TLBWR operations for ROM diagnostics. */
     val diagnosticTlbWriteHistory: MutableList<String> = mutableListOf()
     /** Bounded architectural TLB exception trace, including the selected exception vector. */
@@ -268,8 +270,16 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         val handlingError = (status and 0x4L) != 0L
         if (!pendingAndEnabled || !globallyEnabled || handlingException || handlingError) return false
 
-        enterException(instructionAddressForCurrentStep ?: pc, 0, branchAddress)
+        val interruptedPc = instructionAddressForCurrentStep ?: pc
+        enterException(interruptedPc, 0, branchAddress)
         pc = exceptionVector()
+        diagnosticInterruptHistory.add(
+            "MI IRQ PC=0x${interruptedPc.toULong().toString(16).uppercase()} " +
+                "CAUSE=0x${cop0[13].toUInt().toString(16).uppercase().padStart(8, '0')} " +
+                "STATUS=0x${cop0[12].toUInt().toString(16).uppercase().padStart(8, '0')} " +
+                "VECTOR=0x${pc.toULong().toString(16).uppercase()}"
+        )
+        if (diagnosticInterruptHistory.size > 128) diagnosticInterruptHistory.removeAt(0)
         delayedTarget = null
         pendingDelaySlotBranchAddress = null
         return true
