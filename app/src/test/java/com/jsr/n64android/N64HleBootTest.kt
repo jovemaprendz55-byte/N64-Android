@@ -95,6 +95,30 @@ class N64HleBootTest {
 
 
     @Test
+    fun copiesBootImageToPhysicalAddressDerivedFromAlternateEntryPoint() {
+        val rom = ByteArray(N64HleBoot.BOOT_IMAGE_ROM_OFFSET + N64HleBoot.BOOT_IMAGE_SIZE)
+        for (word in 0 until 208) putWord(rom, 0x40 + word * 4, 0xFFFFFFFF.toInt())
+        putWord(rom, 0x40 + 208 * 4, 0x57C85314)
+        putWord(rom, N64HleBoot.ROM_HEADER_ENTRY_OFFSET, 0x80001000.toInt())
+        rom[N64HleBoot.ROM_HEADER_REGION_OFFSET] = 'E'.code.toByte()
+        val payload = ByteArray(N64HleBoot.BOOT_IMAGE_SIZE) { index -> ((index * 5 + 9) and 0xFF).toByte() }
+        payload.copyInto(rom, N64HleBoot.BOOT_IMAGE_ROM_OFFSET)
+        val checksum = N64RomChecksum.calculate6102(payload)
+        putWord(rom, 0x10, checksum.crc1)
+        putWord(rom, 0x14, checksum.crc2)
+
+        val bus = N64Bus(cartridgeRom = rom)
+        val cpu = R4300Cpu(bus)
+        val result = N64HleBoot.prepare(bus, cpu)
+
+        assertEquals(0x1000, result.ramAddress)
+        assertEquals(0xFFFFFFFF80001000UL.toLong(), result.entryPc)
+        assertEquals(payload[0].toInt() and 0xFF, bus.peek8ForDiagnostic(0x1000))
+        assertEquals(payload.last().toInt() and 0xFF, bus.peek8ForDiagnostic(0x1000 + payload.lastIndex))
+        assertEquals(N64HleBoot.ENTRY_PC, N64HleBoot.ENTRY_PC) // Keep the canonical entry constant unchanged.
+    }
+
+    @Test
     fun writesCic6105IdentifierSeparatelyFromItsBootSeed() {
         val rom = ByteArray(N64HleBoot.BOOT_IMAGE_ROM_OFFSET + N64HleBoot.BOOT_IMAGE_SIZE)
         // Synthetic IPL3 word sum for CIC 6105/7105: 0x11A49F60E96.
