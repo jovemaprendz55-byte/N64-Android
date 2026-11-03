@@ -8,8 +8,8 @@ package com.jsr.n64android
  * entry point. This HLE path reproduces that visible memory handoff without
  * copying IPL3 into SP DMEM or executing the original IPL3/PIF ROM.
  *
- * RDRAM calibration, cache initialization, full CIC/PIF behavior, and
- * hardware timing are not modeled here.
+ * CIC 6102 game-image CRC validation is modeled. RDRAM calibration, cache
+ * initialization, full CIC/PIF behavior, and hardware timing remain incomplete.
  */
 object N64HleBoot {
     const val BOOT_IMAGE_ROM_OFFSET = 0x1000
@@ -66,8 +66,11 @@ object N64HleBoot {
         require(entryPhysical < N64Memory.DEFAULT_RAM_SIZE) {
             "Entry point fora da RDRAM instalada: 0x${entryPc.toULong().toString(16)}."
         }
-        require(BOOT_IMAGE_RAM_ADDRESS + BOOT_IMAGE_SIZE <= N64Memory.DEFAULT_RAM_SIZE) {
-            "RDRAM insuficiente para receber a imagem inicial de 1 MiB."
+        require(entryPhysical >= BOOT_FLAGS_ADDRESS + 0x20) {
+            "Entry point sobrepõe a área de parâmetros de boot em low memory."
+        }
+        require(entryPhysical <= N64Memory.DEFAULT_RAM_SIZE - BOOT_IMAGE_SIZE) {
+            "RDRAM insuficiente para receber 1 MiB no entry point informado pela ROM."
         }
 
         // Read and validate the whole image before mutating RDRAM or CPU state.
@@ -92,7 +95,7 @@ object N64HleBoot {
         val tvType = detectTvType(bus.read8(N64Bus.CARTRIDGE_ROM_BASE + ROM_HEADER_REGION_OFFSET))
 
         for (index in payload.indices) {
-            bus.write8(BOOT_IMAGE_RAM_ADDRESS + index, payload[index].toInt() and 0xFF)
+            bus.write8(entryPhysical + index, payload[index].toInt() and 0xFF)
         }
 
         // IPL3's low-memory parameters consumed by libultra/game startup code.
@@ -132,7 +135,7 @@ object N64HleBoot {
             cicSeed = seed,
             copiedBytes = payload.size,
             romOffset = BOOT_IMAGE_ROM_OFFSET,
-            ramAddress = BOOT_IMAGE_RAM_ADDRESS,
+            ramAddress = entryPhysical,
             entryPc = entryPc,
             pifRomUsed = false,
             tvType = tvType,
