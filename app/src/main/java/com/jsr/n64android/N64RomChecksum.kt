@@ -44,7 +44,8 @@ object N64RomChecksum {
             t3 = (t3 xor word) and MASK
             s0 = (s0 + rotate) and MASK
 
-            a2 = (a2 xor if (a2 < word) (a3 xor word) else rotate) and MASK
+            val mixed = if (a2 < word) (a3 xor word) else rotate
+            a2 = (a2 xor mixed) and MASK
             t4 = (t4 + (word xor s0)) and MASK
             offset += WORD_SIZE
         }
