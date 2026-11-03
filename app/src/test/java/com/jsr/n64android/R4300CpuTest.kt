@@ -5255,6 +5255,11 @@ class R4300CpuTest {
         cpu.cop0[13] = 1L shl 10 // External MI interrupt pending at Cause.IP2.
         cpu.setProgramCounter(0)
 
+        // Guard the architectural preconditions separately from interrupt delivery.
+        assertEquals(0x400L, cpu.cop0[13] and cpu.cop0[12] and 0x0000FF00L)
+        assertEquals(1L, cpu.cop0[12] and 0x1L) // Global IE.
+        assertEquals(0L, cpu.cop0[12] and 0x6L) // Neither EXL nor ERL.
+
         cpu.step()
 
         assertEquals(41L, cpu.cop0[9])
