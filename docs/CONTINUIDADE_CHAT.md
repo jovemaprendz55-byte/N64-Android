@@ -1010,3 +1010,29 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Limitações: conversões W/L, comparações C.cond, FCC adicionais, modos de arredondamento, flags Cause/Enable/Flag do FCR31, traps IEEE e semântica completa FR=0/FR=1 ainda não estão implementados. O conjunto aritmético atual é parcial.
 - Commit de produção: 1b05676f663f503bc0950986f4fab9a43efd557a.
 - Commit dos testes: d9eb615674d52ce62c23121ff3f529c7c194bf38.
+
+## 45. Auditoria R4300 — Count durante entrada de interrupção MI — 2026-11-03
+
+### Defeito confirmado e corrigido
+- Em `R4300Cpu.step()`, `serviceMiInterrupt()` podia entrar na exceção e retornar antecipadamente antes de `advanceCountCycles(2)`.
+- Consequência: o relógio COP0 Count ficava parado justamente nos passos em que a CPU aceitava uma interrupção MI. Isso tornava o timer dependente do tipo de passo executado.
+- Correção: o caminho de entrada MI agora avança os mesmos dois ciclos-base antes do retorno. O passo de interrupção não executa uma instrução guest, mas não congela Count.
+- A aproximação temporal continua deliberadamente não cycle-accurate: dois ciclos-base por chamada de step; latências reais/stalls ainda não estão modelados.
+
+### Testes adicionados
+- `countAdvancesAtHalfRateAndCompareMatchSetsTimerPending`: valida divisor de dois ciclos, igualdade Count/Compare, IP7 e wraparound de 32 bits.
+- `countContinuesAdvancingWhenMiInterruptIsTaken`: configura uma fonte MI real no N64Bus, habilita IE/IM2 e confirma que Count avança quando a interrupção é aceita, com IP2 e EXL corretos.
+
+### Auditoria estática adicional — limitações encontradas, sem correção especulativa
+- COP1 continua parcial: somente transferências e um subconjunto de operações S/D estão implementados. FR=0/FR=1, pares FPR, conversões, comparações, FCC adicionais, arredondamento e exceções IEEE/FCR31 continuam pendentes.
+- COP0/TLB e semântica de delay slot permanecem subconjuntos, conforme o cabeçalho de R4300Cpu.kt. A presença de testes não significa cobertura completa do manual VR4300.
+- Count ainda usa dois ciclos-base por step e não mede latência real de instruções, stalls ou dispositivos.
+- A implementação LDC1/LD de doubleword traduz as duas metades separadamente; comportamento em fronteira de página e atomicidade de acesso ainda merecem teste específico.
+- Não foi alterada a semântica de FPU/TLB/delay slot sem reprodução confiável.
+
+### Commits desta rodada
+- `edacdbd313120f0ae5fb076d52297ea305f5f1c4` — correção de Count na entrada MI.
+- `0c6e4fd91747b86abbabb627a678d945adbf7644` — testes de Count/Compare e interrupção MI.
+- GitHub Actions run `41563635381` foi iniciado para o commit de produção; consultar conclusão após o commit de testes.
+- Nenhum teste visual de ROM nem instalação/execução no Android 16 foi realizado nesta rodada.
+- Branch `dev/n64-clean-start`; `main` permanece intacta.
