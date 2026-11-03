@@ -836,11 +836,47 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                             val fcc0 = 1L shl 23
                             fcr[31] = if (result) fcr[31] or fcc0 else fcr[31] and fcc0.inv()
                         } else {
-                            // Unary arithmetic encodings reserve ft=0.
-                            if (fn in 0x04..0x07 && ft != 0) {
-                                throw ReservedInstructionFault("COP1 unary function 0x${fn.toString(16)} requires ft=0")
+                            // Conversion and unary encodings reserve ft=0.
+                            if ((fn in 0x04..0x07 || fn in 0x0C..0x0F || fn in 0x20..0x25) && ft != 0) {
+                                throw ReservedInstructionFault("COP1 unary/conversion function 0x${fn.toString(16)} requires ft=0")
                             }
-                            if (rs == 0x10) {
+                            if (fn in 0x0C..0x0F || fn == 0x24) {
+                                val value = if (rs == 0x10) {
+                                    java.lang.Float.intBitsToFloat(readFprSingle(fs)).toDouble()
+                                } else {
+                                    java.lang.Double.longBitsToDouble(readFprDouble(fs))
+                                }
+                                val rounded = when (fn) {
+                                    0x0C -> Math.rint(value) // ROUND.W: nearest, ties to even.
+                                    0x0D -> kotlin.math.truncate(value) // TRUNC.W: toward zero.
+                                    0x0E -> kotlin.math.ceil(value) // CEIL.W: toward +infinity.
+                                    0x0F -> kotlin.math.floor(value) // FLOOR.W: toward -infinity.
+                                    else -> roundAccordingToFcr31(value)
+                                }
+                                // MIPS returns the indefinite word for NaN or signed overflow.
+                                val word = if (!rounded.isFinite() ||
+                                    rounded < Int.MIN_VALUE.toDouble() ||
+                                    rounded > Int.MAX_VALUE.toDouble()
+                                ) Int.MIN_VALUE else rounded.toLong().toInt()
+                                writeFprSingle(fd, word)
+                            } else if (fn == 0x20) { // CVT.S: convert source S/D to single.
+                                val value = if (rs == 0x10) {
+                                    java.lang.Float.intBitsToFloat(readFprSingle(fs)).toDouble()
+                                } else {
+                                    java.lang.Double.longBitsToDouble(readFprDouble(fs))
+                                }
+                                writeFprSingle(fd, java.lang.Float.floatToRawIntBits(value.toFloat()))
+                            } else if (fn == 0x21) { // CVT.D: convert source S/D to double.
+                                val value = if (rs == 0x10) {
+                                    java.lang.Float.intBitsToFloat(readFprSingle(fs)).toDouble()
+                                } else {
+                                    java.lang.Double.longBitsToDouble(readFprDouble(fs))
+                                }
+                                writeFprDouble(fd, java.lang.Double.doubleToRawLongBits(value))
+                            } else if (fn == 0x24) {
+                                // Handled above; keep this guard unreachable if the decoder is edited.
+                                throw ReservedInstructionFault("Invalid COP1 CVT.W dispatch")
+                            } else if (rs == 0x10) {
                                 val x = java.lang.Float.intBitsToFloat(readFprSingle(fs))
                                 val y = java.lang.Float.intBitsToFloat(readFprSingle(ft))
                                 val z = when (fn) {
@@ -1587,6 +1623,14 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         if (!fprIs64BitMode() && (register and 1) != 0) {
             throw ReservedInstructionFault("Double-precision FPR must be even when Status.FR=0 (register=$register)")
         }
+    }
+
+    /** Applies the FCR31 rounding mode: nearest-even, zero, +infinity, -infinity. */
+    private fun roundAccordingToFcr31(value: Double): Double = when ((fcr[31] and 0x3L).toInt()) {
+        0 -> Math.rint(value)
+        1 -> kotlin.math.truncate(value)
+        2 -> kotlin.math.ceil(value)
+        else -> kotlin.math.floor(value)
     }
 
     private fun readFprSingle(register: Int): Int = fpr[register].toInt()
