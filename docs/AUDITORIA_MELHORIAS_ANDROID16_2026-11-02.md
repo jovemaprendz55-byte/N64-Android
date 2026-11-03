@@ -161,3 +161,12 @@
 ### Estado
 - Nenhum código de produção foi alterado para esta lacuna, para evitar uma temporização inventada.
 - Branch `dev/n64-clean-start`; `main` permanece intacta. CI da correção do fixture VI ainda está em execução.
+
+
+## Revalidação após correção VI — 2026-11-03
+
+- GitHub Actions run `41559840127`, commit `a445bd556cbb5f360b08a40bccf73e854a4ad900`: concluído com sucesso. Job `build` e etapas `Build and test` e `Upload debug APK` passaram.
+- Artefato Debug publicado como `n64-android-debug-apk` (1.039.850 bytes; SHA-256 `91c6f00c10d5f7eaa70b5b2c141ce4a73218cfafde9ddbe07c68bc30dceca439`; expiração 2026-11-17).
+- Reinspeção de `N64RomVideoSession`: captura VI inválida é isolada para não derrubar a sessão; publicação compara resolução e pixels; polling de RSP é limitado por quantum e somente ocorre após SP sair de HALT. Não foi comprovado defeito adicional nesse trecho nesta rodada.
+- Limite: teste automatizado e geração de APK não equivalem a teste de instalação/execução em dispositivo Android 16. Esse teste ainda depende da instalação e dos logs reais no aparelho.
+- COP0 Count/Compare/IP7 permanece como lacuna funcional prioritária, sem alteração de produção nesta rodada.
