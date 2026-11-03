@@ -78,3 +78,8 @@ A ordem dos dois pares finais do descritor estava invertida. Corrigido para ABI:
 ## Observação passiva da transferência OSTask — 2026-11-03
 
 Foi acrescentado um histórico diagnóstico que registra um DMA RDRAM→DMEM apenas quando o endereço SP inicial é 0xFC0 e o total transferido é exatamente 64 bytes. A linha registra PC da CPU, endereço do descritor e campos principais. É observação após a cópia, não inicia nem agenda o RSP. Teste cobre offset diferente, captura do caso canônico e preservação de SP HALT. Commits: `7e7eeee4ec9068f180835e174bf2dcea24f0272c` e `6313a8417d59188fe833aa02120e9e6c444962ad`. CI pendente no momento do registro.
+
+
+## Ajuste de formatação do evento OSTask — 2026-11-03
+
+A primeira execução do teste falhou porque os ponteiros no log não tinham padding de oito dígitos. Padronizado o formato de BOOT/UCODE/DATA/YIELD, mantendo a detecção passiva inalterada. Commit `dd614e6d0051bb1e256c962cbfd515d19f1fd5cd`. Aguardar CI.
