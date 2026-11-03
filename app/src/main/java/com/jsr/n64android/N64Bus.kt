@@ -46,7 +46,7 @@ class N64Bus(
         val wasAsserted = (miInterrupts and mask) != 0
         miInterrupts = if (asserted) miInterrupts or mask else miInterrupts and mask.inv()
         if (wasAsserted == asserted) return
-        if (diagnosticMiInterruptSourceHistory.size >= 128) diagnosticMiInterruptSourceHistory.removeFirst()
+        if (diagnosticMiInterruptSourceHistory.size >= 512) diagnosticMiInterruptSourceHistory.removeFirst()
         val action = if (asserted) "ASSERT" else "ACK"
         diagnosticMiInterruptSourceHistory.addLast(
             "$action source=$source detail=$detail " +
@@ -57,7 +57,7 @@ class N64Bus(
     }
 
     private fun recordMiMaskTransition(source: String, enabled: Boolean) {
-        if (diagnosticMiInterruptSourceHistory.size >= 128) diagnosticMiInterruptSourceHistory.removeFirst()
+        if (diagnosticMiInterruptSourceHistory.size >= 512) diagnosticMiInterruptSourceHistory.removeFirst()
         val action = if (enabled) "MASK_SET" else "MASK_CLEAR"
         diagnosticMiInterruptSourceHistory.addLast(
             "$action source=$source " +
@@ -106,7 +106,7 @@ class N64Bus(
         if (kind == "W") {
             diagnosticMmioWriteCounts[device] = (diagnosticMmioWriteCounts[device] ?: 0L) + 1L
         }
-        if (diagnosticMmioHistory.size >= 256) diagnosticMmioHistory.removeFirst()
+        if (diagnosticMmioHistory.size >= 2048) diagnosticMmioHistory.removeFirst()
         val traceLine =
             "$kind $device PC=0x${diagnosticCpuPc.toULong().toString(16).uppercase()} " +
                 "PADDR=0x${address.toString(16).uppercase().padStart(8, '0')} " +
@@ -126,11 +126,11 @@ class N64Bus(
                 else -> "SP_UNKNOWN"
             }
             diagnosticSpMmioCounts[register] = (diagnosticSpMmioCounts[register] ?: 0L) + 1L
-            if (diagnosticSpMmioHistory.size >= 512) diagnosticSpMmioHistory.removeFirst()
+            if (diagnosticSpMmioHistory.size >= 2048) diagnosticSpMmioHistory.removeFirst()
             diagnosticSpMmioHistory.addLast("$register $traceLine")
         }
         if (kind == "W" && device == "SP") {
-            if (diagnosticSpWriteHistory.size >= 256) diagnosticSpWriteHistory.removeFirst()
+            if (diagnosticSpWriteHistory.size >= 1024) diagnosticSpWriteHistory.removeFirst()
             diagnosticSpWriteHistory.addLast(
                 "W SP PC=0x${diagnosticCpuPc.toULong().toString(16).uppercase()} " +
                     "PADDR=0x${address.toString(16).uppercase().padStart(8, '0')} " +
@@ -180,8 +180,8 @@ class N64Bus(
         diagnosticRdramWriteCount++
         // Keep the total exact, but avoid allocating a formatted String for every
         // byte written while IPL3 copies large blocks of RDRAM.
-        if (diagnosticRdramWriteCount <= 16L || diagnosticRdramWriteCount % 256L == 0L) {
-            if (diagnosticRdramWriteHistory.size >= 128) diagnosticRdramWriteHistory.removeFirst()
+        if (diagnosticRdramWriteCount <= 16L || diagnosticRdramWriteCount % 64L == 0L) {
+            if (diagnosticRdramWriteHistory.size >= 2048) diagnosticRdramWriteHistory.removeFirst()
             diagnosticRdramWriteHistory.addLast(
                 "W RDRAM #$diagnosticRdramWriteCount PC=0x${diagnosticCpuPc.toULong().toString(16).uppercase()} INST=${diagnosticCpuInstructionWord?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"} paddr=0x${address.toString(16).uppercase()} value=0x${value.toString(16).uppercase().padStart(2, '0')}"
             )
@@ -214,8 +214,8 @@ class N64Bus(
         diagnosticBootDestinationWriteCount++
         // Preserve early samples and periodic checkpoints; the exact write count
         // remains available separately for validating the descending copy.
-        if (diagnosticBootDestinationWriteCount <= 16L || diagnosticBootDestinationWriteCount % 256L == 0L) {
-            if (diagnosticBootDestinationWriteHistory.size >= 96) diagnosticBootDestinationWriteHistory.removeFirst()
+        if (diagnosticBootDestinationWriteCount <= 16L || diagnosticBootDestinationWriteCount % 64L == 0L) {
+            if (diagnosticBootDestinationWriteHistory.size >= 1024) diagnosticBootDestinationWriteHistory.removeFirst()
             diagnosticBootDestinationWriteHistory.addLast(
                 "W #$diagnosticBootDestinationWriteCount PC=0x${diagnosticCpuPc.toULong().toString(16).uppercase()} INST=${diagnosticCpuInstructionWord?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"} paddr=0x${address.toString(16).uppercase()} value=0x${value.toString(16).uppercase().padStart(2, '0')}"
             )
@@ -224,8 +224,8 @@ class N64Bus(
     private fun recordBootMemoryAccess(kind: String, address: Int, value: Int) {
         if (address !in 0x33D00 until 0x34000) return
         diagnosticBootMemoryAccessCount++
-        if (diagnosticBootMemoryAccessCount <= 16L || diagnosticBootMemoryAccessCount % 64L == 0L) {
-            if (diagnosticBootMemoryAccessHistory.size >= 256) diagnosticBootMemoryAccessHistory.removeFirst()
+        if (diagnosticBootMemoryAccessCount <= 16L || diagnosticBootMemoryAccessCount % 16L == 0L) {
+            if (diagnosticBootMemoryAccessHistory.size >= 1024) diagnosticBootMemoryAccessHistory.removeFirst()
             diagnosticBootMemoryAccessHistory.addLast(
                 "$kind #$diagnosticBootMemoryAccessCount PC=0x${diagnosticCpuPc.toULong().toString(16).uppercase()} INST=${diagnosticCpuInstructionWord?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A"} paddr=0x${address.toString(16).uppercase()} value=0x${value.toString(16).uppercase().padStart(2, '0')}"
             )
@@ -794,7 +794,7 @@ class N64Bus(
         require(offset >= 0 && offset <= image.size - length) {
             "PI DMA source exceeds loaded cartridge ROM: offset=0x${offset.toString(16)}, length=$length."
         }
-        if (diagnosticPiDmaHistory.size >= 64) diagnosticPiDmaHistory.removeFirst()
+        if (diagnosticPiDmaHistory.size >= 256) diagnosticPiDmaHistory.removeFirst()
         diagnosticPiDmaHistory.addLast(
             "PI_WR_LEN cart=0x${piCartAddress.toUInt().toString(16).uppercase()} romOffset=0x${offset.toString(16).uppercase()} " +
                 "dram=0x${piDramAddress.toString(16).uppercase()} length=0x${length.toString(16).uppercase()}"
@@ -908,7 +908,7 @@ class N64Bus(
             }
             dramAddress += blockLength + dramSkip
         }
-        if (diagnosticSpDmaHistory.size >= 64) diagnosticSpDmaHistory.removeFirst()
+        if (diagnosticSpDmaHistory.size >= 256) diagnosticSpDmaHistory.removeFirst()
         val direction = if (toSp) "RDRAM_TO_SP" else "SP_TO_RDRAM"
         val dramEnd = dramAddress - dramSkip - 1
         diagnosticSpDmaHistory.addLast(
@@ -922,7 +922,7 @@ class N64Bus(
             blockLength * blockCount == SP_TASK_DESCRIPTOR_SIZE
         ) {
             val task = diagnosticSpTaskDescriptor()
-            if (diagnosticSpTaskDescriptorDmaHistory.size >= 32) {
+            if (diagnosticSpTaskDescriptorDmaHistory.size >= 128) {
                 diagnosticSpTaskDescriptorDmaHistory.removeFirst()
             }
             diagnosticSpTaskDescriptorDmaHistory.addLast(
