@@ -988,7 +988,7 @@ class N64Bus(
         }
         if ((command and SP_STATUS_CMD_SET_INTR) != 0) {
             spStatus = spStatus or SP_STATUS_INTR
-            miInterrupts = miInterrupts or MI_INTR_SP
+            setMiInterruptSource(MI_INTR_SP, "SP", true, "SP_STATUS_CMD_SET_INTR")
         }
         if ((command and SP_STATUS_CMD_CLR_SSTEP) != 0) spStatus = spStatus and SP_STATUS_SSTEP.inv()
         if ((command and SP_STATUS_CMD_SET_SSTEP) != 0) spStatus = spStatus or SP_STATUS_SSTEP
