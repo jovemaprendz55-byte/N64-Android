@@ -248,3 +248,43 @@ Esta seção atualiza/corrige descrições anteriores do documento que ainda men
 - Teste adicional cobre entry point alternativo `0x80001000` e confirma cópia para RDRAM física `0x1000`. Commits: `519c7779a3b5105a67c0a9c2c7548a961b89fc9c` e limpeza `75ac1746cd9995c934f46929da49aeee941124b2`.
 
 **Estado:** HLE ainda não é equivalente completo ao IPL3: RDRAM calibration/controladores, caches, inicialização MMIO e caminho CIC 6105 continuam incompletos. CI verde comprova compilação/testes automatizados, não execução do GoldenEye no Poco C85.
+
+
+## Auditoria de lacunas de hardware do HLE — 2026-11-03
+
+Após a CI verde do commit `08d3414d98576a0e48eb48235d15a1f53cad27c3`, foi feita uma nova comparação direta entre `N64HleBoot.kt`, `N64Bus.kt`, `R4300Cpu.kt` e a disassembly pública de `decompals/N64-IPL/src/ipl3.s`.
+
+### Evidências confirmadas na disassembly 6102/7101
+
+- No início do IPL3, o código zera COP0 Cause, Count e Compare.
+- A primeira decisão de boot lê `RI_SELECT`: valor diferente de zero desvia para a rotina NMI; zero segue a inicialização completa de RDRAM. Portanto, o estado de RI_SELECT não pode ser escolhido por conveniência no HLE.
+- O caminho de cold boot configura RI em modo de controle automático, espera a estabilização, zera RI_CURRENT_LOAD, configura RI_SELECT e RI_MODE, e depois configura MI_INIT_MODE antes de programar os delays da RDRAM.
+- A escrita em RDRAM_DELAY depende da sequência imediatamente anterior de MI_INIT_MODE e da rotação de 16 bits descrita nos comentários da própria disassembly. Não é correto substituir isso por apenas gravar um valor final sem modelar a semântica relevante.
+- O IPL3 detecta módulos RDRAM, consulta DEVICE_TYPE e MANUFACTURER, escolhe RAS_INTERVAL, configura CC e calcula o tamanho de memória. O tamanho é escrito em `0x80000318` no perfil normal 6102/7101.
+- Ao final do cold boot, IPL3 inicializa I-cache com Index Store Tag e D-cache com Index Store Tag. O caminho NMI é diferente: para D-cache usa Index Writeback Invalidate.
+- A rotina usa leituras reais em endereços de RDRAM durante detecção e teste de módulos. Uma constante fixa de 8 MiB não substitui essa detecção em um modelo que pretenda suportar configurações de memória diferentes.
+
+### Divergências observadas no código atual
+
+- `N64Bus` guarda RI em um array simples: escritas em RI apenas substituem a palavra correspondente; não há semântica de seleção, modo, refresh ou interação com controladores RDRAM.
+- O valor de reset atualmente declarado para RI_SELECT é `0x14`. Como a disassembly testa RI_SELECT antes de decidir entre cold boot e NMI, esse valor precisa ser confrontado com o estado de hardware esperado e com o perfil HLE final. Não foi alterado nesta auditoria.
+- O HLE grava `N64Memory.DEFAULT_RAM_SIZE` em osMemSize e não executa a detecção de módulos.
+- `R4300Cpu.kt` declara explicitamente que operações de cache não estão implementadas. O HLE pula o IPL3, logo também pula as operações de cache que seriam executadas antes do entry point; o estado de cache resultante ainda não é representado.
+- A implementação atual de HLE não modela a sequência de MI_INIT_MODE/RDRAM_DELAY nem a janela de escrita broadcast em registradores RDRAM.
+
+### Próxima implementação segura
+
+1. Definir um perfil explícito de memória para o primeiro alvo (GoldenEye 007 USA no cenário de 8 MiB), sem afirmar que o perfil é universal.
+2. Documentar os valores finais de RI/RDRAM usados pelo IPL3 6102 para esse perfil e a origem de cada valor.
+3. Implementar no barramento apenas as semânticas necessárias e testáveis: RI, MI init-mode, acesso aos registradores RDRAM e detecção/resultado de tamanho de memória. Não simular delays por laços de CPU; modelar o estado final observável do HLE com uma API de inicialização explícita.
+4. Representar a invalidação inicial das caches no estado da CPU ou implementar as operações CACHE necessárias com testes. Não transformar indiscriminadamente toda instrução CACHE em NOP.
+5. Manter a diferença cold boot/NMI explícita. Não alterar RI_SELECT_RESET até validar se o valor é reset de hardware, estado pós-inicialização ou apenas placeholder do barramento.
+6. Adicionar testes para o perfil de 8 MiB e para rejeitar/identificar perfis de memória não suportados. Depois rodar CI e testar a ROM localmente.
+
+Referências técnicas:
+- Disassembly IPL3: https://github.com/decompals/N64-IPL/blob/main/src/ipl3.s
+- Disassembly IPL1/IPL2: https://github.com/decompals/N64-IPL/blob/main/src/pifrom.s
+- Visão geral da sequência de boot: https://www.copetti.org/writings/consoles/nintendo-64/
+- Notas técnicas sobre a sequência IPL3 e parâmetros de boot: https://reverseengineering.wiki/index.php/Platform:Nintendo_64
+
+**Estado desta auditoria:** somente inspeção e documentação. Nenhum valor de RI, RDRAM, TLB, cache ou CPU foi alterado. O APK do commit `08d3414` foi publicado e a CI passou, mas ainda não foi executado no Poco C85 e não há evidência de GoldenEye em funcionamento.
