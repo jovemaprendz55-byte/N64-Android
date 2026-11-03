@@ -122,7 +122,7 @@ class R4300Cop1MemoryTest {
         cpu.step()
         assertEquals(0x89ABCDEFL, cpu.fpr[3])
         cpu.step()
-        assertEquals(0x89ABCDEFL, cpu.gpr[2])
+        assertEquals(0x89ABCDEFL.toInt().toLong(), cpu.gpr[2])
         assertEquals(0x11223344L, cpu.fpr[2])
     }
 
