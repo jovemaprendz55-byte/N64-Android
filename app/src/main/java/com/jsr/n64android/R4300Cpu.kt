@@ -149,6 +149,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         private set
     private var pendingDelaySlotBranchAddress: Long? = null
     private var randomResetByWiredWrite = false
+    /** Divider phase for the VR4300 Count clock; the current interpreter assigns two base cycles per step. */
+    private var countCycleRemainder = 0
     /** Bounded control-flow events for interrupt/exception/ERET diagnosis. */
     val diagnosticControlFlowHistory: MutableList<String> = mutableListOf()
     /** Bounded record of actual TLBWI/TLBWR operations for ROM diagnostics. */
@@ -307,6 +309,25 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             pc = exceptionVector()
             delayedTarget = null
             pendingDelaySlotBranchAddress = null
+        }
+        // The current interpreter has no per-opcode latency table yet. Two base
+        // CPU cycles per retired step provide a deterministic Count clock until
+        // the execution engine supplies measured instruction/device cycle costs.
+        advanceCountCycles(2)
+    }
+
+    /** Advances the VR4300 Count divider by CPU cycles and asserts timer IP7 on Compare match. */
+    fun advanceCountCycles(cpuCycles: Int) {
+        require(cpuCycles >= 0) { "CPU cycle advance must be non-negative." }
+        val total = countCycleRemainder + cpuCycles
+        val ticks = total / 2
+        countCycleRemainder = total % 2
+        repeat(ticks) {
+            val nextCount = ((cop0[9] and 0xFFFFFFFFL) + 1L) and 0xFFFFFFFFL
+            cop0[9] = nextCount
+            if (nextCount == (cop0[11] and 0xFFFFFFFFL)) {
+                cop0[13] = cop0[13] or (1L shl 15) // Cause.IP7 timer interrupt pending.
+            }
         }
     }
 
@@ -644,6 +665,10 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                             }
                             1, 8, 15 -> { // Random, BadVAddr and PRId are read-only.
                                 // MTC0 writes to these registers have no effect.
+                            }
+                            9 -> { // Count is writable; restart its half-rate divider phase.
+                                cop0[9] = value and 0xFFFFFFFFL
+                                countCycleRemainder = 0
                             }
                             4 -> { // Context: PTEBase is writable; BadVPN2 is hardware-maintained.
                                 cop0[4] = (cop0[4] and 0x007FFFF0L) or (value and 0xFF800000L)
