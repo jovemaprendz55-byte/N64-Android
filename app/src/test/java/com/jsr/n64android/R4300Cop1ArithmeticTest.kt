@@ -217,6 +217,59 @@ class R4300Cop1ArithmeticTest {
         assertEquals(0x12345678L, cpu.fpr[3])
     }
 
+    @Test fun zeroDividedByZeroSetsInvalidCauseAndStickyFlag() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x10, 2, 1, 3, 0x03)) // DIV.S 0.0 / 0.0
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.fpr[1] = 0L
+        cpu.fpr[2] = 0L
+        cpu.fcr[31] = 1L shl 5 // Existing divide-by-zero Flag must remain sticky.
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(1L shl 16, cpu.fcr[31] and (0x3FL shl 12))
+        assertEquals((1L shl 6) or (1L shl 5), cpu.fcr[31] and (0x1FL shl 2))
+        assertEquals(true, java.lang.Float.isNaN(java.lang.Float.intBitsToFloat(cpu.fpr[3].toInt())))
+        assertEquals(0L, (cpu.cop0[13] ushr 2) and 0x1FL)
+    }
+
+    @Test fun singlePrecisionMultiplyOverflowSetsCauseAndFlag() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x10, 2, 1, 3, 0x02)) // MUL.S maxFloat * 2
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.fpr[1] = java.lang.Float.floatToRawIntBits(Float.MAX_VALUE).toLong()
+        cpu.fpr[2] = java.lang.Float.floatToRawIntBits(2.0f).toLong()
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(1L shl 14, cpu.fcr[31] and (0x3FL shl 12))
+        assertEquals(1L shl 4, cpu.fcr[31] and (0x1FL shl 2))
+        assertEquals(Float.POSITIVE_INFINITY, java.lang.Float.intBitsToFloat(cpu.fpr[3].toInt()), 0.0f)
+    }
+
+    @Test fun enabledInvalidOperationRaisesFloatingPointExceptionWithoutWritingDestination() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x10, 2, 1, 3, 0x03)) // DIV.S 0.0 / 0.0
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.fcr[31] = 1L shl 11 // Enable Invalid Operation.
+        cpu.fpr[1] = 0L
+        cpu.fpr[2] = 0L
+        cpu.fpr[3] = 0x12345678L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(1L shl 16, cpu.fcr[31] and (0x3FL shl 12))
+        assertEquals(1L shl 6, cpu.fcr[31] and (0x1FL shl 2))
+        assertEquals(15L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(0x12345678L, cpu.fpr[3])
+    }
+
     @Test fun cop1ArithmeticRequiresCu1() {
         val memory = N64Memory(64)
         memory.write32(0, cop1(0x10, 2, 1, 3, 0x00))
