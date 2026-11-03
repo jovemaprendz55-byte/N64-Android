@@ -258,3 +258,8 @@ As primeiras execuções dos testes W/L expuseram uma lacuna no decoder: embora 
 ## Repriorização para primeiro jogo executável — 2026-11-03
 
 A prioridade do projeto passa a ser o MVP de primeira execução real, não a conclusão exaustiva do R4300/COP1. A inspeção atual encontrou carregador de ROM, HLE de boot parcial, sessão CPU contínua, leitura de framebuffer VI e presenter Android. O principal gargalo identificado é a ausência de descoberta/agendamento automático de OSTasks libultra na sessão ROM; o RSP é bombeado apenas por polling cooperativo após liberação de SP HALT. A pilha RDP/microcódigo também é parcial. Plano detalhado em docs/PLANO_PRIMEIRO_JOGO.md. Não afirmar compatibilidade nem sucesso até uma ROM real apresentar quadro no Galaxy A15 Android 16. Adiar expansão não essencial de exceções COP1, áudio completo e timing ciclo-a-ciclo até o primeiro quadro.
+
+
+## Alvo GoldenEye 007 — 2026-11-03
+
+O primeiro jogo-alvo foi definido pelo usuário como GoldenEye 007. O barramento já reconhece o checksum IPL3 associado ao CIC-NUS-6102/7101 (seed 0x3F), usado pela edição USA, mas isso não significa que o HLE execute corretamente o jogo. A sessão de ROM ainda não agenda OSTasks automaticamente. Fontes técnicas da descompilação apontam microcódigo Rare baseado em F3D com extensão G_TRI4 (0xB1); a compatibilidade precisa ser confirmada contra a região/ROM concreta e traces do emulador. Próximo foco: rastrear SP DMA/OSTask e microcódigo, sem criar tarefas artificiais. Nenhuma execução real confirmada.
