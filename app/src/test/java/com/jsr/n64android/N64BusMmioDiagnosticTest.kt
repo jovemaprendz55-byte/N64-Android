@@ -26,21 +26,21 @@ class N64BusMmioDiagnosticTest {
     }
 
     @Test
-    fun keepsOnlyLast256MmioEventsButPreservesExactDeviceCounts() {
+    fun keepsAll300MmioEventsAndPreservesExactDeviceCounts() {
         val bus = N64Bus()
         repeat(300) { index ->
             bus.setDiagnosticCpuPc(index.toLong())
             bus.read32(N64Bus.MI_VERSION_REG)
         }
 
-        assertEquals(256, bus.diagnosticMmioHistory.size)
+        assertEquals(300, bus.diagnosticMmioHistory.size)
         assertEquals(300L, bus.diagnosticMmioCounts["MI"])
-        assertTrue(bus.diagnosticMmioHistory.first().contains("PC=0x2C"))
+        assertTrue(bus.diagnosticMmioHistory.first().contains("PC=0x0"))
         assertTrue(bus.diagnosticMmioHistory.last().contains("PC=0x12B"))
     }
 
     @Test
-    fun cumulativeWriteCountersRemainExactAfterHistoryEviction() {
+    fun cumulativeWriteCountersRemainExactWithExpandedHistory() {
         val bus = N64Bus()
         repeat(300) { index ->
             bus.setDiagnosticCpuPc(index.toLong())
@@ -48,7 +48,7 @@ class N64BusMmioDiagnosticTest {
             bus.write32(N64Bus.DPC_START_REG, index)
         }
 
-        assertEquals(256, bus.diagnosticMmioHistory.size)
+        assertEquals(600, bus.diagnosticMmioHistory.size)
         assertEquals(300L, bus.diagnosticMmioWriteCounts["SP"])
         assertEquals(300L, bus.diagnosticMmioWriteCounts["DPC"])
         assertEquals(600L, bus.diagnosticMmioWriteCounts.values.sum())
