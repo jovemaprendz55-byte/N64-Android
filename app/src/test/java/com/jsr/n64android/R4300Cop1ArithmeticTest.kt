@@ -174,4 +174,37 @@ class R4300Cop1ArithmeticTest {
 
         assertEquals(1L shl 23, cpu.fcr[31] and (1L shl 23))
     }
+    @Test fun compareResultDrivesBc1tBranchAfterDelaySlot() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x10, 2, 1, 0, 0x3C)) // C.LT.S f1, f2
+        memory.write32(4, (0x11 shl 26) or (0x08 shl 21) or (1 shl 16) or 2) // BC1T +2
+        memory.write32(8, 0) // delay-slot NOP
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.fpr[1] = java.lang.Float.floatToRawIntBits(1.0f).toLong()
+        cpu.fpr[2] = java.lang.Float.floatToRawIntBits(2.0f).toLong()
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+        cpu.step()
+        assertEquals(8L, cpu.pc)
+        cpu.step()
+
+        assertEquals(16L, cpu.pc)
+    }
+
+    @Test fun orderedLessThanCompareClearsFcc0WhenFalse() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x10, 2, 1, 0, 0x3C)) // C.LT.S f1, f2
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.fcr[31] = 1L shl 23
+        cpu.fpr[1] = java.lang.Float.floatToRawIntBits(3.0f).toLong()
+        cpu.fpr[2] = java.lang.Float.floatToRawIntBits(2.0f).toLong()
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0L, cpu.fcr[31] and (1L shl 23))
+    }
 }
