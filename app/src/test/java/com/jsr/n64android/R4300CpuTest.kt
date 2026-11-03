@@ -5229,4 +5229,40 @@ class R4300CpuTest {
         assertEquals(null, cpu.diagnosticPhysicalAddress)
     }
 
+
+    @Test fun countAdvancesAtHalfRateAndCompareMatchSetsTimerPending() {
+        val cpu = R4300Cpu(N64Memory(32))
+        cpu.cop0[9] = 0xFFFFFFFEL
+        cpu.cop0[11] = 0xFFFFFFFFL
+
+        cpu.advanceCountCycles(1)
+        assertEquals(0xFFFFFFFEL, cpu.cop0[9])
+        assertEquals(0L, cpu.cop0[13] and (1L shl 15))
+
+        cpu.advanceCountCycles(1)
+        assertEquals(0xFFFFFFFFL, cpu.cop0[9])
+        assertEquals(1L shl 15, cpu.cop0[13] and (1L shl 15))
+
+        cpu.advanceCountCycles(2)
+        assertEquals(0L, cpu.cop0[9]) // Count wraps at 32 bits.
+        assertEquals(1L shl 15, cpu.cop0[13] and (1L shl 15))
+    }
+
+    @Test fun countContinuesAdvancingWhenMiInterruptIsTaken() {
+        val bus = N64Bus(N64Memory(32))
+        bus.write32(N64Bus.SP_STATUS_REG, N64Bus.SP_STATUS_CMD_SET_INTR)
+        bus.write32(N64Bus.MI_INTR_MASK_REG, 1 shl 1) // Set SP interrupt mask.
+        val cpu = R4300Cpu(bus)
+        cpu.cop0[9] = 40L
+        cpu.cop0[12] = 0x401L // IE + IM2.
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(41L, cpu.cop0[9])
+        assertEquals(1L, (cpu.cop0[13] ushr 10) and 1L) // MI line reflected as IP2.
+        assertEquals(1L, cpu.cop0[12] and 0x2L) // Exception level entered.
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+    }
+
 }
