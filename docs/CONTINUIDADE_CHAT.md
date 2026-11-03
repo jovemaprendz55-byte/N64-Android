@@ -1059,3 +1059,57 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - GitHub Actions: run `41566402515` (produção) e `41566408129` (testes) concluíram ambos com `success`; build, testes e upload do APK de depuração passaram.
 - A temporização do Count continua aproximada: dois ciclos-base por step, sem tabela de latência VR4300 ou stalls de dispositivos. A correção preserva a fase desse modelo, não o torna cycle-accurate.
 - Nenhuma execução de ROM no aparelho foi validada nesta etapa. Branch `dev/n64-clean-start`; `main` permanece intacta.
+
+ 
+## 48. Continuação da auditoria R4300/COP1 — FR, aritmética e comparações (2026-11-03)
+
+### Estado confirmado nesta rodada
+- A documentação anterior estava atualizada somente até a seção 47; os commits COP1 mais recentes ainda não tinham sido acrescentados ao registro. Esta seção fecha essa lacuna.
+- Branch de trabalho: `dev/n64-clean-start`. A branch `main` não foi alterada.
+
+### FR=0 / FR=1 e transferências COP1
+- O acesso aos registradores FPR foi centralizado em helpers que consultam Status.FR (bit 26).
+- FR=1: operações double usam um FPR de 64 bits.
+- FR=0: operações double usam o par even/odd, com a metade alta no registrador par e a baixa no ímpar; operações single continuam acessando palavras de 32 bits independentes.
+- LDC1/SDC1 e aritmética double usam esses helpers. Registradores ímpares em operações double FR=0 geram Reserved Instruction.
+- Testes cobrem double FR=0 com par, FR=1, registrador ímpar inválido, LDC1/SDC1 ímpar inválido e independência de single words.
+- Correção de expectativa MFC1: leitura de palavra é sign-extended para o GPR de 64 bits; o teste foi ajustado.
+
+### Aritmética COP1
+- Subconjunto S/D implementado: ADD, SUB, MUL, DIV, SQRT, ABS, MOV e NEG.
+- Instruções unárias exigem campo ft=0; campo malformado gera Reserved Instruction antes de alterar o destino.
+- Testes incluem raiz quadrada válida, codificação unária inválida e preservação do FPR destino em RI.
+
+### Comparações COP1 e FCC0
+- Implementadas comparações S/D para condições de igualdade, menor que e unordered, usando os bits de condição da função COP1.
+- A comparação atualiza FCC0 em FCR31 (bit 23); condições unordered reconhecem NaN.
+- BC1T/BC1F já consomem FCC0; teste de integração verifica C.LT.S -> BC1T e execução do delay slot.
+- Outro teste confirma que comparação falsa limpa FCC0.
+- Limite conhecido: somente FCC0 é suportado. Outros condition-code fields são rejeitados com Reserved Instruction; não anunciar suporte a FCC1..FCC7.
+
+### Commits e CI
+- `77527111ba5c0d5309b7350b970af1dfacd88a` — implementação inicial FR-aware (histórico; CI inicial falhou).
+- `1ca12e9a05ce6a22e5ad4f5dc79b6c691f2a0d16` — teste aritmético FR=1; CI `41567031424` success.
+- `0611c076d17a22fda9fbffe4820b158015146baa` — testes double FR=0 e RI ímpar; CI `41567306737` success.
+- `c6687190220cfc75f971110318949d32ee025390` — testes extras de memória; CI `41567509705` failure devido à expectativa MFC1; não considerar aprovado.
+- `cfb4d34b07863585da8a2f0691fe615d6d2cef1c` — corrige expectativa sign-extension MFC1; CI `41567547551` success.
+- `5f1294d869374c3fc372c898a84bc9000098326f` — valida campos reservados das operações unárias; CI `41567881454` success.
+- `48cd7a6dbb7d6bc45ef85d208cc9dd18cdc3eafc` — testes SQRT.S e unária inválida; CI `41567886178` success.
+- `60176ca46e81bd553c92e6972959946390493836` — teste destino ímpar em double FR=0; CI `41567941259` success.
+- `97bac00f2775ce3a95d9c2823a8020c204544199` — comparações COP1 S/D e FCC0; CI `41568154129` success.
+- `7e735e93bdeb393ff85ea56d95a0a1bfb6f31a6c` — testes comparação less-than, unordered/NaN e igualdade double FR=0; CI `41568158658` success.
+- `c6cd90e329e44c5f92ab49cbfe11c60d098bc14d` — testes FCC0 -> BC1T, delay slot e limpeza FCC0 quando falso; CI `41568201826` success.
+- A CI valida build/testes automatizados. Não comprova execução de ROM no aparelho.
+
+### Pendências explícitas
+- Conversões COP1 (CVT.S, CVT.D, CVT.W/CVT.L e variantes ROUND/TRUNC/CEIL/FLOOR) ainda não implementadas.
+- FCR31 ainda não modela integralmente modos de arredondamento, flags Cause/Enable/Flag e traps IEEE-754.
+- FCC1..FCC7 ainda não implementados.
+- Precisão e comportamento de NaN, subnormais, overflow/underflow e exceções ainda precisam de auditoria conforme o VR4300.
+- A implementação aritmética usa operações Float/Double da JVM; não é ainda uma FPU cycle-accurate nem garante todos os detalhes de arredondamento/exceção do hardware.
+- Não houve instalação/execução visual de ROM no Android 16 nesta rodada.
+
+### Próxima etapa
+- Auditar e implementar conversões COP1 com instruções e modos explicitamente testados.
+- Depois, tratar FCR31/IEEE exceptions e ampliar os testes de comparação/FCC.
+- Manter a regra: corrigir somente defeitos reproduzidos, exigir CI verde e registrar cada etapa antes de declarar concluída.
