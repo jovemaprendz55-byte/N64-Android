@@ -22,6 +22,11 @@ class N64HleBootTest {
         }
         // MFC1 $v0, $f4 proves the HLE handoff enables COP1 before game entry.
         putWord(rom, N64HleBoot.BOOT_IMAGE_ROM_OFFSET, (0x11 shl 26) or (4 shl 16) or (4 shl 11))
+        val expectedChecksum = N64RomChecksum.calculate6102(
+            rom.copyOfRange(N64HleBoot.BOOT_IMAGE_ROM_OFFSET, N64HleBoot.BOOT_IMAGE_ROM_OFFSET + N64HleBoot.BOOT_IMAGE_SIZE)
+        )
+        putWord(rom, 0x10, expectedChecksum.crc1)
+        putWord(rom, 0x14, expectedChecksum.crc2)
 
         val bus = N64Bus(ram = N64Memory(), pifRom = null, cartridgeRom = rom)
         val cpu = R4300Cpu(bus)
@@ -46,6 +51,7 @@ class N64HleBootTest {
         assertEquals(0L, cpu.gpr[23])
         assertTrue("HLE must use architectural TLB translation outside KSEG0/KSEG1", cpu.tlbEnabled)
         assertFalse(result.pifRomUsed)
+        assertTrue(result.checksumValidated)
         assertEquals(1, result.tvType)
 
         for (i in listOf(0, 4, 0x33F2F - N64HleBoot.BOOT_IMAGE_RAM_ADDRESS, N64HleBoot.BOOT_IMAGE_SIZE - 1)) {
@@ -102,6 +108,36 @@ class N64HleBootTest {
         assertEquals(6105, bus.read32(N64HleBoot.BOOT_FLAG_CIC_ID))
         assertNotEquals(result.cicSeed, bus.read32(N64HleBoot.BOOT_FLAG_CIC_ID))
         assertFalse(result.pifRomUsed)
+        assertFalse(result.checksumValidated)
+    }
+
+    @Test
+    fun rejectsInvalid6102GameChecksumBeforeMutatingRamOrCpu() {
+        val rom = ByteArray(N64HleBoot.BOOT_IMAGE_ROM_OFFSET + N64HleBoot.BOOT_IMAGE_SIZE)
+        for (word in 0 until 208) putWord(rom, 0x40 + word * 4, 0xFFFFFFFF.toInt())
+        putWord(rom, 0x40 + 208 * 4, 0x57C85314)
+        putWord(rom, N64HleBoot.ROM_HEADER_ENTRY_OFFSET, 0x80000400.toInt())
+        rom[N64HleBoot.ROM_HEADER_REGION_OFFSET] = 'E'.code.toByte()
+        for (i in 0 until N64HleBoot.BOOT_IMAGE_SIZE) {
+            rom[N64HleBoot.BOOT_IMAGE_ROM_OFFSET + i] = ((i * 7 + 3) and 0xFF).toByte()
+        }
+        putWord(rom, 0x10, 0x12345678)
+        putWord(rom, 0x14, 0x9ABCDEF0.toInt())
+
+        val bus = N64Bus(cartridgeRom = rom)
+        val cpu = R4300Cpu(bus)
+        cpu.gpr[8] = 0x55AA
+        val originalPc = cpu.pc
+
+        try {
+            N64HleBoot.prepare(bus, cpu)
+            throw AssertionError("Invalid CIC 6102 checksum must reject the boot.")
+        } catch (error: IllegalArgumentException) {
+            assertTrue(error.message!!.contains("Checksum da ROM inválido"))
+        }
+        assertEquals(0x55AAL, cpu.gpr[8])
+        assertEquals(originalPc, cpu.pc)
+        assertEquals(0, bus.peek8ForDiagnostic(N64HleBoot.BOOT_IMAGE_RAM_ADDRESS))
     }
 
     @Test
