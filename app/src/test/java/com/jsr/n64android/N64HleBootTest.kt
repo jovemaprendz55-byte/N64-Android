@@ -7,6 +7,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class N64HleBootTest {
+
+    @Test
+    fun matchesCic6102ChecksumReferenceVectorForOneMegabyteOfZeroWords() {
+        val checksum = N64RomChecksum.calculate6102(ByteArray(0x100000))
+        assertEquals(0xF8CA4DDC.toInt(), checksum.crc1)
+        assertEquals(0x303A4DDC, checksum.crc2)
+    }
+
     @Test
     fun preparesFirstMegabyteAndBootParametersWithoutExecutingIpl3OrUsingPifRom() {
         val rom = ByteArray(N64HleBoot.BOOT_IMAGE_ROM_OFFSET + N64HleBoot.BOOT_IMAGE_SIZE)
