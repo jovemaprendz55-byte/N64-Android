@@ -5249,7 +5249,7 @@ class R4300CpuTest {
     }
 
     @Test fun countContinuesAdvancingWhenMiInterruptIsTaken() {
-        val bus = N64Bus(N64Memory(32))
+        val bus = N64Bus(N64Memory(8 * 1024))
         bus.write32(N64Bus.SP_STATUS_REG, N64Bus.SP_STATUS_CMD_SET_INTR)
         bus.write32(N64Bus.MI_INTR_MASK_REG, 1 shl 1) // Set SP interrupt mask.
         assertTrue("SP interrupt must reach the enabled MI line", bus.isMiInterruptPending())
