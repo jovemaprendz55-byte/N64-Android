@@ -935,3 +935,14 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Não adicionar incremento por instrução sem definir antes a fonte de ticks e divisor do Count do VR4300. O emulador ainda não modela ciclos/stalls de forma suficiente para uma implementação temporal confiável.
 - Planejamento: camada de ticks determinística; política Count/ticks documentada; MTC0 Compare limpa IP7; igualdade Count/Compare levanta IP7; testes para IE/IM7/EXL/ERL, delay slot e limpeza por Compare.
 - Nenhum código de produção alterado nesta etapa; achado e plano registrados em `docs/AUDITORIA_MELHORIAS_ANDROID16_2026-11-02.md`. Branch dev/n64-clean-start; main intacta.
+
+
+## 41. CI verde e APK Debug gerado — 2026-11-03
+
+- A execução GitHub Actions `41559840127`, para o commit `a445bd556cbb5f360b08a40bccf73e854a4ad900`, concluiu com `success`.
+- Job `build`: setup, checkout, JDK 17, Gradle, Build and test e Upload debug APK concluídos com sucesso.
+- Artefato `n64-android-debug-apk` disponível, tamanho 1.039.850 bytes, SHA-256 `91c6f00c10d5f7eaa70b5b2c141ce4a73218cfafde9ddbe07c68bc30dceca439`, expira em 2026-11-17.
+- A aprovação confirma build e testes automatizados deste commit; não substitui instalação/validação visual no aparelho Android 16.
+- A correção do fixture VI foi aprovada. O achado COP0 Count/Compare continua aberto e documentado; não foi implementado.
+- Nota: a CI também concluiu success no commit de documentação `b8378acd` e no commit de correção `ce9ba418`.
+- Branch `dev/n64-clean-start`; branch `main` continua separada e inalterada por estas alterações.
