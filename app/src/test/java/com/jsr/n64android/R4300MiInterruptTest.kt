@@ -59,6 +59,8 @@ class R4300MiInterruptTest {
 
         bus.write32(N64Bus.VI_CURRENT_REG, 0)
         assertEquals(0, bus.read32(N64Bus.MI_INTR_REG) and N64Bus.MI_INTR_VI)
+        assertTrue(bus.diagnosticMiInterruptSourceHistory.any { it.startsWith("ASSERT source=VI") })
+        assertTrue(bus.diagnosticMiInterruptSourceHistory.any { it.startsWith("ACK source=VI") })
     }
 
     @Test
