@@ -112,6 +112,9 @@ object N64HleBoot {
         bus.write32(BOOT_FLAG_CIC_ID, cicId)
         bus.write32(BOOT_FLAG_IPL2_VERSION, 0)
         bus.write32(BOOT_FLAG_RDRAM_SIZE, N64Memory.DEFAULT_RAM_SIZE)
+        // CIC 6102/7101 cold IPL3 writes RI_SELECT=0x14 before handing off.
+        // This models that one verified handoff register only, not full RDRAM setup.
+        if (seed == 0x3F) bus.applyCic6102PostIpl3RiHandoff()
 
         cpu.reset()
         // HLE enters at the game's post-IPL3 entry point. The original boot
