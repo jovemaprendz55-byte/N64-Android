@@ -905,3 +905,13 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - A captura ainda é amostrada por intervalo de instruções; VI timing segue aproximado.
 - Aguardar CI para validar os commits de sessão, teste, UI e documentação. Nenhum teste real de ROM foi executado no aparelho nesta rodada.
 - Branch dev/n64-clean-start; main permanece intacta.
+
+
+## 38. Auditoria de publicação de quadros: mudança de resolução (2026-11-02)
+
+- Defeito confirmado por inspeção: `N64RomVideoSession` deduplicava quadros comparando somente `argbPixels`. A geometria do quadro não fazia parte da condição.
+- Consequência: uma mudança de resolução com o mesmo número de pixels e conteúdo ARGB idêntico podia ser descartada. O presenter Android continuaria exibindo o bitmap com dimensões antigas, embora o VI já tivesse mudado de modo.
+- Correção em `N64RomVideoSession.kt`: publicar quando largura ou altura mudar, mesmo que o vetor de pixels seja idêntico. A comparação de pixels permanece para evitar publicações redundantes quando geometria e imagem não mudam.
+- Teste de regressão `publishesResolutionChangeEvenWhenPixelContentsAreIdentical`: executa instruções R4300 reais, captura 2x2, altera os registradores VI para 4x1 no meio da execução, mantém os mesmos quatro pixels e confirma que ambos os quadros são publicados.
+- Escopo: corrige detecção de mudança de geometria no caminho VI → frame callback. Não implementa novos formatos de pixel, rasterização RDP, microcódigo RSP ou temporização de ciclo.
+- Ainda não houve instalação nem teste visual no Poco C85. A confirmação desta correção depende do CI e, para validação final da tela, de teste no aparelho.
