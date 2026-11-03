@@ -108,3 +108,17 @@ Isso cobre a diferença entre a fonte estar latched em MI_INTR e a linha externa
 Commit: `f2e3d0bb46fe7b2eeaca014a5274707692b7dc7b`.
 
 A consulta de workflows associada a esse commit não retornou execuções (o endpoint disponível só lista execuções disparadas por pull request). Portanto, este commit de teste ainda não tem CI verde confirmado nesta documentação.
+
+## Pipeline de validação e próximo APK
+
+O workflow `.github/workflows/android.yml` foi conferido na branch de desenvolvimento. Ele é disparado em `push` para `main` e `dev/**`, configura JDK 17 e Gradle 8.11.1, executa:
+
+```bash
+gradle testDebugUnitTest assembleDebug
+```
+
+Se tudo passar, publica o artefato `n64-android-debug-apk` com `app/build/outputs/apk/debug/app-debug.apk`, retenção de 14 dias.
+
+A consulta de status/checks para o commit de documentação `05e117c64b806d1981d89b45438f3449eb705563` retornou uma lista vazia. Isso não equivale a sucesso nem a falha: o resultado da execução do workflow não ficou disponível pela integração consultada. O teste PI pendente permanece sem validação CI confirmada.
+
+Critério para avançar ao teste físico: obter um run concluído com os testes unitários e montagem do APK bem-sucedidos; baixar o artefato desse run; instalar no Poco C85; executar GoldenEye 007 USA e exportar o log completo. O próximo diagnóstico deve comparar ASSERT/MASK_SET/MI IRQ/ACK, EPC/ERET e as primeiras escritas SP/DPC. Não alterar a arquitetura de interrupções ou forçar tarefas RSP sem evidência do log novo.
