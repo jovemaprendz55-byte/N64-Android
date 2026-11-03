@@ -930,7 +930,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 ## 40. Lacuna COP0 Count/Compare — 2026-11-02
 
 - Auditoria estática confirmou ausência de incremento de COP0 Count (reg. 9), comparação com Compare (reg. 11) e geração de Cause.IP7 (bit 15) para interrupção interna do temporizador R4300.
-- MTC0 Compare atualmente usa armazenamento genérico e não limpa IP7; a rotina de amostragem de interrupções só espelha MI em IP2.
+- Na auditoria seguinte, foi corrigida a escrita MTC0 Compare para limpar Cause.IP7; a geração de IP7 pelo temporizador ainda não existe. A rotina de amostragem ainda espelha MI em IP2.
 - Impacto: software que depende do timer interno para scheduler/timeouts pode travar ou executar com temporização incorreta.
 - Não adicionar incremento por instrução sem definir antes a fonte de ticks e divisor do Count do VR4300. O emulador ainda não modela ciclos/stalls de forma suficiente para uma implementação temporal confiável.
 - Planejamento: camada de ticks determinística; política Count/ticks documentada; MTC0 Compare limpa IP7; igualdade Count/Compare levanta IP7; testes para IE/IM7/EXL/ERL, delay slot e limpeza por Compare.
@@ -946,3 +946,14 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - A correção do fixture VI foi aprovada. O achado COP0 Count/Compare continua aberto e documentado; não foi implementado.
 - Nota: a CI também concluiu success no commit de documentação `b8378acd` e no commit de correção `ce9ba418`.
 - Branch `dev/n64-clean-start`; branch `main` continua separada e inalterada por estas alterações.
+
+
+## 42. Correção parcial do COP0 Compare — 2026-11-03
+
+- Auditoria confirmou que MTC0 no registrador COP0 11 (Compare) caía no armazenamento genérico e deixava Cause.IP7 (bit 15) pendente.
+- Correção em `R4300Cpu.kt`: MTC0 Compare agora grava o valor de 32 bits e limpa somente Cause.IP7, preservando IP2 e os bits de interrupção de software IP[1:0].
+- Teste de regressão `mtc0CompareStoresValueAndClearsOnlyTimerInterruptPendingBit`: executa uma instrução MTC0 real e valida Compare, limpeza seletiva de IP7, preservação de IP2/IP[1:0] e avanço do PC.
+- Commits de código/teste: `17ef9e8ba1a594ac4dfa2f2ceb902af68d8824fb` e `de6cd1f29732a90c14e3ccc1c91800d2a85d946f`.
+- Limitação ainda aberta: Count não avança e não há comparação Count==Compare gerando IP7. Não há política de ticks/ciclos do VR4300; não foi introduzido incremento artificial por instrução.
+- Aguardar CI do commit de teste. Nenhuma instalação nem execução real de ROM no aparelho foi realizada nesta etapa.
+- Branch `dev/n64-clean-start`; `main` não foi alterada.
