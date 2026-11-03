@@ -221,3 +221,10 @@ As primeiras execuções dos testes W/L expuseram uma lacuna no decoder: embora 
 - FCR0 permanece somente leitura.
 - Commits: produção `9951f9fb73eb16a5d57d8e0b243c522f45722c9a`; teste `901885f00537984345b0a73e0d5a27ad86d78de3`.
 - A cobertura de teste aguarda CI. A implementação não deve ser confundida com traps de exceção IEEE, ainda pendentes.
+
+
+## Complemento: exceções FPU básicas
+- CTC1/FCR31: máscara `0x0183FFFF` validada em CI, incluindo bits RM/Flags/Enables/Cause/FCC0/FS.
+- Iniciada atualização Cause/Flag e trap FPE (ExcCode 15) para condições básicas. Cause é substituído; Flag é sticky; Enable correspondente impede a escrita do destino e entrega exceção.
+- Cobertura inclui divide-by-zero habilitado e desabilitado. Classificação inicial também contempla alguns casos Invalid e Overflow.
+- Limitações: não é ainda IEEE completo; Inexact, Underflow, NaN signaling e Unimplemented permanecem pendentes. CI dos commits mais recentes ainda pendente.
