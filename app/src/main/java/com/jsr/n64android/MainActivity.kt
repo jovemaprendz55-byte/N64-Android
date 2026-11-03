@@ -147,225 +147,7 @@ class MainActivity : Activity() {
             textSize = 14f
             setPadding(12, 12, 12, 12)
         }
-        val copyLogsButton = Button(this).apply {
-            text = "SALVAR LOGS"
-            isAllCaps = false
-            val exportButton = this
-            setOnClickListener {
-                exportButton.isEnabled = false
-                val panelText = details.text.toString()
-                Thread({
-                    try {
-                        // Freeze the emulation thread before reading diagnostic collections.
-                        // CPU/TLB histories and bus ArrayDeque/LinkedHashMap instances are mutable
-                        // and are not designed for concurrent iteration during log export.
-                        val workerToJoin = romVideoThread
-                        val sessionAtExportStart = romVideoSession ?: lastRomVideoSession
-                        if (workerToJoin?.isAlive == true) {
-                            romVideoStopRequested = true
-                            sessionAtExportStart?.requestStop()
-                            workerToJoin.join(LOG_EXPORT_STOP_TIMEOUT_MS)
-                            if (workerToJoin.isAlive) {
-                                throw IOException(
-                                    "A execução não parou dentro de ${LOG_EXPORT_STOP_TIMEOUT_MS} ms; tente salvar os logs novamente."
-                                )
-                            }
-                        }
-                        val activeSession = lastRomVideoSession ?: sessionAtExportStart
-                        val diagnosticCpu = romVideoCpu
-                val values = ContentValues().apply {
-                    put(MediaStore.Downloads.DISPLAY_NAME, "N64-Android-logs-${System.currentTimeMillis()}.txt")
-                    put(MediaStore.Downloads.MIME_TYPE, "text/plain")
-                    put(MediaStore.Downloads.RELATIVE_PATH, "Download/N64Android")
-                }
-                val logUri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                    ?: throw IOException("Não foi possível criar o arquivo na pasta Downloads.")
-                val outputStream = contentResolver.openOutputStream(logUri)
-                    ?: throw IOException("Não foi possível abrir o arquivo de log.")
-                outputStream.bufferedWriter(Charsets.UTF_8).use { writer ->
-                    writer.appendLine("=== N64 ANDROID — PACOTE DIAGNÓSTICO COMPLETO ===")
-                    writer.appendLine("ROM em memória: ${cartridgeRomBytes?.size ?: 0} bytes")
-                    writer.appendLine("Estado: ${if (romVideoThread?.isAlive == true) "EM EXECUÇÃO" else "PARADA/FINALIZADA"}")
-                    writer.appendLine()
-                    writer.appendLine("=== PAINEL DA EXECUÇÃO ===")
-                    writer.appendLine(panelText)
-                    writer.appendLine()
-                    writer.appendLine("=== DIAGNÓSTICO AUTOMÁTICO HLE ===")
-                    if (diagnosticCpu != null) {
-                        writer.appendLine(
-                            N64HleAutoDiagnostic.build(
-                                cpu = diagnosticCpu,
-                                bus = bus,
-                                instructionCount = activeSession?.executedInstructionCount() ?: 0L,
-                                rspInstructionCount = activeSession?.executedRspInstructionCount() ?: 0L,
-                                frameCount = activeSession?.publishedFrameCount() ?: 0L,
-                                loop = activeSession?.diagnosticRepeatedInstructionLoop()
-                            )
-                        )
-                    } else {
-                        writer.appendLine("CPU indisponível; não foi possível gerar o diagnóstico automático.")
-                    }
-                    writer.appendLine("=== ÚLTIMAS INSTRUÇÕES CPU (JANELA CIRCULAR) ===")
-                    writer.appendLine(
-                        activeSession?.diagnosticInstructionTraceSnapshot()?.takeLast(24)
-                            ?.joinToString("\n") { entry ->
-                                "PC=0x${entry.pc.toULong().toString(16).uppercase().padStart(16, '0')} INST=0x${entry.instruction.toUInt().toString(16).uppercase().padStart(8, '0')}"
-                            }?.ifBlank { "Nenhuma instrução capturada." } ?: "Sessão indisponível."
-                    )
-                    writer.appendLine()
-                    writer.appendLine("=== CPU / COP0 / TLB ===")
-                    if (diagnosticCpu == null) {
-                        writer.appendLine("CPU ainda não disponível.")
-                    } else {
-                        writer.appendLine("PC=0x${diagnosticCpu.pc.toULong().toString(16).uppercase()}")
-                        writer.appendLine("HI=0x${diagnosticCpu.hi.toULong().toString(16).uppercase().padStart(16, '0')} LO=0x${diagnosticCpu.lo.toULong().toString(16).uppercase().padStart(16, '0')}")
-                        writer.appendLine("TLB habilitada=${diagnosticCpu.tlbEnabled}")
-                        writer.appendLine("=== TODOS OS GPR (R4300) ===")
-                        diagnosticCpu.gpr.forEachIndexed { index, value ->
-                            writer.appendLine("GPR[$index]=0x${value.toULong().toString(16).uppercase().padStart(16, '0')}")
-                        }
-                        writer.appendLine("=== TODOS OS COP0 ===")
-                        diagnosticCpu.cop0.forEachIndexed { index, value ->
-                            writer.appendLine("COP0[$index]=0x${value.toULong().toString(16).uppercase().padStart(16, '0')}")
-                        }
-                        writer.appendLine("=== TODOS OS FPR / FCR ===")
-                        diagnosticCpu.fpr.forEachIndexed { index, value ->
-                            writer.appendLine("FPR[$index]=0x${value.toULong().toString(16).uppercase().padStart(16, '0')} FCR[$index]=0x${diagnosticCpu.fcr[index].toULong().toString(16).uppercase().padStart(16, '0')}")
-                        }
-                        writer.appendLine("=== TODAS AS ENTRADAS TLB ATUAIS ===")
-                        writer.appendLine(diagnosticCpu.diagnosticFullTlbSnapshot())
-                        writer.appendLine("Exceção=${diagnosticCpu.lastExceptionCode ?: "nenhuma"} EPC-instrução=0x${diagnosticCpu.lastExceptionInstructionAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A"}")
-                        writer.appendLine("=== EVENTOS CPU: INTERRUPÇÕES, EXCEÇÕES E ERET (últimos 64) ===")
-                        writer.appendLine(diagnosticCpu.diagnosticControlFlowHistory.joinToString("\n").ifBlank { "Nenhuma entrada, saída ou exceção registrada." })
-                        writer.appendLine("=== INTERRUPÇÕES MI ENTREGUES À CPU (histórico separado) ===")
-                        writer.appendLine(diagnosticCpu.diagnosticInterruptHistory.joinToString("\n").ifBlank { "Nenhuma interrupção MI entregue à CPU." })
-                        writer.appendLine("=== FONTES MI: INTERRUPÇÕES ASSERTADAS E RECONHECIDAS ===")
-                        writer.appendLine(bus.diagnosticMiInterruptSourceHistory.joinToString("\n").ifBlank { "Nenhuma transição de fonte MI registrada." })
-                        writer.appendLine("Falha TLB=${diagnosticCpu.lastTlbFaultKind ?: "nenhuma"} acesso=${diagnosticCpu.lastTlbFaultAccessType ?: "N/A"} VA=0x${diagnosticCpu.lastTlbFaultVirtualAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A"}")
-                        writer.appendLine("JR/JALR antes da primeira falha TLB: PC=${diagnosticCpu.firstTlbFaultIndirectJumpAddress?.let { "0x" + it.toULong().toString(16).uppercase() } ?: "N/A"} INST=${diagnosticCpu.firstTlbFaultIndirectJumpInstruction?.let { "0x" + it.toUInt().toString(16).uppercase() } ?: "N/A"} DESTINO=${diagnosticCpu.firstTlbFaultIndirectTarget?.let { "0x" + it.toULong().toString(16).uppercase() } ?: "N/A"}")
-                        writer.appendLine("BadVAddr=0x${diagnosticCpu.cop0[8].toUInt().toString(16).uppercase().padStart(8, '0')} Context=0x${diagnosticCpu.cop0[4].toUInt().toString(16).uppercase().padStart(8, '0')} EntryHi=0x${diagnosticCpu.cop0[10].toUInt().toString(16).uppercase().padStart(8, '0')}")
-                        writer.appendLine("Status=0x${diagnosticCpu.cop0[12].toUInt().toString(16).uppercase().padStart(8, '0')} Cause=0x${diagnosticCpu.cop0[13].toUInt().toString(16).uppercase().padStart(8, '0')} EPC=0x${diagnosticCpu.cop0[14].toUInt().toString(16).uppercase().padStart(8, '0')}")
-                        writer.appendLine("Index=0x${diagnosticCpu.cop0[0].toUInt().toString(16).uppercase().padStart(8, '0')} Random=0x${diagnosticCpu.cop0[1].toUInt().toString(16).uppercase().padStart(8, '0')} Wired=0x${diagnosticCpu.cop0[6].toUInt().toString(16).uppercase().padStart(8, '0')} PageMask=0x${diagnosticCpu.cop0[5].toUInt().toString(16).uppercase().padStart(8, '0')}")
-                        writer.appendLine("Histórico TLBWI/TLBWR:")
-                        writer.appendLine(diagnosticCpu.diagnosticTlbWriteHistory.joinToString("\n").ifBlank { "Nenhuma escrita TLB registrada." })
-                        writer.appendLine("Rotina de inicialização PTE (janela 0x700017C0–0x70001840):")
-                        writer.appendLine(diagnosticCpu.diagnosticPteSetupHistory.joinToString("\n").ifBlank { "Nenhuma instrução capturada nessa janela." })
-                        writer.appendLine("Caminho de chamada e auxiliares (0x70004D20–0x70004F20, 0x70005B60–0x70005D60, 0x7000D6D0–0x7000D790, rotinas PI DMA e retorno/JAL):")
-                        writer.appendLine(diagnosticCpu.diagnosticCallPathHistory.joinToString("\n").ifBlank { "Nenhuma instrução capturada nas janelas do caminho de chamada." })
-                        writer.appendLine("Histórico de exceções TLB e vetores:")
-                        writer.appendLine(diagnosticCpu.diagnosticTlbExceptionHistory.joinToString("\n").ifBlank { "Nenhuma exceção TLB registrada." })
-                        writer.appendLine("Instruções imediatamente anteriores à primeira exceção TLB:")
-                        writer.appendLine(diagnosticCpu.diagnosticTlbPreExceptionHistory.joinToString("\n").ifBlank { "Nenhuma instrução anterior capturada." })
-                        writer.appendLine("Acessos de dados durante o handler TLB (VA/PA/valor):")
-                        writer.appendLine(diagnosticCpu.diagnosticTlbMemoryAccessHistory.joinToString("\n").ifBlank { "Nenhum acesso de dados capturado durante a janela do handler." })
-                        writer.appendLine("Instruções após exceções TLB e amostras do loop:")
-                        writer.appendLine(diagnosticCpu.diagnosticTlbInstructionHistory.joinToString("\n").ifBlank { "Nenhuma instrução capturada." })
-                        writer.appendLine("Snapshot TLB no primeiro fault:")
-                        writer.appendLine(diagnosticCpu.lastTlbEntrySnapshot)
-                    }
-                    writer.appendLine()
-                    writer.appendLine("=== CONTADORES MMIO ===")
-                    writer.appendLine(bus.diagnosticMmioCounts.entries.sortedBy { it.key }
-                        .joinToString("\n") { "${it.key}=${it.value}" }.ifBlank { "Nenhum acesso MMIO registrado." })
-                    writer.appendLine()
-                    writer.appendLine("=== HISTÓRICO MMIO (mais recente) ===")
-                    writer.appendLine(bus.diagnosticMmioHistory.toList().joinToString("\n").ifBlank { "Vazio." })
-                    writer.appendLine()
-                    writer.appendLine("=== MMIO SP (histórico dedicado de leituras e escritas) ===")
-                    writer.appendLine(bus.diagnosticSpMmioCounts.entries.sortedBy { it.key }
-                        .joinToString("\n") { "${it.key}=${it.value}" }.ifBlank { "Nenhum acesso SP registrado." })
-                    writer.appendLine(bus.diagnosticSpMmioHistory.toList().joinToString("\n").ifBlank { "Nenhum acesso SP registrado." })
-                    writer.appendLine()
-                    writer.appendLine("=== ESCRITAS SP (histórico dedicado) ===")
-                    writer.appendLine(bus.diagnosticSpWriteHistory.toList().joinToString("\n").ifBlank { "Nenhuma escrita SP registrada." })
-                    writer.appendLine()
-                    writer.appendLine("=== TRANSFERÊNCIAS DMA DO SP ===")
-                    writer.appendLine(bus.diagnosticSpDmaHistory.toList().joinToString("\n").ifBlank { "Vazio." })
-                    writer.appendLine()
-                    writer.appendLine("=== DESCRITORES OSTASK DETECTADOS POR DMA ===")
-                    writer.appendLine(bus.diagnosticSpTaskDescriptorDmaHistory.toList().joinToString("\n").ifBlank { "Nenhum DMA canônico de OSTask detectado." })
-                    writer.appendLine("Observação passiva: esta seção não inicia nem agenda o RSP.")
-                    writer.appendLine()
-                    writer.appendLine("=== TRANSFERÊNCIAS DMA DO PI ===")
-                    writer.appendLine(bus.diagnosticPiDmaHistory.toList().joinToString("\n").ifBlank { "Vazio." })
-                    writer.appendLine()
-                    writer.appendLine("=== ACESSOS DE MEMÓRIA DO BOOT ===")
-                    writer.appendLine("Total exato de acessos observados: ${bus.diagnosticBootMemoryAccessTotal}")
-                    writer.appendLine(bus.diagnosticBootMemoryAccessHistory.toList().joinToString("\n").ifBlank { "Vazio." })
-                    writer.appendLine()
-                    writer.appendLine("=== ESCRITAS RDRAM ===")
-                    writer.appendLine("Total: ${bus.diagnosticRdramWriteCount}")
-                    writer.appendLine(bus.diagnosticRdramWriteHistory.toList().joinToString("\n").ifBlank { "Vazio." })
-                    writer.appendLine()
-                    writer.appendLine("=== WATCHPOINT DA TABELA PTE COMPLETA (RDRAM 0x5DBF0–0x5E3EF) ===")
-                    writer.appendLine("Total de bytes escritos pela CPU: ${bus.diagnosticPteWriteCount}")
-                    writer.appendLine(bus.diagnosticPteWriteHistory.toList().joinToString("\n").ifBlank { "Nenhuma escrita da CPU nessa faixa foi observada." })
-                    writer.appendLine()
-                    writer.appendLine("=== ESCRITAS NA REGIÃO DE DESTINO DO BOOT ===")
-                    writer.appendLine("Total: ${bus.diagnosticBootDestinationWriteCount}")
-                    writer.appendLine(bus.diagnosticBootDestinationWriteHistory.toList().joinToString("\n").ifBlank { "Vazio." })
-                    writer.appendLine()
-                    writer.appendLine("=== IDENTIFICAÇÃO E CABEÇALHO DA ROM ===")
-                    writer.appendLine(bus.diagnosticCartridgeSummary())
-                    writer.appendLine()
-                    writer.appendLine("=== REGISTRADORES DOS DISPOSITIVOS ===")
-                    writer.appendLine(bus.diagnosticDeviceSnapshot().joinToString("\n"))
-                    writer.appendLine("=== SNAPSHOT RSP COMPLETO (GPR, HI/LO, VEC, ACC E FLAGS) ===")
-                    writer.appendLine(activeSession?.diagnosticRspSnapshot() ?: "Sessão RSP indisponível.")
-                    writer.appendLine("=== BYTES ORIGINAIS DA ROM — FONTE DO DMA PI ===")
-                    writer.appendLine(bus.diagnosticCartridgeDump(listOf(
-                        0x01320..0x0135F,
-                        0x34B30..0x36B2F
-                    )))
-                    writer.appendLine("=== COMPARAÇÃO DO FETCH FINAL: ROM 0x1320 VS RDRAM 0x720 ===")
-                    writer.appendLine("O PC virtual 0x70000720, com TLB[1] atual, deve ser conferido contra a origem ROM 0x1320.")
-                    writer.appendLine("=== DUMP DE MEMÓRIA RDRAM — REGIÕES DE INVESTIGAÇÃO ===")
-                    writer.appendLine(bus.diagnosticMemoryDump(listOf(
-                        0x0000..0x003F,
-                        0x02A0..0x02E0,
-                        0x0400..0x0440,
-                        0x0700..0x075F,
-                        0x1000..0x103F,
-                        0x20000..0x20080,
-                        0x232E0..0x23320,
-                        0x287B0..0x287F0,
-                        0x340000..0x341FFF,
-                        0x5DBF0..0x5E4A4,
-                        0x636D0..0x63710,
-                        0x201460..0x2014C0
-                    )))
-                    writer.appendLine("=== PIF RAM (64 BYTES) ===")
-                    writer.appendLine(bus.diagnosticPifRamDump())
-                    writer.appendLine("=== SP DMEM E IMEM COMPLETAS ===")
-                    writer.appendLine(bus.diagnosticSpMemoryDump())
-                    writer.appendLine()
-                    writer.appendLine("=== DPC / RDP ===")
-                    writer.appendLine(bus.diagnosticDpcSnapshot())
-                    writer.appendLine()
-                    writer.appendLine("=== RESUMO DA SESSÃO ===")
-                    writer.appendLine("CPU instruções: ${activeSession?.executedInstructionCount() ?: "indisponível"}")
-                    writer.appendLine("RSP instruções: ${activeSession?.executedRspInstructionCount() ?: "indisponível"}")
-                    writer.appendLine("Último RSP PC: ${activeSession?.lastRspInstructionAddress()?.let { "0x" + it.toString(16).uppercase() } ?: "N/A"}")
-                    writer.appendLine("Última instrução RSP: ${activeSession?.lastRspInstructionWord()?.let { "0x" + it.toUInt().toString(16).uppercase().padStart(8, '0') } ?: "N/A"}")
-                    writer.appendLine("Falha RSP: ${activeSession?.rspFailureMessage() ?: "nenhuma registrada"}")
-                    writer.appendLine("Frames VI publicados: ${activeSession?.publishedFrameCount() ?: 0}")
-                    writer.appendLine("Falha na captura VI: ${activeSession?.frameCaptureFailureMessage() ?: "nenhuma registrada"}")
-                    writer.appendLine("=== FIM DOS LOGS ===")
-                }
-                runOnUiThread {
-                    Toast.makeText(this@MainActivity, "Logs salvos em Downloads/N64Android.", Toast.LENGTH_LONG).show()
-                }
-
-                    } catch (error: Exception) {
-                        runOnUiThread {
-                            Toast.makeText(this@MainActivity, "Falha ao exportar logs: ${error.message ?: error.javaClass.simpleName}", Toast.LENGTH_LONG).show()
-                        }
-                    } finally {
-                        runOnUiThread { exportButton.isEnabled = true }
-                    }
-                }, "N64-Log-Export").start()
-            }
-        }
+        val diagnosticExportButton = createDiagnosticExportButton { details.text.toString() }
         val stopButton = Button(this).apply {
             text = "PARAR EXECUÇÃO"
             setOnClickListener {
@@ -389,7 +171,7 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
             ))
             addView(details)
-            addView(copyLogsButton)
+            addView(diagnosticExportButton)
             addView(stopButton)
             addView(backButton)
         }
@@ -1573,6 +1355,116 @@ class MainActivity : Activity() {
     }
 
 
+    /**
+     * One focused diagnostic exporter shared by the ROM execution and diagnostic screens.
+     * Stops the emulation worker before reading mutable CPU/bus diagnostic collections.
+     */
+    private fun createDiagnosticExportButton(reportText: () -> String): Button {
+        return Button(this).apply {
+            text = "COLETAR E SALVAR DIAGNÓSTICO"
+            isAllCaps = false
+            setOnClickListener {
+                isEnabled = false
+                val button = this
+                Thread({
+                    try {
+                        val worker = romVideoThread
+                        val sessionAtStart = romVideoSession ?: lastRomVideoSession
+                        if (worker?.isAlive == true) {
+                            romVideoStopRequested = true
+                            sessionAtStart?.requestStop()
+                            worker.join(LOG_EXPORT_STOP_TIMEOUT_MS)
+                            if (worker.isAlive) {
+                                throw IOException("A emulação não parou a tempo. Tente novamente.")
+                            }
+                        }
+                        val bus = cartridgeBus
+                        val cpu = romVideoCpu
+                        val session = lastRomVideoSession ?: sessionAtStart
+                        val output = buildString {
+                            appendLine("N64 ANDROID — DIAGNÓSTICO DIRECIONADO")
+                            appendLine("Data: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date())}")
+                            appendLine("ROM carregada: ${cartridgeRomBytes?.size ?: 0} bytes")
+                            appendLine("Estado da execução: ${if (worker?.isAlive == true) "ATIVA" else "PARADA"}")
+                            appendLine()
+                            appendLine("=== TELA / CONTEXTO ===")
+                            appendLine(runCatching { reportText() }.getOrDefault("Texto da tela indisponível."))
+                            appendLine()
+                            appendLine("=== RESUMO AUTOMÁTICO HLE ===")
+                            if (bus != null && cpu != null) {
+                                appendLine(N64HleAutoDiagnostic.build(
+                                    cpu = cpu,
+                                    bus = bus,
+                                    instructionCount = session?.executedInstructionCount() ?: 0L,
+                                    rspInstructionCount = session?.executedRspInstructionCount() ?: 0L,
+                                    frameCount = session?.publishedFrameCount() ?: 0L,
+                                    loop = session?.diagnosticRepeatedInstructionLoop()
+                                ))
+                                appendLine()
+                                appendLine("=== CPU / COP0 ===")
+                                appendLine("PC=0x${cpu.pc.toULong().toString(16).uppercase()}")
+                                appendLine("HI=0x${cpu.hi.toULong().toString(16).uppercase()} LO=0x${cpu.lo.toULong().toString(16).uppercase()}")
+                                cpu.gpr.forEachIndexed { i, value -> appendLine("GPR[$i]=0x${value.toULong().toString(16).uppercase()}") }
+                                cpu.cop0.forEachIndexed { i, value -> appendLine("COP0[$i]=0x${value.toULong().toString(16).uppercase()}") }
+                                appendLine("TLB habilitada=${cpu.tlbEnabled}")
+                                appendLine("Última exceção=${cpu.lastExceptionCode ?: "nenhuma"} EPC=0x${cpu.lastExceptionInstructionAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A"}")
+                                appendLine("Falha TLB=${cpu.lastTlbFaultKind ?: "nenhuma"} VA=0x${cpu.lastTlbFaultVirtualAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A"}")
+                                appendLine("=== ÚLTIMAS INSTRUÇÕES CPU ===")
+                                appendLine(session?.diagnosticInstructionTraceSnapshot()?.takeLast(40)?.joinToString("\n") {
+                                    "PC=0x${it.pc.toULong().toString(16).uppercase()} INST=0x${it.instruction.toUInt().toString(16).uppercase()}"
+                                } ?: "Sem sessão.")
+                                appendLine("=== ESTADO DOS DISPOSITIVOS ===")
+                                appendLine(bus.diagnosticDeviceSnapshot().joinToString("\n"))
+                                appendLine("=== CONTADORES MMIO ===")
+                                appendLine(bus.diagnosticMmioCounts.entries.sortedBy { it.key }.joinToString("\n") { "${it.key}=${it.value}" })
+                                appendLine("=== SP / DMA / OSTASK ===")
+                                appendLine(bus.diagnosticSpMmioHistory.toList().joinToString("\n"))
+                                appendLine(bus.diagnosticSpDmaHistory.toList().joinToString("\n"))
+                                appendLine(bus.diagnosticSpTaskDescriptorDmaHistory.toList().joinToString("\n"))
+                                appendLine("=== DMA PI ===")
+                                appendLine(bus.diagnosticPiDmaHistory.toList().joinToString("\n"))
+                                appendLine("=== DPC / RDP ===")
+                                appendLine(bus.diagnosticDpcSnapshot())
+                                appendLine("=== RSP ===")
+                                appendLine(session?.diagnosticRspSnapshot() ?: "Sessão RSP indisponível.")
+                                appendLine("=== CONTADORES DA SESSÃO ===")
+                                appendLine("CPU instruções=${session?.executedInstructionCount() ?: 0}")
+                                appendLine("RSP instruções=${session?.executedRspInstructionCount() ?: 0}")
+                                appendLine("Frames VI=${session?.publishedFrameCount() ?: 0}")
+                                appendLine("Falha RSP=${session?.rspFailureMessage() ?: "nenhuma"}")
+                                appendLine("Falha VI=${session?.frameCaptureFailureMessage() ?: "nenhuma"}")
+                                appendLine("=== ROM ===")
+                                appendLine(bus.diagnosticCartridgeSummary())
+                            } else {
+                                appendLine("CPU ou barramento ainda não disponível; execute uma ROM antes de coletar o diagnóstico.")
+                            }
+                            appendLine("=== FIM ===")
+                        }
+                        val values = ContentValues().apply {
+                            put(MediaStore.Downloads.DISPLAY_NAME, "N64-Android-diagnostico-${System.currentTimeMillis()}.txt")
+                            put(MediaStore.Downloads.MIME_TYPE, "text/plain")
+                            put(MediaStore.Downloads.RELATIVE_PATH, "Download/N64Android")
+                        }
+                        val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                            ?: throw IOException("Não foi possível criar o arquivo em Downloads.")
+                        val stream = contentResolver.openOutputStream(uri)
+                            ?: throw IOException("Não foi possível abrir o arquivo.")
+                        stream.bufferedWriter(Charsets.UTF_8).use { it.write(output) }
+                        runOnUiThread {
+                            Toast.makeText(this@MainActivity, "Diagnóstico salvo em Downloads/N64Android.", Toast.LENGTH_LONG).show()
+                        }
+                    } catch (error: Exception) {
+                        runOnUiThread {
+                            Toast.makeText(this@MainActivity, "Falha ao salvar diagnóstico: ${error.message ?: error.javaClass.simpleName}", Toast.LENGTH_LONG).show()
+                        }
+                    } finally {
+                        runOnUiThread { button.isEnabled = true }
+                    }
+                }, "N64-Diagnostic-Export").start()
+            }
+        }
+    }
+
     private fun showRomDiagnosticPage(diagnostic: String, videoFrame: N64VideoFrame? = null) {
         val diagnosticText = TextView(this).apply {
             text = diagnostic
@@ -1580,14 +1472,7 @@ class MainActivity : Activity() {
             setPadding(24, 24, 24, 24)
             movementMethod = ScrollingMovementMethod()
         }
-        val copyButton = Button(this).apply {
-            text = "Copiar logs deste diagnóstico"
-            setOnClickListener {
-                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                clipboard.setPrimaryClip(ClipData.newPlainText("N64 Android diagnóstico parcial da ROM", diagnosticText.text))
-                Toast.makeText(this@MainActivity, "Logs copiados. Volte ao chat e cole aqui.", Toast.LENGTH_LONG).show()
-            }
-        }
+        val diagnosticExportButton = createDiagnosticExportButton { diagnosticText.text.toString() }
         val backButton = Button(this).apply {
             text = "Voltar ao menu"
             setOnClickListener { setContentView(mainLayout) }
@@ -1603,7 +1488,7 @@ class MainActivity : Activity() {
                 addView(frameView, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
             }
             addView(diagnosticText, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
-            addView(copyButton)
+            addView(diagnosticExportButton)
             addView(backButton)
         }
         setContentView(page)
