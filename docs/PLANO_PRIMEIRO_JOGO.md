@@ -209,3 +209,28 @@ Referências:
 - Disassembly correspondente: https://github.com/decompals/N64-IPL/blob/main/src/ipl3.s
 - Repositório de disassemblies IPL1/IPL2/IPL3: https://github.com/decompals/N64-IPL
 - Manual de programação N64, procedimento de boot: https://ultra64.ca/files/documentation/online-manuals/man/pro-man/pro06/06-10.html
+
+## Correção do estado inicial de CPU com base em IPL1/IPL2 — 2026-11-03
+
+A leitura da disassembly `src/pifrom.s` esclareceu o estado herdado pelo IPL3 6102:
+
+- IPL1 escreve `Status = SR_CU0 | SR_CU1 | SR_FR = 0x34000000`.
+- IPL1 escreve `Config = 0x0005E463` (perfil `CONFIG_NONCOHRNT`).
+- IPL1 define `$sp = PHYS_TO_K1(SP_IMEM_END - 0xF) = 0xA4001FF0`; o IPL3 usa essa pilha temporariamente e restaura o valor antes de prosseguir para o jogo.
+- IPL2 fornece `s3-s7`; para cartucho NTSC-U com CIC 6102, o perfil inclui ROM type 0, TV type 1, reset type 0, seed 0x3F e versão 0.
+- IPL3 zera Cause, Count e Compare no começo da rotina.
+
+### Alteração aplicada no HLE
+
+- `N64HleBoot.INITIAL_STATUS` agora reproduz 0x34000000, em vez de ligar somente CU1.
+- `N64HleBoot.INITIAL_CONFIG` agora define 0x0005E463.
+- `INITIAL_STACK` foi corrigido de `0xFFFFFFFFA07FFFE0` para `0xFFFFFFFFA4001FF0`.
+- O teste HLE agora verifica Status, Config e stack exatos.
+- A TLB continua habilitada e vazia; não foi criada nenhuma entrada artificial. O estado do MMU ainda será comparado com o caminho de boot e o primeiro acesso KUSEG do GoldenEye.
+
+Commits de código/teste:
+- `e7195b85da0b7b5ffed0f7a2b626f95635cf3c8f` — estado CP0 e stack no HLE.
+- `f1390015b7680eb0d69d701badce7726d7d2553f` — asserts exatos de Status/Config.
+- Correções de formatação intermediárias: `38d9bcffe89e7040e32b2b46bf13287d8245c72f` e `dd42fff048a0b2dcb7372f526f3453caacc65a6d`.
+
+Ainda não declarar boot equivalente: a inicialização de RI/RDRAM, caches, dispositivos e checksum da imagem de 1 MiB segue parcial. CI do commit final deve ser conferida antes de instalar APK.
