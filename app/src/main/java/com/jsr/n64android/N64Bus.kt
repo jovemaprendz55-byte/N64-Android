@@ -610,6 +610,13 @@ class N64Bus(
                     diagnosticLastDpcResult = result
                     diagnosticLastDpcFailure = null
                     dpcCurrent = result.endAddressExclusive
+                } catch (error: UnsupportedOperationException) {
+                    // An unsupported RDP command is an emulator capability gap,
+                    // not a CPU bus fault. Keep the failure visible to diagnostics
+                    // without injecting a false DBE into the guest CPU.
+                    diagnosticLastDpcFailure =
+                        "${error.javaClass.simpleName}: ${error.message ?: "no details"}"
+                    return
                 } catch (error: Throwable) {
                     diagnosticLastDpcFailure =
                         "${error.javaClass.simpleName}: ${error.message ?: "no details"}"
