@@ -74,4 +74,56 @@ class R4300Cop1MemoryTest {
         assertEquals(0x55667788, memory.read32(0x24))
     }
 
+    @Test fun ldc1OddRegisterRaisesReservedInstructionInFr0WithoutChangingPair() {
+        val memory = N64Memory(128)
+        memory.write32(0, (0x35 shl 26) or (1 shl 21) or (3 shl 16))
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.gpr[1] = 0x20L
+        cpu.fpr[2] = 0x11223344L
+        cpu.fpr[3] = 0x55667788L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(10L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(0x11223344L, cpu.fpr[2])
+        assertEquals(0x55667788L, cpu.fpr[3])
+    }
+
+    @Test fun sdc1OddRegisterRaisesReservedInstructionInFr0WithoutWritingMemory() {
+        val memory = N64Memory(128)
+        memory.write32(0, (0x3D shl 26) or (1 shl 21) or (3 shl 16))
+        memory.write32(0x20, 0x11223344)
+        memory.write32(0x24, 0x55667788)
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.gpr[1] = 0x20L
+        cpu.fpr[3] = 0xAABBCCDDL
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(10L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(0x11223344, memory.read32(0x20))
+        assertEquals(0x55667788, memory.read32(0x24))
+    }
+
+    @Test fun singleWordTransfersKeepOddAndEvenRegistersIndependentInFr0() {
+        val memory = N64Memory(128)
+        memory.write32(0, (0x11 shl 26) or (4 shl 21) or (1 shl 16) or (3 shl 11))
+        memory.write32(4, (0x11 shl 26) or (0 shl 21) or (2 shl 16) or (3 shl 11))
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.gpr[1] = 0x89ABCDEFL
+        cpu.fpr[2] = 0x11223344L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+        assertEquals(0x89ABCDEFL, cpu.fpr[3])
+        cpu.step()
+        assertEquals(0x89ABCDEFL, cpu.gpr[2])
+        assertEquals(0x11223344L, cpu.fpr[2])
+    }
+
 }
