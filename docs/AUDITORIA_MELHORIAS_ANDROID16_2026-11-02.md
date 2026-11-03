@@ -237,3 +237,11 @@ As primeiras execuções dos testes W/L expuseram uma lacuna no decoder: embora 
 - Commit de correção: `779c1468d950397376748ce5ecc724ca8ce55ee2`.
 - A falha foi de compilação do teste; o código de produção compilou e `assembleDebug` terminou antes da tarefa de testes falhar. A CI do commit de correção está pendente de confirmação.
 - Não declarar exceções FPU completas nem compatibilidade de ROM: os casos Invalid/Overflow e demais condições IEEE ainda têm cobertura parcial; não houve teste no aparelho Android 16.
+
+
+## Cobertura adicional das exceções COP1 — 2026-11-03
+
+- As CIs dos commits de correção da máscara de Cause e atualização dos dois documentos passaram: runs 41570279292, 41570310432 e 41570319123 (todos success).
+- Testes novos enviados no commit 994009656444241a8ded4cd6a88ab8cc5718ae3f: operação inválida 0/0, preservação de Flags sticky, overflow de multiplicação S e trap de Invalid habilitado com destino preservado.
+- O resultado de overflow usa o caminho de precisão simples, em que Float.MAX_VALUE multiplicado por 2 produz infinito; a classificação verifica operandos finitos e resultado infinito.
+- A CI do commit de testes está pendente. A implementação continua parcial e não comprova compatibilidade completa IEEE-754/VR4300 nem execução de ROM no Android 16.
