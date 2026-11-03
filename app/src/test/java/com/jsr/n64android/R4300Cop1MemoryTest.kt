@@ -53,4 +53,24 @@ class R4300Cop1MemoryTest {
         assertEquals(0x24L, cpu.cop0[8])
         assertEquals(0x1122334455667788L, cpu.fpr[2])
     }
+
+    @Test fun sdc1MisalignmentRaisesAddressStoreExceptionWithoutWritingMemory() {
+        val memory = N64Memory(128)
+        memory.write32(0, (0x3D shl 26) or (1 shl 21) or (2 shl 16))
+        memory.write32(0x20, 0x11223344)
+        memory.write32(0x24, 0x55667788)
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.gpr[1] = 0x24L
+        cpu.fpr[2] = 0xAABBCCDDEEFF0011UL.toLong()
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(5L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(0x24L, cpu.cop0[8])
+        assertEquals(0x11223344, memory.read32(0x20))
+        assertEquals(0x55667788, memory.read32(0x24))
+    }
+
 }
