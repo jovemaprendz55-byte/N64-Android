@@ -791,6 +791,43 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                         if ((instruction and 0x7FF) != 0) throw ReservedInstructionFault("Malformed CTC1 reserved fields")
                         if (rd != 0) fcr[rd] = gpr[rt].toInt().toLong()
                     }
+                    0x10, 0x11 -> {
+                        val ft = rt
+                        val fs = rd
+                        val fd = (instruction ushr 6) and 0x1F
+                        val fn = instruction and 0x3F
+                        if (rs == 0x10) {
+                            val x = java.lang.Float.intBitsToFloat(fpr[fs].toInt())
+                            val y = java.lang.Float.intBitsToFloat(fpr[ft].toInt())
+                            val z = when (fn) {
+                                0x00 -> x + y
+                                0x01 -> x - y
+                                0x02 -> x * y
+                                0x03 -> x / y
+                                0x04 -> Math.sqrt(x.toDouble()).toFloat()
+                                0x05 -> kotlin.math.abs(x)
+                                0x06 -> x
+                                0x07 -> -x
+                                else -> throw ReservedInstructionFault("Unsupported COP1 single function")
+                            }
+                            fpr[fd] = java.lang.Float.floatToRawIntBits(z).toLong() and 0xFFFFFFFFL
+                        } else {
+                            val x = java.lang.Double.longBitsToDouble(fpr[fs])
+                            val y = java.lang.Double.longBitsToDouble(fpr[ft])
+                            val z = when (fn) {
+                                0x00 -> x + y
+                                0x01 -> x - y
+                                0x02 -> x * y
+                                0x03 -> x / y
+                                0x04 -> Math.sqrt(x)
+                                0x05 -> kotlin.math.abs(x)
+                                0x06 -> x
+                                0x07 -> -x
+                                else -> throw ReservedInstructionFault("Unsupported COP1 double function")
+                            }
+                            fpr[fd] = java.lang.Double.doubleToRawLongBits(z)
+                        }
+                    }
                     else -> throw ReservedInstructionFault(
                         "R4300 COP1 transfer/arithmetic rs=0x${rs.toString(16)} at 0x${instructionAddress.toString(16)}; FPU arithmetic is not implemented yet"
                     )
