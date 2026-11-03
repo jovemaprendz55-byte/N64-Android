@@ -90,3 +90,6 @@ Próxima leitura do log novo:
 **CI dos commits acima:** ainda precisa ser consultado após os pushes. Não há confirmação de execução real do GoldenEye no aparelho; é necessário gerar um log novo no Poco C85 com o APK desta revisão.
 
 - `b522ce356adb34fae6601726e1d9fc44a8a248bc` — teste explícito de que `R4300Cpu.reset()` limpa o histórico de IRQ entregue.
+
+- `96a1cf0bb4deffc6f9a921137512e377a729523b` — registrar alterações reais da máscara de interrupções MI (SET/CLEAR).
+- `9065b19a0acb6902963947f36caa6f111981b87c` — teste para garantir que a máscara só registra transições reais.
