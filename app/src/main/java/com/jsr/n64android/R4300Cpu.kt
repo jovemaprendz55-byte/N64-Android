@@ -170,6 +170,12 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     val diagnosticInterruptHistory: MutableList<String> = mutableListOf()
     /** Bounded record of actual TLBWI/TLBWR operations for ROM diagnostics. */
     val diagnosticTlbWriteHistory: MutableList<String> = mutableListOf()
+    /** Bounded MTC0 history, needed to reconstruct guest changes to EPC/Status/TLB state. */
+    val diagnosticCop0WriteHistory: MutableList<String> = mutableListOf()
+    var diagnosticCop0WriteCount: Long = 0L
+        private set
+    var diagnosticCop0WriteEvictedCount: Long = 0L
+        private set
     /** Bounded architectural TLB exception trace, including the selected exception vector. */
     val diagnosticTlbExceptionHistory: MutableList<String> = mutableListOf()
     /** TLB contents frozen when the first architectural TLB fault is delivered. */
@@ -220,6 +226,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         firstTlbFaultIndirectJumpInstruction = null
         firstTlbFaultIndirectTarget = null
         diagnosticTlbWriteHistory.clear()
+        diagnosticCop0WriteHistory.clear()
+        diagnosticCop0WriteCount = 0L
+        diagnosticCop0WriteEvictedCount = 0L
         diagnosticControlFlowHistory.clear()
         diagnosticEretHistory.clear()
         diagnosticSelfLoopEntryHistory.clear()
@@ -731,6 +740,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     0x00 -> gpr[rt] = cop0[copRd].toInt().toLong() // MFC0 sign-extends 32-bit value
                     0x04 -> { // MTC0 writes low 32 bits.
                         val value = gpr[rt].toInt().toLong()
+                        val previousValue = cop0[copRd]
                         when (copRd) {
                             0 -> { // Index.P is read-only; only the low five index bits are writable.
                                 cop0[0] = (cop0[0] and (1L shl 31)) or (value and 0x1FL)
@@ -768,6 +778,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                             }
                             else -> cop0[copRd] = value
                         }
+                        recordCop0Write(instructionAddress, instruction, copRd, previousValue, value, cop0[copRd])
                     }
                     0x10 -> { // COP0 CO-format operations
                         when (funct) {
@@ -1397,6 +1408,57 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         )
     }
 
+    private fun recordCop0Write(
+        address: Long,
+        instruction: Int,
+        register: Int,
+        previousValue: Long,
+        inputValue: Long,
+        resultingValue: Long
+    ) {
+        diagnosticCop0WriteCount++
+        val name = when (register) {
+            0 -> "Index"
+            1 -> "Random"
+            2 -> "EntryLo0"
+            3 -> "EntryLo1"
+            4 -> "Context"
+            5 -> "PageMask"
+            6 -> "Wired"
+            8 -> "BadVAddr"
+            9 -> "Count"
+            10 -> "EntryHi"
+            11 -> "Compare"
+            12 -> "Status"
+            13 -> "Cause"
+            14 -> "EPC"
+            15 -> "PRId"
+            16 -> "Config"
+            17 -> "LLAddr"
+            18 -> "WatchLo"
+            19 -> "WatchHi"
+            20 -> "XContext"
+            26 -> "ECC"
+            27 -> "CacheErr"
+            28 -> "TagLo"
+            29 -> "TagHi"
+            30 -> "ErrorEPC"
+            31 -> "DESAVE"
+            else -> "Reserved"
+        }
+        if (diagnosticCop0WriteHistory.size >= COP0_WRITE_TRACE_CAPACITY) {
+            diagnosticCop0WriteHistory.removeAt(0)
+            diagnosticCop0WriteEvictedCount++
+        }
+        diagnosticCop0WriteHistory.add(
+            "MTC0 PC=0x${address.toULong().toString(16).uppercase().padStart(8, '0')} " +
+                "INST=0x${instruction.toUInt().toString(16).uppercase().padStart(8, '0')} " +
+                "COP0[$register]=$name OLD=0x${previousValue.toULong().toString(16).uppercase().padStart(8, '0')} " +
+                "INPUT=0x${inputValue.toULong().toString(16).uppercase().padStart(8, '0')} " +
+                "NEW=0x${resultingValue.toULong().toString(16).uppercase().padStart(8, '0')}"
+        )
+    }
+
     private fun writeTlbEntry(index: Int) {
         val entryHi = cop0[10] and 0xFFFFFFFFL
         val pageMask = R4300Tlb.normalizePageMask(cop0[5])
@@ -1837,6 +1899,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
 
     companion object {
         private const val TLB_PRE_EXCEPTION_TRACE_CAPACITY = 256
+        private const val COP0_WRITE_TRACE_CAPACITY = 1024
         private const val PTE_TRACE_PREFIX_CAPACITY = 64
         private const val PTE_TRACE_RECENT_CAPACITY = 2048
         private const val CALL_PATH_TRACE_CAPACITY = 2048
