@@ -1185,3 +1185,11 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Bits reservados escritos pelo software são descartados; FCR0 continua somente leitura.
 - Teste automatizado adicionado no commit `901885f00537984345b0a73e0d5a27ad86d78de3`, incluindo verificação dos campos individualmente.
 - CI da alteração de produção/teste ainda precisa ser confirmado. Isso prepara o controle do FPU, mas ainda não implementa Cause/Flag automáticos nem traps IEEE.
+
+
+## 53. FCR31: Cause/Flag básicos e trap por divide-by-zero
+- CI da máscara CTC1/FCR31 aprovada: produção `9951f9fb73eb16a5d57d8e0b243c522f45722c9a` (run `41569578981`); teste `901885f00537984345b0a73e0d5a27ad86d78de3` (run `41569603185`); documentação (run `41569632560`). Todos concluídos com sucesso.
+- Commit `55fb2806f8b9c101dc9b94309099cc02dcad1b91`: inicia o rastreamento básico de exceções FPU; Cause é substituído por operação, Flags são acumuladas, e exceção habilitada dispara FPE (ExcCode 15) antes da escrita do destino.
+- Commit `6463f5b9bc29dde71527c3abc3ee7d42636b3b72`: corrige alinhamento entre Cause e Enable.
+- Commits de teste `343d91a01b420843b5d569fc4cda02c1509faf68` e `47a437ea9399716bc4c60e08e817a9d3c997fbe8`: cobrem divide-by-zero habilitado/desabilitado, flags e preservação do destino no trap.
+- Escopo atual é limitado: detecção básica de divide-by-zero, invalid em alguns casos aritméticos/SQRT negativo e overflow finito; não é implementação IEEE completa. Inexact, underflow, NaN signaling, FCR31 Unimplemented e todos os detalhes de precisão ainda precisam de trabalho. CI dos commits 55fb280/6463f5b/47a437e ainda pendente.
