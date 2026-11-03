@@ -83,3 +83,19 @@ Foi acrescentado um histórico diagnóstico que registra um DMA RDRAM→DMEM ape
 ## Ajuste de formatação do evento OSTask — 2026-11-03
 
 A primeira execução do teste falhou porque os ponteiros no log não tinham padding de oito dígitos. Padronizado o formato de BOOT/UCODE/DATA/YIELD, mantendo a detecção passiva inalterada. Commit `dd614e6d0051bb1e256c962cbfd515d19f1fd5cd`. Aguardar CI.
+
+
+## Validação do CI e estado após a auditoria — 2026-11-03 05:15 BRT
+
+- HEAD da branch `dev/n64-clean-start`: `0e8e19d084152dd7e53b906213b593f904f14b78`.
+- O workflow Android do HEAD terminou com `success`: [run 41601629455](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41601629455).
+- O commit de formatação do evento OSTask `dd614e6d0051bb1e256c962cbfd515d19f1fd5cd` também tem CI `success`: [run 41601549420](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41601549420).
+- Houve falhas intermediárias durante a inclusão do relatório OSTask; os commits posteriores de correção/formatação passaram. Não usar os runs antigos com falha como estado final do HEAD.
+- O relatório de exportação já inclui a seção “DESCRITORES OSTASK DETECTADOS POR DMA”, alimentada pelo histórico passivo do barramento.
+- A captura só reconhece DMA RDRAM→DMEM com destino SP 0xFC0 e 64 bytes. Ela registra os campos do descritor após a transferência, sem liberar SP HALT e sem iniciar o RSP.
+- A árvore atual confirma que `N64RomVideoSession` continua executando a CPU e chamando `pumpRsp()` apenas em polling; quando SP HALT está ativo, não agenda tarefas. O `N64SpTaskRunner` continua sendo executor explícito para endereço de tarefa conhecido, não um scheduler ligado automaticamente à ROM.
+- Nenhuma ROM foi executada nesta validação do CI; nenhum APK foi instalado/testado no aparelho. Portanto, não há evidência de GoldenEye em execução nem de primeiro quadro real.
+
+### Próximo passo técnico obrigatório
+
+Usar uma ROM GoldenEye 007 USA selecionada localmente pelo usuário e o relatório exportado pelo app para verificar, em ordem: (1) se o PC deixa o loop idle; (2) se há DMA canônico do descritor para DMEM 0xFC0; (3) os valores UCODE/UCODE_SIZE/BOOT/BOOT_SIZE/DRAM_STACK/DATA_PTR/OUTPUT_BUFF; (4) os DMAs RDRAM→IMEM e a entrada efetiva no microcódigo. Só depois disso implementar o despachante integrado ou a extensão F3D/G_TRI4 que os dados confirmarem. Não inventar endereço de OSTask, não forçar SP HALT e não afirmar que CI verde significa jogo funcionando.
