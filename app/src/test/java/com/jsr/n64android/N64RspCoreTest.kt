@@ -141,6 +141,20 @@ class N64RspCoreTest {
     }
 
     @Test
+    fun internalHaltPollingDoesNotCreateSyntheticSpMmioReads() {
+        val (bus, rsp) = setup(
+            addiu(8, 0, 7),
+            0x0000000D // BREAK
+        )
+        val readsBefore = bus.diagnosticMmioHistory.count { it.startsWith("R SP ") }
+
+        assertEquals(2, rsp.run(10))
+
+        assertTrue(rsp.halted)
+        assertEquals(readsBefore, bus.diagnosticMmioHistory.count { it.startsWith("R SP ") })
+    }
+
+    @Test
     fun branchExecutesDelaySlotAndSkipsFallthrough() {
         val (bus, rsp) = setup(
             addiu(8, 0, 1),
