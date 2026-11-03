@@ -1298,3 +1298,12 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Commits: produção `7e7eeee4ec9068f180835e174bf2dcea24f0272c`; teste `6313a8417d59188fe833aa02120e9e6c444962ad`.
 - CI dos commits ainda estava em andamento na última consulta (runs 41601276572 e 41601311466). Aguardar resultado antes de validar.
 - Próximo passo após CI: acrescentar ao diagnóstico a correlação entre descritor observado, DMA de boot microcode para IMEM, SP_PC e comando CLR_HALT, mantendo observação passiva. Só depois de validar a sequência real da ROM projetar despacho.
+
+
+## 61. Ajuste do formato do log OSTask — 2026-11-03
+
+- A primeira CI do teste de captura passiva encontrou falha apenas na expectativa de formatação: o relatório imprimia ponteiros sem zeros à esquerda, enquanto o teste/documentação exigia endereços de 8 dígitos.
+- Padronizados BOOT, UCODE, DATA e YIELD com 8 dígitos hexadecimais. Não houve mudança na lógica de detecção DMA.
+- Commit de ajuste: `dd614e6d0051bb1e256c962cbfd515d19f1fd5cd`.
+- A CI que falhou foi run 41601311466; produção da captura passiva (run 41601276572) passou. Aguardar CI do commit de formatação e do export da MainActivity antes de declarar o conjunto validado.
+- O relatório da MainActivity agora inclui a seção de descritores OSTask detectados, com aviso explícito de que é observação passiva; commit `c29534a586c5d91c7166924c9b5c784fb2b097ed`.
