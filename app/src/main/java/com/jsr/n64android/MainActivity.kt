@@ -194,27 +194,6 @@ class MainActivity : Activity() {
                     bus = bus,
                     cpu = cpu,
                     onProgress = { count ->
-                        val activeSession = romVideoSession
-                        val repeatedLoop = activeSession?.diagnosticRepeatedInstructionLoop()
-                        val loopSignature = repeatedLoop?.pattern?.joinToString("|") {
-                            "${it.pc.toULong().toString(16)}:${it.instruction.toUInt().toString(16)}"
-                        }
-                        val noGraphicsActivity = activeSession != null &&
-                            activeSession.publishedFrameCount() == 0L &&
-                            activeSession.executedRspInstructionCount() == 0L &&
-                            (bus.diagnosticSpStatus() and N64Bus.SP_STATUS_HALT) != 0 &&
-                            (bus.diagnosticMmioWriteCounts["SP"] ?: 0L) == 0L &&
-                            (bus.diagnosticMmioWriteCounts["DPC"] ?: 0L) == 0L
-                        if (count >= AUTO_DIAGNOSTIC_MIN_INSTRUCTIONS && loopSignature != null && noGraphicsActivity) {
-                            if (loopSignature == previousIdleLoopSignature) stableIdleLoopSamples++
-                            else {
-                                previousIdleLoopSignature = loopSignature
-                                stableIdleLoopSamples = 1
-                            }
-                        } else {
-                            previousIdleLoopSignature = null
-                            stableIdleLoopSamples = 0
-                        }
                         val deviceLines = bus.diagnosticDeviceSnapshot()
                             .filter { it.startsWith("SP:") || it.startsWith("VI:") }
                             .joinToString("\n")
