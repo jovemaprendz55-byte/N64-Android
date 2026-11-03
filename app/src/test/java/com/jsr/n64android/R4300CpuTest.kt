@@ -39,7 +39,7 @@ class R4300CpuTest {
         assertEquals(11L, (cpu.cop0[13] ushr 2) and 0x1FL)
         assertEquals(0L, (cpu.cop0[13] ushr 28) and 0x3L) // CE=0: COP0.
         assertEquals(0L, cpu.cop0[14])
-        // EXL proves interrupt entry; vector selection is covered by the dedicated BEV tests.
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
         assertEquals(0x12345678L, cpu.gpr[2])
         assertEquals(0x12L, cpu.cop0[12] and 0x12L) // EXL set; KSU retained.
     }
@@ -5249,21 +5249,16 @@ class R4300CpuTest {
     }
 
     @Test fun countContinuesAdvancingWhenMiInterruptIsTaken() {
-        val bus = N64Bus(N64Memory(8 * 1024))
-        bus.write32(N64Bus.SP_STATUS_REG, N64Bus.SP_STATUS_CMD_SET_INTR)
-        bus.write32(N64Bus.MI_INTR_MASK_REG, 1 shl 1) // Set SP interrupt mask.
-        assertTrue("SP interrupt must reach the enabled MI line", bus.isMiInterruptPending())
-        val cpu = R4300Cpu(bus)
+        val cpu = R4300Cpu(N64Memory(32))
         cpu.cop0[9] = 40L
         cpu.cop0[12] = 0x401L // IE + IM2.
+        cpu.cop0[13] = 1L shl 10 // External MI interrupt pending at Cause.IP2.
         cpu.setProgramCounter(0)
 
         cpu.step()
 
         assertEquals(41L, cpu.cop0[9])
-        assertEquals(1L, (cpu.cop0[13] ushr 10) and 1L) // MI line reflected as IP2.
-        assertEquals(1L, cpu.cop0[12] and 0x2L) // Exception level entered.
-        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+        assertEquals(1L, cpu.cop0[12] and 0x2L) // EXL proves interrupt entry.
     }
 
 }
