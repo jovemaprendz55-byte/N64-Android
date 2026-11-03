@@ -32,6 +32,7 @@ class N64RomVideoSession(
     @Volatile private var rspFailure: String? = null
     @Volatile private var lastRspInstructionPc: Int? = null
     @Volatile private var lastRspInstructionWord: Int? = null
+    @Volatile private var lastFrameCaptureFailure: String? = null
 
     private val delegate: N64ExecutionSession
 
@@ -51,7 +52,18 @@ class N64RomVideoSession(
                 if (count % rspPollInterval == 0L) pumpRsp()
                 if (count % progressPollInterval == 0L) onProgress(count)
                 if (count % framePollInterval == 0L) {
-                    val frame = bus.captureViFrameFromRegisters()
+                    // VI registers are guest-controlled and may be transiently invalid
+                    // while a ROM is programming its display mode. A bad frame capture
+                    // must not escape the after-instruction callback and fail the CPU worker.
+                    val frame = try {
+                        bus.captureViFrameFromRegisters().also {
+                            if (it != null) lastFrameCaptureFailure = null
+                        }
+                    } catch (error: IllegalArgumentException) {
+                        lastFrameCaptureFailure =
+                            "${error.javaClass.simpleName}: ${error.message ?: "configuração VI inválida"}"
+                        null
+                    }
                     if (frame != null && !frame.argbPixels.contentEquals(previousPixels)) {
                         previousPixels = frame.argbPixels.copyOf()
                         publishedFrames.incrementAndGet()
@@ -87,6 +99,9 @@ class N64RomVideoSession(
     fun lastRspInstructionAddress(): Int? = lastRspInstructionPc
 
     fun lastRspInstructionWord(): Int? = lastRspInstructionWord
+
+    /** Last invalid guest VI configuration; cleared after a successful capture. */
+    fun frameCaptureFailureMessage(): String? = lastFrameCaptureFailure
 
     /** Returns all current RSP scalar/vector state without advancing emulation. */
     fun diagnosticRspSnapshot(): String =
