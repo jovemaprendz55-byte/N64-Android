@@ -1003,3 +1003,10 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - GitHub Actions run 41562510509 iniciou para o commit de testes; resultado ainda deve ser consultado antes de declarar aprovação.
 - Nenhum teste visual de ROM nem instalação no Android 16 foi realizado nesta etapa.
 - Branch dev/n64-clean-start; main permanece intacta.
+### Continuação FPU aritmética — 2026-11-03
+- Implementado subconjunto aritmético COP1 para formatos S e D: ADD, SUB, MUL, DIV, SQRT, ABS, MOV e NEG.
+- Valores são interpretados/gravados como bits IEEE-754 nos slots FPR; S grava os 32 bits baixos e D grava os 64 bits.
+- Testes novos em R4300Cop1ArithmeticTest.kt cobrem soma/multiplicação single, subtração/divisão double e exceção Coprocessor Unusable quando CU1 está desligado.
+- Limitações: conversões W/L, comparações C.cond, FCC adicionais, modos de arredondamento, flags Cause/Enable/Flag do FCR31, traps IEEE e semântica completa FR=0/FR=1 ainda não estão implementados. O conjunto aritmético atual é parcial.
+- Commit de produção: 1b05676f663f503bc0950986f4fab9a43efd557a.
+- Commit dos testes: d9eb615674d52ce62c23121ff3f529c7c194bf38.
