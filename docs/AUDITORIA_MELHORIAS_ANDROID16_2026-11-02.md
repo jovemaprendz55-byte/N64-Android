@@ -179,3 +179,17 @@
 - Regressão coberta por teste que executa MTC0 no R4300 e valida valor, máscara de interrupção e PC.
 - O caminho Count/timer permanece incompleto: sem fonte de ticks determinística, Count não incrementa e igualdade com Compare não gera IP7. Implementação do relógio exige definir ciclo/divisor e sincronização com CPU/dispositivos; não simular isso com um contador arbitrário por instrução.
 - A CI desta correção ainda precisa confirmar build e testes. Sem teste em dispositivo nesta rodada.
+
+ 
+## Registro complementar — auditoria COP1 R4300 (2026-11-03)
+
+O registro sequencial completo de commits, testes, CIs e pendências está em `docs/CONTINUIDADE_CHAT.md`, seção 48.
+
+- FR=0/FR=1 foi implementado por helpers FPR; operações double FR=0 usam pares even/odd e registradores ímpares inválidos geram RI. Transferências LWC1/LDC1/SWC1/SDC1 passam pelos helpers.
+- Subconjunto aritmético S/D: ADD, SUB, MUL, DIV, SQRT, ABS, MOV e NEG. Operações unárias exigem ft=0.
+- Comparações S/D implementadas para condições EQ, LT e UN (unordered/NaN), atualizando FCC0; BC1T/BC1F consomem FCC0.
+- CI aprovada para os commits de implementação/testes: `41567547551`, `41567881454`, `41567886178`, `41567941259`, `41568154129`, `41568158658` e `41568201826`.
+- A CI `41567509705` falhou por expectativa incorreta no teste MFC1; foi corrigida no commit `cfb4d34`, cuja CI passou. A falha histórica permanece registrada, não ocultada.
+- Limitações: conversões COP1, FCR31/IEEE flags e traps completos, FCC1..FCC7, precisão completa de NaN/subnormais e timing cycle-accurate permanecem pendentes.
+- Não houve validação de execução de ROM no Android 16 nesta rodada; CI verde significa build e testes automatizados, não compatibilidade total.
+- Branch `dev/n64-clean-start`; `main` permanece intacta.
