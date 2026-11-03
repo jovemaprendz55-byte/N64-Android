@@ -69,6 +69,42 @@ class N64BusSpDiagnosticsTest {
         assertEquals(1L, bus.diagnosticSpMmioCounts["SP_PC"])
     }
     @Test
+    fun diagnosticReadsConventionalLibultraTaskDescriptorFromDmem() {
+        val bus = N64Bus()
+        val descriptor = intArrayOf(
+            1, 0x12, 0x04001000, 0x1000,
+            0x00100000, 0x3000, 0x00104000, 0x800,
+            0x00108000, 0x400, 0x00110000, 0x2000,
+            0x00112000, 0x100, 0x00120000, 0x180
+        )
+        descriptor.forEachIndexed { index, value ->
+            bus.write32(
+                N64Bus.SP_DMEM_BASE + N64Bus.SP_TASK_DESCRIPTOR_OFFSET + index * 4,
+                value
+            )
+        }
+
+        val task = bus.diagnosticSpTaskDescriptor()
+
+        assertEquals(1, task.type)
+        assertEquals(0x12, task.flags)
+        assertEquals(0x04001000, task.ucodeBoot)
+        assertEquals(0x1000, task.ucodeBootSize)
+        assertEquals(0x00100000, task.ucode)
+        assertEquals(0x3000, task.ucodeSize)
+        assertEquals(0x00104000, task.ucodeData)
+        assertEquals(0x800, task.ucodeDataSize)
+        assertEquals(0x00108000, task.dramStack)
+        assertEquals(0x400, task.dramStackSize)
+        assertEquals(0x00110000, task.outputBuffer)
+        assertEquals(0x2000, task.outputBufferSize)
+        assertEquals(0x00112000, task.yieldData)
+        assertEquals(0x100, task.yieldDataSize)
+        assertEquals(0x00120000, task.dataPointer)
+        assertEquals(0x180, task.dataSize)
+    }
+
+    @Test
     fun diagnosticMemoryAndScratchpadDumpsAreReadOnly() {
         val rom = ByteArray(0x1000)
         rom[0] = 0x80.toByte()
