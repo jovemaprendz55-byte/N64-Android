@@ -136,4 +136,41 @@ class N64BusSpDmaTest {
         assertEquals(0x90ABCDEF.toInt(), bus.read32(N64Bus.SP_IMEM_BASE + 4))
     }
 
+    @Test
+    fun recordsOnlyCompleteConventionalOstaskDmaAsPassiveEvidence() {
+        val ram = N64Memory(8 * 1024)
+        val descriptor = intArrayOf(
+            1, 0x12, 0x04001000, 0x1000,
+            0x00100000, 0x3000, 0x00104000, 0x800,
+            0x00108000, 0x400, 0x00110000, 0x2000,
+            0x00112000, 0x100, 0x00120000, 0x180
+        )
+        descriptor.forEachIndexed { index, value ->
+            ram.write32(0x100 + index * 4, value)
+        }
+        val bus = N64Bus(ram = ram)
+        bus.setDiagnosticCpuPc(0xFFFFFFFF80001234UL.toLong())
+
+        // A transfer at another DMEM offset must not be mistaken for an OSTask.
+        bus.write32(N64Bus.SP_MEM_ADDR_REG, 0x20)
+        bus.write32(N64Bus.SP_DRAM_ADDR_REG, 0x100)
+        bus.write32(N64Bus.SP_RD_LEN_REG, N64Bus.SP_TASK_DESCRIPTOR_SIZE - 1)
+        assertEquals(0, bus.diagnosticSpTaskDescriptorDmaHistory.size)
+
+        // Only an exact 64-byte RDRAM -> DMEM[0xFC0] transfer is recorded.
+        bus.write32(N64Bus.SP_MEM_ADDR_REG, N64Bus.SP_TASK_DESCRIPTOR_OFFSET)
+        bus.write32(N64Bus.SP_DRAM_ADDR_REG, 0x100)
+        bus.write32(N64Bus.SP_RD_LEN_REG, N64Bus.SP_TASK_DESCRIPTOR_SIZE - 1)
+
+        assertEquals(1, bus.diagnosticSpTaskDescriptorDmaHistory.size)
+        val event = bus.diagnosticSpTaskDescriptorDmaHistory.single()
+        org.junit.Assert.assertTrue(event.contains("OSTASK_DESCRIPTOR_DMA"))
+        org.junit.Assert.assertTrue(event.contains("PC=0xFFFFFFFF80001234"))
+        org.junit.Assert.assertTrue(event.contains("RDRAM=0x00000100"))
+        org.junit.Assert.assertTrue(event.contains("DATA=0x00112000 DATA_SIZE=0x100"))
+        org.junit.Assert.assertTrue(event.contains("YIELD=0x00120000 YIELD_SIZE=0x180"))
+        // Observing the descriptor does not start the SP.
+        assertEquals(N64Bus.SP_STATUS_HALT, bus.diagnosticSpStatus() and N64Bus.SP_STATUS_HALT)
+    }
+
 }
