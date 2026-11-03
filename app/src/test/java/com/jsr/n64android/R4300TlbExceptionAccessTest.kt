@@ -48,4 +48,25 @@ class R4300TlbExceptionAccessTest {
         assertEquals("WRITE", cpu.lastExceptionAccessType)
         assertEquals(0x4000L, cpu.cop0[8])
     }
+
+    @Test
+    fun goldenEyeReportedVirtualAddressRaisesRefillMissAtExpectedVector() {
+        val memory = N64Memory(0x4000)
+        memory.write32(0, 0x8D280000.toInt()) // lw t0, 0(t1)
+        val cpu = R4300Cpu(memory)
+        cpu.tlbEnabled = true
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
+        cpu.gpr[9] = 0x7F0BCC28L
+
+        cpu.step()
+
+        assertEquals(R4300Tlb.FaultKind.MISS, cpu.lastTlbFaultKind)
+        assertEquals(0x7F0BCC28L, cpu.lastTlbFaultVirtualAddress)
+        assertEquals("READ", cpu.lastTlbFaultAccessType)
+        assertEquals(2, cpu.lastExceptionCode)
+        assertEquals(0x7F0BCC28L, cpu.cop0[8]) // BadVAddr
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), cpu.pc) // TLB refill vector when EXL was clear
+        assertEquals(true, cpu.tlbEnabled)
+    }
+
 }
