@@ -44,7 +44,8 @@ object N64HleBoot {
         val ramAddress: Int,
         val entryPc: Long,
         val pifRomUsed: Boolean,
-        val tvType: Int
+        val tvType: Int,
+        val checksumValidated: Boolean
     )
 
     /**
@@ -73,6 +74,21 @@ object N64HleBoot {
         val payload = ByteArray(BOOT_IMAGE_SIZE) { index ->
             bus.read8(N64Bus.CARTRIDGE_ROM_BASE + BOOT_IMAGE_ROM_OFFSET + index).toByte()
         }
+        // CIC 6102/7101 IPL3 verifies CRC1/CRC2 after copying this 1 MiB.
+        // Keep the 6105 path explicitly marked unverified until its separate
+        // PIF-derived checksum table is modeled.
+        val checksumValidated = seed == 0x3F
+        if (checksumValidated) {
+            val computed = N64RomChecksum.calculate6102(payload, seed)
+            val expectedCrc1 = readRomWord(bus, 0x10)
+            val expectedCrc2 = readRomWord(bus, 0x14)
+            require(computed.crc1 == expectedCrc1 && computed.crc2 == expectedCrc2) {
+                "Checksum da ROM inválido para CIC 6102: esperado " +
+                    "0x${expectedCrc1.toUInt().toString(16)}:0x${expectedCrc2.toUInt().toString(16)}, " +
+                    "calculado 0x${computed.crc1.toUInt().toString(16)}:0x${computed.crc2.toUInt().toString(16)}."
+            }
+        }
+
         val tvType = detectTvType(bus.read8(N64Bus.CARTRIDGE_ROM_BASE + ROM_HEADER_REGION_OFFSET))
 
         for (index in payload.indices) {
@@ -119,7 +135,8 @@ object N64HleBoot {
             ramAddress = BOOT_IMAGE_RAM_ADDRESS,
             entryPc = entryPc,
             pifRomUsed = false,
-            tvType = tvType
+            tvType = tvType,
+            checksumValidated = checksumValidated
         )
     }
 
