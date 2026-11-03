@@ -341,6 +341,7 @@ class MainActivity : Activity() {
                     writer.appendLine("Última instrução RSP: ${activeSession?.lastRspInstructionWord()?.let { "0x" + it.toUInt().toString(16).uppercase().padStart(8, '0') } ?: "N/A"}")
                     writer.appendLine("Falha RSP: ${activeSession?.rspFailureMessage() ?: "nenhuma registrada"}")
                     writer.appendLine("Frames VI publicados: ${activeSession?.publishedFrameCount() ?: 0}")
+                    writer.appendLine("Falha na captura VI: ${activeSession?.frameCaptureFailureMessage() ?: "nenhuma registrada"}")
                     writer.appendLine("=== FIM DOS LOGS ===")
                 }
                 runOnUiThread {
@@ -446,6 +447,7 @@ class MainActivity : Activity() {
                         "EXECUÇÃO FINALIZADA: ${result.state}" +
                         "\nInstruções: ${result.executedInstructions}" +
                         "\nFrames VI publicados: ${session.publishedFrameCount()}" +
+                        (session.frameCaptureFailureMessage()?.let { "\nConfiguração VI inválida: $it" } ?: "") +
                         "\nInstruções RSP: ${session.executedRspInstructionCount()}" +
                         "\nÚltima RSP: " + (session.lastRspInstructionAddress()?.let { "0x" + it.toString(16).uppercase().padStart(4, '0') } ?: "N/A") + " / " + (session.lastRspInstructionWord()?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0') ?: "N/A") +
                         "\n" + bus.diagnosticDpcSnapshot() +
