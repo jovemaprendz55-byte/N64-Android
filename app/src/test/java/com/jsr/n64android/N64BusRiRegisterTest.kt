@@ -5,10 +5,10 @@ import org.junit.Test
 
 class N64BusRiRegisterTest {
     @Test
-    fun riSelectRegisterStartsWithResetValue() {
+    fun riSelectRegisterStartsAtPowerOnResetValue() {
         val bus = N64Bus(ram = N64Memory(8 * 1024), cartridgeRom = byteArrayOf(0x11))
 
-        assertEquals(N64Bus.RI_SELECT_RESET, bus.read32(N64Bus.RI_REG_BASE + N64Bus.RI_SELECT_OFFSET))
+        assertEquals(N64Bus.RI_SELECT_POWER_ON_RESET, bus.read32(N64Bus.RI_REG_BASE + N64Bus.RI_SELECT_OFFSET))
     }
 
     @Test
