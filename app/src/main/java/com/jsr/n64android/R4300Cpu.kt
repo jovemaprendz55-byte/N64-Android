@@ -807,6 +807,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                         val fd = (instruction ushr 6) and 0x1F
                         val fn = instruction and 0x3F
                         if (fn >= 0x30) {
+                            if (rs != 0x10 && rs != 0x11) {
+                                throw ReservedInstructionFault("COP1 comparisons require S or D source format")
+                            }
                             // COP1 comparisons update FCC0. Other condition-code fields
                             // are rejected until the additional FCC bits are modeled.
                             val cc = (instruction ushr 8) and 0x07
@@ -848,6 +851,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                                 else -> null
                             }
                             if (fn in 0x08..0x0B || fn in 0x0C..0x0F || fn == 0x24 || fn == 0x25) {
+                                if (rs != 0x10 && rs != 0x11) {
+                                    throw ReservedInstructionFault("COP1 integer conversions require S or D source format")
+                                }
                                 val value = sourceValue
                                     ?: throw ReservedInstructionFault("COP1 integer conversion requires S or D source format")
                                 val rounded = when (fn) {
