@@ -1036,3 +1036,15 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - GitHub Actions run `41563635381` foi iniciado para o commit de produção; consultar conclusão após o commit de testes.
 - Nenhum teste visual de ROM nem instalação/execução no Android 16 foi realizado nesta rodada.
 - Branch `dev/n64-clean-start`; `main` permanece intacta.
+
+
+## 46. Ajuste do teste de interrupção COP0 Count — 2026-11-03
+
+- A primeira regressão de Count usava N64Bus e uma sequência de comandos MI; o teste confirmou a linha MI pendente, mas não chegou a confirmar EXL. As execuções falharam no assert de entrada da exceção, portanto não foram aprovadas.
+- Para isolar especificamente o caminho de retorno antecipado de `serviceMiInterrupt()`, o teste foi simplificado para iniciar com Cause.IP2 pendente e Status.IE + Status.IM2 habilitados em uma CPU com N64Memory. Ele verifica Count=41 e EXL após um passo de aceitação da interrupção.
+- O fixture anterior de 32 bytes foi inicialmente trocado por 8 KB, seguindo os testes de N64Bus; essa mudança, sozinha, não resolveu o assert de entrada da exceção.
+- O teste agora não pretende validar a ligação MI do N64Bus; a integração barramento MI -> Cause.IP2 -> serviço CPU permanece uma cobertura separada a desenvolver.
+- Commit do teste isolado: `4295e8c06725a8cb0e3e7a0d28ca8014c5501a3a`.
+- A execução de CI correspondente está pendente/precisa ser consultada; não declarar sucesso até o término de todos os testes.
+- A correção de produção Count no caminho de entrada MI permanece no commit `edacdbd313120f0ae5fb076d52297ea305f5f1c4`; a CI desse commit concluiu success.
+- Branch `dev/n64-clean-start`; `main` permanece intacta.
