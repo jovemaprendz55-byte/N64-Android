@@ -31,7 +31,7 @@ object N64HleBoot {
     const val BOOT_FLAG_RDRAM_SIZE = BOOT_FLAGS_ADDRESS + 0x18
 
     val ENTRY_PC: Long = 0xFFFFFFFF80000400UL.toLong()
-    val INITIAL_STACK: Long = 0xFFFFFFFFA07FFFE0UL.toLong()
+    // IPL1 leaves the R4300 with CU0|CU1|FR and the non-coherent Config profile.\n    const val INITIAL_STATUS = 0x34000000L\n    const val INITIAL_CONFIG = 0x0005E463L\n    // IPL1 starts IPL2 with SP at the end of RSP IMEM; IPL3 restores this value.\n    val INITIAL_STACK: Long = 0xFFFFFFFFA4001FF0UL.toLong()
 
     data class Result(
         val cicSeed: Int,
@@ -95,7 +95,7 @@ object N64HleBoot {
         // sequence enables the R4300 floating-point coprocessor before handoff.
         // Model that architectural state explicitly; do not bypass CU1 checks
         // inside the CPU when guest software later disables the coprocessor.
-        cpu.cop0[12] = cpu.cop0[12] or (1L shl 29)
+        cpu.cop0[12] = INITIAL_STATUS\n        cpu.cop0[16] = INITIAL_CONFIG
         // KUSEG/KSEG2/KSEG3 accesses must use the architectural TLB.
         // The game entry remains a direct-mapped KSEG0 address.
         cpu.tlbEnabled = true
