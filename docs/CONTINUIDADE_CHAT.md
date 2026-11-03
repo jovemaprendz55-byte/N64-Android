@@ -957,3 +957,23 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Limitação ainda aberta: Count não avança e não há comparação Count==Compare gerando IP7. Não há política de ticks/ciclos do VR4300; não foi introduzido incremento artificial por instrução.
 - Aguardar CI do commit de teste. Nenhuma instalação nem execução real de ROM no aparelho foi realizada nesta etapa.
 - Branch `dev/n64-clean-start`; `main` não foi alterada.
+
+## 43. Auditoria do limite de cancelamento da sessão de execução — 2026-11-03
+
+### Defeito confirmado
+- N64ExecutionSession.execute() verificava stopRequested no início do loop interno, mas chamava beforeInstruction e iniciava stepInstruction sem verificar novamente a flag.
+- Se o callback ou outra thread solicitasse parada durante beforeInstruction, uma instrução guest adicional ainda começava depois do pedido de cancelamento, embora a instrução ainda não tivesse sido despachada.
+- Isso criava uma janela entre o ponto de verificação e o início da instrução, contrariando a semântica pretendida de cancelamento cooperativo entre instruções.
+
+### Correção e regressão
+- Adicionada uma segunda verificação de stopRequested imediatamente após beforeInstruction e antes de stepInstruction.
+- Se a parada chegar nesse intervalo, o lote é encerrado sem executar ou contabilizar outra instrução; o estado final permanece CANCELLED.
+- Novo teste cancellationFromBeforeInstructionDoesNotExecuteNextInstruction: o callback solicita parada antes do despacho e o teste confirma zero instruções executadas/contabilizadas e estado CANCELLED.
+- A verificação existente cancellationStopsBetweenInstructions permanece cobrindo parada solicitada durante a instrução atual, que pode terminar antes de a sessão parar.
+
+### Escopo e validação
+- A alteração afeta somente o agendamento/cancelamento cooperativo da sessão; não altera instruções R4300, estado guest, MMIO, VI ou temporização de hardware.
+- Código e teste foram enviados à branch dev/n64-clean-start; aguardar CI para confirmar compilação e testes.
+- Auditoria COP0 Count/Compare continua aberta: Count ainda não avança e não há geração automática de Cause.IP7 por igualdade Count/Compare. Não inventar ticks por instrução.
+- Nenhuma execução visual de ROM nem instalação no Android 16 foi realizada nesta rodada.
+- Branch main permanece intacta.
