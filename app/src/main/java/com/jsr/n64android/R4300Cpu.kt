@@ -216,6 +216,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         firstTlbFaultIndirectTarget = null
         diagnosticTlbWriteHistory.clear()
         diagnosticControlFlowHistory.clear()
+        diagnosticInterruptHistory.clear()
         diagnosticTlbExceptionHistory.clear()
         lastTlbEntrySnapshot = "(nenhuma entrada capturada)"
         diagnosticTlbInstructionHistory.clear()
