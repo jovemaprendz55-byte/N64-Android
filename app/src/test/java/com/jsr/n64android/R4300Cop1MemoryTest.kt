@@ -1,0 +1,56 @@
+package com.jsr.n64android
+
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+class R4300Cop1MemoryTest {
+    @Test fun lwc1LoadsWordAndSwc1StoresWord() {
+        val memory = N64Memory(128)
+        memory.write32(0, (0x31 shl 26) or (1 shl 21) or (3 shl 16))
+        memory.write32(4, (0x39 shl 26) or (1 shl 21) or (3 shl 16) or 4)
+        memory.write32(0x20, 0x89ABCDEF.toInt())
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.gpr[1] = 0x20L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+        assertEquals(0x89ABCDEFL, cpu.fpr[3])
+        cpu.step()
+        assertEquals(0x89ABCDEF.toInt(), memory.read32(0x24))
+    }
+
+    @Test fun ldc1LoadsBigEndianDoublewordAndSdc1StoresIt() {
+        val memory = N64Memory(128)
+        memory.write32(0, (0x35 shl 26) or (1 shl 21) or (6 shl 16))
+        memory.write32(4, (0x3D shl 26) or (1 shl 21) or (6 shl 16) or 8)
+        memory.write32(0x20, 0x01234567)
+        memory.write32(0x24, 0x89ABCDEF.toInt())
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.gpr[1] = 0x20L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+        assertEquals(0x0123456789ABCDEFL, cpu.fpr[6])
+        cpu.step()
+        assertEquals(0x01234567, memory.read32(0x28))
+        assertEquals(0x89ABCDEF.toInt(), memory.read32(0x2C))
+    }
+
+    @Test fun ldc1MisalignmentRaisesAddressLoadExceptionWithoutChangingFpr() {
+        val memory = N64Memory(128)
+        memory.write32(0, (0x35 shl 26) or (1 shl 21) or (2 shl 16))
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.gpr[1] = 0x24L
+        cpu.fpr[2] = 0x1122334455667788L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(4L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(0x24L, cpu.cop0[8])
+        assertEquals(0x1122334455667788L, cpu.fpr[2])
+    }
+}
