@@ -1048,3 +1048,14 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - A execução de CI correspondente está pendente/precisa ser consultada; não declarar sucesso até o término de todos os testes.
 - A correção de produção Count no caminho de entrada MI permanece no commit `edacdbd313120f0ae5fb076d52297ea305f5f1c4`; a CI desse commit concluiu success.
 - Branch `dev/n64-clean-start`; `main` permanece intacta.
+
+## 47. COP0 Count — fase do divisor em reset e contexto (2026-11-03)
+
+- Auditoria identificou que `countCycleRemainder`, a fase interna do divisor de dois ciclos do Count, não era zerada em `reset()` nem fazia parte de `ContextSnapshot`.
+- Isso podia carregar meia fase de temporização de uma execução anterior após reset ou alterar o instante do próximo tick ao restaurar uma CPU suspensa.
+- Correção: `reset()` agora zera a fase; `ContextSnapshot` inclui `countCycleRemainder`; `snapshotContext()` captura e `restoreContext()` restaura esse valor. A restauração valida que a fase esteja no intervalo 0..1 antes de alterar o estado arquitetural.
+- Testes adicionados: `resetClearsCountDividerPhase` e `cpuContextSnapshotPreservesCountDividerPhase`.
+- Commits: `7f2fa41a2e20d5c692a3fef5e03705fd55b7d345` (produção) e `92b6a789b5f605f3ea74c38fd658cea4d5a907cc` (testes).
+- GitHub Actions: run `41566402515` (produção) e `41566408129` (testes) concluíram ambos com `success`; build, testes e upload do APK de depuração passaram.
+- A temporização do Count continua aproximada: dois ciclos-base por step, sem tabela de latência VR4300 ou stalls de dispositivos. A correção preserva a fase desse modelo, não o torna cycle-accurate.
+- Nenhuma execução de ROM no aparelho foi validada nesta etapa. Branch `dev/n64-clean-start`; `main` permanece intacta.
