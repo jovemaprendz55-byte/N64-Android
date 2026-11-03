@@ -162,6 +162,25 @@ class R4300Cop1ArithmeticTest {
         assertEquals(10L, (cpu.cop0[13] ushr 2) and 0x1FL) // Reserved Instruction
     }
 
+    @Test fun ctc1MasksReservedFcr31BitsAndKeepsArchitecturalFields() {
+        val memory = N64Memory(64)
+        memory.write32(0, (0x11 shl 26) or (0x06 shl 21) or (1 shl 16) or (31 shl 11)) // CTC1 rt, FCR31
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.gpr[1] = -1L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0x0183FFFFL, cpu.fcr[31])
+        assertEquals(3L, cpu.fcr[31] and 0x3L) // RM
+        assertEquals(0x7CL, cpu.fcr[31] and (0x1FL shl 2)) // Flags
+        assertEquals(0xF80L, cpu.fcr[31] and (0x1FL shl 7)) // Enables
+        assertEquals(0x3F000L, cpu.fcr[31] and (0x3FL shl 12)) // Cause
+        assertEquals(1L shl 23, cpu.fcr[31] and (1L shl 23)) // FCC0
+        assertEquals(1L shl 24, cpu.fcr[31] and (1L shl 24)) // FS
+    }
+
     @Test fun cop1ArithmeticRequiresCu1() {
         val memory = N64Memory(64)
         memory.write32(0, cop1(0x10, 2, 1, 3, 0x00))
