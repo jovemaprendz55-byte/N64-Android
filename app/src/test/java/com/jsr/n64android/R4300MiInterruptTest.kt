@@ -80,6 +80,27 @@ class R4300MiInterruptTest {
     }
 
     @Test
+    fun resetClearsPreviouslyDeliveredMiInterruptHistory() {
+        val memory = N64Memory(0x2000)
+        memory.write32(0, 0) // NOP at KSEG0 start.
+        val bus = N64Bus(ram = memory)
+        bus.write32(N64Bus.MI_INTR_MASK_REG, N64Bus.MI_INTR_MASK_VI_SET)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_INTR_OFFSET, 1)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_SYNC_OFFSET, 525)
+        bus.advanceViInstructions(N64Bus.VI_INSTRUCTIONS_PER_SCANLINE)
+
+        val cpu = R4300Cpu(bus)
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
+        cpu.cop0[12] = 0x401L
+        cpu.step()
+        assertTrue(cpu.diagnosticInterruptHistory.isNotEmpty())
+
+        cpu.reset()
+
+        assertTrue(cpu.diagnosticInterruptHistory.isEmpty())
+    }
+
+    @Test
     fun maskedPiDmaInterruptDoesNotEnterCpuException() {
         val bus = N64Bus(
             ram = N64Memory(0x2000),
