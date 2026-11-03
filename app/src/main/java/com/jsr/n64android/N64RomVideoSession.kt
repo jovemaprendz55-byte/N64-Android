@@ -27,6 +27,8 @@ class N64RomVideoSession(
     private val publishedFrames = AtomicLong(0L)
     private val rspInstructions = AtomicLong(0L)
     private val instructionTrace = N64InstructionTrace()
+    @Volatile private var previousFrameWidth: Int = 0
+    @Volatile private var previousFrameHeight: Int = 0
     @Volatile private var previousPixels: IntArray? = null
     @Volatile private var rspCore: N64RspCore? = null
     @Volatile private var rspFailure: String? = null
@@ -64,7 +66,15 @@ class N64RomVideoSession(
                             "${error.javaClass.simpleName}: ${error.message ?: "configuração VI inválida"}"
                         null
                     }
-                    if (frame != null && !frame.argbPixels.contentEquals(previousPixels)) {
+                    // A resolution change is a visible frame change even when the
+                    // flattened pixel array happens to contain identical values.
+                    if (frame != null && (
+                            frame.width != previousFrameWidth ||
+                            frame.height != previousFrameHeight ||
+                            !frame.argbPixels.contentEquals(previousPixels)
+                        )) {
+                        previousFrameWidth = frame.width
+                        previousFrameHeight = frame.height
                         previousPixels = frame.argbPixels.copyOf()
                         publishedFrames.incrementAndGet()
                         onFrame(frame)
