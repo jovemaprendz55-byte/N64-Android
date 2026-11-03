@@ -239,6 +239,8 @@ class MainActivity : Activity() {
                         writer.appendLine(diagnosticCpu.diagnosticControlFlowHistory.joinToString("\n").ifBlank { "Nenhuma entrada, saída ou exceção registrada." })
                         writer.appendLine("=== INTERRUPÇÕES MI ENTREGUES À CPU (histórico separado) ===")
                         writer.appendLine(diagnosticCpu.diagnosticInterruptHistory.joinToString("\n").ifBlank { "Nenhuma interrupção MI entregue à CPU." })
+                        writer.appendLine("=== FONTES MI: INTERRUPÇÕES ASSERTADAS E RECONHECIDAS ===")
+                        writer.appendLine(bus.diagnosticMiInterruptSourceHistory.joinToString("\n").ifBlank { "Nenhuma transição de fonte MI registrada." })
                         writer.appendLine("Falha TLB=${diagnosticCpu.lastTlbFaultKind ?: "nenhuma"} acesso=${diagnosticCpu.lastTlbFaultAccessType ?: "N/A"} VA=0x${diagnosticCpu.lastTlbFaultVirtualAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A"}")
                         writer.appendLine("JR/JALR antes da primeira falha TLB: PC=${diagnosticCpu.firstTlbFaultIndirectJumpAddress?.let { "0x" + it.toULong().toString(16).uppercase() } ?: "N/A"} INST=${diagnosticCpu.firstTlbFaultIndirectJumpInstruction?.let { "0x" + it.toUInt().toString(16).uppercase() } ?: "N/A"} DESTINO=${diagnosticCpu.firstTlbFaultIndirectTarget?.let { "0x" + it.toULong().toString(16).uppercase() } ?: "N/A"}")
                         writer.appendLine("BadVAddr=0x${diagnosticCpu.cop0[8].toUInt().toString(16).uppercase().padStart(8, '0')} Context=0x${diagnosticCpu.cop0[4].toUInt().toString(16).uppercase().padStart(8, '0')} EntryHi=0x${diagnosticCpu.cop0[10].toUInt().toString(16).uppercase().padStart(8, '0')}")
