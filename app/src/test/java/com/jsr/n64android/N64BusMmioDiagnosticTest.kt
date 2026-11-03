@@ -71,7 +71,8 @@ class N64BusMmioDiagnosticTest {
         assertTrue(snapshot.any { it.startsWith("AI:") && it.contains("DACRATE=0x3FF") })
         assertTrue(snapshot.any { it.startsWith("SI:") && it.contains("DRAM_ADDR=0x1230") })
         assertTrue(snapshot.any { it.startsWith("VI:") && it.contains("R0=0x00000320") })
-        assertTrue(snapshot.any { it.startsWith("RI:") && it.contains("R3=0x00000014") })
+        // A fresh N64Bus reports physical RI power-on reset; the CIC handoff is applied by HLE.
+        assertTrue(snapshot.any { it.startsWith("RI:") && it.contains("R3=0x00000000") })
         assertEquals(eventCountBeforeSnapshot, bus.diagnosticMmioHistory.size)
     }
 }
