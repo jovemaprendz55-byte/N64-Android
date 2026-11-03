@@ -214,3 +214,10 @@ Consulte também a seção 50 de `docs/CONTINUIDADE_CHAT.md` para commits e hist
 ### Nota de validação do decoder W/L (2026-11-03)
 
 As primeiras execuções dos testes W/L expuseram uma lacuna no decoder: embora a lógica de conversão tratasse os formatos 0x14/0x15, o dispatch COP1 externo ainda só encaminhava 0x10/0x11. Os testes W->S e L->D falharam, e a causa foi corrigida no commit `c754775102e6e836f52381b15c71fdbff9a98511`, que inclui os formatos W/L no dispatch. A CI desse commit deve ser consultada antes de considerar a correção validada. O registro principal seção 51 contém os runs e detalhes.
+
+
+## Complemento: máscara de escrita do FCR31
+- `CTC1` para FCR31 foi limitado aos campos arquiteturais RM, Flags, Enables, Cause, FCC0 e FS (`0x0183FFFF`); bits reservados são ignorados.
+- FCR0 permanece somente leitura.
+- Commits: produção `9951f9fb73eb16a5d57d8e0b243c522f45722c9a`; teste `901885f00537984345b0a73e0d5a27ad86d78de3`.
+- A cobertura de teste aguarda CI. A implementação não deve ser confundida com traps de exceção IEEE, ainda pendentes.
