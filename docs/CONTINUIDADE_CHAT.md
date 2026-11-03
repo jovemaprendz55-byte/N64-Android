@@ -852,3 +852,13 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - A auditoria foi estática, com inspeção do código e dos testes existentes. Não equivale a execução de ROM nem a teste no Poco C85.
 - CI #1475, #1476 e #1477 terminou com success, cobrindo os commits da correção de fetch desalinhado e sua documentação.
 - Branch dev/n64-clean-start; main permanece intacta.
+
+
+## 35. Auditoria RSP / telemetria MMIO — 2026-11-02
+
+- CI #1478 confirmou success para o registro da auditoria de memória.
+- Encontrado acesso de telemetria indevido: N64RspCore.halted lia SP_STATUS_REG por bus.read32() em cada verificação interna de HALT, registrando leituras artificiais no histórico de MMIO e inflando os contadores de acessos SP.
+- Corrigido o getter halted para usar N64Bus.diagnosticSpStatus(), consulta interna side-effect-free já existente no barramento. Leituras reais do registrador feitas pela CPU continuam registradas normalmente.
+- Adicionado teste internalHaltPollingDoesNotCreateSyntheticSpMmioReads, que executa instruções até BREAK e verifica que a sondagem interna não acrescenta leituras SP ao histórico.
+- A correção reduz ruído e trabalho de instrumentação; não altera estado de hardware guest nem implementa novos opcodes RSP.
+- RSP continua sendo um subconjunto MIPS-I/COP2 e RDP suporta somente os comandos explicitamente implementados; microcódigo gráfico comercial não está certificado.
