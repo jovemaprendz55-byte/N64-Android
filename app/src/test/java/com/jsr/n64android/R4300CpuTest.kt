@@ -4036,7 +4036,7 @@ class R4300CpuTest {
         repeat(800) { cpu.step() }
 
         val trace = cpu.diagnosticPteSetupHistory
-        assertEquals(577, trace.size) // 64 prefix + marker + 512 recent instructions.
+        assertEquals(865, trace.size) // 64 prefix + marker + 800 recent instructions.
         assertTrue(trace.first().contains("PC=0x700017C0"))
         assertTrue(trace.first().contains("GPR2=0x00000000000000C8"))
         assertTrue(trace[64].contains("instruções intermediárias omitidas"))
