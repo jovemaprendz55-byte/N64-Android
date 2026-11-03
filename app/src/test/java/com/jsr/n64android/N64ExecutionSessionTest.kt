@@ -39,6 +39,23 @@ class N64ExecutionSessionTest {
         assertEquals(N64ExecutionSession.State.CANCELLED, result.state)
     }
 
+    @Test fun cancellationFromBeforeInstructionDoesNotExecuteNextInstruction() {
+        var steps = 0
+        lateinit var session: N64ExecutionSession
+        session = N64ExecutionSession(
+            instructionLimit = 10,
+            batchSize = 4,
+            beforeInstruction = { session.requestStop() },
+            stepInstruction = { steps++ }
+        )
+
+        val result = session.execute()
+
+        assertEquals(0, steps)
+        assertEquals(0L, result.executedInstructions)
+        assertEquals(N64ExecutionSession.State.CANCELLED, result.state)
+    }
+
     @Test fun sessionCannotBeExecutedMoreThanOnce() {
         val session = N64ExecutionSession(instructionLimit = 1) {}
 
