@@ -181,6 +181,42 @@ class R4300Cop1ArithmeticTest {
         assertEquals(1L shl 24, cpu.fcr[31] and (1L shl 24)) // FS
     }
 
+    @Test fun divideByZeroSetsFcr31CauseAndStickyFlagWhenDisabled() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x10, 2, 1, 3, 0x03)) // DIV.S f3, f1, f2
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.fpr[1] = java.lang.Float.floatToRawIntBits(1.0f).toLong()
+        cpu.fpr[2] = 0L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(1L shl 15, cpu.fcr[31] and (1L shl 12..17))
+        assertEquals(1L shl 5, cpu.fcr[31] and (0x1FL shl 2))
+        assertEquals(Float.POSITIVE_INFINITY, java.lang.Float.intBitsToFloat(cpu.fpr[3].toInt()), 0.0f)
+        assertEquals(0L, (cpu.cop0[13] ushr 2) and 0x1FL)
+    }
+
+    @Test fun enabledDivideByZeroRaisesFloatingPointExceptionWithoutWritingDestination() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x10, 2, 1, 3, 0x03)) // DIV.S f3, f1, f2
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.fcr[31] = 1L shl 10 // Enable divide-by-zero.
+        cpu.fpr[1] = java.lang.Float.floatToRawIntBits(1.0f).toLong()
+        cpu.fpr[2] = 0L
+        cpu.fpr[3] = 0x12345678L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(1L shl 15, cpu.fcr[31] and (1L shl 12..17))
+        assertEquals(1L shl 5, cpu.fcr[31] and (0x1FL shl 2))
+        assertEquals(15L, (cpu.cop0[13] ushr 2) and 0x1FL) // Floating-point exception.
+        assertEquals(0x12345678L, cpu.fpr[3])
+    }
+
     @Test fun cop1ArithmeticRequiresCu1() {
         val memory = N64Memory(64)
         memory.write32(0, cop1(0x10, 2, 1, 3, 0x00))
