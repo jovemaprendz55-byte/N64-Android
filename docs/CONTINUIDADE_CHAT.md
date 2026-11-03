@@ -1113,3 +1113,29 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Auditar e implementar conversões COP1 com instruções e modos explicitamente testados.
 - Depois, tratar FCR31/IEEE exceptions e ampliar os testes de comparação/FCC.
 - Manter a regra: corrigir somente defeitos reproduzidos, exigir CI verde e registrar cada etapa antes de declarar concluída.
+
+
+## 49. Primeira etapa de conversões COP1 — 2026-11-03
+
+### Implementação enviada para validação
+- Iniciada a auditoria das conversões COP1 após aprovação das comparações S/D e integração FCC0 -> BC1T.
+- Implementadas conversões entre formatos S e D: `CVT.S` e `CVT.D`.
+- Implementadas conversões para word: `CVT.W`, `ROUND.W`, `TRUNC.W`, `CEIL.W` e `FLOOR.W`.
+- `CVT.W` consulta FCR31.RM (bits 1:0): nearest-even, toward-zero, toward +infinity e toward -infinity.
+- Para NaN/overflow de conversão para word, o código grava o valor indefinido MIPS `0x80000000`. A atualização de FCR31 Cause/Flag/Enable e traps de exceção IEEE ainda não foi implementada; portanto, esta é uma primeira cobertura funcional, não a implementação completa da FPU.
+- Validação de ft=0 adicionada para as codificações de conversão e operações unárias.
+
+### Testes adicionados
+- CVT.S.D e CVT.D.S verificam conversão entre precisão dupla e simples.
+- CVT.W.S verifica modo FCR31 de arredondamento para +infinito.
+- ROUND.W.S verifica empate para o par mais próximo (2.5 -> 2, ties-to-even).
+- TRUNC.W.S verifica truncamento em direção a zero para número negativo.
+
+### Commits e CI
+- `e314e169f16d973190664a307deb452b4f4d9d66` — implementação inicial de conversões COP1.
+- `4dc3a64c0b9c3fe7ca70cdf71bf0f6df924c757d` — testes de conversão.
+- GitHub Actions `41568617952` (implementação) e `41568652771` (testes) estavam em execução no momento do registro. Consultar conclusão antes de considerar aprovado.
+- A execução `41568434593` da documentação anterior concluiu success; `41568439782` também concluiu success.
+- Ainda não implementados: conversões para long (CVT.L e ROUND/TRUNC/CEIL/FLOOR.L), conversões de inteiro W/L para S/D, exceções IEEE completas, FCR31 flags/cause/enables, traps, precisão completa de NaN/subnormais e FCC1..FCC7.
+- Nenhuma execução visual de ROM ou instalação no Android 16 foi realizada nesta etapa. CI não comprova funcionamento em aparelho.
+- Branch `dev/n64-clean-start`; `main` permanece intacta.
