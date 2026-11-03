@@ -253,3 +253,8 @@ As primeiras execuções dos testes W/L expuseram uma lacuna no decoder: embora 
 - Commit: 3f3a6093e11e60de90daedcc2c20d791264a43d6.
 - Os testes cobrem cenários já tratados pela classificação parcial existente; não representam implementação completa de exceções IEEE-754.
 - CI ainda precisa ser confirmada. Underflow, Inexact, NaN signaling, Unimplemented e validação real de ROM no Android 16 permanecem pendentes.
+
+
+## Repriorização para primeiro jogo executável — 2026-11-03
+
+A prioridade do projeto passa a ser o MVP de primeira execução real, não a conclusão exaustiva do R4300/COP1. A inspeção atual encontrou carregador de ROM, HLE de boot parcial, sessão CPU contínua, leitura de framebuffer VI e presenter Android. O principal gargalo identificado é a ausência de descoberta/agendamento automático de OSTasks libultra na sessão ROM; o RSP é bombeado apenas por polling cooperativo após liberação de SP HALT. A pilha RDP/microcódigo também é parcial. Plano detalhado em docs/PLANO_PRIMEIRO_JOGO.md. Não afirmar compatibilidade nem sucesso até uma ROM real apresentar quadro no Galaxy A15 Android 16. Adiar expansão não essencial de exceções COP1, áudio completo e timing ciclo-a-ciclo até o primeiro quadro.
