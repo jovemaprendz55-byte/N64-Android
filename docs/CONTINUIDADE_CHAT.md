@@ -1139,3 +1139,30 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Ainda não implementados: conversões para long (CVT.L e ROUND/TRUNC/CEIL/FLOOR.L), conversões de inteiro W/L para S/D, exceções IEEE completas, FCR31 flags/cause/enables, traps, precisão completa de NaN/subnormais e FCC1..FCC7.
 - Nenhuma execução visual de ROM ou instalação no Android 16 foi realizada nesta etapa. CI não comprova funcionamento em aparelho.
 - Branch `dev/n64-clean-start`; `main` permanece intacta.
+
+
+## 50. Expansão das conversões COP1 para W/L — 2026-11-03
+
+### Implementação
+- Ampliado o decoder COP1 para aceitar os formatos fonte W (0x14) e L (0x15) nas instruções de conversão.
+- Adicionados `CVT.L`, `ROUND.L`, `TRUNC.L`, `CEIL.L` e `FLOOR.L`, com destino de 64 bits respeitando FR=0 (par par/ímpar) e FR=1.
+- Adicionadas conversões de inteiro para ponto flutuante: `CVT.S.W`, `CVT.D.W`, `CVT.S.L` e `CVT.D.L` via os formatos W/L e funções CVT.S/CVT.D.
+- Conversões W/L para S/D usam interpretação assinada dos valores inteiros.
+- Adicionada validação para rejeitar comparações e conversões para inteiro quando o formato fonte não é S/D.
+- Conversões L para Double usam o tipo Double da JVM; limites de int64 são verificados antes de converter, usando o valor indefinido Long.MIN_VALUE em NaN/overflow.
+- Esta implementação ainda não atualiza FCR31 Cause/Flag/Enable nem gera traps IEEE-754. A conversão numérica é uma aproximação funcional e precisa de validação mais profunda contra a especificação VR4300.
+
+### Testes adicionados
+- `CVT.L.S` com arredondamento FCR31 para -infinito.
+- `CVT.S.W` com inteiro negativo.
+- `CVT.D.L` com registradores pareados em FR=0.
+- Mantidos os testes anteriores para CVT.S/D, CVT.W, ROUND.W e TRUNC.W.
+
+### Histórico de CI e correções
+- `3c6528f9a65797dfdc072224c5b281eab80ae0b7` — primeira expansão W/L; CI `41568921523` falhou na compilação por literal hexadecimal de ponto flutuante não suportado pelo Kotlin.
+- `3694d0283e00af40251bd42fdecee206a8bd8b6a` — substituição dos limites hexadecimais por limites Double explícitos; CI `41568959183` em execução no momento do registro.
+- `348de2bdf6b3b89b711141ea4f1b16921e2b7989` — testes W/L; CI `41568987410` em execução no momento do registro.
+- `d3814f559f17b45c1d33a338865fa65ea938a07f` — validação dos formatos fonte; CI `41569054586` em execução no momento do registro.
+- A falha anterior está registrada e não é tratada como aprovação. Consultar os resultados das CIs antes de declarar esta etapa concluída.
+- Branch de trabalho `dev/n64-clean-start`; `main` não foi alterada.
+- Nenhum teste de ROM em aparelho Android foi realizado nesta etapa.
