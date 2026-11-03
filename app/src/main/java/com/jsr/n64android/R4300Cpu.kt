@@ -8,6 +8,8 @@ import java.math.BigInteger
  * full delay-slot exception semantics, complete COP0/TLB behavior, cache operations and full N64 devices remain unimplemented.
  */
 class R4300Cpu(private val memory: N64AddressSpace) {
+    private class FloatingPointFault : RuntimeException()
+
     /**
      * Architectural state needed to suspend and resume a guest thread at an
      * instruction boundary. Diagnostic histories are intentionally excluded.
@@ -305,6 +307,12 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             pc = exceptionVector()
             delayedTarget = null
             pendingDelaySlotBranchAddress = null
+        } catch (_: FloatingPointFault) {
+            // Floating-point exception (FPE): destination write is suppressed by the operation helper.
+            enterException(instructionAddressForCurrentStep ?: pc, 15, branchAddressForFault)
+            pc = exceptionVector()
+            delayedTarget = null
+            pendingDelaySlotBranchAddress = null
         } catch (fault: CoprocessorUnusableFault) {
             enterException(
                 instructionAddressForCurrentStep ?: pc,
@@ -326,6 +334,39 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         // CPU cycles per retired step provide a deterministic Count clock until
         // the execution engine supplies measured instruction/device cycle costs.
         advanceCountCycles(2)
+    }
+
+    /**
+     * Replaces FCR31 Cause, accumulates sticky Flag bits, and requests an architectural FPE
+     * when the matching Enable bit is set. Cause bits 16..12 map to Enable bits 11..7.
+     */
+    private fun recordFpuExceptions(causeBits: Long) {
+        val causeMask = 0x3FL shl 12
+        val flagsMask = 0x1FL shl 2
+        val old = fcr[31]
+        val flags = (causeBits ushr 10) and flagsMask
+        val updated = (old and causeMask.inv()) or (causeBits and causeMask) or flags
+        fcr[31] = updated
+        val enabled = ((causeBits ushr 5) and (updated ushr 7)) and 0x1FL
+        if (enabled != 0L) throw FloatingPointFault()
+    }
+
+    private fun classifyBasicFpuExceptions(fn: Int, x: Double, y: Double, result: Double): Long {
+        val invalid = 1L shl 16
+        val divideByZero = 1L shl 15
+        val overflow = 1L shl 14
+        val finiteInputs = x.isFinite() && y.isFinite()
+        return when {
+            fn == 0x04 && x < 0.0 -> invalid // SQRT of a negative non-zero value.
+            fn == 0x03 && x == 0.0 && y == 0.0 -> invalid
+            fn == 0x03 && x.isInfinite() && y.isInfinite() -> invalid
+            fn == 0x03 && y == 0.0 && x != 0.0 && x.isFinite() -> divideByZero
+            fn == 0x00 && x.isInfinite() && y.isInfinite() && x != y -> invalid
+            fn == 0x01 && x.isInfinite() && y.isInfinite() && x == y -> invalid
+            fn == 0x02 && ((x == 0.0 && y.isInfinite()) || (y == 0.0 && x.isInfinite())) -> invalid
+            finiteInputs && result.isInfinite() -> overflow
+            else -> 0L
+        }
     }
 
     /** Advances the VR4300 Count divider by CPU cycles and asserts timer IP7 on Compare match. */
@@ -906,6 +947,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                                     0x07 -> -x
                                     else -> throw ReservedInstructionFault("Unsupported COP1 single function")
                                 }
+                                val cause = classifyBasicFpuExceptions(fn, x.toDouble(), y.toDouble(), z.toDouble())
+                                recordFpuExceptions(cause)
                                 writeFprSingle(fd, java.lang.Float.floatToRawIntBits(z))
                             } else {
                                 val x = java.lang.Double.longBitsToDouble(readFprDouble(fs))
@@ -921,6 +964,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                                     0x07 -> -x
                                     else -> throw ReservedInstructionFault("Unsupported COP1 double function")
                                 }
+                                val cause = classifyBasicFpuExceptions(fn, x, y, z)
+                                recordFpuExceptions(cause)
                                 writeFprDouble(fd, java.lang.Double.doubleToRawLongBits(z))
                             }
                         }
