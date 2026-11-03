@@ -915,3 +915,13 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Teste de regressão `publishesResolutionChangeEvenWhenPixelContentsAreIdentical`: executa instruções R4300 reais, captura 2x2, altera os registradores VI para 4x1 no meio da execução, mantém os mesmos quatro pixels e confirma que ambos os quadros são publicados.
 - Escopo: corrige detecção de mudança de geometria no caminho VI → frame callback. Não implementa novos formatos de pixel, rasterização RDP, microcódigo RSP ou temporização de ciclo.
 - Ainda não houve instalação nem teste visual no Poco C85. A confirmação desta correção depende do CI e, para validação final da tela, de teste no aparelho.
+
+
+## 39. Correção do teste de mudança de resolução VI — 2026-11-02
+
+- A CI do commit `13f5c3e` compilou o APK, mas falhou em 1 de 552 testes: `N64RomVideoSessionTest.publishesResolutionChangeEvenWhenPixelContentsAreIdentical`.
+- A falha estava na fixture do teste, não no caminho de publicação: o teste preenchia somente os quatro primeiros pixels físicos. Ao alterar a janela VI de 2x2 para 4x1, a amostragem geométrica podia ler posições diferentes do framebuffer, então a asserção de igualdade de ARGB não era válida.
+- Corrigido o teste para preencher uma região ampla de RDRAM com a mesma cor RGBA5551, garantindo conteúdo visual idêntico sob as duas geometrias.
+- Código de produção `N64RomVideoSession.kt` não foi alterado nesta correção; a condição de publicação continua incluindo largura, altura e conteúdo ARGB.
+- Commit do ajuste: `ce9ba4181aecc26c21bda02a3379a38ee8f0d4d9`. Aguardar CI desse commit. Não declarar aprovação nem distribuir APK antes de todos os testes passarem.
+- Branch `dev/n64-clean-start`; `main` permanece intacta. Sem teste visual no aparelho nesta etapa.
