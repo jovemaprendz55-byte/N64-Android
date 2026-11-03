@@ -7,6 +7,24 @@ import org.junit.Test
 
 class R4300CpuTest {
 
+    @Test fun mtc0CompareStoresValueAndClearsOnlyTimerInterruptPendingBit() {
+        val memory = N64Memory(32)
+        val mtc0Compare = (0x10 shl 26) or (0x04 shl 21) or (8 shl 16) or (11 shl 11)
+        memory.write32(0, mtc0Compare)
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[8] = 0x12345678L
+        cpu.cop0[13] = (1L shl 15) or (1L shl 10) or 0x300L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0x12345678L, cpu.cop0[11])
+        assertEquals(0L, cpu.cop0[13] and (1L shl 15))
+        assertEquals(1L shl 10, cpu.cop0[13] and (1L shl 10))
+        assertEquals(0x300L, cpu.cop0[13] and 0x300L)
+        assertEquals(4L, cpu.pc)
+    }
+
     @Test fun cop0InUserModeWithCu0DisabledRaisesCoprocessorUnusable() {
         val memory = N64Memory(32)
         val mfc0Status = (0x10 shl 26) or (2 shl 16) or (12 shl 11)
