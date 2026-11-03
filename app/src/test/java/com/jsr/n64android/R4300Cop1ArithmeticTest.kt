@@ -84,4 +84,33 @@ class R4300Cop1ArithmeticTest {
         assertEquals(1L, (cpu.cop0[13] ushr 28) and 0x3L)
         assertEquals(0L, cpu.fpr[3])
     }
+    @Test fun singlePrecisionSquareRootRequiresZeroFtAndProducesCorrectResult() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x10, 0, 1, 3, 0x04)) // SQRT.S f3, f1
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.fpr[1] = java.lang.Float.floatToRawIntBits(9.0f).toLong()
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(3.0f, java.lang.Float.intBitsToFloat(cpu.fpr[3].toInt()), 0.0f)
+        assertEquals(0L, (cpu.cop0[13] ushr 2) and 0x1FL)
+    }
+
+    @Test fun malformedUnarySinglePrecisionRaisesReservedInstructionWithoutWritingDestination() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x10, 2, 1, 3, 0x04)) // Invalid SQRT.S: ft must be zero
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.fpr[1] = java.lang.Float.floatToRawIntBits(9.0f).toLong()
+        cpu.fpr[2] = java.lang.Float.floatToRawIntBits(4.0f).toLong()
+        cpu.fpr[3] = 0x12345678L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(10L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(0x12345678L, cpu.fpr[3])
+    }
 }
