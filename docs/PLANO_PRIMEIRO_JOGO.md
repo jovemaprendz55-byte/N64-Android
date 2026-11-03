@@ -68,3 +68,8 @@ A inspeção posterior encontrou um executor SP já implementado, portanto a tar
 **Lacuna real:** `MainActivity` instancia `N64RomVideoSession`, mas essa sessão não utiliza `N64SpTaskRunner`. O caminho contínuo ainda bombeia o RSP quando o bit HALT está limpo, sem descoberta/dispatch de OSTasks libultra. O runner atual exige `taskAddress` conhecido e faz seu próprio bootstrap; chamá-lo sem identificar a sequência real do jogo pode duplicar operações ou iniciar a tarefa errada.
 
 Próximo trabalho: observar eventos reais de SP e identificar quando o descritor de DMEM foi carregado e qual fluxo de boot o jogo está executando. Só então desenhar um despachante integrado, com testes de não duplicação, limites de orçamento, pausa/retomada e DP_WAIT. Não presumir endereço do OSTask, não limpar HALT artificialmente e não substituir o fluxo de boot da ROM sem evidência.
+
+
+## Correção do leitor diagnóstico OSTask — 2026-11-03
+
+A ordem dos dois pares finais do descritor estava invertida. Corrigido para ABI: `data_ptr/data_size` em 0x30/0x34 e `yield_data_ptr/yield_data_size` em 0x38/0x3C. O teste agora usa valores diferentes nos dois pares. Commits: `d0700f132f3a468051fe22c3445c2bb743f2fe2c` e `bb9a06c48444e98a6e8f6e5d840b1bae579009ad`. Aguardar CI antes de considerar validado.
