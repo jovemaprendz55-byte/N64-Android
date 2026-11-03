@@ -379,6 +379,49 @@ class N64Bus(
             }
     }
 
+    /**
+     * Reads the conventional libultra OSTask descriptor at the end of SP DMEM.
+     * This is diagnostic-only: it does not validate, enqueue, or execute the task.
+     */
+    data class SpTaskDescriptor(
+        val type: Int,
+        val flags: Int,
+        val ucodeBoot: Int,
+        val ucodeBootSize: Int,
+        val ucode: Int,
+        val ucodeSize: Int,
+        val ucodeData: Int,
+        val ucodeDataSize: Int,
+        val dramStack: Int,
+        val dramStackSize: Int,
+        val outputBuffer: Int,
+        val outputBufferSize: Int,
+        val yieldData: Int,
+        val yieldDataSize: Int,
+        val dataPointer: Int,
+        val dataSize: Int
+    )
+
+    fun diagnosticSpTaskDescriptor(): SpTaskDescriptor {
+        fun word(offset: Int): Int {
+            val base = SP_DMEM_BASE + SP_TASK_DESCRIPTOR_OFFSET + offset
+            return ((spDmem[base - SP_DMEM_BASE].toInt() and 0xFF) shl 24) or
+                ((spDmem[base - SP_DMEM_BASE + 1].toInt() and 0xFF) shl 16) or
+                ((spDmem[base - SP_DMEM_BASE + 2].toInt() and 0xFF) shl 8) or
+                (spDmem[base - SP_DMEM_BASE + 3].toInt() and 0xFF)
+        }
+        return SpTaskDescriptor(
+            type = word(0x00), flags = word(0x04),
+            ucodeBoot = word(0x08), ucodeBootSize = word(0x0C),
+            ucode = word(0x10), ucodeSize = word(0x14),
+            ucodeData = word(0x18), ucodeDataSize = word(0x1C),
+            dramStack = word(0x20), dramStackSize = word(0x24),
+            outputBuffer = word(0x28), outputBufferSize = word(0x2C),
+            yieldData = word(0x30), yieldDataSize = word(0x34),
+            dataPointer = word(0x38), dataSize = word(0x3C)
+        )
+    }
+
     /** Full SP scratchpad snapshot, read-only and only on explicit log export. */
     fun diagnosticSpMemoryDump(): String = buildString {
         appendLine("SP DMEM 0x04000000..0x04000FFF")
@@ -981,6 +1024,7 @@ class N64Bus(
         const val SP_DMEM_BASE = 0x04000000
         const val SP_IMEM_BASE = 0x04001000
         const val SP_MEM_SIZE = 0x1000
+        const val SP_TASK_DESCRIPTOR_OFFSET = 0x0FC0
         const val SP_REG_BASE = 0x04040000
         const val SP_MEM_ADDR_REG = SP_REG_BASE
         const val SP_MEM_ADDR_MASK = 0x00001FFF
