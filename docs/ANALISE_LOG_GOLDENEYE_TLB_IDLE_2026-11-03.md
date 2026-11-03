@@ -65,3 +65,26 @@ Assim, o próximo diagnóstico deve localizar a transição para o loop idle e i
 - Nenhuma causa raiz definitiva para a entrada no idle loop foi provada.
 - Nenhuma alteração funcional foi feita nesta análise.
 - A branch `main` permanece intocada.
+
+## Instrumentação MI adicional — 2026-11-03
+
+Após a aprovação da instrumentação inicial, foi encontrada e corrigida uma inconsistência: `R4300Cpu.reset()` limpava os demais históricos de diagnóstico, mas não limpava `diagnosticInterruptHistory`. O reset agora limpa esse histórico, com teste que primeiro entrega uma interrupção VI e depois verifica a limpeza.
+
+Também foi criado `diagnosticMiInterruptSourceHistory` no `N64Bus`, limitado a 128 transições. Ele registra apenas mudanças reais de estado das fontes MI (ASSERT/ACK), sem registrar cada consulta da CPU. Foram instrumentados os caminhos VI, PI, DP e SP; o relatório exportado pelo aplicativo agora inclui esse histórico. O teste VI verifica tanto a asserção quanto o reconhecimento.
+
+Commits desta continuação:
+- `53469798ee3fda6dce1703ba9e48f095d209a76d` — limpar histórico MI no reset.
+- `c3372a41bcf9f61724d69af0919b7f08877f8b7c` — teste de limpeza no reset.
+- `49fc8cdcb247e9587a247ee2c298d9a8020dcc4b` — registrar transições de fontes MI.
+- `a16b1f10fbf2c766ae69d6f958a4f03d2283a8de` — exportar histórico de fontes MI.
+- `80f370e477ab4310a4a78fec9ccb1389569fb1a4` — validar ASSERT/ACK de VI.
+- `d88717c4844351f44cc3094d3534d477af0ec94c` — cobrir transições PI/DP/SP.
+- `e046bddf86321e0e4d99aa44f17cd7c602659b8e` — registrar a asserção SP explícita.
+
+Próxima leitura do log novo:
+1. Se houver `ASSERT source=VI` mas não `MI IRQ`, comparar máscara MI e Status/Cause da CPU.
+2. Se houver `MI IRQ`, conferir EPC, vetor e retorno ERET.
+3. Se houver `ACK source=VI`, verificar se o handler está reconhecendo a interrupção.
+4. Se não houver ASSERT de nenhuma fonte, o problema está antes da entrega de IRQ; continuar seguindo o caminho de inicialização/idle sem presumir falha TLB.
+
+**CI dos commits acima:** ainda precisa ser consultado após os pushes. Não há confirmação de execução real do GoldenEye no aparelho; é necessário gerar um log novo no Poco C85 com o APK desta revisão.
