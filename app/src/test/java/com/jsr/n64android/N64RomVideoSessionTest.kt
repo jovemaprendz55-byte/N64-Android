@@ -281,7 +281,8 @@ class N64RomVideoSessionTest {
         bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_X_SCALE_OFFSET, 0x400)
         bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_START_OFFSET, (0x20 shl 16) or 0x24)
         bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_Y_SCALE_OFFSET, 0x400)
-        repeat(4) { memory.write16(0x100 + it * 2, 0xF801) }
+        // Keep the whole sampled region solid red so both VI geometries produce identical ARGB pixels.
+        repeat(0x8000) { memory.write16(0x100 + it * 2, 0xF801) }
 
         val cpu = R4300Cpu(bus)
         cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
