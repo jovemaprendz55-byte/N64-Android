@@ -884,3 +884,24 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - A sessão ainda pode não produzir pixels para ROMs que dependem desses comandos; a limitação fica visível no diagnóstico DPC, sem se transformar em falso DBE.
 - Validar por CI. Não houve instalação nem teste de ROM no Poco C85 nesta rodada.
 - Branch dev/n64-clean-start; main não foi alterada.
+
+
+## 37. Auditoria de captura VI durante execução contínua — 2026-11-02
+
+### Defeito confirmado
+- N64RomVideoSession chamava N64Bus.captureViFrameFromRegisters() diretamente no callback afterInstruction da sessão CPU.
+- Os registradores VI são escritos pelo software guest e podem ficar temporariamente inconsistentes durante a inicialização ou troca de modo de vídeo.
+- O leitor de framebuffer valida pixel size, stride e limites de RDRAM com IllegalArgumentException. Antes da correção, uma configuração temporariamente inválida escapava do callback e podia colocar o worker de execução da CPU em FAILED, mesmo sem exceção arquitetural do R4300.
+
+### Correção aplicada
+- A captura periódica agora captura apenas IllegalArgumentException da validação de framebuffer; registra a mensagem em lastFrameCaptureFailure e continua a execução da CPU sem publicar um frame inválido.
+- Uma captura válida subsequente limpa o diagnóstico anterior.
+- Exceções de onFrame e falhas não relacionadas à validação do framebuffer não são engolidas por esse catch.
+- MainActivity exibe e exporta o último erro de configuração VI no painel/logs.
+- Teste invalidTransientViPixelSizeDoesNotFailCpuExecution configura geometria válida com VI_STATUS pixel size 0, executa oito instruções reais do R4300 e verifica sessão COMPLETED, nenhum frame e diagnóstico VI presente.
+
+### Limites e validação
+- A correção não altera a interpretação dos formatos RGBA5551/RGBA8888 nem implementa scanout temporizado.
+- A captura ainda é amostrada por intervalo de instruções; VI timing segue aproximado.
+- Aguardar CI para validar os commits de sessão, teste, UI e documentação. Nenhum teste real de ROM foi executado no aparelho nesta rodada.
+- Branch dev/n64-clean-start; main permanece intacta.
