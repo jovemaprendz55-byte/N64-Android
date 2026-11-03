@@ -39,6 +39,37 @@ class R4300Cop1ArithmeticTest {
         assertEquals(2.0, java.lang.Double.longBitsToDouble(cpu.fpr[4]), 0.0)
     }
 
+    @Test fun doublePrecisionUsesEvenOddPairWhenFr0() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x11, 4, 2, 6, 0x00)) // ADD.D f6, f2, f4
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29 // CU1=1, FR=0
+        val nine = java.lang.Double.doubleToRawLongBits(9.0)
+        val three = java.lang.Double.doubleToRawLongBits(3.0)
+        cpu.fpr[2] = (nine ushr 32) and 0xFFFFFFFFL
+        cpu.fpr[3] = nine and 0xFFFFFFFFL
+        cpu.fpr[4] = (three ushr 32) and 0xFFFFFFFFL
+        cpu.fpr[5] = three and 0xFFFFFFFFL
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        val result = ((cpu.fpr[6] and 0xFFFFFFFFL) shl 32) or (cpu.fpr[7] and 0xFFFFFFFFL)
+        assertEquals(12.0, java.lang.Double.longBitsToDouble(result), 0.0)
+    }
+
+    @Test fun doublePrecisionOddRegisterIsReservedWhenFr0() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x11, 2, 1, 4, 0x00)) // ADD.D with odd fs in FR=0
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(10L, (cpu.cop0[13] ushr 2) and 0x1FL) // Reserved Instruction
+    }
+
     @Test fun cop1ArithmeticRequiresCu1() {
         val memory = N64Memory(64)
         memory.write32(0, cop1(0x10, 2, 1, 3, 0x00))
