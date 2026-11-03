@@ -407,4 +407,39 @@ class R4300Cop1ArithmeticTest {
 
         assertEquals(0L, cpu.fcr[31] and (1L shl 23))
     }
+
+    @Test fun negativeSquareRootRaisesEnabledInvalidExceptionWithoutWritingDestination() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x10, 0, 1, 3, 0x04)) // SQRT.S f3, f1
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.fcr[31] = 1L shl 11 // Enable Invalid
+        cpu.fpr[1] = java.lang.Float.floatToRawIntBits(-4.0f).toLong()
+        cpu.fpr[3] = 0x12345678L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(16L, (cpu.fcr[31] ushr 12) and 0x3FL) // Cause Invalid
+        assertEquals(1L shl 6, cpu.fcr[31] and (1L shl 6)) // Flag Invalid
+        assertEquals(15L, (cpu.cop0[13] ushr 2) and 0x1FL) // FPE
+        assertEquals(0x12345678L, cpu.fpr[3])
+    }
+
+    @Test fun infinityDividedByInfinitySetsInvalidCauseAndFlag() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x10, 2, 1, 3, 0x03)) // DIV.S f3, f1, f2
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.fpr[1] = java.lang.Float.floatToRawIntBits(Float.POSITIVE_INFINITY).toLong()
+        cpu.fpr[2] = java.lang.Float.floatToRawIntBits(Float.POSITIVE_INFINITY).toLong()
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(16L, (cpu.fcr[31] ushr 12) and 0x3FL)
+        assertEquals(1L shl 6, cpu.fcr[31] and (1L shl 6))
+        assertEquals(0L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(true, java.lang.Float.intBitsToFloat(cpu.fpr[3].toInt()).isNaN())
+    }
 }
