@@ -787,7 +787,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     }
                     0x00 -> { // MFC1 rt, fs
                         if ((instruction and 0x7FF) != 0) throw ReservedInstructionFault("Malformed MFC1 reserved fields")
-                        gpr[rt] = fpr[rd].toInt().toLong()
+                        gpr[rt] = readFprSingle(rd).toInt().toLong()
                     }
                     0x02 -> { // CFC1 rt, fs
                         if ((instruction and 0x7FF) != 0) throw ReservedInstructionFault("Malformed CFC1 reserved fields")
@@ -795,7 +795,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     }
                     0x04 -> { // MTC1 rt, fs
                         if ((instruction and 0x7FF) != 0) throw ReservedInstructionFault("Malformed MTC1 reserved fields")
-                        fpr[rd] = gpr[rt].toInt().toLong() and 0xFFFFFFFFL
+                        writeFprSingle(rd, gpr[rt].toInt())
                     }
                     0x06 -> { // CTC1 rt, fs; FCR0 is read-only.
                         if ((instruction and 0x7FF) != 0) throw ReservedInstructionFault("Malformed CTC1 reserved fields")
@@ -807,8 +807,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                         val fd = (instruction ushr 6) and 0x1F
                         val fn = instruction and 0x3F
                         if (rs == 0x10) {
-                            val x = java.lang.Float.intBitsToFloat(fpr[fs].toInt())
-                            val y = java.lang.Float.intBitsToFloat(fpr[ft].toInt())
+                            val x = java.lang.Float.intBitsToFloat(readFprSingle(fs))
+                            val y = java.lang.Float.intBitsToFloat(readFprSingle(ft))
                             val z = when (fn) {
                                 0x00 -> x + y
                                 0x01 -> x - y
@@ -820,10 +820,10 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                                 0x07 -> -x
                                 else -> throw ReservedInstructionFault("Unsupported COP1 single function")
                             }
-                            fpr[fd] = java.lang.Float.floatToRawIntBits(z).toLong() and 0xFFFFFFFFL
+                            writeFprSingle(fd, java.lang.Float.floatToRawIntBits(z))
                         } else {
-                            val x = java.lang.Double.longBitsToDouble(fpr[fs])
-                            val y = java.lang.Double.longBitsToDouble(fpr[ft])
+                            val x = java.lang.Double.longBitsToDouble(readFprDouble(fs))
+                            val y = java.lang.Double.longBitsToDouble(readFprDouble(ft))
                             val z = when (fn) {
                                 0x00 -> x + y
                                 0x01 -> x - y
@@ -835,7 +835,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                                 0x07 -> -x
                                 else -> throw ReservedInstructionFault("Unsupported COP1 double function")
                             }
-                            fpr[fd] = java.lang.Double.doubleToRawLongBits(z)
+                            writeFprDouble(fd, java.lang.Double.doubleToRawLongBits(z))
                         }
                     }
                     else -> throw ReservedInstructionFault(
@@ -1097,7 +1097,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 requireAligned(address, 4)
                 val physical = physicalAddress(address, R4300Tlb.Access.READ)
                 val value = memory.read32(physical)
-                fpr[rt] = value.toLong() and 0xFFFFFFFFL
+                writeFprSingle(rt, value)
                 recordTlbMemoryAccess("LWC1", address, physical, value.toLong() and 0xFFFFFFFFL)
             }
             0x35 -> { // LDC1: load a big-endian doubleword into one 64-bit FPR slot.
@@ -1106,8 +1106,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 val physical = physicalAddress(address, R4300Tlb.Access.READ)
                 val high = memory.read32(physical).toLong() shl 32
                 val low = memory.read32(physicalAddress(address + 4L, R4300Tlb.Access.READ)).toLong() and 0xFFFFFFFFL
-                fpr[rt] = high or low
-                recordTlbMemoryAccess("LDC1", address, physical, fpr[rt])
+                writeFprDouble(rt, high or low)
+                recordTlbMemoryAccess("LDC1", address, physical, readFprDouble(rt))
             }
             0x34 -> { // LLD: load-linked doubleword.
                 val address = gpr[rs] + immediate
@@ -1145,16 +1145,16 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 val address = gpr[rs] + immediate
                 requireAligned(address, 4, store = true)
                 val physical = physicalAddress(address, R4300Tlb.Access.WRITE)
-                memory.write32(physical, fpr[rt].toInt())
-                recordTlbMemoryAccess("SWC1", address, physical, fpr[rt] and 0xFFFFFFFFL)
+                memory.write32(physical, readFprSingle(rt))
+                recordTlbMemoryAccess("SWC1", address, physical, readFprSingle(rt).toLong() and 0xFFFFFFFFL)
             }
             0x3D -> { // SDC1: store a big-endian 64-bit FPR value.
                 val address = gpr[rs] + immediate
                 requireAligned(address, 8, store = true)
                 val physical = physicalAddress(address, R4300Tlb.Access.WRITE)
-                memory.write32(physical, (fpr[rt] ushr 32).toInt())
-                memory.write32(physicalAddress(address + 4L, R4300Tlb.Access.WRITE), fpr[rt].toInt())
-                recordTlbMemoryAccess("SDC1", address, physical, fpr[rt])
+                memory.write32(physical, (readFprDouble(rt) ushr 32).toInt())
+                memory.write32(physicalAddress(address + 4L, R4300Tlb.Access.WRITE), readFprDouble(rt).toInt())
+                recordTlbMemoryAccess("SDC1", address, physical, readFprDouble(rt))
             }
             0x3F -> { // SD: store a big-endian doubleword
                 val address = gpr[rs] + immediate
@@ -1543,6 +1543,38 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         pc = exceptionVector()
         delayedTarget = null
         pendingDelaySlotBranchAddress = null
+    }
+
+    /** Status.FR selects independent 64-bit FPRs; otherwise doubles occupy even/odd pairs. */
+    private fun fprIs64BitMode(): Boolean = (cop0[12] and (1L shl 26)) != 0L
+
+    private fun requireEvenFprForDouble(register: Int) {
+        if (!fprIs64BitMode() && (register and 1) != 0) {
+            throw ReservedInstructionFault("Double-precision FPR must be even when Status.FR=0 (register=$register)")
+        }
+    }
+
+    private fun readFprSingle(register: Int): Int = fpr[register].toInt()
+
+    private fun writeFprSingle(register: Int, value: Int) {
+        fpr[register] = value.toLong() and 0xFFFFFFFFL
+    }
+
+    private fun readFprDouble(register: Int): Long {
+        requireEvenFprForDouble(register)
+        if (fprIs64BitMode()) return fpr[register]
+        return ((fpr[register].toInt().toLong() and 0xFFFFFFFFL) shl 32) or
+            (fpr[register + 1].toInt().toLong() and 0xFFFFFFFFL)
+    }
+
+    private fun writeFprDouble(register: Int, value: Long) {
+        requireEvenFprForDouble(register)
+        if (fprIs64BitMode()) {
+            fpr[register] = value
+        } else {
+            fpr[register] = (value ushr 32) and 0xFFFFFFFFL
+            fpr[register + 1] = value and 0xFFFFFFFFL
+        }
     }
 
     private fun requireAligned(address: Long, alignment: Int, store: Boolean = false) {
