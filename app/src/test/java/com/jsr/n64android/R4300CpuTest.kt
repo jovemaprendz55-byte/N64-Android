@@ -25,6 +25,28 @@ class R4300CpuTest {
         assertEquals(4L, cpu.pc)
     }
 
+    @Test fun mtc0EpcWriteIsRecordedWithPreviousInputAndResultingValues() {
+        val memory = N64Memory(32)
+        val mtc0Epc = (0x10 shl 26) or (0x04 shl 21) or (8 shl 16) or (14 shl 11)
+        memory.write32(0, mtc0Epc)
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[14] = 0x7F0BCC28L
+        cpu.gpr[8] = 0x70000718L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0x70000718L, cpu.cop0[14])
+        assertEquals(1L, cpu.diagnosticCop0WriteCount)
+        assertEquals(0L, cpu.diagnosticCop0WriteEvictedCount)
+        assertEquals(1, cpu.diagnosticCop0WriteHistory.size)
+        val event = cpu.diagnosticCop0WriteHistory.single()
+        assertTrue(event.contains("COP0[14]=EPC"))
+        assertTrue(event.contains("OLD=0x000000007F0BCC28"))
+        assertTrue(event.contains("INPUT=0x0000000070000718"))
+        assertTrue(event.contains("NEW=0x0000000070000718"))
+    }
+
     @Test fun cop0InUserModeWithCu0DisabledRaisesCoprocessorUnusable() {
         val memory = N64Memory(32)
         val mfc0Status = (0x10 shl 26) or (2 shl 16) or (12 shl 11)
