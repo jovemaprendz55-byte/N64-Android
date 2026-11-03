@@ -98,10 +98,11 @@ class N64BusSpDiagnosticsTest {
         assertEquals(0x400, task.dramStackSize)
         assertEquals(0x00110000, task.outputBuffer)
         assertEquals(0x2000, task.outputBufferSize)
-        assertEquals(0x00112000, task.yieldData)
-        assertEquals(0x100, task.yieldDataSize)
-        assertEquals(0x00120000, task.dataPointer)
-        assertEquals(0x180, task.dataSize)
+        // OSTask ABI: data_ptr/data_size precede yield_data_ptr/yield_data_size.
+        assertEquals(0x00112000, task.dataPointer)
+        assertEquals(0x100, task.dataSize)
+        assertEquals(0x00120000, task.yieldData)
+        assertEquals(0x180, task.yieldDataSize)
     }
 
     @Test
