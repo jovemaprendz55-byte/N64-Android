@@ -1287,3 +1287,14 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Commits: produção `d0700f132f3a468051fe22c3445c2bb743f2fe2c`; teste `bb9a06c48444e98a6e8f6e5d840b1bae579009ad`.
 - CI do código/teste ainda precisa ser confirmada. A CI dos documentos da etapa anterior passou (runs 41572153473, 41572158841, 41572164048 success).
 - Não muda o estado de integração OSTask: sessão contínua ainda não despacha automaticamente tarefas; sem ROM executada no aparelho.
+
+
+## 60. Captura passiva de DMA do descritor OSTask — 2026-11-03
+
+- Adicionado ao `N64Bus` o histórico limitado `diagnosticSpTaskDescriptorDmaHistory`.
+- O registro só é criado quando ocorre DMA RDRAM→SP exatamente em DMEM + 0xFC0, com 64 bytes transferidos. O evento inclui PC da CPU, endereço RDRAM e campos principais do OSTask (type/flags, boot ucode, ucode, data e yield).
+- A captura ocorre após a transferência real terminar. Não libera HALT, não escreve SP_PC, não chama `N64SpTaskRunner` e não agenda execução.
+- Teste `recordsOnlyCompleteConventionalOstaskDmaAsPassiveEvidence`: garante que DMA em outro offset não é classificado como OSTask, que a transferência canônica é registrada e que SP HALT permanece inalterado.
+- Commits: produção `7e7eeee4ec9068f180835e174bf2dcea24f0272c`; teste `6313a8417d59188fe833aa02120e9e6c444962ad`.
+- CI dos commits ainda estava em andamento na última consulta (runs 41601276572 e 41601311466). Aguardar resultado antes de validar.
+- Próximo passo após CI: acrescentar ao diagnóstico a correlação entre descritor observado, DMA de boot microcode para IMEM, SP_PC e comando CLR_HALT, mantendo observação passiva. Só depois de validar a sequência real da ROM projetar despacho.
