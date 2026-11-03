@@ -34,7 +34,8 @@ class N64HleBootTest {
         assertEquals(N64HleBoot.BOOT_IMAGE_RAM_ADDRESS, result.ramAddress)
         assertEquals(N64HleBoot.ENTRY_PC, result.entryPc)
         assertEquals(N64HleBoot.ENTRY_PC, cpu.pc)
-        assertEquals(1L shl 29, cpu.cop0[12] and (1L shl 29))
+        assertEquals(N64HleBoot.INITIAL_STATUS, cpu.cop0[12])
+        assertEquals(N64HleBoot.INITIAL_CONFIG, cpu.cop0[16])
         cpu.fpr[4] = 0xFEDCBA98L
         assertEquals(N64HleBoot.INITIAL_STACK, cpu.gpr[29])
         assertEquals(0xFFFFFFFFA4001FF0UL.toLong(), cpu.gpr[29])
