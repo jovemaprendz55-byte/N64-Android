@@ -73,3 +73,8 @@ Próximo trabalho: observar eventos reais de SP e identificar quando o descritor
 ## Correção do leitor diagnóstico OSTask — 2026-11-03
 
 A ordem dos dois pares finais do descritor estava invertida. Corrigido para ABI: `data_ptr/data_size` em 0x30/0x34 e `yield_data_ptr/yield_data_size` em 0x38/0x3C. O teste agora usa valores diferentes nos dois pares. Commits: `d0700f132f3a468051fe22c3445c2bb743f2fe2c` e `bb9a06c48444e98a6e8f6e5d840b1bae579009ad`. Aguardar CI antes de considerar validado.
+
+
+## Observação passiva da transferência OSTask — 2026-11-03
+
+Foi acrescentado um histórico diagnóstico que registra um DMA RDRAM→DMEM apenas quando o endereço SP inicial é 0xFC0 e o total transferido é exatamente 64 bytes. A linha registra PC da CPU, endereço do descritor e campos principais. É observação após a cópia, não inicia nem agenda o RSP. Teste cobre offset diferente, captura do caso canônico e preservação de SP HALT. Commits: `7e7eeee4ec9068f180835e174bf2dcea24f0272c` e `6313a8417d59188fe833aa02120e9e6c444962ad`. CI pendente no momento do registro.
