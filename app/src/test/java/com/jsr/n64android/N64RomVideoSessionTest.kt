@@ -267,4 +267,52 @@ class N64RomVideoSessionTest {
         assertEquals(null, session.rspFailureMessage())
     }
 
+
+    @Test
+    fun publishesResolutionChangeEvenWhenPixelContentsAreIdentical() {
+        val memory = N64Memory(1024 * 1024)
+        val bus = N64Bus(ram = memory)
+        memory.write32(0, 0x08000000) // J 0 keeps CPU inside RDRAM.
+        memory.write32(4, 0) // Delay slot.
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_STATUS_OFFSET, 2)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_ORIGIN_OFFSET, 0x100)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_WIDTH_OFFSET, 4)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_H_START_OFFSET, (0x20 shl 16) or 0x22)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_X_SCALE_OFFSET, 0x400)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_START_OFFSET, (0x20 shl 16) or 0x24)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_Y_SCALE_OFFSET, 0x400)
+        repeat(4) { memory.write16(0x100 + it * 2, 0xF801) }
+
+        val cpu = R4300Cpu(bus)
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
+        val frames = mutableListOf<N64VideoFrame>()
+        val session = N64RomVideoSession(
+            bus = bus,
+            cpu = cpu,
+            instructionLimit = 4,
+            batchSize = 1,
+            framePollInterval = 2,
+            progressPollInterval = 3,
+            onProgress = { count ->
+                if (count == 3L) {
+                    // Change 2x2 to 4x1: same four RGBA5551 pixels, new geometry.
+                    bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_H_START_OFFSET, (0x20 shl 16) or 0x24)
+                    bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_START_OFFSET, (0x20 shl 16) or 0x22)
+                }
+            },
+            onFrame = frames::add
+        )
+
+        val result = session.execute()
+
+        assertEquals(N64ExecutionSession.State.COMPLETED, result.state)
+        assertEquals(2, frames.size)
+        assertEquals(2, frames[0].width)
+        assertEquals(2, frames[0].height)
+        assertEquals(4, frames[1].width)
+        assertEquals(1, frames[1].height)
+        assertTrue(frames[0].argbPixels.contentEquals(frames[1].argbPixels))
+        assertEquals(2L, session.publishedFrameCount())
+    }
+
 }
