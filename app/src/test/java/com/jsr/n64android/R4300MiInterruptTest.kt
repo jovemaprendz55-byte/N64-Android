@@ -131,8 +131,23 @@ class R4300MiInterruptTest {
 
         cpu.step()
 
+        // The PI source is latched even while its MI mask is disabled.
         assertEquals(startPc + 4L, cpu.pc)
         assertEquals(null, cpu.lastExceptionCode)
         assertEquals(0L, cpu.cop0[13] and (1L shl 10))
+        assertEquals(N64Bus.MI_INTR_PI, bus.read32(N64Bus.MI_INTR_REG) and N64Bus.MI_INTR_PI)
+        assertTrue(bus.diagnosticMiInterruptSourceHistory.any {
+            it.startsWith("ASSERT source=PI") && it.contains("MI_LINE=false")
+        })
+
+        // Enabling the mask exposes the already-latched source to the CPU.
+        bus.write32(N64Bus.MI_INTR_MASK_REG, 1 shl 9)
+        assertTrue(bus.diagnosticMiInterruptSourceHistory.any {
+            it.startsWith("MASK_SET source=PI") && it.contains("MI_LINE=true")
+        })
+        cpu.step()
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+        assertEquals(0, cpu.lastExceptionCode)
+        assertTrue((cpu.cop0[13] and (1L shl 10)) != 0L)
     }
 }
