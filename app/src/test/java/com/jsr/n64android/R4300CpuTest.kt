@@ -5230,6 +5230,29 @@ class R4300CpuTest {
     }
 
 
+    @Test fun resetClearsCountDividerPhase() {
+        val cpu = R4300Cpu(N64Memory(32))
+        cpu.advanceCountCycles(1)
+        cpu.reset()
+
+        cpu.advanceCountCycles(1)
+
+        assertEquals(0L, cpu.cop0[9])
+    }
+
+    @Test fun cpuContextSnapshotPreservesCountDividerPhase() {
+        val cpu = R4300Cpu(N64Memory(32))
+        cpu.advanceCountCycles(1)
+        val saved = cpu.snapshotContext()
+
+        val resumed = R4300Cpu(N64Memory(32))
+        resumed.restoreContext(saved)
+        resumed.advanceCountCycles(1)
+
+        assertEquals(1L, resumed.cop0[9])
+        assertEquals(0, resumed.snapshotContext().countCycleRemainder)
+    }
+
     @Test fun countAdvancesAtHalfRateAndCompareMatchSetsTimerPending() {
         val cpu = R4300Cpu(N64Memory(32))
         cpu.cop0[9] = 0xFFFFFFFEL
