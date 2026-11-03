@@ -80,6 +80,19 @@ class R4300MiInterruptTest {
     }
 
     @Test
+    fun miMaskSetAndClearAreRecordedOnlyOnActualTransitions() {
+        val bus = N64Bus(ram = N64Memory(0x2000))
+
+        bus.write32(N64Bus.MI_INTR_MASK_REG, N64Bus.MI_INTR_MASK_VI_SET)
+        bus.write32(N64Bus.MI_INTR_MASK_REG, N64Bus.MI_INTR_MASK_VI_SET)
+        bus.write32(N64Bus.MI_INTR_MASK_REG, 1 shl 6) // Clear VI mask bit.
+
+        assertEquals(2, bus.diagnosticMiInterruptSourceHistory.count { it.startsWith("MASK_SET source=VI") || it.startsWith("MASK_CLEAR source=VI") })
+        assertTrue(bus.diagnosticMiInterruptSourceHistory.any { it.startsWith("MASK_SET source=VI") })
+        assertTrue(bus.diagnosticMiInterruptSourceHistory.any { it.startsWith("MASK_CLEAR source=VI") })
+    }
+
+    @Test
     fun resetClearsPreviouslyDeliveredMiInterruptHistory() {
         val memory = N64Memory(0x2000)
         memory.write32(0, 0) // NOP at KSEG0 start.
