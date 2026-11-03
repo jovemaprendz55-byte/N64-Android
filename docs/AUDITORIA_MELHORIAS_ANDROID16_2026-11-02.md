@@ -193,3 +193,19 @@ O registro sequencial completo de commits, testes, CIs e pendências está em `d
 - Limitações: conversões COP1, FCR31/IEEE flags e traps completos, FCC1..FCC7, precisão completa de NaN/subnormais e timing cycle-accurate permanecem pendentes.
 - Não houve validação de execução de ROM no Android 16 nesta rodada; CI verde significa build e testes automatizados, não compatibilidade total.
 - Branch `dev/n64-clean-start`; `main` permanece intacta.
+
+
+## Complemento — COP1 W/L conversions (2026-11-03)
+
+A CPU passou a decodificar formatos fonte W/L para conversões numéricas:
+- `CVT.L`, `ROUND.L`, `TRUNC.L`, `CEIL.L`, `FLOOR.L`.
+- `CVT.S.W`, `CVT.D.W`, `CVT.S.L`, `CVT.D.L`.
+- `CVT.W` e as variantes de arredondamento W já haviam sido adicionadas na etapa anterior.
+- Destinos L/D respeitam o modelo FR=0 com pares de registradores e FR=1 com registrador de 64 bits.
+- Testes cobrem CVT.L.S, CVT.S.W e CVT.D.L em FR=0.
+
+**Limitações que permanecem:** FCR31 Cause/Flag/Enable, traps IEEE-754, exceções de precisão/overflow/underflow, NaN/subnormais e fidelidade completa ao VR4300 não estão concluídos. O uso de Float/Double da JVM não garante arredondamento bit a bit equivalente ao hardware em todos os casos.
+
+**CI:** uma primeira tentativa de decoder W/L falhou na compilação por literal hexadecimal Double incompatível com Kotlin; a expressão foi corrigida para limites Double explícitos. As CIs dos commits de correção, testes e validação de formato estavam em execução quando este complemento foi escrito. Verificar os resultados no registro principal antes de aprovar esta etapa.
+
+Consulte também a seção 50 de `docs/CONTINUIDADE_CHAT.md` para commits e histórico exato.
