@@ -192,7 +192,7 @@ class R4300Cop1ArithmeticTest {
 
         cpu.step()
 
-        assertEquals(1L shl 15, cpu.fcr[31] and (1L shl 12..17))
+        assertEquals(1L shl 15, cpu.fcr[31] and (0x3FL shl 12))
         assertEquals(1L shl 5, cpu.fcr[31] and (0x1FL shl 2))
         assertEquals(Float.POSITIVE_INFINITY, java.lang.Float.intBitsToFloat(cpu.fpr[3].toInt()), 0.0f)
         assertEquals(0L, (cpu.cop0[13] ushr 2) and 0x1FL)
