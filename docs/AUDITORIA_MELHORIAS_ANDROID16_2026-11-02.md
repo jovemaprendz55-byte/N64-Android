@@ -139,3 +139,25 @@
 - Código: 78977193bf4a7a346767d787adf7d02e9e660461.
 - Testes: a0d72640ff07dcf3058c4708daeeb2ade5783117.
 - Aguardar CI do HEAD atualizado. Nenhuma validação em dispositivo foi realizada nesta etapa.
+
+
+## Auditoria COP0 Count/Compare e interrupção de temporizador — 2026-11-02
+
+### Lacuna funcional confirmada
+- A inspeção de `R4300Cpu.kt` confirma que o modelo atual não incrementa COP0 Count (reg. 9), não implementa a comparação com COP0 Compare (reg. 11) e não gera a interrupção de temporizador IP7 (Cause bit 15) quando os valores coincidem.
+- MTC0 para Compare (reg. 11) cai no armazenamento genérico; não limpa um pending timer interrupt porque esse estado ainda não existe.
+- A amostragem atual de interrupções trata somente a linha agregada MI em Cause.IP2 (bit 10). Não há caminho equivalente para o timer interno do VR4300.
+- Os testes existentes cobrem máscaras/pending de interrupção MI e alguns registradores COP0, mas não cobrem Count/Compare nem IP7.
+
+### Impacto
+- ROMs/OS que usam o temporizador COP0 para preempção, timeouts ou scheduler podem ficar presas ou apresentar comportamento temporal incorreto, mesmo quando o restante da CPU executa instruções.
+- Isso é uma funcionalidade ausente do emulador, não uma falha recém-introduzida pela alteração de publicação de quadros.
+
+### Decisão segura
+- Não implementar um incremento arbitrário por instrução nesta rodada: o Count do VR4300 deriva do relógio do processador e exige uma política explícita de ciclos/clock divisor. A sessão atual contabiliza instruções, não ciclos de hardware, e branches, loads/stores e stalls de coprocessadores não têm latência modelada de forma completa.
+- Próximo passo: introduzir uma fonte de ticks de CPU determinística e testável, definir a relação Count/ticks conforme o VR4300, fazer MTC0 Compare limpar IP7, gerar IP7 na igualdade Count/Compare e incluir testes de máscara Status.IM7, IE, EXL/ERL e delay slot.
+- Até essa implementação e validação, documentar COP0 Count/Compare como não implementado; não afirmar compatibilidade temporal completa.
+
+### Estado
+- Nenhum código de produção foi alterado para esta lacuna, para evitar uma temporização inventada.
+- Branch `dev/n64-clean-start`; `main` permanece intacta. CI da correção do fixture VI ainda está em execução.
