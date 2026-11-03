@@ -136,18 +136,20 @@ Log analisado: `N64-Android-diagnostico-1793739450116.txt`.
 - Ao fim: SP HALT (`STATUS=0x1`), nenhuma escrita SP/DPC, zero instruções RSP, zero frames. Há registros de interrupção MI, mas esse TXT não contém as transições detalhadas por origem/ACK.
 - O campo COP0 EPC e o `lastExceptionInstructionAddress` são estados diferentes: o primeiro pode ser atualizado na restauração do contexto idle, enquanto o segundo conserva metadados históricos da falha TLB. Não interpretar o TLB miss como exceção ainda ativa apenas pelo código histórico.
 
-### Instrumentação local baseada nesse log
+### Instrumentação aplicada com base nesse log
 
-Foram feitas alterações diagnósticas somente na cópia local da branch `dev/n64-clean-start`:
+As alterações diagnósticas foram aplicadas na branch `dev/n64-clean-start`:
 
 1. manter um histórico ERET separado do buffer de fluxo que é saturado pelo BEQ repetido;
 2. capturar uma vez, por endereço, a primeira entrada em um BEQ tomado para si mesmo, com GPRs relevantes, COP0 e estado de dispositivos;
 3. rotular explicitamente o snapshot TLB congelado na primeira falha e exportar também um snapshot vivo no momento da coleta;
 4. exportar as transições MI por origem, ACK e máscara.
 
-A execução da CPU não foi alterada. O núcleo JVM foi compilado com `kotlinc` e a ROM foi executada headless até exatamente 7.339.725 instruções: o teste voltou ao mesmo idle loop, com SP em HALT e zero instruções RSP, sem falha do núcleo. Isso valida a compilação/teste do núcleo e a instrumentação local, não o APK Android nem a compatibilidade do jogo.
+A execução da CPU não foi alterada. O núcleo JVM foi compilado com `kotlinc` e a ROM foi executada headless até exatamente 7.339.725 instruções: o teste voltou ao mesmo idle loop, com SP em HALT e zero instruções RSP, sem falha do núcleo. Isso valida a instrumentação e a compilação do núcleo, mas não significa que o jogo esteja funcionando.
 
-A montagem Android e os testes Gradle não foram executados nesta sessão porque não há `gradle` nem wrapper no checkout. As alterações ainda não foram commitadas nem publicadas; portanto, não existe novo APK/Actions para instalar. A `main` não foi alterada.
+O commit `2cf65e0b6c1c2ad822273def8089e8511cae1ce0` foi publicado somente em `dev/n64-clean-start`. O GitHub Actions executou `testDebugUnitTest assembleDebug` e terminou com sucesso no run `41719114923`: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41719114923 . O artefato `n64-android-debug-apk` foi baixado e validado como APK; tamanho 1.055.163 bytes, SHA-256 `17f338f733ebaa14c30cd81a908e36cd6193127792f92b4d5a0a47382ed6233e`.
+
+Não houve teste de jogo no aparelho com este APK. Portanto, o build verde confirma testes automatizados e montagem, não compatibilidade de GoldenEye. A branch `main` não foi alterada.
 
 
 ## Verificação do workflow de diagnóstico anterior
