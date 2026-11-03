@@ -347,7 +347,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         val flags = (causeBits ushr 10) and flagsMask
         val updated = (old and causeMask.inv()) or (causeBits and causeMask) or flags
         fcr[31] = updated
-        val enabled = ((causeBits ushr 5) and (updated ushr 7)) and 0x1FL
+        val enabled = (causeBits ushr 5) and updated and (0x1FL shl 7)
         if (enabled != 0L) throw FloatingPointFault()
     }
 
