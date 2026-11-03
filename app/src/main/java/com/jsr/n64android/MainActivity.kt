@@ -21,7 +21,6 @@ import android.widget.Toast
 import android.text.method.ScrollingMovementMethod
 import java.io.ByteArrayOutputStream
 import java.io.IOException
-import java.util.concurrent.atomic.AtomicBoolean
 
 class MainActivity : Activity() {
     private lateinit var status: TextView
@@ -191,7 +190,6 @@ class MainActivity : Activity() {
                 val boot = N64HleBoot.prepare(bus, cpu)
                 var previousIdleLoopSignature: String? = null
                 var stableIdleLoopSamples = 0
-                val autoDiagnosticTriggered = AtomicBoolean(false)
                 val session = N64RomVideoSession(
                     bus = bus,
                     cpu = cpu,
@@ -216,13 +214,6 @@ class MainActivity : Activity() {
                         } else {
                             previousIdleLoopSignature = null
                             stableIdleLoopSamples = 0
-                        }
-                        if (stableIdleLoopSamples >= AUTO_DIAGNOSTIC_STABLE_SAMPLES &&
-                            autoDiagnosticTriggered.compareAndSet(false, true)) {
-                            runOnUiThread {
-                                details.text = "Loop sem atividade gráfica detectado. Parando com segurança e salvando diagnóstico automaticamente..."
-                                diagnosticExportButton.performClick()
-                            }
                         }
                         val deviceLines = bus.diagnosticDeviceSnapshot()
                             .filter { it.startsWith("SP:") || it.startsWith("VI:") }
@@ -1805,7 +1796,5 @@ class MainActivity : Activity() {
         private const val KEY_LAST_ROM_URI = "last_rom_uri"
         private const val REQUEST_ROM = 640
         private const val LOG_EXPORT_STOP_TIMEOUT_MS = 5_000L
-        private const val AUTO_DIAGNOSTIC_MIN_INSTRUCTIONS = 5_000_000L
-        private const val AUTO_DIAGNOSTIC_STABLE_SAMPLES = 2
     }
 }
