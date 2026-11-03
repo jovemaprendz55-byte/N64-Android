@@ -122,6 +122,8 @@ class N64Bus(
     val diagnosticPiDmaHistory = ArrayDeque<String>()
     // Bounded trace of SP DMA transfers, including direction and RDRAM destination ranges.
     val diagnosticSpDmaHistory = ArrayDeque<String>()
+    // Passive evidence that software copied a complete conventional OSTask into DMEM.
+    val diagnosticSpTaskDescriptorDmaHistory = ArrayDeque<String>()
     // Captures CPU-visible accesses to the suspected IPL3 copy-source window.
     val diagnosticBootMemoryAccessHistory = ArrayDeque<String>()
     // Bounded trace of CPU byte writes in the IPL3 destination range under investigation.
@@ -878,6 +880,30 @@ class N64Bus(
                 "dramLast=0x${dramEnd.toString(16).uppercase()} blockLength=0x${blockLength.toString(16).uppercase()} " +
                 "blocks=$blockCount skip=0x${dramSkip.toString(16).uppercase()} spStart=0x${spStartAddress.toString(16).uppercase()}"
         )
+        // Observe only the canonical 64-byte OSTask DMA into DMEM[0xFC0].
+        // This is passive diagnostics: it never releases HALT or schedules the RSP.
+        if (toSp && spStartAddress == SP_TASK_DESCRIPTOR_OFFSET &&
+            blockLength * blockCount == SP_TASK_DESCRIPTOR_SIZE
+        ) {
+            val task = diagnosticSpTaskDescriptor()
+            if (diagnosticSpTaskDescriptorDmaHistory.size >= 32) {
+                diagnosticSpTaskDescriptorDmaHistory.removeFirst()
+            }
+            diagnosticSpTaskDescriptorDmaHistory.addLast(
+                "OSTASK_DESCRIPTOR_DMA PC=0x${diagnosticCpuPc.toULong().toString(16).uppercase()} " +
+                    "RDRAM=0x${dramStartAddress.toString(16).uppercase().padStart(8, '0')} " +
+                    "TYPE=0x${task.type.toUInt().toString(16).uppercase()} " +
+                    "FLAGS=0x${task.flags.toUInt().toString(16).uppercase()} " +
+                    "BOOT=0x${task.ucodeBoot.toUInt().toString(16).uppercase()} " +
+                    "BOOT_SIZE=0x${task.ucodeBootSize.toUInt().toString(16).uppercase()} " +
+                    "UCODE=0x${task.ucode.toUInt().toString(16).uppercase()} " +
+                    "UCODE_SIZE=0x${task.ucodeSize.toUInt().toString(16).uppercase()} " +
+                    "DATA=0x${task.dataPointer.toUInt().toString(16).uppercase()} " +
+                    "DATA_SIZE=0x${task.dataSize.toUInt().toString(16).uppercase()} " +
+                    "YIELD=0x${task.yieldData.toUInt().toString(16).uppercase()} " +
+                    "YIELD_SIZE=0x${task.yieldDataSize.toUInt().toString(16).uppercase()}"
+            )
+        }
         spMemAddress = memorySelect or memoryOffset
         spDramAddress = dramAddress and 0x00FFFFFF
         spDmaListener?.invoke(
@@ -1025,6 +1051,7 @@ class N64Bus(
         const val SP_IMEM_BASE = 0x04001000
         const val SP_MEM_SIZE = 0x1000
         const val SP_TASK_DESCRIPTOR_OFFSET = 0x0FC0
+        const val SP_TASK_DESCRIPTOR_SIZE = 0x40
         const val SP_REG_BASE = 0x04040000
         const val SP_MEM_ADDR_REG = SP_REG_BASE
         const val SP_MEM_ADDR_MASK = 0x00001FFF
