@@ -1020,6 +1020,23 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 gpr[rt] = memory.loadLinked(physical, 4)
                 cop0[17] = (physical ushr 4).toLong() and 0x0FFFFFFFL // LLAddr diagnostic register.
             }
+            0x31 -> { // LWC1: load a big-endian single-precision word into the FPR low word.
+                val address = gpr[rs] + immediate
+                requireAligned(address, 4)
+                val physical = physicalAddress(address, R4300Tlb.Access.READ)
+                val value = memory.read32(physical)
+                fpr[rt] = value.toLong() and 0xFFFFFFFFL
+                recordTlbMemoryAccess("LWC1", address, physical, value.toLong() and 0xFFFFFFFFL)
+            }
+            0x35 -> { // LDC1: load a big-endian doubleword into one 64-bit FPR slot.
+                val address = gpr[rs] + immediate
+                requireAligned(address, 8)
+                val physical = physicalAddress(address, R4300Tlb.Access.READ)
+                val high = memory.read32(physical).toLong() shl 32
+                val low = memory.read32(physicalAddress(address + 4L, R4300Tlb.Access.READ)).toLong() and 0xFFFFFFFFL
+                fpr[rt] = high or low
+                recordTlbMemoryAccess("LDC1", address, physical, fpr[rt])
+            }
             0x34 -> { // LLD: load-linked doubleword.
                 val address = gpr[rs] + immediate
                 requireAligned(address, 8)
@@ -1051,6 +1068,21 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 val physical = physicalAddress(address, R4300Tlb.Access.WRITE)
                 memory.write32(physical, gpr[rt].toInt())
                 recordTlbMemoryAccess("SW", address, physical, gpr[rt])
+            }
+            0x39 -> { // SWC1: store the low 32-bit single-precision FPR word.
+                val address = gpr[rs] + immediate
+                requireAligned(address, 4, store = true)
+                val physical = physicalAddress(address, R4300Tlb.Access.WRITE)
+                memory.write32(physical, fpr[rt].toInt())
+                recordTlbMemoryAccess("SWC1", address, physical, fpr[rt] and 0xFFFFFFFFL)
+            }
+            0x3D -> { // SDC1: store a big-endian 64-bit FPR value.
+                val address = gpr[rs] + immediate
+                requireAligned(address, 8, store = true)
+                val physical = physicalAddress(address, R4300Tlb.Access.WRITE)
+                memory.write32(physical, (fpr[rt] ushr 32).toInt())
+                memory.write32(physicalAddress(address + 4L, R4300Tlb.Access.WRITE), fpr[rt].toInt())
+                recordTlbMemoryAccess("SDC1", address, physical, fpr[rt])
             }
             0x3F -> { // SD: store a big-endian doubleword
                 val address = gpr[rs] + immediate
