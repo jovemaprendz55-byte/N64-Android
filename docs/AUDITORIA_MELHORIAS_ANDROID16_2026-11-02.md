@@ -278,3 +278,8 @@ O usuário confirmou GoldenEye 007 USA como alvo. Foi adicionado ao N64Bus o lei
 - A lacuna não é ausência total de runner: `MainActivity` usa `N64RomVideoSession`, e esta não conecta o fluxo CPU/libultra ao `N64SpTaskRunner`. O RSP da sessão é apenas cooperativamente bombeado quando HALT está limpo.
 - O runner atual requer taskAddress explícito e executa bootstrap próprio. Integrá-lo sem observar como a ROM carrega o descritor e inicia o SP pode duplicar bootstrap/DMAs. Não fazer dispatch por heurística de endereço.
 - Próxima etapa: instrumentar/interpretar sequência real de SP_STATUS, SP_PC, SP_RD_LEN e descriptor DMEM com ROM local; projetar integração não duplicativa e testes de regressão. Sem teste real no Galaxy A15, compatibilidade GoldenEye permanece não confirmada.
+
+
+## Correção de ordem ABI do OSTask — 2026-11-03
+
+A revisão do leitor de diagnóstico detectou inversão dos campos finais: `data_ptr/data_size` (offsets 0x30/0x34) e `yield_data_ptr/yield_data_size` (0x38/0x3C). A produção e o teste foram corrigidos nos commits `d0700f132f3a468051fe22c3445c2bb743f2fe2c` e `bb9a06c48444e98a6e8f6e5d840b1bae579009ad`. CI ainda pendente.
