@@ -227,7 +227,7 @@ class N64Bus(
     private var spDramAddress = 0
     private var spStatus = SP_STATUS_HALT
     private var spSemaphore = 0
-    // Minimal MIPS Interface state. Interrupt sources are not yet driven by emulated devices.
+    // Partial MIPS Interface state; VI, PI, DP and SP can latch interrupt sources.
     private var miInitMode = 0
     private var miInterruptMask = 0
     private var miInterrupts = 0
@@ -820,7 +820,7 @@ class N64Bus(
         piDramAddress = (piDramAddress + length) and 0x00FFFFFF
         piCartAddress += length
         piStatus = piStatus and PI_STATUS_DMA_BUSY.inv()
-        miInterrupts = miInterrupts or MI_INTR_PI
+        setMiInterruptSource(MI_INTR_PI, "PI", true, "PI DMA complete")
     }
 
     /** Copies exactly 64 bytes from RDRAM into PIF RAM (SI write DMA). */
@@ -951,7 +951,7 @@ class N64Bus(
         if ((command and MI_INIT_MODE_SET_EBUS) != 0) miInitMode = miInitMode or MI_INIT_MODE_EBUS
         if ((command and MI_INIT_MODE_CLR_DP_INTR) != 0) {
             miInitMode = miInitMode and MI_INIT_MODE_DP_INTR.inv()
-            miInterrupts = miInterrupts and MI_INTR_DP.inv()
+            setMiInterruptSource(MI_INTR_DP, "DP", false, "MI_INIT_MODE_CLR_DP_INTR")
         }
         if ((command and MI_INIT_MODE_CLR_RDRAM_REG) != 0) miInitMode = miInitMode and MI_INIT_MODE_RDRAM_REG.inv()
         if ((command and MI_INIT_MODE_SET_RDRAM_REG) != 0) miInitMode = miInitMode or MI_INIT_MODE_RDRAM_REG
@@ -973,7 +973,7 @@ class N64Bus(
         spStatus = spStatus or SP_STATUS_HALT or SP_STATUS_BROKE
         if ((spStatus and SP_STATUS_INTR_BREAK) != 0) {
             spStatus = spStatus or SP_STATUS_INTR
-            miInterrupts = miInterrupts or MI_INTR_SP
+            setMiInterruptSource(MI_INTR_SP, "SP", true, "SP BREAK/INTR")
         }
     }
 
@@ -984,7 +984,7 @@ class N64Bus(
         if ((command and SP_STATUS_CMD_CLR_BROKE) != 0) spStatus = spStatus and SP_STATUS_BROKE.inv()
         if ((command and SP_STATUS_CMD_CLR_INTR) != 0) {
             spStatus = spStatus and SP_STATUS_INTR.inv()
-            miInterrupts = miInterrupts and MI_INTR_SP.inv()
+            setMiInterruptSource(MI_INTR_SP, "SP", false, "SP_STATUS_CMD_CLR_INTR")
         }
         if ((command and SP_STATUS_CMD_SET_INTR) != 0) {
             spStatus = spStatus or SP_STATUS_INTR
