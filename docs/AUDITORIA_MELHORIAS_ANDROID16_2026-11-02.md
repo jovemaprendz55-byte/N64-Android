@@ -283,3 +283,8 @@ O usuário confirmou GoldenEye 007 USA como alvo. Foi adicionado ao N64Bus o lei
 ## Correção de ordem ABI do OSTask — 2026-11-03
 
 A revisão do leitor de diagnóstico detectou inversão dos campos finais: `data_ptr/data_size` (offsets 0x30/0x34) e `yield_data_ptr/yield_data_size` (0x38/0x3C). A produção e o teste foram corrigidos nos commits `d0700f132f3a468051fe22c3445c2bb743f2fe2c` e `bb9a06c48444e98a6e8f6e5d840b1bae579009ad`. CI ainda pendente.
+
+
+## Captura passiva de descritor OSTask em DMA — 2026-11-03
+
+Adicionado `diagnosticSpTaskDescriptorDmaHistory` ao barramento. Só reconhece transferência RDRAM→DMEM[0xFC0] de 64 bytes, registra PC/endereço/campos do descritor após a cópia e não altera SP_STATUS nem executa RSP. Teste também confirma que outro offset não gera evento e que HALT permanece setado. Commits `7e7eeee4ec9068f180835e174bf2dcea24f0272c` e `6313a8417d59188fe833aa02120e9e6c444962ad`. CI ainda pendente.
