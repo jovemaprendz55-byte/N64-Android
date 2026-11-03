@@ -38,6 +38,7 @@ class N64HleBootTest {
 
         val bus = N64Bus(ram = N64Memory(), pifRom = null, cartridgeRom = rom)
         val cpu = R4300Cpu(bus)
+        assertEquals(N64Bus.RI_SELECT_POWER_ON_RESET, bus.read32(N64Bus.RI_REG_BASE + N64Bus.RI_SELECT_OFFSET))
         bus.write32(N64HleBoot.BOOT_FLAG_CIC_ID, 1234) // Must not retain stale RAM on a 6102 cold boot.
         val result = N64HleBoot.prepare(bus, cpu)
 
@@ -81,6 +82,10 @@ class N64HleBootTest {
         assertEquals(0, bus.read32(N64HleBoot.BOOT_FLAG_RESET_TYPE))
         assertEquals(0, bus.read32(N64HleBoot.BOOT_FLAG_CIC_ID))
         assertEquals(N64Memory.DEFAULT_RAM_SIZE, bus.read32(N64HleBoot.BOOT_FLAG_RDRAM_SIZE))
+        assertEquals(
+            N64Bus.RI_SELECT_CIC6102_POST_IPL3,
+            bus.read32(N64Bus.RI_REG_BASE + N64Bus.RI_SELECT_OFFSET)
+        )
 
         // The CPU must fetch and execute the staged COP1 instruction through KSEG0 -> RDRAM.
         cpu.step()
