@@ -93,3 +93,18 @@ Próxima leitura do log novo:
 
 - `96a1cf0bb4deffc6f9a921137512e377a729523b` — registrar alterações reais da máscara de interrupções MI (SET/CLEAR).
 - `9065b19a0acb6902963947f36caa6f111981b87c` — teste para garantir que a máscara só registra transições reais.
+
+## Teste adicional — fonte MI pendente com máscara desligada
+
+Em 2026-11-03, o teste `maskedPiDmaInterruptDoesNotEnterCpuException` foi ampliado para validar a sequência completa:
+
+1. Uma conclusão de DMA PI gera `ASSERT source=PI`, mas com `MI_LINE=false` porque a máscara PI está desligada.
+2. A CPU não entra em exceção enquanto a linha MI permanece mascarada.
+3. Ao escrever o comando MI para habilitar PI, o histórico registra `MASK_SET source=PI` com `MI_LINE=true`.
+4. No próximo passo, a CPU reconhece a interrupção já pendente e entra no vetor geral `0xFFFFFFFF80000180`.
+
+Isso cobre a diferença entre a fonte estar latched em MI_INTR e a linha externa estar efetivamente habilitada pela máscara. Não demonstra, por si só, que o handler do GoldenEye reconhece corretamente todas as fontes ou que o jogo sai do idle loop.
+
+Commit: `f2e3d0bb46fe7b2eeaca014a5274707692b7dc7b`.
+
+A consulta de workflows associada a esse commit não retornou execuções (o endpoint disponível só lista execuções disparadas por pull request). Portanto, este commit de teste ainda não tem CI verde confirmado nesta documentação.
