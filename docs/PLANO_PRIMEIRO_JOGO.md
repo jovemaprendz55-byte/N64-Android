@@ -37,7 +37,14 @@ Não ampliar a cobertura de instruções R4300/COP1 por perfeccionismo enquanto 
 - Referências técnicas públicas sobre a descompilação do jogo indicam uma variante de F3D/RSP da Rare, com extensão de triângulos em lote **G_TRI4 (opcode 0xB1)**. Não tratar GoldenEye como teste garantido de F3DEX padrão. Confirmar a implementação com microcódigo/display lists da ROM e traces do emulador.
 - Prioridade específica: validar cabeçalho/região/CIC da ROM do usuário; identificar OSTask e endereço de display list; identificar microcódigo carregado; então implementar o mínimo de F3D e G_TRI4 necessário, seguido dos comandos RDP realmente observados.
 - Não distribuir nem pedir upload da ROM protegida. O usuário pode selecionar localmente uma cópia obtida legalmente e compartilhar apenas o resumo do cabeçalho/logs.
-- Região/edição da ROM ainda não informada. Não presumir USA; verificar o seed `0x3F` contra a cópia concreta.
+- Região confirmada pelo usuário em 2026-11-03: **USA**. O seed esperado para esta edição é `0x3F`; a ROM concreta ainda precisa ser validada pelo resumo de cabeçalho/checksum do app.
+
+## Implementação de diagnóstico OSTask — 2026-11-03
+
+- `N64Bus` agora expõe `diagnosticSpTaskDescriptor()`, que lê os 16 campos do descritor libultra convencional no offset `0x0FC0` do SP DMEM.
+- Foi adicionado teste unitário que escreve os 16 campos e confirma a leitura big-endian.
+- A função é somente diagnóstica: não valida a tarefa, não agenda o RSP e não executa microcódigo. O próximo passo é correlacionar o descritor com os writes de SP_STATUS/SP_PC e os DMAs reais da ROM.
+- Commit de produção: `8135a0e9c8654627c5ca76290aa183f9184236e9`; teste: `981f0b64ebc44cbeafb55c17f03972fac885d499`. CI do commit de produção ainda em andamento no momento do registro.
 
 ## O que fica temporariamente em segundo plano
 - Cobertura exaustiva de instruções COP1 e exceções IEEE-754.
