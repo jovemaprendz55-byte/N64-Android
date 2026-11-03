@@ -56,6 +56,17 @@ class N64Bus(
         )
     }
 
+    private fun recordMiMaskTransition(source: String, enabled: Boolean) {
+        if (diagnosticMiInterruptSourceHistory.size >= 128) diagnosticMiInterruptSourceHistory.removeFirst()
+        val action = if (enabled) "MASK_SET" else "MASK_CLEAR"
+        diagnosticMiInterruptSourceHistory.addLast(
+            "$action source=$source " +
+                "INTR=0x${miInterrupts.toUInt().toString(16).uppercase().padStart(2, '0')} " +
+                "MASK=0x${miInterruptMask.toUInt().toString(16).uppercase().padStart(2, '0')} " +
+                "MI_LINE=${(miInterrupts and miInterruptMask) != 0}"
+        )
+    }
+
     fun setDiagnosticCpuInstructionContext(
         pc: Long, instruction: Int, rs: Int, rt: Int,
         rsValue: Long, rtValue: Long, effectiveAddress: Long?
@@ -963,8 +974,22 @@ class N64Bus(
             val clearCommand = 1 shl (source * 2)
             val setCommand = 1 shl (source * 2 + 1)
             val maskBit = 1 shl source
-            if ((command and clearCommand) != 0) miInterruptMask = miInterruptMask and maskBit.inv()
-            if ((command and setCommand) != 0) miInterruptMask = miInterruptMask or maskBit
+            val sourceName = when (source) {
+                0 -> "SP"
+                1 -> "SI"
+                2 -> "AI"
+                3 -> "VI"
+                4 -> "PI"
+                else -> "DP"
+            }
+            if ((command and clearCommand) != 0 && (miInterruptMask and maskBit) != 0) {
+                miInterruptMask = miInterruptMask and maskBit.inv()
+                recordMiMaskTransition(sourceName, false)
+            }
+            if ((command and setCommand) != 0 && (miInterruptMask and maskBit) == 0) {
+                miInterruptMask = miInterruptMask or maskBit
+                recordMiMaskTransition(sourceName, true)
+            }
         }
     }
 
