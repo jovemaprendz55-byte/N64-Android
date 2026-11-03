@@ -273,7 +273,12 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         val branchAddressForFault = pendingDelaySlotBranchAddress
         randomResetByWiredWrite = false
         try {
-            if (serviceMiInterrupt(branchAddressForFault)) return
+            if (serviceMiInterrupt(branchAddressForFault)) {
+                // Interrupt entry consumes the current CPU step too; Count must
+                // keep advancing while the guest is interrupted.
+                advanceCountCycles(2)
+                return
+            }
             stepInstruction()
             if (!randomResetByWiredWrite) advanceRandomRegister()
         } catch (fault: R4300Tlb.TlbFault) {
