@@ -114,6 +114,42 @@ class N64RomVideoSessionTest {
     }
 
     @Test
+    fun invalidTransientViPixelSizeDoesNotFailCpuExecution() {
+        val memory = N64Memory(1024 * 1024)
+        val bus = N64Bus(ram = memory)
+        memory.write32(0, 0x08000000) // J 0 keeps CPU inside RDRAM.
+        memory.write32(4, 0) // Delay slot.
+        // Program a geometrically valid frame but leave VI_STATUS pixel size invalid (0).
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_STATUS_OFFSET, 0)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_ORIGIN_OFFSET, 0x100)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_WIDTH_OFFSET, 2)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_H_START_OFFSET, (0x20 shl 16) or 0x22)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_X_SCALE_OFFSET, 0x400)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_START_OFFSET, (0x20 shl 16) or 0x24)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_Y_SCALE_OFFSET, 0x400)
+
+        val cpu = R4300Cpu(bus)
+        cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
+        val frames = mutableListOf<N64VideoFrame>()
+        val session = N64RomVideoSession(
+            bus = bus,
+            cpu = cpu,
+            instructionLimit = 8,
+            batchSize = 1,
+            framePollInterval = 1,
+            onFrame = frames::add
+        )
+
+        val result = session.execute()
+
+        assertEquals(N64ExecutionSession.State.COMPLETED, result.state)
+        assertEquals(8L, result.executedInstructions)
+        assertEquals(0, frames.size)
+        assertTrue(session.frameCaptureFailureMessage()?.contains("Unsupported VI pixel size") == true)
+        assertEquals(null, result.failureMessage)
+    }
+
+    @Test
     fun cooperativeStopStillWorksWhilePollingFrames() {
         val memory = N64Memory(64)
         memory.write32(0, 0x08000000)
