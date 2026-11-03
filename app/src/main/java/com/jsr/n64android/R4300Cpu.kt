@@ -288,7 +288,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 "STATUS=0x${cop0[12].toUInt().toString(16).uppercase().padStart(8, '0')} " +
                 "VECTOR=0x${pc.toULong().toString(16).uppercase()}"
         )
-        if (diagnosticInterruptHistory.size > 128) diagnosticInterruptHistory.removeAt(0)
+        if (diagnosticInterruptHistory.size > 512) diagnosticInterruptHistory.removeAt(0)
         delayedTarget = null
         pendingDelaySlotBranchAddress = null
         return true
@@ -817,7 +817,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                                     "epc=0x${cop0[14].toULong().toString(16).uppercase()}"
                                 recordControlFlowEvent(eretEvent)
                                 diagnosticEretHistory.add(eretEvent)
-                                if (diagnosticEretHistory.size > 128) diagnosticEretHistory.removeAt(0)
+                                if (diagnosticEretHistory.size > 512) diagnosticEretHistory.removeAt(0)
                             }
                             else -> throw ReservedInstructionFault(
                                 "R4300 COP0 CO funct=0x${funct.toString(16)} at 0x${instructionAddress.toString(16)}"
@@ -1418,7 +1418,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             " EntryLo0=0x" + cop0[2].toUInt().toString(16).uppercase().padStart(8, '0') +
             " EntryLo1=0x" + cop0[3].toUInt().toString(16).uppercase().padStart(8, '0')
         diagnosticTlbWriteHistory.add(line)
-        if (diagnosticTlbWriteHistory.size > 64) diagnosticTlbWriteHistory.removeAt(0)
+        if (diagnosticTlbWriteHistory.size > 256) diagnosticTlbWriteHistory.removeAt(0)
     }
 
     /** Complete, side-effect-free dump of all initialized architectural TLB entries. */
@@ -1523,7 +1523,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             "Status=0x${cop0[12].toString(16).uppercase()} Cause=0x${cop0[13].toString(16).uppercase()} " +
             "EPC=0x${cop0[14].toULong().toString(16).uppercase()} EntryHi=0x${cop0[10].toString(16).uppercase()}"
         diagnosticTlbExceptionHistory.add(trace)
-        if (diagnosticTlbExceptionHistory.size > 64) diagnosticTlbExceptionHistory.removeAt(0)
+        if (diagnosticTlbExceptionHistory.size > 512) diagnosticTlbExceptionHistory.removeAt(0)
         // Capture the exception handler/refill path from its first instruction.
         diagnosticTlbTraceRemaining = 256
     }
@@ -1664,16 +1664,16 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             "EntryLo0=0x${cop0[2].toUInt().toString(16).uppercase().padStart(8, '0')} " +
             "EntryLo1=0x${cop0[3].toUInt().toString(16).uppercase().padStart(8, '0')}"
         diagnosticTlbInstructionHistory.add(line)
-        if (diagnosticTlbInstructionHistory.size > 512) diagnosticTlbInstructionHistory.removeAt(0)
+        if (diagnosticTlbInstructionHistory.size > 2048) diagnosticTlbInstructionHistory.removeAt(0)
     }
 
     private fun recordControlFlowEvent(event: String) {
         diagnosticControlFlowHistory.add(event)
-        if (diagnosticControlFlowHistory.size > 64) diagnosticControlFlowHistory.removeAt(0)
+        if (diagnosticControlFlowHistory.size > 1024) diagnosticControlFlowHistory.removeAt(0)
     }
 
     private fun recordSelfLoopEntry(address: Long, event: String) {
-        if (diagnosticSelfLoopEntryHistory.size >= 32) return
+        if (diagnosticSelfLoopEntryHistory.size >= 64) return
         if (!diagnosticSelfLoopPcs.add(address)) return
 
         val watchedRegisters = intArrayOf(4, 5, 6, 7, 16, 17, 18, 19, 20, 21, 22, 23, 26, 27, 29, 31)
@@ -1794,7 +1794,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             " PA=0x" + physicalAddress.toUInt().toString(16).uppercase().padStart(8, '0') +
             " VALUE=0x" + value.toULong().toString(16).uppercase().padStart(16, '0')
         diagnosticTlbMemoryAccessHistory.add(line)
-        if (diagnosticTlbMemoryAccessHistory.size > 512) diagnosticTlbMemoryAccessHistory.removeAt(0)
+        if (diagnosticTlbMemoryAccessHistory.size > 2048) diagnosticTlbMemoryAccessHistory.removeAt(0)
     }
 
     private fun physicalAddress(
@@ -1836,10 +1836,10 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     }
 
     companion object {
-        private const val TLB_PRE_EXCEPTION_TRACE_CAPACITY = 64
+        private const val TLB_PRE_EXCEPTION_TRACE_CAPACITY = 256
         private const val PTE_TRACE_PREFIX_CAPACITY = 64
-        private const val PTE_TRACE_RECENT_CAPACITY = 512
-        private const val CALL_PATH_TRACE_CAPACITY = 512
+        private const val PTE_TRACE_RECENT_CAPACITY = 2048
+        private const val CALL_PATH_TRACE_CAPACITY = 2048
         const val RESET_VECTOR: Long = -0x40400000L
     }
 }
