@@ -110,6 +110,24 @@ class N64BusDpcTest {
     }
 
     @Test
+    fun unsupportedRdpCommandIsDiagnosticAndDoesNotBecomeCpuBusFault() {
+        val bus = N64Bus(ram = N64Memory(4096))
+        val start = 0x40
+        // TextureRectangle is a framed 16-byte RDP packet, but execution is not implemented.
+        writeCommands(bus, start, listOf(0x9000000000000000UL.toLong(), 0L))
+
+        bus.write32(N64Bus.DPC_START_REG, start)
+        val error = runCatching {
+            bus.write32(N64Bus.DPC_END_REG, start + 16)
+        }.exceptionOrNull()
+
+        assertEquals(null, error)
+        assertTrue(bus.diagnosticLastDpcFailure?.contains("UnsupportedOperationException") == true)
+        assertEquals(start, bus.read32(N64Bus.DPC_CURRENT_REG))
+        assertEquals(0, bus.read32(N64Bus.MI_INTR_REG))
+    }
+
+    @Test
     fun dpcRegistersAreIncludedInMmioTrace() {
         val bus = N64Bus(ram = N64Memory(256))
         bus.read32(N64Bus.DPC_STATUS_REG)
