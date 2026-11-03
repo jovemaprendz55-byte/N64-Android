@@ -1225,3 +1225,14 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - CI do commit de testes ainda precisa ser consultada. Se falhar, buscar o log da tarefa e corrigir a causa antes de atualizar o status.
 - Permanecem pendentes Underflow, Inexact, NaN signaling, Unimplemented e validação completa IEEE-754/VR4300. Nenhuma ROM foi executada em aparelho Android 16 nesta etapa.
 - Branch exclusiva: dev/n64-clean-start; main não foi alterada.
+
+
+## 55. Mudança de prioridade: primeiro jogo executável — 2026-11-03
+
+- Decisão do usuário: priorizar criar rapidamente um caminho funcional para testar pelo menos um jogo; depois do primeiro teste, retomar desenvolvimento normal e ampliar compatibilidade.
+- Inspeção confirmou infraestrutura já existente: N64RomLoader, N64HleBoot, N64RomVideoSession, N64ViFramebufferReader, N64VideoPresenterView, parser/processador DPC/RDP e rasterizadores iniciais.
+- Bloqueio arquitetural mais próximo: N64RomVideoSession não descobre/agenda automaticamente OSTasks libultra; RSP é acionado por polling cooperativo quando SP HALT está liberado. O caminho gráfico e microcódigos não estão completos.
+- Criado docs/PLANO_PRIMEIRO_JOGO.md com sequência de MVP, critério de sucesso e funcionalidades adiadas. O primeiro quadro só conta se vier de uma ROM real e aparecer no Galaxy A15; CI ou padrão sintético não contam.
+- Próxima informação necessária: nome/região da ROM que o usuário pretende testar, para escolher o primeiro alvo e evitar trabalho genérico sem referência.
+- As CIs dos testes COP1 e das duas atualizações documentais anteriores (41570938873, 41570983496, 41570990915) concluíram success. A prioridade de trabalho muda; não significa que ROM já executa.
+- Branch exclusiva: dev/n64-clean-start. main não foi alterada.
