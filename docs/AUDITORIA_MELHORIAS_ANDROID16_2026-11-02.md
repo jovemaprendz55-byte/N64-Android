@@ -209,3 +209,8 @@ A CPU passou a decodificar formatos fonte W/L para conversões numéricas:
 **CI:** uma primeira tentativa de decoder W/L falhou na compilação por literal hexadecimal Double incompatível com Kotlin; a expressão foi corrigida para limites Double explícitos. As CIs dos commits de correção, testes e validação de formato estavam em execução quando este complemento foi escrito. Verificar os resultados no registro principal antes de aprovar esta etapa.
 
 Consulte também a seção 50 de `docs/CONTINUIDADE_CHAT.md` para commits e histórico exato.
+
+
+### Nota de validação do decoder W/L (2026-11-03)
+
+As primeiras execuções dos testes W/L expuseram uma lacuna no decoder: embora a lógica de conversão tratasse os formatos 0x14/0x15, o dispatch COP1 externo ainda só encaminhava 0x10/0x11. Os testes W->S e L->D falharam, e a causa foi corrigida no commit `c754775102e6e836f52381b15c71fdbff9a98511`, que inclui os formatos W/L no dispatch. A CI desse commit deve ser consultada antes de considerar a correção validada. O registro principal seção 51 contém os runs e detalhes.
