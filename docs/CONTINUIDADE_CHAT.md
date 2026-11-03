@@ -1277,3 +1277,13 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Arquivos inspecionados: `N64Bus.kt`, `N64RomVideoSession.kt`, `N64SpTaskRunner.kt`, `N64SpTaskBootstrap.kt`, `N64SpTaskDescriptor.kt`, `N64SpTaskMicrocodeTracker.kt`, `N64SpTaskLifecycle.kt`, `N64SpTaskDpCoordinator.kt`, `MainActivity.kt` e testes do runner/sessão.
 - Região confirmada: GoldenEye 007 USA. Nenhuma ROM real foi executada no Galaxy A15 Android 16; nenhum jogo está confirmado como funcional.
 - Branch exclusiva: `dev/n64-clean-start`; `main` não foi alterada.
+
+
+## 59. Correção ABI do descritor OSTask — 2026-11-03
+
+- Revisão do layout de 64 bytes encontrou os dois pares finais invertidos em `N64Bus.diagnosticSpTaskDescriptor()`.
+- Corrigido: offsets 0x30/0x34 agora alimentam `dataPointer/dataSize`; offsets 0x38/0x3C alimentam `yieldData/yieldDataSize`, conforme a ordem ABI padrão.
+- Teste atualizado com valores distintos nos dois pares, para detectar regressão.
+- Commits: produção `d0700f132f3a468051fe22c3445c2bb743f2fe2c`; teste `bb9a06c48444e98a6e8f6e5d840b1bae579009ad`.
+- CI do código/teste ainda precisa ser confirmada. A CI dos documentos da etapa anterior passou (runs 41572153473, 41572158841, 41572164048 success).
+- Não muda o estado de integração OSTask: sessão contínua ainda não despacha automaticamente tarefas; sem ROM executada no aparelho.
