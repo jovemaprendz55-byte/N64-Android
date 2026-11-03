@@ -1166,3 +1166,14 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - A falha anterior está registrada e não é tratada como aprovação. Consultar os resultados das CIs antes de declarar esta etapa concluída.
 - Branch de trabalho `dev/n64-clean-start`; `main` não foi alterada.
 - Nenhum teste de ROM em aparelho Android foi realizado nesta etapa.
+
+
+## 51. Correção do decoder de formatos W/L — 2026-11-03
+
+- A CI dos testes `41568987410` falhou em dois casos: conversão W->S e L->D.
+- A análise do código mostrou que os formatos W/L já eram tratados dentro da lógica de conversão, mas o dispatch externo COP1 ainda aceitava somente fmt S/D (0x10/0x11). Portanto, as instruções com fmt W/L nunca chegavam à lógica recém-adicionada.
+- A CI `41569054586` também falhou por esse mesmo defeito no decoder; não considerar os commits anteriores aprovados.
+- Corrigido o dispatch externo para aceitar fmt 0x14 (W) e 0x15 (L): commit `c754775102e6e836f52381b15c71fdbff9a98511`.
+- A CI deste commit e a validação final de testes ainda precisam ser consultadas. Este é o primeiro commit que contém o decoder externo corrigido.
+- O erro de literal Double no commit inicial já foi corrigido em `3694d0283e00af40251bd42fdecee206a8bd8b6a`, cuja CI de compilação concluiu success; isso não substitui a CI de testes que falhou posteriormente.
+- Acompanhar especialmente os testes `cvtLongAndCvtSingleFromWordUseSignedIntegerFormats`, `cvtDoubleFromLongUsesFr0RegisterPair` e `cvtLongUsesFcr31RoundingMode`.
