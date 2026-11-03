@@ -36,7 +36,8 @@ class N64HleBootTest {
         assertEquals(N64HleBoot.ENTRY_PC, cpu.pc)
         assertEquals(1L shl 29, cpu.cop0[12] and (1L shl 29))
         cpu.fpr[4] = 0xFEDCBA98L
-        assertEquals(N64HleBoot.INITIAL_STACK, cpu.gpr[29])\n        assertEquals(0xFFFFFFFFA4001FF0UL.toLong(), cpu.gpr[29])
+        assertEquals(N64HleBoot.INITIAL_STACK, cpu.gpr[29])
+        assertEquals(0xFFFFFFFFA4001FF0UL.toLong(), cpu.gpr[29])
         assertEquals(0x3FL, cpu.gpr[22])
         assertEquals(0L, cpu.gpr[19])
         assertEquals(1L, cpu.gpr[20])
