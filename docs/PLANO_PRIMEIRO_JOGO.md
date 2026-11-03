@@ -301,3 +301,28 @@ A leitura mais detalhada da sequência de `ipl3.s` esclarece uma ambiguidade da 
 - A rotina enumera módulos consultando MI_VERSION para escolher espaçamento de registradores RDRAM (512 bytes em RCP 1.0 ou 1024 bytes em RCP 2.0), configura CC por módulo, lê DEVICE_TYPE e MANUFACTURER, ajusta RAS_INTERVAL, remapeia os módulos e só então calcula osMemSize. Assim, não existe um único conjunto completo de valores de RDRAM que possa ser aplicado com segurança sem modelar o perfil dos módulos.
 
 **Decisão:** não alterar RI_SELECT_RESET nem preencher RI/RDRAM com constantes presumidas nesta etapa. A próxima mudança de código deve separar claramente `powerOnResetState` de `postIpl3HandoffState` (ou API equivalente) e cobrir os dois com testes. O perfil GoldenEye USA deve ser derivado de dados de hardware suportados, não de um valor arbitrário de 8 MiB.
+
+## Implementação RI_SELECT e CI verde — 2026-11-03 06:07 BRT
+
+A separação entre reset físico e handoff HLE foi implementada e validada:
+
+- Um N64Bus recém-criado inicia RI_SELECT em RI_SELECT_POWER_ON_RESET = 0x00000000.
+- O método applyCic6102PostIpl3RiHandoff() aplica RI_SELECT_CIC6102_POST_IPL3 = 0x00000014 somente para o seed CIC 6102/7101 durante N64HleBoot.prepare().
+- O caminho CIC 6105/7105 não recebe esse handoff específico.
+- Testes cobrem o valor inicial do barramento e o valor aplicado pelo HLE CIC 6102.
+- O teste de snapshot MMIO foi atualizado para esperar o valor de reset físico (zero) em um barramento novo. Isso corrige a falha de regressão sem mascarar a diferença entre reset e handoff.
+
+Commits relevantes:
+- cf5db6e252a65c2ae7188ec568b004b63bdef08c — separa reset e handoff.
+- 769605e52fb7f9192c814b78dadca10c7ca33841 — aplica handoff CIC 6102 no HLE.
+- 43b2e9887d635b9985c25cdb12089810d8b00951 — testes dos dois estados.
+- b72b0d11f60017b9b63925dd423755177e8f78dd — corrige expectativa de teste de RI.
+- 97ebe628f3269d6ab1297ccf2f189ae7fd6ea89d — atualiza teste de snapshot MMIO.
+
+Validação final: workflow Android run 41608340511 (https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41608340511) concluiu com success. As etapas Build and test e Upload debug APK passaram; o artefato n64-android-debug-apk foi publicado (1.049.362 bytes; SHA-256 a46883b80cc1a92b684422b2c7d8d1970fd5995bdcfa435f3b7a95add2887085). O artefato expira em 17/11/2026.
+
+Limites mantidos: isso valida compilação e testes automatizados, não o boot de GoldenEye no Poco C85. A implementação cobre apenas o RI_SELECT inicial e o valor de handoff identificado; não modela RI_CONFIG/RI_MODE, registradores RDRAM, enumeração de módulos, temporização, caches ou o restante da sequência IPL3.
+
+### Próxima etapa técnica
+
+Continuar a auditoria do caminho mínimo para o primeiro quadro: instrumentar/validar o encadeamento SP DMA → descritor OSTask → DMA de microcódigo → execução RSP, aproveitando o diagnóstico passivo existente. Não aplicar um perfil RDRAM presumido nem forçar SP HALT. A validação final do GoldenEye USA ainda depende do relatório gerado no aparelho com a ROM local do usuário.
