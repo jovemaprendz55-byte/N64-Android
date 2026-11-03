@@ -1202,3 +1202,14 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - A falha era no código do teste, não no código de produção. A implementação de FPU compilou e o APK Debug foi montado na execução que falhou na compilação dos testes unitários.
 - A nova CI deste commit ainda precisa terminar. Não considerar a etapa aprovada até confirmar `success`.
 - Permanecem as limitações de exceções FPU descritas acima: classificação parcial, sem Inexact/Underflow/NaN signaling completo, e sem teste de ROM em dispositivo.
+
+
+## Ampliação dos testes de exceções FPU — 2026-11-03
+
+- Após a correção da máscara de Cause, as CIs dos commits 779c1468d950397376748ce5ecc724ca8ce55ee2, 32971215b979b3e3454e13bfa0735029096311e2 e cad15c5155f98853f1245e13f85d50d626bfdd39 concluíram com sucesso (runs 41570279292, 41570310432 e 41570319123).
+- Novos testes adicionados no commit 994009656444241a8ded4cd6a88ab8cc5718ae3f:
+  - 0.0 / 0.0 gera Cause Invalid (bit 16), ativa Flag Invalid e preserva uma Flag anterior (sticky).
+  - Float.MAX_VALUE * 2.0f em precisão simples gera Cause Overflow (bit 14), Flag Overflow e infinito como resultado quando Enable está desligado.
+  - Com Enable Invalid ligado, 0.0 / 0.0 gera FPE (ExcCode 15) e não altera o registrador destino.
+- A CI dos novos testes ainda precisa concluir. Esses testes ampliam a cobertura do classificador existente; não adicionam novas categorias de exceção à implementação.
+- Limites permanecem: classificação básica e parcial, sem implementação integral de Underflow/Inexact/NaN signaling/Unimplemented; não há validação de ROM no aparelho Android 16.
