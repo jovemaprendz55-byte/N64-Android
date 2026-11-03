@@ -1213,3 +1213,15 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
   - Com Enable Invalid ligado, 0.0 / 0.0 gera FPE (ExcCode 15) e não altera o registrador destino.
 - A CI dos novos testes ainda precisa concluir. Esses testes ampliam a cobertura do classificador existente; não adicionam novas categorias de exceção à implementação.
 - Limites permanecem: classificação básica e parcial, sem implementação integral de Underflow/Inexact/NaN signaling/Unimplemented; não há validação de ROM no aparelho Android 16.
+
+
+## 54. Expansão de testes Invalid do COP1 — 2026-11-03
+
+- Confirmadas como aprovadas as três CIs anteriores: testes COP1 41570561326, atualização da continuidade 41570609730 e atualização da auditoria 41570618132 (todas success).
+- Commit 3f3a6093e11e60de90daedcc2c20d791264a43d6 adiciona dois testes de regressão:
+  - SQRT.S de valor negativo com Enable Invalid ativo: verifica Cause Invalid, Flag Invalid, ExcCode 15 e que o registrador destino não é alterado.
+  - DIV.S infinito/infinito com Enable desligado: verifica Cause/Flag Invalid, ausência de trap e resultado NaN.
+- Esses testes exercitam dois caminhos já previstos no classificador; não adicionam novas categorias de exceção nem ampliam a implementação de produção.
+- CI do commit de testes ainda precisa ser consultada. Se falhar, buscar o log da tarefa e corrigir a causa antes de atualizar o status.
+- Permanecem pendentes Underflow, Inexact, NaN signaling, Unimplemented e validação completa IEEE-754/VR4300. Nenhuma ROM foi executada em aparelho Android 16 nesta etapa.
+- Branch exclusiva: dev/n64-clean-start; main não foi alterada.
