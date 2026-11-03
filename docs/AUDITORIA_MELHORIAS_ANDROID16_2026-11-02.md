@@ -288,3 +288,8 @@ A revisão do leitor de diagnóstico detectou inversão dos campos finais: `data
 ## Captura passiva de descritor OSTask em DMA — 2026-11-03
 
 Adicionado `diagnosticSpTaskDescriptorDmaHistory` ao barramento. Só reconhece transferência RDRAM→DMEM[0xFC0] de 64 bytes, registra PC/endereço/campos do descritor após a cópia e não altera SP_STATUS nem executa RSP. Teste também confirma que outro offset não gera evento e que HALT permanece setado. Commits `7e7eeee4ec9068f180835e174bf2dcea24f0272c` e `6313a8417d59188fe833aa02120e9e6c444962ad`. CI ainda pendente.
+
+
+## Ajuste de formato dos ponteiros OSTask — 2026-11-03
+
+A CI 41601311466 revelou que o teste esperava ponteiros com 8 dígitos hexadecimais, mas a linha diagnóstica não preenchia zeros à esquerda. Padronizado o formato dos campos BOOT/UCODE/DATA/YIELD no commit `dd614e6d0051bb1e256c962cbfd515d19f1fd5cd`. A lógica de captura não mudou; aguardar CI de confirmação.
