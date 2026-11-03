@@ -806,41 +806,71 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                         val fs = rd
                         val fd = (instruction ushr 6) and 0x1F
                         val fn = instruction and 0x3F
-                        // Unary arithmetic encodings reserve ft=0. Reject malformed
-                        // encodings before reading operands or modifying the destination.
-                        if (fn in 0x04..0x07 && ft != 0) {
-                            throw ReservedInstructionFault("COP1 unary function 0x${fn.toString(16)} requires ft=0")
-                        }
-                        if (rs == 0x10) {
-                            val x = java.lang.Float.intBitsToFloat(readFprSingle(fs))
-                            val y = java.lang.Float.intBitsToFloat(readFprSingle(ft))
-                            val z = when (fn) {
-                                0x00 -> x + y
-                                0x01 -> x - y
-                                0x02 -> x * y
-                                0x03 -> x / y
-                                0x04 -> Math.sqrt(x.toDouble()).toFloat()
-                                0x05 -> kotlin.math.abs(x)
-                                0x06 -> x
-                                0x07 -> -x
-                                else -> throw ReservedInstructionFault("Unsupported COP1 single function")
+                        if (fn >= 0x30) {
+                            // COP1 comparisons update FCC0. Other condition-code fields
+                            // are rejected until the additional FCC bits are modeled.
+                            val cc = (instruction ushr 8) and 0x07
+                            if (cc != 0 || (instruction and 0xC0) != 0) {
+                                throw ReservedInstructionFault("COP1 comparison condition code/reserved fields are unsupported")
                             }
-                            writeFprSingle(fd, java.lang.Float.floatToRawIntBits(z))
+                            val condition = fn and 0x0F
+                            val unordered: Boolean
+                            val equal: Boolean
+                            val less: Boolean
+                            if (rs == 0x10) {
+                                val x = java.lang.Float.intBitsToFloat(readFprSingle(fs))
+                                val y = java.lang.Float.intBitsToFloat(readFprSingle(ft))
+                                unordered = x.isNaN() || y.isNaN()
+                                equal = !unordered && x == y
+                                less = !unordered && x < y
+                            } else {
+                                val x = java.lang.Double.longBitsToDouble(readFprDouble(fs))
+                                val y = java.lang.Double.longBitsToDouble(readFprDouble(ft))
+                                unordered = x.isNaN() || y.isNaN()
+                                equal = !unordered && x == y
+                                less = !unordered && x < y
+                            }
+                            val result = (unordered && (condition and 0x01) != 0) ||
+                                (equal && (condition and 0x02) != 0) ||
+                                (less && (condition and 0x04) != 0)
+                            val fcc0 = 1L shl 23
+                            fcr[31] = if (result) fcr[31] or fcc0 else fcr[31] and fcc0.inv()
                         } else {
-                            val x = java.lang.Double.longBitsToDouble(readFprDouble(fs))
-                            val y = java.lang.Double.longBitsToDouble(readFprDouble(ft))
-                            val z = when (fn) {
-                                0x00 -> x + y
-                                0x01 -> x - y
-                                0x02 -> x * y
-                                0x03 -> x / y
-                                0x04 -> Math.sqrt(x)
-                                0x05 -> kotlin.math.abs(x)
-                                0x06 -> x
-                                0x07 -> -x
-                                else -> throw ReservedInstructionFault("Unsupported COP1 double function")
+                            // Unary arithmetic encodings reserve ft=0.
+                            if (fn in 0x04..0x07 && ft != 0) {
+                                throw ReservedInstructionFault("COP1 unary function 0x${fn.toString(16)} requires ft=0")
                             }
-                            writeFprDouble(fd, java.lang.Double.doubleToRawLongBits(z))
+                            if (rs == 0x10) {
+                                val x = java.lang.Float.intBitsToFloat(readFprSingle(fs))
+                                val y = java.lang.Float.intBitsToFloat(readFprSingle(ft))
+                                val z = when (fn) {
+                                    0x00 -> x + y
+                                    0x01 -> x - y
+                                    0x02 -> x * y
+                                    0x03 -> x / y
+                                    0x04 -> Math.sqrt(x.toDouble()).toFloat()
+                                    0x05 -> kotlin.math.abs(x)
+                                    0x06 -> x
+                                    0x07 -> -x
+                                    else -> throw ReservedInstructionFault("Unsupported COP1 single function")
+                                }
+                                writeFprSingle(fd, java.lang.Float.floatToRawIntBits(z))
+                            } else {
+                                val x = java.lang.Double.longBitsToDouble(readFprDouble(fs))
+                                val y = java.lang.Double.longBitsToDouble(readFprDouble(ft))
+                                val z = when (fn) {
+                                    0x00 -> x + y
+                                    0x01 -> x - y
+                                    0x02 -> x * y
+                                    0x03 -> x / y
+                                    0x04 -> Math.sqrt(x)
+                                    0x05 -> kotlin.math.abs(x)
+                                    0x06 -> x
+                                    0x07 -> -x
+                                    else -> throw ReservedInstructionFault("Unsupported COP1 double function")
+                                }
+                                writeFprDouble(fd, java.lang.Double.doubleToRawLongBits(z))
+                            }
                         }
                     }
                     else -> throw ReservedInstructionFault(
