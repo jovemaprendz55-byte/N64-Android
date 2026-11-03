@@ -862,3 +862,25 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Adicionado teste internalHaltPollingDoesNotCreateSyntheticSpMmioReads, que executa instruções até BREAK e verifica que a sondagem interna não acrescenta leituras SP ao histórico.
 - A correção reduz ruído e trabalho de instrumentação; não altera estado de hardware guest nem implementa novos opcodes RSP.
 - RSP continua sendo um subconjunto MIPS-I/COP2 e RDP suporta somente os comandos explicitamente implementados; microcódigo gráfico comercial não está certificado.
+
+
+## 36. Auditoria da integração DPC/RDP com exceções da CPU — 2026-11-02
+
+### Defeito confirmado
+- O caminho de execução da ROM escreve DPC_END por meio do barramento dentro de uma instrução de store da CPU.
+- Quando a display list continha um comando RDP multiword conhecido, mas ainda não implementado (por exemplo, TextureRectangle/opcode 0x24), N64DpcCommandProcessor lançava UnsupportedOperationException.
+- N64Bus.write32(DPC_END) propagava essa exceção host. Como o store ocorre dentro de R4300Cpu.step(), o caminho de barramento podia interpretar uma limitação do emulador como falha física de escrita e injetar DBE (ou interromper a sessão), embora o endereço MMIO fosse válido.
+- Isso misturava duas classes de falha: acesso físico inválido do guest e comando gráfico válido cuja execução ainda não é suportada pelo emulador.
+
+### Correção aplicada
+- N64Bus.write32(DPC_END) agora captura especificamente UnsupportedOperationException, registra a mensagem em diagnosticLastDpcFailure e retorna sem fabricar uma exceção de barramento para a CPU.
+- Falhas de validação de endereço/range e outras exceções continuam seguindo o caminho anterior; não foram silenciadas genericamente.
+- Em falha de comando, DPC_CURRENT permanece no início da lista e não é gerado DP interrupt.
+- Teste unsupportedRdpCommandIsDiagnosticAndDoesNotBecomeCpuBusFault: envia um TextureRectangle de 16 bytes, confirma ausência de exceção host, diagnóstico de UnsupportedOperationException, CURRENT preservado e ausência de MI interrupt.
+- O teste direto de N64DpcCommandProcessor continua podendo observar a exceção de comando não suportado; a alteração é no limite entre dispositivo e CPU.
+
+### Limites
+- A correção não implementa TextureRectangle, texturização, combiner, Z-buffer, cobertura ou microcódigo RSP comercial.
+- A sessão ainda pode não produzir pixels para ROMs que dependem desses comandos; a limitação fica visível no diagnóstico DPC, sem se transformar em falso DBE.
+- Validar por CI. Não houve instalação nem teste de ROM no Poco C85 nesta rodada.
+- Branch dev/n64-clean-start; main não foi alterada.
