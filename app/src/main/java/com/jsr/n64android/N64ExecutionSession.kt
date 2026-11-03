@@ -73,6 +73,9 @@ class N64ExecutionSession(
                     executed.get() < instructionLimit
                 ) {
                     beforeInstruction?.invoke()
+                    // The callback may request cancellation (or another thread may do so
+                    // while it runs). Do not begin a guest instruction after that boundary.
+                    if (stopRequested.get()) break
                     stepInstruction()
                     executed.incrementAndGet()
                     inBatch++
