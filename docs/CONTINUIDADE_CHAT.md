@@ -1236,3 +1236,16 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Próxima informação necessária: nome/região da ROM que o usuário pretende testar, para escolher o primeiro alvo e evitar trabalho genérico sem referência.
 - As CIs dos testes COP1 e das duas atualizações documentais anteriores (41570938873, 41570983496, 41570990915) concluíram success. A prioridade de trabalho muda; não significa que ROM já executa.
 - Branch exclusiva: dev/n64-clean-start. main não foi alterada.
+
+
+## 56. Alvo definido: GoldenEye 007 — 2026-11-03
+
+- O usuário escolheu **GoldenEye 007 (Nintendo 64)** como primeiro jogo do MVP.
+- `N64Bus.detectCicSeed()` reconhece a soma IPL3 `0xD057C85244` como seed `0x3F` (CIC-NUS-6102/7101), comentado como usado por GoldenEye 007 USA. Isso não comprova compatibilidade de boot; apenas identifica uma variante CIC.
+- `N64RomVideoSession` continua sem descoberta/agendamento automático de OSTasks; `N64Bus` tem traces de SP MMIO/DMA e processa DPC_END de forma síncrona, com limitações.
+- Referências técnicas públicas da descompilação descrevem microcódigo gráfico Rare baseado em F3D, com extensão `G_TRI4` (opcode `0xB1`). É uma hipótese técnica forte para orientar inspeção, não suporte já implementado. Confirmar com microcódigo e display lists da ROM concreta.
+- Próxima implementação: detecção/diagnóstico de OSTask e microcódigo carregado; depois adicionar somente comandos F3D/G_TRI4 e RDP exigidos pelos traces. Não inventar OSTasks nem limpar HALT sem evidência.
+- Região/edição da ROM ainda não informada. Pedir USA, Europe/PAL ou Japan; não presumir região. Não solicitar nem armazenar ROM protegida.
+- Plano específico atualizado em `docs/PLANO_PRIMEIRO_JOGO.md`.
+- Nenhuma ROM foi executada e nenhum jogo foi confirmado como funcional. CI não equivale a teste real no aparelho.
+- Branch exclusiva: `dev/n64-clean-start`; `main` não foi alterada.
