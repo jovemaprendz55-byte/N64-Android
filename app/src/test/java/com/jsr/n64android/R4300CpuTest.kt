@@ -5263,7 +5263,7 @@ class R4300CpuTest {
         cpu.step()
 
         assertEquals(41L, cpu.cop0[9])
-        assertEquals(1L, cpu.cop0[12] and 0x2L) // EXL proves interrupt entry.
+        assertEquals(0x2L, cpu.cop0[12] and 0x2L) // EXL proves interrupt entry.
     }
 
 }
