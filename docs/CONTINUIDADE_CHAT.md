@@ -1177,3 +1177,11 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - A CI deste commit e a validação final de testes ainda precisam ser consultadas. Este é o primeiro commit que contém o decoder externo corrigido.
 - O erro de literal Double no commit inicial já foi corrigido em `3694d0283e00af40251bd42fdecee206a8bd8b6a`, cuja CI de compilação concluiu success; isso não substitui a CI de testes que falhou posteriormente.
 - Acompanhar especialmente os testes `cvtLongAndCvtSingleFromWordUseSignedIntegerFormats`, `cvtDoubleFromLongUsesFr0RegisterPair` e `cvtLongUsesFcr31RoundingMode`.
+
+
+## 52. FCR31: máscara de campos graváveis via CTC1
+- Commit de produção: `9951f9fb73eb16a5d57d8e0b243c522f45722c9a`.
+- `CTC1` direcionado ao FCR31 agora preserva somente RM (bits 1:0), Flags (6:2), Enables (11:7), Cause (17:12), FCC0 (23) e FS (24), usando máscara `0x0183FFFF`.
+- Bits reservados escritos pelo software são descartados; FCR0 continua somente leitura.
+- Teste automatizado adicionado no commit `901885f00537984345b0a73e0d5a27ad86d78de3`, incluindo verificação dos campos individualmente.
+- CI da alteração de produção/teste ainda precisa ser confirmado. Isso prepara o controle do FPU, mas ainda não implementa Cause/Flag automáticos nem traps IEEE.
