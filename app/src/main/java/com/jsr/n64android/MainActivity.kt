@@ -1398,6 +1398,9 @@ class MainActivity : Activity() {
             setOnClickListener {
                 isEnabled = false
                 val button = this
+                // Capture UI text on the main thread; all expensive work stays on the exporter thread.
+                val screenReport = runCatching { reportText() }
+                    .getOrDefault("Texto da tela indisponível.")
                 Thread({
                     try {
                         val worker = romVideoThread
@@ -1420,7 +1423,7 @@ class MainActivity : Activity() {
                             appendLine("Estado da execução: ${if (worker?.isAlive == true) "ATIVA" else "PARADA"}")
                             appendLine()
                             appendLine("=== TELA / CONTEXTO ===")
-                            appendLine(runCatching { reportText() }.getOrDefault("Texto da tela indisponível."))
+                            appendLine(screenReport)
                             appendLine()
                             appendLine("=== RESUMO AUTOMÁTICO HLE ===")
                             if (bus != null && cpu != null) {
@@ -1436,6 +1439,8 @@ class MainActivity : Activity() {
                                 appendLine("=== CPU / COP0 ===")
                                 appendLine("PC=0x${cpu.pc.toULong().toString(16).uppercase()}")
                                 appendLine("HI=0x${cpu.hi.toULong().toString(16).uppercase()} LO=0x${cpu.lo.toULong().toString(16).uppercase()}")
+                                appendLine("SNAPSHOT ARQUITETURAL COMPLETO (inclui delay slot, branch pendente, fase Count e TLB):")
+                                appendLine(cpu.snapshotContext().toString())
                                 cpu.gpr.forEachIndexed { i, value -> appendLine("GPR[$i]=0x${value.toULong().toString(16).uppercase()}") }
                                 cpu.cop0.forEachIndexed { i, value -> appendLine("COP0[$i]=0x${value.toULong().toString(16).uppercase()}") }
                                 appendLine("=== REGISTRADORES FPU ===")
@@ -1461,6 +1466,8 @@ class MainActivity : Activity() {
                                 appendLine(cpu.diagnosticEretHistory.toList().joinToString("\n").ifEmpty { "(sem ERET registrado)" })
                                 appendLine("=== PRIMEIRAS ENTRADAS EM LOOPS BEQ AUTO-SALTO ===")
                                 appendLine(cpu.diagnosticSelfLoopEntryHistory.toList().joinToString("\n").ifEmpty { "(nenhum loop BEQ para si mesmo registrado)" })
+                                appendLine("=== ESTADO FINAL DA SESSAO DE EXECUCAO ===")
+                                appendLine(session?.snapshot()?.toString() ?: "(snapshot de sessão indisponível)")
                                 appendLine("=== INSTRUÇÕES ANTES DA PRIMEIRA FALHA TLB ===")
                                 appendLine(cpu.diagnosticTlbPreExceptionHistory.toList().joinToString("\n").ifEmpty { "(sem histórico pré-falha)" })
                                 appendLine("=== INSTRUÇÕES APÓS A FALHA TLB ===")
