@@ -95,7 +95,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         private set
     /** Basic COP0 storage with initial syscall/break exception and ERET handling. */
     val cop0: LongArray = LongArray(32)
-    /** Floating-point register storage (raw 32-bit words; full paired-double semantics remain incomplete). */
+    /** Floating-point register storage; FR=0 paired-double and FR=1 independent-register access is handled by helpers. */
     val fpr: LongArray = LongArray(32)
     /** Floating-point control registers; FCR31 holds the FPU condition/status flags. */
     val fcr: LongArray = LongArray(32)
@@ -806,6 +806,11 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                         val fs = rd
                         val fd = (instruction ushr 6) and 0x1F
                         val fn = instruction and 0x3F
+                        // Unary arithmetic encodings reserve ft=0. Reject malformed
+                        // encodings before reading operands or modifying the destination.
+                        if (fn in 0x04..0x07 && ft != 0) {
+                            throw ReservedInstructionFault("COP1 unary function 0x${fn.toString(16)} requires ft=0")
+                        }
                         if (rs == 0x10) {
                             val x = java.lang.Float.intBitsToFloat(readFprSingle(fs))
                             val y = java.lang.Float.intBitsToFloat(readFprSingle(ft))
