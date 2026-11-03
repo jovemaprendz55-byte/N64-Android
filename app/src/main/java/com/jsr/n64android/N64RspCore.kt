@@ -22,7 +22,7 @@ class N64RspCore(private val bus: N64Bus) {
     var lo: Int = 0
         private set
     val halted: Boolean
-        get() = (bus.read32(N64Bus.SP_STATUS_REG) and N64Bus.SP_STATUS_HALT) != 0
+        get() = (bus.diagnosticSpStatus() and N64Bus.SP_STATUS_HALT) != 0
 
     private var delayedTarget: Int? = null
     private var instructionListener: ((pc: Int, instruction: Int) -> Unit)? = null
