@@ -151,6 +151,12 @@ O commit `2cf65e0b6c1c2ad822273def8089e8511cae1ce0` foi publicado somente em `de
 
 Não houve teste de jogo no aparelho com este APK. Portanto, o build verde confirma testes automatizados e montagem, não compatibilidade de GoldenEye. A branch `main` não foi alterada.
 
+## Captura automática de loop sem atividade gráfica
+
+Após o pedido para não depender do botão manual, a tela de execução foi alterada para salvar o mesmo diagnóstico automaticamente quando todas as condições forem verdadeiras: pelo menos 5.000.000 instruções executadas; o mesmo ciclo de instruções repetido em duas amostras sucessivas; zero frames VI; zero instruções RSP; SP ainda em HALT; e nenhuma escrita em SP ou DPC. Ao disparar, a interface pede uma parada segura e reutiliza o exportador existente para gravar o TXT em `Download/N64Android`. O botão manual continua disponível.
+
+O app não consegue buscar por conta própria um arquivo do armazenamento privado do aparelho para anexá-lo nesta conversa. Após a captura automática, ainda é preciso anexar o TXT salvo no chat. A alteração precisa passar pelo workflow Android antes que exista APK atualizado para instalar.
+
 
 ## Verificação do workflow de diagnóstico anterior
 
