@@ -30,6 +30,15 @@ Não ampliar a cobertura de instruções R4300/COP1 por perfeccionismo enquanto 
 - RDP produz framebuffer que VI consegue ler.
 - Um quadro real do jogo aparece no Galaxy A15 Android 16. Um padrão de teste ou framebuffer sintético não conta como jogo funcionando.
 
+## Perfil do jogo-alvo: GoldenEye 007
+
+- Jogo escolhido pelo usuário em 2026-11-03: **GoldenEye 007 (N64)**.
+- O código atual reconhece o seed CIC `0x3F` associado ao CIC-NUS-6102/7101 e comenta seu uso na versão USA de GoldenEye. Isso é apenas reconhecimento de CIC; não prova que o boot do jogo esteja funcional.
+- Referências técnicas públicas sobre a descompilação do jogo indicam uma variante de F3D/RSP da Rare, com extensão de triângulos em lote **G_TRI4 (opcode 0xB1)**. Não tratar GoldenEye como teste garantido de F3DEX padrão. Confirmar a implementação com microcódigo/display lists da ROM e traces do emulador.
+- Prioridade específica: validar cabeçalho/região/CIC da ROM do usuário; identificar OSTask e endereço de display list; identificar microcódigo carregado; então implementar o mínimo de F3D e G_TRI4 necessário, seguido dos comandos RDP realmente observados.
+- Não distribuir nem pedir upload da ROM protegida. O usuário pode selecionar localmente uma cópia obtida legalmente e compartilhar apenas o resumo do cabeçalho/logs.
+- Região/edição da ROM ainda não informada. Não presumir USA; verificar o seed `0x3F` contra a cópia concreta.
+
 ## O que fica temporariamente em segundo plano
 - Cobertura exaustiva de instruções COP1 e exceções IEEE-754.
 - Precisão ciclo-a-ciclo de Count/VI/AI.
@@ -37,4 +46,4 @@ Não ampliar a cobertura de instruções R4300/COP1 por perfeccionismo enquanto 
 - Refatorações sem relação direta com o primeiro quadro.
 
 ## Próxima ação
-Perguntar ao usuário qual ROM/jogo ele já possui e pretende testar primeiro. Usar esse jogo como alvo de compatibilidade, sem assumir compatibilidade universal.
+Solicitar a região/edição da ROM GoldenEye 007 (USA, Europe/PAL ou Japan) e, quando disponível, o resumo do cabeçalho exportado pelo próprio app. Em paralelo, auditar o caminho SP DMA → OSTask → RSP e criar testes de reconhecimento de tarefas sem inventar descritores.
