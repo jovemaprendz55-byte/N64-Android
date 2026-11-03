@@ -925,3 +925,13 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Código de produção `N64RomVideoSession.kt` não foi alterado nesta correção; a condição de publicação continua incluindo largura, altura e conteúdo ARGB.
 - Commit do ajuste: `ce9ba4181aecc26c21bda02a3379a38ee8f0d4d9`. Aguardar CI desse commit. Não declarar aprovação nem distribuir APK antes de todos os testes passarem.
 - Branch `dev/n64-clean-start`; `main` permanece intacta. Sem teste visual no aparelho nesta etapa.
+
+
+## 40. Lacuna COP0 Count/Compare — 2026-11-02
+
+- Auditoria estática confirmou ausência de incremento de COP0 Count (reg. 9), comparação com Compare (reg. 11) e geração de Cause.IP7 (bit 15) para interrupção interna do temporizador R4300.
+- MTC0 Compare atualmente usa armazenamento genérico e não limpa IP7; a rotina de amostragem de interrupções só espelha MI em IP2.
+- Impacto: software que depende do timer interno para scheduler/timeouts pode travar ou executar com temporização incorreta.
+- Não adicionar incremento por instrução sem definir antes a fonte de ticks e divisor do Count do VR4300. O emulador ainda não modela ciclos/stalls de forma suficiente para uma implementação temporal confiável.
+- Planejamento: camada de ticks determinística; política Count/ticks documentada; MTC0 Compare limpa IP7; igualdade Count/Compare levanta IP7; testes para IE/IM7/EXL/ERL, delay slot e limpeza por Compare.
+- Nenhum código de produção alterado nesta etapa; achado e plano registrados em `docs/AUDITORIA_MELHORIAS_ANDROID16_2026-11-02.md`. Branch dev/n64-clean-start; main intacta.
