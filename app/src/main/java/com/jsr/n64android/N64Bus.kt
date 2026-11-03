@@ -417,8 +417,8 @@ class N64Bus(
             ucodeData = word(0x18), ucodeDataSize = word(0x1C),
             dramStack = word(0x20), dramStackSize = word(0x24),
             outputBuffer = word(0x28), outputBufferSize = word(0x2C),
-            yieldData = word(0x30), yieldDataSize = word(0x34),
-            dataPointer = word(0x38), dataSize = word(0x3C)
+            dataPointer = word(0x30), dataSize = word(0x34),
+            yieldData = word(0x38), yieldDataSize = word(0x3C)
         )
     }
 
