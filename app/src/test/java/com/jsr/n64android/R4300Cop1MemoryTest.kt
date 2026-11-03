@@ -32,7 +32,8 @@ class R4300Cop1MemoryTest {
         cpu.setProgramCounter(0)
 
         cpu.step()
-        assertEquals(0x0123456789ABCDEFL, cpu.fpr[6])
+        assertEquals(0x01234567L, cpu.fpr[6])
+        assertEquals(0x89ABCDEFL, cpu.fpr[7])
         cpu.step()
         assertEquals(0x01234567, memory.read32(0x28))
         assertEquals(0x89ABCDEF.toInt(), memory.read32(0x2C))
