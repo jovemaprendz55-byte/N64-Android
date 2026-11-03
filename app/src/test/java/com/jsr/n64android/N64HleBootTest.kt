@@ -115,7 +115,6 @@ class N64HleBootTest {
         assertEquals(0xFFFFFFFF80001000UL.toLong(), result.entryPc)
         assertEquals(payload[0].toInt() and 0xFF, bus.peek8ForDiagnostic(0x1000))
         assertEquals(payload.last().toInt() and 0xFF, bus.peek8ForDiagnostic(0x1000 + payload.lastIndex))
-        assertEquals(N64HleBoot.ENTRY_PC, N64HleBoot.ENTRY_PC) // Keep the canonical entry constant unchanged.
     }
 
     @Test
