@@ -24,7 +24,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         val pc: Long,
         val delayedTarget: Long?,
         val pendingDelaySlotBranchAddress: Long?,
-        val randomResetByWiredWrite: Boolean
+        val randomResetByWiredWrite: Boolean,
+        val countCycleRemainder: Int
     )
 
     fun snapshotContext(): ContextSnapshot = ContextSnapshot(
@@ -39,7 +40,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         pc = pc,
         delayedTarget = delayedTarget,
         pendingDelaySlotBranchAddress = pendingDelaySlotBranchAddress,
-        randomResetByWiredWrite = randomResetByWiredWrite
+        randomResetByWiredWrite = randomResetByWiredWrite,
+        countCycleRemainder = countCycleRemainder
     )
 
     /**
@@ -53,6 +55,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         require(snapshot.fpr.size == 32) { "FPR snapshot must contain 32 registers." }
         require(snapshot.fcr.size == 32) { "FCR snapshot must contain 32 registers." }
         require(snapshot.pc and 3L == 0L) { "Context PC must be 4-byte aligned." }
+        require(snapshot.countCycleRemainder in 0..1) { "Count divider phase must be 0 or 1." }
         require(snapshot.delayedTarget == null || snapshot.delayedTarget and 3L == 0L) {
             "Delayed branch target must be 4-byte aligned."
         }
@@ -75,6 +78,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         delayedTarget = snapshot.delayedTarget
         pendingDelaySlotBranchAddress = snapshot.pendingDelaySlotBranchAddress
         randomResetByWiredWrite = snapshot.randomResetByWiredWrite
+        countCycleRemainder = snapshot.countCycleRemainder
 
         memory.clearLoadLinkedReservation()
         instructionWordForCurrentStep = null
@@ -187,6 +191,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         hi = 0L
         lo = 0L
         cop0.fill(0L)
+        countCycleRemainder = 0
         fpr.fill(0L)
         fcr.fill(0L)
         tlb.clear()
