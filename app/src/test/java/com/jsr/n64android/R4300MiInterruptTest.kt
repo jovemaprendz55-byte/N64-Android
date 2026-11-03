@@ -53,6 +53,8 @@ class R4300MiInterruptTest {
         assertEquals(0, cpu.lastExceptionCode)
         assertEquals(startPc, cpu.cop0[14])
         assertTrue((cpu.cop0[13] and (1L shl 10)) != 0L) // Cause.IP2.
+        assertTrue(cpu.diagnosticInterruptHistory.single().contains("MI IRQ"))
+        assertTrue(cpu.diagnosticInterruptHistory.single().contains("VECTOR=0xFFFFFFFF80000180"))
         assertEquals(N64Bus.MI_INTR_VI, bus.read32(N64Bus.MI_INTR_REG) and N64Bus.MI_INTR_VI)
 
         bus.write32(N64Bus.VI_CURRENT_REG, 0)
