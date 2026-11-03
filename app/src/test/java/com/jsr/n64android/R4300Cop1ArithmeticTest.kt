@@ -28,7 +28,7 @@ class R4300Cop1ArithmeticTest {
         memory.write32(0, cop1(0x11, 2, 1, 3, 0x01)) // SUB.D f3, f1, f2
         memory.write32(4, cop1(0x11, 2, 3, 4, 0x03)) // DIV.D f4, f3, f2
         val cpu = R4300Cpu(memory)
-        cpu.cop0[12] = 1L shl 29
+        cpu.cop0[12] = (1L shl 29) or (1L shl 26)
         cpu.fpr[1] = java.lang.Double.doubleToRawLongBits(9.0)
         cpu.fpr[2] = java.lang.Double.doubleToRawLongBits(3.0)
         cpu.setProgramCounter(0)
