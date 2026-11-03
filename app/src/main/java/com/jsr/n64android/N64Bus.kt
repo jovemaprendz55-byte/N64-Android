@@ -40,6 +40,22 @@ class N64Bus(
     /** True when at least one enabled MI source is asserting the VR4300 external interrupt line. */
     fun isMiInterruptPending(): Boolean = (miInterrupts and miInterruptMask) != 0
 
+    /** Records source-level MI latch/ack transitions without logging every CPU poll. */
+    val diagnosticMiInterruptSourceHistory = ArrayDeque<String>()
+    private fun setMiInterruptSource(mask: Int, source: String, asserted: Boolean, detail: String) {
+        val wasAsserted = (miInterrupts and mask) != 0
+        miInterrupts = if (asserted) miInterrupts or mask else miInterrupts and mask.inv()
+        if (wasAsserted == asserted) return
+        if (diagnosticMiInterruptSourceHistory.size >= 128) diagnosticMiInterruptSourceHistory.removeFirst()
+        val action = if (asserted) "ASSERT" else "ACK"
+        diagnosticMiInterruptSourceHistory.addLast(
+            "$action source=$source detail=$detail " +
+                "INTR=0x${miInterrupts.toUInt().toString(16).uppercase().padStart(2, '0')} " +
+                "MASK=0x${miInterruptMask.toUInt().toString(16).uppercase().padStart(2, '0')} " +
+                "MI_LINE=${(miInterrupts and miInterruptMask) != 0}"
+        )
+    }
+
     fun setDiagnosticCpuInstructionContext(
         pc: Long, instruction: Int, rs: Int, rt: Int,
         rsValue: Long, rtValue: Long, effectiveAddress: Long?
@@ -580,7 +596,7 @@ class N64Bus(
             viCurrentLine = (viCurrentLine + 1) % totalLines
             val interruptLine = viRegisters[VI_INTR_OFFSET / 4] and VI_WINDOW_COORD_MASK
             if (viCurrentLine == interruptLine) {
-                miInterrupts = miInterrupts or MI_INTR_VI
+                setMiInterruptSource(MI_INTR_VI, "VI", true, "scanline=$viCurrentLine")
             }
         }
     }
@@ -679,7 +695,7 @@ class N64Bus(
                 val result = diagnosticLastDpcResult ?: return
                 if (result.fullSyncCommands > 0) {
                     miInitMode = miInitMode or MI_INIT_MODE_DP_INTR
-                    miInterrupts = miInterrupts or MI_INTR_DP
+                    setMiInterruptSource(MI_INTR_DP, "DP", true, "DPC full-sync")
                     dpDrainListener?.invoke()
                 }
                 return
@@ -705,7 +721,7 @@ class N64Bus(
                     piStatus = piStatus and (PI_STATUS_DMA_BUSY or PI_STATUS_IO_BUSY or PI_STATUS_ERROR).inv()
                 }
                 if ((value and PI_STATUS_CLEAR_INTR) != 0) {
-                    miInterrupts = miInterrupts and MI_INTR_PI.inv()
+                    setMiInterruptSource(MI_INTR_PI, "PI", false, "PI_STATUS_CLEAR_INTR")
                 }
                 return
             }
@@ -738,7 +754,7 @@ class N64Bus(
             AI_BITRATE_REG -> { aiBitRate = value and 0xF; return }
             VI_CURRENT_REG -> {
                 // VI_CURRENT is read-only; writing it acknowledges the VI interrupt.
-                miInterrupts = miInterrupts and MI_INTR_VI.inv()
+                setMiInterruptSource(MI_INTR_VI, "VI", false, "VI_CURRENT acknowledge")
                 return
             }
             in VI_REG_BASE until VI_REG_BASE + VI_REG_SIZE -> {
@@ -780,7 +796,7 @@ class N64Bus(
         piCartAddress += length
         piStatus = piStatus and PI_STATUS_DMA_BUSY.inv()
         // PI completion is latched in MI_INTR_REG until PI_STATUS.CLEAR_INTR is written.
-        miInterrupts = miInterrupts or MI_INTR_PI
+        setMiInterruptSource(MI_INTR_PI, "PI", true, "PI DMA complete")
     }
 
     /**
