@@ -1193,3 +1193,12 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Commit `6463f5b9bc29dde71527c3abc3ee7d42636b3b72`: corrige alinhamento entre Cause e Enable.
 - Commits de teste `343d91a01b420843b5d569fc4cda02c1509faf68` e `47a437ea9399716bc4c60e08e817a9d3c997fbe8`: cobrem divide-by-zero habilitado/desabilitado, flags e preservação do destino no trap.
 - Escopo atual é limitado: detecção básica de divide-by-zero, invalid em alguns casos aritméticos/SQRT negativo e overflow finito; não é implementação IEEE completa. Inexact, underflow, NaN signaling, FCR31 Unimplemented e todos os detalhes de precisão ainda precisam de trabalho. CI dos commits 55fb280/6463f5b/47a437e ainda pendente.
+
+
+## Correção da asserção FCR31 — 2026-11-03
+
+- A CI `41569903012` identificou erro de compilação em `R4300Cop1ArithmeticTest.kt:214`: a expressão `1L shl 12..17` produzia `IntRange`, mas o operador `and` exigia `Int`/`Long`.
+- Corrigido no commit `779c1468d950397376748ce5ecc724ca8ce55ee2`: a máscara de Cause passou a ser `(0x3FL shl 12)`, cobrindo explicitamente os bits 17:12.
+- A falha era no código do teste, não no código de produção. A implementação de FPU compilou e o APK Debug foi montado na execução que falhou na compilação dos testes unitários.
+- A nova CI deste commit ainda precisa terminar. Não considerar a etapa aprovada até confirmar `success`.
+- Permanecem as limitações de exceções FPU descritas acima: classificação parcial, sem Inexact/Underflow/NaN signaling completo, e sem teste de ROM em dispositivo.
