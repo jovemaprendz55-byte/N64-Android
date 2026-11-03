@@ -170,3 +170,12 @@
 - Reinspeção de `N64RomVideoSession`: captura VI inválida é isolada para não derrubar a sessão; publicação compara resolução e pixels; polling de RSP é limitado por quantum e somente ocorre após SP sair de HALT. Não foi comprovado defeito adicional nesse trecho nesta rodada.
 - Limite: teste automatizado e geração de APK não equivalem a teste de instalação/execução em dispositivo Android 16. Esse teste ainda depende da instalação e dos logs reais no aparelho.
 - COP0 Count/Compare/IP7 permanece como lacuna funcional prioritária, sem alteração de produção nesta rodada.
+
+
+## Correção parcial do COP0 Compare — 2026-11-03
+
+- Confirmado: MTC0 Compare não reconhecia o registrador 11 como especial e, portanto, não limpava Cause.IP7.
+- Aplicado: gravação de Compare (32 bits) e limpeza exclusiva do bit 15 de Cause ao escrever o registrador. Os bits IP2 e IP[1:0] permanecem preservados.
+- Regressão coberta por teste que executa MTC0 no R4300 e valida valor, máscara de interrupção e PC.
+- O caminho Count/timer permanece incompleto: sem fonte de ticks determinística, Count não incrementa e igualdade com Compare não gera IP7. Implementação do relógio exige definir ciclo/divisor e sincronização com CPU/dispositivos; não simular isso com um contador arbitrário por instrução.
+- A CI desta correção ainda precisa confirmar build e testes. Sem teste em dispositivo nesta rodada.
