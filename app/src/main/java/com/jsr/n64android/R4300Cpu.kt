@@ -801,7 +801,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                         if ((instruction and 0x7FF) != 0) throw ReservedInstructionFault("Malformed CTC1 reserved fields")
                         if (rd != 0) fcr[rd] = gpr[rt].toInt().toLong()
                     }
-                    0x10, 0x11 -> {
+                    0x10, 0x11, 0x14, 0x15 -> {
                         val ft = rt
                         val fs = rd
                         val fd = (instruction ushr 6) and 0x1F
