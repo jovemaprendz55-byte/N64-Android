@@ -1249,3 +1249,15 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Plano específico atualizado em `docs/PLANO_PRIMEIRO_JOGO.md`.
 - Nenhuma ROM foi executada e nenhum jogo foi confirmado como funcional. CI não equivale a teste real no aparelho.
 - Branch exclusiva: `dev/n64-clean-start`; `main` não foi alterada.
+
+
+## 57. GoldenEye 007 USA e diagnóstico inicial de OSTask — 2026-11-03
+
+- Usuário confirmou que a ROM-alvo é **GoldenEye 007 USA**. A edição é compatível com a hipótese CIC-NUS-6102/7101 (seed `0x3F`) já reconhecida pelo código; validar checksum/cabeçalho da ROM concreta antes de afirmar identificação.
+- Implementado `N64Bus.diagnosticSpTaskDescriptor()`: lê os 16 campos do descritor OSTask convencional localizado em SP DMEM + `0x0FC0`, sem efeitos colaterais.
+- Teste `diagnosticReadsConventionalLibultraTaskDescriptorFromDmem` cobre todos os 16 campos e a leitura big-endian.
+- Commits: produção `8135a0e9c8654627c5ca76290aa183f9184236e9`; teste `981f0b64ebc44cbeafb55c17f03972fac885d499`.
+- Limite explícito: isto ainda NÃO agenda nem executa OSTasks; é observabilidade para correlacionar o descritor com SP DMA, SP_PC e SP_STATUS. Não liberar HALT automaticamente nem executar tarefas artificiais.
+- CI do commit de produção/teste: run `41571771059`, ainda em andamento no momento deste registro. Confirmar antes de declarar sucesso.
+- Nenhuma ROM executada no aparelho; nenhum quadro real do GoldenEye confirmado.
+- Branch exclusiva: `dev/n64-clean-start`; `main` não foi alterada.
