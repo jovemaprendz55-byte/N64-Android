@@ -263,3 +263,8 @@ A prioridade do projeto passa a ser o MVP de primeira execução real, não a co
 ## Alvo GoldenEye 007 — 2026-11-03
 
 O primeiro jogo-alvo foi definido pelo usuário como GoldenEye 007. O barramento já reconhece o checksum IPL3 associado ao CIC-NUS-6102/7101 (seed 0x3F), usado pela edição USA, mas isso não significa que o HLE execute corretamente o jogo. A sessão de ROM ainda não agenda OSTasks automaticamente. Fontes técnicas da descompilação apontam microcódigo Rare baseado em F3D com extensão G_TRI4 (0xB1); a compatibilidade precisa ser confirmada contra a região/ROM concreta e traces do emulador. Próximo foco: rastrear SP DMA/OSTask e microcódigo, sem criar tarefas artificiais. Nenhuma execução real confirmada.
+
+
+## GoldenEye USA: primeiro passo de OSTask — 2026-11-03
+
+O usuário confirmou GoldenEye 007 USA como alvo. Foi adicionado ao N64Bus o leitor diagnóstico `diagnosticSpTaskDescriptor()` para os 16 campos do descritor OSTask convencional no offset SP DMEM + 0x0FC0, com teste unitário de leitura big-endian. É observabilidade somente: não implementa descoberta automática, agendamento ou execução do RSP. Commits 8135a0e9c8654627c5ca76290aa183f9184236e9 e 981f0b64ebc44cbeafb55c17f03972fac885d499. CI run 41571771059 estava em andamento ao registrar. Ainda sem execução real do jogo no Android.
