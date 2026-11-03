@@ -136,3 +136,47 @@ Revisão do código de tradução e exceção após a CI verde:
 ### Próximo passo objetivo
 
 Obter uma exportação feita pelo botão **executar ROM** na versão mais recente e verificar, no mesmo relatório: se existe TLBWI/TLBWR antes do fault; quais entradas estavam válidas; o conteúdo executado no vetor `0x80000000`; se o handler faz TLBP/TLBWR/TLBWI; e o primeiro PC que repete. Se não houver nenhuma escrita TLB antes do acesso KUSEG, investigar o estado inicial criado pelo HLE; se houver, confrontar VPN2/ASID/PageMask/PFN da entrada com `0x7F0BCC28`. Não desligar TLB nem inserir uma entrada presumida.
+
+
+## Plano de evolução do HLE para handoff equivalente ao IPL3 — 2026-11-03
+
+Objetivo confirmado pelo usuário: o emulador deve iniciar jogos sem depender da PIF ROM nem executar o IPL3 original. O HLE deve reproduzir o estado observável que a sequência de boot deixaria para o código do jogo, e não apenas saltar para o entry point.
+
+### Auditoria do estado atual de N64HleBoot.prepare()
+
+Confirmado diretamente no código e nos testes:
+
+- Detecta apenas os CIC/seed atualmente suportados (6102/7101 e 6105/7105).
+- Lê o entry point do cabeçalho e exige KSEG0 dentro da RDRAM.
+- Copia 1 MiB do cartucho, ROM offset 0x1000, para RDRAM física 0x400.
+- Grava os parâmetros de boot em RDRAM física 0x300 (TV type, ROM type/base, reset type, CIC ID, IPL2 version e tamanho de RDRAM).
+- Executa cpu.reset(), habilita CU1 em Status, habilita a tradução TLB, configura $s3-$s7, $sp e PC.
+- Não usa PIF ROM nem copia/executa IPL3. Os testes sintéticos confirmam esse contrato reduzido.
+
+### Lacunas que impedem chamar o boot atual de equivalente ao IPL3
+
+- cpu.reset() zera COP0 e a TLB; o HLE não estabelece um estado COP0/TLB de handoff comprovadamente equivalente ao IPL3.
+- O HLE habilita a TLB vazia, sem evidência de que esse seja o estado correto para a edição GoldenEye USA no instante do handoff.
+- A inicialização de RDRAM e dos registradores de hardware (RI, MI, SP, PI, SI, VI e AI) é parcial ou ausente; os modelos do barramento têm vários registradores em defaults simplificados.
+- O conjunto de registradores gerais inicializados é pequeno; não há contrato validado para os demais GPR, HI/LO, FPR/FCR e estado de exceção.
+- Não há uma sequência explícita, testada e documentada das operações que o IPL3 executaria antes de transferir controle ao entry point.
+- O stack atual é definido como 0xFFFFFFFFA07FFFE0; esse valor ainda precisa ser confrontado com evidência do handoff real e não deve ser tratado como verdade universal para todos os CIC/jogos.
+- A detecção do CIC é baseada na soma do IPL3 da ROM. O HLE usa esse resultado como seed/ID, mas ainda não reproduz todas as diferenças de inicialização específicas de cada CIC.
+
+### Estratégia segura de implementação
+
+1. Criar um contrato explícito de estado de handoff HLE, separado da lógica de cópia da ROM. Cada campo deve ter origem técnica documentada e teste próprio.
+2. Capturar, antes e depois do handoff, GPR, HI/LO, COP0, TLB, PC, memória baixa e snapshots dos registradores MMIO. Isso permitirá comparar o estado inicial e detectar campos deixados acidentalmente zerados.
+3. Determinar a sequência e os valores de inicialização para o CIC 6102/7101 usado pelo GoldenEye USA a partir de documentação técnica/referências de implementação verificáveis. Não extrapolar valores de outro CIC ou de outro jogo.
+4. Implementar as etapas em ordem: estado RDRAM/controladores; parâmetros de boot em memória; estado CPU/COP0/TLB; registradores de uso geral; handoff ao entry point.
+5. Adicionar testes de unidade para cada etapa e testes de regressão para garantir que PIF ROM continue opcional e IPL3 não seja executado.
+6. Rodar GoldenEye USA e usar o primeiro fault como evidência: verificar se há TLBWI/TLBWR antes do acesso 0x7F0BCC28, se o vetor de refill contém código válido e como o PC progride. Não criar mapeamentos presumidos.
+7. Só declarar o HLE equivalente ao handoff quando os valores e a sequência estiverem fundamentados e os testes cobrirem o contrato. Só declarar o jogo funcional após quadro real no Poco C85 Android 16.
+
+### Regra de engenharia
+
+Não copiar tabelas de boot de outro emulador sem entender a convenção de endereço/estado; não desabilitar a TLB para esconder faults; não mapear 0x7F0BCC28 por conveniência; não usar firmware/PIF/IPL3 original como dependência. O objetivo é um HLE próprio, reproduzível e testável.
+
+### Estado desta etapa
+
+Auditoria e plano registrados. Nenhum valor de registrador foi alterado nesta etapa, porque a inspeção atual não fornece evidência suficiente para afirmar quais valores exatos o IPL3 deixa no handoff do GoldenEye USA.
