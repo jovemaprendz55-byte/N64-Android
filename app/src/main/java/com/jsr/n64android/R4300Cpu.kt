@@ -99,6 +99,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     val fpr: LongArray = LongArray(32)
     /** Floating-point control registers; FCR31 holds the FPU condition/status flags. */
     val fcr: LongArray = LongArray(32)
+    /** Writable architectural fields in VR4300 FCR31: RM, Flags, Enables, Cause, FCC0 and FS. */
+    private val fcr31WritableMask = 0x0183FFFFL
     /** Basic 32-entry TLB model; HLE boot explicitly enables translation after CPU reset. */
     val tlb: R4300Tlb = R4300Tlb()
     var tlbEnabled: Boolean = false
@@ -799,7 +801,11 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                     }
                     0x06 -> { // CTC1 rt, fs; FCR0 is read-only.
                         if ((instruction and 0x7FF) != 0) throw ReservedInstructionFault("Malformed CTC1 reserved fields")
-                        if (rd != 0) fcr[rd] = gpr[rt].toInt().toLong()
+                        if (rd == 31) {
+                            fcr[31] = gpr[rt].toInt().toLong() and fcr31WritableMask
+                        } else if (rd != 0) {
+                            fcr[rd] = gpr[rt].toInt().toLong()
+                        }
                     }
                     0x10, 0x11, 0x14, 0x15 -> {
                         val ft = rt
