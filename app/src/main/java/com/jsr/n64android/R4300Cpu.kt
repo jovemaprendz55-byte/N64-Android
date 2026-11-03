@@ -837,45 +837,49 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                             fcr[31] = if (result) fcr[31] or fcc0 else fcr[31] and fcc0.inv()
                         } else {
                             // Conversion and unary encodings reserve ft=0.
-                            if ((fn in 0x04..0x07 || fn in 0x0C..0x0F || fn in 0x20..0x25) && ft != 0) {
+                            if ((fn in 0x04..0x07 || fn in 0x08..0x0F || fn in 0x20..0x25) && ft != 0) {
                                 throw ReservedInstructionFault("COP1 unary/conversion function 0x${fn.toString(16)} requires ft=0")
                             }
-                            if (fn in 0x0C..0x0F || fn == 0x24) {
-                                val value = if (rs == 0x10) {
-                                    java.lang.Float.intBitsToFloat(readFprSingle(fs)).toDouble()
-                                } else {
-                                    java.lang.Double.longBitsToDouble(readFprDouble(fs))
-                                }
+                            val sourceValue: Double? = when (rs) {
+                                0x10 -> java.lang.Float.intBitsToFloat(readFprSingle(fs)).toDouble()
+                                0x11 -> java.lang.Double.longBitsToDouble(readFprDouble(fs))
+                                0x14 -> readFprSingle(fs).toLong().toInt().toDouble()
+                                0x15 -> readFprDouble(fs).toDouble()
+                                else -> null
+                            }
+                            if (fn in 0x08..0x0B || fn in 0x0C..0x0F || fn == 0x24 || fn == 0x25) {
+                                val value = sourceValue
+                                    ?: throw ReservedInstructionFault("COP1 integer conversion requires S or D source format")
                                 val rounded = when (fn) {
-                                    0x0C -> Math.rint(value) // ROUND.W: nearest, ties to even.
-                                    0x0D -> kotlin.math.truncate(value) // TRUNC.W: toward zero.
-                                    0x0E -> kotlin.math.ceil(value) // CEIL.W: toward +infinity.
-                                    0x0F -> kotlin.math.floor(value) // FLOOR.W: toward -infinity.
+                                    0x08, 0x0C -> Math.rint(value) // nearest, ties to even
+                                    0x09, 0x0D -> kotlin.math.truncate(value)
+                                    0x0A, 0x0E -> kotlin.math.ceil(value)
+                                    0x0B, 0x0F -> kotlin.math.floor(value)
+                                    0x24 -> roundAccordingToFcr31(value)
                                     else -> roundAccordingToFcr31(value)
                                 }
-                                // MIPS returns the indefinite word for NaN or signed overflow.
-                                val word = if (!rounded.isFinite() ||
-                                    rounded < Int.MIN_VALUE.toDouble() ||
-                                    rounded > Int.MAX_VALUE.toDouble()
-                                ) Int.MIN_VALUE else rounded.toLong().toInt()
-                                writeFprSingle(fd, word)
-                            } else if (fn == 0x20) { // CVT.S: convert source S/D to single.
-                                val value = if (rs == 0x10) {
-                                    java.lang.Float.intBitsToFloat(readFprSingle(fs)).toDouble()
+                                if (fn == 0x25 || fn in 0x08..0x0B) {
+                                    // Long conversion uses the signed 64-bit indefinite value on invalid input.
+                                    val longValue = if (!rounded.isFinite() ||
+                                        rounded < -0x1.0p63 || rounded >= 0x1.0p63
+                                    ) Long.MIN_VALUE else rounded.toLong()
+                                    writeFprDouble(fd, longValue)
                                 } else {
-                                    java.lang.Double.longBitsToDouble(readFprDouble(fs))
+                                    val wordValue = if (!rounded.isFinite() ||
+                                        rounded < Int.MIN_VALUE.toDouble() ||
+                                        rounded > Int.MAX_VALUE.toDouble()
+                                    ) Int.MIN_VALUE else rounded.toLong().toInt()
+                                    writeFprSingle(fd, wordValue)
                                 }
-                                writeFprSingle(fd, java.lang.Float.floatToRawIntBits(value.toFloat()))
-                            } else if (fn == 0x21) { // CVT.D: convert source S/D to double.
-                                val value = if (rs == 0x10) {
-                                    java.lang.Float.intBitsToFloat(readFprSingle(fs)).toDouble()
+                            } else if (fn == 0x20 || fn == 0x21) {
+                                val value = sourceValue ?: throw ReservedInstructionFault("Invalid COP1 source format for CVT.S/D")
+                                if (fn == 0x20) {
+                                    writeFprSingle(fd, java.lang.Float.floatToRawIntBits(value.toFloat()))
                                 } else {
-                                    java.lang.Double.longBitsToDouble(readFprDouble(fs))
+                                    writeFprDouble(fd, java.lang.Double.doubleToRawLongBits(value))
                                 }
-                                writeFprDouble(fd, java.lang.Double.doubleToRawLongBits(value))
-                            } else if (fn == 0x24) {
-                                // Handled above; keep this guard unreachable if the decoder is edited.
-                                throw ReservedInstructionFault("Invalid COP1 CVT.W dispatch")
+                            } else if (rs == 0x14 || rs == 0x15) {
+                                throw ReservedInstructionFault("COP1 W/L source format only supports conversion to S/D")
                             } else if (rs == 0x10) {
                                 val x = java.lang.Float.intBitsToFloat(readFprSingle(fs))
                                 val y = java.lang.Float.intBitsToFloat(readFprSingle(ft))
