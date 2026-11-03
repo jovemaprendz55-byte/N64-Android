@@ -288,3 +288,16 @@ Referências técnicas:
 - Notas técnicas sobre a sequência IPL3 e parâmetros de boot: https://reverseengineering.wiki/index.php/Platform:Nintendo_64
 
 **Estado desta auditoria:** somente inspeção e documentação. Nenhum valor de RI, RDRAM, TLB, cache ou CPU foi alterado. O APK do commit `08d3414` foi publicado e a CI passou, mas ainda não foi executado no Poco C85 e não há evidência de GoldenEye em funcionamento.
+
+
+### Correção da interpretação de RI_SELECT — 2026-11-03
+
+A leitura mais detalhada da sequência de `ipl3.s` esclarece uma ambiguidade da auditoria acima:
+
+- No início do IPL3, `RI_SELECT != 0` realmente seleciona o caminho NMI.
+- No cold boot normal, o IPL3 escreve `0x14` em RI_SELECT **depois** de configurar RI_CONFIG e zerar RI_CURRENT_LOAD. Portanto, `0x14` é o valor produzido pela sequência de cold boot, não o valor de reset de hardware.
+- O `N64Bus` atual inicializa RI_SELECT em `0x14`. Isso pode representar um estado pós-IPL3 para o HLE, mas não pode ser tratado como reset físico caso futuramente executemos IPL3 real. A constante e seu comentário precisam distinguir explicitamente estado de reset e estado de handoff.
+- A sequência de cold boot também escreve `RI_CONFIG=0x40`, `RI_MODE=0` e depois `RI_MODE=0x0E`; escreve `MI_INIT_MODE=MI_SET_INIT|15` imediatamente antes de `RDRAM_DELAY`; o valor passado ao registrador RDRAM_DELAY é `ROT16(RDRAM_DELAY(5,7,3,1))`. Em seguida zera RDRAM_REF_ROW e inicia a enumeração de módulos.
+- A rotina enumera módulos consultando MI_VERSION para escolher espaçamento de registradores RDRAM (512 bytes em RCP 1.0 ou 1024 bytes em RCP 2.0), configura CC por módulo, lê DEVICE_TYPE e MANUFACTURER, ajusta RAS_INTERVAL, remapeia os módulos e só então calcula osMemSize. Assim, não existe um único conjunto completo de valores de RDRAM que possa ser aplicado com segurança sem modelar o perfil dos módulos.
+
+**Decisão:** não alterar RI_SELECT_RESET nem preencher RI/RDRAM com constantes presumidas nesta etapa. A próxima mudança de código deve separar claramente `powerOnResetState` de `postIpl3HandoffState` (ou API equivalente) e cobrir os dois com testes. O perfil GoldenEye USA deve ser derivado de dados de hardware suportados, não de um valor arbitrário de 8 MiB.
