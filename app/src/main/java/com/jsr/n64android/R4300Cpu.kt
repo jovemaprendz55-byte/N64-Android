@@ -861,7 +861,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                                 if (fn == 0x25 || fn in 0x08..0x0B) {
                                     // Long conversion uses the signed 64-bit indefinite value on invalid input.
                                     val longValue = if (!rounded.isFinite() ||
-                                        rounded < -0x1.0p63 || rounded >= 0x1.0p63
+                                        rounded < -9223372036854775808.0 || rounded >= 9223372036854775808.0
                                     ) Long.MIN_VALUE else rounded.toLong()
                                     writeFprDouble(fd, longValue)
                                 } else {
