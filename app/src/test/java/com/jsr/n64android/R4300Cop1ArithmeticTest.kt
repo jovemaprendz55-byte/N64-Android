@@ -7,6 +7,52 @@ class R4300Cop1ArithmeticTest {
     private fun cop1(fmt: Int, ft: Int, fs: Int, fd: Int, fn: Int): Int =
         (0x11 shl 26) or (fmt shl 21) or (ft shl 16) or (fs shl 11) or (fd shl 6) or fn
 
+    @Test fun cvtSingleFromDoubleAndCvtDoubleFromSingleConvertFormats() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x11, 0, 1, 2, 0x20)) // CVT.S.D f2, f1
+        memory.write32(4, cop1(0x10, 0, 3, 4, 0x21)) // CVT.D.S f4, f3
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = (1L shl 29) or (1L shl 26)
+        cpu.fpr[1] = java.lang.Double.doubleToRawLongBits(1.25)
+        cpu.fpr[3] = java.lang.Float.floatToRawIntBits(2.5f).toLong()
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+        assertEquals(1.25f, java.lang.Float.intBitsToFloat(cpu.fpr[2].toInt()), 0.0f)
+        cpu.step()
+        assertEquals(2.5, java.lang.Double.longBitsToDouble(cpu.fpr[4]), 0.0)
+    }
+
+    @Test fun cvtWordUsesFcr31RoundingModeAndRoundWordUsesTiesToEven() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x10, 0, 1, 2, 0x24)) // CVT.W.S f2, f1
+        memory.write32(4, cop1(0x10, 0, 3, 4, 0x0C)) // ROUND.W.S f4, f3
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.fcr[31] = 2L // CVT.W uses round toward +infinity.
+        cpu.fpr[1] = java.lang.Float.floatToRawIntBits(1.2f).toLong()
+        cpu.fpr[3] = java.lang.Float.floatToRawIntBits(2.5f).toLong()
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+        assertEquals(2L, cpu.fpr[2])
+        cpu.step()
+        assertEquals(2L, cpu.fpr[4]) // nearest-even: 2.5 -> 2.
+    }
+
+    @Test fun truncWordRoundsTowardZeroForNegativeValues() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x10, 0, 1, 2, 0x0D)) // TRUNC.W.S f2, f1
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.fpr[1] = java.lang.Float.floatToRawIntBits(-1.9f).toLong()
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(-1L, cpu.fpr[2].toInt().toLong())
+    }
+
     @Test fun singlePrecisionAddAndMultiplyUseRawFprBits() {
         val memory = N64Memory(64)
         memory.write32(0, cop1(0x10, 2, 1, 3, 0x00)) // ADD.S f3, f1, f2
