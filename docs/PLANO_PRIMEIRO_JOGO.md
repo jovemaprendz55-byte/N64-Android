@@ -28,7 +28,7 @@ Não ampliar a cobertura de instruções R4300/COP1 por perfeccionismo enquanto 
 - HLE passa pelo entry point sem loop imediato de exceção.
 - Pelo menos uma OSTask é identificada e executada.
 - RDP produz framebuffer que VI consegue ler.
-- Um quadro real do jogo aparece no Galaxy A15 Android 16. Um padrão de teste ou framebuffer sintético não conta como jogo funcionando.
+- Um quadro real do jogo aparece no Poco C85 Android 16. Um padrão de teste ou framebuffer sintético não conta como jogo funcionando.
 
 ## Perfil do jogo-alvo: GoldenEye 007
 
@@ -119,3 +119,20 @@ Foi inspecionado o fluxo real chamado pelo botão de iniciar ROM, além da CPU e
 ### Próximo passo da correção
 
 Instrumentar o caminho de boot HLE e o primeiro handler TLB com checkpoints determinísticos: PC/opcode, EPC, Cause, Status, BadVAddr, EntryHi, ASID, entradas TLB válidas e evolução do PC após cada instrução do handler. Comparar com as escritas TLBWI/TLBWR e com a inicialização das tabelas de página feitas pelo próprio jogo. Só depois decidir se o erro está no handoff HLE, na CPU/TLB ou na execução do handler. Em seguida, testar o fluxo com uma ROM local e confirmar pelo log do Poco C85.
+
+
+## Revisão adicional da CPU/TLB — 2026-11-03
+
+Revisão do código de tradução e exceção após a CI verde:
+
+- O endereço reportado `0x7F0BCC28` pertence a KUSEG (abaixo de `0x80000000`), portanto deve passar pela TLB quando `tlbEnabled=true`; não é endereço KSEG0/KSEG1 de acesso direto.
+- `physicalAddress()` faz essa distinção e usa ASID de EntryHi para a tradução.
+- O caminho de TLB miss atual salva BadVAddr, atualiza Context/EntryHi, define ExcCode=2 para leitura, seta EXL e seleciona o refill vector `0x80000000` quando BEV/EXL estão limpos. O teste específico confirma esse comportamento.
+- A revisão de `TLBP`, `TLBR`, `TLBWI`, `TLBWR`, EntryLo, PageMask, ASID e seleção even/odd não revelou, nesta inspeção estática, um defeito comprovado que explique sozinho o loop do GoldenEye. Não alterar essas regras sem evidência de divergência no log.
+- O ponto ainda suspeito é o estado de boot: `N64HleBoot.prepare()` limpa COP0/TLB via `cpu.reset()`, habilita TLB imediatamente e não instala entradas iniciais nem um handler de refill. Assim, um primeiro acesso KUSEG sem mapeamento produz corretamente um miss; o que ainda falta provar é se o código do jogo já deveria ter preparado o mapeamento/handler antes desse acesso, ou se o HLE pulou uma etapa necessária do IPL3.
+- O exportador já inclui o histórico TLBWI/TLBWR, a rotina observada de setup PTE, a trilha anterior ao primeiro miss, as instruções após a exceção, acessos VA/PA e o snapshot completo da TLB. Esses campos devem ser usados para decidir o próximo ajuste, em vez de criar mapeamentos artificiais.
+- A CI do commit de auditoria `f4be9ce9610566c1f12a766d48b21057e8bd919a` concluiu com sucesso: [run 41604630974](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41604630974). Nenhum teste automatizado substitui a execução da ROM no Poco C85.
+
+### Próximo passo objetivo
+
+Obter uma exportação feita pelo botão **executar ROM** na versão mais recente e verificar, no mesmo relatório: se existe TLBWI/TLBWR antes do fault; quais entradas estavam válidas; o conteúdo executado no vetor `0x80000000`; se o handler faz TLBP/TLBWR/TLBWI; e o primeiro PC que repete. Se não houver nenhuma escrita TLB antes do acesso KUSEG, investigar o estado inicial criado pelo HLE; se houver, confrontar VPN2/ASID/PageMask/PFN da entrada com `0x7F0BCC28`. Não desligar TLB nem inserir uma entrada presumida.
