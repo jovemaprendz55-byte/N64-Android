@@ -211,7 +211,7 @@ class R4300Cop1ArithmeticTest {
 
         cpu.step()
 
-        assertEquals(1L shl 15, cpu.fcr[31] and (1L shl 12..17))
+        assertEquals(1L shl 15, cpu.fcr[31] and (0x3FL shl 12))
         assertEquals(1L shl 5, cpu.fcr[31] and (0x1FL shl 2))
         assertEquals(15L, (cpu.cop0[13] ushr 2) and 0x1FL) // Floating-point exception.
         assertEquals(0x12345678L, cpu.fpr[3])
