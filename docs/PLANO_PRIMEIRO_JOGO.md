@@ -99,3 +99,23 @@ A primeira execução do teste falhou porque os ponteiros no log não tinham pad
 ### Próximo passo técnico obrigatório
 
 Usar uma ROM GoldenEye 007 USA selecionada localmente pelo usuário e o relatório exportado pelo app para verificar, em ordem: (1) se o PC deixa o loop idle; (2) se há DMA canônico do descritor para DMEM 0xFC0; (3) os valores UCODE/UCODE_SIZE/BOOT/BOOT_SIZE/DRAM_STACK/DATA_PTR/OUTPUT_BUFF; (4) os DMAs RDRAM→IMEM e a entrada efetiva no microcódigo. Só depois disso implementar o despachante integrado ou a extensão F3D/G_TRI4 que os dados confirmarem. Não inventar endereço de OSTask, não forçar SP HALT e não afirmar que CI verde significa jogo funcionando.
+
+
+## Auditoria do caminho de execução Android — 2026-11-03
+
+Foi inspecionado o fluxo real chamado pelo botão de iniciar ROM, além da CPU e da sessão:
+
+- `MainActivity.startRomVideoExecution()` cria uma thread dedicada `N64-ROM-VIDEO-CPU`, prepara CPU/HLE e executa `N64RomVideoSession.execute()`. O código não executa a CPU na thread principal da interface.
+- `N64ExecutionSession` conta instruções, permite cancelamento cooperativo e converte exceções de host em estado `FAILED` com mensagem; `MainActivity` mostra a falha na tela. O worker não mascara o estado da sessão.
+- `N64VideoPresenterView.submitFrame()` recebe frames do worker por mailbox e publica a atualização com `View.post`, sem adicionar uma fila ilimitada de frames.
+- Portanto, a auditoria não encontrou evidência de que o Android esteja simplesmente deixando de iniciar a thread ou bloqueando a interface como causa do relatório anterior.
+- A falha observada no log anterior foi um TLB miss de leitura em VA `0x7F0BCC28`, seguido por execução em loop no caminho de exceção. Isso é uma falha do estado/fluxo de execução do emulador/guest, não um erro de renderização Android comprovado.
+- Causa provável ainda em aberto: o HLE pula o IPL3/PIF e entra diretamente no entry point com TLB habilitada, sem reproduzir a inicialização completa de memória e estruturas de tradução que o jogo espera. O código trata o TLB miss como exceção arquitetural, mas não há evidência de que o handler consiga resolver esse miss com o estado HLE atual. Não corrigir isso desligando a TLB nem mapeando o endereço arbitrariamente.
+- A sessão ainda não agenda OSTasks libultra automaticamente. O polling do RSP só o executa quando o software libera SP HALT; no log analisado RSP=0 e VI=0, então a ausência de quadro ocorre antes de qualquer evidência de renderização.
+- Limitação secundária: se o RSP lançar uma exceção de host, `pumpRsp()` a registra e relança, fazendo a sessão CPU terminar em `FAILED`. Isso deve ser revisto quando o RSP começar a executar tarefas reais; não explica o log atual, no qual nenhuma instrução RSP foi executada.
+- CI do teste TLB do GoldenEye passou: [run 41604378811](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41604378811), job `build` success, incluindo Build and test e Upload debug APK. Isso valida compilação/testes automatizados, não a execução da ROM no aparelho.
+- Aparelho de teste correto: **Poco C85 / Android 16**. Uma referência anterior a Galaxy A15 estava incorreta.
+
+### Próximo passo da correção
+
+Instrumentar o caminho de boot HLE e o primeiro handler TLB com checkpoints determinísticos: PC/opcode, EPC, Cause, Status, BadVAddr, EntryHi, ASID, entradas TLB válidas e evolução do PC após cada instrução do handler. Comparar com as escritas TLBWI/TLBWR e com a inicialização das tabelas de página feitas pelo próprio jogo. Só depois decidir se o erro está no handoff HLE, na CPU/TLB ou na execução do handler. Em seguida, testar o fluxo com uma ROM local e confirmar pelo log do Poco C85.
