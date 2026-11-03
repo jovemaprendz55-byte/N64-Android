@@ -161,6 +161,11 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     private var countCycleRemainder = 0
     /** Bounded control-flow events for interrupt/exception/ERET diagnosis. */
     val diagnosticControlFlowHistory: MutableList<String> = mutableListOf()
+    /** Dedicated ERET history so a hot idle branch cannot evict exception returns. */
+    val diagnosticEretHistory: MutableList<String> = mutableListOf()
+    /** First snapshots of distinct taken BEQ-to-self loops, captured once per PC. */
+    val diagnosticSelfLoopEntryHistory: MutableList<String> = mutableListOf()
+    private val diagnosticSelfLoopPcs: MutableSet<Long> = mutableSetOf()
     /** Separate bounded history so repeated idle-loop branches cannot erase delivered MI interrupts. */
     val diagnosticInterruptHistory: MutableList<String> = mutableListOf()
     /** Bounded record of actual TLBWI/TLBWR operations for ROM diagnostics. */
@@ -216,6 +221,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         firstTlbFaultIndirectTarget = null
         diagnosticTlbWriteHistory.clear()
         diagnosticControlFlowHistory.clear()
+        diagnosticEretHistory.clear()
+        diagnosticSelfLoopEntryHistory.clear()
+        diagnosticSelfLoopPcs.clear()
         diagnosticInterruptHistory.clear()
         diagnosticTlbExceptionHistory.clear()
         lastTlbEntrySnapshot = "(nenhuma entrada capturada)"
@@ -802,11 +810,14 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                                     cop0[12] = status and 0x2L.inv() // clear EXL
                                     directPc = cop0[14] // EPC
                                 }
-                                recordControlFlowEvent("ERET pc=0x${instructionAddress.toULong().toString(16).uppercase()} " +
+                                val eretEvent = "ERET pc=0x${instructionAddress.toULong().toString(16).uppercase()} " +
                                     "target=0x${directPc!!.toULong().toString(16).uppercase()} " +
                                     "status=0x${cop0[12].toULong().toString(16).uppercase()} " +
                                     "cause=0x${cop0[13].toULong().toString(16).uppercase()} " +
-                                    "epc=0x${cop0[14].toULong().toString(16).uppercase()}")
+                                    "epc=0x${cop0[14].toULong().toString(16).uppercase()}"
+                                recordControlFlowEvent(eretEvent)
+                                diagnosticEretHistory.add(eretEvent)
+                                if (diagnosticEretHistory.size > 128) diagnosticEretHistory.removeAt(0)
                             }
                             else -> throw ReservedInstructionFault(
                                 "R4300 COP0 CO funct=0x${funct.toString(16)} at 0x${instructionAddress.toString(16)}"
@@ -1359,6 +1370,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
             "A2=0x${gpr[6].toULong().toString(16).uppercase()} " +
             "A3=0x${gpr[7].toULong().toString(16).uppercase()}"
         recordControlFlowEvent(line)
+        if (kind == "BEQ" && taken && target == address) recordSelfLoopEntry(address, line)
     }
 
     /** Random cycles down through the replaceable TLB indices [Wired, 31]. */
@@ -1658,6 +1670,23 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     private fun recordControlFlowEvent(event: String) {
         diagnosticControlFlowHistory.add(event)
         if (diagnosticControlFlowHistory.size > 64) diagnosticControlFlowHistory.removeAt(0)
+    }
+
+    private fun recordSelfLoopEntry(address: Long, event: String) {
+        if (diagnosticSelfLoopEntryHistory.size >= 32) return
+        if (!diagnosticSelfLoopPcs.add(address)) return
+
+        val watchedRegisters = intArrayOf(4, 5, 6, 7, 16, 17, 18, 19, 20, 21, 22, 23, 26, 27, 29, 31)
+        val gprState = watchedRegisters.joinToString(" ") { index ->
+            "GPR[$index]=0x${gpr[index].toULong().toString(16).uppercase()}"
+        }
+        val deviceState = (memory as? N64Bus)?.diagnosticDeviceSnapshot()?.joinToString(" | ")
+            ?: "dispositivos indisponíveis"
+        diagnosticSelfLoopEntryHistory.add(
+            "FIRST_SELF_LOOP $event Status=0x${cop0[12].toUInt().toString(16).uppercase()} " +
+                "Cause=0x${cop0[13].toUInt().toString(16).uppercase()} " +
+                "EPC=0x${cop0[14].toULong().toString(16).uppercase()} $gprState DEVICES={$deviceState}"
+        )
     }
 
     private fun exceptionVector(): Long {

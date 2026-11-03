@@ -122,3 +122,34 @@ Se tudo passar, publica o artefato `n64-android-debug-apk` com `app/build/output
 A consulta de status/checks para o commit de documentação `05e117c64b806d1981d89b45438f3449eb705563` retornou uma lista vazia. Isso não equivale a sucesso nem a falha: o resultado da execução do workflow não ficou disponível pela integração consultada. O teste PI pendente permanece sem validação CI confirmada.
 
 Critério para avançar ao teste físico: obter um run concluído com os testes unitários e montagem do APK bem-sucedidos; baixar o artefato desse run; instalar no Poco C85; executar GoldenEye 007 USA e exportar o log completo. O próximo diagnóstico deve comparar ASSERT/MASK_SET/MI IRQ/ACK, EPC/ERET e as primeiras escritas SP/DPC. Não alterar a arquitetura de interrupções ou forçar tarefas RSP sem evidência do log novo.
+
+
+## Novo relatório do Poco C85 — 2026-11-03 17:57
+
+Log analisado: `N64-Android-diagnostico-1793739450116.txt`.
+
+- A sessão foi cancelada após 7.339.725 instruções; isso não é evidência de crash.
+- Para `0x7F0BCC28`, o histórico registra `TLB MISS` no vetor `0xFFFFFFFF80000000`, depois `TLB INVALID` no vetor geral `0xFFFFFFFF80000180` e novo miss/refill.
+- O refill carregou `EntryLo0=0x0000DB9F` e `EntryLo1=0x0000DBDF`, executou `TLBWR` em `0xFFFFFFFF80000034` e `ERET` em `0xFFFFFFFF80000048`.
+- A instrução seguinte foi buscada e executada em `0x7F0BCC28` (`0x27BDFFE8`). Isso demonstra que, neste caminho, a falta de tradução foi atendida. `ExcCode=2` é compatível com TLBL de FETCH; não alterar a MMU com base nesse evento.
+- O traço registra depois um `ERET` em `0x70010A7C` com destino `0x70000718`; a CPU segue no loop self-branch `0x7000071C` / NOP `0x70000720`. O diagnóstico indica que o contexto volta ao loop idle. A causa de o guest escolher esse contexto em vez de submeter trabalho ao SP ainda não está provada.
+- Ao fim: SP HALT (`STATUS=0x1`), nenhuma escrita SP/DPC, zero instruções RSP, zero frames. Há registros de interrupção MI, mas esse TXT não contém as transições detalhadas por origem/ACK.
+- O campo COP0 EPC e o `lastExceptionInstructionAddress` são estados diferentes: o primeiro pode ser atualizado na restauração do contexto idle, enquanto o segundo conserva metadados históricos da falha TLB. Não interpretar o TLB miss como exceção ainda ativa apenas pelo código histórico.
+
+### Instrumentação local baseada nesse log
+
+Foram feitas alterações diagnósticas somente na cópia local da branch `dev/n64-clean-start`:
+
+1. manter um histórico ERET separado do buffer de fluxo que é saturado pelo BEQ repetido;
+2. capturar uma vez, por endereço, a primeira entrada em um BEQ tomado para si mesmo, com GPRs relevantes, COP0 e estado de dispositivos;
+3. rotular explicitamente o snapshot TLB congelado na primeira falha e exportar também um snapshot vivo no momento da coleta;
+4. exportar as transições MI por origem, ACK e máscara.
+
+A execução da CPU não foi alterada. O núcleo JVM foi compilado com `kotlinc` e a ROM foi executada headless até exatamente 7.339.725 instruções: o teste voltou ao mesmo idle loop, com SP em HALT e zero instruções RSP, sem falha do núcleo. Isso valida a compilação/teste do núcleo e a instrumentação local, não o APK Android nem a compatibilidade do jogo.
+
+A montagem Android e os testes Gradle não foram executados nesta sessão porque não há `gradle` nem wrapper no checkout. As alterações ainda não foram commitadas nem publicadas; portanto, não existe novo APK/Actions para instalar. A `main` não foi alterada.
+
+
+## Verificação do workflow de diagnóstico anterior
+
+Consulta realizada em 2026-11-03 via GitHub CLI autenticado: o workflow `Android build` do commit `fce29425ae02f7850a2e6c8ef3580c2f5d91ddd6` (run `41706644207`) terminou com `status=completed` e `conclusion=success`. Fonte: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41706644207 . Esse sucesso confirma o APK da revisão anterior; não cobre as alterações locais feitas após a análise do novo relatório.
