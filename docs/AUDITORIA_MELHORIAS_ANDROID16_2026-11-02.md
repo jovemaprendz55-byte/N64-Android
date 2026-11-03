@@ -228,3 +228,12 @@ As primeiras execuções dos testes W/L expuseram uma lacuna no decoder: embora 
 - Iniciada atualização Cause/Flag e trap FPE (ExcCode 15) para condições básicas. Cause é substituído; Flag é sticky; Enable correspondente impede a escrita do destino e entrega exceção.
 - Cobertura inclui divide-by-zero habilitado e desabilitado. Classificação inicial também contempla alguns casos Invalid e Overflow.
 - Limitações: não é ainda IEEE completo; Inexact, Underflow, NaN signaling e Unimplemented permanecem pendentes. CI dos commits mais recentes ainda pendente.
+
+
+## Correção da validação de exceção FPU — 2026-11-03
+
+- A CI run `41569903012` falhou ao compilar o teste `enabledDivideByZeroRaisesFloatingPointExceptionWithoutWritingDestination`, na linha 214 de `R4300Cop1ArithmeticTest.kt`.
+- Causa: `1L shl 12..17` foi interpretado como deslocamento por um intervalo (`IntRange`), incompatível com a operação de máscara. Substituído por `(0x3FL shl 12)`, máscara explícita dos seis bits Cause (17:12).
+- Commit de correção: `779c1468d950397376748ce5ecc724ca8ce55ee2`.
+- A falha foi de compilação do teste; o código de produção compilou e `assembleDebug` terminou antes da tarefa de testes falhar. A CI do commit de correção está pendente de confirmação.
+- Não declarar exceções FPU completas nem compatibilidade de ROM: os casos Invalid/Overflow e demais condições IEEE ainda têm cobertura parcial; não houve teste no aparelho Android 16.
