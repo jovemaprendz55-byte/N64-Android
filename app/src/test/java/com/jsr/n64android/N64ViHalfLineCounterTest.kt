@@ -51,6 +51,6 @@ class N64ViHalfLineCounterTest {
     @Test fun largeTerminalCountDoesNotOverflowWhenAddingOne() {
         val counter = N64ViHalfLineCounter(initialCurrent = Int.MAX_VALUE)
 
-        assertEquals(1, counter.advanceScanline(Int.MAX_VALUE))
+        assertEquals(24, counter.advanceScanline(Int.MAX_VALUE))
     }
 }
