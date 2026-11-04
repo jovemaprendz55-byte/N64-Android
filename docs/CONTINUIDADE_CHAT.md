@@ -1949,3 +1949,28 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Não anunciar APK novo como aprovado até a conclusão do CI.
 
 - Branch: dev/n64-clean-start. main permanece intocada.
+
+
+## 92. Auditoria de referência do relógio VI e divergência do avanço atual — 2026-11-04
+
+### Referências de hardware consultadas
+- A especificação oficial da Nintendo informa CPU a 93,75 MHz e RCP a 62,5 MHz: https://www.nintendo.com/en-gb/Hardware/Nintendo-History/Nintendo-64/Technical-Details/Technical-Details-627050.html
+- A referência técnica N64 Refresh Rate Reference documenta, para NTSC, VI clock de aproximadamente 48,681818 MHz, 3.094 clocks VI por linha e 525/526 half-lines conforme modo interlaced/progressive; o VI_V_TOTAL usa contagem terminal e VI_CURRENT avança em half-lines: https://github.com/meauxdal/N64-Refresh-Rate-Reference/blob/main/N64_Timing_Reference.md
+- Para NTSC interlaced, a frequência vertical de referência é 60.000/1.001 Hz; progressive é aproximadamente 59,8261 Hz. Os valores dependem do modo/região e dos registradores VI, não de um número universal de instruções CPU.
+
+### Estado encontrado no código
+- `N64RomVideoSession` chama `bus.advanceViInstructions()` uma vez depois de cada instrução CPU concluída.
+- `N64Bus.advanceViInstructions` acumula unidades chamadas de instruções e usa `VI_INSTRUCTIONS_PER_SCANLINE = 5_661` para avançar uma linha.
+- O modelo incrementa `viCurrentLine` em uma unidade por linha e usa `VI_V_SYNC` diretamente como total de linhas, com fallback 525. Isso não representa o contador VI_CURRENT em half-lines nem a convenção terminal documentada para VI_V_TOTAL.
+- A CPU emite atualmente dois ciclos-base modelados por instrução para o Count/ledger, mas o ledger ainda não é um relógio calibrado e a latência por opcode não existe. Logo, o limiar atual de 5.661 instruções não pode ser interpretado como ciclos de hardware.
+
+### Resultado da auditoria
+- A constante de 5.661 instruções/linha não tem derivação demonstrada a partir dos clocks oficiais e dos registradores VI; deve ser tratada como aproximação provisória, não como timing NTSC fiel.
+- O avanço por instrução não acompanha instruções com latências distintas, pausas, DMA ou tempos dos coprocessadores. Simplesmente trocar o argumento para ciclos estimados sem definir as conversões de clock também seria incorreto.
+- Há ainda uma diferença arquitetural importante entre scanline e half-line: VI_CURRENT, VI_V_TOTAL, interlace e parity precisam ser modelados explicitamente antes de usar o contador para gerar interrupções VI confiáveis.
+
+### Decisão e próximo passo
+- Nenhuma alteração de runtime nesta auditoria. Não substituir a constante por um valor calculado sem primeiro definir a unidade do ledger, a região/modo de vídeo, a razão racional CPU↔VI, a semântica half-line/terminal-count e os efeitos de VI_CURRENT acknowledge.
+- Próxima etapa: desenhar e testar um acumulador racional determinístico para conversão de ciclos CPU em clocks VI, preservando resto entre lotes; em seguida modelar VI_V_TOTAL/VI_CURRENT em half-lines e só então migrar o gatilho de MI_INTR_VI. A contagem atual fica preservada até essa migração passar testes de equivalência e regressão.
+- Auditoria de duplicações/arquivos repetidos continua aberta como trilha transversal; esta seção não declara auditoria global concluída.
+- Branch: `dev/n64-clean-start`. `main` permanece intocada.
