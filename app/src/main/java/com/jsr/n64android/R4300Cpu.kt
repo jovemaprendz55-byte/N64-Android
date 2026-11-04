@@ -161,6 +161,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     private var countCycleRemainder = 0
     /** Optional observer for the same modeled CPU-cycle increments used by COP0 Count. */
     private var cycleAdvanceListener: ((Int) -> Unit)? = null
+    /** Optional HLE boundary hook; non-null cycle cost consumes the current PC before instruction fetch. */
+    private var instructionBoundaryHook: ((Long) -> Int?)? = null
     /** Bounded control-flow events for interrupt/exception/ERET diagnosis. */
     val diagnosticControlFlowHistory: MutableList<String> = mutableListOf()
     /** Dedicated ERET history so a hot idle branch cannot evict exception returns. */
@@ -318,6 +320,12 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 advanceCountCycles(2)
                 return
             }
+            val hleCycles = instructionBoundaryHook?.invoke(pc)
+            if (hleCycles != null) {
+                require(hleCycles >= 0) { "HLE boundary cycle cost must be non-negative." }
+                advanceCountCycles(hleCycles)
+                return
+            }
             stepInstruction()
             if (!randomResetByWiredWrite) advanceRandomRegister()
         } catch (fault: R4300Tlb.TlbFault) {
@@ -392,6 +400,11 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     }
 
     /** Installs a session-local observer for modeled CPU cycles; null detaches it. */
+    /** Installs a pre-fetch HLE hook. Return null to execute the guest instruction normally. */
+    fun setInstructionBoundaryHook(hook: ((Long) -> Int?)?) {
+        instructionBoundaryHook = hook
+    }
+
     fun setCycleAdvanceListener(listener: ((Int) -> Unit)?) {
         cycleAdvanceListener = listener
     }
