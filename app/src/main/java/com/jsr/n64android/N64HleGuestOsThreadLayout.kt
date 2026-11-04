@@ -3,10 +3,10 @@ package com.jsr.n64android
 /**
  * 32-bit libultra OSThread / __OSThreadContext memory layout.
  *
- * Offsets follow the public libultra os_thread.h ABI. This object only defines
- * the guest-memory contract; it does not yet dispatch ROM calls or switch CPU
- * contexts. Keep pointer fields 32-bit and register/context fields at their
- * declared widths.
+ * Offsets follow GoldenEye 007's 1997 libultra os.h and exception assembly.
+ * The context starts at 0x20 because its u64 members require 8-byte alignment;
+ * 0x1C is padding, not a profile pointer. This object defines only the guest
+ * memory contract; it does not dispatch ROM calls or switch CPU contexts.
  *
  * Reference: https://github.com/n64decomp/007/blob/master/include/PR/os.h
  */
