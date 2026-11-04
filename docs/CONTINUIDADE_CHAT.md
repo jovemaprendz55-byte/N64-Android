@@ -2619,3 +2619,23 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Commit do teste corrigido: `7dfe194fc96bbd6c318acb9cfa7b996bf5d8cea7`.
 - A implementação do executor não foi alterada nesta correção. A CI ainda precisa validar o teste corrigido; não declarar a seção 125 aprovada nem considerar o APK pronto até a conclusão da nova execução e conferência do artifact.
 - Branch de trabalho correta: `dev/n64-hle-clean-reboot`. A branch `main` permanece intocada.
+
+
+### Validação da seção 125 — 2026-11-04
+
+- CI aprovada no run `41932468020`, commit `7dfe194fc96bbd6c318acb9cfa7b996bf5d8cea7`; job `build` concluído com sucesso.
+- O workflow executou os testes unitários e `assembleDebug`; a correção dos vetores de shift passou.
+- Artifact `n64-android-debug-apk`: ID `13372322561`, 834.112 bytes, SHA-256 `496245763449a8459d0f9d985c6818b47035ea8f328ceae3575d7861bc83c4b0`, expira em 2026-11-18.
+- A atualização documental posterior, commit `b3ebee167760b1d3d93da29fb04e867d22e1e3d9`, também passou na CI run `41932474634`.
+- Isto confirma build/testes automatizados, não execução de ROM no aparelho.
+
+## 126. Transferência explícita entre GPR e HI/LO — 2026-11-04
+
+- O executor SPECIAL agora implementa MFHI, MFLO, MTHI e MTLO.
+- MFHI/MFLO leem o valor conhecido de HI/LO antes de escrever no GPR de destino. Se o valor de origem for desconhecido, a operação falha sem alterar o GPR.
+- MTHI/MTLO leem o GPR de origem antes de atualizar HI/LO. Se o GPR for desconhecido, o estado HI/LO permanece inalterado.
+- As operações não avançam PC e não implementam multiplicação/divisão; MULT/MULTU/DIV/DIVU/DMULT/DMULTU/DDIV/DDIVU continuam não suportadas.
+- Testes adicionados: cópia HI/LO para GPR, cópia GPR para HI/LO, origem HI desconhecida e origem GPR desconhecida.
+- Commits de implementação e testes: `6a4561730d81bf6ebe3dee42269784f2eda9edeb` e `fa1712267fffa9a9c2ec5ded316fcb80ac2ef0a7`.
+- CI da seção 126 ainda precisa ser confirmada; não declarar aprovada até verificar testes, build e artifact.
+- Próxima etapa: implementar operações multiply/divide somente depois de fixar explicitamente a semântica MIPS III/R4300 de resultados HI/LO, casos de divisão por zero e overflow, com testes independentes.
