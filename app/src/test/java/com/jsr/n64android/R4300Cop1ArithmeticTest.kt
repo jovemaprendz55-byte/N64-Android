@@ -99,6 +99,57 @@ class R4300Cop1ArithmeticTest {
         assertEquals(-3L, cpu.fpr[2])
     }
 
+    @Test fun invalidCvtWordFromNanSetsCauseFlagAndIndefiniteResult() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x10, 0, 1, 2, 0x24)) // CVT.W.S f2, f1
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.fpr[1] = java.lang.Float.floatToRawIntBits(Float.NaN).toLong()
+        cpu.fpr[2] = 0x12345678L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(1L shl 16, cpu.fcr[31] and (0x3FL shl 12))
+        assertEquals(1L shl 6, cpu.fcr[31] and (0x1FL shl 2))
+        assertEquals(Int.MIN_VALUE.toLong() and 0xFFFFFFFFL, cpu.fpr[2])
+        assertEquals(0L, (cpu.cop0[13] ushr 2) and 0x1FL)
+    }
+
+    @Test fun enabledInvalidCvtWordRaisesFpeWithoutWritingDestination() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x10, 0, 1, 2, 0x24)) // CVT.W.S f2, f1
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 29
+        cpu.fcr[31] = 1L shl 11 // Enable Invalid Operation.
+        cpu.fpr[1] = java.lang.Float.floatToRawIntBits(Float.POSITIVE_INFINITY).toLong()
+        cpu.fpr[2] = 0x12345678L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(1L shl 16, cpu.fcr[31] and (0x3FL shl 12))
+        assertEquals(1L shl 6, cpu.fcr[31] and (0x1FL shl 2))
+        assertEquals(15L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(0x12345678L, cpu.fpr[2])
+    }
+
+    @Test fun invalidCvtLongFromOutOfRangeDoubleSetsInvalidAndIndefiniteResult() {
+        val memory = N64Memory(64)
+        memory.write32(0, cop1(0x11, 0, 1, 2, 0x25)) // CVT.L.D f2, f1
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = (1L shl 29) or (1L shl 26)
+        cpu.fpr[1] = java.lang.Double.doubleToRawLongBits(1.0e30)
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(1L shl 16, cpu.fcr[31] and (0x3FL shl 12))
+        assertEquals(1L shl 6, cpu.fcr[31] and (0x1FL shl 2))
+        assertEquals(Long.MIN_VALUE, cpu.fpr[2])
+        assertEquals(0L, (cpu.cop0[13] ushr 2) and 0x1FL)
+    }
+
     @Test fun singlePrecisionAddAndMultiplyUseRawFprBits() {
         val memory = N64Memory(64)
         memory.write32(0, cop1(0x10, 2, 1, 3, 0x00)) // ADD.S f3, f1, f2
