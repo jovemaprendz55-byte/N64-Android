@@ -1974,3 +1974,32 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Próxima etapa: desenhar e testar um acumulador racional determinístico para conversão de ciclos CPU em clocks VI, preservando resto entre lotes; em seguida modelar VI_V_TOTAL/VI_CURRENT em half-lines e só então migrar o gatilho de MI_INTR_VI. A contagem atual fica preservada até essa migração passar testes de equivalência e regressão.
 - Auditoria de duplicações/arquivos repetidos continua aberta como trilha transversal; esta seção não declara auditoria global concluída.
 - Branch: `dev/n64-clean-start`. `main` permanece intocada.
+
+
+## 93. Acumulador racional de clock CPU → VI (preparação isolada) — 2026-11-04
+
+### Implementação
+- Criada `N64RationalClockAccumulator`, utilitário genérico que converte unidades de entrada em ticks de saída por uma razão inteira numerador/denominador.
+- A classe preserva o resto fracionário entre chamadas. Portanto o total convertido não depende de o avanço ocorrer em uma chamada grande ou em vários lotes menores.
+- Avanços negativos e razões não positivas são rejeitados. Operações aritméticas usam `Math.multiplyExact`/`Math.addExact` para falhar explicitamente em overflow, em vez de permitir wrap silencioso.
+- A razão de referência NTSC adicionada aos testes é 714/1375, correspondente à razão entre VI clock de 48,681818 MHz (1071/22 MHz) e CPU clock de 93,75 MHz (375/4 MHz).
+
+### Testes
+- 1.375 avanços unitários com a razão 714/1375 produzem exatamente 714 ticks e o mesmo resto que um único avanço de 1.375 unidades.
+- Teste de resto fracionário entre chamadas, avanço zero, rejeição de valores negativos e rejeição de razões inválidas.
+- Arquivos: `N64RationalClockAccumulator.kt` e `N64RationalClockAccumulatorTest.kt`.
+
+### Limites e decisão de integração
+- O acumulador ainda não está ligado a `N64Bus`, `N64RomVideoSession` ou ao MI_INTR_VI. O runtime VI existente permanece inalterado.
+- A razão 714/1375 é uma referência matemática NTSC, não uma garantia de temporização fiel quando alimentada pelo ledger atual: este ledger conta dois ciclos-base estimados por etapa CPU e não possui latência por opcode nem tempos de DMA/RSP.
+- Não usar ainda o resultado para avançar scanlines, half-lines, AI ou interrupções. Antes da integração é necessário definir formalmente as unidades, a região/modo de vídeo e o modelo de VI_CURRENT/VI_V_TOTAL em half-lines.
+- O acumulador é uma peça de infraestrutura testada por unidade; não constitui relógio mestre do console.
+
+### Commits
+- Implementação: 77122165a7cfcada8d5dcaadc7165f65df17bc0f.
+- Testes e expectativa corrigida: 9f5c778dfa67c1667d7c433cfcbc829adcb51d52.
+- Documentação desta seção: a registrar após commit.
+
+### Estado de validação
+- CI da implementação/testes ainda precisa ser consultado para o HEAD atual. Não declarar a suíte aprovada nem APK atualizado até confirmar o workflow.
+- Branch: `dev/n64-clean-start`. `main` permanece intocada.
