@@ -1510,7 +1510,12 @@ class MainActivity : Activity() {
             return
         }
         val loadGeneration = ++romLoadGeneration
-        if (rememberSelection) getSharedPreferences(ROM_PREFS, MODE_PRIVATE).edit().remove(KEY_LAST_ROM_URI).apply()
+        if (rememberSelection) {
+            // Keep the selected document recoverable if Android recreates this Activity
+            // while the background read/validation is still running.
+            getSharedPreferences(ROM_PREFS, MODE_PRIVATE).edit()
+                .putString(KEY_LAST_ROM_URI, uri.toString()).apply()
+        }
         mainActionButton?.isEnabled = false
         status.text = if (restoring) "Restaurando a última ROM..." else "Lendo e verificando a ROM..."
         cartridgeBus = null
@@ -1531,7 +1536,9 @@ class MainActivity : Activity() {
             runOnUiThread {
                 if (isFinishing || isDestroyed || loadGeneration != romLoadGeneration) return@runOnUiThread
                 if (bytes == null) {
-                    if (restoring) getSharedPreferences(ROM_PREFS, MODE_PRIVATE).edit().remove(KEY_LAST_ROM_URI).apply()
+                    if (rememberSelection || restoring) {
+                        getSharedPreferences(ROM_PREFS, MODE_PRIVATE).edit().remove(KEY_LAST_ROM_URI).apply()
+                    }
                     mainActionButton?.apply { isEnabled = true; text = "ESCOLHER JOGO" }
                     status.text = "Não foi possível ler a ROM. Verifique se o arquivo ainda está acessível."
                     return@runOnUiThread
@@ -1559,7 +1566,9 @@ class MainActivity : Activity() {
                             "\n\nROM pronta. Toque em INICIAR JOGO para testar a execução experimental."
                     }
                     is RomLoadResult.Failure -> {
-                        if (restoring) getSharedPreferences(ROM_PREFS, MODE_PRIVATE).edit().remove(KEY_LAST_ROM_URI).apply()
+                        if (rememberSelection || restoring) {
+                            getSharedPreferences(ROM_PREFS, MODE_PRIVATE).edit().remove(KEY_LAST_ROM_URI).apply()
+                        }
                         romTraceButton?.isEnabled = false
                         hleBootButton?.isEnabled = false
                         mainActionButton?.apply { isEnabled = true; text = "ESCOLHER JOGO" }
