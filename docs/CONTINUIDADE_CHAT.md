@@ -2732,3 +2732,5 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Corrigido: J/JAL preservam a forma de extensão do PC atual (zero-extended ou sign-extended) ao compor o destino. Adicionado teste para as duas representações.
 - CI do sequenciador inicial (`41934691929`) compilou e passou; a execução do teste (`41934696799`) falhou apenas na expectativa de representação acima. A correção está nos commits `e1568258042c6ad7128ba9548510962d94c1359d` e `b27e4922027cc664b8fbf74386d6a3956eebbd9e`.
 - CI final dessa correção e do sequenciador ainda pendente.
+
+- Correção do destino J/JAL preservando zero/sign-extension foi submetida nos commits `e1568258042c6ad7128ba9548510962d94c1359d` e `b27e4922027cc664b8fbf74386d6a3956eebbd9e`. Runs de validação atuais: executor `41934900441`, testes `41934905927`; ambos estavam em andamento na última consulta. A CI documental `41934801723` falhou porque foi disparada sobre a revisão anterior ao ajuste do teste; aguardar a CI do documento mais recente.
