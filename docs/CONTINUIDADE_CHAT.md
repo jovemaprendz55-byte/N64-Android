@@ -1795,3 +1795,25 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 ### Limites
 - Revisão estática dos caminhos de CPU e testes existentes; sem validação em aparelho ou ROM comercial.
 - Branch: dev/n64-clean-start. main permanece intocada.
+
+
+## 83. COP0 — máscara arquitetural de MTC0 Status — 2026-11-04
+
+### Achado confirmado
+- A instrução MTC0 para o registrador Status (CP0 register 12) caía no tratamento genérico e copiava os 32 bits da origem sem filtrar campos reservados ou preservar o campo TS.
+- Isso era diferente dos demais registradores COP0 com regras explícitas e permitia alterar estado que o VR4300 define como reservado, constante ou mantido pelo hardware.
+
+### Referência arquitetural
+- O manual NEC VR4300 descreve Status com CU, RP, FR, RE, ITS, RSVD, BEV, TS, SR, CH, CE, DE, IM, KX/SX/UX, KSU, ERL, EXL e IE.
+- O manual determina RSVD como zero, TS como estado de hardware, e CE/DE como bits sem implementação no VR4300 (hardwired zero). Para esta etapa, TS é preservado do valor anterior e os bits reservados/hardwired são descartados.
+- Referência: NEC VR4300 Microprocessor User's Manual, capítulo 4, Status Register, páginas impressas 98–101: https://www.bitsavers.org/components/nec/mips/1995_NEC_VR4300_MIPS_RISC_Microprocessor_Users_Manual.pdf
+
+### Correção e testes
+- MTC0 Status agora aplica máscara explícita aos campos graváveis e preserva TS.
+- Adicionados testes para escrita de todos os bits (garantindo que reservado/CE/DE não permaneçam e TS seja preservado) e tentativa de definir TS por software.
+- Nenhuma máscara foi aplicada a outros registradores nesta etapa.
+
+### Limites
+- A máscara não implementa efeitos ainda ausentes dos campos Status, como RE, RP, KX/SX/UX e todos os diagnósticos; filtrar a escrita não significa que todos esses recursos estejam simulados.
+- Não foi feita validação de hardware nem de ROM comercial.
+- Branch: dev/n64-clean-start. main permanece intocada.
