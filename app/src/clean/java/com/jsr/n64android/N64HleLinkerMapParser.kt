@@ -60,7 +60,7 @@ class N64HleLinkerMapParser {
     companion object {
         // GNU ld map output: one 32/64-bit hexadecimal address and one symbol.
         private val SYMBOL_ROW = Regex(
-            """^\\s*(?:0x)?([0-9a-fA-F]{8}|[0-9a-fA-F]{16})\\s+([A-Za-z_.$][A-Za-z0-9_.$@]*)\\s*$"""
+            """^\s*(?:0x)?([0-9a-fA-F]{8}|[0-9a-fA-F]{16})\s+([A-Za-z_.$][A-Za-z0-9_.$@]*)\s*$"""
         )
     }
 }
