@@ -85,6 +85,11 @@ class MainActivity : Activity() {
             }
         }
         val completeDiagnosticButton = createCompleteDiagnosticButton { status.text.toString() }
+        val diagnosticToolsButton = Button(this).apply {
+            text = "FERRAMENTAS DE TESTE"
+            isAllCaps = false
+            setOnClickListener { openDiagnosticTools() }
+        }
         mainLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
@@ -121,6 +126,10 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply { topMargin = 16 })
+            addView(diagnosticToolsButton, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = 8 })
             addView(TextView(this@MainActivity).apply {
                 text = "Toque para escolher ou iniciar um jogo.\nMantenha pressionado para trocar a ROM."
                 textSize = 12f
@@ -1316,6 +1325,60 @@ class MainActivity : Activity() {
      * Exercises the synthetic RDRAM -> VI registers -> framebuffer reader
      * -> Android ImageView path. This is a video-output test, not game rendering.
      */
+    /**
+     * Opens isolated synthetic diagnostics. These tools do not boot or modify the
+     * selected cartridge session and must never be presented as game compatibility.
+     */
+    private fun openDiagnosticTools() {
+        if (diagnosticExportInProgress || romTraceInProgress || hleWorker != null || romVideoThread?.isAlive == true) {
+            status.text = "Aguarde a operação atual terminar antes de abrir as ferramentas."
+            return
+        }
+        val title = TextView(this).apply {
+            text = "FERRAMENTAS DE TESTE\\n\\nTestes sintéticos isolados. Nenhum deles comprova que uma ROM funciona."
+            textSize = 16f
+            setPadding(12, 16, 12, 20)
+        }
+        val videoButton = Button(this).apply {
+            text = "TESTE DE VÍDEO"
+            setOnClickListener { runVideoTest() }
+        }
+        val rdpButton = Button(this).apply {
+            text = "DEMONSTRAÇÃO DO PIPELINE RDP"
+            setOnClickListener { runTrianglePipelineDemo() }
+        }
+        val cpuButton = Button(this).apply {
+            text = "TESTE INTERNO DA CPU"
+            setOnClickListener {
+                setContentView(mainLayout)
+                runCpuDiagnostic()
+            }
+        }
+        val backButton = Button(this).apply {
+            text = "VOLTAR AO MENU"
+            setOnClickListener { setContentView(mainLayout) }
+        }
+        val page = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(24, 24, 24, 24)
+            addView(title)
+            addView(videoButton, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ))
+            addView(rdpButton, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = 8 })
+            addView(cpuButton, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = 8 })
+            addView(backButton, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = 20 })
+        }
+        setContentView(page)
+    }
+
     private fun runVideoTest() {
         try {
             val frame = N64VideoTestPattern.createFrame()
