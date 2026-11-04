@@ -2409,3 +2409,37 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Commits: implementação inicial `1645b3cfaaa3002742ea828451300aa76cbf7d60`; testes de integração `cae80f353f774ce7a9ea5a37c60c9f735a98aa4e`; validação de wake antes de mutação `62319413d808d0766f3f719b86269b3d148bde2e`; teste de atomicidade `7be3bc4d45f518ac3142270779ccef4782b2f05b`.
 - CI dos commits está em andamento no momento desta atualização; consultar o run mais recente do HEAD antes de declarar aprovação.
 - Próximo: revisar resultados da CI; depois criar camada de binding de APIs libultra com endereços injetados e evidência verificável, validar retorno/argumentos/registradores/custos. Continuar busca por map ou disassembly USA reproduzível. Não registrar endereços estimados.
+
+
+## 116. Reinício limpo do aplicativo para novo HLE — 2026-11-04
+
+Objetivo confirmado pelo usuário: a build do aplicativo deve iniciar como um app recém-criado, sem telas, botões, seleção de ROM, diagnósticos ou execução do runtime antigo. A próxima implementação funcional será um novo HLE de alto nível, com boot guest real de Nintendo 64; não reaproveitar o caminho experimental antigo de IPL3/CPU como se fosse boot completo.
+
+Preservação:
+- Criada a branch independente `dev/n64-hle-clean-reboot` a partir do commit `d3aa9b5abe81586c03652f300c52de304d5b1ed0`.
+- A branch original `dev/n64-clean-start` permanece preservada.
+- A branch `main` não foi alterada.
+- Todo o histórico e os fontes anteriores continuam acessíveis na branch original; nesta branch nova, as classes antigas ainda existem no repositório, mas não são chamadas pela Activity de entrada.
+
+Reset da build:
+- `MainActivity.kt` substituída por uma Activity mínima com superfície preta vazia.
+- Removidos do caminho de inicialização: seletor de ROM, botões de diagnóstico, worker HLE experimental, sessão de vídeo e telemetria.
+- Nenhum boot guest é iniciado automaticamente. O APK limpo é somente a casca Android, não um emulador funcional.
+- Commit: `7e14f2faf720d889109b3dca6b3cb846499266ca`.
+
+Falha herdada de CI:
+- A CI do commit-base `d3aa9b5abe81586c03652f300c52de304d5b1ed0`, run `41914414156`, falhou em `compileDebugUnitTestKotlin`: faltava importar `org.junit.Assert.assertTrue` em `N64HleGuestMessageQueueTest.kt` (linhas 183 e 201).
+- Corrigido o import nesta branch: commit `03942bcbcfdcdf20366bbfdb994ccde8a7605497`.
+- A correção ainda precisa ser confirmada por uma nova CI nesta branch.
+
+Próxima trilha — novo HLE:
+1. Fazer a build limpa passar em `testDebugUnitTest assembleDebug`.
+2. Definir arquitetura nova de `N64HleGameRuntime`, com interfaces explícitas para guest memory, R4300, libultra guest ABI, scheduler, eventos RCP e submissão OSTask.
+3. Implementar o boot HLE por serviços de sistema guest verificáveis, sem endereços de call gate inventados e sem PIF/BIOS externo.
+4. Testar cada serviço e o fluxo de boot com ROM de teste legalmente fornecida pelo usuário; não inserir ROM comercial no repositório.
+5. Só depois criar UI de seleção/início de jogo e conectar a Activity ao novo runtime.
+
+Critérios de verdade:
+- APK limpo compilar ≠ HLE implementado.
+- Testes unitários verdes ≠ jogo inicializa.
+- Não declarar GoldenEye funcional até teste no dispositivo demonstrar boot, vídeo e entrada.
