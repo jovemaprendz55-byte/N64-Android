@@ -52,6 +52,13 @@ Escopo: limpeza conservadora, sem alteração da branch `main`.
 - `N64RdpCommandStreamParser` faz enquadramento dos pacotes; `N64RdpTriangleSetup` decodifica coeficientes; `N64RdpTriangleEdgeWalker` gera spans; `N64RdpFlatTriangleRasterizer` grava pixels.
 - `N64ViFramebufferReader` converte a memória de vídeo em frame; `N64VideoPresenterView` apresenta o frame no Android. Não são duplicações.
 
+### CPU R4300 — centralização segura de exceções
+
+- Em `R4300Cpu.step()` havia quatro caminhos de exceção que repetiam a atribuição de `pc = exceptionVector()` e a limpeza de `delayedTarget`/`pendingDelaySlotBranchAddress`; `enterAddressException()` repetia o mesmo bloco.
+- Criado `redirectToGeneralExceptionVector()` e os cinco pontos passaram a chamar esse helper. Os códigos de exceção, a gravação de EPC/Cause/Status, os vetores especiais de TLB refill e o fluxo de delay slot não foram alterados.
+- Commit: `ac2a744070e31f3297bfaefd69c96e7e04bddf8b`.
+- A alteração é refatoração de fluxo já existente, não implementação de novas instruções nem correção de semântica MIPS. A CI desse commit ainda precisa ser confirmada.
+
 ## Verificações de CI
 
 Os quatro workflows Android build associados à sequência de limpeza foram consultados e concluíram com sucesso, incluindo a etapa Build and test e Upload debug APK:
