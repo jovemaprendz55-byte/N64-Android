@@ -2824,6 +2824,6 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 
 - Adicionados LWL (`0x22`), LWR (`0x26`), SWL (`0x2A`) e SWR (`0x2E`) ao `N64HleR4300MemoryExecutor`.
 - Operações usam endereço alinhado para ler/modificar a word RDRAM e o offset baixo de dois bits para selecionar bytes. LWL/LWR preservam os bytes antigos do GPR que não são substituídos; se esses bytes não forem conhecidos no estado HLE, a operação falha antes de mutar. SWL/SWR preservam os bytes de memória que não recebem escrita.
-- Testes para máscaras/posicionamento big-endian de LWL/LWR/SWL/SWR e rejeição de destino desconhecido em load parcial.
+- Testes para máscaras/posicionamento big-endian de LWL/LWR/SWL/SWR em todos os quatro offsets, além da rejeição de destino desconhecido em load parcial.
 - Commits: implementação `19939e1f3bbf2ca09b7032faa49e945c6bd9271f`; testes `dbb90c9f6f3516c797efebd19a74422ea1dd4bc8`.
 - CI pendente. LDL/LDR/SDL/SDR doubleword, exceções arquiteturais e validação com código de jogo real ainda não implementados.
