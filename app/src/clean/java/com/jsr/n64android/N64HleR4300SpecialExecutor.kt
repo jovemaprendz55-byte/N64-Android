@@ -137,6 +137,42 @@ class N64HleR4300SpecialExecutor {
                 if (java.lang.Long.compareUnsigned(
                         state.readGpr(instruction.rs), state.readGpr(instruction.rt)
                     ) < 0) 1L else 0L
+            N64HleR4300SpecialOperation.ADD -> {
+                val left = state.readGpr(instruction.rs).toInt()
+                val right = state.readGpr(instruction.rt).toInt()
+                val sum = left.toLong() + right.toLong()
+                check(sum in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()) {
+                    "ADD signed overflow requires an architectural exception, which is not implemented"
+                }
+                sum.toInt().toLong()
+            }
+            N64HleR4300SpecialOperation.SUB -> {
+                val left = state.readGpr(instruction.rs).toInt()
+                val right = state.readGpr(instruction.rt).toInt()
+                val difference = left.toLong() - right.toLong()
+                check(difference in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()) {
+                    "SUB signed overflow requires an architectural exception, which is not implemented"
+                }
+                difference.toInt().toLong()
+            }
+            N64HleR4300SpecialOperation.DADD -> {
+                val left = state.readGpr(instruction.rs)
+                val right = state.readGpr(instruction.rt)
+                val sum = left + right
+                check(((left xor sum) and (right xor sum)) >= 0L) {
+                    "DADD signed overflow requires an architectural exception, which is not implemented"
+                }
+                sum
+            }
+            N64HleR4300SpecialOperation.DSUB -> {
+                val left = state.readGpr(instruction.rs)
+                val right = state.readGpr(instruction.rt)
+                val difference = left - right
+                check(((left xor right) and (left xor difference)) >= 0L) {
+                    "DSUB signed overflow requires an architectural exception, which is not implemented"
+                }
+                difference
+            }
             N64HleR4300SpecialOperation.DADDU ->
                 state.readGpr(instruction.rs) + state.readGpr(instruction.rt)
             N64HleR4300SpecialOperation.DSUBU ->
