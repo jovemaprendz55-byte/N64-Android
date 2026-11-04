@@ -2290,7 +2290,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Testes adicionados em `N64HleGuestMemoryTest.kt`: alias KSEG0/KSEG1, sign-extension, big-endian, rejeição de TLB segments, desalinhamento, limites e ponteiros de 64 bits inválidos.
 - Correção ABI do alvo GoldenEye: o header `include/PR/os.h` de 1997 não contém `thprof`; o contexto u64 alinha em 8 bytes, portanto há padding em `0x1C` e contexto em `0x20`. A assembly `exception.s` salva S0 em `0x98` (= `0x20 + 0x78`), confirmando o início do contexto. `THREAD_SIZE=0x1B0`. Fonte: https://github.com/n64decomp/007/blob/master/include/PR/os.h e https://github.com/n64decomp/007/blob/master/src/libultra/os/exception.s
 - Commits: guest memory `c675fc353ee3a4182ca18a866f353c1083b73001`; testes memória `95fe590fe8d59ea3cbec86115f7e42d86bf6e16d`; correção ABI `1d149fbcbd96796493d8351d73630453efedf8e9`; teste ABI corrigido `31ab1aed2682f21af9af52b81161522064dbca11`.
-- CI dos commits acima e da documentação está em andamento; consultar runs do HEAD antes de declarar verde. Runs anteriores `41900220274`, `41900225774`, `41900294202` estão success, mas os dois primeiros testaram a versão antiga do offset.
+- CI atual consolidada em 41903604215 success (671 testes e APK debug). Os runs históricos 41900220274/41900225774/41900294202 foram anteriores à correção do offset; o teste corrigido de ABI foi validado novamente no run consolidado.
 - Próximo: esperar CI; se verde, implementar codec OSThread usando N64HleGuestMemory, com campos de largura assinada/sem sinal explicitados e validação de todos os offsets. Depois mapear o contexto para R4300, ainda sem call gates até validar a semântica FPU FR.
 - O caminho MainActivity → N64HleBoot → N64RomVideoSession permanece ativo; não foi substituído. Nenhum GoldenEye funcional confirmado. `main` intacta. Auditoria global de duplicação de código/arquivos repetidos continua aberta.
 
@@ -2304,7 +2304,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Escrita valida estrutura completa, estado, flags e todos os pointers antes de alterar memória. Pointers maiores que 32 bits são rejeitados, zero-extended e sign-extended aceitos.
 - Testes de round-trip verificam cabeçalho, GPRs salvos, FP pairs, endereços absolutos, preservação do padding e rejeições.
 - Commits: codec `888784e76cbc0c1657d3f249667b3ac4c9303ccc`; pointer validation `26f6c0e346470749494b941ca632176fb3b1d539`; testes `68630641cb13cdb9a344d00115dbdfe8eb2a45fe`; prevalidation `2a303d27e61960832a2d0ab2d1c28ba84a512974`; teste extra `dc17b95513905a61d14567d91255da8f6ce86ee7`.
-- CI dos commits de codec ainda está em andamento; não declarar aprovado até consultar os runs.
+- CI consolidada validada no run 41903604215 success, incluindo codec, padding, memória guest e mapper.
 - O codec é somente serialização ABI. Não enfileira threads, não implementa chamadas libultra, não troca contexto da CPU e não integra a MainActivity. Nenhum jogo funcional confirmado.
 - Próximo: confirmar CI; então mapear explicitamente contexto serializado para `R4300Cpu.ContextSnapshot`, incluindo Status/PC/HI/LO/GPR, e documentar os campos não preservados (K0/K1, reservation LL/SC, delay-slot e FR/FPU). Criar testes round-trip snapshot↔ABI antes de qualquer scheduler guest.
 - Branch `dev/n64-clean-start`; `main` intacta. Auditoria global de duplicação de código/arquivos repetidos continua aberta.
@@ -2318,7 +2318,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - O codec foi corrigido para preservar a palavra de padding sem interpretá-la como ponteiro. Teste de round-trip confirma padding 0xDEADBEEF em 0x1C e PC em thread+0x20+0xFC.
 - Fontes: https://github.com/n64decomp/007/blob/master/include/PR/os.h ; https://github.com/n64decomp/007/blob/master/src/libultra/os/exception.s
 - Commits de correção: layout/padding 3c039a0661b30c8a92e2711a77efc037e34d0478; codec 9ed00726665158538d940c877b3de3ca5af242d2; teste padding 7ecb2f1170de94940743d61ab198e653a1d8224c; teste de ponteiro duplicado removido acc3dac8cc94c389e9f99e17352612328f3caae3; comentário alinhamento dfdc3b713124df8040e81f517ba4010acbb28c01.
-- Os commits anteriores que chamavam o campo THREAD_PROFILE/profile foram supersedidos e não devem ser usados como ABI final. A CI dos commits de correção ainda precisa ser consultada.
+- Os commits anteriores que chamavam o campo THREAD_PROFILE/profile foram supersedidos e não devem ser usados como ABI final. A correção final foi incluída e passou no run consolidado 41903604215.
 - Próximo: validar CI do codec corrigido; então preparar o mapper parcial entre ABI e R4300Cpu.ContextSnapshot. O mapper deve deixar TLB/Count/delay-slot e FR/FPU explicitamente fora até haver contrato comprovado. Nenhum scheduler guest ou call gate ainda.
 ## 109. Mapper de contexto guest e correção FPR FR=0 — 2026-11-04
 
@@ -2328,7 +2328,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Testes em N64HleGuestOsThreadContextMapperTest.kt cobrem conversão FR0, retorno CPU→guest, RCP preservado, thread sem uso de FPU, FR1 rejeitado e PC inválido.
 - Fonte: VR4300 manual, seção 17.3: https://n64dev.org/p/U10504EJ7V0UMJ1.pdf (FR=0: even FGR low-order; odd FGR high-order).
 - Commits: CPU `9749f5db726c8516ba9eaf2ad4f466c5cef8905e`; COP1 memory test `04b9a684d7c844984e280dc0f9f1a23b17abc023`; COP1 arithmetic tests `80ce285307d29e136a5ea8debd856f7dfae35f53`; mapper `d0277d8eb2d2632de3b07a4010ccca2c76cf4fef`; mapper tests `c1360ededcf6896e0c8e69c83e01b91333a68e0f`.
-- CI dos commits está em andamento; não declarar aprovado até consultar. Runs anteriores de mapper falharam por testes FR1/ordem antiga e foram corrigidos.
+- CI do mapper e da correção FR=0 passou no run 41903230278 (667 testes); também está incluída no run consolidado 41903604215 (671 testes). Os runs intermediários falharam apenas por fixtures de teste antigas/inválidas, corrigidas antes do run verde.
 - Próximo: confirmar CI das primitivas de fila; então implementar transições de estado osStartThread/osStopThread/osYieldThread, active queue e OSMesgQueue. Ainda não conectar MainActivity nem declarar GoldenEye funcional.
 ## 110. Primitivas de fila de threads guest — 2026-11-04
 
@@ -2340,5 +2340,5 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Não faz state transitions, dispatch, active queue, wait queues ou OSMesgQueue. Não integrar ainda à MainActivity.
 - Fontes: exception.s (__osEnqueueThread/__osPopThread): https://github.com/n64decomp/007/blob/master/src/libultra/os/exception.s ; startthread.c/stopthread.c/yieldthread.c/thread.c: https://github.com/n64decomp/007/tree/master/src/libultra/os
 - Commits: queue 6606f3dca938e5fca90c6725ca5b439bc6ec9c67; testes 0521a1c4ffc0a646fabdfc52a54f1e8ba2e54380.
-- CI dos commits está em andamento. O mapper + CPU FR0 e 667 testes passaram no run 41903230278 (commit cbba00935d1094e31b2fa73bef130fdbfdd60481). O APK gerado em run anterior fe39d9a continua sendo build válido do código; artifact 13358138496, SHA-256 57283dafaa035abc9361cf458e23000f85cb0c06e6427f7c81108d3c68c3572c, expira 2026-11-18.
-- Próximo: aguardar CI da fila; depois implementar operações de estado e active queue com base em startthread.c/stopthread.c/yieldthread.c, e em seguida OSMesgQueue send/recv. Nenhum guest call gate ainda.
+- CI consolidada do mapper, fila e testes passou no run 41903604215 (671 testes). APK artifact 13360140948, 1,061,938 bytes, SHA-256 6477f7ccbaf66b6992d2646648738b48fc0563127345c3a1c22fd423bfe5336d, expira 2026-11-18.
+- Próximo: implementar operações de estado e active queue com base em startthread.c/stopthread.c/yieldthread.c, e em seguida OSMesgQueue send/recv. Nenhum guest call gate ainda.
