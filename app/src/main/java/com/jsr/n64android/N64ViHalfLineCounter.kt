@@ -26,6 +26,9 @@ internal class N64ViHalfLineCounter(
         return current
     }
 
+    /** Returns whether the sampled current half-line equals VI_INTR. */
+    fun matchesInterrupt(viIntr: Int): Boolean = current == viIntr
+
     val fieldParity: Int
         get() = current and 1
 
