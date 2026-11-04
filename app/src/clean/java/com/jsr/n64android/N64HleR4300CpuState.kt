@@ -16,6 +16,8 @@ class N64HleR4300CpuState(
 ) {
     private val gprValues = LongArray(32)
     private val knownGpr = BooleanArray(32)
+    private val cop0Values = LongArray(32)
+    private val knownCop0 = BooleanArray(32)
 
     var programCounter: Long = programCounter
         private set
@@ -31,6 +33,10 @@ class N64HleR4300CpuState(
         initialGprValues.forEach { (index, value) ->
             gprValues[index] = value
             knownGpr[index] = true
+        }
+        cop0.copyRegisterValues().forEach { (index, value) ->
+            cop0Values[index] = value.toInt().toLong()
+            knownCop0[index] = true
         }
         knownGpr[0] = true
     }
@@ -53,6 +59,31 @@ class N64HleR4300CpuState(
         if (index == 0) return
         gprValues[index] = value
         knownGpr[index] = true
+    }
+
+    /** COP0 registers are modeled as 32-bit values; unknown entry values stay unknown. */
+    fun isCop0Known(index: Int): Boolean {
+        requireCop0Index(index)
+        return knownCop0[index]
+    }
+
+    fun readCop0(index: Int): Long {
+        requireCop0Index(index)
+        check(knownCop0[index]) { "COP0 register $index has no established value" }
+        return cop0Values[index].toInt().toLong()
+    }
+
+    /** MTC0 writes the low 32 bits; device-specific register side effects are not modeled. */
+    fun writeCop0(index: Int, value: Long) {
+        requireCop0Index(index)
+        cop0Values[index] = value.toInt().toLong()
+        knownCop0[index] = true
+    }
+
+    fun copyKnownCop0(): Map<Int, Long> {
+        val result = LinkedHashMap<Int, Long>()
+        for (index in 0..31) if (knownCop0[index]) result[index] = cop0Values[index]
+        return result.toMap()
     }
 
     fun isHiKnown(): Boolean = hiValue != null
@@ -90,6 +121,10 @@ class N64HleR4300CpuState(
             if (knownGpr[index]) result[index] = gprValues[index]
         }
         return result.toMap()
+    }
+
+    private fun requireCop0Index(index: Int) {
+        require(index in 0..31) { "COP0 register index must be in 0..31" }
     }
 
     private fun requireGprIndex(index: Int) {
