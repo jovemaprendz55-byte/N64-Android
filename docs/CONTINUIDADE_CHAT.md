@@ -1307,3 +1307,15 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Commit de ajuste: `dd614e6d0051bb1e256c962cbfd515d19f1fd5cd`.
 - A CI que falhou foi run 41601311466; produção da captura passiva (run 41601276572) passou. Aguardar CI do commit de formatação e do export da MainActivity antes de declarar o conjunto validado.
 - O relatório da MainActivity agora inclui a seção de descritores OSTask detectados, com aviso explícito de que é observação passiva; commit `c29534a586c5d91c7166924c9b5c784fb2b097ed`.
+
+
+## 62. Limpeza conservadora de duplicações — 2026-11-04
+
+- Removida de `MainActivity.kt` a função sem chamadas `runIpl3HandoffDiagnosticLegacy()` (364 linhas de corpo). O diagnóstico HLE atual permanece intacto. Commit `d0997d797651908c659955348ee8bde06d2c5a19`.
+- Os dois blocos de exportação dos eventos do barramento (caminho normal e catch) foram centralizados em `appendBusDiagnostics(lines, bus, heading)`, preservando os cabeçalhos distintos e os mesmos campos exportados. Commit `d4f88c4d9ffdb344a8dd72952c16e8755a287cac`.
+- Auditoria e justificativas de componentes mantidos em `docs/LIMPEZA_DUPLICACOES_2026-11-04.md`.
+- Os rastreadores `N64HleInstructionTrace` e `N64InstructionTrace` foram mantidos: têm finalidades parcialmente sobrepostas, mas recursos e testes distintos.
+- `N64RdpFillProcessor.execute()` e `executePackets()` foram mantidos: o segundo valida pacotes e estende a execução para comandos multiword/triângulos, delegando single-word ao primeiro.
+- Módulos de sessão, bootstrap/runner/lifecycle SP e core/unidade vetorial RSP foram mantidos por terem responsabilidades diferentes.
+- CI Android build dos commits de código `d0997d7` e `d4f88c4` estava em execução na última consulta (runs 41799039823 e 41799094882). Não declarar validação final até verificar os resultados.
+- Branch exclusiva `dev/n64-clean-start`; nenhuma alteração foi feita na `main`.
