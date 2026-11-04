@@ -22,14 +22,15 @@ class N64HleCop0EntryStateTest {
 
     @Test
     fun preservesOnlyExplicitlySuppliedValues() {
+        val signExtendedGuestAddress = 0x80001234L.toInt().toLong()
         val state = N64HleCop0EntryState(
-            mapOf(12 to 0x34000000L, 14 to 0xFFFFFFFF80001234L),
+            mapOf(12 to 0x34000000L, 14 to signExtendedGuestAddress),
             "synthetic fixture: values supplied by test"
         )
 
         assertTrue(state.isKnown(12))
         assertEquals(0x34000000L, state.requireValue(12))
-        assertEquals(0xFFFFFFFF80001234L, state.valueOrNull(14))
+        assertEquals(signExtendedGuestAddress, state.valueOrNull(14))
         assertFalse(state.isKnown(13))
     }
 
