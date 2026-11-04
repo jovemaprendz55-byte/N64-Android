@@ -4,15 +4,16 @@ package com.jsr.n64android
  * Integrates the implemented SPECIAL integer subset with classic control flow.
  *
  * The caller supplies the instruction word fetched at the current PC. This
- * stepper does not fetch memory, model exceptions, or implement non-SPECIAL
- * arithmetic/load-store instructions. Control transfers are sequenced with
+ * stepper does not fetch memory or implement architectural exception delivery.
+ * Supported SPECIAL and immediate integer operations are sequenced with
  * exactly one delay-slot instruction.
  */
 class N64HleR4300InstructionStepper(
     private val decoder: N64HleR4300InstructionDecoder = N64HleR4300InstructionDecoder(),
     private val specialExecutor: N64HleR4300SpecialExecutor = N64HleR4300SpecialExecutor(),
     private val controlPlanner: N64HleR4300ControlTransferPlanner = N64HleR4300ControlTransferPlanner(),
-    private val controlSequencer: N64HleR4300ControlFlowSequencer = N64HleR4300ControlFlowSequencer()
+    private val controlSequencer: N64HleR4300ControlFlowSequencer = N64HleR4300ControlFlowSequencer(),
+    private val immediateExecutor: N64HleR4300ImmediateExecutor = N64HleR4300ImmediateExecutor()
 ) {
     fun hasPendingDelaySlot(): Boolean = controlSequencer.hasPendingDelaySlot()
 
@@ -30,10 +31,11 @@ class N64HleR4300InstructionStepper(
             check(!isControlTransfer(instruction)) {
                 "Control transfer in a delay slot requires exception handling, which is not implemented"
             }
-            require(instruction.isSpecial) {
-                "Only implemented SPECIAL instructions are currently supported in a delay slot"
+            if (instruction.isSpecial) {
+                specialExecutor.execute(instruction, state)
+            } else {
+                immediateExecutor.execute(instruction, state)
             }
-            specialExecutor.execute(instruction, state)
             controlSequencer.completeDelaySlot(state)
             return instruction
         }
@@ -44,10 +46,11 @@ class N64HleR4300InstructionStepper(
             return instruction
         }
 
-        require(instruction.isSpecial) {
-            "Only implemented SPECIAL instructions and supported control transfers can be stepped"
+        if (instruction.isSpecial) {
+            specialExecutor.execute(instruction, state)
+        } else {
+            immediateExecutor.execute(instruction, state)
         }
-        specialExecutor.execute(instruction, state)
         state.setProgramCounter(state.programCounter + 4L)
         return instruction
     }
