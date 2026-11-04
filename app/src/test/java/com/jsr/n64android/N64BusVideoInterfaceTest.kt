@@ -211,11 +211,11 @@ class N64BusVideoInterfaceTest {
 
     @Test fun viCurrentWrapUsesMostRecentlyProgrammedVSync() {
         val bus = N64Bus()
-        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_SYNC_OFFSET, 4)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_SYNC_OFFSET, 5)
         bus.advanceViInstructions(4L * N64Bus.VI_INSTRUCTIONS_PER_SCANLINE)
         assertEquals(4, bus.read32(N64Bus.VI_CURRENT_REG))
 
-        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_SYNC_OFFSET, 2)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_SYNC_OFFSET, 3)
         bus.advanceViInstructions(N64Bus.VI_INSTRUCTIONS_PER_SCANLINE)
 
         assertEquals(2, bus.read32(N64Bus.VI_CURRENT_REG))
