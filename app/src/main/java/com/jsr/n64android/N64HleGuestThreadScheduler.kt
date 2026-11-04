@@ -105,6 +105,21 @@ class N64HleGuestThreadScheduler(
         return DispatchDecision(current, current, false)
     }
 
+    /** Models the blocking part of __osEnqueueAndYield(queue): save is external, state/queue are guest-backed. */
+    fun blockRunningThread(waitQueueAddress: Long): DispatchDecision {
+        memory.translateRdramAddress(waitQueueAddress, width = 4, alignment = 4)
+        val current = readPointer(runningThreadAddress)
+        require(current != NULL_POINTER && current != runQueueTailAddress) {
+            "There is no valid running thread to block."
+        }
+        require(codec.read(current).state == N64HleGuestOsThreadLayout.STATE_RUNNING) {
+            "Current thread is not in RUNNING state."
+        }
+        writeState(current, N64HleGuestOsThreadLayout.STATE_WAITING)
+        queues.enqueue(waitQueueAddress, current)
+        return dispatchNext(current)
+    }
+
     /** Models osYieldThread: enqueue current at its priority and choose the next runnable thread. */
     fun yieldThread(): DispatchDecision {
         val current = readPointer(runningThreadAddress)
