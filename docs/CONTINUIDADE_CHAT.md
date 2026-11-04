@@ -1605,3 +1605,29 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Confirmar CI do commit de navegação e da documentação da seção 75.
 - Revisar tratamento de rotação/recriação da Activity e garantir que a seleção ROM seja restaurada sem iniciar sessão automaticamente.
 - Em seguida, acrescentar testes de unidade para a política de navegação/estado, se a arquitetura permitir sem dependência AndroidX adicional.
+
+
+## 77. Preservação da ROM durante recriação da Activity — 2026-11-04
+
+### Achado
+- `loadRomFromUri()` removia a URI persistida no início de uma seleção nova e só a gravava novamente depois que leitura e validação terminavam.
+- Se Android recriasse a Activity durante a leitura em segundo plano (por exemplo, rotação), a nova instância poderia iniciar sem URI para restaurar, perdendo a seleção em andamento.
+- O callback da instância antiga já verifica `isFinishing`, `isDestroyed` e `romLoadGeneration`, evitando atualizar uma Activity encerrada; isso não preservava por si só a URI na nova instância.
+
+### Correção
+- Quando uma seleção nova é recebida, a URI candidata agora é persistida antes de começar a leitura assíncrona.
+- Se a leitura falhar ou `N64RomLoader.load()` rejeitar o arquivo, a URI candidata é removida.
+- Na recriação, `restoreLastRomSelection()` relê a URI e executa novamente a leitura e validação normais.
+- A restauração não inicia a execução do jogo; apenas repõe a ROM validada e os controles da tela.
+
+### Limites
+- A alteração cobre rotação/recriação e também permite recuperar uma seleção após encerramento do processo, desde que a permissão persistente do SAF continue válida.
+- Se o provedor revogar o acesso ou o documento desaparecer, a leitura falha e a URI é removida.
+- Não foi executado teste instrumentado nem teste físico de rotação nesta etapa.
+- Não persiste CPU, RAM ou sessão de emulação; uma sessão ativa continua sendo interrompida no encerramento da Activity.
+- Branch: `dev/n64-clean-start`; `main` permanece intocada.
+
+### Próxima etapa
+- Confirmar CI dos commits de navegação e restauração.
+- Examinar o caso de resultado cancelado no seletor e o ciclo de vida durante exportação/diagnóstico.
+- Depois, decidir se vale introduzir testes unitários pequenos para a política de persistência/validação sem adicionar dependências AndroidX desnecessárias.
