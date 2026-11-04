@@ -1631,3 +1631,35 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Confirmar CI dos commits de navegação e restauração.
 - Examinar o caso de resultado cancelado no seletor e o ciclo de vida durante exportação/diagnóstico.
 - Depois, decidir se vale introduzir testes unitários pequenos para a política de persistência/validação sem adicionar dependências AndroidX desnecessárias.
+
+
+## 78. Auditoria do cancelamento do seletor e exportação durante encerramento — 2026-11-04
+
+### CI confirmado
+- Run `41805501396`, commit `966a9fad` (preservação da ROM): `completed/success`.
+- Run `41805544338`, commit `20c85b32` (documentação seção 77): `completed/success`.
+- Run `41805294704`, commit `e4b93450` (Voltar Android): `completed/success`.
+- Run `41805324710`, commit `94212ce8` (documentação seção 76): `completed/success`.
+
+### Cancelamento do seletor de ROM
+- `onActivityResult()` retorna sem chamar `loadRomFromUri()` quando o resultado não é `RESULT_OK` ou não contém URI.
+- Portanto, cancelar o seletor não limpa a ROM já carregada em memória e não inicia uma nova leitura.
+- Quando o usuário escolhe novo documento, a permissão persistente é tentada antes do início da leitura; se não for obtida, a URI persistida anterior é removida e a seleção nova é carregada apenas para a sessão atual.
+- Nenhuma falha comprovada encontrada neste caminho.
+
+### Exportação durante encerramento da Activity
+- O exportador captura o texto do relatório na thread de UI antes de iniciar a gravação.
+- A operação de arquivo usa `applicationContext`, portanto não depende da View/Activity permanecer ativa para concluir a escrita.
+- Toasts, reabilitação de botões e demais atualizações visuais verificam `isFinishing` e `isDestroyed`.
+- O bloqueio `diagnosticExportInProgress` pertence à instância da Activity; se ela for destruída, a instância deixa de ser acessível. A exportação em segundo plano pode terminar sem callback visual na instância destruída.
+- Não foi identificada necessidade comprovada de alterar o código nessa revisão.
+
+### Limites e ressalvas
+- A análise é estática do código. Não foram executados testes instrumentados, rotação física, encerramento forçado do processo ou cancelamento em aparelho.
+- O seletor não cancela uma leitura já iniciada; o mecanismo `romLoadGeneration` impede callbacks obsoletos de substituir uma seleção mais recente, mas a leitura antiga pode continuar consumindo I/O até terminar.
+- A substituição de uma ROM selecionada por outra ainda limpa `cartridgeBus` e `cartridgeRomBytes` no início da leitura. Se a nova seleção falhar, o aplicativo volta ao estado sem ROM carregada; isso é comportamento atual, não foi alterado.
+- Branch de trabalho: `dev/n64-clean-start`. `main` permanece intocada.
+
+### Próxima etapa
+- Revisar o mecanismo `romLoadGeneration` e o comportamento quando leituras concorrentes terminam fora de ordem, incluindo consistência entre URI persistida e ROM carregada.
+- Em seguida, voltar à auditoria do núcleo R4300/COP0/COP1 e criar testes de conformidade onde houver lacunas demonstráveis.
