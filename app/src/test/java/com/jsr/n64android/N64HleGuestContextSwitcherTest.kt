@@ -69,7 +69,7 @@ class N64HleGuestContextSwitcherTest {
         val first = f.switcher.startThread(low, 0xFFFFFFFF80004000UL.toLong())
         assertEquals(low, first.selectedThread)
         assertEquals(0xFFFFFFFF80002000UL.toLong(), f.cpu.pc)
-        assertEquals(0x2222L - 0x1111L, f.cpu.gpr[16] - 0x1111L)
+        assertEquals(0x1111L, f.cpu.gpr[16])
 
         f.cpu.gpr[16] = 0xABCD
         f.cpu.gpr[4] = 0x4444
