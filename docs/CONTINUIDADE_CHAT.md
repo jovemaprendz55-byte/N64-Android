@@ -2694,3 +2694,12 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - CI dos commits de correção de divisão falhou porque o teste antigo `wordMultiplyRejectsNonSignExtendedInputWithoutChangingHiLo` ainda exigia rejeição, contradizendo a semântica word corrigida. Substituído por `wordMultiplyUsesLowThirtyTwoBitsOfEachGpr`, cobrindo MULT e MULTU com bits superiores diferentes.
 - Commit de correção do teste antigo: `095d455abe87ea6a01e290e0772e62f642a543df`.
 - CI das seções 128 corrigida e 129 ainda deve ser conferida; não declarar aprovada até sucesso de testes e APK.
+
+
+### Extensão do planejador — REGIMM
+
+- O planejador também reconhece BLTZ, BGEZ, BLTZAL e BGEZAL via opcode REGIMM (`0x01`) e subcódigos `rt` 0, 1, 16 e 17.
+- Comparação signed; subcódigos não suportados são rejeitados. Para BLTZAL/BGEZAL, link GPR31 = PC+8 somente quando a condição é tomada; branch não tomado não retorna link.
+- Testes adicionados para BLTZ/BGEZ e branch-and-link tomado/não tomado.
+- Commits: implementação `9e4e17b722b6ea4b595aa055277526a33733c799`; testes `067fbf3f27196e9d4a8c426173edce2155fbd9a0`.
+- O planejador segue sem integração no stepper: não executa delay slot, não aplica link e não altera PC.
