@@ -110,4 +110,42 @@ class N64HleR4300SpecialExecutorTest {
             executor.execute(decoder.decode(0x08000000), s)
         }
     }
+
+    @Test fun moveFromHiAndLoCopiesTheirKnownValuesToGprs() {
+        val s = N64HleR4300CpuState(
+            programCounter = 0x80001000L,
+            initialHi = 0x1122334455667788L,
+            initialLo = 0x7766554433221100L
+        )
+        executor.execute(r(0, 0, 3, funct = 0x10), s) // MFHI
+        executor.execute(r(0, 0, 4, funct = 0x12), s) // MFLO
+        assertEquals(0x1122334455667788L, s.readGpr(3))
+        assertEquals(0x7766554433221100L, s.readGpr(4))
+    }
+
+    @Test fun moveToHiAndLoCopiesGprValues() {
+        val s = state(0x123456789ABCDEFL, 0x0FEDCBA987654321L)
+        executor.execute(r(1, 0, 0, funct = 0x11), s) // MTHI
+        executor.execute(r(2, 0, 0, funct = 0x13), s) // MTLO
+        assertEquals(0x123456789ABCDEFL, s.readHi())
+        assertEquals(0x0FEDCBA987654321L, s.readLo())
+    }
+
+    @Test fun moveFromUnknownHiFailsWithoutChangingDestination() {
+        val s = state(1L, 2L)
+        s.writeGpr(3, 99L)
+        assertThrows(IllegalStateException::class.java) {
+            executor.execute(r(0, 0, 3, funct = 0x10), s)
+        }
+        assertEquals(99L, s.readGpr(3))
+        assertEquals(false, s.isHiKnown())
+    }
+
+    @Test fun moveToHiWithUnknownSourceDoesNotChangeHi() {
+        val s = N64HleR4300CpuState(0x80001000L, initialHi = 7L)
+        assertThrows(IllegalStateException::class.java) {
+            executor.execute(r(1, 0, 0, funct = 0x11), s)
+        }
+        assertEquals(7L, s.readHi())
+    }
 }
