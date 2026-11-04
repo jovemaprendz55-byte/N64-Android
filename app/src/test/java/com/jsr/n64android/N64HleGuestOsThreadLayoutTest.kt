@@ -6,13 +6,14 @@ import org.junit.Test
 class N64HleGuestOsThreadLayoutTest {
     @Test
     fun matchesPublicLibultraOsthreadOffsetsAndSizes() {
-        assertEquals(0x1C, N64HleGuestOsThreadLayout.THREAD_CONTEXT)
+        assertEquals(0x1C, N64HleGuestOsThreadLayout.THREAD_PROFILE)
+        assertEquals(0x20, N64HleGuestOsThreadLayout.THREAD_CONTEXT)
         assertEquals(0xF8, N64HleGuestOsThreadLayout.CONTEXT_SR)
         assertEquals(0xFC, N64HleGuestOsThreadLayout.CONTEXT_PC)
         assertEquals(0x110, N64HleGuestOsThreadLayout.CONTEXT_FP0)
         assertEquals(0x188, N64HleGuestOsThreadLayout.CONTEXT_FP30)
         assertEquals(0x190, N64HleGuestOsThreadLayout.CONTEXT_SIZE)
-        assertEquals(0x1AC, N64HleGuestOsThreadLayout.THREAD_SIZE)
+        assertEquals(0x1B0, N64HleGuestOsThreadLayout.THREAD_SIZE)
     }
 
     @Test
@@ -23,5 +24,6 @@ class N64HleGuestOsThreadLayoutTest {
         assertEquals(8, N64HleGuestOsThreadLayout.STATE_WAITING)
         assertEquals(0, N64HleGuestOsThreadLayout.PRIORITY_IDLE)
         assertEquals(127, N64HleGuestOsThreadLayout.PRIORITY_APP_MAX)
+        assertEquals(255, N64HleGuestOsThreadLayout.PRIORITY_MAX)
     }
 }
