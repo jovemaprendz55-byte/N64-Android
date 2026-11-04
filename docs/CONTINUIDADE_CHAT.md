@@ -2764,3 +2764,19 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - A primeira execução da CI da seção 132 compilou o APK, mas falhou em dois testes antigos do stepper. O word `0x24010001` é ADDIU (opcode `0x09`), agora implementado; os testes ainda o tratavam incorretamente como instrução não suportada.
 - Corrigidos os dois vetores para `0x80010001` (LB, opcode `0x20`), que permanece fora do conjunto implementado. Os testes continuam verificando que uma instrução não suportada não avança PC e não completa um delay slot pendente.
 - Commit da correção dos testes: `442f4bd0e5b377e36b9a2bb0d51be63dc7a1b133`. A nova CI precisa confirmar os testes e o APK antes da aprovação da seção.
+### Ajuste de compilação dos testes da seção 132
+
+- A primeira correção dos vetores substituiu a instrução antiga por `0x80010001`, mas o literal hexadecimal foi inferido como Long pelo Kotlin. Corrigido explicitamente para `0x80010001.toInt()` nos dois testes.
+- Commit: `2db602b7cac0ec2805c6fc893d2e8047850fe3d7`. A validação final ainda depende dos workflows subsequentes.
+
+## 133. Load/store inteiros alinhados em RDRAM — 2026-11-04
+
+- Adicionado `N64HleR4300MemoryExecutor.kt`, dependente de uma instância explícita de `N64HleGuestAddressSpace`.
+- Loads implementados: LB, LBU, LH, LHU, LW, LWU e LD. Stores implementados: SB, SH, SW e SD.
+- Loads signed estendem byte/halfword/word com sinal; LBU/LHU/LWU zero-extend. LD/SD preservam 64 bits. Endereço efetivo = GPR base + imediato sign-extended de 16 bits.
+- Integração inicial ao `N64HleR4300InstructionStepper`: recebe `memorySpace` opcional; somente quando fornecida executa os opcodes de memória suportados. O PC avança após sucesso. Também permite load/store em delay slot.
+- O espaço de memória continua limitado a KSEG0/KSEG1 mapeados para RDRAM big-endian. Acesso desalinhado, fora de RDRAM ou MMIO é rejeitado pela camada de memória antes da escrita/leitura; não há ainda exceções guest para esses casos.
+- Testes adicionados para extensão signed/unsigned, LD/SD, offset negativo, acesso fora da faixa sem mutação, integração stepper e store no delay slot.
+- Commits: executor `1ff5e1a4d534f796f5fc3ce3ccfd405e55b8ba05`; testes iniciais `5e464ca27d6a29154657db07f5e793eeb0fed782`; vetores de acesso fora de faixa `f87494522c7980826c117cd05591ba850183bab0`; integração stepper `1fc2cdd81ba1728b1be7901b732ade647747e666`; testes de integração `7559d0b87f70cff2122e5e829a36bbe49621c5f7`.
+- CI da seção 133 ainda precisa passar com testes e APK. A seção 132 também aguarda uma execução final limpa depois dos ajustes dos testes.
+- Limites: LWL/LWR/LDL/LDR, SWL/SWR/SDL/SDR, LL/SC, FPU loads/stores, cache ops, MMIO, TLB e exceções de endereço permanecem fora.
