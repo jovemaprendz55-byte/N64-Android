@@ -27,6 +27,7 @@ class MainActivity : Activity() {
     private var mainActionButton: Button? = null
     private lateinit var mainLayout: LinearLayout
     @Volatile private var hleStopRequested = false
+    @Volatile private var romTraceStopRequested = false
     @Volatile private var hleWorker: N64ExecutionWorker? = null
     @Volatile private var romVideoStopRequested = false
     @Volatile private var romVideoSession: N64RomVideoSession? = null
@@ -144,6 +145,7 @@ class MainActivity : Activity() {
      */
     override fun onDestroy() {
         hleStopRequested = true
+        romTraceStopRequested = true
         hleWorker?.requestStop()
         romVideoStopRequested = true
         romVideoSession?.requestStop()
@@ -537,6 +539,7 @@ class MainActivity : Activity() {
             status.text = "Selecione uma ROM primeiro."
             return
         }
+        romTraceStopRequested = false
         mainActionButton?.isEnabled = false
         romTraceButton?.isEnabled = false
         hleBootButton?.isEnabled = false
@@ -598,8 +601,12 @@ class MainActivity : Activity() {
         val cicSeed = bus.detectCicSeed()
         if (cicSeed == null) {
             runOnUiThread {
+                if (!isFinishing && !isDestroyed) {
                 status.text = "CIC/seed do IPL3 não identificado. O diagnóstico foi interrompido para evitar um falso erro de checksum; por enquanto, só CIC 6102/7101 e 6105/7105 são reconhecidos."
+                mainActionButton?.isEnabled = true
                 romTraceButton?.isEnabled = cartridgeBus != null
+                hleBootButton?.isEnabled = cartridgeBus != null
+                }
             }
             return
         }
@@ -662,6 +669,10 @@ class MainActivity : Activity() {
         var faultHistoryNext = 0
         try {
             for (stepIndex in 0 until maxSteps) {
+                if (romTraceStopRequested) {
+                    stopReason = "Diagnóstico cancelado porque a Activity foi encerrada."
+                    break
+                }
                 val pc = cpu.pc
                 lastAttemptedPc = pc
                 if (stepIndex >= nextPostHandoffProgressStep &&
@@ -808,8 +819,10 @@ class MainActivity : Activity() {
                     if (trace.size > 80) trace.removeFirst()
                 }
                 if (stepIndex > 0 && stepIndex % 50000 == 0) {
-                    runOnUiThread {
-                        status.text = "Diagnóstico em andamento: $stepIndex / $maxSteps instruções. ROM mantida carregada."
+                    if (!isFinishing && !isDestroyed) runOnUiThread {
+                        if (!isFinishing && !isDestroyed) {
+                            status.text = "Diagnóstico em andamento: $stepIndex / $maxSteps instruções. ROM mantida carregada."
+                        }
                     }
                 }
                 cpu.step()
@@ -1022,11 +1035,13 @@ class MainActivity : Activity() {
             "PI_STATUS: 0x" + bus.read32(N64Bus.PI_STATUS_REG).toUInt().toString(16).uppercase().padStart(8, '0') + "\n" +
             "PI_RD_LEN readback: 0x" + bus.read32(N64Bus.PI_RD_LEN_REG).toUInt().toString(16).uppercase().padStart(8, '0') + "\n" +
             "PI_WR_LEN readback: 0x" + bus.read32(N64Bus.PI_WR_LEN_REG).toUInt().toString(16).uppercase().padStart(8, '0')
-        runOnUiThread {
-            mainActionButton?.isEnabled = true
-            romTraceButton?.isEnabled = cartridgeBus != null
-            hleBootButton?.isEnabled = cartridgeBus != null
-            showRomDiagnosticPage(diagnostic)
+        if (!isFinishing && !isDestroyed) runOnUiThread {
+            if (!isFinishing && !isDestroyed) {
+                mainActionButton?.isEnabled = true
+                romTraceButton?.isEnabled = cartridgeBus != null
+                hleBootButton?.isEnabled = cartridgeBus != null
+                showRomDiagnosticPage(diagnostic)
+            }
         }
     }
 
