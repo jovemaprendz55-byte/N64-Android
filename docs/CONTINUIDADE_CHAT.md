@@ -1874,3 +1874,16 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - CI do commit de testes `f297e3275f2d429df46eaeb7bf474d37301313c0`: **success**. Run: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41809845324
 - Os testes exercitam a linha IP2 já refletida em Cause usando N64Memory. A integração elétrica do MI real via N64Bus e os modos de privilégio ainda precisam de casos de integração específicos; esta etapa não declara o subsistema COP0 completo.
 - Branch: `dev/n64-clean-start`. `main` permanece intocada.
+
+
+## 88. Correção da integração SI → MI → COP0 — 2026-11-04
+
+- Auditoria dos caminhos de interrupção encontrou uma falha concreta no SI: os dois caminhos de DMA síncrono (RDRAM→PIF e PIF→RDRAM) marcavam `SI_STATUS_INTERRUPT`, mas não ativavam `MI_INTR_SI`. Assim, a CPU não recebia Cause.IP2 por conclusão do DMA SI, mesmo com a máscara MI habilitada.
+- A escrita de acknowledge em `SI_STATUS_REG` também limpava apenas o bit de status SI, deixando a origem MI sem acknowledge.
+- Correção em `N64Bus.kt`: ambos os DMA agora chamam `setMiInterruptSource(MI_INTR_SI, "SI", true, "SI DMA complete")`; o acknowledge SI limpa o status e chama `setMiInterruptSource(MI_INTR_SI, "SI", false, "SI_STATUS_INTERRUPT acknowledge")`.
+- Testes em `N64BusSiDmaTest.kt`: verificam que ambos os sentidos de DMA ativam MI_INTR_SI e que acknowledge limpa simultaneamente SI_STATUS_INTERRUPT e MI_INTR_SI.
+- Teste de integração em `R4300MiInterruptTest.kt`: confirma que conclusão do SI DMA, com máscara SI e Status.IE/IM2 habilitados, levanta Cause.IP2 e leva a CPU ao vetor geral de exceção.
+- CI da correção de código: run 41850763818 **success** — https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41850763818
+- CI dos testes SI e integração CPU: run 41850785077 **success** — https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41850785077
+- Limites: o modelo SI ainda executa DMA síncrono e não implementa protocolo Joybus, temporização real ou periféricos. AI continua explicitamente sem geração de interrupção; não foi alterado nesta etapa.
+- Branch: `dev/n64-clean-start`. `main` permanece intocada.
