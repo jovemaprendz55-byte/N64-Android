@@ -98,6 +98,7 @@ class N64HleGuestThreadQueueTest {
             f.codec.write(second, N64HleGuestOsThread(priority = -1))
             f.queue.enqueue(f.queueAddress, second)
         }
+        f.codec.write(second, N64HleGuestOsThread(priority = 40))
 
         f.guest.write32(first, first.toInt()) // Corrupt self-cycle in the current queue.
         assertThrows(IllegalStateException::class.java) {
