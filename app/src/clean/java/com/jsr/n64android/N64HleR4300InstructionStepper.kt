@@ -13,7 +13,10 @@ class N64HleR4300InstructionStepper(
     private val specialExecutor: N64HleR4300SpecialExecutor = N64HleR4300SpecialExecutor(),
     private val controlPlanner: N64HleR4300ControlTransferPlanner = N64HleR4300ControlTransferPlanner(),
     private val controlSequencer: N64HleR4300ControlFlowSequencer = N64HleR4300ControlFlowSequencer(),
-    private val immediateExecutor: N64HleR4300ImmediateExecutor = N64HleR4300ImmediateExecutor()
+    private val immediateExecutor: N64HleR4300ImmediateExecutor = N64HleR4300ImmediateExecutor(),
+    memorySpace: N64HleGuestAddressSpace? = null,
+    private val memoryExecutor: N64HleR4300MemoryExecutor? =
+        memorySpace?.let { N64HleR4300MemoryExecutor(it) }
 ) {
     fun hasPendingDelaySlot(): Boolean = controlSequencer.hasPendingDelaySlot()
 
@@ -31,11 +34,7 @@ class N64HleR4300InstructionStepper(
             check(!isControlTransfer(instruction)) {
                 "Control transfer in a delay slot requires exception handling, which is not implemented"
             }
-            if (instruction.isSpecial) {
-                specialExecutor.execute(instruction, state)
-            } else {
-                immediateExecutor.execute(instruction, state)
-            }
+            executeNonControl(instruction, state)
             controlSequencer.completeDelaySlot(state)
             return instruction
         }
@@ -46,13 +45,21 @@ class N64HleR4300InstructionStepper(
             return instruction
         }
 
-        if (instruction.isSpecial) {
-            specialExecutor.execute(instruction, state)
-        } else {
-            immediateExecutor.execute(instruction, state)
-        }
+        executeNonControl(instruction, state)
         state.setProgramCounter(state.programCounter + 4L)
         return instruction
+    }
+
+    private fun executeNonControl(
+        instruction: N64HleR4300DecodedInstruction,
+        state: N64HleR4300CpuState
+    ) {
+        when {
+            instruction.isSpecial -> specialExecutor.execute(instruction, state)
+            immediateExecutor.supports(instruction.opcode) -> immediateExecutor.execute(instruction, state)
+            memoryExecutor?.supports(instruction.opcode) == true -> memoryExecutor.execute(instruction, state)
+            else -> immediateExecutor.execute(instruction, state)
+        }
     }
 
     private fun isControlTransfer(instruction: N64HleR4300DecodedInstruction): Boolean {
