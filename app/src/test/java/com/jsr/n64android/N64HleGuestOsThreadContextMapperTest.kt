@@ -21,7 +21,11 @@ class N64HleGuestOsThreadContextMapperTest {
     }
 
     private fun thread(fpUsed: Int = 1): N64HleGuestOsThread {
-        val gpr = LongArray(32) { index -> 0x100000000L + index }
+        val gpr = LongArray(32) { index -> 0x100000000L + index }.apply {
+            this[0] = 0L
+            this[26] = 0L
+            this[27] = 0L
+        }
         val pairs = LongArray(16) { index -> 0x1122334400000000L + index }
         return N64HleGuestOsThread(
             priority = 100,
