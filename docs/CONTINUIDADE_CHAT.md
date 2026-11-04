@@ -1860,3 +1860,17 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - O teste de escrita com todos os bits setados agora espera 0xFF77FFFF quando TS já estava setado: reserved bits 23 e 19 zeram, TS mantém seu valor, CE/DE permanecem graváveis.
 - Fonte primária: NEC VR4300 User's Manual, seção 6.3.5, pp. 166–167: https://hack64.net/docs/VR43XX.pdf
 - A alteração aguarda suíte completa/CI. Não presumir aprovação antes do resultado.
+
+
+
+## 87. Auditoria dos efeitos de Status em interrupções e privilégios — 2026-11-04
+
+- Revisão dirigida de `R4300Cpu.kt`, `R4300CpuTest.kt` e dos testes de COP0 existentes na branch `dev/n64-clean-start`.
+- `R4300Cpu.step()` chama `serviceMiInterrupt()` antes de buscar/executar cada instrução. A rotina atualiza Cause.IP2 quando a memória é `N64Bus`, e avalia os bits Cause.IP[7:0] em conjunto com Status.IM[7:0], Status.IE, EXL e ERL.
+- O tratamento de MTC0 Status grava os campos autorizados imediatamente. Assim, a nova configuração é observada no início do próximo `step()`; não foi encontrada necessidade demonstrável de um mecanismo extra de reavaliação no próprio MTC0.
+- A verificação de privilégio COP0/CACHE usa o modo efetivo: EXL/ERL forçam Kernel; caso contrário KSU=00 é Kernel e os outros códigos não são tratados como Kernel. COP0 exige CU0 fora do modo Kernel. CU1 é verificado antes de instruções COP1 e operações de memória COP1.
+- Não foi comprovada falha de implementação nesta fatia; não alteramos a CPU nem a lógica de interrupções.
+- Adicionado `R4300StatusInterruptTest.kt` com três casos: MTC0 Status habilita IE+IM2 e a interrupção pendente é entregue antes da próxima instrução; IP2 não é atendida com IE=0; IP2 não é atendida com IM2=0.
+- CI do commit de testes `f297e3275f2d429df46eaeb7bf474d37301313c0`: **success**. Run: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41809845324
+- Os testes exercitam a linha IP2 já refletida em Cause usando N64Memory. A integração elétrica do MI real via N64Bus e os modos de privilégio ainda precisam de casos de integração específicos; esta etapa não declara o subsistema COP0 completo.
+- Branch: `dev/n64-clean-start`. `main` permanece intocada.
