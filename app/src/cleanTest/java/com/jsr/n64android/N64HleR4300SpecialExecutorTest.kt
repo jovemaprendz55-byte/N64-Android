@@ -148,4 +148,46 @@ class N64HleR4300SpecialExecutorTest {
         }
         assertEquals(7L, s.readHi())
     }
+
+    @Test fun signedWordMultiplyWritesSignExtendedHiAndLo() {
+        val s = state(-2L, 3L)
+        executor.execute(r(1, 2, 0, funct = 0x18), s) // MULT
+        assertEquals(-1L, s.readHi())
+        assertEquals(-6L, s.readLo())
+    }
+
+    @Test fun unsignedWordMultiplyUsesLowWordsAndSignExtendsHiLo() {
+        val s = state(0xFFFFFFFFL.toInt().toLong(), 2L)
+        executor.execute(r(1, 2, 0, funct = 0x19), s) // MULTU
+        assertEquals(1L, s.readHi())
+        assertEquals(-2L, s.readLo())
+    }
+
+    @Test fun wordMultiplyRejectsNonSignExtendedInputWithoutChangingHiLo() {
+        val s = N64HleR4300CpuState(
+            programCounter = 0x80001000L,
+            initialGprValues = mapOf(1 to 0x0000000180000000L, 2 to 2L),
+            initialHi = 7L,
+            initialLo = 9L
+        )
+        assertThrows(IllegalArgumentException::class.java) {
+            executor.execute(r(1, 2, 0, funct = 0x18), s)
+        }
+        assertEquals(7L, s.readHi())
+        assertEquals(9L, s.readLo())
+    }
+
+    @Test fun signedDoublewordMultiplySplits128BitProduct() {
+        val s = state(Long.MIN_VALUE, 2L)
+        executor.execute(r(1, 2, 0, funct = 0x1C), s) // DMULT
+        assertEquals(-1L, s.readHi())
+        assertEquals(0L, s.readLo())
+    }
+
+    @Test fun unsignedDoublewordMultiplySplits128BitProduct() {
+        val s = state(-1L, 2L)
+        executor.execute(r(1, 2, 0, funct = 0x1D), s) // DMULTU
+        assertEquals(1L, s.readHi())
+        assertEquals(-2L, s.readLo())
+    }
 }
