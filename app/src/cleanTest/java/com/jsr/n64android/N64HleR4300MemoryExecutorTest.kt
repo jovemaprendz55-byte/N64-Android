@@ -209,4 +209,84 @@ class N64HleR4300MemoryExecutorTest {
         }
     }
 
+    @Test fun doublewordMergeOperationsCoverEveryByteOffset() {
+        val memoryWord = 0x1122334455667788UL.toLong()
+        val oldRegister = 0xAABBCCDDEEFF0022UL.toLong()
+        val oldMemory = oldRegister
+        val expectedLdl = longArrayOf(
+            memoryWord,
+            0x2233445566778822UL.toLong(),
+            0x3344556677880022UL.toLong(),
+            0x4455667788000022UL.toLong(),
+            0x5566778800000022UL.toLong(),
+            0x6677880000000022UL.toLong(),
+            0x7788000000000022UL.toLong(),
+            0x8800000000000022UL.toLong()
+        )
+        val expectedLdr = longArrayOf(
+            0xAABBCCDDEEFF0011UL.toLong(),
+            0xAABBCCDDEEFF1122UL.toLong(),
+            0xAABBCCDDEE112233UL.toLong(),
+            0xAABBCCDD11223344UL.toLong(),
+            0xAABBCC1122334455UL.toLong(),
+            0xAABB112233445566UL.toLong(),
+            0xAA11223344556677UL.toLong(),
+            memoryWord
+        )
+        val expectedSdl = longArrayOf(
+            memoryWord,
+            0xAA11223344556677UL.toLong(),
+            0xAABB112233445566UL.toLong(),
+            0xAABBCC1122334455UL.toLong(),
+            0xAABBCCDD11223344UL.toLong(),
+            0xAABBCCDDEE112233UL.toLong(),
+            0xAABBCCDDEEFF1122UL.toLong(),
+            oldMemory
+        )
+        val expectedSdr = longArrayOf(
+            0x88BBCCDDEEFF0022UL.toLong(),
+            0x7788CCDDEEFF0022UL.toLong(),
+            0x667788DDEEFF0022UL.toLong(),
+            0x55667788EEFF0022UL.toLong(),
+            0x4455667788FF0022UL.toLong(),
+            0x3344556677880022UL.toLong(),
+            0x2233445566778822UL.toLong(),
+            memoryWord
+        )
+
+        for (offset in 0..7) {
+            memory.write64(0x80000100L, memoryWord)
+            val loadLeft = N64HleR4300CpuState(
+                0x80001000L,
+                mapOf(1 to 0x80000100L + offset, 2 to oldRegister)
+            )
+            executor.execute(N64HleR4300InstructionDecoder().decode(i(0x1A, 1, 2, 0)), loadLeft)
+            assertEquals(expectedLdl[offset], loadLeft.readGpr(2))
+
+            memory.write64(0x80000100L, memoryWord)
+            val loadRight = N64HleR4300CpuState(
+                0x80001000L,
+                mapOf(1 to 0x80000100L + offset, 2 to oldRegister)
+            )
+            executor.execute(N64HleR4300InstructionDecoder().decode(i(0x1B, 1, 2, 0)), loadRight)
+            assertEquals(expectedLdr[offset], loadRight.readGpr(2))
+
+            memory.write64(0x80000100L, oldMemory)
+            val storeLeft = N64HleR4300CpuState(
+                0x80001000L,
+                mapOf(1 to 0x80000100L + offset, 2 to memoryWord)
+            )
+            executor.execute(N64HleR4300InstructionDecoder().decode(i(0x2C, 1, 2, 0)), storeLeft)
+            assertEquals(expectedSdl[offset], memory.read64(0x80000100L))
+
+            memory.write64(0x80000100L, oldMemory)
+            val storeRight = N64HleR4300CpuState(
+                0x80001000L,
+                mapOf(1 to 0x80000100L + offset, 2 to memoryWord)
+            )
+            executor.execute(N64HleR4300InstructionDecoder().decode(i(0x2D, 1, 2, 0)), storeRight)
+            assertEquals(expectedSdr[offset], memory.read64(0x80000100L))
+        }
+    }
+
 }
