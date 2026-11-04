@@ -34,6 +34,10 @@ class N64BusSiDmaTest {
         }
         assertEquals(0x100 + N64Bus.PIF_RAM_SIZE, bus.read32(N64Bus.SI_DRAM_ADDR_REG))
         assertEquals(N64Bus.SI_STATUS_INTERRUPT, bus.read32(N64Bus.SI_STATUS_REG) and N64Bus.SI_STATUS_INTERRUPT)
+        assertEquals(N64Bus.MI_INTR_SI, bus.read32(N64Bus.MI_INTR_REG) and N64Bus.MI_INTR_SI)
+        bus.write32(N64Bus.SI_STATUS_REG, N64Bus.SI_STATUS_INTERRUPT)
+        assertEquals(0, bus.read32(N64Bus.SI_STATUS_REG) and N64Bus.SI_STATUS_INTERRUPT)
+        assertEquals(0, bus.read32(N64Bus.MI_INTR_REG) and N64Bus.MI_INTR_SI)
         assertEquals(0, bus.read32(N64Bus.SI_STATUS_REG) and (N64Bus.SI_STATUS_DMA_BUSY or N64Bus.SI_STATUS_IO_BUSY))
     }
 
@@ -53,6 +57,10 @@ class N64BusSiDmaTest {
         }
         assertEquals(0x200 + N64Bus.PIF_RAM_SIZE, bus.read32(N64Bus.SI_DRAM_ADDR_REG))
         assertEquals(N64Bus.SI_STATUS_INTERRUPT, bus.read32(N64Bus.SI_STATUS_REG) and N64Bus.SI_STATUS_INTERRUPT)
+        assertEquals(N64Bus.MI_INTR_SI, bus.read32(N64Bus.MI_INTR_REG) and N64Bus.MI_INTR_SI)
+        bus.write32(N64Bus.SI_STATUS_REG, N64Bus.SI_STATUS_INTERRUPT)
+        assertEquals(0, bus.read32(N64Bus.SI_STATUS_REG) and N64Bus.SI_STATUS_INTERRUPT)
+        assertEquals(0, bus.read32(N64Bus.MI_INTR_REG) and N64Bus.MI_INTR_SI)
         assertEquals(0, bus.read32(N64Bus.SI_STATUS_REG) and (N64Bus.SI_STATUS_DMA_BUSY or N64Bus.SI_STATUS_IO_BUSY))
     }
 
