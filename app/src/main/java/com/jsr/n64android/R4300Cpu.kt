@@ -332,15 +332,11 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 exceptionCode,
                 branchAddressForFault
             )
-            pc = exceptionVector()
-            delayedTarget = null
-            pendingDelaySlotBranchAddress = null
+            redirectToGeneralExceptionVector()
         } catch (_: FloatingPointFault) {
             // Floating-point exception (FPE): destination write is suppressed by the operation helper.
             enterException(instructionAddressForCurrentStep ?: pc, 15, branchAddressForFault)
-            pc = exceptionVector()
-            delayedTarget = null
-            pendingDelaySlotBranchAddress = null
+            redirectToGeneralExceptionVector()
         } catch (fault: CoprocessorUnusableFault) {
             enterException(
                 instructionAddressForCurrentStep ?: pc,
@@ -348,15 +344,11 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 branchAddressForFault,
                 coprocessorNumber = fault.coprocessorNumber
             )
-            pc = exceptionVector()
-            delayedTarget = null
-            pendingDelaySlotBranchAddress = null
+            redirectToGeneralExceptionVector()
         } catch (_: ReservedInstructionFault) {
             // Unsupported encodings raise the architectural Reserved Instruction exception (RI).
             enterException(instructionAddressForCurrentStep ?: pc, 10, branchAddressForFault)
-            pc = exceptionVector()
-            delayedTarget = null
-            pendingDelaySlotBranchAddress = null
+            redirectToGeneralExceptionVector()
         }
         // The current interpreter has no per-opcode latency table yet. Two base
         // CPU cycles per retired step provide a deterministic Count clock until
@@ -1751,6 +1743,13 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         )
     }
 
+    /** Applies the common general-vector redirect after exception metadata is recorded. */
+    private fun redirectToGeneralExceptionVector() {
+        pc = exceptionVector()
+        delayedTarget = null
+        pendingDelaySlotBranchAddress = null
+    }
+
     private fun exceptionVector(): Long {
         // Status.BEV (bit 22) selects the boot exception vector.
         return if ((cop0[12] and (1L shl 22)) != 0L) {
@@ -1774,9 +1773,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     private fun enterAddressException(fault: AddressFault, branchAddress: Long?) {
         cop0[8] = fault.virtualAddress and 0xFFFFFFFFL // BadVAddr
         enterException(instructionAddressForCurrentStep ?: pc, if (fault.store) 5 else 4, branchAddress) // AdES / AdEL
-        pc = exceptionVector()
-        delayedTarget = null
-        pendingDelaySlotBranchAddress = null
+        redirectToGeneralExceptionVector()
     }
 
     /** Status.FR selects independent 64-bit FPRs; otherwise doubles occupy even/odd pairs. */
