@@ -97,3 +97,27 @@ A classe ainda não implementa tradução TLB nem permite acesso MMIO como se fo
 - Os runs anteriores das etapas ABI/layout foram concluídos com sucesso: 41900220274, 41900225774 e 41900294202. Eles validam a versão que antecedeu a correção do offset; não validarão retroativamente o layout corrigido.
 - A CI das novas classes e da correção do layout foi disparada em execuções separadas. Consultar os resultados antes de declarar aprovação.
 - Nenhum teste de GoldenEye no dispositivo foi realizado nesta etapa.
+
+
+## Etapa 3 implementada: codec guest OSThread
+
+Adicionado `N64HleGuestOsThreadCodec.kt`:
+
+- Lê e grava cabeçalho `OSThread` usando offsets corrigidos: next, priority (s32), queue, tlnext, state/flags (u16), id/fp (s32), thprof pointer e contexto em `0x20`.
+- Lê e grava GPRs de 64 bits presentes no ABI: AT, V0/V1, A0–A3, T0–T9, S0–S7, GP, SP, S8 e RA.
+- GPR zero, K0 e K1 não existem no bloco salvo e são expostos como zero na leitura; são ignorados na escrita.
+- HI/LO como 64 bits; SR/PC/Cause/BadVAddr/RCP/FPCSR como 32 bits.
+- Os 16 slots FP são preservados como pares opacos de 64 bits. Não se converte para FPR do R4300 antes de validar FR=0/FR=1 e a convenção de ordem dos dois f32.
+- Ponteiros do cabeçalho são tratados como 32 bits; escrita aceita forma zero-extended ou sign-extended e rejeita valores maiores que 32 bits.
+- Valida a faixa completa do OSThread e estado/flags/ponteiros antes da primeira escrita. A classe não altera filas, prioridades, scheduler nem CPU.
+
+Testes em `N64HleGuestOsThreadCodecTest.kt` cobrem round-trip, offsets físicos do profile/context/PC, signed priority/id, GPRs salvos/omitidos, pares FP opacos, pointers sign-extended, limite da estrutura e rejeição prévia de valores inválidos.
+
+Commits do codec e testes:
+- codec: `888784e76cbc0c1657d3f249667b3ac4c9303ccc`
+- validação dos ponteiros: `26f6c0e346470749494b941ca632176fb3b1d539`
+- teste: `68630641cb13cdb9a344d00115dbdfe8eb2a45fe`
+- prevalidar todos os ponteiros antes de escrever: `2a303d27e61960832a2d0ab2d1c28ba84a512974`
+- teste de ponteiro tardio inválido: `dc17b95513905a61d14567d91255da8f6ce86ee7`
+
+A CI dos commits de codec/testes está em andamento; consultar o HEAD e os runs mais recentes antes de declarar aprovado.
