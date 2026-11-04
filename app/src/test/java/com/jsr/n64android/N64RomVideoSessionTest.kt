@@ -316,4 +316,33 @@ class N64RomVideoSessionTest {
         assertEquals(2L, session.publishedFrameCount())
     }
 
+    @Test
+    fun modeledCpuCyclesAreStableAcrossExecutionBatchSizes() {
+        fun run(batchSize: Int): Long {
+            val memory = N64Memory(1024 * 1024)
+            val bus = N64Bus(ram = memory)
+            repeat(8) { memory.write32(it * 4, 0) } // Eight NOP instructions.
+            val cpu = R4300Cpu(bus)
+            cpu.setProgramCounter(0xFFFFFFFF80000000UL.toLong())
+            val session = N64RomVideoSession(
+                bus = bus,
+                cpu = cpu,
+                instructionLimit = 8,
+                batchSize = batchSize,
+                framePollInterval = 100_000,
+                rspPollInterval = 100_000,
+                progressPollInterval = 100_000,
+                onFrame = {}
+            )
+            val result = session.execute()
+            assertEquals(N64ExecutionSession.State.COMPLETED, result.state)
+            assertEquals(8L, result.executedInstructions)
+            assertEquals(4L, cpu.cop0[9])
+            return session.executedCpuCycles()
+        }
+
+        assertEquals(16L, run(batchSize = 1))
+        assertEquals(16L, run(batchSize = 4))
+    }
+
 }
