@@ -44,13 +44,13 @@ class N64HleGuestOsThreadCodecTest {
         assertEquals(1, ram.read32(0x1024)) // AT low word.
         assertEquals(1, ram.read32(0x1098)) // S0 high word: context+0x78.
         assertEquals(16, ram.read32(0x109C)) // S0 low word.
-        assertEquals(0x0000FF03, ram.read32(0x1118)) // SR.
+        assertEquals(0x34000000, ram.read32(0x1118)) // SR.
         assertEquals(0x80123450.toInt(), ram.read32(0x111C)) // PC/EPC.
         assertEquals(0x80000400.toInt(), ram.read32(0x1120)) // Cause.
-        assertEquals(0x7F001234, ram.read32(0x1124)) // BadVAddr.
-        assertEquals(0x003F0000, ram.read32(0x1128)) // RCP.
+        assertEquals(0x7F000123, ram.read32(0x1124)) // BadVAddr.
+        assertEquals(0x0000000F, ram.read32(0x1128)) // RCP.
         assertEquals(0x01000C00, ram.read32(0x112C)) // FPCSR.
-        assertEquals(0x11223344, ram.read32(0x1130)) // FP0 high word.
+        assertEquals(0xABCDEF00.toInt(), ram.read32(0x1130)) // FP0 high word.
         assertEquals(0, ram.read32(0x1134)) // FP0 low word.
         val actual = codec.read(address)
         assertEquals(expected.next, actual.next)
