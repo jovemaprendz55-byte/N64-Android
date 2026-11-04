@@ -84,4 +84,20 @@ class N64HleLinkerMapParserTest {
         assertEquals(0, result.symbols.size)
         assertEquals(2, result.ignoredLineCount)
     }
+    @Test
+    fun existingTableConflictDoesNotPartiallyRegisterNewRows() {
+        val table = N64HleVerifiedSymbolTable()
+        table.register("alreadyThere", 0x80001000L, "prior verified map")
+        val map = """
+            0x80001004 newSymbol
+            0x80001000 collidingAddress
+        """.trimIndent()
+
+        assertThrows(IllegalArgumentException::class.java) {
+            N64HleLinkerMapParser().parse(map, "second map", table)
+        }
+        assertEquals(1, table.size)
+        assertEquals(null, table.findByName("newSymbol"))
+    }
+
 }
