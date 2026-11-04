@@ -2320,3 +2320,13 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Commits de correção: layout/padding 3c039a0661b30c8a92e2711a77efc037e34d0478; codec 9ed00726665158538d940c877b3de3ca5af242d2; teste padding 7ecb2f1170de94940743d61ab198e653a1d8224c; teste de ponteiro duplicado removido acc3dac8cc94c389e9f99e17352612328f3caae3; comentário alinhamento dfdc3b713124df8040e81f517ba4010acbb28c01.
 - Os commits anteriores que chamavam o campo THREAD_PROFILE/profile foram supersedidos e não devem ser usados como ABI final. A CI dos commits de correção ainda precisa ser consultada.
 - Próximo: validar CI do codec corrigido; então preparar o mapper parcial entre ABI e R4300Cpu.ContextSnapshot. O mapper deve deixar TLB/Count/delay-slot e FR/FPU explicitamente fora até haver contrato comprovado. Nenhum scheduler guest ou call gate ainda.
+## 109. Mapper de contexto guest e correção FPR FR=0 — 2026-11-04
+
+- Adicionado N64HleGuestOsThreadContextMapper.kt: ABI guest ↔ R4300Cpu.ContextSnapshot. Mapeia GPR salvos, HI/LO, Status, Cause, BadVAddr e PC; preserva do template TLB, Count divider e estado não armazenado no OSThread; limpa delay-slot pendente; RCP continua fora do snapshot CPU.
+- Correção técnica durante integração: manual VR4300 seção 17.3 diz que em FR=0 FGR par guarda os 32 bits low-order e FGR ímpar guarda os 32 bits high-order. A implementação anterior readFprDouble/writeFprDouble estava invertida. Corrigida em R4300Cpu.kt; LDC1/SDC1 e testes aritméticos atualizados.
+- Mapper converte cada slot fp pair big-endian do OSThread para FGR par=low e ímpar=high; FPCSR→FCR31. FR=1 rejeitado. Quando fpUsed=0, bancos FPR/FCR do template são preservados.
+- Testes em N64HleGuestOsThreadContextMapperTest.kt cobrem conversão FR0, retorno CPU→guest, RCP preservado, thread sem uso de FPU, FR1 rejeitado e PC inválido.
+- Fonte: VR4300 manual, seção 17.3: https://n64dev.org/p/U10504EJ7V0UMJ1.pdf (FR=0: even FGR low-order; odd FGR high-order).
+- Commits: CPU `9749f5db726c8516ba9eaf2ad4f466c5cef8905e`; COP1 memory test `04b9a684d7c844984e280dc0f9f1a23b17abc023`; COP1 arithmetic tests `80ce285307d29e136a5ea8debd856f7dfae35f53`; mapper `d0277d8eb2d2632de3b07a4010ccca2c76cf4fef`; mapper tests `c1360ededcf6896e0c8e69c83e01b91333a68e0f`.
+- CI dos commits está em andamento; não declarar aprovado até consultar. Runs anteriores de mapper falharam por testes FR1/ordem antiga e foram corrigidos.
+- Próximo: confirmar CI; adicionar testes round-trip mapper→R4300Cpu.restoreContext e snapshot→OSThreadCodec; então implementar estado RCP/eventos reais e dispatcher guest. Ainda não conectar MainActivity nem declarar GoldenEye funcional.
