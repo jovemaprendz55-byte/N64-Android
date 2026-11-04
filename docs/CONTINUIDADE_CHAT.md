@@ -1839,3 +1839,13 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - CACHE não implementa dados/tags reais, index/hit operations, writeback/fill ou estados de cache.
 - Investigar separadamente a tradução do endereço e os efeitos das operações suportadas antes de ampliar a emulação.
 - Branch: dev/n64-clean-start. main permanece intocada.
+
+
+## 85. Correção de regressão nos testes COP0 — 2026-11-04
+
+- Os logs das execuções 41808660142 e 41808667581 mostram que o APK foi montado, mas a suíte falhou no teste legado `cop0MoveFromAndMoveToTransferSignExtended32BitValues`.
+- Causa: o teste genérico de transferência MTC0/MFC0 usava Status como se fosse um registrador de armazenamento integral. Após a introdução deliberada de semântica específica para Status, esse cenário deixou de ser um teste válido de transferência genérica.
+- Correção: o teste de transferência genérica foi movido para EPC (CP0 register 14), que continua sendo um registrador de 32 bits com transferência MTC0/MFC0 sign-extended. Os testes específicos de Status permanecem responsáveis por verificar máscara, campos reservados e TS.
+- Não removemos a validação de Status nem enfraquecemos seus testes.
+- Esta correção ainda precisa passar pela suíte completa e CI; não declarar aprovação antecipada.
+- Branch: dev/n64-clean-start. main permanece intocada.
