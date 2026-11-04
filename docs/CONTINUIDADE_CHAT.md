@@ -1849,3 +1849,14 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Não removemos a validação de Status nem enfraquecemos seus testes.
 - Esta correção ainda precisa passar pela suíte completa e CI; não declarar aprovação antecipada.
 - Branch: dev/n64-clean-start. main permanece intocada.
+
+
+## 86. Correção da máscara MTC0 Status conforme figura do manual VR4300 — 2026-11-04
+
+- Consulta direta ao manual NEC VR4300, seção 6.3.5, figuras 6-5 e 6-6, páginas impressas 166–167.
+- A figura 6-6 define TS (bit 21) como somente leitura; todos os demais bits do campo DS (24:16) são legíveis/escrevíveis, exceto os dois bits reservados (23 e 19), que devem ser escritos como zero e retornam zero.
+- CE (bit 17) e DE (bit 16) são definidos para compatibilidade com VR4200, não usados pelo hardware VR4300, mas continuam sendo campos de software read/write. Portanto não devem ser descartados pela máscara.
+- A máscara anterior 0xFF54FFFF descartava incorretamente CE e DE. Corrigida para 0xFF57FFFF, preservando TS separadamente do valor anterior.
+- O teste de escrita com todos os bits setados agora espera 0xFF77FFFF quando TS já estava setado: reserved bits 23 e 19 zeram, TS mantém seu valor, CE/DE permanecem graváveis.
+- Fonte primária: NEC VR4300 User's Manual, seção 6.3.5, pp. 166–167: https://hack64.net/docs/VR43XX.pdf
+- A alteração aguarda suíte completa/CI. Não presumir aprovação antes do resultado.
