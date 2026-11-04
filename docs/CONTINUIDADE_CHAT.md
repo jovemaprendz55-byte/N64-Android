@@ -2574,3 +2574,16 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Commits: estado `807a3bf0289664d2911c8b15f540b035d5be56b6`; teste inicial `c357f8c4c50aef7549f9ec5c0e8f3dc1f855a7ec`; ajuste de literal sign-extended do teste `a1a4c7f651f2be640fedc17cf85f48e599660790`.
 - Limite: ainda não há decoder, executor de instruções, pipeline, branch delay slots, exceções, TLB ou integração com memória/barramento. Esta seção entrega somente o modelo arquitetural inicial.
 - Próxima etapa: validar CI e então adicionar decoder MIPS/R4300 com extração de campos e classificação de instruções, sem executar operações até os testes de decodificação estarem estáveis.
+
+
+## 124. Decoder puro de campos R4300 — 2026-11-04
+
+- Adicionado `N64HleR4300InstructionDecoder.kt` em `src/clean/java`.
+- Extrai opcode, rs, rt, rd, shift amount, function code, immediate unsigned/signed e índice de jump de uma palavra de 32 bits.
+- Reconhece explicitamente um conjunto de funções SPECIAL MIPS III/R4300, incluindo shifts, jumps de registrador, HI/LO, multiplicação/divisão 32/64-bit, operações aritméticas/lógicas, comparações, traps e shifts doubleword.
+- Funções SPECIAL desconhecidas permanecem sem classificação; function codes não são tratados como SPECIAL quando opcode não é zero.
+- O decoder é puro: não altera CPU/memória, não calcula destino de branch/jump, não implementa delay slots e não executa instruções.
+- Testes em `N64HleR4300InstructionDecoderTest.kt`: campos R-type, ADDU, immediates assinados/não assinados, índice de jump, funções doubleword, function code desconhecido e isolamento por opcode.
+- Commits: decoder `5bfa48bd9d23f2e4d547aca63f6f5b2907df6d60`; testes `0085ffdf5e37c632128e7cdbffc6379864704303`.
+- CI ainda precisa confirmar compilação/testes e artifact desta camada.
+- Próxima etapa: depois da CI, desenhar e implementar executor inicial de operações SPECIAL sem overflow (ADDU/SUBU, lógica e shifts) com semântica MIPS64 precisa e testes de estado; branches/delay slots e exceções ficam separados.
