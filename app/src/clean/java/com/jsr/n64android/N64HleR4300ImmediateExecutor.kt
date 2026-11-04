@@ -19,15 +19,15 @@ class N64HleR4300ImmediateExecutor {
 
         val result = when (opcode) {
             OP_ADDI -> {
-                val left = state.readGpr(instruction.rs)
-                val immediate = instruction.immediateSigned.toLong()
-                val sum = left + immediate
-                check(!(((left xor sum) and (immediate xor sum)) < 0L)) {
+                val left = state.readGpr(instruction.rs).toInt()
+                val immediate = instruction.immediateSigned
+                val sum = left.toLong() + immediate.toLong()
+                check(sum in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()) {
                     "ADDI signed overflow requires an architectural exception, which is not implemented"
                 }
-                sum
+                sum.toInt().toLong()
             }
-            OP_ADDIU -> state.readGpr(instruction.rs) + instruction.immediateSigned.toLong()
+            OP_ADDIU -> (state.readGpr(instruction.rs).toInt() + instruction.immediateSigned).toLong()
             OP_ANDI -> state.readGpr(instruction.rs) and instruction.immediateUnsigned.toLong()
             OP_ORI -> state.readGpr(instruction.rs) or instruction.immediateUnsigned.toLong()
             OP_XORI -> state.readGpr(instruction.rs) xor instruction.immediateUnsigned.toLong()
