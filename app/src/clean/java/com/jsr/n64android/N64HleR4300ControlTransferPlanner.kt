@@ -51,7 +51,7 @@ class N64HleR4300ControlTransferPlanner {
             0x02, 0x03 -> {
                 val pcPlus4 = delayPc.toInt()
                 val target32 = (pcPlus4 and 0xF0000000.toInt()) or (instruction.jumpIndex shl 2)
-                val target = target32.toLong()
+                val target = if (delayPc < 0L) target32.toLong() else target32.toLong() and 0xFFFF_FFFFL
                 N64HleR4300ControlTransferPlan(
                     pc, delayPc, target, true,
                     linkRegister = if (instruction.opcode == 0x03) 31 else null,
