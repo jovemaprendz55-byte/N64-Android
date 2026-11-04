@@ -2395,3 +2395,17 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - CI consolidada 41909064407 success; testDebugUnitTest + assembleDebug verde. APK artifact 13361058496, 1,075,346 bytes, SHA-256 c115251cea935f1815ee9848affafc74712cb4994cdff4a618af523f66260abf, expira 2026-11-18. https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41909064407
 - Limites: dispatcher sem endereços GoldenEye; ainda não há call gate real libultra. MessageQueue ainda usa scheduler, não ContextSwitcher, ao bloquear; worker/MainActivity não alterados; GoldenEye não testado no aparelho.
 - Próximo: resolver endereços de símbolos da revisão USA com map real ou disassembly reproduzível; só então registrar handlers para create/start/stop/yield/message queues. Depois integrar MessageQueue ao ContextSwitcher para save/restore em BLOCK/wake. Não mexer MainActivity antes de ter call gates e testes integrados.
+
+
+## 115. Integração OSMesgQueue ↔ ContextSwitcher — 2026-11-04
+
+- `N64HleGuestMessageQueue` agora aceita um `N64HleGuestContextSwitcher` opcional. Sem ele, mantém o comportamento de scheduler anterior para compatibilidade dos testes/etapas já existentes.
+- Com o switcher, BLOCK chama `blockCurrent(waitQueueAddress, retryPc)`: a thread live é salva no OSThread e o PC guardado é a entrada da API guest, para repetir send/receive/jam após acordar.
+- Ao acordar waiter, a fila chama `contextSwitcher.startThread(waiter, callerResumePc)`: se houver preempção, salva a thread atual no PC de retorno da chamada e restaura a thread acordada; se não houver preempção, o switcher mantém a thread atual e avança ao PC de retorno.
+- `retryPc` e `callerResumePc` são parâmetros distintos intencionalmente. O primeiro é o PC de entrada da API a repetir; o segundo é o endereço de retorno da chamada que acordou outra thread.
+- Para evitar mutação parcial, o código valida o PC de retorno antes de consumir/deslocar mensagem quando há waiter. Também exige retry PC antes de bloquear.
+- Testes adicionados: save live GPR/PC em BLOCK; wake restaura PC/GPR; ausência de retry PC não muda estado; ausência de return PC não consome mensagem nem remove waiter.
+- O caminho é opt-in via injeção do switcher. Ainda não há call gate GoldenEye registrado nem integração com `N64RomVideoSession`/`MainActivity`. Nenhum jogo foi testado no aparelho.
+- Commits: implementação inicial `1645b3cfaaa3002742ea828451300aa76cbf7d60`; testes de integração `cae80f353f774ce7a9ea5a37c60c9f735a98aa4e`; validação de wake antes de mutação `62319413d808d0766f3f719b86269b3d148bde2e`; teste de atomicidade `7be3bc4d45f518ac3142270779ccef4782b2f05b`.
+- CI dos commits está em andamento no momento desta atualização; consultar o run mais recente do HEAD antes de declarar aprovação.
+- Próximo: revisar resultados da CI; depois criar camada de binding de APIs libultra com endereços injetados e evidência verificável, validar retorno/argumentos/registradores/custos. Continuar busca por map ou disassembly USA reproduzível. Não registrar endereços estimados.
