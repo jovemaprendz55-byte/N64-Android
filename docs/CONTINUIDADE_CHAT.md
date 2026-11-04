@@ -2267,3 +2267,16 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - VI_WIDTH tem campo documentado de 12 bits no header RCP; ainda requer auditoria separada antes de qualquer alteração.
 - O runtime VI continua avançando por orçamento aproximado de instruções; GoldenEye não foi validado no aparelho nesta etapa.
 - Branch `dev/n64-clean-start`; `main` permanece intocada. A auditoria global de duplicação de código e arquivos repetidos continua aberta.
+## 105. Migração do início de jogo para runtime HLE guest — 2026-11-04
+
+- Objetivo confirmado: substituir o início experimental atual por runtime HLE real, sem PIF ROM/BIOS externo, começando por GoldenEye 007 USA (CIC 6102/7101).
+- Auditoria de MainActivity.startRomVideoExecution(): ainda chama N64HleBoot.prepare e N64RomVideoSession; esse caminho executa CPU, captura VI e bombeia RSP em quantuns aproximados, mas não agenda OSTask automaticamente.
+- N64HleOsKernel e N64HleCpuScheduler são modelos host-side, não ABI guest libultra; ainda não leem/escrevem OSThread/OSMesgQueue na RDRAM nem interceptam chamadas da ROM.
+- Correção de auditoria: o snapshot completo do R4300 já existe em R4300Cpu.ContextSnapshot, incluindo GPR/HI/LO/COP0/FPR/FCR/TLB/PC/delay-slot/Count divider. A lacuna prioritária é guest ABI e call gates, não snapshot CPU.
+- Etapa 1 implementada: N64HleGuestOsThreadLayout.kt define offsets de OSThread e __OSThreadContext a partir do header público libultra. THREAD_CONTEXT=0x1C, CONTEXT_SIZE=0x190, THREAD_SIZE=0x1AC; estados STOPPED/RUNNABLE/RUNNING/WAITING e prioridades 0–127.
+- Fonte: https://jrra.zone/n64/doc/header/os_thread.htm
+- Commits: layout dea9afd2c8f6332d9878ece9b18aeb92e3cc1e85; teste 7ca78b7e3787889006b96c658635c8b592716d81.
+- Run layout 41900220274 e run teste 41900225774 foram disparados; consultar status antes de declarar CI aprovado.
+- Nenhuma alteração em MainActivity ainda: não remover o worker atual até que o novo runtime guest tenha cobertura suficiente. Nenhum jogo declarado funcional.
+- Próximo: acesso seguro a memória guest e codec OSThread; depois context ABI, resolução/interceptação de APIs libultra, eventos reais e agendamento RSP. Detalhes em docs/HLE_RUNTIME_LAUNCH_MIGRATION_2026-11-04.md.
+- Branch dev/n64-clean-start; main permanece intocada. Auditoria global de duplicação segue aberta.
