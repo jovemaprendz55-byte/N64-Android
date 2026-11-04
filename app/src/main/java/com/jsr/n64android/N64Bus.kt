@@ -754,7 +754,10 @@ class N64Bus(
                 return
             }
             SI_STATUS_REG -> {
-                if ((value and SI_STATUS_INTERRUPT) != 0) siStatus = siStatus and SI_STATUS_INTERRUPT.inv()
+                if ((value and SI_STATUS_INTERRUPT) != 0) {
+                    siStatus = siStatus and SI_STATUS_INTERRUPT.inv()
+                    setMiInterruptSource(MI_INTR_SI, "SI", false, "SI_STATUS_INTERRUPT acknowledge")
+                }
                 return
             }
             AI_DRAM_ADDR_REG -> { aiDramAddress = value and 0x00FFFFFF; return }
@@ -846,6 +849,7 @@ class N64Bus(
         for (index in 0 until PIF_RAM_SIZE) pifRam[index] = ram.read8(source + index).toByte()
         siDramAddress = (source + PIF_RAM_SIZE) and 0x00FFFFFF
         siStatus = (siStatus and (SI_STATUS_DMA_BUSY or SI_STATUS_IO_BUSY).inv()) or SI_STATUS_INTERRUPT
+        setMiInterruptSource(MI_INTR_SI, "SI", true, "SI DMA complete")
     }
 
     /** Copies exactly 64 bytes from PIF RAM into RDRAM (SI read DMA). */
@@ -860,6 +864,7 @@ class N64Bus(
         for (index in 0 until PIF_RAM_SIZE) ram.write8(destination + index, pifRam[index].toInt() and 0xFF)
         siDramAddress = (destination + PIF_RAM_SIZE) and 0x00FFFFFF
         siStatus = (siStatus and (SI_STATUS_DMA_BUSY or SI_STATUS_IO_BUSY).inv()) or SI_STATUS_INTERRUPT
+        setMiInterruptSource(MI_INTR_SI, "SI", true, "SI DMA complete")
     }
 
     /**
