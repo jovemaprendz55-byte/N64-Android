@@ -262,3 +262,18 @@ Commits: switcher `3828470d7b19ff43da25e90eb1b40b3c38f6f558`; testes iniciais `7
 CI final: run `41908404540` success — `testDebugUnitTest assembleDebug` passou. APK artifact `13362056253`, 1,072,204 bytes, SHA-256 `96caed88143b02b7312bffdeb214ef7eba43b5e660b73e14e53c34157c6d7b8b`, expira 2026-11-18. https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41908404540
 
 Limites: o switcher ainda não é invocado pelo N64RomVideoSession, não há interceptação de PC nem endereços confirmados de API libultra; o `N64HleGuestMessageQueue` ainda chama o scheduler de estado, não o switcher, então BLOCK/wake ainda não preserva contexto live nesse caminho. A integração só pode avançar depois de um dispatcher com endereços de função comprovados e sem inventar offsets. Nenhum teste GoldenEye no aparelho foi feito.
+
+
+## Etapa 9 — hook pre-fetch R4300 e dispatcher por endereço verificado — 2026-11-04
+
+- `R4300Cpu.setInstructionBoundaryHook`: callback executado depois de tratar MI interrupt e antes do fetch. Retorno `null` deixa CPU executar instrução guest; custo inteiro não-negativo consome a fronteira e avança Count pelo custo informado.
+- `N64HleGuestCallDispatcher`: registry explícito nome→endereço→handler; exige evidência não vazia, endereço alinhado/32-bit, rejeita duplicação por símbolo/endereço e normaliza endereços KSEG sign-extended/zero-extended para a forma signed Long do PC.
+- `install/uninstall` liga/desliga registry ao hook pre-fetch. Sem correspondência exata, não há interceptação.
+- Nenhum endereço GoldenEye real está registrado. A auditoria `docs/GOLDENEYE_US_CALL_GATE_ADDRESS_AUDIT_2026-11-04.md` conclui que `ge007.ld` + `ld/lib.text.ld.inc` mostram layout e ordem dos objetos, mas não offsets finais dos símbolos; o repositório consultado não contém map final USA. Não estimar endereços.
+- Testes: hook pula fetch e consome ciclos; hook null executa normalmente; MI interrupt tem precedência; dispatcher só atende endereço registrado; endereço desconhecido faz fallthrough; duplicações/evidência ausente rejeitadas; canonicalização zero/sign-extended; uninstall.
+
+Commits: hook `188c9810cde874bf599fcdcf55bd66e90df3bccb`; hook tests `bc26c6f0d8d045ce0fd419373b2feb370cc30507`; dispatcher `3fdd66a67839518e1470fc17efac6cf8ab8f7c75`; dispatcher tests `6d083eb2e77720a92279b01ba1e7cb4354cbb919`; canonicalization `9be8c97c28cdc9674e4a07944ec599ce03841ff5`; canonical test `713de767ab449b49f0ab1308cd4aea7a7cd78c37`; address audit `9504029f1c562beaa26953c351e68e8596b33a5f`.
+
+CI consolidada do hook/dispatcher/canonicalização: run `41909064407` success; `testDebugUnitTest assembleDebug` passou. APK artifact `13361058496`, 1,075,346 bytes, SHA-256 `c115251cea935f1815ee9848affafc74712cb4994cdff4a618af523f66260abf`, expira 2026-11-18. https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41909064407
+
+Limites: hook e dispatcher ainda não têm registros GoldenEye, não há call gate real de libultra; message queue ainda não usa ContextSwitcher para bloquear/restaurar contexto live; nenhuma alteração no worker MainActivity; nenhum teste de GoldenEye no dispositivo.
