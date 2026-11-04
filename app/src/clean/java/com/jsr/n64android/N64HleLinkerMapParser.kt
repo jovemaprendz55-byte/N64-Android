@@ -40,11 +40,18 @@ class N64HleLinkerMapParser {
             require(candidateAddresses.add(address)) {
                 "Duplicate symbol address 0x${address.toULong().toString(16)} in linker map at line $lineNumber"
             }
-            val probe = N64HleVerifiedSymbolTable()
-            probe.register(name, address, "$sourceEvidence:line $lineNumber")
         }
 
+        // Stage against a copy of the existing table so conflicts with prior
+        // registrations cannot leave the caller's table partially modified.
+        val staged = N64HleVerifiedSymbolTable()
+        symbolTable.snapshot().forEach { existing ->
+            staged.register(existing.name, existing.address, existing.evidence)
+        }
         val registered = rows.map { (lineNumber, address, name) ->
+            staged.register(name, address, "$sourceEvidence:line $lineNumber")
+        }
+        rows.forEach { (lineNumber, address, name) ->
             symbolTable.register(name, address, "$sourceEvidence:line $lineNumber")
         }
         return ParseResult(registered, mapText.lineSequence().count() - rows.size)
