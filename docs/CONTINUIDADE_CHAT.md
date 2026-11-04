@@ -2454,3 +2454,28 @@ Critérios de verdade:
 - Efeito esperado: APK com somente a casca Android e Activity vazia; sem CPU, RSP, RDP, bus, HLE antigo ou telas de diagnóstico no conjunto compilado.
 - Consequência intencional: a suíte antiga não é executada nessa fase, pois depende das classes excluídas. Os testes do novo HLE serão criados em `src/cleanTest/java` e adicionados conforme a arquitetura nova.
 - A CI precisa confirmar que o source set Kotlin/Android está configurado corretamente antes de considerar o APK limpo pronto.
+
+
+## 117. Base HLE limpa: imagem de cartucho imutável — 2026-11-04
+
+A build limpa foi confirmada:
+- Run `41922331029` — success no commit `094754b68c98022a9a651cdbd54debf545654d81`.
+- Artifact `n64-android-debug-apk`: ID `13368026244`, 804,138 bytes, SHA-256 `e2c1e6f501b79014f8514c747c95ca7a70530e7147216035438a47fa24ae9e42`; expira em 2026-11-18.
+- Esse APK é a casca vazia, não contém runtime de emulação ligado à Activity e não representa boot de jogo.
+
+Nova base HLE:
+- Criada `N64HleCartridgeImage.kt` no source set `src/clean/java`.
+- Reconhece magic N64 big-endian `80 37 12 40`, byte-swapped de 16 bits `37 80 40 12` e little-endian de 32 bits `40 12 37 80`.
+- Normaliza os três formatos para big-endian, preserva qual formato foi detectado, valida tamanho mínimo de header e alinhamento em palavra de 32 bits.
+- Extrai entry point do header, CRC1/CRC2, título, ID e código de região.
+- Retorna cópias defensivas e limita leitura por faixa; não modifica a imagem original.
+- Importante: não executa nem interpreta IPL3, não determina CIC e não prepara registradores do R4300. É apenas a primeira camada de entrada de cartucho, necessária para o novo runtime.
+- Testes adicionados em `src/cleanTest/java/N64HleCartridgeImageTest.kt`: três byte orders, metadata, cópias defensivas, leituras fora de faixa e imagens inválidas.
+- Commits: parser `9b81488e631bb501cc56c3a73976bba0e92c15f3`; byte order/alinhamento `bea7b2edf090ed9c954bd8071fba6a9614d08f5c`; testes `9e7e384e66d848399831850f376e654b7d7558fc`; correção fixture `7be2312af7b5e5075cea82f51ede529b519de426`.
+
+Próxima etapa técnica:
+1. Confirmar CI da nova camada de cartucho.
+2. Criar memória guest isolada e contrato de endereços físicos/KSEG, sem importar classes antigas.
+3. Definir boot profile explícito e verificável; não inferir valores do GoldenEye sem fonte/mapa compatível.
+4. Construir resolução de serviços HLE por símbolos/assinaturas verificadas, sem endereços adivinhados.
+5. Só declarar boot quando o fluxo guest alcançar estado demonstrável e gerar vídeo/entrada no aparelho.
