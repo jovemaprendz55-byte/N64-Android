@@ -7,11 +7,10 @@ package com.jsr.n64android
  * IPL3, emulate PIF, infer CIC state, or claim that a game has booted.
  */
 class N64HleCartridgeImage private constructor(
-    private val canonicalRom: ByteArray
+    private val canonicalRom: ByteArray,
+    val byteOrder: ByteOrder
 ) {
     enum class ByteOrder { BIG_ENDIAN, BYTE_SWAPPED_16, LITTLE_ENDIAN_32 }
-
-    val byteOrder: ByteOrder
     val sizeBytes: Int get() = canonicalRom.size
     val entryPoint: Long
     val crc1: Long
@@ -21,7 +20,6 @@ class N64HleCartridgeImage private constructor(
     val countryCode: Int
 
     init {
-        byteOrder = ByteOrder.BIG_ENDIAN
         entryPoint = readU32(0x08)
         crc1 = readU32(0x10)
         crc2 = readU32(0x14)
@@ -62,16 +60,22 @@ class N64HleCartridgeImage private constructor(
 
         fun parse(input: ByteArray): N64HleCartridgeImage {
             require(input.size >= HEADER_SIZE) { "N64 ROM is shorter than its 64-byte header" }
-            val canonical = when {
-                hasMagic(input, BIG_ENDIAN_MAGIC) -> input.copyOf()
-                hasMagic(input, BYTE_SWAPPED_MAGIC) -> swapAdjacentBytes(input)
-                hasMagic(input, LITTLE_ENDIAN_MAGIC) -> reverseWords(input)
+            require(input.size % 4 == 0) { "N64 ROM size must be aligned to a 32-bit word" }
+            val order = when {
+                hasMagic(input, BIG_ENDIAN_MAGIC) -> ByteOrder.BIG_ENDIAN
+                hasMagic(input, BYTE_SWAPPED_MAGIC) -> ByteOrder.BYTE_SWAPPED_16
+                hasMagic(input, LITTLE_ENDIAN_MAGIC) -> ByteOrder.LITTLE_ENDIAN_32
                 else -> throw IllegalArgumentException("Unrecognized N64 cartridge byte-order magic")
+            }
+            val canonical = when (order) {
+                ByteOrder.BIG_ENDIAN -> input.copyOf()
+                ByteOrder.BYTE_SWAPPED_16 -> swapAdjacentBytes(input)
+                ByteOrder.LITTLE_ENDIAN_32 -> reverseWords(input)
             }
             require(hasMagic(canonical, BIG_ENDIAN_MAGIC)) {
                 "N64 ROM byte-order normalization failed"
             }
-            return N64HleCartridgeImage(canonical)
+            return N64HleCartridgeImage(canonical, order)
         }
 
         private fun hasMagic(bytes: ByteArray, magic: ByteArray): Boolean =
