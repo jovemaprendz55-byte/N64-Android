@@ -1900,3 +1900,15 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Próxima arquitetura necessária: base de tempo RCP/CPU com unidades de ciclos documentadas; FIFO AI de dois slots; alinhamento e limite de comprimento; consumo por DACRATE; AI_LENGTH como bytes restantes; AI_STATUS FIFO_FULL/BUSY; conclusão de buffer e MI_INTR_AI; acknowledge de AI_STATUS. A saída de áudio PCM pode ser implementada em etapa separada, sem confundir interrupção de hardware com reprodução audível.
 - Teste atual `N64BusAiRegisterTest.kt` cobre apenas máscaras de registradores e comportamento idle simplificado; não deve ser interpretado como cobertura de DMA/áudio real.
 - Branch: `dev/n64-clean-start`. `main` permanece intocada.
+
+
+## 90. Auditoria da distribuição de tempo CPU/VI — 2026-11-04
+
+- Revisado `R4300Cpu.step()`: o contador COP0 Count avança atualmente com dois ciclos-base por etapa executada, inclusive quando uma interrupção MI é atendida. O próprio código comenta que não há tabela de latência por opcode e que o valor é provisório.
+- Revisado `N64RomVideoSession`: após cada instrução CPU executada, chama `bus.advanceViInstructions()` uma vez; o VI usa um orçamento fixo de 5.661 instruções por scanline.
+- Revisado `N64ExecutionSession`: é um executor genérico de instruções, sem relógio de hardware, temporização, áudio ou scheduler de dispositivos.
+- Conclusão: existem dois avanços temporais independentes (Count no CPU e VI na sessão). Nenhum ciclo é entregue ao AI; portanto não há base temporal para decrementar AI_LEN ou concluir FIFO de áudio de forma correta. Também não se deve converter diretamente o orçamento aproximado de scanline em ciclos de áudio.
+- Não foi feita alteração no runtime nesta auditoria. Preservamos o comportamento já testado de COP0 Count e VI.
+- Arquitetura proposta para próxima etapa: definir uma unidade explícita de ciclo-base e um contrato de avanço emitido pelo CPU após cada etapa, incluindo entrada de interrupção/exceções; ligar o VI e futuros dispositivos a esse avanço por divisores/razões documentados; substituir gradualmente o contador aproximado do VI somente após testes de equivalência. O AI deverá consumir bytes/amostras a partir do mesmo relógio de hardware, respeitando DACRATE e fila de dois buffers.
+- Critério de aceitação antes de implementar AI: testes determinísticos provando que o mesmo total de ciclos produz o mesmo avanço de dispositivos independentemente do tamanho dos lotes do executor, que pausas/cancelamentos não consomem ciclos extras e que exceções/interrupções não deixam o relógio parar.
+- Branch: `dev/n64-clean-start`. `main` permanece intocada.
