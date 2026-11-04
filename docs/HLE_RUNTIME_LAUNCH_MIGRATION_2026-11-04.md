@@ -148,3 +148,24 @@ Commits:
 - testes mapper: `c1360ededcf6896e0c8e69c83e01b91333a68e0f`
 
 CI dos commits está em andamento; confirmar o run mais recente antes de declarar verde.
+
+
+## Etapa 5 — primitivas de fila de threads guest
+
+Adicionado `N64HleGuestThreadQueue.kt`, implementando em memória guest o comportamento observado no libultra de GoldenEye:
+
+- `enqueue(queueAddress, threadAddress)`: insere por prioridade decrescente; threads de mesma prioridade permanecem FIFO porque a busca avança enquanto prioridade existente é maior ou igual à nova.
+- `thread.queue` recebe o endereço do word que contém a cabeça da fila (`OSThread**`), não o endereço de um nó.
+- Suporta tail sentinel com prioridade `-1`, como `__osThreadTail`.
+- `pop` remove a cabeça e retorna o nó removido, inclusive o sentinel; não limpa o campo `thread.queue`.
+- `dequeue` remove o nó sem limpar `thread.queue` nem reescrever `thread.next`, reproduzindo o comportamento da função de baixo nível.
+- Detecta ciclo e inserção duplicada para evitar corrupção; valida ponteiros, alinhamento de 8 bytes e faixa completa do OSThread antes de mutações.
+- Não altera estado RUNNABLE/WAITING/RUNNING, não faz dispatch, não mantém active queue e não implementa OSMesgQueue.
+
+Fontes do alvo:
+- `__osEnqueueThread`, `__osPopThread` e `__osDispatchThread`: https://github.com/n64decomp/007/blob/master/src/libultra/os/exception.s
+- `osStartThread`, `osStopThread`, `osYieldThread`, `__osDequeueThread`: https://github.com/n64decomp/007/tree/master/src/libultra/os
+
+Testes `N64HleGuestThreadQueueTest.kt`: prioridade decrescente, FIFO para empates, sentinel, pop/dequeue com semântica libultra, duplicação, prioridade inválida, ciclos e ponteiros inválidos.
+
+Commits: queue `6606f3dca938e5fca90c6725ca5b439bc6ec9c67`; testes `0521a1c4ffc0a646fabdfc52a54f1e8ba2e54380`. CI em andamento; consultar antes de declarar aprovação.
