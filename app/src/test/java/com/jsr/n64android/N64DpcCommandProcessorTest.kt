@@ -258,11 +258,7 @@ class N64DpcCommandProcessorTest {
     }
 
     private fun writeCommands(memory: N64Memory, start: Int, commands: List<Long>) {
-        commands.forEachIndexed { index, command ->
-            val address = start + index * N64DpcCommandProcessor.COMMAND_BYTES
-            memory.write32(address, (command ushr 32).toInt())
-            memory.write32(address + 4, command.toInt())
-        }
+        writeWords(memory, start, commands)
     }
 
     private fun command(opcode: Int, high: Long = 0L, low: Long = 0L): Long =
