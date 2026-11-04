@@ -132,7 +132,7 @@ class N64HleR4300MemoryExecutorTest {
             mapOf(1 to 0x80000101L, 2 to 0x11223344L)
         )
         executor.execute(N64HleR4300InstructionDecoder().decode(i(0x22, 1, 2, 0)), state)
-        assertEquals(0xBBCCDD44L, state.readGpr(2))
+        assertEquals(0xFFFFFFFFBBCCDD44UL.toLong(), state.readGpr(2))
     }
 
     @Test fun bigEndianLwrMergesMemoryIntoLeastSignificantWordBytes() {
@@ -169,8 +169,8 @@ class N64HleR4300MemoryExecutorTest {
     }
 
     @Test fun wordMergeOperationsCoverEveryByteOffset() {
-        val expectedLwl = longArrayOf(0xAABBCCDDL, 0xBBCCDD44L, 0xCCDD3344L, 0xDD223344L)
-        val expectedLwr = longArrayOf(0x112233AAL, 0x1122AABBL, 0x11AABBCCL, 0xAABBCCDDL)
+        val expectedLwl = longArrayOf(0xFFFFFFFFAABBCCDDUL.toLong(), 0xFFFFFFFFBBCCDD44UL.toLong(), 0xFFFFFFFFCCDD3344UL.toLong(), 0xFFFFFFFFDD223344UL.toLong())
+        val expectedLwr = longArrayOf(0x112233AAL, 0x1122AABBL, 0x11AABBCCL, 0xFFFFFFFFAABBCCDDUL.toLong())
         val expectedSwl = longArrayOf(0xAABBCCDDL, 0x11AABBCCL, 0x1122AABBL, 0x112233AAL)
         val expectedSwr = longArrayOf(0xDD223344L, 0xCCDD3344L, 0xBBCCDD44L, 0xAABBCCDDL)
 
