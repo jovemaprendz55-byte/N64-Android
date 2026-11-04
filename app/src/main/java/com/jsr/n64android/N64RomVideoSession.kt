@@ -40,7 +40,6 @@ class N64RomVideoSession(
     private val delegate: N64ExecutionSession
 
     init {
-        cpu.setCycleAdvanceListener(cpuCycleClock::advance)
         require(framePollInterval > 0L) { "Frame polling interval must be positive." }
         require(rspPollInterval > 0L) { "RSP polling interval must be positive." }
         require(rspInstructionQuantum > 0) { "RSP instruction quantum must be positive." }
@@ -88,7 +87,14 @@ class N64RomVideoSession(
         )
     }
 
-    override fun execute(): N64ExecutionSession.Snapshot = delegate.execute()
+    override fun execute(): N64ExecutionSession.Snapshot {
+        cpu.setCycleAdvanceListener(cpuCycleClock::advance)
+        return try {
+            delegate.execute()
+        } finally {
+            cpu.setCycleAdvanceListener(null)
+        }
+    }
 
     override fun requestStop() = delegate.requestStop()
 
