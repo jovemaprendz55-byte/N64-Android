@@ -163,6 +163,21 @@ class MainActivity : Activity() {
         super.onDestroy()
     }
 
+    @Deprecated("Uses the platform back callback for the current Activity implementation.")
+    override fun onBackPressed() {
+        val content = findViewById<android.view.ViewGroup>(android.R.id.content)
+        val currentPage = content?.getChildAt(0)
+        if (currentPage != null && currentPage !== mainLayout) {
+            if (romVideoThread?.isAlive == true) {
+                romVideoStopRequested = true
+                romVideoSession?.requestStop()
+            }
+            setContentView(mainLayout)
+            return
+        }
+        super.onBackPressed()
+    }
+
 
     /**
      * Experimental continuous ROM execution path.
