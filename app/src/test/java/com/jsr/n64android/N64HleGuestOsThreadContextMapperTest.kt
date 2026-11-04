@@ -30,7 +30,7 @@ class N64HleGuestOsThreadContextMapperTest {
                 gpr = gpr,
                 lo = 0x1111222233334444L,
                 hi = 0xAAAABBBBCCCCDDDDUL.toLong(),
-                status = 0x0000FF03,
+                status = if (fpUsed != 0) 0x2000FF03 else 0x0000FF03,
                 pc = 0x80123450.toInt(),
                 cause = 0x80000400.toInt(),
                 badVaddr = 0x7F001234,
@@ -86,7 +86,7 @@ class N64HleGuestOsThreadContextMapperTest {
         }
         val cop0 = mapped.cop0.toMutableList().apply {
             this[8] = 0x80001234L
-            this[12] = 0x0000FF03L
+            this[12] = 0x2000FF03L
             this[13] = 0x80000400L
         }
         val changed = mapped.copy(
@@ -120,6 +120,29 @@ class N64HleGuestOsThreadContextMapperTest {
         assertEquals(template.fcr, mapped.fcr)
 
         val saved = N64HleGuestOsThreadContextMapper.fromCpuSnapshot(mapped, original)
+        assertEquals(original.context.fpPairs.toList(), saved.context.fpPairs.toList())
+        assertEquals(original.context.fpcsr, saved.context.fpcsr)
+    }
+
+    @Test
+    fun mappedContextRestoresIntoCpuAndCanBeSerializedBack() {
+        val original = thread()
+        val cpu = R4300Cpu(N64Memory())
+        val mapped = N64HleGuestOsThreadContextMapper.toCpuSnapshot(original, cpu.snapshotContext())
+
+        cpu.restoreContext(mapped)
+
+        val live = cpu.snapshotContext()
+        assertEquals(mapped.gpr, live.gpr)
+        assertEquals(mapped.hi, live.hi)
+        assertEquals(mapped.lo, live.lo)
+        assertEquals(mapped.cop0, live.cop0)
+        assertEquals(mapped.fpr, live.fpr)
+        assertEquals(mapped.fcr, live.fcr)
+        assertEquals(mapped.pc, live.pc)
+
+        val saved = N64HleGuestOsThreadContextMapper.fromCpuSnapshot(live, original)
+        assertEquals(original.context.gpr.toList(), saved.context.gpr.toList())
         assertEquals(original.context.fpPairs.toList(), saved.context.fpPairs.toList())
         assertEquals(original.context.fpcsr, saved.context.fpcsr)
     }
