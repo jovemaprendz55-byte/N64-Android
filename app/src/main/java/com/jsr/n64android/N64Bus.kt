@@ -842,9 +842,6 @@ class N64Bus(
         require(source <= ram.size - PIF_RAM_SIZE) {
             "SI DMA source is outside installed RDRAM: address=0x${source.toString(16)}."
         }
-        require(siPifWriteAddress == PIF_RAM_BASE) {
-            "SI write DMA must target PIF RAM at 0x${PIF_RAM_BASE.toString(16)}; got 0x${siPifWriteAddress.toString(16)}."
-        }
         siStatus = siStatus or SI_STATUS_DMA_BUSY or SI_STATUS_IO_BUSY
         for (index in 0 until PIF_RAM_SIZE) pifRam[index] = ram.read8(source + index).toByte()
         siDramAddress = (source + PIF_RAM_SIZE) and 0x00FFFFFF
@@ -858,9 +855,6 @@ class N64Bus(
         val destination = siDramAddress and 0x00FFFFFF
         require(destination <= ram.size - PIF_RAM_SIZE) {
             "SI DMA destination is outside installed RDRAM: address=0x${destination.toString(16)}."
-        }
-        require(siPifReadAddress == PIF_RAM_BASE) {
-            "SI read DMA must target PIF RAM at 0x${PIF_RAM_BASE.toString(16)}; got 0x${siPifReadAddress.toString(16)}."
         }
         siStatus = siStatus or SI_STATUS_DMA_BUSY or SI_STATUS_IO_BUSY
         for (index in 0 until PIF_RAM_SIZE) ram.write8(destination + index, pifRam[index].toInt() and 0xFF)
@@ -887,7 +881,6 @@ class N64Bus(
         val dramStartAddress = dramAddress
         val spStartAddress = memorySelect or memoryOffset
 
-        require(blockLength > 0 && blockCount > 0) { "Invalid SP DMA length/count." }
         for (block in 0 until blockCount) {
             require(dramAddress >= 0 && dramAddress <= ram.size - blockLength) {
                 "SP DMA RDRAM range is invalid: address=0x${dramAddress.toString(16)}, length=$blockLength."
