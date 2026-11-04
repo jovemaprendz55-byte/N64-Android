@@ -1489,3 +1489,20 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - CI deste commit deve ser consultado antes de considerar a alteração validada.
 - Não houve teste em aparelho nem mudança no motor de emulação. `main` permanece intocada; branch de trabalho `dev/n64-clean-start`.
 - Próxima etapa: validar CI; continuar a revisão de concorrência entre exportação, troca de ROM e encerramento, e avaliar testes automatizados da Activity sem introduzir dependências instrumentadas sem necessidade.
+
+
+## 73. Exclusão mútua entre exportação, seleção de ROM e diagnósticos — 2026-11-04
+
+- A revisão de concorrência encontrou um risco real de consistência: durante a exportação, o usuário poderia voltar ao menu e selecionar outra ROM após o worker de vídeo terminar, enquanto o exportador ainda montava o relatório. Isso poderia misturar a referência da ROM/barramento no arquivo com o estado de CPU/sessão da execução anterior.
+- Também havia caminhos para solicitar exportação enquanto o diagnóstico HLE ou o diagnóstico IPL3/CPU ainda estava modificando o barramento.
+- Adicionado `diagnosticExportInProgress` como trava de operação. Ao iniciar exportação, os controles principais são desabilitados; uma segunda exportação é ignorada; a seleção/troca de ROM e o início de execução/diagnóstico são recusados enquanto a exportação está ativa.
+- Exportação é recusada se o worker HLE ou o diagnóstico IPL3/CPU ainda estiver ativo, em vez de ler coleções mutáveis durante a execução.
+- Adicionado `romTraceInProgress`, ativado antes de iniciar o worker IPL3/CPU e sempre limpo em `finally`. A trava impede iniciar exportação, trocar ROM ou começar outra execução/diagnóstico enquanto esse worker ainda trabalha.
+- Os controles são restaurados no callback final do exportador apenas se a Activity ainda estiver ativa; a habilitação é calculada a partir do estado real dos workers e da ROM carregada.
+- Commits:
+  - `9cfafe51a9ce1e11b7f801f4e80c5ff86955d28b` — serializa carregamento de ROM e exportação/diagnóstico.
+  - `60b115f9730fd8cab5ec5bc55cf06915b977af69` — bloqueia diagnósticos concorrentes durante exportação e rastreamento IPL3.
+- CI do commit `4e632e2` (run `41804002995`) concluiu com sucesso. CI do registro de continuidade `b915a46` (run `41804037336`) concluiu com sucesso. CI dos dois commits desta seção deve ser consultado antes de declarar a correção validada.
+- Limitação: não foi adicionado teste instrumentado de Activity; a exclusão mútua foi verificada por inspeção estática e deverá ser confirmada pelo build/teste automatizado e, posteriormente, no aparelho.
+- Nenhuma alteração no núcleo R4300/RSP/RDP ou na interpretação de ROM. `main` permanece intocada; branch de trabalho `dev/n64-clean-start`.
+- Próxima etapa: confirmar os workflows e revisar o encerramento/estado final dos workers, inclusive se algum caminho de saída antecipada deixa botões desabilitados ou flags presas.
