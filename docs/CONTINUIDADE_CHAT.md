@@ -2796,3 +2796,10 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Testes adicionados para resultados signed normais, overflow positivo/negativo em word e doubleword e ausência de mutação do destino/PC.
 - Commits: implementação `9dc72ee0dd650f062d378c550a76db579b2f4cac`; testes `51d7dfefc8ebb958364107226a0cb032381fc570`.
 - CI pendente. Ainda não há entrega de exceções, Cause/EPC/BD, handler vetorial ou interrupções.
+### Validação CI das seções 132–134 — 2026-11-04
+
+- Seção 132: após corrigir os dois testes antigos que confundiam `0x24010001` (ADDIU) com instrução não suportada, e corrigir o tipo dos novos vetores LWC1 para Int, o run `41936402710` passou. Artifact `13373223422`, 844.744 bytes, SHA-256 `12c5dc3a7a38baae594c4d1a5a083f8ade0fdcd38436e3f53293bc6e32dd7131`.
+- Seções 133–134: o run `41936474604` passou com testes unitários e APK. Artifact `13374910111`, 844.921 bytes, SHA-256 `54ffdaaf7d4cfff607cb8dccb4408629e4c699de28d1b086515269587da8b4d1`.
+- Documentação do fetch RDRAM passou no run `41936495727`, artifact `13373722646`, 844.920 bytes, SHA-256 `52aa0d84321f8c4a643699e57948e5a2caeffdb62d29acc405e86de8bf0a6662`.
+- Runs anteriores `41935830278`, `41935854933`, `41935887905`, `41936068230`, `41936097330`, `41936195760`, `41936225860`, `41936247191`, `41936286533`, `41936316087`, `41936335186` e `41936359640` falharam em etapas intermediárias por testes desatualizados ou literal Kotlin Long/Int. As correções foram incorporadas; não usar esses runs como validação final.
+- A seção 135 (ADD/SUB/DADD/DSUB) ainda está em validação separada; não declarar aprovada até seus workflows finais passarem.
