@@ -1537,3 +1537,39 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Depois, criar uma área/tela de ferramentas para os testes sintéticos atualmente sem ponto de entrada (`runVideoTest()`, `runTrianglePipelineDemo()`, `runCpuDiagnostic()`), sem misturar esses testes com execução real de ROM e sem apresentá-los como compatibilidade de jogos.
 - Avaliar testes automatizados de estado para as travas de operação antes de adicionar dependências instrumentadas.
 - Branch de trabalho: `dev/n64-clean-start`. `main` permanece intocada. Nenhum jogo foi confirmado funcional em aparelho.
+
+
+## 75. Área de ferramentas de diagnóstico sintético na interface — 2026-11-04
+
+### Achado
+- A inspeção da tela principal mostrou que `runVideoTest()`, `runTrianglePipelineDemo()` e `runCpuDiagnostic()` já existiam, mas não tinham entrada visível na UI.
+- Os três métodos exercitam componentes internos de forma sintética e não representam boot ou compatibilidade de ROM.
+
+### Implementação
+- Adicionado botão `FERRAMENTAS DE TESTE` à tela principal.
+- Adicionada tela separada com três ações:
+  - `TESTE DE VÍDEO` → `runVideoTest()`.
+  - `DEMONSTRAÇÃO DO PIPELINE RDP` → `runTrianglePipelineDemo()`.
+  - `TESTE INTERNO DA CPU` → `runCpuDiagnostic()`.
+- A tela informa explicitamente que os testes são sintéticos e não comprovam funcionamento de ROM.
+- A entrada na área de ferramentas é recusada enquanto exportação, diagnóstico IPL3, HLE ou execução de vídeo estiver ativa.
+- Os testes de vídeo e RDP reutilizam a tela de apresentação existente; o teste de CPU retorna ao menu principal antes de atualizar o resultado no status.
+- Correção adicional de formatação do título da tela de ferramentas registrada em commit separado.
+
+### Commits
+- `53b64eb8975820b09d8b3970370e4187e275e26d` — expõe as ferramentas sintéticas na UI.
+- `e01b2de74f1c90e012a8440c710fee01520cdb2b` — corrige quebras de linha do título.
+- Esta documentação registra a seção 75.
+
+### Validação e limites
+- Os commits de código foram enviados para `dev/n64-clean-start`.
+- O CI do commit de documentação anterior `d6d55cf` estava pendente na última consulta; verificar antes de considerar a sequência toda verde.
+- CI dos commits desta seção precisa ser consultado após o push.
+- Não foi executado teste instrumentado nem teste em aparelho nesta etapa.
+- Nenhuma alteração foi feita em `main`, no núcleo R4300/RSP/RDP ou no fluxo de boot da ROM.
+- Não afirmar que GoldenEye 007 ou qualquer outra ROM funciona por causa destes testes sintéticos.
+
+### Próxima etapa
+- Confirmar CI dos commits `53b64eb`, `e01b2de` e `d6d55cf`.
+- Depois revisar navegação/retorno das telas e considerar um teste automatizado para as travas de operação.
+- Branch de trabalho: `dev/n64-clean-start`.
