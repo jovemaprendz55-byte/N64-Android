@@ -74,19 +74,24 @@ class N64ViHalfLineCounterTest {
     private fun assertVideoMode(vSync: Int, interlaced: Boolean, scanlinesPerField: Int) {
         val counter = N64ViHalfLineCounter()
         val terminal = vSync
-        val firstFieldScanlines = scanlinesPerField - 1
-
-        repeat(firstFieldScanlines) { counter.advanceScanline(terminal) }
-        assertEquals(terminal - 1, counter.current)
-        assertEquals(0, counter.fieldParity)
-
-        counter.advanceScanline(terminal)
         if (interlaced) {
+            repeat(scanlinesPerField) { counter.advanceScanline(terminal) }
+            assertEquals(terminal, counter.current)
+            assertEquals(0, counter.fieldParity)
+
+            counter.advanceScanline(terminal)
             assertEquals(1, counter.current)
             assertEquals(1, counter.fieldParity)
-            repeat(firstFieldScanlines) { counter.advanceScanline(terminal) }
+
+            repeat(scanlinesPerField) { counter.advanceScanline(terminal) }
             assertEquals(0, counter.current)
+            assertEquals(0, counter.fieldParity)
         } else {
+            repeat(scanlinesPerField - 1) { counter.advanceScanline(terminal) }
+            assertEquals(terminal - 1, counter.current)
+            assertEquals(0, counter.fieldParity)
+
+            counter.advanceScanline(terminal)
             assertEquals(0, counter.current)
             assertEquals(0, counter.fieldParity)
         }
