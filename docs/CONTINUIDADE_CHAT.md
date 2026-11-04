@@ -2679,3 +2679,18 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Revisão adicional: operações word MULT/MULTU/DIV/DIVU usam os 32 bits baixos dos operandos GPR; removida a validação indevida que exigia que os 64 bits superiores já estivessem sign-extended. Os resultados word continuam sign-extended em HI/LO. Teste DIVU usa deliberadamente um valor cujo upper word não é cópia do bit 31.
 - Commits de correção: executor `68d04b095bfbf591a5186d8d39d66af1119616de`; testes `585b78548a0e0cff2d6976406d098ec16a41284b`.
 - CI desta correção ainda precisa passar. Até lá, considerar a seção 128 implementada, mas não validada de ponta a ponta.
+
+
+## 129. Planejador de branches e jumps — 2026-11-04
+
+- Adicionado `N64HleR4300ControlTransferPlanner.kt` para planejar BEQ, BNE, BLEZ, BGTZ, J, JAL, JR e JALR.
+- O resultado é um plano explícito: endereço da instrução, endereço do delay slot, endereço de continuação, condição tomada/não tomada e eventual registrador/valor de link.
+- Branches condicionais usam comparação signed/igualdade conforme a instrução; branch não tomado continua em PC+8, mas ainda preserva PC+4 como delay slot.
+- Branch target usa PC+4 + sign-extended immediate deslocado 2 bits. Jump absoluto usa os bits superiores de PC+4, índice de 26 bits e sign-extension para endereço guest.
+- JAL/JALR retornam link PC+8 sem alterar o estado; o futuro stepper deve aplicar o link antes de executar a instrução no delay slot. JR/JALR validam alinhamento do alvo.
+- Planner não executa o delay slot, não altera PC nem escreve link; não é ainda um pipeline de CPU integrado. REGIMM, branch-likely, exceções em delay slot e exceções de endereço permanecem fora.
+- Testes cobrem alvo relativo, branch não tomado com delay slot, BLEZ/BGTZ signed, fronteira de região de jump, link de JAL/JALR, JR e rejeições.
+- Commits iniciais: planner `2265585c69b6f543d18b10359cfb8231f5fa2f5b`; testes `200bb5b2fa588145867140c9f04217425e1083c9`; correção do vetor de fronteira `0799e279ff81282d69c1d5583e684088cb46a4e4`.
+- CI dos commits de correção de divisão falhou porque o teste antigo `wordMultiplyRejectsNonSignExtendedInputWithoutChangingHiLo` ainda exigia rejeição, contradizendo a semântica word corrigida. Substituído por `wordMultiplyUsesLowThirtyTwoBitsOfEachGpr`, cobrindo MULT e MULTU com bits superiores diferentes.
+- Commit de correção do teste antigo: `095d455abe87ea6a01e290e0772e62f642a543df`.
+- CI das seções 128 corrigida e 129 ainda deve ser conferida; não declarar aprovada até sucesso de testes e APK.
