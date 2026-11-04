@@ -2203,3 +2203,32 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - A auditoria/documentação da etapa 101, commit `acfb65b3deef3aff6857c2811c9a45400c05daad`, foi confirmada no CI run `41897533892`: **success**.
 - Os commits de teste desta etapa dispararam execuções separadas; consultar o CI do HEAD atual antes de declarar a matriz aprovada ou disponibilizar APK.
 - Branch `dev/n64-clean-start`; `main` permanece intocada. A auditoria global de duplicação de código e arquivos repetidos continua aberta.
+
+### Resultado CI da etapa 102 e auditoria dos limites VI — 2026-11-04
+
+- Os runs iniciais `41897901135` e `41897912814` falharam porque executaram a versão inicial da matriz interlaced, que tinha a expectativa errada de fronteira entre campos. O erro era em `N64ViHalfLineCounterTest.standardNtscAndPalModesFollowTheirHalfLineTerminalCounts`.
+- A correção da matriz foi enviada no commit `6885034c17a16709e93cb26366fdd004e6c0680a`; run `41897936274` terminou **success**, com `Build and test` e `Upload debug APK` success.
+- A documentação da etapa 102 foi enviada no commit `6a55804862b48ea86e7e9a45c4ca78806a0a06df`; run `41897975740` terminou **success**, também com build/test e upload do APK success.
+- Artifact do commit de teste: `n64-android-debug-apk`, ID `13356077860`, tamanho 1.048.400 bytes, SHA-256 `b90d2485fb61ae486c64827dd1c91ff1428badc27e78fc1bef7418269860ce1c`, expira 2026-11-18.
+- Artifact do commit de documentação: ID `13356737788`, tamanho 1.048.400 bytes, SHA-256 `d9edca2751038cb6e325e7c172e210c0133ead53d67017434e40970c80a7f110`, expira 2026-11-18.
+- Os artifacts são APKs de debug gerados por CI; isso não significa que foram instalados ou que GoldenEye foi testado no aparelho.
+
+### 103. Limites de 10 bits nos registradores VI — caracterização em andamento
+
+#### Achados no código
+- `N64Bus.VI_WINDOW_COORD_MASK = 0x3FF`.
+- O caminho atual `advanceViInstructions` aplica esse mask a `VI_V_SYNC` e `VI_INTR` no momento do avanço/comparação.
+- As escritas genéricas nos registradores VI guardam o valor bruto em `viRegisters`; as leituras MMIO também devolvem esse valor bruto. Portanto, o comportamento de timing usa os 10 bits inferiores, mas o readback atualmente preserva bits superiores. Não afirmar ainda que esse readback reproduz o hardware.
+- `N64ViHalfLineCounter` aceita Int não negativo sem limitar a 10 bits. É um helper matemático isolado; o MMIO é que aplica a máscara de 10 bits. Não restringir o helper antes de definir se ele é um modelo estrito de registrador ou uma ferramenta genérica de contagem.
+
+#### Testes acrescentados
+- `N64BusVideoInterfaceTest.viTimingUsesOnlyTenBitValuesForSyncAndInterruptComparison`: escreve valores com bits superiores definidos em VI_INTR e VI_V_SYNC, avança o runtime aproximado e confirma que a comparação/contagem usa os 10 bits inferiores.
+- `N64ViHalfLineCounterTest.acceptsTenBitMaximumViVSyncTerminalCount`: verifica o limite 0x3FF no helper, 511 avanços chegam a 1022 e o seguinte retorna a 0.
+- Commits: teste MMIO `2cde617464fac62025a6ddb185342d9f171d110f`; teste limite do helper `a79653d8a1f2138d42229499375ee7ba81c7bc0a`.
+- Nenhum código de produção foi alterado. Consultar CI do HEAD atual antes de declarar esta etapa aprovada ou usar artifact.
+
+#### Próxima investigação
+- Verificar a definição documentada dos campos reservados e readback de VI_STATUS, VI_INTR, VI_V_SYNC e VI_CURRENT.
+- Separar claramente: máscara de coordenadas de janela, largura dos registradores de timing e largura/semântica do contador CURRENT. Não renomear constantes ou alterar o runtime apenas por limpeza.
+- Depois, preparar testes de integração MMIO para o novo controlador isolado, sem ainda ligar seu relógio ao loop CPU. A integração continua bloqueada pela conversão temporal CPU→VI e pela política de reprogramação de V_SYNC.
+- Branch `dev/n64-clean-start`; `main` intacta; auditoria global de duplicação de código/arquivos repetidos continua aberta.
