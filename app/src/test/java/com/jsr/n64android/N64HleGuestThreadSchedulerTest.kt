@@ -119,6 +119,7 @@ class N64HleGuestThreadSchedulerTest {
         val stopped = f.scheduler.stopThread()
         assertEquals(N64HleGuestThreadScheduler.NULL_POINTER, stopped.selectedThread)
         assertEquals(N64HleGuestOsThreadLayout.STATE_STOPPED, f.codec.read(running).state)
+        assertEquals(0L, f.memory.read32(f.runningThreadAddress).toUInt().toLong())
     }
 
     @Test
