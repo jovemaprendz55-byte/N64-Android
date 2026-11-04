@@ -277,3 +277,19 @@ Commits: hook `188c9810cde874bf599fcdcf55bd66e90df3bccb`; hook tests `bc26c6f0d8
 CI consolidada do hook/dispatcher/canonicalização: run `41909064407` success; `testDebugUnitTest assembleDebug` passou. APK artifact `13361058496`, 1,075,346 bytes, SHA-256 `c115251cea935f1815ee9848affafc74712cb4994cdff4a618af523f66260abf`, expira 2026-11-18. https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41909064407
 
 Limites: hook e dispatcher ainda não têm registros GoldenEye, não há call gate real de libultra; message queue ainda não usa ContextSwitcher para bloquear/restaurar contexto live; nenhuma alteração no worker MainActivity; nenhum teste de GoldenEye no dispositivo.
+
+
+## Etapa 10 — integração de OSMesgQueue com troca de contexto live
+
+`N64HleGuestMessageQueue` passou a aceitar `N64HleGuestContextSwitcher` opcional:
+- Em BLOCK, salva a thread corrente no OSThread com PC de repetição da entrada da API guest.
+- Em wake, inicia a thread retirada da wait queue através do switcher. Se houver preempção, salva a thread corrente com o PC de retorno da chamada que provocou o wake e restaura o contexto do waiter.
+- `retryPc` e `callerResumePc` são distintos: retry aponta para o início da API bloqueada; return aponta para a continuação do caller que acordou o waiter.
+- A validação dos PCs ocorre antes das mutações de scheduler/fila de mensagens relevantes, evitando deixar mensagem consumida ou waiter removido quando falta o endereço de continuação.
+- O modo anterior baseado apenas em scheduler permanece quando o switcher não é fornecido; a integração não está ativada no runtime principal.
+
+Testes novos exercitam BLOCK com save de GPR/PC, wake com restore de GPR/PC, ausência de retry PC sem mudança de estado e ausência de return PC sem mutação parcial da fila.
+
+Commits: `1645b3cfaaa3002742ea828451300aa76cbf7d60`, `cae80f353f774ce7a9ea5a37c60c9f735a98aa4e`, `62319413d808d0766f3f719b86269b3d148bde2e` e `7be3bc4d45f518ac3142270779ccef4782b2f05b`.
+
+A CI ainda precisa validar o HEAD atualizado. Isso não implementa endereços de call gate, não liga o dispatcher à ROM e não comprova GoldenEye em execução.
