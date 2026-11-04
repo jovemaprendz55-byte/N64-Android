@@ -1064,6 +1064,7 @@ class MainActivity : Activity() {
                 // Capture UI text on the main thread; all expensive work stays on the exporter thread.
                 val screenReport = runCatching { reportText() }
                     .getOrDefault("Texto da tela indisponível.")
+                val appContext = applicationContext
                 Thread({
                     try {
                         val worker = romVideoThread
@@ -1083,7 +1084,7 @@ class MainActivity : Activity() {
                             appendLine("N64 ANDROID — LOG COMPLETO DE DIAGNÓSTICO V2")
                             appendLine("Data: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS Z", java.util.Locale.US).format(java.util.Date())}")
                             appendLine("Dispositivo: ${Build.MANUFACTURER} ${Build.MODEL} | Android ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT}) | ABI=${Build.SUPPORTED_ABIS.joinToString(",")}")
-                            appendLine("App: ${packageName} | versionCode=${runCatching { packageManager.getPackageInfo(packageName, 0).longVersionCode }.getOrDefault(-1L)}")
+                            appendLine("App: ${appContext.packageName} | versionCode=${runCatching { appContext.packageManager.getPackageInfo(appContext.packageName, 0).longVersionCode }.getOrDefault(-1L)}")
                             appendLine("ROM carregada: ${cartridgeRomBytes?.size ?: 0} bytes")
                             appendLine("Estado da execução: ${if (worker?.isAlive == true) "ATIVA" else "PARADA"}")
                             appendLine()
@@ -1223,20 +1224,26 @@ class MainActivity : Activity() {
                             put(MediaStore.Downloads.MIME_TYPE, "text/plain")
                             put(MediaStore.Downloads.RELATIVE_PATH, "Download/N64Android")
                         }
-                        val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                        val uri = appContext.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
                             ?: throw IOException("Não foi possível criar o arquivo em Downloads.")
-                        val stream = contentResolver.openOutputStream(uri)
+                        val stream = appContext.contentResolver.openOutputStream(uri)
                             ?: throw IOException("Não foi possível abrir o arquivo.")
                         stream.bufferedWriter(Charsets.UTF_8).use { it.write(output) }
-                        runOnUiThread {
-                            Toast.makeText(this@MainActivity, "Diagnóstico salvo em Downloads/N64Android.", Toast.LENGTH_LONG).show()
+                        if (!isFinishing && !isDestroyed) runOnUiThread {
+                            if (!isFinishing && !isDestroyed) {
+                                Toast.makeText(this@MainActivity, "Diagnóstico salvo em Downloads/N64Android.", Toast.LENGTH_LONG).show()
+                            }
                         }
                     } catch (error: Exception) {
-                        runOnUiThread {
-                            Toast.makeText(this@MainActivity, "Falha ao salvar diagnóstico: ${error.message ?: error.javaClass.simpleName}", Toast.LENGTH_LONG).show()
+                        if (!isFinishing && !isDestroyed) runOnUiThread {
+                            if (!isFinishing && !isDestroyed) {
+                                Toast.makeText(this@MainActivity, "Falha ao salvar diagnóstico: ${error.message ?: error.javaClass.simpleName}", Toast.LENGTH_LONG).show()
+                            }
                         }
                     } finally {
-                        runOnUiThread { button.isEnabled = true }
+                        if (!isFinishing && !isDestroyed) runOnUiThread {
+                            if (!isFinishing && !isDestroyed) button.isEnabled = true
+                        }
                     }
                 }, "N64-Diagnostic-Export").start()
             }
