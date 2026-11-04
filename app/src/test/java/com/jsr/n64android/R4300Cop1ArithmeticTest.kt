@@ -75,13 +75,13 @@ class R4300Cop1ArithmeticTest {
         val cpu = R4300Cpu(memory)
         cpu.cop0[12] = 1L shl 29 // FR=0, CU1=1
         val source = 1234567890123L
-        cpu.fpr[2] = (source ushr 32) and 0xFFFFFFFFL
-        cpu.fpr[3] = source and 0xFFFFFFFFL
+        cpu.fpr[2] = source and 0xFFFFFFFFL
+        cpu.fpr[3] = (source ushr 32) and 0xFFFFFFFFL
         cpu.setProgramCounter(0)
 
         cpu.step()
 
-        val resultBits = ((cpu.fpr[4] and 0xFFFFFFFFL) shl 32) or (cpu.fpr[5] and 0xFFFFFFFFL)
+        val resultBits = ((cpu.fpr[5] and 0xFFFFFFFFL) shl 32) or (cpu.fpr[4] and 0xFFFFFFFFL)
         assertEquals(source.toDouble(), java.lang.Double.longBitsToDouble(resultBits), 0.0)
     }
 
@@ -189,15 +189,15 @@ class R4300Cop1ArithmeticTest {
         cpu.cop0[12] = 1L shl 29 // CU1=1, FR=0
         val nine = java.lang.Double.doubleToRawLongBits(9.0)
         val three = java.lang.Double.doubleToRawLongBits(3.0)
-        cpu.fpr[2] = (nine ushr 32) and 0xFFFFFFFFL
-        cpu.fpr[3] = nine and 0xFFFFFFFFL
-        cpu.fpr[4] = (three ushr 32) and 0xFFFFFFFFL
-        cpu.fpr[5] = three and 0xFFFFFFFFL
+        cpu.fpr[2] = nine and 0xFFFFFFFFL
+        cpu.fpr[3] = (nine ushr 32) and 0xFFFFFFFFL
+        cpu.fpr[4] = three and 0xFFFFFFFFL
+        cpu.fpr[5] = (three ushr 32) and 0xFFFFFFFFL
         cpu.setProgramCounter(0)
 
         cpu.step()
 
-        val result = ((cpu.fpr[6] and 0xFFFFFFFFL) shl 32) or (cpu.fpr[7] and 0xFFFFFFFFL)
+        val result = ((cpu.fpr[7] and 0xFFFFFFFFL) shl 32) or (cpu.fpr[6] and 0xFFFFFFFFL)
         assertEquals(12.0, java.lang.Double.longBitsToDouble(result), 0.0)
     }
 
