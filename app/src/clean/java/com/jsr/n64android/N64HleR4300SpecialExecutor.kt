@@ -47,6 +47,54 @@ class N64HleR4300SpecialExecutor {
                 state.writeHiLo(high, low)
                 return
             }
+            N64HleR4300SpecialOperation.DIV,
+            N64HleR4300SpecialOperation.DIVU -> {
+                val left = state.readGpr(instruction.rs)
+                val right = state.readGpr(instruction.rt)
+                requireWordOperand(left)
+                requireWordOperand(right)
+                val dividend = left.toInt()
+                val divisor = right.toInt()
+                check(divisor != 0) { "DIV/DIVU by zero has architecturally unpredictable HI/LO; state preserved" }
+                check(!(operation == N64HleR4300SpecialOperation.DIV && dividend == Int.MIN_VALUE && divisor == -1)) {
+                    "DIV signed overflow has architecturally unpredictable HI/LO; state preserved"
+                }
+                val quotient: Int
+                val remainder: Int
+                if (operation == N64HleR4300SpecialOperation.DIV) {
+                    quotient = dividend / divisor
+                    remainder = dividend % divisor
+                } else {
+                    val unsignedDividend = dividend.toLong() and 0xFFFF_FFFFL
+                    val unsignedDivisor = divisor.toLong() and 0xFFFF_FFFFL
+                    quotient = (unsignedDividend / unsignedDivisor).toInt()
+                    remainder = (unsignedDividend % unsignedDivisor).toInt()
+                }
+                state.writeHiLo(remainder.toLong(), quotient.toLong())
+                return
+            }
+            N64HleR4300SpecialOperation.DDIV,
+            N64HleR4300SpecialOperation.DDIVU -> {
+                val dividend = state.readGpr(instruction.rs)
+                val divisor = state.readGpr(instruction.rt)
+                check(divisor != 0L) { "DDIV/DDIVU by zero has architecturally unpredictable HI/LO; state preserved" }
+                check(!(operation == N64HleR4300SpecialOperation.DDIV && dividend == Long.MIN_VALUE && divisor == -1L)) {
+                    "DDIV signed overflow has architecturally unpredictable HI/LO; state preserved"
+                }
+                val quotient: Long
+                val remainder: Long
+                if (operation == N64HleR4300SpecialOperation.DDIV) {
+                    quotient = dividend / divisor
+                    remainder = dividend % divisor
+                } else {
+                    val unsignedDividend = unsignedLong(dividend)
+                    val unsignedDivisor = unsignedLong(divisor)
+                    quotient = unsignedDividend.divide(unsignedDivisor).toLong()
+                    remainder = unsignedDividend.remainder(unsignedDivisor).toLong()
+                }
+                state.writeHiLo(remainder, quotient)
+                return
+            }
             N64HleR4300SpecialOperation.DMULT,
             N64HleR4300SpecialOperation.DMULTU -> {
                 val left = state.readGpr(instruction.rs)
