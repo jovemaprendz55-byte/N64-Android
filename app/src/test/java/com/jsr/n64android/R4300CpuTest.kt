@@ -6,6 +6,31 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class R4300CpuTest {
+    @Test fun mtc0StatusMasksReservedAndHardwiredBitsAndPreservesTs() {
+        val memory = N64Memory(16)
+        memory.write32(0, (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (12 shl 11))
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 1L shl 21 // TS is read-only and must survive MTC0.
+        cpu.gpr[1] = -1L
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0xFF74FFFFL, cpu.cop0[12])
+    }
+
+    @Test fun mtc0StatusCannotSetHardwareMaintainedTsBit() {
+        val memory = N64Memory(16)
+        memory.write32(0, (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (12 shl 11))
+        val cpu = R4300Cpu(memory)
+        cpu.gpr[1] = 1L shl 21
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0L, cpu.cop0[12] and (1L shl 21))
+    }
+
 
     @Test fun mtc0CompareStoresValueAndClearsOnlyTimerInterruptPendingBit() {
         val memory = N64Memory(32)
