@@ -2003,3 +2003,25 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 ### Estado de validação
 - CI da implementação/testes ainda precisa ser consultado para o HEAD atual. Não declarar a suíte aprovada nem APK atualizado até confirmar o workflow.
 - Branch: `dev/n64-clean-start`. `main` permanece intocada.
+
+
+## 94. Contrato de VI_CURRENT/VI_INTR em half-lines — 2026-11-04
+
+### Referências técnicas consultadas
+- A referência N64 Refresh Rate Reference define VI_V_TOTAL (nome libultra VI_V_SYNC_REG) como contagem terminal de half-lines: total efetivo = valor do registrador + 1. Define VI_V_CURRENT como contador de meia-linha, incrementado em 2 por scanline; em modo interlaced, o bit 0 alterna para indicar o campo. https://github.com/meauxdal/N64-Refresh-Rate-Reference/blob/main/N64_Timing_Reference.md
+- O header RCP do SDK documenta VI_INTR como comparação com o half-line atual e VI_CURRENT como half-line atual; qualquer escrita em VI_CURRENT limpa a linha de interrupção. https://ultra64.ca/files/documentation/online-manuals/man/header/rcp.htm
+- A referência de `osViGetCurrentLine` confirma o retorno em half-lines e descreve os padrões de valores pares em non-interlace e alternância par/ímpar entre campos em interlace. https://ultra64.ca/files/documentation/online-manuals/man/n64man/os/osViGetCurrentLine.html
+
+### Divergências confirmadas no código e testes
+- `N64Bus.advanceViInstructions` incrementa `viCurrentLine` em 1 por unidade de scanline aproximada, em vez de avançar 2 half-line units.
+- A comparação atual entre `viCurrentLine` e VI_INTR usa a mesma unidade simplificada de scanline; portanto o valor de interrupção não tem a semântica half-line documentada.
+- `VI_V_SYNC` é tratado como total direto de scanlines e usado como módulo, sem convenção de terminal count ou diferenciação de campo/modo.
+- `N64BusVideoInterfaceTest` atualmente espera CURRENT=1 depois de uma scanline e configura VI_INTR=1/2 como número de scanlines. Esses testes caracterizam o modelo aproximado existente, não o contrato do hardware.
+- Escrita em VI_CURRENT já limpa MI_INTR_VI sem alterar o contador, compatível com a função acknowledge documentada. Esse comportamento deve ser preservado e testado também no novo modelo.
+
+### Decisão
+- Não alterar runtime nesta etapa: não há ainda uma definição implementada e testada para progressão de campo interlaced/non-interlaced, wrap de terminal count e reset/phase quando VI_V_SYNC é reprogramado.
+- Próxima alteração deve introduzir um pequeno modelo isolado de contador VI em half-lines, com testes para avanço de 2 unidades por scanline, bit de campo, terminal count (+1), comparação VI_INTR em half-lines, wrap e acknowledge por escrita em VI_CURRENT.
+- Só depois ligar esse contador ao relógio racional. A razão CPU→VI ainda é provisória enquanto o ledger CPU usa dois ciclos estimados por etapa, sem latência por opcode e sem ciclos de DMA/RSP.
+- Não interpretar os testes atuais como prova de VI fiel; eles validam apenas a aproximação antiga.
+- Branch: `dev/n64-clean-start`. `main` permanece intocada.
