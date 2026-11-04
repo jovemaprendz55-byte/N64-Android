@@ -15,7 +15,7 @@ class N64HleGuestOsThreadContextMapperTest {
             fcr = List(32) { index -> 0x4000L + index },
             pc = 0xFFFFFFFF80000100UL.toLong(),
             delayedTarget = 0xFFFFFFFF80000200UL.toLong(),
-            pendingDelaySlotBranchAddress = 0xFFFFFFFF800001FCL.toLong(),
+            pendingDelaySlotBranchAddress = 0xFFFFFFFF800001FCUL.toLong(),
             countCycleRemainder = 1
         )
     }
