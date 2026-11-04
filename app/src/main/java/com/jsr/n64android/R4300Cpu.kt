@@ -770,7 +770,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                             }
                             12 -> { // Status: reserved bits read zero; TS is hardware-maintained.
                                 val tsBit = 1L shl 21
-                                val writableMask = 0xFF54FFFFL
+                                val writableMask = 0xFF57FFFFL
                                 cop0[12] = (value and writableMask) or (previousValue and tsBit)
                             }
                             else -> cop0[copRd] = value
