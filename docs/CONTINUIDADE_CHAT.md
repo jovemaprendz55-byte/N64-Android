@@ -1732,3 +1732,41 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 ### Próxima etapa
 - Verificar CI dos dois commits.
 - Em seguida construir testes de conformidade para underflow/inexact e arredondamento em aritmética S/D. Não afirmar FPU completa até fechar esses casos.
+
+
+## 81. COP1 — exceção Invalid em conversões para inteiro — 2026-11-04
+
+### Achado confirmado
+- As instruções de conversão para inteiro (CVT.W, CVT.L, ROUND/TRUNC/CEIL/FLOOR.W/L) já produziam o valor indefinido (0x80000000 ou 0x8000000000000000) quando o resultado arredondado era NaN, infinito ou fora da faixa representável.
+- Porém, essa condição não atualizava Cause/Flag Invalid no FCR31 e não gerava FPE quando Invalid estava habilitada.
+- Isso fazia o destino parecer correto em alguns casos, mas deixava o estado arquitetural da FPU incorreto.
+
+### Correção
+- A classificação de faixa inválida agora ocorre antes da escrita no registrador de destino.
+- A conversão inválida chama recordFpuExceptions(Invalid).
+- Com Invalid desabilitada, Cause Invalid é atualizada, Flag Invalid fica sticky e o valor indefinido arquitetural é escrito.
+- Com Invalid habilitada, ocorre FPE antes da escrita no destino, preservando o valor anterior.
+- A verificação contempla destinos W (32 bits) e L (64 bits), incluindo os limites assinados.
+
+### Testes adicionados
+- CVT.W.S de NaN: Cause/Flag Invalid, resultado indefinido e sem FPE quando a exceção está mascarada.
+- CVT.W.S de infinito com Invalid habilitada: FPE e destino preservado.
+- CVT.L.D com valor fora da faixa de 64 bits: Cause/Flag Invalid e resultado indefinido.
+
+### Commits
+- Código: cd4271081eb88b43e9c2d3bc3491715e0d4e1908.
+- Testes: cfe8bc63e419d3aefe7e6c6782d4a1bdd34dea70.
+
+### CI
+- Run 41808064645 para o commit de código: em execução no momento da documentação.
+- O CI precisa terminar com sucesso antes de considerar a correção validada.
+
+### Limites
+- A etapa corrige a sinalização de conversões inválidas, mas não completa Underflow/Inexact nas operações aritméticas ou conversões com perda de precisão.
+- O modo RM ainda não é aplicado a ADD/SUB/MUL/DIV/SQRT.
+- A análise e os testes são automatizados; ainda não há validação de GoldenEye 007 em aparelho real.
+- Branch de trabalho: dev/n64-clean-start. main permanece intocada.
+
+### Próxima etapa
+- Confirmar o CI desta etapa.
+- Em seguida, construir testes específicos para conversões finitas que perdem precisão e para arredondamento dirigido em operações S/D, antes de implementar lógica numérica mais ampla.
