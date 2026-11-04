@@ -1331,3 +1331,14 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Nenhuma nova mudança de código de emulação foi feita nesta etapa; apenas documentação e verificação CI.
 - Próximo passo seguro: continuar a inspeção de utilitários de ROM/memória/CPU e dos testes correspondentes, buscando duplicação literal comprovada antes de qualquer refactor. Não alterar `main`; branch de trabalho `dev/n64-clean-start`.
 - CI não significa APK instalado no aparelho nem GoldenEye funcional. Teste real no Android 16 ainda precisa ser feito pelo usuário.
+
+
+## 64. CPU R4300 — auditoria de repetição de redirecionamento de exceção — 2026-11-04
+
+- Revisados `R4300Cpu.kt` (1.909 linhas), a estrutura de seus métodos e os testes `R4300CpuTest`, `R4300MiInterruptTest`, `R4300TlbExceptionAccessTest`, `R4300TlbStoreDelaySlotTest` e `R4300Cop0CountTimerTest`.
+- Encontrado um bloco repetido em cinco caminhos: quatro handlers dentro de `step()` e `enterAddressException()` atribuíam o vetor geral e limpavam `delayedTarget` e `pendingDelaySlotBranchAddress`.
+- Criado `redirectToGeneralExceptionVector()` e substituídas as cinco cópias. Commit `ac2a744070e31f3297bfaefd69c96e7e04bddf8b`.
+- Não foram fundidos os caminhos TLB: eles escolhem refill/general vector de acordo com MISS/INVALID/MODIFIED, EXL e BEV. Também não foram alterados os casos de overflow tratados dentro do decoder, que seguem o fluxo de delay slot da instrução.
+- A refatoração não adiciona suporte MIPS nem muda os códigos de exceção. A CI para o commit de código ainda deve ser consultada.
+- A auditoria de CPU é estrutural, não prova de cobertura integral nem validação de hardware. Próximo passo: aguardar CI e continuar a revisão de grupos de instruções/testes procurando duplicação comprovada; evitar dividir o decoder de 900+ linhas sem plano de testes por opcode.
+- Branch `dev/n64-clean-start`; `main` permanece intocada.
