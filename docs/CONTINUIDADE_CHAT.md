@@ -1506,3 +1506,34 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Limitação: não foi adicionado teste instrumentado de Activity; a exclusão mútua foi verificada por inspeção estática e deverá ser confirmada pelo build/teste automatizado e, posteriormente, no aparelho.
 - Nenhuma alteração no núcleo R4300/RSP/RDP ou na interpretação de ROM. `main` permanece intocada; branch de trabalho `dev/n64-clean-start`.
 - Próxima etapa: confirmar os workflows e revisar o encerramento/estado final dos workers, inclusive se algum caminho de saída antecipada deixa botões desabilitados ou flags presas.
+
+
+## 74. Revisão de estado final dos workers, exportação e carregamento — 2026-11-04
+
+### CI confirmado da seção 73
+- Run `41804378800`, commit `9cfafe5`: `completed/success`.
+- Run `41804443717`, commit `60b115f`: `completed/success`.
+- Run `41804473406`, commit `57db9f5` (documentação): `completed/success`.
+- Portanto, os dois commits de exclusão mútua e o registro da seção 73 passaram pelo workflow Android.
+
+### Arquivos e caminhos revistos
+- `MainActivity.kt`, com foco em `runRomInstructionDiagnostic()`, `runRomInstructionDiagnosticWorker()`, `createCompleteDiagnosticButton()`, `loadRomFromUri()`, `openRomPicker()`, `onDestroy()` e transições entre telas.
+- O diagnóstico IPL3/CPU mantém uma trava `romTraceInProgress` durante a execução em segundo plano e a libera em `finally`. As saídas antecipadas (CIC não reconhecido e falha ao preparar IPL3) postam atualização da interface com proteção contra Activity encerrada.
+- O encerramento da Activity solicita parada cooperativa do diagnóstico IPL3/CPU, worker HLE e sessão de vídeo; não bloqueia a thread principal com `join()`.
+- O exportador captura o texto da tela na thread principal, interrompe a sessão de vídeo cooperativamente e aguarda no máximo `LOG_EXPORT_STOP_TIMEOUT_MS` (5 s) antes de falhar explicitamente. Só depois lê os snapshots/coleções do barramento e CPU.
+- O exportador libera a trava e recalcula os botões no callback final da UI, considerando worker de vídeo, HLE, rastreamento IPL3 e ROM selecionada. Se a Activity já foi destruída, não tenta atualizar views.
+- O carregador de ROM invalida a seleção anterior durante a nova leitura, usa `romLoadGeneration` para descartar resultado obsoleto e só persiste URI depois de validar a ROM. O callback também verifica `isFinishing`/`isDestroyed`.
+- Os botões de seleção/troca de ROM e os caminhos de execução/diagnóstico verificam as travas de operação; a troca de ROM não ocorre durante exportação ou diagnóstico ativo.
+
+### Resultado da revisão
+- Não foi confirmada nesta passagem uma flag de worker que permaneça presa após uma saída normal, erro ou cancelamento.
+- Não foi confirmada leitura concorrente das coleções mutáveis do barramento durante o diagnóstico IPL3/CPU: a exportação recusa iniciar enquanto `romTraceInProgress` estiver ativo.
+- Não foi identificada duplicação funcional nova que justifique refatoração em `MainActivity.kt`.
+- Não foi feita alteração no código de produção nesta etapa; trata-se de revisão estática dos caminhos e estados. Não equivale a teste instrumentado nem a teste em aparelho.
+- A revisão não prova que o botão Voltar do Android, rotação da tela ou morte do processo preservam uma sessão de emulação; a Activity é recriada e a ROM pode ser restaurada pela URI persistida, mas estado de CPU/sessão não é persistido.
+
+### Próxima etapa recomendada
+- Revisar navegação/retorno e restauração após recriação da Activity, especialmente se o usuário volta do seletor de ROM, de uma página de diagnóstico ou da tela de vídeo.
+- Depois, criar uma área/tela de ferramentas para os testes sintéticos atualmente sem ponto de entrada (`runVideoTest()`, `runTrianglePipelineDemo()`, `runCpuDiagnostic()`), sem misturar esses testes com execução real de ROM e sem apresentá-los como compatibilidade de jogos.
+- Avaliar testes automatizados de estado para as travas de operação antes de adicionar dependências instrumentadas.
+- Branch de trabalho: `dev/n64-clean-start`. `main` permanece intocada. Nenhum jogo foi confirmado funcional em aparelho.
