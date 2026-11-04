@@ -2658,3 +2658,15 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Commits: implementação `402dde5bbfba4d14fe947d5df1c312dff02a0da6`, import BigInteger `b8d980752b4b427d7e3da5559806e1d4c533aa08`, testes `88b4988acbd8686aa665cefc1161ad6423f196d1`.
 - CI da seção 127 ainda precisa ser confirmada.
 - Referência técnica para formato e semântica das instruções MIPS III: manual NEC VR4181, capítulo 3, tabelas 3-10 e 3-11; manter observação de que a revisão específica do VR4300 pode ter restrições/errata próprias.
+
+
+## 128. Divisão HI/LO — 2026-11-04
+
+- A primeira CI da implementação de MULT/DMULT (`41932984819`) falhou porque o commit de implementação foi disparado antes do commit que adicionou `java.math.BigInteger`; o log confirma `Unresolved reference: BigInteger`. Não foi falha dos testes de multiplicação.
+- A CI do commit com o import (`41932998015`) passou e gerou artifact `13372931116`, SHA-256 `4a434de3bf03f4fe4868fe711dee2787b3919f1d9018dcc28476460091bb75ca`. A CI dos testes (`41933009783`) passou, artifact `13371519096`, SHA-256 `cd961251cd2f7d2e14552bd92c3ac9d6cbcc1bc4ab79d4279150728263525124`. A CI documental da seção 126 (`41932816733`) também passou.
+- Implementadas DIV, DIVU, DDIV e DDIVU no executor SPECIAL. DIV/DIVU operam em words de 32 bits sign-extended; DDIV/DDIVU operam em 64 bits. Quociente vai para LO e resto para HI; operações signed truncam em direção a zero. DIVU/DDIVU interpretam operandos como unsigned.
+- Divisor zero e overflow signed MIN_VALUE / -1 são tratados como casos de HI/LO imprevisível: o executor rejeita a operação e preserva HI/LO existentes, sem fabricar resultados. Isso é uma política explícita do executor; não representa exceção guest implementada.
+- Testes adicionados para resultados signed/unsigned, resto negativo, faixa unsigned e preservação HI/LO em divisor zero/overflow.
+- Commits seção 128: executor `6372da3c1173a0b82db4ccaa2e37dfde2e1977f9`; testes `fb21e22ff18ea821f27cdcff616e26e509e9172a`.
+- CI da seção 128 ainda pendente. Não declarar aprovada até confirmar build, testes e artifact.
+- Limites: executor não avança PC e ainda não implementa branches, jumps, delay slots, exceções, load/store, COP0/TLB, barramento ou boot de ROM.
