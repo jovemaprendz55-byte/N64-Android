@@ -1770,3 +1770,28 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 ### Próxima etapa
 - Confirmar o CI desta etapa.
 - Em seguida, construir testes específicos para conversões finitas que perdem precisão e para arredondamento dirigido em operações S/D, antes de implementar lógica numérica mais ampla.
+
+
+## 82. Auditoria COP0 Status e exceções privilegiadas — 2026-11-04
+
+### Estado verificado
+- A verificação de privilégio para COP0 e CACHE ocorre antes da execução: em User/Supervisor exige Status.CU0; EXL/ERL ou KSU=Kernel permitem acesso.
+- COP1 e operações de memória COP1 verificam CU1 antes de tradução/endereço e efeitos de memória.
+- ERET prioriza ERL/ErrorEPC; caso contrário limpa EXL e retorna por EPC. Também limpa a reserva LL.
+- Entrada de exceção preserva EPC quando EXL já estava ativo, define EXL e registra Cause/BD/CE conforme o caminho.
+- O MTC0 Status ainda usa o caminho genérico de escrita (sem máscara específica). O modelo também não demonstra implementação integral de todos os campos arquiteturais Status/interrupt masks/FR/CU bits.
+- A instrução CACHE passa pela verificação de privilégio COP0, mas seu efeito de cache real não foi demonstrado nesta revisão; não presumir que há cache de dados/instruções modelada.
+
+### Conclusão
+- Não foi confirmada nesta etapa uma falha específica de Status que justifique alterar a escrita de MTC0 sem primeiro definir a máscara exata dos campos implementados no VR4300 e o comportamento dos bits não modelados.
+- A implementação atual tem cobertura para modos Kernel/Supervisor/User, CU0, CU1, EXL/ERL, ERET e exceções básicas; isso não equivale a suporte integral ao COP0.
+- Nenhuma alteração de código foi feita nesta auditoria. Evitada uma máscara improvisada que poderia apagar bits válidos ou impedir software de configurar o processador.
+
+### Próxima investigação
+- Levantar a definição dos campos Status específicos do VR4300 e confrontar com o que o emulador efetivamente consome: IE, EXL, ERL, KSU, UX/SX/KX, interrupt masks, BEV, FR, CU0/CU1 e demais campos relevantes.
+- Construir matriz de testes para MTC0/MFC0 Status, transições de modo, CU0/CU1 e CACHE privilegiado, separando comportamento implementado de campos ainda sem efeito.
+- Underflow/Inexact e RM em aritmética COP1 permanecem pendentes; não foram alterados nesta etapa.
+
+### Limites
+- Revisão estática dos caminhos de CPU e testes existentes; sem validação em aparelho ou ROM comercial.
+- Branch: dev/n64-clean-start. main permanece intocada.
