@@ -6,6 +6,34 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class R4300CpuTest {
+    @Test fun cacheInUserModeWithCu0DisabledRaisesCoprocessorUnusable() {
+        val memory = N64Memory(16)
+        memory.write32(0, (0x2F shl 26)) // CACHE operation 0, offset 0($zero).
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = 0x10L // User mode; CU0 disabled.
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(11L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertEquals(0L, (cpu.cop0[13] ushr 28) and 0x3L)
+        assertEquals(0L, cpu.cop0[14])
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+    }
+
+    @Test fun cacheInUserModeWithCu0EnabledDoesNotRaiseCoprocessorUnusable() {
+        val memory = N64Memory(16)
+        memory.write32(0, (0x2F shl 26))
+        val cpu = R4300Cpu(memory)
+        cpu.cop0[12] = (1L shl 28) or 0x10L // User mode; CU0 enabled.
+        cpu.setProgramCounter(0)
+
+        cpu.step()
+
+        assertEquals(0L, cpu.cop0[13] and (0x1FL shl 2))
+        assertEquals(4L, cpu.pc)
+    }
+
     @Test fun mtc0StatusMasksReservedAndHardwiredBitsAndPreservesTs() {
         val memory = N64Memory(16)
         memory.write32(0, (0x10 shl 26) or (0x04 shl 21) or (1 shl 16) or (12 shl 11))
