@@ -102,4 +102,62 @@ class N64HleBootInitializerTest {
         }
         assertEquals(0L, memory.read32(0x80000400L))
     }
+    @Test
+    fun bootHandoffCarriesOnlyEvidenceBackedCop0Values() {
+        val profile = N64HleBootProfile(
+            entryPc = 0x80000400L,
+            registerValues = emptyMap(),
+            romCopies = emptyList(),
+            memoryWrites = emptyList(),
+            evidence = "synthetic GPR handoff",
+            cop0RegisterValues = mapOf(12 to 0x34000000L, 14 to 0x80001234L),
+            cop0Evidence = "synthetic COP0 fixture"
+        )
+        val state = N64HleBootInitializer().initialize(
+            cartridge(),
+            N64HleGuestAddressSpace(),
+            profile
+        )
+
+        assertEquals(0x34000000L, state.cop0State.requireValue(12))
+        assertEquals(0x80001234L, state.cop0State.requireValue(14))
+        assertEquals(null, state.cop0State.valueOrNull(13))
+    }
+
+    @Test
+    fun bootHandoffDoesNotInventCop0ValuesWhenProfileOmitsThem() {
+        val profile = N64HleBootProfile(
+            entryPc = 0x80000400L,
+            registerValues = emptyMap(),
+            romCopies = emptyList(),
+            memoryWrites = emptyList(),
+            evidence = "synthetic GPR-only handoff"
+        )
+        val state = N64HleBootInitializer().initialize(
+            cartridge(),
+            N64HleGuestAddressSpace(),
+            profile
+        )
+
+        assertEquals(false, state.cop0State.isKnown(12))
+        assertEquals(null, state.cop0State.valueOrNull(12))
+    }
+
+    @Test
+    fun explicitCop0ValuesRequireEvidenceAndValidIndices() {
+        assertThrows(IllegalArgumentException::class.java) {
+            N64HleBootProfile(
+                0x80000400L, emptyMap(), emptyList(), emptyList(), "test",
+                cop0RegisterValues = mapOf(12 to 1L)
+            )
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            N64HleBootProfile(
+                0x80000400L, emptyMap(), emptyList(), emptyList(), "test",
+                cop0RegisterValues = mapOf(32 to 1L),
+                cop0Evidence = "test evidence"
+            )
+        }
+    }
+
 }
