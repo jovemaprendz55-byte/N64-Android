@@ -11,7 +11,9 @@ class N64HleBootProfile(
     registerValues: Map<Int, Long>,
     romCopies: List<RomCopy>,
     memoryWrites: List<MemoryWrite>,
-    val evidence: String
+    val evidence: String,
+    cop0RegisterValues: Map<Int, Long> = emptyMap(),
+    val cop0Evidence: String? = null
 ) {
     data class RomCopy(
         val romOffset: Int,
@@ -28,6 +30,7 @@ class N64HleBootProfile(
     val registerValues: Map<Int, Long> = registerValues.toMap()
     val romCopies: List<RomCopy> = romCopies.toList()
     val memoryWrites: List<MemoryWrite> = memoryWrites.toList()
+    val cop0RegisterValues: Map<Int, Long> = cop0RegisterValues.toMap()
 
     init {
         require(evidence.isNotBlank()) { "Boot profile evidence is required" }
@@ -36,6 +39,12 @@ class N64HleBootProfile(
         require((normalizedPc ushr 29) == 4L) { "Entry PC must be in KSEG0" }
         require(registerValues.keys.all { it in 1..31 }) {
             "GPR indices must be in 1..31; GPR0 is immutable zero"
+        }
+        require(cop0RegisterValues.keys.all { it in 0..31 }) {
+            "COP0 register indices must be in 0..31"
+        }
+        require(cop0RegisterValues.isEmpty() || !cop0Evidence.isNullOrBlank()) {
+            "Explicit COP0 values require their own evidence label"
         }
         require(romCopies.all { it.romOffset >= 0 && it.length > 0 }) {
             "ROM copy ranges must have non-negative offsets and positive lengths"
@@ -60,7 +69,8 @@ class N64HleBootProfile(
 /** Architectural integer-register/PC snapshot produced by an HLE profile. */
 class N64HleCpuEntryState(
     val programCounter: Long,
-    registers: LongArray
+    registers: LongArray,
+    val cop0State: N64HleCop0EntryState = N64HleCop0EntryState.unspecified()
 ) {
     private val values = registers.copyOf()
 
@@ -119,6 +129,14 @@ class N64HleBootInitializer {
         val registers = LongArray(32)
         profile.registerValues.forEach { (index, value) -> registers[index] = value }
         registers[0] = 0L
-        return N64HleCpuEntryState(profile.entryPc, registers)
+        val cop0State = if (profile.cop0RegisterValues.isEmpty()) {
+            N64HleCop0EntryState.unspecified()
+        } else {
+            N64HleCop0EntryState(
+                profile.cop0RegisterValues,
+                requireNotNull(profile.cop0Evidence)
+            )
+        }
+        return N64HleCpuEntryState(profile.entryPc, registers, cop0State)
     }
 }
