@@ -2670,3 +2670,12 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Commits seção 128: executor `6372da3c1173a0b82db4ccaa2e37dfde2e1977f9`; testes `fb21e22ff18ea821f27cdcff616e26e509e9172a`.
 - CI da seção 128 ainda pendente. Não declarar aprovada até confirmar build, testes e artifact.
 - Limites: executor não avança PC e ainda não implementa branches, jumps, delay slots, exceções, load/store, COP0/TLB, barramento ou boot de ROM.
+
+
+### Correção de cobertura e semântica word — seção 128 — 2026-11-04
+
+- A primeira revisão da seção 128 mostrou que os testes de divisão planejados não haviam sido persistidos no arquivo de testes, apesar de a CI ter passado. A aprovação anterior confirmava apenas os testes já presentes, não cobertura direta de DIV/DIVU/DDIV/DDIVU.
+- Foram adicionados testes explícitos para as quatro operações, incluindo resto signed negativo, divisão unsigned de 32 bits, faixa unsigned completa de 64 bits, divisor zero e overflow signed de 32/64 bits com preservação de HI/LO.
+- Revisão adicional: operações word MULT/MULTU/DIV/DIVU usam os 32 bits baixos dos operandos GPR; removida a validação indevida que exigia que os 64 bits superiores já estivessem sign-extended. Os resultados word continuam sign-extended em HI/LO. Teste DIVU usa deliberadamente um valor cujo upper word não é cópia do bit 31.
+- Commits de correção: executor `68d04b095bfbf591a5186d8d39d66af1119616de`; testes `585b78548a0e0cff2d6976406d098ec16a41284b`.
+- CI desta correção ainda precisa passar. Até lá, considerar a seção 128 implementada, mas não validada de ponta a ponta.
