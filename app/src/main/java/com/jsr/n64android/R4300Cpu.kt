@@ -942,17 +942,22 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                                     0x24 -> roundAccordingToFcr31(value)
                                     else -> roundAccordingToFcr31(value)
                                 }
-                                if (fn == 0x25 || fn in 0x08..0x0B) {
-                                    // Long conversion uses the signed 64-bit indefinite value on invalid input.
-                                    val longValue = if (!rounded.isFinite() ||
-                                        rounded < -9223372036854775808.0 || rounded >= 9223372036854775808.0
-                                    ) Long.MIN_VALUE else rounded.toLong()
+                                val convertsToLong = fn == 0x25 || fn in 0x08..0x0B
+                                val invalidConversion = !rounded.isFinite() || if (convertsToLong) {
+                                    rounded < -9223372036854775808.0 ||
+                                        rounded >= 9223372036854775808.0
+                                } else {
+                                    rounded < Int.MIN_VALUE.toDouble() ||
+                                        rounded > Int.MAX_VALUE.toDouble()
+                                }
+                                // Invalid integer conversions write the architectural indefinite
+                                // value when masked, or trap before modifying the destination.
+                                if (invalidConversion) recordFpuExceptions(1L shl 16)
+                                if (convertsToLong) {
+                                    val longValue = if (invalidConversion) Long.MIN_VALUE else rounded.toLong()
                                     writeFprDouble(fd, longValue)
                                 } else {
-                                    val wordValue = if (!rounded.isFinite() ||
-                                        rounded < Int.MIN_VALUE.toDouble() ||
-                                        rounded > Int.MAX_VALUE.toDouble()
-                                    ) Int.MIN_VALUE else rounded.toLong().toInt()
+                                    val wordValue = if (invalidConversion) Int.MIN_VALUE else rounded.toLong().toInt()
                                     writeFprSingle(fd, wordValue)
                                 }
                             } else if (fn == 0x20 || fn == 0x21) {
