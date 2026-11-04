@@ -30,7 +30,7 @@ class N64HleGuestOsThreadContextMapperTest {
                 gpr = gpr,
                 lo = 0x1111222233334444L,
                 hi = 0xAAAABBBBCCCCDDDDUL.toLong(),
-                status = 0x34000000,
+                status = 0x0000FF03,
                 pc = 0x80123450.toInt(),
                 cause = 0x80000400.toInt(),
                 badVaddr = 0x7F001234,
