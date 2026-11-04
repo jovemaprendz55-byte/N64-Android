@@ -29,6 +29,36 @@ class N64HleR4300SpecialExecutor {
                 state.writeGpr(instruction.rd, value)
                 return
             }
+            N64HleR4300SpecialOperation.MULT,
+            N64HleR4300SpecialOperation.MULTU -> {
+                val left = state.readGpr(instruction.rs)
+                val right = state.readGpr(instruction.rt)
+                requireWordOperand(left)
+                requireWordOperand(right)
+                val product = if (operation == N64HleR4300SpecialOperation.MULT) {
+                    BigInteger.valueOf(left.toInt().toLong()).multiply(BigInteger.valueOf(right.toInt().toLong()))
+                } else {
+                    unsignedWord(left).multiply(unsignedWord(right))
+                }
+                val low = product.and(WORD_MASK).toLong().toInt().toLong()
+                val high = product.shiftRight(32).and(WORD_MASK).toLong().toInt().toLong()
+                state.writeHiLo(high, low)
+                return
+            }
+            N64HleR4300SpecialOperation.DMULT,
+            N64HleR4300SpecialOperation.DMULTU -> {
+                val left = state.readGpr(instruction.rs)
+                val right = state.readGpr(instruction.rt)
+                val product = if (operation == N64HleR4300SpecialOperation.DMULT) {
+                    BigInteger.valueOf(left).multiply(BigInteger.valueOf(right))
+                } else {
+                    unsignedLong(left).multiply(unsignedLong(right))
+                }
+                val low = product.and(DWORD_MASK).toLong()
+                val high = product.shiftRight(64).and(DWORD_MASK).toLong()
+                state.writeHiLo(high, low)
+                return
+            }
             N64HleR4300SpecialOperation.MTHI -> {
                 val value = state.readGpr(instruction.rs)
                 state.writeHi(value)
@@ -99,6 +129,25 @@ class N64HleR4300SpecialExecutor {
 
         // All source reads and the calculation complete before the sole state write.
         state.writeGpr(instruction.rd, result)
+    }
+
+    private fun requireWordOperand(value: Long) {
+        require(value == value.toInt().toLong()) {
+            "32-bit multiply requires a sign-extended word operand"
+        }
+    }
+
+    private fun unsignedWord(value: Long): BigInteger =
+        BigInteger.valueOf(value.toInt().toLong() and 0xFFFF_FFFFL)
+
+    private fun unsignedLong(value: Long): BigInteger {
+        val low = BigInteger.valueOf(value and Long.MAX_VALUE)
+        return if (value < 0) low.setBit(63) else low
+    }
+
+    private companion object {
+        val WORD_MASK: BigInteger = BigInteger.ONE.shiftLeft(32).subtract(BigInteger.ONE)
+        val DWORD_MASK: BigInteger = BigInteger.ONE.shiftLeft(64).subtract(BigInteger.ONE)
     }
 
     private fun wordResult(value: Int): Long = value.toLong()
