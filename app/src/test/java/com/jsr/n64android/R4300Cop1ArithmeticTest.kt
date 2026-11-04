@@ -415,10 +415,10 @@ class R4300Cop1ArithmeticTest {
         val cpu = R4300Cpu(memory)
         cpu.cop0[12] = 1L shl 29
         val value = java.lang.Double.doubleToRawLongBits(5.0)
-        cpu.fpr[2] = (value ushr 32) and 0xFFFFFFFFL
-        cpu.fpr[3] = value and 0xFFFFFFFFL
-        cpu.fpr[4] = (value ushr 32) and 0xFFFFFFFFL
-        cpu.fpr[5] = value and 0xFFFFFFFFL
+        cpu.fpr[2] = value and 0xFFFFFFFFL
+        cpu.fpr[3] = (value ushr 32) and 0xFFFFFFFFL
+        cpu.fpr[4] = value and 0xFFFFFFFFL
+        cpu.fpr[5] = (value ushr 32) and 0xFFFFFFFFL
         cpu.setProgramCounter(0)
 
         cpu.step()
