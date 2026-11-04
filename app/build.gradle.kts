@@ -18,5 +18,15 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
+    // Clean reboot build: compile only the empty launcher.
+    // Legacy emulator sources/tests remain in Git but are intentionally excluded.
+    sourceSets {
+        getByName("main") {
+            java.setSrcDirs(listOf("src/clean/java"))
+        }
+        getByName("test") {
+            java.setSrcDirs(listOf("src/cleanTest/java"))
+        }
+    }
 }
 dependencies { testImplementation("junit:junit:4.13.2") }
