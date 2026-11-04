@@ -5,7 +5,7 @@
 ## 1. Identidade e regras do projeto
 
 - Repositório: https://github.com/jovemaprendz55-byte/N64-Android
-- Branch de trabalho: `dev/n64-clean-start`
+- Branch de trabalho: `dev/n64-hle-clean-reboot`
 - Não alterar `main`, não mesclar branches e não apagar branches sem autorização explícita.
 - Aplicativo pessoal, destinado ao aparelho do usuário: **Poco C85 com Android 16**.
 - Pacote Android: `com.jsr.n64android`.
@@ -17,7 +17,7 @@
 
 ## 2. Estado exato da branch auditada
 
-- Branch: `dev/n64-clean-start`
+- Branch: `dev/n64-hle-clean-reboot`
 - HEAD auditado: `d65a14b54ec626d7ba9a27b37963824f895807d7`
 - Commit: `Document GoldenEye call path findings and trace limits`
 - Árvore Git: 108 arquivos (37 arquivos em `app/src/main`, 59 arquivos de teste, 6 documentos em `docs`, mais arquivos de configuração/raiz e workflow).
@@ -33,7 +33,7 @@
 - Artifact: `n64-android-debug-apk`, ID `13134693490`.
 - Isso confirma compilação e testes unitários automatizados nessa revisão. **Não** confirma instalação, estabilidade, boot de GoldenEye, renderização de jogo ou áudio no Poco C85.
 - O workflow não executa `lintDebug`.
-- O gatilho `push` inclui `main` e `dev/**`; o gatilho `pull_request` inclui somente `main`. PRs cujo destino seja `dev/n64-clean-start` não são cobertos pela regra atual.
+- O gatilho `push` inclui `main` e `dev/**`; o gatilho `pull_request` inclui somente `main`. PRs cujo destino seja `dev/n64-hle-clean-reboot` não são cobertos pela regra atual.
 
 ## 3. Inventário da arquitetura atual
 
@@ -337,12 +337,12 @@ A próxima coleta deve mostrar a cadeia genérica de fluxo de controle anterior 
 - Não concluir que um TLB miss inicial é bug sem examinar refill e execução posterior.
 - Não criar OSTask, alterar SP_STATUS, forçar interrupção ou mudar registradores para contornar sintomas.
 - Sempre registrar SHA do commit, resultado da CI e se houve teste real no Android 16.
-- Toda alteração fica em `dev/n64-clean-start`; `main` permanece intocada.
+- Toda alteração fica em `dev/n64-hle-clean-reboot`; `main` permanece intocada.
 
 
 ## 11. Expansão do núcleo — primeira rodada de correções
 
-**Implementação iniciada após a auditoria, em 2026-11-02.** Branch `dev/n64-clean-start`; `main` não foi alterada.
+**Implementação iniciada após a auditoria, em 2026-11-02.** Branch `dev/n64-hle-clean-reboot`; `main` não foi alterada.
 
 ### Correção C1 — falha RSP não fabrica SP HALT
 
@@ -399,19 +399,19 @@ Aguardar CI. Se passar, avançar para instrumentação genérica e limitada de f
 
 ## 10. Próxima ação ao retomar
 
-**Não começar reescrevendo CPU, TLB ou HLE.** Primeiro implementar a instrumentação genérica de fluxo de controle e snapshots limitados, sem mudar comportamento arquitetural. Depois gerar APK da branch `dev/n64-clean-start`, executar GoldenEye no Poco C85 Android 16, salvar o log e seguir a rotina real que antecede `0x7000071C`. Em paralelo, corrigir os dois problemas de tratamento de erro identificados (HALT forçado no RSP e listener DMA sem finally), cada um com teste de regressão.
+**Não começar reescrevendo CPU, TLB ou HLE.** Primeiro implementar a instrumentação genérica de fluxo de controle e snapshots limitados, sem mudar comportamento arquitetural. Depois gerar APK da branch `dev/n64-hle-clean-reboot`, executar GoldenEye no Poco C85 Android 16, salvar o log e seguir a rotina real que antecede `0x7000071C`. Em paralelo, corrigir os dois problemas de tratamento de erro identificados (HALT forçado no RSP e listener DMA sem finally), cada um com teste de regressão.
 
 ---
 
 **Última auditoria:** 2026-11-02  
-**Branch:** `dev/n64-clean-start`  
+**Branch:** `dev/n64-hle-clean-reboot`  
 **HEAD auditado inicialmente:** `d65a14b54ec626d7ba9a27b37963824f895807d7`  
 **Última CI confirmada:** run `41434025556` — success  
 **Alterações de código nesta auditoria:** nenhuma. Esta reconstrução substitui somente o conteúdo deste documento.
 
 ## 12. Expansão do RSP e RDP — segunda rodada
 
-Branch: `dev/n64-clean-start`.
+Branch: `dev/n64-hle-clean-reboot`.
 
 ### RSP — novas operações vetoriais
 
@@ -444,7 +444,7 @@ O workflow falhou em 2 de 494 testes; a compilação do APK concluiu, mas `testD
 
 ## 13. HLE de sistema — primeira etapa (2026-11-02)
 
-Foi criado `N64HleOsKernel.kt` na branch `dev/n64-clean-start`, com um modelo host-side inicial de threads, dispatcher cooperativo por prioridade/FIFO, yield/terminate, filas de mensagens limitadas FIFO e eventos com despertar de thread aguardando evento. Testes em `N64HleOsKernelTest.kt`.
+Foi criado `N64HleOsKernel.kt` na branch `dev/n64-hle-clean-reboot`, com um modelo host-side inicial de threads, dispatcher cooperativo por prioridade/FIFO, yield/terminate, filas de mensagens limitadas FIFO e eventos com despertar de thread aguardando evento. Testes em `N64HleOsKernelTest.kt`.
 
 **Limite:** ainda não é ABI guest de libultra. Não lê/escreve OSThread/OSMesgQueue na RDRAM, não salva/restaura contexto R4300, não intercepta chamadas da ROM, não integra interrupções MI/VI/AI/PI/SI/SP e não agenda OSTask. Não declarar que a ROM já usa esse kernel.
 
@@ -475,7 +475,7 @@ CI do HEAD anterior `6205cb66b87d33bec55889164393e5a72312a5e6`: workflow run `41
 
 ## 15. Expansão HLE + TLB (2026-11-02)
 
-Na branch `dev/n64-clean-start`:
+Na branch `dev/n64-hle-clean-reboot`:
 - `R4300Tlb`: adicionados snapshot de todos os slots e restore atômico com validação prévia; tradução detalhada reporta slot, tamanho de página, par/ímpar, ASID e Global. O método `translate()` permanece compatível.
 - `N64HleOsKernel`: implementadas esperas reais no modelo host-side para envio/recebimento de mensagens; sender bloqueado guarda mensagem pendente, receiver bloqueado acorda na chegada, e FIFO de senders é respeitada.
 - Testes adicionados para snapshot/restore, metadados de tradução, wakeup de send/receive e justiça FIFO.
@@ -561,7 +561,7 @@ Commits desta etapa:
 
 ## 11. Expansão dos subsistemas HLE / TLB / RSP / RDP — 2026-11-02
 
-Branch exclusiva: `dev/n64-clean-start`. A branch `main` não foi alterada.
+Branch exclusiva: `dev/n64-hle-clean-reboot`. A branch `main` não foi alterada.
 
 ### Alterações implementadas nesta etapa
 
@@ -593,7 +593,7 @@ Branch exclusiva: `dev/n64-clean-start`. A branch `main` não foi alterada.
 
 ## 12. Novas funções HLE / TLB / RSP / RDP — 2026-11-02
 
-Branch: `dev/n64-clean-start`; `main` permanece intacta.
+Branch: `dev/n64-hle-clean-reboot`; `main` permanece intacta.
 
 - **HLE:** `setThreadPriority(id, priority)` altera a prioridade da thread sem reiniciar seu estado/FIFO; `blockCurrentForEvent(type)` permite esperar por um tipo específico de evento. Eventos sem filtro continuam aceitos por qualquer tipo. Testes cobrem reordenação de dispatch e não despertar de thread por evento incompatível.
 - **TLB:** `invalidateAsid(asid)` remove somente entradas não globais daquele ASID; `invalidateNonGlobal()` limpa entradas não globais e preserva mapeamentos globais. Teste cobre isolamento entre espaços de endereço e preservação global.
@@ -608,7 +608,7 @@ CI final deve ser conferida no HEAD remoto antes de anunciar build verde ou APK.
 
 ## 19. CI verde e APK debug — correção HLE/TLB/RSP/RDP (2026-11-02)
 
-- HEAD validado: `872e2d2d64d7ded2928ea791576b1d33b816b6cf` na branch `dev/n64-clean-start`.
+- HEAD validado: `872e2d2d64d7ded2928ea791576b1d33b816b6cf` na branch `dev/n64-hle-clean-reboot`.
 - GitHub Actions run: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41532494979 — **success**.
 - A execução final validou `testDebugUnitTest` e `assembleDebug`; o artifact `n64-android-debug-apk` foi publicado (ID `13182588130`, tamanho 1.034.095 bytes, expira em 2026-11-16).
 - O run anterior `41532488036` falhou porque foi disparado após o primeiro commit de correção e antes do commit seguinte que ajustou a expectativa VSAR. Não representa o HEAD final. No HEAD final, o workflow terminou com sucesso.
@@ -720,7 +720,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 ### Limites desta rodada
 - CI verde valida compilação e testes automatizados, não execução real de ROM no Poco C85 Android 16.
 - O APK debug está disponível nos artifacts dos dois runs acima; não foi instalado nem testado no aparelho nesta sessão.
-- Branch de trabalho permanece `dev/n64-clean-start`; `main` não foi alterada.
+- Branch de trabalho permanece `dev/n64-hle-clean-reboot`; `main` não foi alterada.
 
 
 ## 28. Auditoria do relógio de execução e integração VI — 2026-11-02
@@ -746,7 +746,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 ### Estado
 - Nenhum código funcional foi alterado nesta auditoria; não há alegação de que timer COP0 esteja implementado.
 - CI #1468 para o commit `944298cbbbb2c31515610b27c14682050378b2d4` passou.
-- Branch `dev/n64-clean-start`; `main` intacta. Ainda não houve teste de ROM no aparelho nesta rodada.
+- Branch `dev/n64-hle-clean-reboot`; `main` intacta. Ainda não houve teste de ROM no aparelho nesta rodada.
 
 
 ## 29. Auditoria da cobertura de instruções COP1 e acessos FPU — 2026-11-02
@@ -767,7 +767,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 ### Estado desta rodada
 - Auditoria estática confirmou a lacuna; nenhum código funcional foi alterado e nenhum suporte FPU novo foi declarado.
 - O CI #1469 do commit de documentação anterior `479bf6204fc22de1be1697932132ba94df4c51b9` terminou com success: https://github.com/jovemaprendiz55-byte/N64-Android/actions/runs/41545628743.
-- Próxima atualização de documentação/código deverá continuar na branch `dev/n64-clean-start`; `main` permanece intacta.
+- Próxima atualização de documentação/código deverá continuar na branch `dev/n64-hle-clean-reboot`; `main` permanece intacta.
 
 
 ## 30. Auditoria adicional do estado FPU e diagnóstico de memória — 2026-11-02
@@ -788,7 +788,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 
 ### Estado
 - Esta etapa foi auditoria estática e documentação; nenhum código funcional foi alterado.
-- Branch `dev/n64-clean-start`; `main` permanece intacta.
+- Branch `dev/n64-hle-clean-reboot`; `main` permanece intacta.
 - Não houve instalação nem teste de ROM no Poco C85 nesta etapa.
 
 
@@ -815,7 +815,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 
 ### Estado
 - Esta rodada foi inspeção estática e atualização da documentação; nenhum código funcional foi alterado.
-- Commit de documentação na branch `dev/n64-clean-start`; `main` intacta.
+- Commit de documentação na branch `dev/n64-hle-clean-reboot`; `main` intacta.
 - Não houve execução de ROM nem teste no Poco C85 nesta rodada.
 
 ## 32. Auditoria da execução — contexto de diagnóstico das operações COP1 de memória
@@ -851,7 +851,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - A FPU continua incompleta: LWC1/LDC1/SWC1/SDC1 e operações aritméticas COP1 permanecem ausentes quando CU1 está habilitado, conforme documentado nas seções anteriores.
 - A auditoria foi estática, com inspeção do código e dos testes existentes. Não equivale a execução de ROM nem a teste no Poco C85.
 - CI #1475, #1476 e #1477 terminou com success, cobrindo os commits da correção de fetch desalinhado e sua documentação.
-- Branch dev/n64-clean-start; main permanece intacta.
+- Branch dev/n64-hle-clean-reboot; main permanece intacta.
 
 
 ## 35. Auditoria RSP / telemetria MMIO — 2026-11-02
@@ -883,7 +883,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - A correção não implementa TextureRectangle, texturização, combiner, Z-buffer, cobertura ou microcódigo RSP comercial.
 - A sessão ainda pode não produzir pixels para ROMs que dependem desses comandos; a limitação fica visível no diagnóstico DPC, sem se transformar em falso DBE.
 - Validar por CI. Não houve instalação nem teste de ROM no Poco C85 nesta rodada.
-- Branch dev/n64-clean-start; main não foi alterada.
+- Branch dev/n64-hle-clean-reboot; main não foi alterada.
 
 
 ## 37. Auditoria de captura VI durante execução contínua — 2026-11-02
@@ -904,7 +904,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - A correção não altera a interpretação dos formatos RGBA5551/RGBA8888 nem implementa scanout temporizado.
 - A captura ainda é amostrada por intervalo de instruções; VI timing segue aproximado.
 - Aguardar CI para validar os commits de sessão, teste, UI e documentação. Nenhum teste real de ROM foi executado no aparelho nesta rodada.
-- Branch dev/n64-clean-start; main permanece intacta.
+- Branch dev/n64-hle-clean-reboot; main permanece intacta.
 
 
 ## 38. Auditoria de publicação de quadros: mudança de resolução (2026-11-02)
@@ -924,7 +924,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Corrigido o teste para preencher uma região ampla de RDRAM com a mesma cor RGBA5551, garantindo conteúdo visual idêntico sob as duas geometrias.
 - Código de produção `N64RomVideoSession.kt` não foi alterado nesta correção; a condição de publicação continua incluindo largura, altura e conteúdo ARGB.
 - Commit do ajuste: `ce9ba4181aecc26c21bda02a3379a38ee8f0d4d9`. Aguardar CI desse commit. Não declarar aprovação nem distribuir APK antes de todos os testes passarem.
-- Branch `dev/n64-clean-start`; `main` permanece intacta. Sem teste visual no aparelho nesta etapa.
+- Branch `dev/n64-hle-clean-reboot`; `main` permanece intacta. Sem teste visual no aparelho nesta etapa.
 
 
 ## 40. Lacuna COP0 Count/Compare — 2026-11-02
@@ -934,7 +934,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Impacto: software que depende do timer interno para scheduler/timeouts pode travar ou executar com temporização incorreta.
 - Não adicionar incremento por instrução sem definir antes a fonte de ticks e divisor do Count do VR4300. O emulador ainda não modela ciclos/stalls de forma suficiente para uma implementação temporal confiável.
 - Planejamento: camada de ticks determinística; política Count/ticks documentada; MTC0 Compare limpa IP7; igualdade Count/Compare levanta IP7; testes para IE/IM7/EXL/ERL, delay slot e limpeza por Compare.
-- Nenhum código de produção alterado nesta etapa; achado e plano registrados em `docs/AUDITORIA_MELHORIAS_ANDROID16_2026-11-02.md`. Branch dev/n64-clean-start; main intacta.
+- Nenhum código de produção alterado nesta etapa; achado e plano registrados em `docs/AUDITORIA_MELHORIAS_ANDROID16_2026-11-02.md`. Branch dev/n64-hle-clean-reboot; main intacta.
 
 
 ## 41. CI verde e APK Debug gerado — 2026-11-03
@@ -945,7 +945,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - A aprovação confirma build e testes automatizados deste commit; não substitui instalação/validação visual no aparelho Android 16.
 - A correção do fixture VI foi aprovada. O achado COP0 Count/Compare continua aberto e documentado; não foi implementado.
 - Nota: a CI também concluiu success no commit de documentação `b8378acd` e no commit de correção `ce9ba418`.
-- Branch `dev/n64-clean-start`; branch `main` continua separada e inalterada por estas alterações.
+- Branch `dev/n64-hle-clean-reboot`; branch `main` continua separada e inalterada por estas alterações.
 
 
 ## 42. Correção parcial do COP0 Compare — 2026-11-03
@@ -956,7 +956,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Commits de código/teste: `17ef9e8ba1a594ac4dfa2f2ceb902af68d8824fb` e `de6cd1f29732a90c14e3ccc1c91800d2a85d946f`.
 - Limitação ainda aberta: Count não avança e não há comparação Count==Compare gerando IP7. Não há política de ticks/ciclos do VR4300; não foi introduzido incremento artificial por instrução.
 - Aguardar CI do commit de teste. Nenhuma instalação nem execução real de ROM no aparelho foi realizada nesta etapa.
-- Branch `dev/n64-clean-start`; `main` não foi alterada.
+- Branch `dev/n64-hle-clean-reboot`; `main` não foi alterada.
 
 ## 43. Auditoria do limite de cancelamento da sessão de execução — 2026-11-03
 
@@ -973,7 +973,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 
 ### Escopo e validação
 - A alteração afeta somente o agendamento/cancelamento cooperativo da sessão; não altera instruções R4300, estado guest, MMIO, VI ou temporização de hardware.
-- Código e teste foram enviados à branch dev/n64-clean-start; aguardar CI para confirmar compilação e testes.
+- Código e teste foram enviados à branch dev/n64-hle-clean-reboot; aguardar CI para confirmar compilação e testes.
 - Auditoria COP0 Count/Compare continua aberta: Count ainda não avança e não há geração automática de Cause.IP7 por igualdade Count/Compare. Não inventar ticks por instrução.
 - Nenhuma execução visual de ROM nem instalação no Android 16 foi realizada nesta rodada.
 - Branch main permanece intacta.
@@ -1002,7 +1002,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - 478d760d8b77b97949627418cd4259447bd6905f — testes de Count/timer.
 - GitHub Actions run 41562510509 iniciou para o commit de testes; resultado ainda deve ser consultado antes de declarar aprovação.
 - Nenhum teste visual de ROM nem instalação no Android 16 foi realizado nesta etapa.
-- Branch dev/n64-clean-start; main permanece intacta.
+- Branch dev/n64-hle-clean-reboot; main permanece intacta.
 ### Continuação FPU aritmética — 2026-11-03
 - Implementado subconjunto aritmético COP1 para formatos S e D: ADD, SUB, MUL, DIV, SQRT, ABS, MOV e NEG.
 - Valores são interpretados/gravados como bits IEEE-754 nos slots FPR; S grava os 32 bits baixos e D grava os 64 bits.
@@ -1035,7 +1035,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - `0c6e4fd91747b86abbabb627a678d945adbf7644` — testes de Count/Compare e interrupção MI.
 - GitHub Actions run `41563635381` foi iniciado para o commit de produção; consultar conclusão após o commit de testes.
 - Nenhum teste visual de ROM nem instalação/execução no Android 16 foi realizado nesta rodada.
-- Branch `dev/n64-clean-start`; `main` permanece intacta.
+- Branch `dev/n64-hle-clean-reboot`; `main` permanece intacta.
 
 
 ## 46. Ajuste do teste de interrupção COP0 Count — 2026-11-03
@@ -1047,7 +1047,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Commit do teste isolado: `4295e8c06725a8cb0e3e7a0d28ca8014c5501a3a`.
 - A execução de CI correspondente está pendente/precisa ser consultada; não declarar sucesso até o término de todos os testes.
 - A correção de produção Count no caminho de entrada MI permanece no commit `edacdbd313120f0ae5fb076d52297ea305f5f1c4`; a CI desse commit concluiu success.
-- Branch `dev/n64-clean-start`; `main` permanece intacta.
+- Branch `dev/n64-hle-clean-reboot`; `main` permanece intacta.
 
 ## 47. COP0 Count — fase do divisor em reset e contexto (2026-11-03)
 
@@ -1058,14 +1058,14 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Commits: `7f2fa41a2e20d5c692a3fef5e03705fd55b7d345` (produção) e `92b6a789b5f605f3ea74c38fd658cea4d5a907cc` (testes).
 - GitHub Actions: run `41566402515` (produção) e `41566408129` (testes) concluíram ambos com `success`; build, testes e upload do APK de depuração passaram.
 - A temporização do Count continua aproximada: dois ciclos-base por step, sem tabela de latência VR4300 ou stalls de dispositivos. A correção preserva a fase desse modelo, não o torna cycle-accurate.
-- Nenhuma execução de ROM no aparelho foi validada nesta etapa. Branch `dev/n64-clean-start`; `main` permanece intacta.
+- Nenhuma execução de ROM no aparelho foi validada nesta etapa. Branch `dev/n64-hle-clean-reboot`; `main` permanece intacta.
 
  
 ## 48. Continuação da auditoria R4300/COP1 — FR, aritmética e comparações (2026-11-03)
 
 ### Estado confirmado nesta rodada
 - A documentação anterior estava atualizada somente até a seção 47; os commits COP1 mais recentes ainda não tinham sido acrescentados ao registro. Esta seção fecha essa lacuna.
-- Branch de trabalho: `dev/n64-clean-start`. A branch `main` não foi alterada.
+- Branch de trabalho: `dev/n64-hle-clean-reboot`. A branch `main` não foi alterada.
 
 ### FR=0 / FR=1 e transferências COP1
 - O acesso aos registradores FPR foi centralizado em helpers que consultam Status.FR (bit 26).
@@ -1138,7 +1138,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - A execução `41568434593` da documentação anterior concluiu success; `41568439782` também concluiu success.
 - Ainda não implementados: conversões para long (CVT.L e ROUND/TRUNC/CEIL/FLOOR.L), conversões de inteiro W/L para S/D, exceções IEEE completas, FCR31 flags/cause/enables, traps, precisão completa de NaN/subnormais e FCC1..FCC7.
 - Nenhuma execução visual de ROM ou instalação no Android 16 foi realizada nesta etapa. CI não comprova funcionamento em aparelho.
-- Branch `dev/n64-clean-start`; `main` permanece intacta.
+- Branch `dev/n64-hle-clean-reboot`; `main` permanece intacta.
 
 
 ## 50. Expansão das conversões COP1 para W/L — 2026-11-03
@@ -1164,7 +1164,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - `348de2bdf6b3b89b711141ea4f1b16921e2b7989` — testes W/L; CI `41568987410` em execução no momento do registro.
 - `d3814f559f17b45c1d33a338865fa65ea938a07f` — validação dos formatos fonte; CI `41569054586` em execução no momento do registro.
 - A falha anterior está registrada e não é tratada como aprovação. Consultar os resultados das CIs antes de declarar esta etapa concluída.
-- Branch de trabalho `dev/n64-clean-start`; `main` não foi alterada.
+- Branch de trabalho `dev/n64-hle-clean-reboot`; `main` não foi alterada.
 - Nenhum teste de ROM em aparelho Android foi realizado nesta etapa.
 
 
@@ -1224,7 +1224,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Esses testes exercitam dois caminhos já previstos no classificador; não adicionam novas categorias de exceção nem ampliam a implementação de produção.
 - CI do commit de testes ainda precisa ser consultada. Se falhar, buscar o log da tarefa e corrigir a causa antes de atualizar o status.
 - Permanecem pendentes Underflow, Inexact, NaN signaling, Unimplemented e validação completa IEEE-754/VR4300. Nenhuma ROM foi executada em aparelho Android 16 nesta etapa.
-- Branch exclusiva: dev/n64-clean-start; main não foi alterada.
+- Branch exclusiva: dev/n64-hle-clean-reboot; main não foi alterada.
 
 
 ## 55. Mudança de prioridade: primeiro jogo executável — 2026-11-03
@@ -1235,7 +1235,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Criado docs/PLANO_PRIMEIRO_JOGO.md com sequência de MVP, critério de sucesso e funcionalidades adiadas. O primeiro quadro só conta se vier de uma ROM real e aparecer no Galaxy A15; CI ou padrão sintético não contam.
 - Próxima informação necessária: nome/região da ROM que o usuário pretende testar, para escolher o primeiro alvo e evitar trabalho genérico sem referência.
 - As CIs dos testes COP1 e das duas atualizações documentais anteriores (41570938873, 41570983496, 41570990915) concluíram success. A prioridade de trabalho muda; não significa que ROM já executa.
-- Branch exclusiva: dev/n64-clean-start. main não foi alterada.
+- Branch exclusiva: dev/n64-hle-clean-reboot. main não foi alterada.
 
 
 ## 56. Alvo definido: GoldenEye 007 — 2026-11-03
@@ -1248,7 +1248,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Região/edição da ROM ainda não informada. Pedir USA, Europe/PAL ou Japan; não presumir região. Não solicitar nem armazenar ROM protegida.
 - Plano específico atualizado em `docs/PLANO_PRIMEIRO_JOGO.md`.
 - Nenhuma ROM foi executada e nenhum jogo foi confirmado como funcional. CI não equivale a teste real no aparelho.
-- Branch exclusiva: `dev/n64-clean-start`; `main` não foi alterada.
+- Branch exclusiva: `dev/n64-hle-clean-reboot`; `main` não foi alterada.
 
 
 ## 57. GoldenEye 007 USA e diagnóstico inicial de OSTask — 2026-11-03
@@ -1260,7 +1260,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Limite explícito: isto ainda NÃO agenda nem executa OSTasks; é observabilidade para correlacionar o descritor com SP DMA, SP_PC e SP_STATUS. Não liberar HALT automaticamente nem executar tarefas artificiais.
 - CI do commit de produção/teste: run `41571771059`, ainda em andamento no momento deste registro. Confirmar antes de declarar sucesso.
 - Nenhuma ROM executada no aparelho; nenhum quadro real do GoldenEye confirmado.
-- Branch exclusiva: `dev/n64-clean-start`; `main` não foi alterada.
+- Branch exclusiva: `dev/n64-hle-clean-reboot`; `main` não foi alterada.
 
 
 ## 58. CI verde e auditoria do executor OSTask — 2026-11-03
@@ -1276,7 +1276,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Próxima etapa obrigatória: inspecionar os traces/ordem de writes SP_STATUS, SP_PC, SP_RD_LEN e SP DMEM em execução real da ROM; então desenhar e testar um despachante que observe eventos reais sem inventar taskAddress nem limpar HALT por conta própria. O runner atual recebe taskAddress explícito e não pode ser chamado com endereço presumido.
 - Arquivos inspecionados: `N64Bus.kt`, `N64RomVideoSession.kt`, `N64SpTaskRunner.kt`, `N64SpTaskBootstrap.kt`, `N64SpTaskDescriptor.kt`, `N64SpTaskMicrocodeTracker.kt`, `N64SpTaskLifecycle.kt`, `N64SpTaskDpCoordinator.kt`, `MainActivity.kt` e testes do runner/sessão.
 - Região confirmada: GoldenEye 007 USA. Nenhuma ROM real foi executada no Galaxy A15 Android 16; nenhum jogo está confirmado como funcional.
-- Branch exclusiva: `dev/n64-clean-start`; `main` não foi alterada.
+- Branch exclusiva: `dev/n64-hle-clean-reboot`; `main` não foi alterada.
 
 
 ## 59. Correção ABI do descritor OSTask — 2026-11-03
@@ -1318,7 +1318,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - `N64RdpFillProcessor.execute()` e `executePackets()` foram mantidos: o segundo valida pacotes e estende a execução para comandos multiword/triângulos, delegando single-word ao primeiro.
 - Módulos de sessão, bootstrap/runner/lifecycle SP e core/unidade vetorial RSP foram mantidos por terem responsabilidades diferentes.
 - CI Android build dos commits de código `d0997d7` e `d4f88c4` estava em execução na última consulta (runs 41799039823 e 41799094882). Não declarar validação final até verificar os resultados.
-- Branch exclusiva `dev/n64-clean-start`; nenhuma alteração foi feita na `main`.
+- Branch exclusiva `dev/n64-hle-clean-reboot`; nenhuma alteração foi feita na `main`.
 
 
 ## 63. Resultado da CI e continuação da auditoria de duplicações — 2026-11-04
@@ -1329,7 +1329,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Pipeline RDP mantido em camadas: parser de pacotes, decoder de setup de triângulo, edge walker e rasterizador têm entradas/saídas diferentes. O caminho de vídeo também separa leitura VI e apresentação Android.
 - A auditoria continua sendo estática/estrutural, não AST/clone local exaustivo dos 122 arquivos. Não declarar que toda duplicação do repositório foi eliminada.
 - Nenhuma nova mudança de código de emulação foi feita nesta etapa; apenas documentação e verificação CI.
-- Próximo passo seguro: continuar a inspeção de utilitários de ROM/memória/CPU e dos testes correspondentes, buscando duplicação literal comprovada antes de qualquer refactor. Não alterar `main`; branch de trabalho `dev/n64-clean-start`.
+- Próximo passo seguro: continuar a inspeção de utilitários de ROM/memória/CPU e dos testes correspondentes, buscando duplicação literal comprovada antes de qualquer refactor. Não alterar `main`; branch de trabalho `dev/n64-hle-clean-reboot`.
 - CI não significa APK instalado no aparelho nem GoldenEye funcional. Teste real no Android 16 ainda precisa ser feito pelo usuário.
 
 
@@ -1341,7 +1341,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Não foram fundidos os caminhos TLB: eles escolhem refill/general vector de acordo com MISS/INVALID/MODIFIED, EXL e BEV. Também não foram alterados os casos de overflow tratados dentro do decoder, que seguem o fluxo de delay slot da instrução.
 - A refatoração não adiciona suporte MIPS nem muda os códigos de exceção. A CI para o commit de código ainda deve ser consultada.
 - A auditoria de CPU é estrutural, não prova de cobertura integral nem validação de hardware. Próximo passo: aguardar CI e continuar a revisão de grupos de instruções/testes procurando duplicação comprovada; evitar dividir o decoder de 900+ linhas sem plano de testes por opcode.
-- Branch `dev/n64-clean-start`; `main` permanece intocada.
+- Branch `dev/n64-hle-clean-reboot`; `main` permanece intocada.
 
 
 ## 65. Auditoria dirigida do decoder R4300 — 2026-11-04
@@ -1352,7 +1352,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Nenhuma nova duplicação de lógica nem falha funcional foi confirmada nesta passada. O decoder de produção não foi alterado.
 - Correção após inspeção integral do bloco de testes: LDL/LDR e LWL/LWR percorrem todos os offsets; SWL/SWR também percorrem todos os offsets de palavra; SDL/SDR percorrem todos os offsets de doubleword. Não foi identificada lacuna de cobertura de offsets para merge loads/stores.
 - Relatório detalhado: docs/AUDITORIA_R4300_INSTRUCOES_2026-11-04.md, commit a13153a3c4bd392c6169fd60a0690a910a076c2e.
-- Limites: CI verde confirma build/testes automatizados, não compatibilidade integral R4300, instalação do APK no aparelho ou GoldenEye funcional. main permanece intacta; trabalho continua em dev/n64-clean-start.
+- Limites: CI verde confirma build/testes automatizados, não compatibilidade integral R4300, instalação do APK no aparelho ou GoldenEye funcional. main permanece intacta; trabalho continua em dev/n64-hle-clean-reboot.
 
 
 ## 66. Auditoria COP0, TLB e COP1 — 2026-11-04
@@ -1362,12 +1362,12 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - COP1: cobertura de transfers, operações S/D básicas, conversões, FCC0, FR=0/FR=1 e exceções selecionadas. Limites reais mantidos: FPU parcial; exceções IEEE não completas (incluindo underflow/inexact); não demonstrado que RM do FCR31 controle o arredondamento de ADD/SUB/MUL/DIV/SQRT; somente FCC0 suportado.
 - Relatório detalhado: docs/AUDITORIA_COP0_TLB_COP1_2026-11-04.md, commit dd9ff6f944dd77426f1ad163c4339d19e4e75c95.
 - Próxima etapa: criar testes de conformidade COP1 para RM, underflow/inexact, NaN/sinal de zero e comparações signaling/non-signaling antes de implementar mudanças. Continuar auditoria de Status e instruções privilegiadas com testes isolados.
-- Nenhuma ROM adicionada. Nenhum código de produção alterado. main permanece intacta; trabalho em dev/n64-clean-start. CI não significa execução de jogo no Android 16.
+- Nenhuma ROM adicionada. Nenhum código de produção alterado. main permanece intacta; trabalho em dev/n64-hle-clean-reboot. CI não significa execução de jogo no Android 16.
 
 
 ## 67. Auditoria de duplicação — DPC/RDP (2026-11-04)
 
-- Continuidade da auditoria geral do repositório na branch `dev/n64-clean-start`; `main` permanece intocada.
+- Continuidade da auditoria geral do repositório na branch `dev/n64-hle-clean-reboot`; `main` permanece intocada.
 - Revisados `N64RdpCommandLength.kt`, `N64RdpCommandStreamParser.kt`, `N64DpcCommandProcessor.kt`, trechos de `N64Bus.kt`, `N64VideoFrame.kt` e testes DPC/parser/framebuffer.
 - Duplicação funcional confirmada: `N64DpcCommandProcessor.process()` repetia as validações de faixa, alinhamento, limites de RDRAM e tamanho máximo que já são centralizadas em `N64RdpCommandStreamParser.parse()`.
 - Refatoração aplicada: removidas as validações repetidas de `process()`; o parser passa a ser a única fonte de validação e framing do fluxo. O construtor ainda valida a configuração do processador.
@@ -1383,7 +1383,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 ## 68. Auditoria de arquivos repetidos e SP/RSP (2026-11-04)
 
 ### Varredura de arquivos
-- Árvore Git recursiva da branch `dev/n64-clean-start`, commit-base `59ba65453116cf08f33b80367fbe9f07d187e7a4`: 125 arquivos; resposta da árvore sem truncamento.
+- Árvore Git recursiva da branch `dev/n64-hle-clean-reboot`, commit-base `59ba65453116cf08f33b80367fbe9f07d187e7a4`: 125 arquivos; resposta da árvore sem truncamento.
 - Comparação dos Git blob SHAs: nenhum grupo de arquivos com conteúdo byte a byte idêntico.
 - Comparação de nomes-base sem diferenciar maiúsculas/minúsculas: única colisão é `build.gradle.kts` na raiz e `app/build.gradle.kts`. São arquivos de configuração Gradle em escopos diferentes, não cópias redundantes; manter ambos.
 - Nenhum arquivo foi apagado. Não há evidência de arquivo duplicado exato nesta revisão.
@@ -1412,7 +1412,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 
 ### CI e limpeza pequena
 - CI do commit `3ad4b4f4837ca8ebfe87882ddf48b284facd7067` (remoção de guardas redundantes SI/SP DMA) concluiu com sucesso: run `41802414913`.
-- Revisado `MainActivity.kt` na branch `dev/n64-clean-start`.
+- Revisado `MainActivity.kt` na branch `dev/n64-hle-clean-reboot`.
 - Removidos cinco imports sem uso (`ClipData`, `ClipboardManager`, `Bitmap`, `ImageView`, `ByteArrayOutputStream`) e o helper sem chamadas `sessionSafeInstructionCount()`.
 - Commit da limpeza: `a9225ad384027a2689bb4aa863acc977940898f0`. CI run `41802747240` estava em execução na última consulta; aguardar resultado antes de declarar validado.
 
@@ -1436,7 +1436,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Consultar o resultado do run `41802747240`.
 - Revisar testes e pontos de entrada de UI para decidir como tornar acessíveis os diagnósticos sem duplicar telas ou criar botões desconectados.
 - Depois continuar auditoria de recursos Android, ciclo de vida e concorrência; manter a distinção entre função sem chamada, função intencionalmente interna e duplicação funcional comprovada.
-- A auditoria global ainda não terminou. `main` permanece intocada; branch de trabalho `dev/n64-clean-start`. CI verde não comprova instalação no Android 16 nem GoldenEye funcional.
+- A auditoria global ainda não terminou. `main` permanece intocada; branch de trabalho `dev/n64-hle-clean-reboot`. CI verde não comprova instalação no Android 16 nem GoldenEye funcional.
 
 
 
@@ -1456,7 +1456,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Os testes sintéticos de vídeo/RDP e CPU ainda não foram reconectados; ficam para etapa separada, após validação destes dois botões e da exclusão mútua.
 - Não foi alterado o motor CPU/RSP/RDP, o boot HLE, a seleção de ROM, nem o Manifest. Nenhum jogo foi executado no aparelho nesta etapa.
 - Próximo passo: confirmar os dois workflows; depois decidir como expor os testes de vídeo e CPU sem sobrecarregar a tela principal (preferir uma tela/área de ferramentas de diagnóstico). Fazer testes de UI e lifecycle; não afirmar GoldenEye funcional.
-- Branch `dev/n64-clean-start`; `main` permanece intocada.
+- Branch `dev/n64-hle-clean-reboot`; `main` permanece intocada.
 
 
 ## 71. Ciclo de vida dos workers e callbacks Android — 2026-11-04
@@ -1487,7 +1487,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - ROM loader verificado nesta etapa: `N64RomLoader.readAllBytes()` já limita o fluxo a 64 MiB antes de bufferizar, trata leituras temporariamente zeradas e possui testes de limite exato, excesso e leitura zero temporária. Nenhuma alteração necessária nesse módulo.
 - Commit da proteção do exportador: `4e632e28303842d08e1a34420411eea538ae62fb`.
 - CI deste commit deve ser consultado antes de considerar a alteração validada.
-- Não houve teste em aparelho nem mudança no motor de emulação. `main` permanece intocada; branch de trabalho `dev/n64-clean-start`.
+- Não houve teste em aparelho nem mudança no motor de emulação. `main` permanece intocada; branch de trabalho `dev/n64-hle-clean-reboot`.
 - Próxima etapa: validar CI; continuar a revisão de concorrência entre exportação, troca de ROM e encerramento, e avaliar testes automatizados da Activity sem introduzir dependências instrumentadas sem necessidade.
 
 
@@ -1504,7 +1504,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
   - `60b115f9730fd8cab5ec5bc55cf06915b977af69` — bloqueia diagnósticos concorrentes durante exportação e rastreamento IPL3.
 - CI do commit `4e632e2` (run `41804002995`) concluiu com sucesso. CI do registro de continuidade `b915a46` (run `41804037336`) concluiu com sucesso. CI dos dois commits desta seção deve ser consultado antes de declarar a correção validada.
 - Limitação: não foi adicionado teste instrumentado de Activity; a exclusão mútua foi verificada por inspeção estática e deverá ser confirmada pelo build/teste automatizado e, posteriormente, no aparelho.
-- Nenhuma alteração no núcleo R4300/RSP/RDP ou na interpretação de ROM. `main` permanece intocada; branch de trabalho `dev/n64-clean-start`.
+- Nenhuma alteração no núcleo R4300/RSP/RDP ou na interpretação de ROM. `main` permanece intocada; branch de trabalho `dev/n64-hle-clean-reboot`.
 - Próxima etapa: confirmar os workflows e revisar o encerramento/estado final dos workers, inclusive se algum caminho de saída antecipada deixa botões desabilitados ou flags presas.
 
 
@@ -1536,7 +1536,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Revisar navegação/retorno e restauração após recriação da Activity, especialmente se o usuário volta do seletor de ROM, de uma página de diagnóstico ou da tela de vídeo.
 - Depois, criar uma área/tela de ferramentas para os testes sintéticos atualmente sem ponto de entrada (`runVideoTest()`, `runTrianglePipelineDemo()`, `runCpuDiagnostic()`), sem misturar esses testes com execução real de ROM e sem apresentá-los como compatibilidade de jogos.
 - Avaliar testes automatizados de estado para as travas de operação antes de adicionar dependências instrumentadas.
-- Branch de trabalho: `dev/n64-clean-start`. `main` permanece intocada. Nenhum jogo foi confirmado funcional em aparelho.
+- Branch de trabalho: `dev/n64-hle-clean-reboot`. `main` permanece intocada. Nenhum jogo foi confirmado funcional em aparelho.
 
 
 ## 75. Área de ferramentas de diagnóstico sintético na interface — 2026-11-04
@@ -1562,7 +1562,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Esta documentação registra a seção 75.
 
 ### Validação e limites
-- Os commits de código foram enviados para `dev/n64-clean-start`.
+- Os commits de código foram enviados para `dev/n64-hle-clean-reboot`.
 - O CI do commit de documentação anterior `d6d55cf` estava pendente na última consulta; verificar antes de considerar a sequência toda verde.
 - CI dos commits desta seção precisa ser consultado após o push.
 - Não foi executado teste instrumentado nem teste em aparelho nesta etapa.
@@ -1572,7 +1572,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 ### Próxima etapa
 - Confirmar CI dos commits `53b64eb`, `e01b2de` e `d6d55cf`.
 - Depois revisar navegação/retorno das telas e considerar um teste automatizado para as travas de operação.
-- Branch de trabalho: `dev/n64-clean-start`.
+- Branch de trabalho: `dev/n64-hle-clean-reboot`.
 
 
 ## 76. Navegação pelo botão Voltar do Android — 2026-11-04
@@ -1599,7 +1599,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Correção estática; precisa de CI e teste em aparelho para validar botão/gesto Voltar.
 - Não persiste estado da CPU nem da sessão ao girar a tela ou recriar a Activity. A ROM pode ser recarregada pela URI persistida, mas uma sessão em execução é interrompida pelo `onDestroy()`.
 - Não foram alterados R4300, RSP, RDP, HLE ou formato de ROM.
-- Branch: `dev/n64-clean-start`; `main` permanece intocada.
+- Branch: `dev/n64-hle-clean-reboot`; `main` permanece intocada.
 
 ### Próxima etapa
 - Confirmar CI do commit de navegação e da documentação da seção 75.
@@ -1625,7 +1625,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Se o provedor revogar o acesso ou o documento desaparecer, a leitura falha e a URI é removida.
 - Não foi executado teste instrumentado nem teste físico de rotação nesta etapa.
 - Não persiste CPU, RAM ou sessão de emulação; uma sessão ativa continua sendo interrompida no encerramento da Activity.
-- Branch: `dev/n64-clean-start`; `main` permanece intocada.
+- Branch: `dev/n64-hle-clean-reboot`; `main` permanece intocada.
 
 ### Próxima etapa
 - Confirmar CI dos commits de navegação e restauração.
@@ -1658,7 +1658,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - A análise é estática do código. Não foram executados testes instrumentados, rotação física, encerramento forçado do processo ou cancelamento em aparelho.
 - O seletor não cancela uma leitura já iniciada; o mecanismo `romLoadGeneration` impede callbacks obsoletos de substituir uma seleção mais recente, mas a leitura antiga pode continuar consumindo I/O até terminar.
 - A substituição de uma ROM selecionada por outra ainda limpa `cartridgeBus` e `cartridgeRomBytes` no início da leitura. Se a nova seleção falhar, o aplicativo volta ao estado sem ROM carregada; isso é comportamento atual, não foi alterado.
-- Branch de trabalho: `dev/n64-clean-start`. `main` permanece intocada.
+- Branch de trabalho: `dev/n64-hle-clean-reboot`. `main` permanece intocada.
 
 ### Próxima etapa
 - Revisar o mecanismo `romLoadGeneration` e o comportamento quando leituras concorrentes terminam fora de ordem, incluindo consistência entre URI persistida e ROM carregada.
@@ -1765,7 +1765,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - A etapa corrige a sinalização de conversões inválidas, mas não completa Underflow/Inexact nas operações aritméticas ou conversões com perda de precisão.
 - O modo RM ainda não é aplicado a ADD/SUB/MUL/DIV/SQRT.
 - A análise e os testes são automatizados; ainda não há validação de GoldenEye 007 em aparelho real.
-- Branch de trabalho: dev/n64-clean-start. main permanece intocada.
+- Branch de trabalho: dev/n64-hle-clean-reboot. main permanece intocada.
 
 ### Próxima etapa
 - Confirmar o CI desta etapa.
@@ -1794,7 +1794,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 
 ### Limites
 - Revisão estática dos caminhos de CPU e testes existentes; sem validação em aparelho ou ROM comercial.
-- Branch: dev/n64-clean-start. main permanece intocada.
+- Branch: dev/n64-hle-clean-reboot. main permanece intocada.
 
 
 ## 83. COP0 — máscara arquitetural de MTC0 Status — 2026-11-04
@@ -1816,7 +1816,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 ### Limites
 - A máscara não implementa efeitos ainda ausentes dos campos Status, como RE, RP, KX/SX/UX e todos os diagnósticos; filtrar a escrita não significa que todos esses recursos estejam simulados.
 - Não foi feita validação de hardware nem de ROM comercial.
-- Branch: dev/n64-clean-start. main permanece intocada.
+- Branch: dev/n64-hle-clean-reboot. main permanece intocada.
 
 
 ## 84. COP0 — privilégio da instrução CACHE — 2026-11-04
@@ -1838,7 +1838,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 ### Limites e próximos passos
 - CACHE não implementa dados/tags reais, index/hit operations, writeback/fill ou estados de cache.
 - Investigar separadamente a tradução do endereço e os efeitos das operações suportadas antes de ampliar a emulação.
-- Branch: dev/n64-clean-start. main permanece intocada.
+- Branch: dev/n64-hle-clean-reboot. main permanece intocada.
 
 
 ## 85. Correção de regressão nos testes COP0 — 2026-11-04
@@ -1848,7 +1848,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Correção: o teste de transferência genérica foi movido para EPC (CP0 register 14), que continua sendo um registrador de 32 bits com transferência MTC0/MFC0 sign-extended. Os testes específicos de Status permanecem responsáveis por verificar máscara, campos reservados e TS.
 - Não removemos a validação de Status nem enfraquecemos seus testes.
 - Esta correção ainda precisa passar pela suíte completa e CI; não declarar aprovação antecipada.
-- Branch: dev/n64-clean-start. main permanece intocada.
+- Branch: dev/n64-hle-clean-reboot. main permanece intocada.
 
 
 ## 86. Correção da máscara MTC0 Status conforme figura do manual VR4300 — 2026-11-04
@@ -1865,7 +1865,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 
 ## 87. Auditoria dos efeitos de Status em interrupções e privilégios — 2026-11-04
 
-- Revisão dirigida de `R4300Cpu.kt`, `R4300CpuTest.kt` e dos testes de COP0 existentes na branch `dev/n64-clean-start`.
+- Revisão dirigida de `R4300Cpu.kt`, `R4300CpuTest.kt` e dos testes de COP0 existentes na branch `dev/n64-hle-clean-reboot`.
 - `R4300Cpu.step()` chama `serviceMiInterrupt()` antes de buscar/executar cada instrução. A rotina atualiza Cause.IP2 quando a memória é `N64Bus`, e avalia os bits Cause.IP[7:0] em conjunto com Status.IM[7:0], Status.IE, EXL e ERL.
 - O tratamento de MTC0 Status grava os campos autorizados imediatamente. Assim, a nova configuração é observada no início do próximo `step()`; não foi encontrada necessidade demonstrável de um mecanismo extra de reavaliação no próprio MTC0.
 - A verificação de privilégio COP0/CACHE usa o modo efetivo: EXL/ERL forçam Kernel; caso contrário KSU=00 é Kernel e os outros códigos não são tratados como Kernel. COP0 exige CU0 fora do modo Kernel. CU1 é verificado antes de instruções COP1 e operações de memória COP1.
@@ -1873,7 +1873,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Adicionado `R4300StatusInterruptTest.kt` com três casos: MTC0 Status habilita IE+IM2 e a interrupção pendente é entregue antes da próxima instrução; IP2 não é atendida com IE=0; IP2 não é atendida com IM2=0.
 - CI do commit de testes `f297e3275f2d429df46eaeb7bf474d37301313c0`: **success**. Run: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41809845324
 - Os testes exercitam a linha IP2 já refletida em Cause usando N64Memory. A integração elétrica do MI real via N64Bus e os modos de privilégio ainda precisam de casos de integração específicos; esta etapa não declara o subsistema COP0 completo.
-- Branch: `dev/n64-clean-start`. `main` permanece intocada.
+- Branch: `dev/n64-hle-clean-reboot`. `main` permanece intocada.
 
 
 ## 88. Correção da integração SI → MI → COP0 — 2026-11-04
@@ -1886,7 +1886,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - CI da correção de código: run 41850763818 **success** — https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41850763818
 - CI dos testes SI e integração CPU: run 41850785077 **success** — https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41850785077
 - Limites: o modelo SI ainda executa DMA síncrono e não implementa protocolo Joybus, temporização real ou periféricos. AI continua explicitamente sem geração de interrupção; não foi alterado nesta etapa.
-- Branch: `dev/n64-clean-start`. `main` permanece intocada.
+- Branch: `dev/n64-hle-clean-reboot`. `main` permanece intocada.
 
 
 ## 89. Auditoria do Audio Interface (AI) — 2026-11-04
@@ -1899,7 +1899,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Decisão: não implementar DMA AI instantâneo nem levantar MI_INTR_AI na escrita de AI_LEN. Isso seria temporalmente incorreto e esconderia a ausência do scheduler. Nenhuma alteração de runtime nesta etapa.
 - Próxima arquitetura necessária: base de tempo RCP/CPU com unidades de ciclos documentadas; FIFO AI de dois slots; alinhamento e limite de comprimento; consumo por DACRATE; AI_LENGTH como bytes restantes; AI_STATUS FIFO_FULL/BUSY; conclusão de buffer e MI_INTR_AI; acknowledge de AI_STATUS. A saída de áudio PCM pode ser implementada em etapa separada, sem confundir interrupção de hardware com reprodução audível.
 - Teste atual `N64BusAiRegisterTest.kt` cobre apenas máscaras de registradores e comportamento idle simplificado; não deve ser interpretado como cobertura de DMA/áudio real.
-- Branch: `dev/n64-clean-start`. `main` permanece intocada.
+- Branch: `dev/n64-hle-clean-reboot`. `main` permanece intocada.
 
 
 ## 90. Auditoria da distribuição de tempo CPU/VI — 2026-11-04
@@ -1911,7 +1911,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Não foi feita alteração no runtime nesta auditoria. Preservamos o comportamento já testado de COP0 Count e VI.
 - Arquitetura proposta para próxima etapa: definir uma unidade explícita de ciclo-base e um contrato de avanço emitido pelo CPU após cada etapa, incluindo entrada de interrupção/exceções; ligar o VI e futuros dispositivos a esse avanço por divisores/razões documentados; substituir gradualmente o contador aproximado do VI somente após testes de equivalência. O AI deverá consumir bytes/amostras a partir do mesmo relógio de hardware, respeitando DACRATE e fila de dois buffers.
 - Critério de aceitação antes de implementar AI: testes determinísticos provando que o mesmo total de ciclos produz o mesmo avanço de dispositivos independentemente do tamanho dos lotes do executor, que pausas/cancelamentos não consomem ciclos extras e que exceções/interrupções não deixam o relógio parar.
-- Branch: `dev/n64-clean-start`. `main` permanece intocada.
+- Branch: `dev/n64-hle-clean-reboot`. `main` permanece intocada.
 
 ## 91. Ledger centralizado de ciclos estimados da CPU — 2026-11-04
 
@@ -1948,7 +1948,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - As execuções dos commits acima foram disparadas; confirmar os resultados da execução mais recente antes de considerar a etapa validada. As execuções intermediárias dos commits anteriores não substituem a validação do último commit de teste.
 - Não anunciar APK novo como aprovado até a conclusão do CI.
 
-- Branch: dev/n64-clean-start. main permanece intocada.
+- Branch: dev/n64-hle-clean-reboot. main permanece intocada.
 
 
 ## 92. Auditoria de referência do relógio VI e divergência do avanço atual — 2026-11-04
@@ -1973,7 +1973,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Nenhuma alteração de runtime nesta auditoria. Não substituir a constante por um valor calculado sem primeiro definir a unidade do ledger, a região/modo de vídeo, a razão racional CPU↔VI, a semântica half-line/terminal-count e os efeitos de VI_CURRENT acknowledge.
 - Próxima etapa: desenhar e testar um acumulador racional determinístico para conversão de ciclos CPU em clocks VI, preservando resto entre lotes; em seguida modelar VI_V_TOTAL/VI_CURRENT em half-lines e só então migrar o gatilho de MI_INTR_VI. A contagem atual fica preservada até essa migração passar testes de equivalência e regressão.
 - Auditoria de duplicações/arquivos repetidos continua aberta como trilha transversal; esta seção não declara auditoria global concluída.
-- Branch: `dev/n64-clean-start`. `main` permanece intocada.
+- Branch: `dev/n64-hle-clean-reboot`. `main` permanece intocada.
 
 
 ## 93. Acumulador racional de clock CPU → VI (preparação isolada) — 2026-11-04
@@ -2002,7 +2002,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 
 ### Estado de validação
 - CI da implementação/testes ainda precisa ser consultado para o HEAD atual. Não declarar a suíte aprovada nem APK atualizado até confirmar o workflow.
-- Branch: `dev/n64-clean-start`. `main` permanece intocada.
+- Branch: `dev/n64-hle-clean-reboot`. `main` permanece intocada.
 
 
 ## 94. Contrato de VI_CURRENT/VI_INTR em half-lines — 2026-11-04
@@ -2024,7 +2024,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Próxima alteração deve introduzir um pequeno modelo isolado de contador VI em half-lines, com testes para avanço de 2 unidades por scanline, bit de campo, terminal count (+1), comparação VI_INTR em half-lines, wrap e acknowledge por escrita em VI_CURRENT.
 - Só depois ligar esse contador ao relógio racional. A razão CPU→VI ainda é provisória enquanto o ledger CPU usa dois ciclos estimados por etapa, sem latência por opcode e sem ciclos de DMA/RSP.
 - Não interpretar os testes atuais como prova de VI fiel; eles validam apenas a aproximação antiga.
-- Branch: `dev/n64-clean-start`. `main` permanece intocada.
+- Branch: `dev/n64-hle-clean-reboot`. `main` permanece intocada.
 
 
 ## 95. Modelo isolado de contador VI em half-lines — 2026-11-04
@@ -2079,7 +2079,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Arquivos: `N64ViInterruptLatch.kt` e `N64ViInterruptLatchTest.kt`.
 - Commits: implementação 0ea1072ae5dbccaa3056d8875a87c8a1fde3987e; testes 8a608ee01329f26bf671dd9bf4b7577c2c1c87ee.
 - CI: consultar workflow do commit de teste antes de marcar como validado.
-- Branch `dev/n64-clean-start`; `main` intacta.
+- Branch `dev/n64-hle-clean-reboot`; `main` intacta.
 
 
 ### Etapa 98 — controlador VI isolado
@@ -2090,13 +2090,13 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Arquivos: `N64ViInterruptController.kt` e `N64ViInterruptControllerTest.kt`.
 - Commits: controlador e906d889c79b89618d9498eb3e4d1d33bc291721; testes f0b05bd67baad0dc9a9dfb544979011cd95b2feb.
 - CI dos testes precisa ser confirmado antes de marcar esta etapa como validada.
-- Branch `dev/n64-clean-start`; `main` intacta.
+- Branch `dev/n64-hle-clean-reboot`; `main` intacta.
 
 
 ## 99. Revisão pós-etapa 98 e bloqueios para integração no N64Bus — 2026-11-04
 
 ### Confirmação do estado remoto
-- HEAD observado na branch `dev/n64-clean-start`: `7e571a1ab653b7289bbc1b65da9571a1745bf7c0` (`Document isolated VI interrupt controller`).
+- HEAD observado na branch `dev/n64-hle-clean-reboot`: `7e571a1ab653b7289bbc1b65da9571a1745bf7c0` (`Document isolated VI interrupt controller`).
 - A seção 98 e os arquivos do controlador foram lidos novamente no repositório remoto.
 - `N64ViInterruptController` compõe `N64ViHalfLineCounter` e `N64ViInterruptLatch`; avança duas half-lines por scanline, compara após o avanço e mantém o pending até acknowledge.
 - O controlador não está conectado a `N64Bus`, não converte ciclos CPU em clocks VI e não emite MI_INTR_VI.
@@ -2122,7 +2122,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - A próxima tarefa de código deve preparar um contrato de integração e testes de regressão MMIO, sem ligar o novo contador ao loop principal até a conversão temporal ser justificada.
 
 ### Estado geral
-- Branch: `dev/n64-clean-start`.
+- Branch: `dev/n64-hle-clean-reboot`.
 - `main` permanece intocada.
 - GoldenEye não foi validado no aparelho nesta etapa.
 - Auditoria transversal de duplicação de código e arquivos repetidos continua aberta; esta revisão focou o caminho VI e não declara a auditoria global concluída.
@@ -2135,7 +2135,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Nenhum código de produção foi alterado e o `N64ViInterruptController` permanece isolado.
 - Estes testes caracterizam o contador aproximado atual em scanlines, não o contrato half-line nem fidelidade total do hardware. O teste de VI_V_SYNC não define reset de fase ou comportamento interlaced.
 - Aguardar CI do commit antes de marcar como aprovado. Próximo: analisar reprogramação de VI_V_SYNC/VI_INTR e definir ponte de clock para o ledger CPU; não substituir `advanceViInstructions` ainda.
-- Branch `dev/n64-clean-start`; `main` intacta.
+- Branch `dev/n64-hle-clean-reboot`; `main` intacta.
 
 
 ### Correção da etapa 100 — expectativa de wrap do VI_V_SYNC
@@ -2144,7 +2144,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Correção restrita ao teste: usa `VI_V_SYNC=5`, avança quatro linhas e verifica CURRENT=4; reprograma para `VI_V_SYNC=3`, avança uma linha e verifica CURRENT=2. Assim, demonstra que o novo valor de V_SYNC rege o wrap seguinte, sem alterar código de produção nem afirmar semântica fiel ao hardware.
 - Commit da correção: `18b512b8d51e8025531013dcb109901fb4d6c9b4`.
 - CI da correção ainda precisa ser consultado. APK não foi disponibilizado pelo run falho; aguardar novo artifact após CI verde.
-- Branch `dev/n64-clean-start`; `main` permanece intocada.
+- Branch `dev/n64-hle-clean-reboot`; `main` permanece intocada.
 
 
 ## 101. Auditoria do contrato de reprogramação dos registradores VI — 2026-11-04
@@ -2171,7 +2171,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Não há evidência técnica suficiente nas referências consultadas para afirmar se uma escrita de V_SYNC durante um campo reinicia o contador, preserva a fase absoluta ou só altera o terminal count no próximo wrap. Não implementar nenhuma dessas hipóteses no runtime.
 - A amostragem do comparador deve permanecer explícita como evento temporal; não fazer comparação imediata em write de VI_INTR até haver evidência de hardware.
 - Próxima etapa: criar uma matriz de testes/contrato para presets NTSC/PAL e progressive/interlaced, incluindo a relação entre VI_STATUS.SERRATE e VI_V_SYNC; manter a política de reprogramação em aberto. Depois, avaliar limites de 10 bits e compatibilidade entre os helpers e o MMIO real.
-- `N64Bus` e o loop de execução permanecem sem alterações nesta etapa. Branch `dev/n64-clean-start`; `main` intacta. Auditoria global de duplicação continua aberta.
+- `N64Bus` e o loop de execução permanecem sem alterações nesta etapa. Branch `dev/n64-hle-clean-reboot`; `main` intacta. Auditoria global de duplicação continua aberta.
 
 
 ## 102. Matriz de modos VI NTSC/PAL e bit SERRATE — 2026-11-04
@@ -2202,7 +2202,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 ### Validação
 - A auditoria/documentação da etapa 101, commit `acfb65b3deef3aff6857c2811c9a45400c05daad`, foi confirmada no CI run `41897533892`: **success**.
 - Os commits de teste desta etapa dispararam execuções separadas; consultar o CI do HEAD atual antes de declarar a matriz aprovada ou disponibilizar APK.
-- Branch `dev/n64-clean-start`; `main` permanece intocada. A auditoria global de duplicação de código e arquivos repetidos continua aberta.
+- Branch `dev/n64-hle-clean-reboot`; `main` permanece intocada. A auditoria global de duplicação de código e arquivos repetidos continua aberta.
 
 ### Resultado CI da etapa 102 e auditoria dos limites VI — 2026-11-04
 
@@ -2231,7 +2231,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Verificar a definição documentada dos campos reservados e readback de VI_STATUS, VI_INTR, VI_V_SYNC e VI_CURRENT.
 - Separar claramente: máscara de coordenadas de janela, largura dos registradores de timing e largura/semântica do contador CURRENT. Não renomear constantes ou alterar o runtime apenas por limpeza.
 - Depois, preparar testes de integração MMIO para o novo controlador isolado, sem ainda ligar seu relógio ao loop CPU. A integração continua bloqueada pela conversão temporal CPU→VI e pela política de reprogramação de V_SYNC.
-- Branch `dev/n64-clean-start`; `main` intacta; auditoria global de duplicação de código/arquivos repetidos continua aberta.
+- Branch `dev/n64-hle-clean-reboot`; `main` intacta; auditoria global de duplicação de código/arquivos repetidos continua aberta.
 #### Complemento de evidência — campos reservados e readback
 - A documentação comunitária n64docs descreve VI_STATUS bits 0–1 como formato de pixel, bits 2–4 como efeitos, bit 6 como SERRATE, bits 8–9 como antialiasing, e bits 5/7/11–15 como reservados; bits 10 e 16–31 são descritos como unused. Ela não especifica máscara/readback dos bits reservados. Fonte: https://n64.readthedocs.io/ (seção Video Interface).
 - A mesma documentação deixa VI_INTR e VI_V_SYNC como TODO, portanto não confirma a largura efetiva, a leitura dos bits altos ou a máscara 0x3FF desses dois registradores.
@@ -2266,7 +2266,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - A alteração só trata o campo de endereço de VI_ORIGIN. Não afirma que todos os registradores VI tenham a mesma política de máscara/readback.
 - VI_WIDTH tem campo documentado de 12 bits no header RCP; ainda requer auditoria separada antes de qualquer alteração.
 - O runtime VI continua avançando por orçamento aproximado de instruções; GoldenEye não foi validado no aparelho nesta etapa.
-- Branch `dev/n64-clean-start`; `main` permanece intocada. A auditoria global de duplicação de código e arquivos repetidos continua aberta.
+- Branch `dev/n64-hle-clean-reboot`; `main` permanece intocada. A auditoria global de duplicação de código e arquivos repetidos continua aberta.
 ## 105. Migração do início de jogo para runtime HLE guest — 2026-11-04
 
 - Objetivo confirmado: substituir o início experimental atual por runtime HLE real, sem PIF ROM/BIOS externo, começando por GoldenEye 007 USA (CIC 6102/7101).
@@ -2279,7 +2279,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Run layout 41900220274 e run teste 41900225774 foram disparados; consultar status antes de declarar CI aprovado.
 - Nenhuma alteração em MainActivity ainda: não remover o worker atual até que o novo runtime guest tenha cobertura suficiente. Nenhum jogo declarado funcional.
 - Próximo: acesso seguro a memória guest e codec OSThread; depois context ABI, resolução/interceptação de APIs libultra, eventos reais e agendamento RSP. Detalhes em docs/HLE_RUNTIME_LAUNCH_MIGRATION_2026-11-04.md.
-- Branch dev/n64-clean-start; main permanece intocada. Auditoria global de duplicação segue aberta.
+- Branch dev/n64-hle-clean-reboot; main permanece intocada. Auditoria global de duplicação segue aberta.
 
 ## 106. Memória guest segura e correção do ABI OSThread — 2026-11-04
 
@@ -2307,7 +2307,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - CI consolidada validada no run 41903604215 success, incluindo codec, padding, memória guest e mapper.
 - O codec é somente serialização ABI. Não enfileira threads, não implementa chamadas libultra, não troca contexto da CPU e não integra a MainActivity. Nenhum jogo funcional confirmado.
 - Próximo: confirmar CI; então mapear explicitamente contexto serializado para `R4300Cpu.ContextSnapshot`, incluindo Status/PC/HI/LO/GPR, e documentar os campos não preservados (K0/K1, reservation LL/SC, delay-slot e FR/FPU). Criar testes round-trip snapshot↔ABI antes de qualquer scheduler guest.
-- Branch `dev/n64-clean-start`; `main` intacta. Auditoria global de duplicação de código/arquivos repetidos continua aberta.
+- Branch `dev/n64-hle-clean-reboot`; `main` intacta. Auditoria global de duplicação de código/arquivos repetidos continua aberta.
 
 ## 108. Confirmação do ABI OSThread específico de GoldenEye — 2026-11-04
 
@@ -2417,7 +2417,7 @@ Objetivo confirmado pelo usuário: a build do aplicativo deve iniciar como um ap
 
 Preservação:
 - Criada a branch independente `dev/n64-hle-clean-reboot` a partir do commit `d3aa9b5abe81586c03652f300c52de304d5b1ed0`.
-- A branch original `dev/n64-clean-start` permanece preservada.
+- A branch original `dev/n64-hle-clean-reboot` permanece preservada.
 - A branch `main` não foi alterada.
 - Todo o histórico e os fontes anteriores continuam acessíveis na branch original; nesta branch nova, as classes antigas ainda existem no repositório, mas não são chamadas pela Activity de entrada.
 
@@ -2609,3 +2609,13 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Commits: executor `e317d104e8ddd29206bb488e0d461b5e9f463b01`; testes `e0856a3464523ca1dc9254dd67b06b9145441390`; correções das asserções de NOR/GPR0 `1e2782bf8aa559825d86e44e6cd9eaadd49bdf3c`.
 - CI dos três commits do executor/testes está em andamento na última atualização: runs `41931202457`, `41931210273` e `41931235161`. Não declarar esta seção aprovada nem APK atualizado até verificar conclusão e artifact.
 - Próximo: confirmar CI e corrigir qualquer falha; depois implementar operações HI/LO multiply/divide com regras MIPS III verificadas, ou branch/delay-slot como camada separada. Não conectar Activity nem afirmar boot de GoldenEye.
+
+
+### Correção de validação do executor SPECIAL — 2026-11-04
+
+- A CI `41931808295` falhou na compilação Kotlin porque uma quebra de linha foi inserida como caracteres literais `\\n`; corrigido no commit `6321171dabe2eab2119c1d82377a040ff53c4bfb`.
+- A CI seguinte, run `41932181540`, compilou e montou o APK, mas 1 de 56 testes falhou: `wordShiftsSignExtendTheirThirtyTwoBitResult`.
+- A falha estava no vetor/expectativa do teste SLL: deslocar `0x80000000` à esquerda por 1 produz `0x00000000`, não `0xFFFFFFFF00000000`. O teste foi separado em três estados independentes para SLL, SRL e SRA, com valores de entrada e resultados consistentes com a operação.
+- Commit do teste corrigido: `7dfe194fc96bbd6c318acb9cfa7b996bf5d8cea7`.
+- A implementação do executor não foi alterada nesta correção. A CI ainda precisa validar o teste corrigido; não declarar a seção 125 aprovada nem considerar o APK pronto até a conclusão da nova execução e conferência do artifact.
+- Branch de trabalho correta: `dev/n64-hle-clean-reboot`. A branch `main` permanece intocada.
