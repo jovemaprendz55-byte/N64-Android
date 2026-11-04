@@ -9,7 +9,7 @@ package com.jsr.n64android
  */
 class N64HleR4300ImmediateExecutor {
     fun supports(opcode: Int): Boolean = opcode in setOf(
-        OP_ADDI, OP_ADDIU, OP_ANDI, OP_ORI, OP_XORI, OP_SLTI, OP_SLTIU, OP_LUI
+        OP_ADDI, OP_ADDIU, OP_DADDI, OP_DADDIU, OP_ANDI, OP_ORI, OP_XORI, OP_SLTI, OP_SLTIU, OP_LUI
     )
 
     fun execute(instruction: N64HleR4300DecodedInstruction, state: N64HleR4300CpuState) {
@@ -28,6 +28,16 @@ class N64HleR4300ImmediateExecutor {
                 sum.toInt().toLong()
             }
             OP_ADDIU -> (state.readGpr(instruction.rs).toInt() + instruction.immediateSigned).toLong()
+            OP_DADDI -> {
+                val left = state.readGpr(instruction.rs)
+                val immediate = instruction.immediateSigned.toLong()
+                val sum = left + immediate
+                check(((left xor sum) and (immediate xor sum)) >= 0L) {
+                    "DADDI signed overflow requires an architectural exception, which is not implemented"
+                }
+                sum
+            }
+            OP_DADDIU -> state.readGpr(instruction.rs) + instruction.immediateSigned.toLong()
             OP_ANDI -> state.readGpr(instruction.rs) and instruction.immediateUnsigned.toLong()
             OP_ORI -> state.readGpr(instruction.rs) or instruction.immediateUnsigned.toLong()
             OP_XORI -> state.readGpr(instruction.rs) xor instruction.immediateUnsigned.toLong()
@@ -46,6 +56,8 @@ class N64HleR4300ImmediateExecutor {
     private companion object {
         const val OP_ADDI = 0x08
         const val OP_ADDIU = 0x09
+        const val OP_DADDI = 0x18
+        const val OP_DADDIU = 0x19
         const val OP_SLTI = 0x0A
         const val OP_SLTIU = 0x0B
         const val OP_ANDI = 0x0C
