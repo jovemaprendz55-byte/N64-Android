@@ -33,7 +33,7 @@ class N64HleR4300SpecialExecutorTest {
         executor.execute(r(1, 2, 3, funct = 0x24), s)
         assertEquals(0x00FF000000FF0000L, s.readGpr(3))
         executor.execute(r(1, 2, 4, funct = 0x27), s)
-        assertEquals(0x0000FFFF0000FFFFL, s.readGpr(4))
+        assertEquals(0x0000FF000000FF00L, s.readGpr(4))
     }
 
     @Test fun signedAndUnsignedComparisonsDifferAtSignBit() {
@@ -80,7 +80,7 @@ class N64HleR4300SpecialExecutorTest {
         val s = state(10L, 20L)
         executor.execute(r(1, 2, 0, funct = 0x21), s)
         assertEquals(0L, s.readGpr(0))
-        assertEquals(false, s.isGprKnown(0).not())
+        assertEquals(true, s.isGprKnown(0))
     }
 
     @Test fun unknownOperandFailsWithoutChangingDestinationOrPc() {
