@@ -2,24 +2,19 @@ package com.jsr.n64android
 
 import android.app.Activity
 import android.content.Intent
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.ContentValues
 import android.provider.MediaStore
-import android.graphics.Bitmap
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.os.Bundle
 import android.os.Build
 import android.view.Gravity
 import android.widget.Button
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import android.text.method.ScrollingMovementMethod
-import java.io.ByteArrayOutputStream
 import java.io.IOException
 
 class MainActivity : Activity() {
@@ -270,9 +265,6 @@ class MainActivity : Activity() {
         romVideoThread = worker
         worker.start()
     }
-
-    private fun sessionSafeInstructionCount(session: N64RomVideoSession?): Long =
-        session?.executedInstructionCount() ?: 0L
 
     private fun sessionSafeFrameCount(session: N64RomVideoSession?): Long =
         session?.publishedFrameCount() ?: 0L
