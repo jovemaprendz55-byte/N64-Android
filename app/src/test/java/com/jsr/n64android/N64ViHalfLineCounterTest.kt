@@ -97,4 +97,15 @@ class N64ViHalfLineCounterTest {
         }
     }
 
+
+    @Test fun acceptsTenBitMaximumViVSyncTerminalCount() {
+        val counter = N64ViHalfLineCounter()
+
+        repeat(511) { counter.advanceScanline(0x3FF) }
+        assertEquals(1022, counter.current)
+
+        counter.advanceScanline(0x3FF)
+        assertEquals(0, counter.current)
+    }
+
 }
