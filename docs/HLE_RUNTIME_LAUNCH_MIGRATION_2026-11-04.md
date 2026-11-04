@@ -107,11 +107,11 @@ Adicionado `N64HleGuestOsThreadCodec.kt`:
 - Lê e grava GPRs de 64 bits presentes no ABI: AT, V0/V1, A0–A3, T0–T9, S0–S7, GP, SP, S8 e RA.
 - GPR zero, K0 e K1 não existem no bloco salvo e são expostos como zero na leitura; são ignorados na escrita.
 - HI/LO como 64 bits; SR/PC/Cause/BadVAddr/RCP/FPCSR como 32 bits.
-- Os 16 slots FP são preservados como pares opacos de 64 bits. Não se converte para FPR do R4300 antes de validar FR=0/FR=1 e a convenção de ordem dos dois f32.
+- O mapper agora converte os 16 slots FP para FGRs FR=0 conforme o manual VR4300: FGR par contém a palavra baixa e FGR ímpar a palavra alta. FPCSR vai para FCR31; FR=1 é rejeitado. Quando `fpUsed=0`, os bancos FPR/FCR do template são preservados.
 - Ponteiros reais do cabeçalho são tratados como 32 bits; a palavra de padding em `0x1C` é preservada sem interpretação. escrita aceita forma zero-extended ou sign-extended e rejeita valores maiores que 32 bits.
 - Valida a faixa completa do OSThread e estado/flags/ponteiros antes da primeira escrita. A classe não altera filas, prioridades, scheduler nem CPU.
 
-Testes em `N64HleGuestOsThreadCodecTest.kt` cobrem round-trip, offsets físicos do padding/context/PC, signed priority/id, GPRs salvos/omitidos, pares FP opacos, pointers sign-extended, limite da estrutura e rejeição prévia de valores inválidos.
+Testes em `N64HleGuestOsThreadCodecTest.kt` cobrem round-trip, offsets físicos do padding/context/PC, signed priority/id, GPRs salvos/omitidos, pares FP e pointers sign-extended, limite da estrutura e rejeição prévia de valores inválidos. `N64HleGuestOsThreadContextMapperTest.kt` cobre a conversão FR=0 e rejeição FR=1.
 
 Commits do codec e testes:
 - codec: `888784e76cbc0c1657d3f249667b3ac4c9303ccc`
@@ -121,3 +121,30 @@ Commits do codec e testes:
 - teste de ponteiro tardio inválido: `dc17b95513905a61d14567d91255da8f6ce86ee7`
 
 A CI dos commits de codec/testes está em andamento; consultar o HEAD e os runs mais recentes antes de declarar aprovado.
+
+
+## Etapa 4 — mapper OSThread ↔ ContextSnapshot e correção FR=0 — 2026-11-04
+
+Adicionado `N64HleGuestOsThreadContextMapper.kt` para converter o contexto guest em `R4300Cpu.ContextSnapshot` e vice-versa.
+
+Durante a validação, o manual do VR4300 mostrou que em FR=0 o FGR par guarda os 32 bits inferiores e o ímpar os 32 bits superiores. A implementação anterior de `readFprDouble/writeFprDouble` fazia o inverso. Isso foi corrigido em `R4300Cpu.kt`; os testes COP1 de memória e aritmética foram atualizados.
+
+- Status.FR=1 é rejeitado pelo mapper; o contrato libultra usado aqui é FR=0.
+- Cada slot FP de 64 bits do contexto guest é dividido em FGR par (low 32) e ímpar (high 32).
+- FPCSR é mapeado para FCR31.
+- Quando `fpUsed=0`, os bancos FPR/FCR do snapshot-template são preservados, como exige a política de dispatch que não restaura FP para thread sem uso do coprocessador.
+- GPRs salvos, HI/LO, Status, Cause, BadVAddr e PC são mapeados. K0/K1 são omitidos/zerados.
+- TLB, Count divider, random-reset state e outros campos ausentes no ABI são herdados do template. Delay-slot pendente é limpo porque OSThread guarda PC de retomada, não um branch em voo.
+- RCP mask permanece no campo guest separado; não foi incorporado ao snapshot CPU.
+- Isso ainda não implementa scheduler, fila, troca de contexto ao vivo ou call gates.
+
+Fonte FPU: manual VR4300, seção 17.3 — FR=0 usa registradores pares para low-order e ímpares para high-order: https://n64dev.org/p/U10504EJ7V0UMJ1.pdf
+
+Commits:
+- CPU FR=0 corrigido: `9749f5db726c8516ba9eaf2ad4f466c5cef8905e`
+- teste LDC1/SDC1: `04b9a684d7c844984e280dc0f9f1a23b17abc023`
+- testes COP1 aritmética: `80ce285307d29e136a5ea8debd856f7dfae35f53`
+- mapper atualizado: `d0277d8eb2d2632de3b07a4010ccca2c76cf4fef`
+- testes mapper: `c1360ededcf6896e0c8e69c83e01b91333a68e0f`
+
+CI dos commits está em andamento; confirmar o run mais recente antes de declarar verde.
