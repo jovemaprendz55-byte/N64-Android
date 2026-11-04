@@ -32,20 +32,16 @@ class N64HleGuestCallDispatcher(
     fun register(symbol: String, guestAddress: Long, evidence: String, handler: Handler) {
         require(symbol.isNotBlank()) { "Guest call symbol cannot be blank." }
         require(evidence.isNotBlank()) { "A verified address evidence reference is required." }
-        require(guestAddress and 3L == 0L) { "Guest call entry must be word-aligned." }
-        val low = guestAddress.toInt()
-        require(guestAddress == low.toLong() || guestAddress == (low.toLong() and 0xFFFFFFFFL)) {
-            "Guest call entry must fit in a 32-bit address."
-        }
-        check(!entriesByAddress.containsKey(guestAddress)) {
-            "Guest call address is already registered: 0x${guestAddress.toULong().toString(16)}"
+        val canonicalAddress = canonicalAddress(guestAddress)
+        check(!entriesByAddress.containsKey(canonicalAddress)) {
+            "Guest call address is already registered: 0x${canonicalAddress.toULong().toString(16)}"
         }
         check(!addressesBySymbol.containsKey(symbol)) {
             "Guest call symbol is already registered: $symbol"
         }
-        val registration = Registration(symbol, guestAddress, evidence)
-        entriesByAddress[guestAddress] = Entry(registration, handler)
-        addressesBySymbol[symbol] = guestAddress
+        val registration = Registration(symbol, canonicalAddress, evidence)
+        entriesByAddress[canonicalAddress] = Entry(registration, handler)
+        addressesBySymbol[symbol] = canonicalAddress
     }
 
     /** Installs the table as the CPU's pre-fetch boundary hook. */
@@ -59,7 +55,7 @@ class N64HleGuestCallDispatcher(
 
     /** Returns null when no verified call gate matches this exact guest PC. */
     fun dispatchAt(guestPc: Long): Int? {
-        val entry = entriesByAddress[guestPc] ?: return null
+        val entry = entriesByAddress[canonicalAddress(guestPc)] ?: return null
         val cycles = entry.handler.invoke(cpu)
         require(cycles >= 0) {
             "HLE handler ${entry.registration.symbol} returned a negative cycle cost."
@@ -68,9 +64,19 @@ class N64HleGuestCallDispatcher(
     }
 
     fun registrationForAddress(guestAddress: Long): Registration? =
-        entriesByAddress[guestAddress]?.registration
+        entriesByAddress[canonicalAddress(guestAddress)]?.registration
 
     fun addressForSymbol(symbol: String): Long? = addressesBySymbol[symbol]
 
     fun registrations(): List<Registration> = entriesByAddress.values.map { it.registration }
+
+    private fun canonicalAddress(address: Long): Long {
+        val low = address.toInt()
+        require(address == low.toLong() || address == (low.toLong() and 0xFFFFFFFFL)) {
+            "Guest call entry must fit in a 32-bit address."
+        }
+        require(low and 3 == 0) { "Guest call entry must be word-aligned." }
+        return low.toLong()
+    }
+
 }
