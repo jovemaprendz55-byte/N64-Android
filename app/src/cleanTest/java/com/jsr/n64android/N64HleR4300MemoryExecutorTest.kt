@@ -56,7 +56,7 @@ class N64HleR4300MemoryExecutorTest {
     }
 
     @Test fun failedLoadDoesNotModifyDestinationRegister() {
-        val state = N64HleR4300CpuState(0x80001000L, mapOf(1 to 0x80000000L))
+        val state = N64HleR4300CpuState(0x80001000L, mapOf(1 to 0x80800000L))
         assertThrows(IllegalArgumentException::class.java) {
             executor.execute(N64HleR4300InstructionDecoder().decode(i(0x23, 1, 2, 0)), state)
         }
@@ -66,11 +66,12 @@ class N64HleR4300MemoryExecutorTest {
     @Test fun failedStoreDoesNotChangeMemory() {
         val state = N64HleR4300CpuState(
             0x80001000L,
-            mapOf(1 to 0x80000000L, 2 to 0x12345678L)
+            mapOf(1 to 0x80800000L, 2 to 0x12345678L)
         )
+        memory.write32(0x80000000L, 0xAABBCCDDL)
         assertThrows(IllegalArgumentException::class.java) {
             executor.execute(N64HleR4300InstructionDecoder().decode(i(0x2B, 1, 2, 0)), state)
         }
-        assertEquals(0, memory.read32(0x80000000L))
+        assertEquals(0xAABBCCDDL, memory.read32(0x80000000L))
     }
 }
