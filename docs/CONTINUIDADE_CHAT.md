@@ -1353,3 +1353,13 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Correção após inspeção integral do bloco de testes: LDL/LDR e LWL/LWR percorrem todos os offsets; SWL/SWR também percorrem todos os offsets de palavra; SDL/SDR percorrem todos os offsets de doubleword. Não foi identificada lacuna de cobertura de offsets para merge loads/stores.
 - Relatório detalhado: docs/AUDITORIA_R4300_INSTRUCOES_2026-11-04.md, commit a13153a3c4bd392c6169fd60a0690a910a076c2e.
 - Limites: CI verde confirma build/testes automatizados, não compatibilidade integral R4300, instalação do APK no aparelho ou GoldenEye funcional. main permanece intacta; trabalho continua em dev/n64-clean-start.
+
+
+## 66. Auditoria COP0, TLB e COP1 — 2026-11-04
+
+- Revisão estática de R4300Cpu.kt, R4300Tlb.kt e testes específicos COP0/TLB/COP1.
+- COP0/TLB: identificada cobertura abrangente para TLBR/TLBWI/TLBWR/TLBP, Index/Random/Wired, PageMask, EntryHi/Lo, globalidade, ASID, faults, Count/Compare, ERET e snapshot/restore. Nenhum defeito funcional comprovado nesta inspeção; nenhuma alteração de produção.
+- COP1: cobertura de transfers, operações S/D básicas, conversões, FCC0, FR=0/FR=1 e exceções selecionadas. Limites reais mantidos: FPU parcial; exceções IEEE não completas (incluindo underflow/inexact); não demonstrado que RM do FCR31 controle o arredondamento de ADD/SUB/MUL/DIV/SQRT; somente FCC0 suportado.
+- Relatório detalhado: docs/AUDITORIA_COP0_TLB_COP1_2026-11-04.md, commit dd9ff6f944dd77426f1ad163c4339d19e4e75c95.
+- Próxima etapa: criar testes de conformidade COP1 para RM, underflow/inexact, NaN/sinal de zero e comparações signaling/non-signaling antes de implementar mudanças. Continuar auditoria de Status e instruções privilegiadas com testes isolados.
+- Nenhuma ROM adicionada. Nenhum código de produção alterado. main permanece intacta; trabalho em dev/n64-clean-start. CI não significa execução de jogo no Android 16.
