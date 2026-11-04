@@ -334,11 +334,15 @@ class N64RomVideoSessionTest {
                 progressPollInterval = 100_000,
                 onFrame = {}
             )
+            assertEquals(0L, session.executedCpuCycles())
             val result = session.execute()
             assertEquals(N64ExecutionSession.State.COMPLETED, result.state)
             assertEquals(8L, result.executedInstructions)
             assertEquals(8L, cpu.cop0[9])
-            return session.executedCpuCycles()
+            val sessionCycles = session.executedCpuCycles()
+            cpu.step() // A later standalone CPU step must not leak into the completed session ledger.
+            assertEquals(sessionCycles, session.executedCpuCycles())
+            return sessionCycles
         }
 
         assertEquals(16L, run(batchSize = 1))
