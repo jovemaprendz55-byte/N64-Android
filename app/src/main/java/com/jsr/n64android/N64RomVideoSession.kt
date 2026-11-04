@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicLong
  */
 class N64RomVideoSession(
     private val bus: N64Bus,
-    cpu: R4300Cpu,
+    private val cpu: R4300Cpu,
     instructionLimit: Long = DEFAULT_INSTRUCTION_LIMIT,
     batchSize: Int = N64ExecutionSession.DEFAULT_BATCH_SIZE,
     private val framePollInterval: Long = DEFAULT_FRAME_POLL_INTERVAL,
