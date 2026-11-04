@@ -2080,3 +2080,14 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Commits: implementação 0ea1072ae5dbccaa3056d8875a87c8a1fde3987e; testes 8a608ee01329f26bf671dd9bf4b7577c2c1c87ee.
 - CI: consultar workflow do commit de teste antes de marcar como validado.
 - Branch `dev/n64-clean-start`; `main` intacta.
+
+
+### Etapa 98 — controlador VI isolado
+- Composto o contador half-line e o latch em `N64ViInterruptController`, sem conectar ainda ao `N64Bus`.
+- O controlador avança o contador por scanline, amostra VI_INTR após o avanço e conserva a interrupção pendente até acknowledge.
+- Testes cobrem comparação no valor correto, retenção do latch após ultrapassar o comparador, acknowledge sem reset do contador, amostras sem correspondência e nova correspondência após wrap.
+- A classe não converte ciclos CPU em clocks VI, não gera MI_INTR_VI diretamente e não altera registradores MMIO. A temporização aproximada atual do barramento permanece intacta.
+- Arquivos: `N64ViInterruptController.kt` e `N64ViInterruptControllerTest.kt`.
+- Commits: controlador e906d889c79b89618d9498eb3e4d1d33bc291721; testes f0b05bd67baad0dc9a9dfb544979011cd95b2feb.
+- CI dos testes precisa ser confirmado antes de marcar esta etapa como validada.
+- Branch `dev/n64-clean-start`; `main` intacta.
