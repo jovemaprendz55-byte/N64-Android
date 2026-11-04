@@ -2479,3 +2479,21 @@ Próxima etapa técnica:
 3. Definir boot profile explícito e verificável; não inferir valores do GoldenEye sem fonte/mapa compatível.
 4. Construir resolução de serviços HLE por símbolos/assinaturas verificadas, sem endereços adivinhados.
 5. Só declarar boot quando o fluxo guest alcançar estado demonstrável e gerar vídeo/entrada no aparelho.
+
+
+## 118. Memória guest isolada para o novo HLE — 2026-11-04
+
+Adicionado `N64HleGuestAddressSpace.kt` no source set limpo:
+- RDRAM padrão de 8 MiB, tamanho configurável para testes.
+- Aceita ponteiros guest KSEG0 e KSEG1; ambos fazem alias para a mesma RDRAM física.
+- Aceita endereços Long zero-extended e sign-extended de 32 bits.
+- Rejeita KUSEG/KSSEG/KSEG3, endereços acima de 32 bits, MMIO e acessos fora da RDRAM.
+- Acesso byte/halfword/word/doubleword em big-endian; acessos multi-byte exigem alinhamento natural.
+- Blocos são copiados na entrada e na saída; valida limites antes de copiar.
+- Não implementa TLB, cache, MMIO, DMA ou exceções CPU. É memória guest do HLE, não o barramento completo do N64.
+- Testes `N64HleGuestAddressSpaceTest.kt`: larguras e endianness, alias KSEG0/KSEG1, ponteiro sign-extended, cópias defensivas, segmentos inválidos, desalinhamento, faixa e valores inválidos.
+- Commits: memória `f2ebc7042878f0bd275776efbc0684c225636ec7`; testes `3c33ba7a55d93e9f2ec286aae00595e84ae1f44e`.
+
+Limite arquitetural: o endereço guest é traduzido para RDRAM somente. Nenhum acesso MMIO pode ser feito por esta classe; registros de hardware deverão passar por uma interface de barramento própria, com semântica e testes explícitos.
+
+Próxima etapa: validar CI desta camada e então definir o contrato de CPU guest/estado inicial sem copiar o boot experimental anterior nem adivinhar registradores de GoldenEye.
