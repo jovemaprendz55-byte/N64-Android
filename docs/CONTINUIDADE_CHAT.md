@@ -2497,3 +2497,18 @@ Adicionado `N64HleGuestAddressSpace.kt` no source set limpo:
 Limite arquitetural: o endereço guest é traduzido para RDRAM somente. Nenhum acesso MMIO pode ser feito por esta classe; registros de hardware deverão passar por uma interface de barramento própria, com semântica e testes explícitos.
 
 Próxima etapa: validar CI desta camada e então definir o contrato de CPU guest/estado inicial sem copiar o boot experimental anterior nem adivinhar registradores de GoldenEye.
+
+
+## 119. Tabela de símbolos guest baseada em evidência — 2026-11-04
+
+Adicionado `N64HleVerifiedSymbolTable.kt`:
+- Registra nome, endereço guest e referência explícita à fonte/mapa.
+- Aceita somente endereços KSEG0 alinhados a 4 bytes, em forma zero-extended ou sign-extended de 32 bits.
+- Rejeita símbolo sem evidência, nome duplicado, endereço duplicado, KSEG1, segmento inválido e endereço acima de 32 bits.
+- Resolve por nome ou endereço e produz snapshot ordenado por endereço.
+- Nenhum endereço libultra ou GoldenEye foi embutido. A tabela inicia vazia; só será populada a partir de mapa/símbolos verificáveis.
+- Não executa handlers nem intercepta instruções CPU. É a camada de resolução de endereços que antecede a futura integração de call gates.
+- Testes `N64HleVerifiedSymbolTableTest.kt`: resolução com endereço sign-extended, validação de evidência/segmento/alinhamento, duplicação sem mutação parcial e ordenação.
+- Commits: tabela `c7258f35a523cce27badb8e3f33fcd65dee61617`; testes `22be380dff96039e6f7a70c7b4c3488923bba220`.
+
+Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser de linker map/symbol map com formato explícito e testes de parsing. Só depois poderá ser produzido um catálogo de funções libultra para o alvo. Sem mapa final do GoldenEye USA, endereços de APIs permanecem desconhecidos e não devem ser inventados.
