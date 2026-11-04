@@ -1457,3 +1457,22 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Não foi alterado o motor CPU/RSP/RDP, o boot HLE, a seleção de ROM, nem o Manifest. Nenhum jogo foi executado no aparelho nesta etapa.
 - Próximo passo: confirmar os dois workflows; depois decidir como expor os testes de vídeo e CPU sem sobrecarregar a tela principal (preferir uma tela/área de ferramentas de diagnóstico). Fazer testes de UI e lifecycle; não afirmar GoldenEye funcional.
 - Branch `dev/n64-clean-start`; `main` permanece intocada.
+
+
+## 71. Ciclo de vida dos workers e callbacks Android — 2026-11-04
+
+- Revisado o encerramento da Activity, os callbacks de N64RomVideoSession, N64ExecutionWorker, o diagnóstico IPL3/CPU e N64VideoPresenterView.
+- Achado confirmado: o worker de vídeo podia continuar publicando atualizações de progresso/frames e tentar atualizar views após a Activity entrar em encerramento. Os callbacks do worker agora verificam isFinishing e isDestroyed antes de postar e novamente dentro do callback da UI.
+- O callback de frames também deixa de submeter novos quadros após a Activity começar a encerrar.
+- Achado confirmado: o diagnóstico IPL3/CPU tem limite de até 12 milhões de instruções e antes não verificava o encerramento da Activity dentro do laço. Adicionado romTraceStopRequested volátil, ativado em onDestroy(), e verificado a cada iteração. Assim o worker sai cooperativamente no próximo limite de instrução.
+- Callbacks de progresso, falha, preparação de IPL3, CIC não reconhecido e relatório final do diagnóstico IPL3 agora verificam se a Activity ainda pode receber atualizações. Caminhos de saída antecipada restauram os botões quando a Activity ainda está ativa.
+- O worker de vídeo e o worker HLE já tinham pedido de parada cooperativa; onDestroy() continua solicitando essas paradas. Não foi adicionado join() na thread principal para não bloquear o encerramento da UI.
+- Arquivos revisados: MainActivity.kt, N64ExecutionWorker.kt, N64RomVideoSession.kt, N64ExecutionSession.kt, N64VideoPresenterView.kt.
+- Commits:
+  - 0eab14ca0fbd83394f5649c207d79c8d86b51e17 — proteção de callbacks do worker de vídeo.
+  - 10633612add67e9bb6ec911d381f55feae400947 — cancelamento cooperativo do diagnóstico IPL3/CPU ao encerrar Activity.
+  - 4f344b666f7e19b8665071efe7a52ff48888eeae — proteção adicional dos callbacks de IPL3/CPU.
+- CI dos commits 0eab14c, 1063361 e 4f344b6 estava em execução na última consulta (runs 41803416840, 41803480888 e 41803502234). Confirmar os resultados antes de considerar esta etapa compilada.
+- Limitação restante: o diagnóstico IPL3/CPU não oferece cancelamento manual por botão; o cancelamento foi ligado ao encerramento da Activity. O worker de carregamento de ROM usa romLoadGeneration para descartar resultados antigos, mas pode continuar lendo o documento em segundo plano até terminar. A sessão de vídeo solicita parada cooperativa; não foi feito teste de instrumentação/lifecycle em aparelho real.
+- Nenhum código de CPU/RSP/RDP foi alterado. Nenhuma ROM foi executada no aparelho. main permanece intocada.
+- Próxima etapa: confirmar CI; inspecionar fluxo de seleção/rotação/retorno e o exportador de diagnóstico; depois avaliar teste automatizado de UI/lifecycle e organizar os testes sintéticos numa área de ferramentas sem sobrecarregar a tela inicial.
