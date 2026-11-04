@@ -2748,3 +2748,14 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Commits: stepper `404f8a98332f6e490d3995fb1318d2b2890030af`; testes `913f079fb4ac2413fb12ab4f88430e67fffb719f`.
 - Limites: não busca ROM/RDRAM, não implementa ADDI/ORI/LUI/load-store, COP0/TLB, exceções, interrupções, FPU, MMIO, DMA ou framebuffer. Não é ainda CPU R4300 completa nem boot HLE.
 - CI da seção 131 ainda precisa passar com testes e APK antes de ser considerada aprovada.
+## 132. Instruções imediatas inteiras R4300 — 2026-11-04
+
+- Adicionado `N64HleR4300ImmediateExecutor.kt` e integrado ao `N64HleR4300InstructionStepper`.
+- Implementadas ADDI, ADDIU, ANDI, ORI, XORI, SLTI, SLTIU e LUI.
+- ADDIU opera em word de 32 bits, usa imediato sign-extended e sign-extends o resultado de 32 bits para 64 bits. ADDI segue a mesma semântica word; overflow signed é rejeitado antes de qualquer mutação porque a entrega de exceções arquiteturais ainda não existe.
+- ANDI/ORI/XORI usam imediato zero-extended. SLTI faz comparação signed de 64 bits com imediato sign-extended; SLTIU faz comparação unsigned de 64 bits com o mesmo imediato sign-extended. LUI forma o word de 32 bits e sign-extends o resultado.
+- O stepper agora permite as instruções imediatas suportadas também no delay slot, mantendo o PC no delay slot até a execução terminar.
+- Testes adicionados para ADDIU negativo, overflow ADDI sem mutação, imediatos lógicos zero-extended, SLTI/SLTIU, LUI e ADDIU dentro de delay slot.
+- Commits: executor `6949095dc5bafe6e09ee3a3972882c88b15b4798`; correção da semântica word `69e25e3041d5e7ae593a70df0653253ef9120ccb`; integração do stepper `e441e3fb438304b8a1ebddc7c1a5d3b14ee96f1e`; testes `9455d7d19f66647988cd492ed00b5ce03e166df1`.
+- CI de implementação, testes e documentação deve ser confirmada antes de considerar a seção validada.
+- Limites: ainda não há busca de instruções em RDRAM, load/store, COP0/TLB, entrega de exceções, interrupções, FPU, MMIO, DMA ou boot de ROM.
