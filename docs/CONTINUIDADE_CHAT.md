@@ -2300,7 +2300,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Implementado `N64HleGuestOsThreadCodec.kt` para ler/gravar cabeçalho e contexto libultra pela ponte segura `N64HleGuestMemory`.
 - Campos do cabeçalho: pointers 32-bit, priority s32, state/flags u16, id/fp s32, padding preservado em 0x1C. Contexto começa em 0x20 por alinhamento de 8 bytes (ABI GoldenEye).
 - GPRs mapeados: AT, V0/V1, A0–A3, T0–T9, S0–S7, GP, SP, S8, RA. Zero/K0/K1 não são salvos pelo ABI e são ignorados na escrita/retornados zero na leitura.
-- HI/LO 64-bit; SR/PC/Cause/BadVAddr/RCP/FPCSR 32-bit. Os 16 slots FP permanecem pares 64-bit opacos; sem mapeamento para FPR do CPU até validar FR=0/FR=1.
+- HI/LO 64-bit; SR/PC/Cause/BadVAddr/RCP/FPCSR 32-bit. No commit inicial os 16 slots FP ficaram opacos; o mapper FR=0 foi implementado posteriormente na seção 109.
 - Escrita valida estrutura completa, estado, flags e todos os pointers antes de alterar memória. Pointers maiores que 32 bits são rejeitados, zero-extended e sign-extended aceitos.
 - Testes de round-trip verificam cabeçalho, GPRs salvos, FP pairs, endereços absolutos, preservação do padding e rejeições.
 - Commits: codec `888784e76cbc0c1657d3f249667b3ac4c9303ccc`; pointer validation `26f6c0e346470749494b941ca632176fb3b1d539`; testes `68630641cb13cdb9a344d00115dbdfe8eb2a45fe`; prevalidation `2a303d27e61960832a2d0ab2d1c28ba84a512974`; teste extra `dc17b95513905a61d14567d91255da8f6ce86ee7`.
@@ -2329,4 +2329,16 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Fonte: VR4300 manual, seção 17.3: https://n64dev.org/p/U10504EJ7V0UMJ1.pdf (FR=0: even FGR low-order; odd FGR high-order).
 - Commits: CPU `9749f5db726c8516ba9eaf2ad4f466c5cef8905e`; COP1 memory test `04b9a684d7c844984e280dc0f9f1a23b17abc023`; COP1 arithmetic tests `80ce285307d29e136a5ea8debd856f7dfae35f53`; mapper `d0277d8eb2d2632de3b07a4010ccca2c76cf4fef`; mapper tests `c1360ededcf6896e0c8e69c83e01b91333a68e0f`.
 - CI dos commits está em andamento; não declarar aprovado até consultar. Runs anteriores de mapper falharam por testes FR1/ordem antiga e foram corrigidos.
-- Próximo: confirmar CI; adicionar testes round-trip mapper→R4300Cpu.restoreContext e snapshot→OSThreadCodec; então implementar estado RCP/eventos reais e dispatcher guest. Ainda não conectar MainActivity nem declarar GoldenEye funcional.
+- Próximo: confirmar CI das primitivas de fila; então implementar transições de estado osStartThread/osStopThread/osYieldThread, active queue e OSMesgQueue. Ainda não conectar MainActivity nem declarar GoldenEye funcional.
+## 110. Primitivas de fila de threads guest — 2026-11-04
+
+- Adicionado N64HleGuestThreadQueue.kt com enqueue/pop/dequeue sobre ponteiros reais na RDRAM guest, alinhado ao comportamento de libultra GoldenEye.
+- queueAddress é endereço de OSThread** (word que contém head). OSThread.queue recebe esse endereço.
+- Enqueue ordena prioridade decrescente; percorre prioridades iguais antes de inserir, preservando FIFO em empate. Aceita tail sentinel de prioridade -1.
+- Pop atualiza head e retorna nó removido, inclusive sentinel; não limpa OSThread.queue. Dequeue altera o link predecessor e também não limpa queue/next, conforme rotina low-level.
+- Valida alinhamento 8-byte e range do OSThread; detecta ciclo e duplicação antes de mutar memória.
+- Não faz state transitions, dispatch, active queue, wait queues ou OSMesgQueue. Não integrar ainda à MainActivity.
+- Fontes: exception.s (__osEnqueueThread/__osPopThread): https://github.com/n64decomp/007/blob/master/src/libultra/os/exception.s ; startthread.c/stopthread.c/yieldthread.c/thread.c: https://github.com/n64decomp/007/tree/master/src/libultra/os
+- Commits: queue 6606f3dca938e5fca90c6725ca5b439bc6ec9c67; testes 0521a1c4ffc0a646fabdfc52a54f1e8ba2e54380.
+- CI dos commits está em andamento. O mapper + CPU FR0 e 667 testes passaram no run 41903230278 (commit cbba00935d1094e31b2fa73bef130fdbfdd60481). O APK gerado em run anterior fe39d9a continua sendo build válido do código; artifact 13358138496, SHA-256 57283dafaa035abc9361cf458e23000f85cb0c06e6427f7c81108d3c68c3572c, expira 2026-11-18.
+- Próximo: aguardar CI da fila; depois implementar operações de estado e active queue com base em startthread.c/stopthread.c/yieldthread.c, e em seguida OSMesgQueue send/recv. Nenhum guest call gate ainda.
