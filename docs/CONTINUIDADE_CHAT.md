@@ -2372,3 +2372,14 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - CI runs: block/wake `41907048221` success; codec `41907099035` success; operations `41907138157` success; full suite + APK `41907192238` success.
 - APK artifact `13360159620`, 1,071,294 bytes, SHA-256 `67c177d06f8f03e91d355a8037dd507f2030d4b5a278e9196b0ff8d585622c4a`, expira 2026-11-18. https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41907192238
 - Comentário do codec OSThread atualizado no commit c26118562c80237815591af04babc1234bd06476; pares FP continuam raw no codec e mapper FR=0 converte para FPR do CPU. CI 41907500947 success. criar dispatcher guest para interceptar APIs libultra por endereço/símbolo comprovado; implementar save/restore real de ContextSnapshot no yield/dispatch; validar fila/message queue com layout real de GoldenEye. Não integrar MainActivity ainda.
+
+
+## 113. ContextSwitcher — 2026-11-04
+
+- N64HleGuestContextSwitcher.kt conecta scheduler e R4300Cpu.ContextSnapshot. Em troca, salva a thread anterior no OSThread via mapper/codec com PC de continuação validado; restaura a selecionada via restoreContext.
+- Wrappers: startThread, yieldCurrent, stopCurrent, blockCurrent. Sem troca, usa setProgramCounter.
+- TLB/Count phase e campos fora do ABI permanecem do template CPU; restore limpa LL reservation.
+- Testes cobrem preempção, save/restore de GPR e PC, stop e block/wake.
+- CI final 41908404540 success. APK artifact 13362056253, 1,072,204 bytes, SHA-256 96caed88143b02b7312bffdeb214ef7eba43b5e660b73e14e53c34157c6d7b8b, expira 2026-11-18. https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41908404540
+- Limites: sem PC hook/call gates ou endereços comprovados de APIs libultra. N64HleGuestMessageQueue ainda usa scheduler de estado, não ContextSwitcher; bloqueio de message queue ainda não salva contexto live. Não integrado ao N64RomVideoSession/MainActivity. GoldenEye não testado no aparelho.
+- Próximo: investigar símbolos/mapa GoldenEye USA; linker script sozinho não contém offsets finais. Criar mecanismo de interceptação antes do fetch e dispatch table somente com endereços resolvidos de fonte confiável; depois ligar message queue ao ContextSwitcher e testar retorno HLE.
