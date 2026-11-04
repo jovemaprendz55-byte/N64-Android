@@ -168,4 +168,45 @@ class N64HleR4300MemoryExecutorTest {
         assertEquals(false, state.isGprKnown(2))
     }
 
+    @Test fun wordMergeOperationsCoverEveryByteOffset() {
+        val expectedLwl = longArrayOf(0xAABBCCDDL, 0xBBCCDD44L, 0xCCDD3344L, 0xDD223344L)
+        val expectedLwr = longArrayOf(0x112233AAL, 0x1122AABBL, 0x11AABBCCL, 0xAABBCCDDL)
+        val expectedSwl = longArrayOf(0xAABBCCDDL, 0x11AABBCCL, 0x1122AABBL, 0x112233AAL)
+        val expectedSwr = longArrayOf(0xDD223344L, 0xCCDD3344L, 0xBBCCDD44L, 0xAABBCCDDL)
+
+        for (offset in 0..3) {
+            memory.write32(0x80000100L, 0xAABBCCDDL)
+            val loadLeft = N64HleR4300CpuState(
+                0x80001000L,
+                mapOf(1 to 0x80000100L + offset, 2 to 0x11223344L)
+            )
+            executor.execute(N64HleR4300InstructionDecoder().decode(i(0x22, 1, 2, 0)), loadLeft)
+            assertEquals(expectedLwl[offset], loadLeft.readGpr(2))
+
+            memory.write32(0x80000100L, 0xAABBCCDDL)
+            val loadRight = N64HleR4300CpuState(
+                0x80001000L,
+                mapOf(1 to 0x80000100L + offset, 2 to 0x11223344L)
+            )
+            executor.execute(N64HleR4300InstructionDecoder().decode(i(0x26, 1, 2, 0)), loadRight)
+            assertEquals(expectedLwr[offset], loadRight.readGpr(2))
+
+            memory.write32(0x80000100L, 0x11223344L)
+            val storeLeft = N64HleR4300CpuState(
+                0x80001000L,
+                mapOf(1 to 0x80000100L + offset, 2 to 0xAABBCCDDL)
+            )
+            executor.execute(N64HleR4300InstructionDecoder().decode(i(0x2A, 1, 2, 0)), storeLeft)
+            assertEquals(expectedSwl[offset], memory.read32(0x80000100L))
+
+            memory.write32(0x80000100L, 0x11223344L)
+            val storeRight = N64HleR4300CpuState(
+                0x80001000L,
+                mapOf(1 to 0x80000100L + offset, 2 to 0xAABBCCDDL)
+            )
+            executor.execute(N64HleR4300InstructionDecoder().decode(i(0x2E, 1, 2, 0)), storeRight)
+            assertEquals(expectedSwr[offset], memory.read32(0x80000100L))
+        }
+    }
+
 }
