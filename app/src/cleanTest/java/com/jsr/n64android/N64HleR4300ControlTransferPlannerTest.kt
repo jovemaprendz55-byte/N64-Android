@@ -98,4 +98,11 @@ class N64HleR4300ControlTransferPlannerTest {
         assertEquals(null, notTakenPlan.linkValue)
     }
 
+
+    @Test fun jumpPreservesSignExtendedPcRepresentation() {
+        val state = N64HleR4300CpuState(0xFFFFFFFF80001000UL.toLong())
+        val plan = planner.plan(decoder.decode((0x02 shl 26) or 0x800), state)
+        assertEquals(0xFFFFFFFF80002000UL.toLong(), plan.continuationAddress)
+    }
+
 }
