@@ -2734,3 +2734,17 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - CI final dessa correção e do sequenciador ainda pendente.
 
 - Correção do destino J/JAL preservando zero/sign-extension foi submetida nos commits `e1568258042c6ad7128ba9548510962d94c1359d` e `b27e4922027cc664b8fbf74386d6a3956eebbd9e`. Runs de validação atuais: executor `41934900441`, testes `41934905927`; ambos estavam em andamento na última consulta. A CI documental `41934801723` falhou porque foi disparada sobre a revisão anterior ao ajuste do teste; aguardar a CI do documento mais recente.
+
+
+## 131. Stepper integrado inicial R4300 — 2026-11-04
+
+- Adicionado `N64HleR4300InstructionStepper.kt`, integrando decoder, executor SPECIAL, planner e sequenciador de delay slot.
+- O chamador fornece a palavra de instrução correspondente ao PC atual; o stepper não busca instruções na memória ainda.
+- Instruções SPECIAL suportadas são executadas e avançam PC em +4 quando fora de delay slot.
+- Branches/jumps suportados geram plano e deixam PC no delay slot. Na próxima chamada, uma instrução SPECIAL suportada é executada no delay slot e, depois, a continuação é aplicada.
+- Branch não tomado também executa exatamente uma instrução de delay slot antes de seguir PC+8.
+- Instrução não suportada falha sem avançar PC. Transferência de controle dentro de delay slot é rejeitada sem limpar o estado pendente; exceção arquitetural BD/EPC ainda não é implementada.
+- Testes adicionados para ADDU e avanço de PC, JAL/link/delay slot/destino, branch não tomado, instrução não suportada e controle dentro do delay slot.
+- Commits: stepper `404f8a98332f6e490d3995fb1318d2b2890030af`; testes `913f079fb4ac2413fb12ab4f88430e67fffb719f`.
+- Limites: não busca ROM/RDRAM, não implementa ADDI/ORI/LUI/load-store, COP0/TLB, exceções, interrupções, FPU, MMIO, DMA ou framebuffer. Não é ainda CPU R4300 completa nem boot HLE.
+- CI da seção 131 ainda precisa passar com testes e APK antes de ser considerada aprovada.
