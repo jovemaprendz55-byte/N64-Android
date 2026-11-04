@@ -22,7 +22,7 @@ class N64HleGuestOsThreadCodecTest {
             flags = 0xA55A,
             id = -7,
             fpUsed = 1,
-            profile = 0x80005000L,
+            contextPadding = 0xDEADBEEF.toInt(),
             context = N64HleGuestOsThreadContext(
                 gpr = gpr,
                 lo = 0x1122334455667788L,
@@ -39,7 +39,7 @@ class N64HleGuestOsThreadCodecTest {
 
         codec.write(address, expected)
 
-        assertEquals(0x80005000.toInt(), ram.read32(0x101C))
+        assertEquals(0xDEADBEEF.toInt(), ram.read32(0x101C))
         assertEquals(0x80123450.toInt(), ram.read32(0x111C))
         val actual = codec.read(address)
         assertEquals(expected.next, actual.next)
@@ -50,7 +50,7 @@ class N64HleGuestOsThreadCodecTest {
         assertEquals(expected.flags, actual.flags)
         assertEquals(expected.id, actual.id)
         assertEquals(expected.fpUsed, actual.fpUsed)
-        assertEquals(expected.profile, actual.profile)
+        assertEquals(expected.contextPadding, actual.contextPadding)
         assertEquals(expected.context.lo, actual.context.lo)
         assertEquals(expected.context.hi, actual.context.hi)
         assertEquals(expected.context.status, actual.context.status)
@@ -101,7 +101,7 @@ class N64HleGuestOsThreadCodecTest {
             codec.write(0x80001000L, N64HleGuestOsThread(next = 0x1_8000_2000L))
         }
         assertThrows(IllegalArgumentException::class.java) {
-            codec.write(0x80001000L, N64HleGuestOsThread(profile = 0x1_8000_2000L))
+            codec.write(0x80001000L, N64HleGuestOsThread(next = 0x1_8000_2000L))
         }
         assertEquals(0, ram.read32(0x1000))
     }
