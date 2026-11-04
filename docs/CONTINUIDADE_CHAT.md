@@ -2639,3 +2639,22 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Commits de implementação e testes: `6a4561730d81bf6ebe3dee42269784f2eda9edeb` e `fa1712267fffa9a9c2ec5ded316fcb80ac2ef0a7`.
 - CI da seção 126 ainda precisa ser confirmada; não declarar aprovada até verificar testes, build e artifact.
 - Próxima etapa: implementar operações multiply/divide somente depois de fixar explicitamente a semântica MIPS III/R4300 de resultados HI/LO, casos de divisão por zero e overflow, com testes independentes.
+
+
+### Validação da seção 126 — 2026-11-04
+
+- CI da implementação MFHI/MFLO/MTHI/MTLO aprovada: run `41932765833`, artifact `13372521694`, 834.248 bytes, SHA-256 `27362d0f0808aeb8184dcc58c2d5c8657f4b646e4f56cfac8bd1d1cfbcfe6f32`.
+- CI dos testes da seção 126 aprovada: run `41932788742`, artifact `13372188447`, 834.252 bytes, SHA-256 `2d23fe90af1985c79de3287de4c734699937b454abf43cd2348cf8b807e2dbc5`.
+- A CI do commit documental `9b4516b9ea6681b194da49cc2fa355f9c9a32ed9` ainda deve ser conferida.
+
+## 127. Multiplicação HI/LO — 2026-11-04
+
+- Adicionadas MULT e MULTU (operandos word com validação de sign-extension de 32 bits) e DMULT/DMULTU (operandos doubleword).
+- MULT usa multiplicação signed de 32 bits; MULTU usa os 32 bits baixos como unsigned. HI e LO recebem as respectivas metades de 32 bits sign-extended para 64 bits.
+- DMULT usa produto signed de 128 bits; DMULTU usa produto unsigned de 128 bits. HI recebe bits 127..64 e LO recebe bits 63..0.
+- BigInteger é usado para formar os produtos de 128 bits sem perda de overflow ou dependência de BigInteger ausente; os dois resultados são calculados antes de atualizar HI/LO em conjunto.
+- DIV/DIVU/DDIV/DDIVU permanecem fora desta etapa. Não assumir resultados para divisor zero ou overflow de divisão.
+- Testes adicionados para MULT signed, MULTU unsigned, rejeição de word não sign-extended sem mutação, DMULT signed e DMULTU unsigned.
+- Commits: implementação `402dde5bbfba4d14fe947d5df1c312dff02a0da6`, import BigInteger `b8d980752b4b427d7e3da5559806e1d4c533aa08`, testes `88b4988acbd8686aa665cefc1161ad6423f196d1`.
+- CI da seção 127 ainda precisa ser confirmada.
+- Referência técnica para formato e semântica das instruções MIPS III: manual NEC VR4181, capítulo 3, tabelas 3-10 e 3-11; manter observação de que a revisão específica do VR4300 pode ter restrições/errata próprias.
