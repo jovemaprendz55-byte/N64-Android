@@ -330,6 +330,10 @@ class MainActivity : Activity() {
     }
 
     private fun runHleBootDiagnostic() {
+        if (diagnosticExportInProgress || romTraceInProgress || romVideoThread?.isAlive == true || hleWorker != null) {
+            status.text = "Aguarde a operação de diagnóstico ou exportação atual terminar."
+            return
+        }
         val bus = cartridgeBus
         if (bus == null) {
             status.text = "Selecione uma ROM de jogo primeiro."
@@ -540,6 +544,10 @@ class MainActivity : Activity() {
     }
 
     private fun runRomInstructionDiagnostic() {
+        if (diagnosticExportInProgress || romTraceInProgress || romVideoThread?.isAlive == true || hleWorker != null) {
+            status.text = "Aguarde a operação de diagnóstico ou exportação atual terminar."
+            return
+        }
         val bus = cartridgeBus
         if (bus == null) {
             status.text = "Selecione uma ROM primeiro."
