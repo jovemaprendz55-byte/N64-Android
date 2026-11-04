@@ -2595,3 +2595,17 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Artifact debug APK `13372155896`, 828,071 bytes, SHA-256 `2c279220078cbcc9bf99d36351068c545b751d072c007a28174d3af16b45b3eb`, expira 2026-11-18.
 - A primeira execução isolada do teste falhou por um literal Long fora da faixa; o teste foi corrigido e a CI da revisão posterior passou.
 - A validação do decoder da seção 124 está em andamento e ainda não pode ser considerada aprovada.
+
+
+## 125. Primeiro executor de instruções SPECIAL R4300 — 2026-11-04
+
+- CI do decoder da seção 124 aprovada: run `41930856753`, commit `eea9c2ec91753c893423e3f7178c1e5e6847d881`; artifact debug APK `13372016285`, 832,693 bytes, SHA-256 `1d210112d6562be1d34b3358511ea70875aab1f89e685aeffde3f757102a6cdb`, expira em 2026-11-18.
+- Adicionado `N64HleR4300SpecialExecutor.kt`: executor sem estado próprio para um subconjunto inicial de operações SPECIAL.
+- Operações implementadas: ADDU/SUBU, AND/OR/XOR/NOR, SLT/SLTU, DADDU/DSUBU, shifts word SLL/SRL/SRA e SLLV/SRLV/SRAV, shifts doubleword DSLL/DSRL/DSRA e variantes DSLL32/DSRL32/DSRA32.
+- Semântica word: resultado de 32 bits é sign-extended para 64 bits. Aritmética sem overflow trapping; comparações unsigned usam comparação unsigned de Long; shifts variáveis word usam somente os 5 bits baixos da quantidade.
+- O executor valida SPECIAL e operação suportada, lê todos os operandos e calcula antes da única escrita de destino. GPR0 continua imutável pela própria classe de estado. Falha por registrador desconhecido ou operação ainda não suportada não altera destino nem PC.
+- PC não é avançado; branches, jumps, delay slots, exceções, HI/LO multiply/divide, loads/stores, COP0 e integração com memória permanecem fora desta etapa.
+- Testes em `N64HleR4300SpecialExecutorTest.kt`: overflow modular/sign extension, lógica 64-bit, signed/unsigned compare, word/doubleword shifts, variável shift masking, GPR0, operandos desconhecidos, instrução não suportada e opcode não SPECIAL.
+- Commits: executor `e317d104e8ddd29206bb488e0d461b5e9f463b01`; testes `e0856a3464523ca1dc9254dd67b06b9145441390`; correções das asserções de NOR/GPR0 `1e2782bf8aa559825d86e44e6cd9eaadd49bdf3c`.
+- CI dos três commits do executor/testes está em andamento na última atualização: runs `41931202457`, `41931210273` e `41931235161`. Não declarar esta seção aprovada nem APK atualizado até verificar conclusão e artifact.
+- Próximo: confirmar CI e corrigir qualquer falha; depois implementar operações HI/LO multiply/divide com regras MIPS III verificadas, ou branch/delay-slot como camada separada. Não conectar Activity nem afirmar boot de GoldenEye.
