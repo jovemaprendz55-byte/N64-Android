@@ -1363,3 +1363,18 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Relatório detalhado: docs/AUDITORIA_COP0_TLB_COP1_2026-11-04.md, commit dd9ff6f944dd77426f1ad163c4339d19e4e75c95.
 - Próxima etapa: criar testes de conformidade COP1 para RM, underflow/inexact, NaN/sinal de zero e comparações signaling/non-signaling antes de implementar mudanças. Continuar auditoria de Status e instruções privilegiadas com testes isolados.
 - Nenhuma ROM adicionada. Nenhum código de produção alterado. main permanece intacta; trabalho em dev/n64-clean-start. CI não significa execução de jogo no Android 16.
+
+
+## 67. Auditoria de duplicação — DPC/RDP (2026-11-04)
+
+- Continuidade da auditoria geral do repositório na branch `dev/n64-clean-start`; `main` permanece intocada.
+- Revisados `N64RdpCommandLength.kt`, `N64RdpCommandStreamParser.kt`, `N64DpcCommandProcessor.kt`, trechos de `N64Bus.kt`, `N64VideoFrame.kt` e testes DPC/parser/framebuffer.
+- Duplicação funcional confirmada: `N64DpcCommandProcessor.process()` repetia as validações de faixa, alinhamento, limites de RDRAM e tamanho máximo que já são centralizadas em `N64RdpCommandStreamParser.parse()`.
+- Refatoração aplicada: removidas as validações repetidas de `process()`; o parser passa a ser a única fonte de validação e framing do fluxo. O construtor ainda valida a configuração do processador.
+- Commit: `0059a1b216cc01b3ca06e16141b2c4281240045b`.
+- Testes existentes cobrem intervalo vazio, alinhamento, faixa fora da RDRAM, limite máximo e pacotes multiword truncados.
+- Duplicação de teste confirmada em `N64DpcCommandProcessorTest.kt`: `writeCommands()` repetia a escrita de palavras de 64 bits já feita por `writeWords()`. Agora `writeCommands()` delega a `writeWords()`.
+- Commit: `532d8b212b91468ea2b9555d3992663913fbb9da`.
+- CI do commit `0059a1b...`: run `41801775599` estava em execução na última consulta (etapa Build and test); não declarar sucesso até confirmar.
+- A auditoria ainda não cobriu integralmente todos os arquivos do repositório. Não confundir semelhança de responsabilidades com duplicação; não fundir parser, decoder, rasterizador e leitor de framebuffer.
+- Próxima etapa: confirmar CI dos commits acima e continuar comparação sistemática dos módulos restantes, especialmente SP/RSP e testes correspondentes. Manter a distinção entre duplicação literal, duplicação funcional e abstrações intencionalmente separadas.
