@@ -163,18 +163,22 @@ class N64HleR4300SpecialExecutorTest {
         assertEquals(-2L, s.readLo())
     }
 
-    @Test fun wordMultiplyRejectsNonSignExtendedInputWithoutChangingHiLo() {
-        val s = N64HleR4300CpuState(
+    @Test fun wordMultiplyUsesLowThirtyTwoBitsOfEachGpr() {
+        val signed = N64HleR4300CpuState(
             programCounter = 0x80001000L,
-            initialGprValues = mapOf(1 to 0x0000000180000000L, 2 to 2L),
-            initialHi = 7L,
-            initialLo = 9L
+            initialGprValues = mapOf(1 to 0x0000000180000000L, 2 to 2L)
         )
-        assertThrows(IllegalArgumentException::class.java) {
-            executor.execute(r(1, 2, 0, funct = 0x18), s)
-        }
-        assertEquals(7L, s.readHi())
-        assertEquals(9L, s.readLo())
+        executor.execute(r(1, 2, 0, funct = 0x18), signed) // MULT
+        assertEquals(-1L, signed.readHi())
+        assertEquals(0L, signed.readLo())
+
+        val unsigned = N64HleR4300CpuState(
+            programCounter = 0x80001000L,
+            initialGprValues = mapOf(1 to 0x0000000180000000L, 2 to 2L)
+        )
+        executor.execute(r(1, 2, 0, funct = 0x19), unsigned) // MULTU
+        assertEquals(1L, unsigned.readHi())
+        assertEquals(0L, unsigned.readLo())
     }
 
     @Test fun signedDoublewordMultiplySplits128BitProduct() {
