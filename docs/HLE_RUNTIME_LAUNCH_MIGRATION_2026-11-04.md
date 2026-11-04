@@ -60,3 +60,40 @@ Esses offsets são um mapa de ABI, não implementação do dispatcher. Ainda nã
 - Não fabricar OSTask, MI interrupt, DMA, status de SP ou registradores para forçar avanço.
 - Não usar IPL3/PIF ROM externos nem copiar conteúdo de firmware proprietário para o repositório.
 - Branch dev/n64-clean-start; main permanece intocada.
+
+## Correção do ABI OSThread e etapa 2 — 2026-11-04
+
+### Correção de layout antes do codec
+
+Uma inspeção adicional do header público `include/PR/os_thread.h` mostrou que a estrutura contém `__OSThreadprofile_s* thprof` no offset `0x1C`, seguido pelo `__OSThreadContext context` em `0x20`. Portanto, a anotação anterior de contexto em `0x1C` e tamanho total `0x1AC` estava incorreta para esse layout.
+
+- `THREAD_PROFILE=0x1C`
+- `THREAD_CONTEXT=0x20`
+- `CONTEXT_SIZE=0x190`
+- `THREAD_SIZE=0x1B0`
+- Prioridade é um `s32`; o intervalo de prioridades de aplicação documentado é 0–127, enquanto o campo de prioridade do sistema pode chegar a 255.
+- Fonte com a estrutura e os offsets: https://harbourmasters.github.io/SpaghettiKart/os__thread_8h_source.html
+
+A alteração foi feita antes de implementar leitura/escrita de threads, evitando que o codec futuro deslocasse todo o contexto em quatro bytes. O teste do layout agora confere o campo `thprof`, o início do contexto e o tamanho corrigido.
+
+### Etapa 2 implementada: ponte segura de memória guest
+
+Adicionado `N64HleGuestMemory.kt`:
+
+- Aceita apenas ponteiros diretos KSEG0 (`0x80000000–0x9FFFFFFF`) e KSEG1 (`0xA0000000–0xBFFFFFFF`).
+- Aceita a representação de 32 bits zero-extended e sign-extended usada nos valores Long do R4300.
+- Converte ambos os segmentos para o mesmo endereço físico RDRAM usando os 29 bits inferiores.
+- Rejeita KUSEG, KSSEG, KSEG3 e endereços fora de RDRAM; essas regiões não são mapeadas diretamente por esta classe.
+- Verifica alinhamento natural de halfword/word e limites de faixa antes do acesso.
+- Leitura/escrita multi-byte preserva big-endian por delegação ao barramento físico.
+- Inclui operações de byte e blocos, úteis para estruturas guest como OSThread.
+
+Testes em `N64HleGuestMemoryTest.kt` cobrem KSEG0/KSEG1 alias, ponteiros sign-extended, big-endian, rejeição de segmentos TLB, desalinhamento, limite RDRAM e ponteiros fora de 32 bits.
+
+A classe ainda não implementa tradução TLB nem permite acesso MMIO como se fosse RDRAM. Ainda não há codec OSThread, dispatcher, call gates ou troca de contexto guest.
+
+### CI
+
+- Os runs anteriores das etapas ABI/layout foram concluídos com sucesso: 41900220274, 41900225774 e 41900294202. Eles validam a versão que antecedeu a correção do offset; não validarão retroativamente o layout corrigido.
+- A CI das novas classes e da correção do layout foi disparada em execuções separadas. Consultar os resultados antes de declarar aprovação.
+- Nenhum teste de GoldenEye no dispositivo foi realizado nesta etapa.
