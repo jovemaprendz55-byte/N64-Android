@@ -8,7 +8,7 @@ package com.jsr.n64android
  * contexts. Keep pointer fields 32-bit and register/context fields at their
  * declared widths.
  *
- * Reference: https://jrra.zone/n64/doc/header/os_thread.htm
+ * Reference: https://harbourmasters.github.io/SpaghettiKart/os__thread_8h_source.html
  */
 object N64HleGuestOsThreadLayout {
     const val POINTER_SIZE = 4
@@ -20,7 +20,8 @@ object N64HleGuestOsThreadLayout {
     const val THREAD_FLAGS = 0x12
     const val THREAD_ID = 0x14
     const val THREAD_FP_USED = 0x18
-    const val THREAD_CONTEXT = 0x1C
+    const val THREAD_PROFILE = 0x1C
+    const val THREAD_CONTEXT = 0x20
 
     const val CONTEXT_AT = 0x00
     const val CONTEXT_V0 = 0x08
@@ -59,4 +60,5 @@ object N64HleGuestOsThreadLayout {
 
     const val PRIORITY_IDLE = 0
     const val PRIORITY_APP_MAX = 127
+    const val PRIORITY_MAX = 255
 }
