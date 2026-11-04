@@ -1350,6 +1350,6 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Revisados estaticamente R4300Cpu.kt (1.906 linhas na versão consultada) e R4300CpuTest.kt (243 declarações @Test).
 - Grupos verificados: aritmética 32/64 bits e overflow; multiplicação/divisão HI/LO; desvios, delay slots e branch-likely; exceções em delay slot; acessos desalinhados e merge; parte de COP0/TLB/LL-SC.
 - Nenhuma nova duplicação de lógica nem falha funcional foi confirmada nesta passada. O decoder de produção não foi alterado.
-- Oportunidade de cobertura: LDL/LDR têm testes que percorrem todos os offsets; SWL/SWR/SDL/SDR têm casos específicos, sem varredura completa de offsets demonstrada nesta inspeção. Recomendado acrescentar testes de tabela para todos os offsets antes de qualquer alteração de implementação.
+- Correção após inspeção integral do bloco de testes: LDL/LDR e LWL/LWR percorrem todos os offsets; SWL/SWR também percorrem todos os offsets de palavra; SDL/SDR percorrem todos os offsets de doubleword. Não foi identificada lacuna de cobertura de offsets para merge loads/stores.
 - Relatório detalhado: docs/AUDITORIA_R4300_INSTRUCOES_2026-11-04.md, commit a13153a3c4bd392c6169fd60a0690a910a076c2e.
 - Limites: CI verde confirma build/testes automatizados, não compatibilidade integral R4300, instalação do APK no aparelho ou GoldenEye funcional. main permanece intacta; trabalho continua em dev/n64-clean-start.
