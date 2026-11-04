@@ -2850,3 +2850,11 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Artifact do run de testes `13375285494`, 846.868 bytes, SHA-256 `4ee29c1b20c7179295d269c672d11b52b9d478cd7ff617ae42b2a1ceaff07d96`.
 - A primeira execução de testes (`41937351692`) falhou por valores esperados incorretos em alguns offsets LDL/SDL; vetores corrigidos no commit `1bf98754cedbd11ed511959a4e71727cead0e7f8`, e a execução posterior passou.
 - Seção 138 validada em CI: testes unitários e `assembleDebug` passaram. Não houve teste em dispositivo.
+## 139. Transferências básicas COP0 — 2026-11-04
+
+- Adicionado `N64HleR4300Cop0Executor.kt` para MFC0 (`opcode 0x10, rs=0`) e MTC0 (`opcode 0x10, rs=4`), integrado ao stepper.
+- `N64HleR4300CpuState` agora mantém cópia mutável e esparsa dos valores COP0 explicitamente fornecidos pelo snapshot inicial. Registros desconhecidos continuam desconhecidos; `readCop0` falha sem inventar reset values.
+- MFC0 copia o word COP0 para GPR com sign-extension de 32 bits. MTC0 escreve os 32 bits baixos do GPR. Não há efeitos laterais específicos por registrador, privilege check, TLB, exceções ou interrupções.
+- Testes adicionados para MFC0, MTC0, sign-extension, registrador desconhecido, fonte GPR desconhecida, preservação sem mutação em falha e MFC0 em delay slot.
+- Commits: estado COP0 `5f82659cdcd6e308cffd9757ea59040ef9274c2f`; executor `3da9d368b771516f50d583990947d70fc9564e7f`; integração stepper `0a14f9ae26ce6b35ea033eb9d843144990e5dd14`; testes `2f84f7a51fbfc19b7b557eabf9073bd3de4ca957`.
+- CI pendente. TLB instructions, ERET, Cause/EPC/Status semantics and architectural exceptions remain unimplemented.
