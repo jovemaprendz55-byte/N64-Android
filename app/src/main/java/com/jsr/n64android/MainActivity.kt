@@ -324,6 +324,7 @@ class MainActivity : Activity() {
             return
         }
         hleStopRequested = false
+        mainActionButton?.isEnabled = false
         hleBootButton?.isEnabled = false
         romTraceButton?.isEnabled = false
         status.text = "Preparando HLE sem executar IPL3..."
@@ -486,6 +487,7 @@ class MainActivity : Activity() {
                             diagnosticResult.reportLines.joinToString("\n"),
                             diagnosticResult.videoFrame
                         )
+                        mainActionButton?.isEnabled = true
                         hleBootButton?.isEnabled = true
                         romTraceButton?.isEnabled = true
                     }
@@ -500,10 +502,12 @@ class MainActivity : Activity() {
                     when (snapshot.state) {
                         N64ExecutionSession.State.FAILED -> {
                             status.text = "Falha no worker HLE: ${snapshot.failureMessage ?: "sem detalhes"}"
+                            mainActionButton?.isEnabled = true
                             hleBootButton?.isEnabled = true
                             romTraceButton?.isEnabled = true
                         }
                         N64ExecutionSession.State.CANCELLED -> {
+                            mainActionButton?.isEnabled = true
                             hleBootButton?.isEnabled = true
                             romTraceButton?.isEnabled = true
                         }
@@ -517,6 +521,7 @@ class MainActivity : Activity() {
         if (!worker.start()) {
             hleWorker = null
             status.text = "Não foi possível iniciar o worker HLE."
+            mainActionButton?.isEnabled = true
             hleBootButton?.isEnabled = true
             romTraceButton?.isEnabled = true
         }
@@ -528,6 +533,7 @@ class MainActivity : Activity() {
             status.text = "Selecione uma ROM primeiro."
             return
         }
+        mainActionButton?.isEnabled = false
         romTraceButton?.isEnabled = false
         hleBootButton?.isEnabled = false
         status.text = "Executando diagnóstico em segundo plano. Aguarde; a tela continuará responsiva."
@@ -538,6 +544,7 @@ class MainActivity : Activity() {
                 val message = "Falha no diagnóstico: ${error.javaClass.simpleName}: ${error.message ?: "sem detalhes"}"
                 runOnUiThread {
                     status.text = message + "\nA ROM permanece selecionada se o processo não tiver sido reiniciado."
+                    mainActionButton?.isEnabled = true
                     romTraceButton?.isEnabled = cartridgeBus != null
                     hleBootButton?.isEnabled = cartridgeBus != null
                 }
@@ -559,6 +566,7 @@ class MainActivity : Activity() {
         } catch (error: Exception) {
             runOnUiThread {
                 status.text = "Não foi possível preparar IPL3 na SP DMEM: ${error.message ?: error.javaClass.simpleName}"
+                mainActionButton?.isEnabled = true
                 romTraceButton?.isEnabled = cartridgeBus != null
                 hleBootButton?.isEnabled = cartridgeBus != null
             }
@@ -1011,6 +1019,7 @@ class MainActivity : Activity() {
             "PI_RD_LEN readback: 0x" + bus.read32(N64Bus.PI_RD_LEN_REG).toUInt().toString(16).uppercase().padStart(8, '0') + "\n" +
             "PI_WR_LEN readback: 0x" + bus.read32(N64Bus.PI_WR_LEN_REG).toUInt().toString(16).uppercase().padStart(8, '0')
         runOnUiThread {
+            mainActionButton?.isEnabled = true
             romTraceButton?.isEnabled = cartridgeBus != null
             hleBootButton?.isEnabled = cartridgeBus != null
             showRomDiagnosticPage(diagnostic)
