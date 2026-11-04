@@ -2357,3 +2357,18 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Commits: scheduler `449446f799934f9a4ca90ea9ef7f11e78b2a3938`; testes `8b44afefa94580f3af5e90c23ad4076c49b8c942`; pointer vazio `602ab8d9d03b09fcb537776a9b9c65acc91a5084`; teste final `af94314c001a2eccd3727393c16f3534f02a0996`.
 - CI final `41906618830`: success; `testDebugUnitTest assembleDebug` aprovados. APK artifact `13360316775`, 1,065,632 bytes, SHA-256 `38d891b491c27ddbf7cefcb5a0938e901de3647879508a2270391fad3ca17662`, expira 2026-11-18. https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41906618830
 - Próximo: OSMesgQueue guest ABI e operações ring-buffer send/recv/jam; adicionar bloqueio da thread corrente na mtqueue/fullqueue e despertar com osStartThread. Depois validar context save/restore e call gates. Não declarar GoldenEye funcional.
+
+
+## 112. OSMesgQueue guest ABI e operações — 2026-11-04
+
+- Adicionado `N64HleGuestOsMesgQueue.kt`: ABI de 6 words / 0x18 bytes conforme PR/os.h; campos mtqueue, fullqueue, validCount, first, msgCount, msg pointer; codec valida capacidade, índices e buffer RDRAM.
+- Adicionado `N64HleGuestMessageQueue.kt`: send/receive/jam com ring buffer 32-bit, retorno WOULD_BLOCK e bloqueio guest BLOCK.
+- send/jam acordam no máximo um receiver da mtqueue; receive acorda no máximo um sender da fullqueue. Acordar remove head da fila e chama scheduler.startThread.
+- Scheduler ganhou `blockRunningThread(waitQueueAddress)`: corrente vira WAITING, entra na fila guest e cede seleção. Não salva/restaura ainda o ContextSnapshot.
+- BLOCKED significa que a thread foi enfileirada e a seleção mudou; o método host não suspende stack Kotlin. O guest continuation deve retomar após wake e completar/repetir a operação. Ainda não é call gate.
+- Testes: inicialização ABI; FIFO/wrap; full/empty WOULD_BLOCK; jam na frente; receiver bloqueado e acordado por send; sender bloqueado e acordado por receive com retry após wake.
+- Fontes: https://github.com/n64decomp/007/blob/master/include/PR/os.h ; https://github.com/n64decomp/007/blob/master/src/libultra/os/createmesgqueue.c ; https://github.com/n64decomp/007/blob/master/src/libultra/os/sendmesg.c ; https://github.com/n64decomp/007/blob/master/src/libultra/os/recvmesg.c ; https://github.com/n64decomp/007/blob/master/src/libultra/os/jammesg.c
+- Commits: codec `fc1e42ac437f9e47b82f21e1a12eea0738972a97`; operations `80f9ed24c5ef236f22106426711fb44a10b0e78c`; tests `137730c5c9655dbdaf66b0b38a6e05f488448e3e`; block/wake `58f3ec81fcf8fb5b74c8e080a21b228c29bea810`; test `501dd7daa259029feb3ba9c8604a360e512be930`.
+- CI runs: block/wake `41907048221` success; codec `41907099035` success; operations `41907138157` success; full suite + APK `41907192238` success.
+- APK artifact `13360159620`, 1,071,294 bytes, SHA-256 `67c177d06f8f03e91d355a8037dd507f2030d4b5a278e9196b0ff8d585622c4a`, expira 2026-11-18. https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41907192238
+- Próximo: revisar e corrigir ABI codec comment desatualizado se necessário; criar dispatcher guest para interceptar APIs libultra por endereço/símbolo comprovado; implementar save/restore real de ContextSnapshot no yield/dispatch; validar fila/message queue com layout real de GoldenEye. Não integrar MainActivity ainda.
