@@ -2587,3 +2587,11 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Commits: decoder `5bfa48bd9d23f2e4d547aca63f6f5b2907df6d60`; testes `0085ffdf5e37c632128e7cdbffc6379864704303`.
 - CI ainda precisa confirmar compilação/testes e artifact desta camada.
 - Próxima etapa: depois da CI, desenhar e implementar executor inicial de operações SPECIAL sem overflow (ADDU/SUBU, lógica e shifts) com semântica MIPS64 precisa e testes de estado; branches/delay slots e exceções ficam separados.
+
+
+### Validação da seção 123
+
+- CI aprovada: run `41930743538`, commit de documentação `d382b3f2d29f27d1325ea2c40e3ef99bbf30ad4f`; o commit já contém o estado R4300, o teste corrigido e a documentação.
+- Artifact debug APK `13372155896`, 828,071 bytes, SHA-256 `2c279220078cbcc9bf99d36351068c545b751d072c007a28174d3af16b45b3eb`, expira 2026-11-18.
+- A primeira execução isolada do teste falhou por um literal Long fora da faixa; o teste foi corrigido e a CI da revisão posterior passou.
+- A validação do decoder da seção 124 está em andamento e ainda não pode ser considerada aprovada.
