@@ -1378,3 +1378,30 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - CI do commit `0059a1b...`: run `41801775599` estava em execução na última consulta (etapa Build and test); não declarar sucesso até confirmar.
 - A auditoria ainda não cobriu integralmente todos os arquivos do repositório. Não confundir semelhança de responsabilidades com duplicação; não fundir parser, decoder, rasterizador e leitor de framebuffer.
 - Próxima etapa: confirmar CI dos commits acima e continuar comparação sistemática dos módulos restantes, especialmente SP/RSP e testes correspondentes. Manter a distinção entre duplicação literal, duplicação funcional e abstrações intencionalmente separadas.
+
+
+## 68. Auditoria de arquivos repetidos e SP/RSP (2026-11-04)
+
+### Varredura de arquivos
+- Árvore Git recursiva da branch `dev/n64-clean-start`, commit-base `59ba65453116cf08f33b80367fbe9f07d187e7a4`: 125 arquivos; resposta da árvore sem truncamento.
+- Comparação dos Git blob SHAs: nenhum grupo de arquivos com conteúdo byte a byte idêntico.
+- Comparação de nomes-base sem diferenciar maiúsculas/minúsculas: única colisão é `build.gradle.kts` na raiz e `app/build.gradle.kts`. São arquivos de configuração Gradle em escopos diferentes, não cópias redundantes; manter ambos.
+- Nenhum arquivo foi apagado. Não há evidência de arquivo duplicado exato nesta revisão.
+- Esta varredura não detecta arquivos semanticamente equivalentes, cópias com pequenas diferenças ou código repetido dentro de arquivos.
+
+### SP/RSP — revisão estática
+- Revisados `N64SpTaskBootstrap`, `N64SpTaskDescriptor`, `N64SpTaskDpCoordinator`, `N64SpTaskLifecycle`, `N64SpTaskMicrocodeTracker`, `N64SpTaskRunner`, `N64RspCore` e `N64RspVectorUnit`.
+- Revisados testes SP/RSP correspondentes, incluindo bootstrap, descriptor, coordinator, lifecycle, microcode tracker, runner, core, vector unit e integração R4300 com IMEM.
+- Não foi comprovada duplicação de lógica de produção entre essas classes: descriptor decodifica ABI; bootstrap prepara DMA/PC; tracker exige evidência de carregamento e execução; lifecycle controla estados; coordinator sincroniza DP; runner conecta execução; RSP core executa instruções escalares; vector unit mantém estado/operações vetoriais.
+- `N64RspCoreTest` e `N64RspVectorUnitTest` exercitam camadas diferentes (decodificação/instruções versus semântica da unidade vetorial); não são arquivos duplicados.
+- Há preparação semelhante de cabeçalho OSTask em testes de bootstrap e runner, mas os cenários e os campos utilizados diferem. Não foi extraído fixture compartilhado para evitar abstração de teste sem benefício comprovado.
+- Não foram feitas alterações de produção nesta etapa.
+
+### CI confirmada
+- Run `41801775599`, commit `0059a1b...`: sucesso, incluindo Build and test e upload do APK.
+- Run `41801822912`, commit `532d8b2...`: sucesso, incluindo Build and test e upload do APK.
+
+### Próxima etapa
+- Continuar auditoria de duplicações em outros grupos ainda não comparados em profundidade (bus/MMIO, VI/framebuffer/presenter, ROM/diagnóstico e UI).
+- Fazer comparação semântica e de chamadas; não confundir nomes parecidos, responsabilidades complementares ou configuração em escopos diferentes com arquivos duplicados.
+- `main` permanece intocada.
