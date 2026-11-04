@@ -1437,3 +1437,23 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Revisar testes e pontos de entrada de UI para decidir como tornar acessíveis os diagnósticos sem duplicar telas ou criar botões desconectados.
 - Depois continuar auditoria de recursos Android, ciclo de vida e concorrência; manter a distinção entre função sem chamada, função intencionalmente interna e duplicação funcional comprovada.
 - A auditoria global ainda não terminou. `main` permanece intocada; branch de trabalho `dev/n64-clean-start`. CI verde não comprova instalação no Android 16 nem GoldenEye funcional.
+
+
+
+## 70. Reconexão dos diagnósticos na interface e exclusão mútua — 2026-11-04
+
+- A partir da auditoria da seção 69, reconectados os campos de botão que já existiam mas não eram instanciados na tela principal:
+  - `DIAGNÓSTICO HLE` chama `runHleBootDiagnostic()`.
+  - `DIAGNÓSTICO IPL3 / CPU` chama `runRomInstructionDiagnostic()`.
+- Ambos começam desabilitados e são habilitados quando uma ROM é carregada/validada; são desabilitados novamente quando a ROM não está disponível.
+- Adicionadas verificações de conflito nos listeners para não iniciar diagnóstico enquanto a sessão de vídeo está ativa ou o worker HLE está registrado.
+- Os dois diagnósticos desabilitam os botões concorrentes durante a execução. Também desabilitam o botão principal para evitar iniciar uma sessão de jogo simultaneamente. Os caminhos de sucesso, falha e cancelamento reabilitam os controles.
+- Corrigidos os caminhos de retorno de falha ao preparar IPL3 e de exceção no worker de diagnóstico para restaurar os controles.
+- Commit UI: `b257d06441aa1e7001d32e61a8626dac533b7459`.
+- Commit exclusão mútua/restauração de controles: `43b3f4cf62e25616499e81e9fb45b2a022c60495`.
+- CI run `41803054416` (commit b257d06) e run `41803147496` (commit 43b3f4c) estavam em execução na última consulta; validar ambos antes de declarar a interface compilada/testada.
+- CI anterior confirmado: run `41802747240` (limpeza imports/helper, commit a9225ad) e run `41802823530` (esta documentação/seção 69, commit 2d416aa) concluíram com sucesso.
+- Os testes sintéticos de vídeo/RDP e CPU ainda não foram reconectados; ficam para etapa separada, após validação destes dois botões e da exclusão mútua.
+- Não foi alterado o motor CPU/RSP/RDP, o boot HLE, a seleção de ROM, nem o Manifest. Nenhum jogo foi executado no aparelho nesta etapa.
+- Próximo passo: confirmar os dois workflows; depois decidir como expor os testes de vídeo e CPU sem sobrecarregar a tela principal (preferir uma tela/área de ferramentas de diagnóstico). Fazer testes de UI e lifecycle; não afirmar GoldenEye funcional.
+- Branch `dev/n64-clean-start`; `main` permanece intocada.
