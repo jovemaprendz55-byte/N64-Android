@@ -1335,7 +1335,7 @@ class MainActivity : Activity() {
             return
         }
         val title = TextView(this).apply {
-            text = "FERRAMENTAS DE TESTE\\n\\nTestes sintéticos isolados. Nenhum deles comprova que uma ROM funciona."
+            text = "FERRAMENTAS DE TESTE\n\nTestes sintéticos isolados. Nenhum deles comprova que uma ROM funciona."
             textSize = 16f
             setPadding(12, 16, 12, 20)
         }
