@@ -2858,3 +2858,8 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Testes adicionados para MFC0, MTC0, sign-extension, registrador desconhecido, fonte GPR desconhecida, preservação sem mutação em falha e MFC0 em delay slot.
 - Commits: estado COP0 `5f82659cdcd6e308cffd9757ea59040ef9274c2f`; executor `3da9d368b771516f50d583990947d70fc9564e7f`; integração stepper `0a14f9ae26ce6b35ea033eb9d843144990e5dd14`; testes `2f84f7a51fbfc19b7b557eabf9073bd3de4ca957`.
 - CI pendente. TLB instructions, ERET, Cause/EPC/Status semantics and architectural exceptions remain unimplemented.
+### Validação CI da seção 139 — 2026-11-04
+
+- Implementação COP0 passou no run `41937654023`; integração ao stepper passou no run `41937669816`; testes passaram no run `41937692898`; documentação passou no run `41937719265`.
+- Artifact do run de testes `13374554917`, 848.157 bytes, SHA-256 `913b9792ca60642bc82e2b5369ac6d1e61396ed8bdd1992d773723769726c342`.
+- Seção 139 validada em CI: testes unitários e `assembleDebug` passaram. Não houve teste em dispositivo.
