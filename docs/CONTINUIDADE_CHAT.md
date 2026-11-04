@@ -1319,3 +1319,15 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Módulos de sessão, bootstrap/runner/lifecycle SP e core/unidade vetorial RSP foram mantidos por terem responsabilidades diferentes.
 - CI Android build dos commits de código `d0997d7` e `d4f88c4` estava em execução na última consulta (runs 41799039823 e 41799094882). Não declarar validação final até verificar os resultados.
 - Branch exclusiva `dev/n64-clean-start`; nenhuma alteração foi feita na `main`.
+
+
+## 63. Resultado da CI e continuação da auditoria de duplicações — 2026-11-04
+
+- Os quatro workflows Android build da limpeza foram consultados: runs `41799039823`, `41799094882`, `41799163527` e `41799184370` concluíram com sucesso. Em todos, Build and test e Upload debug APK passaram.
+- A documentação detalhada foi atualizada em `docs/LIMPEZA_DUPLICACOES_2026-11-04.md`, commit `c4a07d7b4fef29eee87532ffca70162d8a7b6ea1`.
+- Continuação da revisão estrutural: `N64HleCpuScheduler` e `N64HleOsKernel` têm métodos de despacho/threads com nomes próximos, mas o scheduler salva/restaura contextos R4300 e o kernel mantém estados, filas e eventos; mantidos.
+- Pipeline RDP mantido em camadas: parser de pacotes, decoder de setup de triângulo, edge walker e rasterizador têm entradas/saídas diferentes. O caminho de vídeo também separa leitura VI e apresentação Android.
+- A auditoria continua sendo estática/estrutural, não AST/clone local exaustivo dos 122 arquivos. Não declarar que toda duplicação do repositório foi eliminada.
+- Nenhuma nova mudança de código de emulação foi feita nesta etapa; apenas documentação e verificação CI.
+- Próximo passo seguro: continuar a inspeção de utilitários de ROM/memória/CPU e dos testes correspondentes, buscando duplicação literal comprovada antes de qualquer refactor. Não alterar `main`; branch de trabalho `dev/n64-clean-start`.
+- CI não significa APK instalado no aparelho nem GoldenEye funcional. Teste real no Android 16 ainda precisa ser feito pelo usuário.
