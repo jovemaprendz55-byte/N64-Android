@@ -2803,3 +2803,10 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Documentação do fetch RDRAM passou no run `41936495727`, artifact `13373722646`, 844.920 bytes, SHA-256 `52aa0d84321f8c4a643699e57948e5a2caeffdb62d29acc405e86de8bf0a6662`.
 - Runs anteriores `41935830278`, `41935854933`, `41935887905`, `41936068230`, `41936097330`, `41936195760`, `41936225860`, `41936247191`, `41936286533`, `41936316087`, `41936335186` e `41936359640` falharam em etapas intermediárias por testes desatualizados ou literal Kotlin Long/Int. As correções foram incorporadas; não usar esses runs como validação final.
 - A seção 135 (ADD/SUB/DADD/DSUB) ainda está em validação separada; não declarar aprovada até seus workflows finais passarem.
+## 136. Imediatos doubleword DADDI/DADDIU — 2026-11-04
+
+- Estendido `N64HleR4300ImmediateExecutor` com DADDI (opcode `0x18`) e DADDIU (`0x19`). Ambos usam imediato de 16 bits sign-extended e operam nos 64 bits do GPR.
+- DADDI verifica overflow signed de 64 bits antes de escrever; como exceções arquiteturais não estão implementadas, overflow é rejeitado sem alterar destino ou PC. DADDIU faz wrap de 64 bits sem trapping.
+- Testes adicionados para imediato negativo, resultado 64-bit e overflow de DADDI sem mutação.
+- Commits: implementação `4d85023a1b72f4a611bf4e679e457634aebd8361`; testes `d699d8b9252a6ce83b42bd4a303826024cb0b100`.
+- CI pendente.
