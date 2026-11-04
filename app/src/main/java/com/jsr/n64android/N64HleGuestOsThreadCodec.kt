@@ -94,17 +94,21 @@ class N64HleGuestOsThreadCodec(private val memory: N64HleGuestMemory) {
         )
         require(thread.state in VALID_STATES) { "Unknown libultra OSThread state: ${thread.state}" }
         require(thread.flags in 0..0xFFFF) { "OSThread flags must fit in u16." }
+        val nextPointer = thread.next.toGuestPointer()
+        val queuePointer = thread.queue.toGuestPointer()
+        val threadListNextPointer = thread.threadListNext.toGuestPointer()
+        val profilePointer = thread.profile.toGuestPointer()
         val l = N64HleGuestOsThreadLayout
         val contextAddress = address + l.THREAD_CONTEXT
-        memory.write32(address + l.THREAD_NEXT, thread.next.toGuestPointer())
+        memory.write32(address + l.THREAD_NEXT, nextPointer)
         memory.write32(address + l.THREAD_PRIORITY, thread.priority)
-        memory.write32(address + l.THREAD_QUEUE, thread.queue.toGuestPointer())
-        memory.write32(address + l.THREAD_TL_NEXT, thread.threadListNext.toGuestPointer())
+        memory.write32(address + l.THREAD_QUEUE, queuePointer)
+        memory.write32(address + l.THREAD_TL_NEXT, threadListNextPointer)
         memory.write16(address + l.THREAD_STATE, thread.state)
         memory.write16(address + l.THREAD_FLAGS, thread.flags)
         memory.write32(address + l.THREAD_ID, thread.id)
         memory.write32(address + l.THREAD_FP_USED, thread.fpUsed)
-        memory.write32(address + l.THREAD_PROFILE, thread.profile.toGuestPointer())
+        memory.write32(address + l.THREAD_PROFILE, profilePointer)
 
         GPR_OFFSETS.forEachIndexed { register, offset ->
             if (offset >= 0) memory.write64(contextAddress + offset, thread.context.gpr[register])
