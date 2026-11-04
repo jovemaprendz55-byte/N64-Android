@@ -207,3 +207,40 @@ Commits: scheduler `449446f799934f9a4ca90ea9ef7f11e78b2a3938`; testes `8b44afefa
 CI final: run `41906618830` — success; `gradle testDebugUnitTest assembleDebug` concluído. APK artifact `13360316775`, 1,065,632 bytes, SHA-256 `38d891b491c27ddbf7cefcb5a0938e901de3647879508a2270391fad3ca17662`, expira 2026-11-18. Run: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41906618830
 
 Próxima etapa: codec e operações de OSMesgQueue (mtqueue/fullqueue, ring buffer, send/recv/jam), incluindo bloqueio/desbloqueio usando as transições acima. Depois disso, revisar call gate e salvar/restaurar contexto antes de integrar o runtime à MainActivity.
+
+
+## Etapa 7 — OSMesgQueue guest: ring buffer, espera e wake — 2026-11-04
+
+Adicionados:
+- `N64HleGuestOsMesgQueue.kt`: layout de seis words (0x18 bytes) e codec validado para `mtqueue`, `fullqueue`, `validCount`, `first`, `msgCount` e buffer de mensagens.
+- `N64HleGuestMessageQueue.kt`: operações guest de `send`, `receive` e `jam`, buffer circular de mensagens de 32 bits, NOBLOCK/BLOCK, filas separadas para receivers esperando fila vazia e senders esperando fila cheia.
+- `N64HleGuestThreadScheduler.blockRunningThread`: marca corrente WAITING, enfileira na wait queue fornecida e seleciona próxima thread. Ao liberar espaço/mensagem, a fila retira um waiter e chama `startThread`.
+
+Comportamento implementado:
+- `create` exige capacidade positiva, valida buffer inteiro e inicializa as duas wait queues com tail sentinel.
+- `send`: escreve no fim lógico do ring buffer; fila cheia retorna WOULD_BLOCK ou bloqueia na fullqueue.
+- `receive`: lê do início; fila vazia retorna WOULD_BLOCK ou bloqueia na mtqueue.
+- `jam`: insere na frente; fila cheia usa a mesma fullqueue.
+- Após send/jam, acorda no máximo um receiver; após receive, acorda no máximo um sender.
+- Um resultado BLOCKED significa que o estado guest foi enfileirado e o scheduler mudou a seleção. O método host não suspende uma stack Kotlin: o guest continuation deverá ser retomado e repetir/continuar a operação quando a thread for despachada. Isso ainda não é um call gate funcional.
+
+Fontes:
+- ABI OSMesgQueue e macros MQ_IS_EMPTY/MQ_IS_FULL: https://github.com/n64decomp/007/blob/master/include/PR/os.h
+- osCreateMesgQueue: https://github.com/n64decomp/007/blob/master/src/libultra/os/createmesgqueue.c
+- osSendMesg: https://github.com/n64decomp/007/blob/master/src/libultra/os/sendmesg.c
+- osRecvMesg: https://github.com/n64decomp/007/blob/master/src/libultra/os/recvmesg.c
+- osJamMesg: https://github.com/n64decomp/007/blob/master/src/libultra/os/jammesg.c
+
+Testes `N64HleGuestMessageQueueTest.kt`: inicialização do ABI; FIFO e wrap do ring buffer; WOULD_BLOCK; jam na frente; receiver bloqueado e acordado por send; sender bloqueado e acordado por receive, com retry explícito após wake.
+
+Commits: OSMesgQueue layout/codec `fc1e42ac437f9e47b82f21e1a12eea0738972a97`; operações `80f9ed24c5ef236f22106426711fb44a10b0e78c`; testes `137730c5c9655dbdaf66b0b38a6e05f488448e3e`; block/wake scheduler `58f3ec81fcf8fb5b74c8e080a21b228c29bea810`; teste block/wake `501dd7daa259029feb3ba9c8604a360e512be930`.
+
+CI:
+- Scheduler block/wake: run `41907048221` success.
+- OSMesgQueue codec: run `41907099035` success.
+- OSMesgQueue operations: run `41907138157` success.
+- Full tests + APK: run `41907192238` success.
+- APK artifact `13360159620`, 1,071,294 bytes, SHA-256 `67c177d06f8f03e91d355a8037dd507f2030d4b5a278e9196b0ff8d585622c4a`, expires 2026-11-18.
+- Run: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41907192238
+
+Remaining: validate ABI with actual GoldenEye symbols/data, integrate true context save/restore and guest call gates, then test in device. Do not claim game launch success.
