@@ -15,10 +15,12 @@ class N64HleGuestMessageQueueTest {
         val bufferAddress: Long,
         val runQueueAddress: Long,
         val runningThreadAddress: Long,
-        val tailAddress: Long
+        val tailAddress: Long,
+        val cpu: R4300Cpu?,
+        val switcher: N64HleGuestContextSwitcher?
     )
 
-    private fun fixture(capacity: Int = 3): Fixture {
+    private fun fixture(capacity: Int = 3, withContextSwitcher: Boolean = false): Fixture {
         val ram = N64Memory(8 * 1024 * 1024)
         val guest = N64HleGuestMemory(ram, ram.size)
         val threadCodec = N64HleGuestOsThreadCodec(guest)
@@ -36,12 +38,14 @@ class N64HleGuestMessageQueueTest {
         val scheduler = N64HleGuestThreadScheduler(
             guest, threadCodec, queues, runQueue, activeQueue, runningThread, tail
         )
+        val cpu = if (withContextSwitcher) R4300Cpu(ram) else null
+        val switcher = cpu?.let { N64HleGuestContextSwitcher(it, threadCodec, scheduler) }
         val queueCodec = N64HleGuestOsMesgQueueCodec(guest)
         queueCodec.create(queueAddress, bufferAddress, capacity, tail)
-        val messages = N64HleGuestMessageQueue(guest, queueCodec, queues, scheduler, tail)
+        val messages = N64HleGuestMessageQueue(guest, queueCodec, queues, scheduler, tail, switcher)
         return Fixture(
             guest, queueCodec, messages, scheduler, queues,
-            queueAddress, bufferAddress, runQueue, runningThread, tail
+            queueAddress, bufferAddress, runQueue, runningThread, tail, cpu, switcher
         )
     }
 
@@ -122,5 +126,63 @@ class N64HleGuestMessageQueueTest {
         // The guest continuation resumes after wake and retries the send.
         assertEquals(N64HleGuestMessageQueue.Status.SENT, f.messages.send(f.queueAddress, 0x222L).status)
         assertEquals(0x222L, f.messages.receive(f.queueAddress).message)
+    }
+    @Test
+    fun blockingReceiveSavesLiveContextAtRetryPcAndWakeRestoresIt() {
+        val f = fixture(withContextSwitcher = true)
+        val receiver = 0x80001000L
+        val gpr = LongArray(32)
+        gpr[16] = 0x1234ABCDL
+        gpr[31] = 0xFFFFFFFF8000F000UL.toLong()
+        N64HleGuestOsThreadCodec(f.memory).write(
+            receiver,
+            N64HleGuestOsThread(
+                priority = 20,
+                context = N64HleGuestOsThreadContext(gpr = gpr, pc = 0x80002000.toInt())
+            )
+        )
+        val switcher = requireNotNull(f.switcher)
+        val cpu = requireNotNull(f.cpu)
+        switcher.startThread(receiver, 0xFFFFFFFF80003000UL.toLong())
+        cpu.gpr[16] = 0xCAFEBABEL
+        cpu.gpr[4] = 0x44445555L
+
+        val blocked = f.messages.receive(
+            f.queueAddress,
+            blocking = true,
+            retryPc = 0xFFFFFFFF80004000UL.toLong()
+        )
+
+        assertEquals(N64HleGuestMessageQueue.Status.BLOCKED, blocked.status)
+        assertEquals(0L, f.memory.read32(f.runningThreadAddress).toUInt().toLong())
+        val saved = N64HleGuestOsThreadCodec(f.memory).read(receiver)
+        assertEquals(0x80004000.toInt(), saved.context.pc)
+        assertEquals(0xCAFEBABEL, saved.context.gpr[16])
+        assertEquals(0x44445555L, saved.context.gpr[4])
+
+        val sent = f.messages.send(
+            f.queueAddress,
+            0x55AAL,
+            callerResumePc = 0xFFFFFFFF80005000UL.toLong()
+        )
+        assertEquals(receiver, sent.dispatch?.selectedThread)
+        assertEquals(0xFFFFFFFF80004000UL.toLong(), cpu.pc)
+        assertEquals(0xCAFEBABEL, cpu.gpr[16])
+        assertEquals(0x44445555L, cpu.gpr[4])
+        assertEquals(0x55AAL, f.messages.receive(f.queueAddress).message)
+    }
+
+    @Test
+    fun contextSwitchModeRequiresRetryPcBeforeBlockingMutation() {
+        val f = fixture(withContextSwitcher = true)
+        val receiver = 0x80001000L
+        startThread(f, receiver)
+        val exception = org.junit.Assert.assertThrows(IllegalArgumentException::class.java) {
+            f.messages.receive(f.queueAddress, blocking = true)
+        }
+        assertTrue(exception.message!!.contains("retry PC"))
+        assertEquals(receiver, f.memory.read32(f.runningThreadAddress).toUInt().toLong())
+        assertEquals(N64HleGuestOsThreadLayout.STATE_RUNNING,
+            N64HleGuestOsThreadCodec(f.memory).read(receiver).state)
     }
 }
