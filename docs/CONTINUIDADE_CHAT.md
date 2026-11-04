@@ -2788,3 +2788,11 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Testes adicionados para fetch/execução de ADDIU a partir da RDRAM e para J seguido de ADDIU buscado do delay slot.
 - Commits: fetch `50c9ae0ea877426acbf8beafe5de7f140a27e139`; testes `0bd9cd122cde91ba1b3d72f338ec874f2eec156e`.
 - CI ainda pendente. Fetch só funciona nos segmentos KSEG0/KSEG1 suportados pelo `N64HleGuestAddressSpace`; não carrega ROM, não faz mapeamento de ROM no espaço guest, não implementa exceções de fetch/alinhamento, TLB ou MMIO.
+## 135. Aritmética signed com overflow trapping — 2026-11-04
+
+- Implementadas as operações SPECIAL ADD, SUB, DADD e DSUB no `N64HleR4300SpecialExecutor`.
+- ADD/SUB operam sobre os 32 bits baixos dos GPR como signed word e sign-extend o resultado. DADD/DSUB operam em 64 bits signed. DADDU/DSUBU continuam com wrap sem trapping.
+- Como a entrega de exceções arquiteturais ainda não existe, overflow signed em ADD/SUB/DADD/DSUB é rejeitado antes da escrita no GPR destino. Isso preserva o estado e não simula uma exceção guest.
+- Testes adicionados para resultados signed normais, overflow positivo/negativo em word e doubleword e ausência de mutação do destino/PC.
+- Commits: implementação `9dc72ee0dd650f062d378c550a76db579b2f4cac`; testes `51d7dfefc8ebb958364107226a0cb032381fc570`.
+- CI pendente. Ainda não há entrega de exceções, Cause/EPC/BD, handler vetorial ou interrupções.
