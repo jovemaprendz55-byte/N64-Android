@@ -1919,12 +1919,12 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Criada N64CpuCycleClock, uma contagem monotônica e local à sessão para os ciclos-base atualmente modelados pela CPU. A classe rejeita incrementos negativos e usa Math.addExact para não permitir overflow silencioso.
 - R4300Cpu agora oferece setCycleAdvanceListener. O observador é chamado dentro de advanceCountCycles, depois da atualização do COP0 Count, com o mesmo delta recebido pelo divisor do Count.
 - Esse ponto único cobre tanto o caminho normal (após instrução/exceção tratada) quanto a entrada de interrupção MI, que também chama advanceCountCycles(2) antes de retornar.
-- N64RomVideoSession conecta o CPU ao ledger e expõe executedCpuCycles() para diagnóstico/testes.
+- N64RomVideoSession conecta o CPU ao ledger somente durante execute(), expõe executedCpuCycles() para diagnóstico/testes e remove o observador em finally ao concluir, cancelar ou falhar. Construir uma sessão sem executá-la não captura ciclos; passos de CPU posteriores à sessão também não contaminam o total.
 - O ledger conta unidades determinísticas do modelo atual (dois ciclos-base por etapa), não ciclos de hardware calibrados do VR4300/RCP. Não altera o divisor do Count, a execução de instruções ou a temporização de dispositivos.
 
 ### Testes adicionados
 - N64CpuCycleClockTest: avanço em lotes diferentes produz o mesmo total; avanço zero não altera o total; avanço negativo é rejeitado.
-- N64RomVideoSessionTest: oito NOPs contabilizam 16 ciclos estimados e COP0 Count=8, tanto com batchSize=1 quanto batchSize=4.
+- N64RomVideoSessionTest: oito NOPs contabilizam 16 ciclos estimados e COP0 Count=8, tanto com batchSize=1 quanto batchSize=4; confirma também ledger zerado antes de execute() e que passos posteriores não são capturados.
 - Os testes são determinísticos e não dependem de ROM comercial ou aparelho.
 
 ### Limites preservados
@@ -1941,9 +1941,11 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Testes do ledger: 2306f188705c7ed8645beaf94384a7fa95b8572e.
 - Teste de integração por lotes: 51a4d89230ddc3d3023103d3a57ca1ba38c1f846.
 - Correção da expectativa COP0 Count no teste de integração: bf2f526ca50d6b826d08398cfa54dafbacaa7880.
+- Ciclo de vida do observador: 224e220563ac1435dd8ad655e184d129412ac2de.
+- Teste do ciclo de vida: 39f225c22774ffcf952f7d9450d0fae592ab2a0f.
 
 ### CI
-- As execuções dos commits acima foram disparadas; confirmar os resultados da execução mais recente antes de considerar a etapa validada.
+- As execuções dos commits acima foram disparadas; confirmar os resultados da execução mais recente antes de considerar a etapa validada. As execuções intermediárias dos commits anteriores não substituem a validação do último commit de teste.
 - Não anunciar APK novo como aprovado até a conclusão do CI.
 
 - Branch: dev/n64-clean-start. main permanece intocada.
