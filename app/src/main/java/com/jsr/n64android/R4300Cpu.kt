@@ -768,6 +768,11 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                             13 -> { // Cause: only software interrupt pending bits IP[1:0] are writable.
                                 cop0[13] = (cop0[13] and 0x300L.inv()) or (value and 0x300L)
                             }
+                            12 -> { // Status: reserved bits read zero; TS is hardware-maintained.
+                                val tsBit = 1L shl 21
+                                val writableMask = 0xFF54FFFFL
+                                cop0[12] = (value and writableMask) or (previousValue and tsBit)
+                            }
                             else -> cop0[copRd] = value
                         }
                         recordCop0Write(instructionAddress, instruction, copRd, previousValue, value, cop0[copRd])
