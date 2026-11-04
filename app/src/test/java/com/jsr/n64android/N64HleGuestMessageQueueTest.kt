@@ -185,4 +185,23 @@ class N64HleGuestMessageQueueTest {
         assertEquals(N64HleGuestOsThreadLayout.STATE_RUNNING,
             N64HleGuestOsThreadCodec(f.memory).read(receiver).state)
     }
+    @Test
+    fun wakeRequiresCallerReturnPcBeforeMessageQueueMutation() {
+        val f = fixture(withContextSwitcher = true)
+        val receiver = 0x80001000L
+        startThread(f, receiver)
+        f.messages.receive(
+            f.queueAddress,
+            blocking = true,
+            retryPc = 0xFFFFFFFF80004000UL.toLong()
+        )
+        val exception = org.junit.Assert.assertThrows(IllegalArgumentException::class.java) {
+            f.messages.send(f.queueAddress, 0xCAFE)
+        }
+        assertTrue(exception.message!!.contains("return PC"))
+        assertEquals(0, f.codec.read(f.queueAddress).validCount)
+        assertEquals(receiver, f.queues.head(
+            f.queueAddress + N64HleGuestOsMesgQueueLayout.MT_QUEUE
+        ))
+    }
 }
