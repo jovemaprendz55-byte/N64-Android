@@ -2838,3 +2838,9 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Testes planejados cobrem os oito offsets e valores de preservação para as quatro instruções.
 - Commits: implementação `4112bae658a3401b2a116ea71c02fede26c2d189`; testes iniciais `06111bb0a285b3ed51303d2e9210d7f72a634c14`; correção de vetores esperados `1bf98754cedbd11ed511959a4e71727cead0e7f8`.
 - CI pendente. Não inclui LL/SC, cache, MMIO ou exceções de endereço.
+### Validação CI da seção 137 — 2026-11-04
+
+- Implementação LWL/LWR/SWL/SWR passou no run `41937015290`; testes com todos os offsets e correção de sign-extension passaram no run `41937224615`; documentação da correção passou no run `41937240179`.
+- Artifact do run de testes `13374826001`, 846.298 bytes, SHA-256 `e1ee5a8fe8d76815f68e318373e7dd999c1795753b094c7acc57f80bc403c99f`.
+- A primeira CI com testes de offsets falhou porque os valores esperados de LWL/LWR não consideravam sign-extension de word. A implementação foi mantida; os vetores foram corrigidos e a CI subsequente passou.
+- Seção 137 validada em CI: testes unitários e `assembleDebug` passaram. Não houve teste em dispositivo.
