@@ -549,11 +549,13 @@ class MainActivity : Activity() {
                 runRomInstructionDiagnosticWorker(bus)
             } catch (error: Throwable) {
                 val message = "Falha no diagnóstico: ${error.javaClass.simpleName}: ${error.message ?: "sem detalhes"}"
-                runOnUiThread {
+                if (!isFinishing && !isDestroyed) runOnUiThread {
+                    if (!isFinishing && !isDestroyed) {
                     status.text = message + "\nA ROM permanece selecionada se o processo não tiver sido reiniciado."
                     mainActionButton?.isEnabled = true
                     romTraceButton?.isEnabled = cartridgeBus != null
                     hleBootButton?.isEnabled = cartridgeBus != null
+                    }
                 }
             }
         }, "N64-ROM-Diagnostic").start()
@@ -571,11 +573,13 @@ class MainActivity : Activity() {
                 bus.write8(0x04000040 + offset, byteValue)
             }
         } catch (error: Exception) {
-            runOnUiThread {
+            if (!isFinishing && !isDestroyed) runOnUiThread {
+                if (!isFinishing && !isDestroyed) {
                 status.text = "Não foi possível preparar IPL3 na SP DMEM: ${error.message ?: error.javaClass.simpleName}"
                 mainActionButton?.isEnabled = true
                 romTraceButton?.isEnabled = cartridgeBus != null
                 hleBootButton?.isEnabled = cartridgeBus != null
+                }
             }
             return
         }
