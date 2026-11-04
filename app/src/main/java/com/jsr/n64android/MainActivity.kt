@@ -235,8 +235,8 @@ class MainActivity : Activity() {
                         val lastOpcode = cpu.diagnosticInstructionWord
                         val exception = cpu.lastExceptionCode?.let { "CPU EXCEPTION code=" + it + " EPC=0x" + (cpu.lastExceptionInstructionAddress ?: 0L).toULong().toString(16).uppercase() }
                         val tlbFault = cpu.lastTlbFaultVirtualAddress?.let { "TLB " + cpu.lastTlbFaultKind + " " + cpu.lastTlbFaultAccessType + " VA=0x" + it.toULong().toString(16).uppercase() }
-                        runOnUiThread {
-                            details.text =
+                        if (!isFinishing && !isDestroyed) runOnUiThread {
+                            if (!isFinishing && !isDestroyed) details.text =
                                 "HLE: ${boot.copiedBytes} bytes preparados" +
                                 "\nCPU: $count instruções" +
                                 "\nFrames VI: ${sessionSafeFrameCount(romVideoSession)}" +
@@ -254,20 +254,21 @@ class MainActivity : Activity() {
                         }
                     },
                     onFrame = { frame ->
-                        frameView.submitFrame(frame)
+                        if (!isFinishing && !isDestroyed) frameView.submitFrame(frame)
                     }
                 )
                 romVideoSession = session
                 lastRomVideoSession = session
                 if (romVideoStopRequested) session.requestStop()
-                runOnUiThread {
-                    details.text =
+                if (!isFinishing && !isDestroyed) runOnUiThread {
+                    if (!isFinishing && !isDestroyed) details.text =
                         "HLE concluído. CPU executando a ROM..." +
                         "\nAguardando o jogo configurar VI e produzir pixels." +
                         "\nRSP será executado em pequenos intervalos cooperativos."
                 }
                 val result = session.execute()
-                runOnUiThread {
+                if (!isFinishing && !isDestroyed) runOnUiThread {
+                    if (!isFinishing && !isDestroyed) {
                     details.text =
                         "EXECUÇÃO FINALIZADA: ${result.state}" +
                         "\nInstruções: ${result.executedInstructions}" +
@@ -280,14 +281,17 @@ class MainActivity : Activity() {
                         (session.rspFailureMessage()?.let { "\nFalha RSP: $it" } ?: "") +
                         (result.failureMessage?.let { "\nFalha CPU: $it" } ?: "")
                     mainActionButton?.isEnabled = true
+                    }
                 }
             } catch (error: Throwable) {
-                runOnUiThread {
+                if (!isFinishing && !isDestroyed) runOnUiThread {
+                    if (!isFinishing && !isDestroyed) {
                     details.text =
                         "FALHA NA EXECUÇÃO DA ROM" +
                         "\n${error.javaClass.simpleName}: ${error.message ?: "sem detalhes"}" +
                         "\nAinda não foi possível iniciar o caminho de vídeo."
                     mainActionButton?.isEnabled = true
+                    }
                 }
             } finally {
                 romVideoSession = null
