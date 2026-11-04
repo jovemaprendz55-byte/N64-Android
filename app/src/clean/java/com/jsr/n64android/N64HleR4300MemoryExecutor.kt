@@ -30,11 +30,15 @@ class N64HleR4300MemoryExecutor(
             OP_LD -> state.writeGpr(instruction.rt, memory.read64(address))
             OP_LWL -> loadWordLeft(address, instruction.rt, state)
             OP_LWR -> loadWordRight(address, instruction.rt, state)
+            OP_LDL -> loadDoublewordLeft(address, instruction.rt, state)
+            OP_LDR -> loadDoublewordRight(address, instruction.rt, state)
             OP_SB -> memory.write8(address, state.readGpr(instruction.rt).toInt() and 0xFF)
             OP_SH -> memory.write16(address, state.readGpr(instruction.rt).toInt() and 0xFFFF)
             OP_SW -> memory.write32(address, state.readGpr(instruction.rt) and 0xFFFF_FFFFL)
             OP_SWL -> storeWordLeft(address, instruction.rt, state)
             OP_SWR -> storeWordRight(address, instruction.rt, state)
+            OP_SDL -> storeDoublewordLeft(address, instruction.rt, state)
+            OP_SDR -> storeDoublewordRight(address, instruction.rt, state)
             OP_SD -> memory.write64(address, state.readGpr(instruction.rt))
         }
     }
@@ -81,6 +85,44 @@ class N64HleR4300MemoryExecutor(
         memory.write32(aligned, merged.toLong() and 0xFFFF_FFFFL)
     }
 
+    private fun loadDoublewordLeft(address: Long, target: Int, state: N64HleR4300CpuState) {
+        val offset = (address and 7L).toInt()
+        val aligned = address and -8L
+        val shift = offset * 8
+        val preserveMask = (1L shl shift) - 1L
+        val old = if (preserveMask == 0L) 0L else state.readGpr(target) and preserveMask
+        state.writeGpr(target, old or (memory.read64(aligned) shl shift))
+    }
+
+    private fun loadDoublewordRight(address: Long, target: Int, state: N64HleR4300CpuState) {
+        val offset = (address and 7L).toInt()
+        val aligned = address and -8L
+        val shift = (7 - offset) * 8
+        val preserveMask = if (offset == 7) 0L else (-1L shl ((offset + 1) * 8))
+        val old = if (preserveMask == 0L) 0L else state.readGpr(target) and preserveMask
+        state.writeGpr(target, old or (memory.read64(aligned) ushr shift))
+    }
+
+    private fun storeDoublewordLeft(address: Long, source: Int, state: N64HleR4300CpuState) {
+        val offset = (address and 7L).toInt()
+        val aligned = address and -8L
+        val shift = offset * 8
+        val writeMask = -1L ushr shift
+        val old = memory.read64(aligned)
+        val value = state.readGpr(source) ushr shift
+        memory.write64(aligned, (old and writeMask.inv()) or (value and writeMask))
+    }
+
+    private fun storeDoublewordRight(address: Long, source: Int, state: N64HleR4300CpuState) {
+        val offset = (address and 7L).toInt()
+        val aligned = address and -8L
+        val shift = (7 - offset) * 8
+        val writeMask = if (offset == 7) -1L else (-1L shl ((7 - offset) * 8))
+        val old = memory.read64(aligned)
+        val value = state.readGpr(source) shl shift
+        memory.write64(aligned, (old and writeMask.inv()) or (value and writeMask))
+    }
+
     private companion object {
         const val OP_LB = 0x20
         const val OP_LH = 0x21
@@ -96,9 +138,13 @@ class N64HleR4300MemoryExecutor(
         const val OP_SWL = 0x2A
         const val OP_SWR = 0x2E
         const val OP_LD = 0x37
+        const val OP_LDL = 0x1A
+        const val OP_LDR = 0x1B
         const val OP_SD = 0x3F
+        const val OP_SDL = 0x2C
+        const val OP_SDR = 0x2D
 
-        val LOAD_OPCODES = setOf(OP_LB, OP_LH, OP_LW, OP_LWL, OP_LWR, OP_LBU, OP_LHU, OP_LWU, OP_LD)
-        val STORE_OPCODES = setOf(OP_SB, OP_SH, OP_SW, OP_SWL, OP_SWR, OP_SD)
+        val LOAD_OPCODES = setOf(OP_LB, OP_LH, OP_LW, OP_LWL, OP_LWR, OP_LDL, OP_LDR, OP_LBU, OP_LHU, OP_LWU, OP_LD)
+        val STORE_OPCODES = setOf(OP_SB, OP_SH, OP_SW, OP_SWL, OP_SWR, OP_SDL, OP_SDR, OP_SD)
     }
 }
