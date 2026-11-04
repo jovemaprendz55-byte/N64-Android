@@ -2844,3 +2844,9 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Artifact do run de testes `13374826001`, 846.298 bytes, SHA-256 `e1ee5a8fe8d76815f68e318373e7dd999c1795753b094c7acc57f80bc403c99f`.
 - A primeira CI com testes de offsets falhou porque os valores esperados de LWL/LWR não consideravam sign-extension de word. A implementação foi mantida; os vetores foram corrigidos e a CI subsequente passou.
 - Seção 137 validada em CI: testes unitários e `assembleDebug` passaram. Não houve teste em dispositivo.
+### Validação CI da seção 138 — 2026-11-04
+
+- Implementação LDL/LDR/SDL/SDR passou no run `41937295603`; testes com os oito offsets e vetores corrigidos passaram no run `41937393696`; documentação passou no run `41937413546`.
+- Artifact do run de testes `13375285494`, 846.868 bytes, SHA-256 `4ee29c1b20c7179295d269c672d11b52b9d478cd7ff617ae42b2a1ceaff07d96`.
+- A primeira execução de testes (`41937351692`) falhou por valores esperados incorretos em alguns offsets LDL/SDL; vetores corrigidos no commit `1bf98754cedbd11ed511959a4e71727cead0e7f8`, e a execução posterior passou.
+- Seção 138 validada em CI: testes unitários e `assembleDebug` passaram. Não houve teste em dispositivo.
