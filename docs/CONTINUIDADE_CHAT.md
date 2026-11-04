@@ -2239,3 +2239,31 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Conclusão: o mask 0x3FF aplicado pelo N64Bus a VI_INTR/VI_V_SYNC é comportamento confirmado do nosso código, mas ainda não está confirmado como regra de hardware. O teste da etapa 103 deve ser interpretado como caracterização da implementação atual, não como validação da largura física dos registradores.
 - O teste atual também não verifica readback bruto com bits altos; a leitura genérica do barramento devolve `viRegisters[index]` sem máscara, conforme o código inspecionado. Não alterar essa semântica sem fonte técnica ou teste de referência.
 - VI_STATUS SERRATE bit 6 está documentado; a documentação consultada não dá licença para limpar automaticamente todos os bits reservados na escrita/readback. Manter o armazenamento bruto atual até especificar uma política.
+
+## 104. VI_ORIGIN — largura do endereço de framebuffer — 2026-11-04
+
+### Evidência técnica
+- O header RCP do SDK define VI_ORIGIN como endereço-base do framebuffer em bytes nos bits 23:0: https://ultra64.ca/files/documentation/online-manuals/man/header/rcp.htm
+- A documentação n64docs afirma explicitamente que os bits 24–31 são ignorados pelo hardware e os bits 0–23 carregam o endereço RDRAM: https://n64.readthedocs.io/
+- A implementação histórica do MAME também mascara a escrita de VI_ORIGIN com `0xFFFFFF`: https://github.com/mamedev/historic-mame/blob/master/src/mame/machine/n64.c
+- As fontes concordam no campo de endereço de 24 bits. A documentação SDK é a evidência primária para o campo; n64docs e MAME corroboram a interpretação de bits altos ignorados.
+
+### Inspeção do código anterior
+- `N64Bus.write32` armazenava qualquer escrita de VI_ORIGIN no array genérico `viRegisters`, sem máscara.
+- `read32` devolvia o valor bruto armazenado.
+- `captureViFrame` passava esse valor diretamente ao leitor de framebuffer.
+- Isso permitia que bits 24–31 contaminassem o endereço usado na captura, apesar de não fazerem parte do campo documentado de endereço.
+
+### Alteração isolada
+- Adicionada a constante `VI_ORIGIN_MASK = 0x00FFFFFF`.
+- A escrita MMIO de VI_ORIGIN agora armazena somente `value and VI_ORIGIN_MASK`; a leitura devolve o valor mascarado armazenado.
+- Adicionado teste `viOriginWriteUsesOnlyTheDocumentedTwentyFourBitRdramAddress`, que escreve `0xAB000120` e espera readback `0x00000120`.
+- Commits: produção `01ae152ffe5a3c8a484a7c0372cdaa640a5d1391`; teste `be51291d765775497c987f20b40880103401a417`.
+- CI disparado para o commit de produção: run `41899140425`, inicialmente queued no momento desta anotação. Aguardar resultado do commit de teste e do HEAD antes de declarar aprovado.
+- Esta mudança não integra o controlador VI half-line ao runtime, não altera a temporização e não modifica VI_CURRENT/VI_INTR/MI_INTR_VI.
+
+### Limites
+- A alteração só trata o campo de endereço de VI_ORIGIN. Não afirma que todos os registradores VI tenham a mesma política de máscara/readback.
+- VI_WIDTH tem campo documentado de 12 bits no header RCP; ainda requer auditoria separada antes de qualquer alteração.
+- O runtime VI continua avançando por orçamento aproximado de instruções; GoldenEye não foi validado no aparelho nesta etapa.
+- Branch `dev/n64-clean-start`; `main` permanece intocada. A auditoria global de duplicação de código e arquivos repetidos continua aberta.
