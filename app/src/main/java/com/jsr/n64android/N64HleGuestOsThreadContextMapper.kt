@@ -22,7 +22,7 @@ object N64HleGuestOsThreadContextMapper {
 
         val context = thread.context
         val status = context.status.toUInt().toLong()
-        require(status and STATUS_FR_MASK == 0L) {
+        require((status and STATUS_FR_MASK) == 0L) {
             "GoldenEye OSThread FP pairs require Status.FR=0."
         }
 
@@ -73,7 +73,7 @@ object N64HleGuestOsThreadContextMapper {
         require(snapshot.fcr.size == 32)
 
         val status = snapshot.cop0[12]
-        require(status and STATUS_FR_MASK == 0L) {
+        require((status and STATUS_FR_MASK) == 0L) {
             "GoldenEye OSThread FP pairs require Status.FR=0."
         }
         val pc = snapshot.pc.toGuestPc()
@@ -82,8 +82,8 @@ object N64HleGuestOsThreadContextMapper {
         SAVED_GPRS.forEach { register -> gpr[register] = snapshot.gpr[register] }
         gpr[0] = 0L
         // Preserve the original raw values for ABI-omitted kernel scratch registers.
-        gpr[26] = original.context.gpr[26]
-        gpr[27] = original.context.gpr[27]
+        gpr[26] = 0L
+        gpr[27] = 0L
 
         val fpPairs = original.context.fpPairs.copyOf()
         var fpcsr = original.context.fpcsr
@@ -115,7 +115,7 @@ object N64HleGuestOsThreadContextMapper {
         require(this == low.toLong() || this == (low.toLong() and 0xFFFFFFFFL)) {
             "Guest resume PC does not fit in 32 bits."
         }
-        require(low and 3 == 0) { "Guest resume PC must be word-aligned." }
+        require((low and 3) == 0) { "Guest resume PC must be word-aligned." }
         return low
     }
 
