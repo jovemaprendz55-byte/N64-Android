@@ -3,7 +3,6 @@ package com.jsr.n64android
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class N64HleCartridgeImageTest {
@@ -31,7 +30,7 @@ class N64HleCartridgeImageTest {
         "GOLDENEYE 007".toByteArray(Charsets.US_ASCII).copyInto(rom, 0x20)
         rom[0x3C] = 'N'.code.toByte()
         rom[0x3D] = 'G'.code.toByte()
-        rom[0x3E] = 'E'.code
+        rom[0x3E] = 'E'.code.toByte()
     }
 
     private fun swapPairs(input: ByteArray): ByteArray =
