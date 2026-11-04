@@ -34,7 +34,7 @@ data class N64HleGuestOsThread(
     val flags: Int = 0,
     val id: Int = 0,
     val fpUsed: Int = 0,
-    val profile: Long = 0L,
+    val contextPadding: Int = 0,
     val context: N64HleGuestOsThreadContext = N64HleGuestOsThreadContext()
 )
 
@@ -80,7 +80,7 @@ class N64HleGuestOsThreadCodec(private val memory: N64HleGuestMemory) {
             flags = memory.read16(address + l.THREAD_FLAGS) and 0xFFFF,
             id = memory.read32(address + l.THREAD_ID),
             fpUsed = memory.read32(address + l.THREAD_FP_USED),
-            profile = memory.read32(address + l.THREAD_PROFILE).toUnsignedLong(),
+            contextPadding = memory.read32(address + l.THREAD_CONTEXT_PADDING),
             context = context
         )
     }
@@ -97,7 +97,7 @@ class N64HleGuestOsThreadCodec(private val memory: N64HleGuestMemory) {
         val nextPointer = thread.next.toGuestPointer()
         val queuePointer = thread.queue.toGuestPointer()
         val threadListNextPointer = thread.threadListNext.toGuestPointer()
-        val profilePointer = thread.profile.toGuestPointer()
+        val contextPadding = thread.contextPadding
         val l = N64HleGuestOsThreadLayout
         val contextAddress = address + l.THREAD_CONTEXT
         memory.write32(address + l.THREAD_NEXT, nextPointer)
@@ -108,7 +108,7 @@ class N64HleGuestOsThreadCodec(private val memory: N64HleGuestMemory) {
         memory.write16(address + l.THREAD_FLAGS, thread.flags)
         memory.write32(address + l.THREAD_ID, thread.id)
         memory.write32(address + l.THREAD_FP_USED, thread.fpUsed)
-        memory.write32(address + l.THREAD_PROFILE, profilePointer)
+        memory.write32(address + l.THREAD_CONTEXT_PADDING, contextPadding)
 
         GPR_OFFSETS.forEachIndexed { register, offset ->
             if (offset >= 0) memory.write64(contextAddress + offset, thread.context.gpr[register])
