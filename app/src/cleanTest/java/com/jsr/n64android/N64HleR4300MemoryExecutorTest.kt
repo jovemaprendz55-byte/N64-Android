@@ -102,4 +102,27 @@ class N64HleR4300MemoryExecutorTest {
         assertEquals(false, stepper.hasPendingDelaySlot())
     }
 
+    @Test fun stepperFetchesBigEndianInstructionsFromGuestRdram() {
+        val sharedMemory = N64HleGuestAddressSpace()
+        val stepper = N64HleR4300InstructionStepper(memorySpace = sharedMemory)
+        val state = N64HleR4300CpuState(0x80001000L, mapOf(1 to 9L))
+        sharedMemory.write32(0x80001000L, i(0x09, 1, 2, 7).toLong() and 0xFFFF_FFFFL)
+        stepper.stepFromMemory(state)
+        assertEquals(16L, state.readGpr(2))
+        assertEquals(0x80001004L, state.programCounter)
+    }
+
+    @Test fun stepperFetchesBranchDelaySlotFromMemory() {
+        val sharedMemory = N64HleGuestAddressSpace()
+        val stepper = N64HleR4300InstructionStepper(memorySpace = sharedMemory)
+        val state = N64HleR4300CpuState(0x80001000L, mapOf(1 to 4L))
+        sharedMemory.write32(0x80001000L, ((0x02 shl 26) or 0x800).toLong())
+        sharedMemory.write32(0x80001004L, i(0x09, 1, 2, 3).toLong())
+        stepper.stepFromMemory(state)
+        assertEquals(0x80001004L, state.programCounter)
+        stepper.stepFromMemory(state)
+        assertEquals(7L, state.readGpr(2))
+        assertEquals(0x80002000L, state.programCounter)
+    }
+
 }
