@@ -1826,8 +1826,9 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     private fun readFprDouble(register: Int): Long {
         requireEvenFprForDouble(register)
         if (fprIs64BitMode()) return fpr[register]
-        return ((fpr[register].toInt().toLong() and 0xFFFFFFFFL) shl 32) or
-            (fpr[register + 1].toInt().toLong() and 0xFFFFFFFFL)
+        // VR4300 FR=0: even FGR is the low word; odd FGR is the high word.
+        return ((fpr[register + 1].toInt().toLong() and 0xFFFFFFFFL) shl 32) or
+            (fpr[register].toInt().toLong() and 0xFFFFFFFFL)
     }
 
     private fun writeFprDouble(register: Int, value: Long) {
@@ -1835,8 +1836,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         if (fprIs64BitMode()) {
             fpr[register] = value
         } else {
-            fpr[register] = (value ushr 32) and 0xFFFFFFFFL
-            fpr[register + 1] = value and 0xFFFFFFFFL
+            fpr[register] = value and 0xFFFFFFFFL
+            fpr[register + 1] = (value ushr 32) and 0xFFFFFFFFL
         }
     }
 
