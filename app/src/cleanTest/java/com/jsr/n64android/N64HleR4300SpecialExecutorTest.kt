@@ -53,13 +53,17 @@ class N64HleR4300SpecialExecutorTest {
     }
 
     @Test fun wordShiftsSignExtendTheirThirtyTwoBitResult() {
-        val s = state(0L, 0x80000000L)
-        executor.execute(r(0, 2, 3, 1, 0x00), s)
-        assertEquals(0xFFFFFFFF00000000UL.toLong(), s.readGpr(3))
-        executor.execute(r(0, 2, 4, 1, 0x02), s)
-        assertEquals(0x40000000L, s.readGpr(4))
-        executor.execute(r(0, 2, 5, 1, 0x03), s)
-        assertEquals(0xFFFFFFFFC0000000UL.toLong(), s.readGpr(5))
+        val leftShiftState = state(0L, 0x40000000L)
+        executor.execute(r(0, 2, 3, 1, 0x00), leftShiftState)
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), leftShiftState.readGpr(3))
+
+        val logicalRightShiftState = state(0L, 0x80000000L)
+        executor.execute(r(0, 2, 4, 1, 0x02), logicalRightShiftState)
+        assertEquals(0x40000000L, logicalRightShiftState.readGpr(4))
+
+        val arithmeticRightShiftState = state(0L, 0x80000000L)
+        executor.execute(r(0, 2, 5, 1, 0x03), arithmeticRightShiftState)
+        assertEquals(0xFFFFFFFFC0000000UL.toLong(), arithmeticRightShiftState.readGpr(5))
     }
 
     @Test fun variableWordShiftMasksAmountToFiveBits() {
