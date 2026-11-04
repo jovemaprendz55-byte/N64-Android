@@ -150,4 +150,29 @@ class R4300MiInterruptTest {
         assertEquals(0, cpu.lastExceptionCode)
         assertTrue((cpu.cop0[13] and (1L shl 10)) != 0L)
     }
+
+    @Test
+    fun siDmaCompletionRaisesCop0Ip2AndEntersGeneralVector() {
+        val ram = N64Memory(0x2000)
+        ram.write32(0x400, 0) // NOP at KSEG0 start PC.
+        val bus = N64Bus(ram = ram)
+        bus.write32(N64Bus.SI_DRAM_ADDR_REG, 0x100)
+        bus.write32(N64Bus.SI_PIF_ADDR_WR64B_REG, N64Bus.PIF_RAM_BASE)
+        bus.write32(N64Bus.MI_INTR_MASK_REG, 1 shl 3) // Set SI mask (MI source bit 1).
+
+        val cpu = R4300Cpu(bus)
+        val startPc = 0xFFFFFFFF80000400UL.toLong()
+        cpu.setProgramCounter(startPc)
+        cpu.cop0[12] = 0x401L // IE=1 and IM[2]=1.
+
+        cpu.step()
+
+        assertEquals(0xFFFFFFFF80000180UL.toLong(), cpu.pc)
+        assertEquals(startPc, cpu.cop0[14])
+        assertEquals(0L, (cpu.cop0[13] ushr 2) and 0x1FL)
+        assertTrue((cpu.cop0[13] and (1L shl 10)) != 0L) // Cause.IP2.
+        assertTrue((cpu.cop0[12] and 0x2L) != 0L) // Status.EXL.
+        assertEquals(N64Bus.MI_INTR_SI, bus.read32(N64Bus.MI_INTR_REG) and N64Bus.MI_INTR_SI)
+    }
+
 }
