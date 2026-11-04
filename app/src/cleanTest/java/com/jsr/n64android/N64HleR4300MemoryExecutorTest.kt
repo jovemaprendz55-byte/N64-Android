@@ -217,11 +217,11 @@ class N64HleR4300MemoryExecutorTest {
             memoryWord,
             0x2233445566778822UL.toLong(),
             0x3344556677880022UL.toLong(),
-            0x4455667788000022UL.toLong(),
-            0x5566778800000022UL.toLong(),
-            0x6677880000000022UL.toLong(),
-            0x7788000000000022UL.toLong(),
-            0x8800000000000022UL.toLong()
+            0x4455667788FF0022UL.toLong(),
+            0x55667788EEFF0022UL.toLong(),
+            0x667788DDEEFF0022UL.toLong(),
+            0x7788CCDDEEFF0022UL.toLong(),
+            0x88BBCCDDEEFF0022UL.toLong()
         )
         val expectedLdr = longArrayOf(
             0xAABBCCDDEEFF0011UL.toLong(),
@@ -241,7 +241,7 @@ class N64HleR4300MemoryExecutorTest {
             0xAABBCCDD11223344UL.toLong(),
             0xAABBCCDDEE112233UL.toLong(),
             0xAABBCCDDEEFF1122UL.toLong(),
-            oldMemory
+            0xAABBCCDDEEFF0011UL.toLong()
         )
         val expectedSdr = longArrayOf(
             0x88BBCCDDEEFF0022UL.toLong(),
