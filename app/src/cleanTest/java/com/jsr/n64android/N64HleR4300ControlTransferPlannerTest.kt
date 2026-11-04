@@ -79,4 +79,23 @@ class N64HleR4300ControlTransferPlannerTest {
             planner.plan(i(0x08, 1, 2, 1), state)
         }
     }
+
+    @Test fun bltzAndBgezUseSignedRegisterValue() {
+        val negative = N64HleR4300CpuState(0x80001000L, mapOf(1 to -1L))
+        val nonNegative = N64HleR4300CpuState(0x80001000L, mapOf(1 to 0L))
+        assertEquals(true, planner.plan(i(0x01, 1, 0x00, 1), negative).taken)
+        assertEquals(true, planner.plan(i(0x01, 1, 0x01, 1), nonNegative).taken)
+    }
+
+    @Test fun branchAndLinkWritesLinkOnlyWhenConditionIsTaken() {
+        val taken = N64HleR4300CpuState(0x80001000L, mapOf(1 to 0L))
+        val notTaken = N64HleR4300CpuState(0x80001000L, mapOf(1 to -1L))
+        val takenPlan = planner.plan(i(0x01, 1, 0x11, 2), taken) // BGEZAL
+        val notTakenPlan = planner.plan(i(0x01, 1, 0x11, 2), notTaken)
+        assertEquals(31, takenPlan.linkRegister)
+        assertEquals(0x80001008L, takenPlan.linkValue)
+        assertEquals(null, notTakenPlan.linkRegister)
+        assertEquals(null, notTakenPlan.linkValue)
+    }
+
 }
