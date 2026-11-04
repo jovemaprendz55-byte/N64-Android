@@ -234,4 +234,17 @@ class N64BusVideoInterfaceTest {
         assertEquals(serrate, bus.read32(viStatus) and serrate)
     }
 
+
+    @Test fun viTimingUsesOnlyTenBitValuesForSyncAndInterruptComparison() {
+        val bus = N64Bus()
+        bus.write32(N64Bus.MI_INTR_MASK_REG, N64Bus.MI_INTR_MASK_VI_SET)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_INTR_OFFSET, 0xABCD0002.toInt())
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_SYNC_OFFSET, 0xFFFF0005.toInt())
+
+        bus.advanceViInstructions(2L * N64Bus.VI_INSTRUCTIONS_PER_SCANLINE)
+
+        assertEquals(2, bus.read32(N64Bus.VI_CURRENT_REG))
+        assertEquals(N64Bus.MI_INTR_VI, bus.read32(N64Bus.MI_INTR_REG) and N64Bus.MI_INTR_VI)
+    }
+
 }
