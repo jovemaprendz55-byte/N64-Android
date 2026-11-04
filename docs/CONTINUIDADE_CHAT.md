@@ -2383,3 +2383,15 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - CI final 41908404540 success. APK artifact 13362056253, 1,072,204 bytes, SHA-256 96caed88143b02b7312bffdeb214ef7eba43b5e660b73e14e53c34157c6d7b8b, expira 2026-11-18. https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41908404540
 - Limites: sem PC hook/call gates ou endereços comprovados de APIs libultra. N64HleGuestMessageQueue ainda usa scheduler de estado, não ContextSwitcher; bloqueio de message queue ainda não salva contexto live. Não integrado ao N64RomVideoSession/MainActivity. GoldenEye não testado no aparelho.
 - Próximo: investigar símbolos/mapa GoldenEye USA; linker script sozinho não contém offsets finais. Criar mecanismo de interceptação antes do fetch e dispatch table somente com endereços resolvidos de fonte confiável; depois ligar message queue ao ContextSwitcher e testar retorno HLE.
+
+
+## 114. Hook pre-fetch e dispatcher guest por endereço verificado — 2026-11-04
+
+- R4300Cpu ganhou setInstructionBoundaryHook: executa após MI interrupt e antes do fetch. null faz fallthrough; custo inteiro não-negativo consome a fronteira e avança Count.
+- N64HleGuestCallDispatcher registra nome/endereço/handler com evidência obrigatória, valida 32-bit/alinhamento, rejeita duplicação e normaliza endereços guest sign-extended/zero-extended. install/uninstall liga/desliga hook.
+- Testes cobrem skip fetch, cycles, fallthrough, prioridade MI, endereço desconhecido, duplicação, evidência, canonicalização e uninstall.
+- Auditoria de endereços em docs/GOLDENEYE_US_CALL_GATE_ADDRESS_AUDIT_2026-11-04.md: linker script e lib.text.ld.inc mostram layout e ordem dos objetos, mas não offsets finais; nenhum map final USA foi encontrado na árvore. Nenhum endereço real de função foi inventado/registrado.
+- Commits: hook 188c9810cde874bf599fcdcf55bd66e90df3bccb; tests bc26c6f0d8d045ce0fd419373b2feb370cc30507; dispatcher 3fdd66a67839518e1470fc17efac6cf8ab8f7c75; tests 6d083eb2e77720a92279b01ba1e7cb4354cbb919; canonicalization 9be8c97c28cdc9674e4a07944ec599ce03841ff5; tests 713de767ab449b49f0ab1308cd4aea7a7cd78c37; address audit 9504029f1c562beaa26953c351e68e8596b33a5f.
+- CI consolidada 41909064407 success; testDebugUnitTest + assembleDebug verde. APK artifact 13361058496, 1,075,346 bytes, SHA-256 c115251cea935f1815ee9848affafc74712cb4994cdff4a618af523f66260abf, expira 2026-11-18. https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41909064407
+- Limites: dispatcher sem endereços GoldenEye; ainda não há call gate real libultra. MessageQueue ainda usa scheduler, não ContextSwitcher, ao bloquear; worker/MainActivity não alterados; GoldenEye não testado no aparelho.
+- Próximo: resolver endereços de símbolos da revisão USA com map real ou disassembly reproduzível; só então registrar handlers para create/start/stop/yield/message queues. Depois integrar MessageQueue ao ContextSwitcher para save/restore em BLOCK/wake. Não mexer MainActivity antes de ter call gates e testes integrados.
