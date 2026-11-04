@@ -6,7 +6,7 @@ import java.math.BigInteger
  * Executes the supported, side-effect-limited R4300 SPECIAL integer operations.
  *
  * This class deliberately does not advance PC and does not implement control
- * transfers, delay slots, exceptions, HI/LO multiply/divide, or memory operations.
+ * transfers, delay slots, exceptions, or memory operations.
  * The caller owns instruction sequencing. Unsupported operations fail before
  * reading or mutating architectural state.
  */
@@ -35,8 +35,6 @@ class N64HleR4300SpecialExecutor {
             N64HleR4300SpecialOperation.MULTU -> {
                 val left = state.readGpr(instruction.rs)
                 val right = state.readGpr(instruction.rt)
-                requireWordOperand(left)
-                requireWordOperand(right)
                 val product = if (operation == N64HleR4300SpecialOperation.MULT) {
                     BigInteger.valueOf(left.toInt().toLong()).multiply(BigInteger.valueOf(right.toInt().toLong()))
                 } else {
@@ -51,8 +49,6 @@ class N64HleR4300SpecialExecutor {
             N64HleR4300SpecialOperation.DIVU -> {
                 val left = state.readGpr(instruction.rs)
                 val right = state.readGpr(instruction.rt)
-                requireWordOperand(left)
-                requireWordOperand(right)
                 val dividend = left.toInt()
                 val divisor = right.toInt()
                 check(divisor != 0) { "DIV/DIVU by zero has architecturally unpredictable HI/LO; state preserved" }
@@ -179,12 +175,6 @@ class N64HleR4300SpecialExecutor {
 
         // All source reads and the calculation complete before the sole state write.
         state.writeGpr(instruction.rd, result)
-    }
-
-    private fun requireWordOperand(value: Long) {
-        require(value == value.toInt().toLong()) {
-            "32-bit multiply requires a sign-extended word operand"
-        }
     }
 
     private fun unsignedWord(value: Long): BigInteger =
