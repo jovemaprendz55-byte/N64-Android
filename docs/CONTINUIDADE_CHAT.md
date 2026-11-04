@@ -2827,3 +2827,7 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Testes para máscaras/posicionamento big-endian de LWL/LWR/SWL/SWR em todos os quatro offsets, além da rejeição de destino desconhecido em load parcial.
 - Commits: implementação `19939e1f3bbf2ca09b7032faa49e945c6bd9271f`; testes `dbb90c9f6f3516c797efebd19a74422ea1dd4bc8`.
 - CI pendente. LDL/LDR/SDL/SDR doubleword, exceções arquiteturais e validação com código de jogo real ainda não implementados.
+### Ajuste de expectativa signed nos testes de merge load
+
+- A primeira CI dos testes de LWL/LWR falhou porque os valores esperados para resultados com bit 31 ligado foram escritos como zero-extended. O executor estava retornando corretamente um word sign-extended para 64 bits.
+- Corrigidos os vetores LWL em todos os offsets e LWR offset 3 para esperar a extensão de sinal arquitetural. Commits da correção dos testes: `94c2222c8da0067f7259d774b0e2badc8427c950`.
