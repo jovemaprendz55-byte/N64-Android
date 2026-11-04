@@ -1887,3 +1887,16 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - CI dos testes SI e integração CPU: run 41850785077 **success** — https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41850785077
 - Limites: o modelo SI ainda executa DMA síncrono e não implementa protocolo Joybus, temporização real ou periféricos. AI continua explicitamente sem geração de interrupção; não foi alterado nesta etapa.
 - Branch: `dev/n64-clean-start`. `main` permanece intocada.
+
+
+## 89. Auditoria do Audio Interface (AI) — 2026-11-04
+
+- Revisados os registradores AI em `N64Bus.kt`, os testes `N64BusAiRegisterTest.kt` e o ponto de avanço temporal em `N64RomVideoSession.kt`.
+- Estado atual confirmado: AI_DRAM_ADDR, AI_CONTROL, AI_DACRATE e AI_BITRATE armazenam campos mascarados; AI_LEN é ignorado e sempre lê zero; AI_STATUS sempre lê zero e sua escrita não tem efeito. Não existe FIFO, contador de bytes restantes, consumo PCM, temporização de amostras nem sinalização MI_INTR_AI.
+- Referência do manual de programação N64: `osAiGetStatus` documenta FIFO_FULL quando ambos os slots de DMA estão programados e DMA_BUSY durante a transferência; `osAiGetLength` informa os bytes restantes. `osAiSetNextBuffer` requer endereço alinhado em 8 bytes, comprimento múltiplo de 8, máximo de 262144 bytes e rejeita nova programação quando FIFO_FULL. Fonte: https://ultra64.ca/files/documentation/online-manuals/man-v5-2/allman52/n64man/os/osAiGetStatus.htm
+- MI_INTR bit 2 é a origem AI e deve ser levantada quando não restarem amostras no fluxo de áudio; acknowledge é feito por escrita em AI_STATUS. Referência técnica adicional: https://n64.readthedocs.io/
+- O avanço temporal atual `advanceViInstructions()` é uma aproximação por orçamento fixo de instruções por scanline; não há relógio mestre compartilhado ou contagem de ciclos RCP que permita derivar com segurança o consumo de amostras do AI. A sessão de ROM chama esse avanço após cada instrução CPU, o que não constitui ainda um scheduler de ciclos de hardware.
+- Decisão: não implementar DMA AI instantâneo nem levantar MI_INTR_AI na escrita de AI_LEN. Isso seria temporalmente incorreto e esconderia a ausência do scheduler. Nenhuma alteração de runtime nesta etapa.
+- Próxima arquitetura necessária: base de tempo RCP/CPU com unidades de ciclos documentadas; FIFO AI de dois slots; alinhamento e limite de comprimento; consumo por DACRATE; AI_LENGTH como bytes restantes; AI_STATUS FIFO_FULL/BUSY; conclusão de buffer e MI_INTR_AI; acknowledge de AI_STATUS. A saída de áudio PCM pode ser implementada em etapa separada, sem confundir interrupção de hardware com reprodução audível.
+- Teste atual `N64BusAiRegisterTest.kt` cobre apenas máscaras de registradores e comportamento idle simplificado; não deve ser interpretado como cobertura de DMA/áudio real.
+- Branch: `dev/n64-clean-start`. `main` permanece intocada.
