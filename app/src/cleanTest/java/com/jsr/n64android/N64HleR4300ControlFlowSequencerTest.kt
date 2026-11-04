@@ -13,7 +13,7 @@ class N64HleR4300ControlFlowSequencerTest {
 
     @Test fun jalLinkIsWrittenBeforeDelaySlotAndTargetAfterCompletion() {
         val state = N64HleR4300CpuState(0x80001000L)
-        val plan = planner.plan(decoder.decode((0x03 shl 26) or 0x400), state)
+        val plan = planner.plan(decoder.decode((0x03 shl 26) or 0x800), state)
         sequencer.schedule(state, plan)
         assertEquals(0x80001004L, state.programCounter)
         assertEquals(0x80001008L, state.readGpr(31))
@@ -22,7 +22,7 @@ class N64HleR4300ControlFlowSequencerTest {
         // The delay-slot instruction executes while PC is still PC+4.
         state.writeGpr(2, 55L)
         sequencer.completeDelaySlot(state)
-        assertEquals(0x80001000L or 0x1000L, state.programCounter)
+        assertEquals(0x80002000L, state.programCounter)
         assertEquals(55L, state.readGpr(2))
         assertFalse(sequencer.hasPendingDelaySlot())
     }
