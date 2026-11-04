@@ -74,4 +74,32 @@ class N64HleR4300MemoryExecutorTest {
         }
         assertEquals(0xAABBCCDDL, memory.read32(0x80000000L))
     }
+    @Test fun stepperExecutesLoadAndStoreAndAdvancesPc() {
+        val sharedMemory = N64HleGuestAddressSpace()
+        val stepper = N64HleR4300InstructionStepper(memorySpace = sharedMemory)
+        val state = N64HleR4300CpuState(
+            0x80001000L,
+            mapOf(1 to 0x80000100L, 2 to 0x12345678L)
+        )
+        stepper.step(i(0x2B, 1, 2, 0), state) // SW
+        assertEquals(0x80001004L, state.programCounter)
+        stepper.step(i(0x23, 1, 3, 0), state) // LW
+        assertEquals(0x12345678L, state.readGpr(3))
+        assertEquals(0x80001008L, state.programCounter)
+    }
+
+    @Test fun memoryInstructionExecutesInsideDelaySlot() {
+        val sharedMemory = N64HleGuestAddressSpace()
+        val stepper = N64HleR4300InstructionStepper(memorySpace = sharedMemory)
+        val state = N64HleR4300CpuState(
+            0x80001000L,
+            mapOf(1 to 0x80000100L, 2 to 0xCAFEBABEL)
+        )
+        stepper.step((0x02 shl 26) or 0x800, state) // J
+        stepper.step(i(0x2B, 1, 2, 0), state) // SW in delay slot
+        assertEquals(0xCAFEBABEL, sharedMemory.read32(0x80000100L))
+        assertEquals(0x80002000L, state.programCounter)
+        assertEquals(false, stepper.hasPendingDelaySlot())
+    }
+
 }
