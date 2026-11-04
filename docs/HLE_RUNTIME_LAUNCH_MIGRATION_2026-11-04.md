@@ -26,12 +26,12 @@ A recomendação antiga em ARQUITETURA_HLE_SEM_FIRMWARE_2026-11-02.md para imple
 
 ## Etapa 1 implementada: mapa ABI de OSThread
 
-Fonte pública do header libultra os_thread.h: https://jrra.zone/n64/doc/header/os_thread.htm
+Fonte-alvo: GoldenEye 007 `include/PR/os.h` (revisão 1.149, 1997-12-15) e `src/libultra/os/exception.s`: https://github.com/n64decomp/007/tree/master/include/PR
 
 Adicionado N64HleGuestOsThreadLayout.kt com offsets explícitos do OSThread e __OSThreadContext de 32-bit:
-- Header OSThread: links, priority, queue, state, flags, id, fp, contexto em 0x1C.
+- Header OSThread: links, priority, queue, state, flags, id e fp até 0x1B; o contexto u64 tem alinhamento de 8 bytes e começa em 0x20, após padding em 0x1C.
 - Contexto: GPRs 64-bit, HI/LO, SR/PC/Cause/BadVAddr/RCP/FPCSR e 16 slots FP pareados.
-- CONTEXT_SIZE=0x190; THREAD_SIZE=0x1AC.
+- CONTEXT_SIZE=0x190; THREAD_SIZE=0x1B0.
 - Estados: STOPPED=1, RUNNABLE=2, RUNNING=4, WAITING=8.
 - Prioridades de aplicação: 0 a 127.
 - Teste N64HleGuestOsThreadLayoutTest confere offsets, tamanhos, estados e intervalo de prioridade.
@@ -65,16 +65,16 @@ Esses offsets são um mapa de ABI, não implementação do dispatcher. Ainda nã
 
 ### Correção de layout antes do codec
 
-Uma inspeção adicional do header público `include/PR/os_thread.h` mostrou que a estrutura contém `__OSThreadprofile_s* thprof` no offset `0x1C`, seguido pelo `__OSThreadContext context` em `0x20`. Portanto, a anotação anterior de contexto em `0x1C` e tamanho total `0x1AC` estava incorreta para esse layout.
+A inspeção específica do código-fonte de GoldenEye 007 confirmou que o header de 1997 `include/PR/os.h` (revisão 1.149) não contém o campo `thprof`. A estrutura termina o campo `fp` em `0x1B`; como `__OSThreadContext` começa com membros `u64`, o alinhamento de 8 bytes coloca o contexto em `0x20`, deixando quatro bytes de padding em `0x1C`. A assembly de `src/libultra/os/exception.s` confirma esse offset: por exemplo, salva S0 em `0x98`, que é `0x20 + 0x78` (offset de S0 dentro do contexto).
 
-- `THREAD_PROFILE=0x1C`
+- `THREAD_CONTEXT_PADDING=0x1C` (preservado como palavra bruta; não é ponteiro)
 - `THREAD_CONTEXT=0x20`
 - `CONTEXT_SIZE=0x190`
 - `THREAD_SIZE=0x1B0`
-- Prioridade é um `s32`; o intervalo de prioridades de aplicação documentado é 0–127, enquanto o campo de prioridade do sistema pode chegar a 255.
-- Fonte com a estrutura e os offsets: https://harbourmasters.github.io/SpaghettiKart/os__thread_8h_source.html
+- Prioridade é `s32`; prioridade máxima do sistema 255 e prioridade máxima recomendada para aplicações 127.
+- Fontes específicas do alvo: https://github.com/n64decomp/007/blob/master/include/PR/os.h e https://github.com/n64decomp/007/blob/master/src/libultra/os/exception.s
 
-A alteração foi feita antes de implementar leitura/escrita de threads, evitando que o codec futuro deslocasse todo o contexto em quatro bytes. O teste do layout agora confere o campo `thprof`, o início do contexto e o tamanho corrigido.
+A hipótese anterior de que o campo em `0x1C` seria `thprof` veio de outro header/versão e não corresponde ao ABI-alvo GoldenEye. O codec foi ajustado para preservar o padding sem interpretá-lo como ponteiro.
 
 ### Etapa 2 implementada: ponte segura de memória guest
 
@@ -103,15 +103,15 @@ A classe ainda não implementa tradução TLB nem permite acesso MMIO como se fo
 
 Adicionado `N64HleGuestOsThreadCodec.kt`:
 
-- Lê e grava cabeçalho `OSThread` usando offsets corrigidos: next, priority (s32), queue, tlnext, state/flags (u16), id/fp (s32), thprof pointer e contexto em `0x20`.
+- Lê e grava cabeçalho `OSThread` usando offsets corrigidos: next, priority (s32), queue, tlnext, state/flags (u16), id/fp (s32), palavra de padding em `0x1C` e contexto alinhado em `0x20`.
 - Lê e grava GPRs de 64 bits presentes no ABI: AT, V0/V1, A0–A3, T0–T9, S0–S7, GP, SP, S8 e RA.
 - GPR zero, K0 e K1 não existem no bloco salvo e são expostos como zero na leitura; são ignorados na escrita.
 - HI/LO como 64 bits; SR/PC/Cause/BadVAddr/RCP/FPCSR como 32 bits.
 - Os 16 slots FP são preservados como pares opacos de 64 bits. Não se converte para FPR do R4300 antes de validar FR=0/FR=1 e a convenção de ordem dos dois f32.
-- Ponteiros do cabeçalho são tratados como 32 bits; escrita aceita forma zero-extended ou sign-extended e rejeita valores maiores que 32 bits.
+- Ponteiros reais do cabeçalho são tratados como 32 bits; a palavra de padding em `0x1C` é preservada sem interpretação. escrita aceita forma zero-extended ou sign-extended e rejeita valores maiores que 32 bits.
 - Valida a faixa completa do OSThread e estado/flags/ponteiros antes da primeira escrita. A classe não altera filas, prioridades, scheduler nem CPU.
 
-Testes em `N64HleGuestOsThreadCodecTest.kt` cobrem round-trip, offsets físicos do profile/context/PC, signed priority/id, GPRs salvos/omitidos, pares FP opacos, pointers sign-extended, limite da estrutura e rejeição prévia de valores inválidos.
+Testes em `N64HleGuestOsThreadCodecTest.kt` cobrem round-trip, offsets físicos do padding/context/PC, signed priority/id, GPRs salvos/omitidos, pares FP opacos, pointers sign-extended, limite da estrutura e rejeição prévia de valores inválidos.
 
 Commits do codec e testes:
 - codec: `888784e76cbc0c1657d3f249667b3ac4c9303ccc`
