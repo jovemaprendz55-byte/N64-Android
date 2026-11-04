@@ -2443,3 +2443,14 @@ Critérios de verdade:
 - APK limpo compilar ≠ HLE implementado.
 - Testes unitários verdes ≠ jogo inicializa.
 - Não declarar GoldenEye funcional até teste no dispositivo demonstrar boot, vídeo e entrada.
+
+
+### Ajuste adicional: isolamento de compilação da build vazia
+
+- Criado `app/src/clean/java/com/jsr/n64android/MainActivity.kt` com apenas uma Activity vazia.
+- `app/build.gradle.kts` agora aponta o source set principal exclusivamente para `src/clean/java` e o source set de testes para `src/cleanTest/java`.
+- Portanto, as classes antigas em `src/main/java` e os 84 arquivos de testes antigos em `src/test/java` continuam preservados no Git, mas não entram na compilação desta build limpa.
+- Commits: Activity limpa `8edfcd42281873b7189070d298f661b5e6d288ce`; isolamento Gradle `c803b3f1d22ec73f9c1f2d57a08ae3e2b13d47af`.
+- Efeito esperado: APK com somente a casca Android e Activity vazia; sem CPU, RSP, RDP, bus, HLE antigo ou telas de diagnóstico no conjunto compilado.
+- Consequência intencional: a suíte antiga não é executada nessa fase, pois depende das classes excluídas. Os testes do novo HLE serão criados em `src/cleanTest/java` e adicionados conforme a arquitetura nova.
+- A CI precisa confirmar que o source set Kotlin/Android está configurado corretamente antes de considerar o APK limpo pronto.
