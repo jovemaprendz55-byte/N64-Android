@@ -2126,3 +2126,13 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - `main` permanece intocada.
 - GoldenEye não foi validado no aparelho nesta etapa.
 - Auditoria transversal de duplicação de código e arquivos repetidos continua aberta; esta revisão focou o caminho VI e não declara a auditoria global concluída.
+
+
+## 100. Testes MMIO de regressão VI — 2026-11-04
+
+- Commit de testes: `318546295a872c263c5181eb2d7e0434bd2fb1b6`.
+- Foram acrescentados testes em `N64BusVideoInterfaceTest`: acknowledge VI_CURRENT não apaga MI_INTR_SP; reprogramação de VI_INTR afeta comparações seguintes; reprogramação de VI_V_SYNC afeta o módulo usado nos avanços seguintes.
+- Nenhum código de produção foi alterado e o `N64ViInterruptController` permanece isolado.
+- Estes testes caracterizam o contador aproximado atual em scanlines, não o contrato half-line nem fidelidade total do hardware. O teste de VI_V_SYNC não define reset de fase ou comportamento interlaced.
+- Aguardar CI do commit antes de marcar como aprovado. Próximo: analisar reprogramação de VI_V_SYNC/VI_INTR e definir ponte de clock para o ledger CPU; não substituir `advanceViInstructions` ainda.
+- Branch `dev/n64-clean-start`; `main` intacta.
