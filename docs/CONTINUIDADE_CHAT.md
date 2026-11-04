@@ -2703,3 +2703,15 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Testes adicionados para BLTZ/BGEZ e branch-and-link tomado/não tomado.
 - Commits: implementação `9e4e17b722b6ea4b595aa055277526a33733c799`; testes `067fbf3f27196e9d4a8c426173edce2155fbd9a0`.
 - O planejador segue sem integração no stepper: não executa delay slot, não aplica link e não altera PC.
+
+
+## 130. Sequenciador explícito de delay slot — 2026-11-04
+
+- Adicionado `N64HleR4300ControlFlowSequencer.kt`, separado do planner. Recebe plano previamente validado, aplica eventual link, move PC para PC+4 e guarda a continuação pendente.
+- Depois que o chamador executar a instrução de delay slot, `completeDelaySlot` instala o PC de continuação (alvo tomado ou PC+8) e limpa o estado pendente.
+- Valida atomicamente PC de origem, PC+4 do delay slot, alinhamento do destino, par link register/value e índice GPR antes de mutar o estado.
+- Rejeita segundo transfer enquanto houver delay slot pendente e rejeita completar sem transferência pendente ou com PC diferente.
+- Testes: link JAL visível antes do delay slot, destino aplicado depois, branch não tomado também executa delay slot, rejeição sem mutação e proteção contra transferências aninhadas.
+- Commits: sequenciador `078422d370ca65059f2b95453c2e273f628500e4`; testes iniciais `f71f114cce732182f23d3ccfff1a5455b7bd358a`; ajuste do alvo de teste `621b4c7341ad2c26e8f08dc911d264b0c60a379c`.
+- Não é ainda o stepper R4300: o chamador precisa decodificar/executar a instrução do delay slot e chamar a conclusão. Exceções em delay slot, BD/EPC, branch em delay slot, REGIMM exceptions e integração com o executor SPECIAL ainda não estão implementados.
+- CI para planner, REGIMM e sequenciador está pendente. Não declarar build/testes aprovados antes dos runs finais e artifact.
