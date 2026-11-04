@@ -16,14 +16,12 @@ Esta revisão não executou ROM no aparelho e não pretende certificar compatibi
 - **Multiplicação/divisão:** operações signed/unsigned de palavra e doubleword têm testes de HI/LO e casos de bit alto.
 - **Desvios:** BEQ/BNE/BLEZ/BGTZ, REGIMM e branch-likely, além de J/JAL/JR/JALR, têm cobertura de delay slot, alvo e anulação de delay slot.
 - **Exceções em fluxo de controle:** há testes de RI, overflow, TLB, bus error e coprocessor unusable em delay slot, com verificação de EPC/BD.
-- **Acessos desalinhados e merge:** LDL/LDR percorrem todos os offsets de doubleword; LWL/LWR também têm cobertura de offsets. SWL/SWR/SDL/SDR possuem testes de casos específicos.
+- **Acessos desalinhados e merge:** LDL/LDR e LWL/LWR têm testes que percorrem todos os offsets; SWL/SWR também percorrem todos os offsets de palavra; SDL/SDR percorrem todos os offsets de doubleword.
 - **COP0/TLB/LL-SC:** existem testes próprios para Count/Compare, ERET, TLBP/TLBR/TLBWI/TLBWR, exceções TLB e reserva LL/SC.
 
-## Oportunidade de cobertura — sem defeito confirmado
+## Resultado da cobertura de merge stores
 
-Os testes de store-merge (`SWL`, `SWR`, `SDL`, `SDR`) não demonstram, pelos casos nomeados e inspecionados, uma varredura explícita de todos os offsets como ocorre com `LDL/LDR`.
-
-Próximo passo recomendado: adicionar testes de tabela para cada offset de 0 a 3 (palavra) e 0 a 7 (doubleword), verificando os bytes escritos e preservados em memória. A expectativa deve ser derivada da ordem big-endian do R4300 e testada sem mudar a implementação. Só corrigir o decoder se um desses testes reproduzir uma divergência.
+A inspeção do trecho completo confirmou testes de tabela para todos os offsets: `swlAndSwrStoreBytesCorrectlyAtEveryWordOffset` cobre SWL/SWR (0–3), e `sdlAndSdrPreserveBytesCorrectlyAtEveryDoublewordOffset` cobre SDL/SDR (0–7). Portanto, não há lacuna de cobertura de offsets identificada nesta área. A observação preliminar de cobertura incompleta foi corrigida após a leitura integral do bloco de testes.
 
 ## Limites conhecidos mantidos
 
