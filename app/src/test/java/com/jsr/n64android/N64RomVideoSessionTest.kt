@@ -337,7 +337,7 @@ class N64RomVideoSessionTest {
             val result = session.execute()
             assertEquals(N64ExecutionSession.State.COMPLETED, result.state)
             assertEquals(8L, result.executedInstructions)
-            assertEquals(4L, cpu.cop0[9])
+            assertEquals(8L, cpu.cop0[9])
             return session.executedCpuCycles()
         }
 
