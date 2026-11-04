@@ -2560,3 +2560,17 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Commit da correção: `45c929b979442bbbc33e549bb6d863ccf4a3ed7d`.
 - A correção ainda precisa passar na CI; não declarar a seção 122 aprovada nem afirmar que existe APK atualizado até verificar o novo run e o artifact.
 - A falha não indica defeito no modelo COP0 de produção; era erro de compilação do teste. Ainda assim, somente a nova CI confirmará a correção.
+
+
+## 123. Estado arquitetural explícito do núcleo R4300 — 2026-11-04
+
+- CI da seção 122 corrigida e aprovada: run `41930429988`, commit `387f48594fc1b3550e24c1e0e871eee966cff643`, artifact `13371227111` (826,042 bytes; SHA-256 `1945e735b3615b787f08ca83840d836ac77e1728486780c249223c168043e294`).
+- Adicionado `N64HleR4300CpuState.kt` em `src/clean/java`: estado mutável e isolado dos 32 GPRs, PC, HI/LO e snapshot COP0.
+- GPR0 é sempre zero e ignora escritas; GPR1..31 começam desconhecidos, exceto valores fornecidos explicitamente. Leitura de GPR desconhecido falha em vez de retornar zero inventado.
+- HI e LO também permanecem desconhecidos até serem fornecidos ou escritos por instruções futuras.
+- PC exige alinhamento de 4 bytes. O snapshot dos GPRs conhecidos é defensivo; entradas também são copiadas.
+- COP0 é carregado sem inventar valores e mantém a evidência/semântica de desconhecido da camada anterior.
+- Testes em `N64HleR4300CpuStateTest.kt`: GPR0, registradores desconhecidos e escrita, cópias defensivas, HI/LO desconhecidos, PC alinhado, índices inválidos e integração COP0.
+- Commits: estado `807a3bf0289664d2911c8b15f540b035d5be56b6`; teste inicial `c357f8c4c50aef7549f9ec5c0e8f3dc1f855a7ec`; ajuste de literal sign-extended do teste `a1a4c7f651f2be640fedc17cf85f48e599660790`.
+- Limite: ainda não há decoder, executor de instruções, pipeline, branch delay slots, exceções, TLB ou integração com memória/barramento. Esta seção entrega somente o modelo arquitetural inicial.
+- Próxima etapa: validar CI e então adicionar decoder MIPS/R4300 com extração de campos e classificação de instruções, sem executar operações até os testes de decodificação estarem estáveis.
