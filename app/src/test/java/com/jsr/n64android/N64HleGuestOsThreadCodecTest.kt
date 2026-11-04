@@ -103,6 +103,9 @@ class N64HleGuestOsThreadCodecTest {
         assertThrows(IllegalArgumentException::class.java) {
             codec.write(0x80001000L, N64HleGuestOsThread(next = 0x1_8000_2000L))
         }
+        assertThrows(IllegalArgumentException::class.java) {
+            codec.write(0x80001000L, N64HleGuestOsThread(queue = 0x1_8000_2000L))
+        }
         assertEquals(0, ram.read32(0x1000))
     }
 }
