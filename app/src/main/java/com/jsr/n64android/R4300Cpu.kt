@@ -159,6 +159,8 @@ class R4300Cpu(private val memory: N64AddressSpace) {
     private var randomResetByWiredWrite = false
     /** Divider phase for the VR4300 Count clock; the current interpreter assigns two base cycles per step. */
     private var countCycleRemainder = 0
+    /** Optional observer for the same modeled CPU-cycle increments used by COP0 Count. */
+    private var cycleAdvanceListener: ((Int) -> Unit)? = null
     /** Bounded control-flow events for interrupt/exception/ERET diagnosis. */
     val diagnosticControlFlowHistory: MutableList<String> = mutableListOf()
     /** Dedicated ERET history so a hot idle branch cannot evict exception returns. */
@@ -389,6 +391,11 @@ class R4300Cpu(private val memory: N64AddressSpace) {
         }
     }
 
+    /** Installs a session-local observer for modeled CPU cycles; null detaches it. */
+    fun setCycleAdvanceListener(listener: ((Int) -> Unit)?) {
+        cycleAdvanceListener = listener
+    }
+
     /** Advances the VR4300 Count divider by CPU cycles and asserts timer IP7 on Compare match. */
     fun advanceCountCycles(cpuCycles: Int) {
         require(cpuCycles >= 0) { "CPU cycle advance must be non-negative." }
@@ -402,6 +409,7 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                 cop0[13] = cop0[13] or (1L shl 15) // Cause.IP7 timer interrupt pending.
             }
         }
+        if (cpuCycles > 0) cycleAdvanceListener?.invoke(cpuCycles)
     }
 
     private fun isKernelMode(): Boolean {
