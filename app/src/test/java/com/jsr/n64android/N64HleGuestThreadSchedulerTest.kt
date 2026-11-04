@@ -147,4 +147,21 @@ class N64HleGuestThreadSchedulerTest {
         assertEquals(thread, decision.selectedThread)
         assertEquals(N64HleGuestOsThreadLayout.STATE_RUNNING, f.codec.read(thread).state)
     }
+    @Test
+    fun blockRunningThreadQueuesItAsWaitingAndStartThreadWakesIt() {
+        val f = fixture()
+        val thread = 0x80001000L
+        createThread(f, thread, 25)
+        f.scheduler.startThread(thread)
+        val blocked = f.scheduler.blockRunningThread(f.waitQueueAddress)
+        assertEquals(thread, blocked.previousRunningThread)
+        assertEquals(0L, blocked.selectedThread)
+        assertEquals(N64HleGuestOsThreadLayout.STATE_WAITING, f.codec.read(thread).state)
+        assertEquals(thread, f.queues.head(f.waitQueueAddress))
+        assertEquals(0L, f.memory.read32(f.runningThreadAddress).toUInt().toLong())
+        val resumed = f.scheduler.startThread(thread)
+        assertEquals(thread, resumed.selectedThread)
+        assertEquals(N64HleGuestOsThreadLayout.STATE_RUNNING, f.codec.read(thread).state)
+    }
+
 }
