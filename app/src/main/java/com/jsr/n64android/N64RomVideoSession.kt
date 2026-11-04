@@ -24,6 +24,7 @@ class N64RomVideoSession(
     private val onFrame: (N64VideoFrame) -> Unit
 ) : N64ExecutionController {
     private val instructionCount = AtomicLong(0L)
+    private val cpuCycleClock = N64CpuCycleClock()
     private val publishedFrames = AtomicLong(0L)
     private val rspInstructions = AtomicLong(0L)
     private val instructionTrace = N64InstructionTrace()
@@ -39,6 +40,7 @@ class N64RomVideoSession(
     private val delegate: N64ExecutionSession
 
     init {
+        cpu.setCycleAdvanceListener(cpuCycleClock::advance)
         require(framePollInterval > 0L) { "Frame polling interval must be positive." }
         require(rspPollInterval > 0L) { "RSP polling interval must be positive." }
         require(rspInstructionQuantum > 0) { "RSP instruction quantum must be positive." }
@@ -95,6 +97,9 @@ class N64RomVideoSession(
     fun publishedFrameCount(): Long = publishedFrames.get()
 
     fun executedInstructionCount(): Long = instructionCount.get()
+
+    /** Total modeled CPU cycles emitted by the CPU during this session (not calibrated hardware cycles). */
+    fun executedCpuCycles(): Long = cpuCycleClock.totalCycles
 
     fun executedRspInstructionCount(): Long = rspInstructions.get()
 
