@@ -277,6 +277,22 @@ class MainActivity : Activity() {
     private fun sessionSafeFrameCount(session: N64RomVideoSession?): Long =
         session?.publishedFrameCount() ?: 0L
 
+    private fun appendBusDiagnostics(lines: MutableList<String>, bus: N64Bus, heading: String) {
+        lines.add(heading)
+        lines.add("=== MMIO CPU (MI/VI/AI/PI/SP/SI/RI) ===")
+        lines.add("Contagens: " + (if (bus.diagnosticMmioCounts.isEmpty()) "(nenhum acesso)" else bus.diagnosticMmioCounts.entries.joinToString(" | ") { "${it.key}=${it.value}" }))
+        lines.addAll(bus.diagnosticMmioHistory)
+        lines.add("=== SNAPSHOT DOS DISPOSITIVOS (estado implementado) ===")
+        lines.addAll(bus.diagnosticDeviceSnapshot())
+        lines.add("PI DMA count=${bus.diagnosticPiDmaHistory.size}: " + bus.diagnosticPiDmaHistory.toList().takeLast(32).joinToString(" | "))
+        lines.add("SP DMA count=${bus.diagnosticSpDmaHistory.size}: " + bus.diagnosticSpDmaHistory.toList().takeLast(32).joinToString(" | "))
+        lines.add("RDRAM writes total=${bus.diagnosticRdramWriteCount}: " + bus.diagnosticRdramWriteHistory.toList().takeLast(32).joinToString(" | "))
+        lines.add("Boot memory accesses: " + bus.diagnosticBootMemoryAccessHistory.toList().takeLast(32).joinToString(" | "))
+        lines.add("Boot destination writes total=${bus.diagnosticBootDestinationWriteCount}: " + bus.diagnosticBootDestinationWriteHistory.toList().takeLast(32).joinToString(" | "))
+        lines.add("SI DRAM=0x${bus.read32(N64Bus.SI_DRAM_ADDR_REG).toUInt().toString(16).uppercase()} PIF_RD=0x${bus.read32(N64Bus.SI_PIF_ADDR_RD64B_REG).toUInt().toString(16).uppercase()} PIF_WR=0x${bus.read32(N64Bus.SI_PIF_ADDR_WR64B_REG).toUInt().toString(16).uppercase()} STATUS=0x${bus.read32(N64Bus.SI_STATUS_REG).toUInt().toString(16).uppercase()}")
+        lines.add("PIF RAM 64B: " + (0 until N64Bus.PIF_RAM_SIZE).joinToString("") { index -> bus.read8(N64Bus.PIF_RAM_BASE + index).toString(16).uppercase().padStart(2, '0') })
+    }
+
     private fun runHleBootDiagnostic() {
         val bus = cartridgeBus
         if (bus == null) {
@@ -403,19 +419,7 @@ class MainActivity : Activity() {
                 lines.add("COP0 BadVAddr: 0x${cpu.cop0[8].toULong().toString(16).uppercase()}")
                 lines.add("GPR: " + (0 until 32).joinToString(" ") { index -> "r$index=0x${cpu.gpr[index].toULong().toString(16).uppercase()}" })
                 lines.add("TLB fault: ${cpu.lastTlbFaultKind ?: "nenhuma"} / ${cpu.lastTlbFaultAccessType ?: "sem acesso"} / 0x${(cpu.lastTlbFaultVirtualAddress ?: 0L).toULong().toString(16).uppercase()}")
-                lines.add("=== EVENTOS DO BARRAMENTO ===")
-                lines.add("=== MMIO CPU (MI/VI/AI/PI/SP/SI/RI) ===")
-                lines.add("Contagens: " + (if (bus.diagnosticMmioCounts.isEmpty()) "(nenhum acesso)" else bus.diagnosticMmioCounts.entries.joinToString(" | ") { "${it.key}=${it.value}" }))
-                lines.addAll(bus.diagnosticMmioHistory)
-                lines.add("=== SNAPSHOT DOS DISPOSITIVOS (estado implementado) ===")
-                lines.addAll(bus.diagnosticDeviceSnapshot())
-                lines.add("PI DMA count=${bus.diagnosticPiDmaHistory.size}: " + bus.diagnosticPiDmaHistory.toList().takeLast(32).joinToString(" | "))
-                lines.add("SP DMA count=${bus.diagnosticSpDmaHistory.size}: " + bus.diagnosticSpDmaHistory.toList().takeLast(32).joinToString(" | "))
-                lines.add("RDRAM writes total=${bus.diagnosticRdramWriteCount}: " + bus.diagnosticRdramWriteHistory.toList().takeLast(32).joinToString(" | "))
-                lines.add("Boot memory accesses: " + bus.diagnosticBootMemoryAccessHistory.toList().takeLast(32).joinToString(" | "))
-                lines.add("Boot destination writes total=${bus.diagnosticBootDestinationWriteCount}: " + bus.diagnosticBootDestinationWriteHistory.toList().takeLast(32).joinToString(" | "))
-                lines.add("SI DRAM=0x${bus.read32(N64Bus.SI_DRAM_ADDR_REG).toUInt().toString(16).uppercase()} PIF_RD=0x${bus.read32(N64Bus.SI_PIF_ADDR_RD64B_REG).toUInt().toString(16).uppercase()} PIF_WR=0x${bus.read32(N64Bus.SI_PIF_ADDR_WR64B_REG).toUInt().toString(16).uppercase()} STATUS=0x${bus.read32(N64Bus.SI_STATUS_REG).toUInt().toString(16).uppercase()}")
-                lines.add("PIF RAM 64B: " + (0 until N64Bus.PIF_RAM_SIZE).joinToString("") { index -> bus.read8(N64Bus.PIF_RAM_BASE + index).toString(16).uppercase().padStart(2, '0') })
+                appendBusDiagnostics(lines, bus, "=== EVENTOS DO BARRAMENTO ===")
                 lines.add("Resultado: $stopReason")
             } catch (error: Throwable) {
                 diagnosticFailureMessage = "${error.javaClass.simpleName}: ${error.message ?: "sem detalhes"}"
@@ -442,19 +446,7 @@ class MainActivity : Activity() {
                 lines.add("COP0 Status=0x${cpu.cop0[12].toULong().toString(16).uppercase()} Cause=0x${cpu.cop0[13].toULong().toString(16).uppercase()} EPC=0x${cpu.cop0[14].toULong().toString(16).uppercase()} BadVAddr=0x${cpu.cop0[8].toULong().toString(16).uppercase()}")
                 lines.add("TLB fault=${cpu.lastTlbFaultKind ?: "nenhuma"} acesso=${cpu.lastTlbFaultAccessType ?: "N/A"} VADDR=0x${cpu.lastTlbFaultVirtualAddress?.toULong()?.toString(16)?.uppercase() ?: "N/A"}")
                 lines.add("GPR: " + (0 until 32).joinToString(" ") { index -> "r$index=0x${cpu.gpr[index].toULong().toString(16).uppercase()}" })
-                lines.add("=== EVENTOS DO BARRAMENTO NA FALHA ===")
-                lines.add("=== MMIO CPU (MI/VI/AI/PI/SP/SI/RI) ===")
-                lines.add("Contagens: " + (if (bus.diagnosticMmioCounts.isEmpty()) "(nenhum acesso)" else bus.diagnosticMmioCounts.entries.joinToString(" | ") { "${it.key}=${it.value}" }))
-                lines.addAll(bus.diagnosticMmioHistory)
-                lines.add("=== SNAPSHOT DOS DISPOSITIVOS (estado implementado) ===")
-                lines.addAll(bus.diagnosticDeviceSnapshot())
-                lines.add("PI DMA count=${bus.diagnosticPiDmaHistory.size}: " + bus.diagnosticPiDmaHistory.toList().takeLast(32).joinToString(" | "))
-                lines.add("SP DMA count=${bus.diagnosticSpDmaHistory.size}: " + bus.diagnosticSpDmaHistory.toList().takeLast(32).joinToString(" | "))
-                lines.add("RDRAM writes total=${bus.diagnosticRdramWriteCount}: " + bus.diagnosticRdramWriteHistory.toList().takeLast(32).joinToString(" | "))
-                lines.add("Boot memory accesses: " + bus.diagnosticBootMemoryAccessHistory.toList().takeLast(32).joinToString(" | "))
-                lines.add("Boot destination writes total=${bus.diagnosticBootDestinationWriteCount}: " + bus.diagnosticBootDestinationWriteHistory.toList().takeLast(32).joinToString(" | "))
-                lines.add("SI DRAM=0x${bus.read32(N64Bus.SI_DRAM_ADDR_REG).toUInt().toString(16).uppercase()} PIF_RD=0x${bus.read32(N64Bus.SI_PIF_ADDR_RD64B_REG).toUInt().toString(16).uppercase()} PIF_WR=0x${bus.read32(N64Bus.SI_PIF_ADDR_WR64B_REG).toUInt().toString(16).uppercase()} STATUS=0x${bus.read32(N64Bus.SI_STATUS_REG).toUInt().toString(16).uppercase()}")
-                lines.add("PIF RAM 64B: " + (0 until N64Bus.PIF_RAM_SIZE).joinToString("") { index -> bus.read8(N64Bus.PIF_RAM_BASE + index).toString(16).uppercase().padStart(2, '0') })
+                appendBusDiagnostics(lines, bus, "=== EVENTOS DO BARRAMENTO NA FALHA ===")
             }
             if (!hleStopRequested) {
                 val diagnosticResult = N64HleDiagnosticResult(
