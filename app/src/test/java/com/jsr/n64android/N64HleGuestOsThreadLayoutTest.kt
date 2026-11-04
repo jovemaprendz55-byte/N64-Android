@@ -5,8 +5,8 @@ import org.junit.Test
 
 class N64HleGuestOsThreadLayoutTest {
     @Test
-    fun matchesPublicLibultraOsthreadOffsetsAndSizes() {
-        assertEquals(0x1C, N64HleGuestOsThreadLayout.THREAD_PROFILE)
+    fun matchesGoldenEyeLibultraOsthreadOffsetsAndSizes() {
+        assertEquals(0x1C, N64HleGuestOsThreadLayout.THREAD_CONTEXT_PADDING)
         assertEquals(0x20, N64HleGuestOsThreadLayout.THREAD_CONTEXT)
         assertEquals(0xF8, N64HleGuestOsThreadLayout.CONTEXT_SR)
         assertEquals(0xFC, N64HleGuestOsThreadLayout.CONTEXT_PC)
