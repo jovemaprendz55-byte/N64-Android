@@ -2780,3 +2780,11 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Commits: executor `1ff5e1a4d534f796f5fc3ce3ccfd405e55b8ba05`; testes iniciais `5e464ca27d6a29154657db07f5e793eeb0fed782`; vetores de acesso fora de faixa `f87494522c7980826c117cd05591ba850183bab0`; integração stepper `1fc2cdd81ba1728b1be7901b732ade647747e666`; testes de integração `7559d0b87f70cff2122e5e829a36bbe49621c5f7`.
 - CI da seção 133 ainda precisa passar com testes e APK. A seção 132 também aguarda uma execução final limpa depois dos ajustes dos testes.
 - Limites: LWL/LWR/LDL/LDR, SWL/SWR/SDL/SDR, LL/SC, FPU loads/stores, cache ops, MMIO, TLB e exceções de endereço permanecem fora.
+## 134. Busca de instrução diretamente em RDRAM — 2026-11-04
+
+- O `N64HleR4300InstructionStepper` agora mantém referência opcional à mesma `N64HleGuestAddressSpace` usada pelo executor de load/store.
+- Adicionado `stepFromMemory(state)`: lê uma word big-endian em `state.programCounter` por `read32`, converte para instruction word de 32 bits e chama o caminho normal `step`. Não cria um caminho paralelo de execução.
+- Com isso, quando um branch/jump deixa o PC no delay slot, a chamada seguinte a `stepFromMemory` busca a instrução exatamente no endereço do slot; o sequenciador aplica o destino após a execução.
+- Testes adicionados para fetch/execução de ADDIU a partir da RDRAM e para J seguido de ADDIU buscado do delay slot.
+- Commits: fetch `50c9ae0ea877426acbf8beafe5de7f140a27e139`; testes `0bd9cd122cde91ba1b3d72f338ec874f2eec156e`.
+- CI ainda pendente. Fetch só funciona nos segmentos KSEG0/KSEG1 suportados pelo `N64HleGuestAddressSpace`; não carrega ROM, não faz mapeamento de ROM no espaço guest, não implementa exceções de fetch/alinhamento, TLB ou MMIO.
