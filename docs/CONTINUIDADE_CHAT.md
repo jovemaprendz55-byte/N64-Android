@@ -2172,3 +2172,34 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - A amostragem do comparador deve permanecer explícita como evento temporal; não fazer comparação imediata em write de VI_INTR até haver evidência de hardware.
 - Próxima etapa: criar uma matriz de testes/contrato para presets NTSC/PAL e progressive/interlaced, incluindo a relação entre VI_STATUS.SERRATE e VI_V_SYNC; manter a política de reprogramação em aberto. Depois, avaliar limites de 10 bits e compatibilidade entre os helpers e o MMIO real.
 - `N64Bus` e o loop de execução permanecem sem alterações nesta etapa. Branch `dev/n64-clean-start`; `main` intacta. Auditoria global de duplicação continua aberta.
+
+
+## 102. Matriz de modos VI NTSC/PAL e bit SERRATE — 2026-11-04
+
+### Evidência e correção dos valores de modo
+- A matriz usa os presets publicados pela referência técnica N64:
+  - NTSC progressive: `VI_V_SYNC=0x20D` (525 decimal; 526 half-lines efetivas).
+  - NTSC interlaced: `VI_V_SYNC=0x20C` (524 decimal; 525 half-lines efetivas).
+  - PAL progressive: `VI_V_SYNC=0x271` (625 decimal; 626 half-lines efetivas).
+  - PAL interlaced: `VI_V_SYNC=0x270` (624 decimal; 625 half-lines efetivas).
+- Correção importante em relação à hipótese anotada no planejamento anterior: PAL progressive tem 626 half-lines efetivas, não 624. O terminal do registrador continua sendo 625 (`0x271`).
+- Referências: https://github.com/meauxdal/N64-Refresh-Rate-Reference/blob/main/N64_Timing_Reference.md e https://libdragon.dev/ref/group__display.html
+- O bit SERRATE do VI_STATUS/VI_CONTROL é o bit 6 (`0x40`). A referência histórica do MAME usa esse bit para selecionar o modo de varredura/altura de vídeo: https://github.com/mamedev/historic-mame/blob/master/src/mame/machine/n64.c
+
+### Testes acrescentados
+- `N64ViHalfLineCounterTest.standardNtscAndPalModesFollowTheirHalfLineTerminalCounts` verifica os quatro presets:
+  - Progressive: chega ao último valor par e volta a zero após completar a contagem efetiva.
+  - Interlaced: chega ao terminal ímpar de campo par, avança para half-line 1 (campo ímpar) e retorna a zero após a contagem seguinte.
+- `N64BusVideoInterfaceTest.viStatusSerrateBitCanBeProgrammedForProgressiveAndInterlacedModes` caracteriza que o MMIO atual armazena e devolve o bit 6 de VI_STATUS.
+- Commits dos testes: matriz `4b95b86c294611b237b55ef0a642ed52161d521b`; caracterização MMIO SERRATE `2d3569883a901728d3bae391bb9f7fee7c6fa535`; correção da fronteira interlaced na matriz `6885034c17a16709e93cb26366fdd004e6c0680a`.
+
+### Limites
+- O teste de SERRATE confirma somente readback do bit 6. O runtime atual ainda guarda VI_STATUS como valor bruto; não usa SERRATE para alterar o avanço do contador aproximado.
+- A matriz verifica a aritmética do helper isolado `N64ViHalfLineCounter`, não sincronismo de campos real, timing de vídeo composto, PAL horizontal leap, nem integração com MI_INTR_VI.
+- Não foi alterado `N64Bus` de produção, `N64RomVideoSession` ou o loop principal. A política de escrita/reprogramação de VI_V_SYNC continua em aberto.
+- A integração segue bloqueada até existir relógio temporal validado e testes de integração MMIO para CURRENT, INTR, MI_INTR_VI, acknowledge e alteração de modo.
+
+### Validação
+- A auditoria/documentação da etapa 101, commit `acfb65b3deef3aff6857c2811c9a45400c05daad`, foi confirmada no CI run `41897533892`: **success**.
+- Os commits de teste desta etapa dispararam execuções separadas; consultar o CI do HEAD atual antes de declarar a matriz aprovada ou disponibilizar APK.
+- Branch `dev/n64-clean-start`; `main` permanece intocada. A auditoria global de duplicação de código e arquivos repetidos continua aberta.
