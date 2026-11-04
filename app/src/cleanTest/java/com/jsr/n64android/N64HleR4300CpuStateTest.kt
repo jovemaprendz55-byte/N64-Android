@@ -24,9 +24,9 @@ class N64HleR4300CpuStateTest {
         assertFalse(state.isGprKnown(8))
         assertThrows(IllegalStateException::class.java) { state.readGpr(8) }
 
-        state.writeGpr(8, 0xFFFFFFFF80001234L)
+        state.writeGpr(8, 0x80001234L.toInt().toLong())
         assertTrue(state.isGprKnown(8))
-        assertEquals(0xFFFFFFFF80001234L, state.readGpr(8))
+        assertEquals(0x80001234L.toInt().toLong(), state.readGpr(8))
     }
 
     @Test
