@@ -43,8 +43,9 @@ object N64HleGuestOsThreadContextMapper {
         val fcr = template.fcr.toMutableList()
         if (thread.fpUsed != 0) {
             context.fpPairs.forEachIndexed { pairIndex, pair ->
-                fpr[pairIndex * 2] = (pair ushr 32) and 0xFFFFFFFFL
-                fpr[pairIndex * 2 + 1] = pair and 0xFFFFFFFFL
+                // FR=0: even FGR stores the low word; odd FGR stores the high word.
+                fpr[pairIndex * 2] = pair and 0xFFFFFFFFL
+                fpr[pairIndex * 2 + 1] = (pair ushr 32) and 0xFFFFFFFFL
             }
             fcr[31] = context.fpcsr.toUInt().toLong()
         }
@@ -89,9 +90,9 @@ object N64HleGuestOsThreadContextMapper {
         var fpcsr = original.context.fpcsr
         if (original.fpUsed != 0) {
             for (pairIndex in 0 until 16) {
-                val even = snapshot.fpr[pairIndex * 2] and 0xFFFFFFFFL
-                val odd = snapshot.fpr[pairIndex * 2 + 1] and 0xFFFFFFFFL
-                fpPairs[pairIndex] = (even shl 32) or odd
+                val evenLow = snapshot.fpr[pairIndex * 2] and 0xFFFFFFFFL
+                val oddHigh = snapshot.fpr[pairIndex * 2 + 1] and 0xFFFFFFFFL
+                fpPairs[pairIndex] = (oddHigh shl 32) or evenLow
             }
             fpcsr = snapshot.fcr[31].toInt()
         }
