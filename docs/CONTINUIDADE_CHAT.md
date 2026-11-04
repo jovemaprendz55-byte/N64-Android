@@ -2550,3 +2550,13 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - CI para a nova camada ainda precisa ser confirmada.
 - Limites: não há núcleo R4300 limpo para consumir o snapshot; não há semântica COP0, exceções, TLB, Count/Compare, interrupções ou boot real implementados nesta camada. Os valores precisam vir de documentação/trace comprovável da revisão-alvo; não importar defaults de um boot anterior.
 - Próximo: conferir CI e revisar o contrato de entrada do futuro R4300 limpo para consumir GPR/PC/COP0 sem perda de informação. Depois implementar o primeiro núcleo CPU limpo com testes dirigidos, sem conectar a Activity antes de um ciclo de execução mínimo verificável.
+
+
+### Correção de CI da seção 122 — 2026-11-04
+
+- As quatro execuções iniciais da seção 122 falharam em `compileDebugUnitTestKotlin`, não na compilação do aplicativo.
+- Causa confirmada nos logs: o teste `N64HleCop0EntryStateTest.kt` usava o literal `0xFFFFFFFF80001234L`, maior que o maior valor positivo representável por Kotlin `Long`. O mesmo literal aparecia na asserção.
+- Corrigido o fixture para construir o endereço sign-extended por conversão explícita de `0x80001234L.toInt().toLong()`, preservando exatamente os 64 bits esperados sem literal fora de faixa.
+- Commit da correção: `45c929b979442bbbc33e549bb6d863ccf4a3ed7d`.
+- A correção ainda precisa passar na CI; não declarar a seção 122 aprovada nem afirmar que existe APK atualizado até verificar o novo run e o artifact.
+- A falha não indica defeito no modelo COP0 de produção; era erro de compilação do teste. Ainda assim, somente a nova CI confirmará a correção.
