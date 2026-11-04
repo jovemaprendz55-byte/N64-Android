@@ -61,4 +61,24 @@ class N64HleR4300ImmediateExecutorTest {
         assertEquals(0x80002000L, state.programCounter)
         assertEquals(false, stepper.hasPendingDelaySlot())
     }
+    @Test fun daddiuUsesSignExtendedImmediateAcrossSixtyFourBits() {
+        val state = N64HleR4300CpuState(0x80001000L, mapOf(1 to 0x1_0000_0000L))
+        stepper.step(i(0x19, 1, 2, -1), state)
+        assertEquals(0xFFFF_FFFFL, state.readGpr(2))
+        assertEquals(0x80001004L, state.programCounter)
+    }
+
+    @Test fun daddiExecutesAndRejectsSignedOverflowWithoutMutation() {
+        val normal = N64HleR4300CpuState(0x80001000L, mapOf(1 to 100L))
+        stepper.step(i(0x18, 1, 2, -7), normal)
+        assertEquals(93L, normal.readGpr(2))
+
+        val overflow = N64HleR4300CpuState(0x80001000L, mapOf(1 to Long.MAX_VALUE))
+        assertThrows(IllegalStateException::class.java) {
+            stepper.step(i(0x18, 1, 2, 1), overflow)
+        }
+        assertEquals(false, overflow.isGprKnown(2))
+        assertEquals(0x80001000L, overflow.programCounter)
+    }
+
 }
