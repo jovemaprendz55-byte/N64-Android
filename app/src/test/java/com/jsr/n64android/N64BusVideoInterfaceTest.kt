@@ -181,4 +181,44 @@ class N64BusVideoInterfaceTest {
         assertEquals(0, bus.read32(N64Bus.MI_INTR_REG) and N64Bus.MI_INTR_VI)
         assertEquals(false, bus.isMiInterruptPending())
     }
+
+    @Test fun viAcknowledgeDoesNotClearUnrelatedSpInterruptSource() {
+        val bus = N64Bus()
+        bus.write32(N64Bus.MI_INTR_MASK_REG, N64Bus.MI_INTR_MASK_VI_SET)
+        bus.write32(N64Bus.SP_STATUS_REG, N64Bus.SP_STATUS_CMD_SET_INTR)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_INTR_OFFSET, 1)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_SYNC_OFFSET, 525)
+        bus.advanceViInstructions(N64Bus.VI_INSTRUCTIONS_PER_SCANLINE)
+
+        assertEquals(N64Bus.MI_INTR_SP or N64Bus.MI_INTR_VI, bus.read32(N64Bus.MI_INTR_REG) and (N64Bus.MI_INTR_SP or N64Bus.MI_INTR_VI))
+        bus.write32(N64Bus.VI_CURRENT_REG, 0)
+
+        assertEquals(N64Bus.MI_INTR_SP, bus.read32(N64Bus.MI_INTR_REG) and (N64Bus.MI_INTR_SP or N64Bus.MI_INTR_VI))
+    }
+
+    @Test fun viInterruptCompareUsesMostRecentlyProgrammedViIntr() {
+        val bus = N64Bus()
+        bus.write32(N64Bus.MI_INTR_MASK_REG, N64Bus.MI_INTR_MASK_VI_SET)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_INTR_OFFSET, 3)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_SYNC_OFFSET, 525)
+        bus.advanceViInstructions(N64Bus.VI_INSTRUCTIONS_PER_SCANLINE)
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_INTR_OFFSET, 2)
+        bus.advanceViInstructions(N64Bus.VI_INSTRUCTIONS_PER_SCANLINE)
+
+        assertEquals(2, bus.read32(N64Bus.VI_CURRENT_REG))
+        assertEquals(N64Bus.MI_INTR_VI, bus.read32(N64Bus.MI_INTR_REG) and N64Bus.MI_INTR_VI)
+    }
+
+    @Test fun viCurrentWrapUsesMostRecentlyProgrammedVSync() {
+        val bus = N64Bus()
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_SYNC_OFFSET, 4)
+        bus.advanceViInstructions(4L * N64Bus.VI_INSTRUCTIONS_PER_SCANLINE)
+        assertEquals(4, bus.read32(N64Bus.VI_CURRENT_REG))
+
+        bus.write32(N64Bus.VI_REG_BASE + N64Bus.VI_V_SYNC_OFFSET, 2)
+        bus.advanceViInstructions(N64Bus.VI_INSTRUCTIONS_PER_SCANLINE)
+
+        assertEquals(2, bus.read32(N64Bus.VI_CURRENT_REG))
+    }
+
 }
