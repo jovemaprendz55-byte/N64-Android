@@ -77,5 +77,7 @@ class N64HleR4300SpecialExecutor {
         state.writeGpr(instruction.rd, result)
     }
 
-    private fun wordResult(value: Int): Long = value.toLong()\n\n    private fun wordResult(value: Long): Long = value.toInt().toLong()
+    private fun wordResult(value: Int): Long = value.toLong()
+
+    private fun wordResult(value: Long): Long = value.toInt().toLong()
 }
