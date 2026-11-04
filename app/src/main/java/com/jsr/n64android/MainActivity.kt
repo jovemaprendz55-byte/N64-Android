@@ -22,6 +22,7 @@ class MainActivity : Activity() {
     private var cartridgeBus: N64Bus? = null
     private var cartridgeRomBytes: ByteArray? = null
     @Volatile private var romLoadGeneration = 0
+    @Volatile private var romLoadInProgress = false
     @Volatile private var diagnosticExportInProgress = false
     @Volatile private var romTraceInProgress = false
     private var romTraceButton: Button? = null
@@ -186,7 +187,7 @@ class MainActivity : Activity() {
      * is not yet automatic, so this is a bring-up path, not a playable-game claim.
      */
     private fun startRomVideoExecution() {
-        if (diagnosticExportInProgress || romTraceInProgress || hleWorker != null) {
+        if (romLoadInProgress || diagnosticExportInProgress || romTraceInProgress || hleWorker != null) {
             status.text = "Aguarde o diagnóstico ou a exportação atual terminar."
             return
         }
@@ -354,7 +355,7 @@ class MainActivity : Activity() {
     }
 
     private fun runHleBootDiagnostic() {
-        if (diagnosticExportInProgress || romTraceInProgress || romVideoThread?.isAlive == true || hleWorker != null) {
+        if (romLoadInProgress || diagnosticExportInProgress || romTraceInProgress || romVideoThread?.isAlive == true || hleWorker != null) {
             status.text = "Aguarde a operação de diagnóstico ou exportação atual terminar."
             return
         }
@@ -568,7 +569,7 @@ class MainActivity : Activity() {
     }
 
     private fun runRomInstructionDiagnostic() {
-        if (diagnosticExportInProgress || romTraceInProgress || romVideoThread?.isAlive == true || hleWorker != null) {
+        if (romLoadInProgress || diagnosticExportInProgress || romTraceInProgress || romVideoThread?.isAlive == true || hleWorker != null) {
             status.text = "Aguarde a operação de diagnóstico ou exportação atual terminar."
             return
         }
@@ -1101,7 +1102,7 @@ class MainActivity : Activity() {
             isAllCaps = false
             setOnClickListener {
                 if (diagnosticExportInProgress) return@setOnClickListener
-                if (hleWorker != null || romTraceInProgress) {
+                if (romLoadInProgress || hleWorker != null || romTraceInProgress) {
                     Toast.makeText(this@MainActivity, "Aguarde o diagnóstico em andamento terminar antes de exportar.", Toast.LENGTH_LONG).show()
                     return@setOnClickListener
                 }
@@ -1295,7 +1296,7 @@ class MainActivity : Activity() {
                             if (!isFinishing && !isDestroyed) {
                                 diagnosticExportInProgress = false
                                 button.isEnabled = true
-                                val idle = romVideoThread?.isAlive != true && hleWorker == null && !romTraceInProgress
+                                val idle = !romLoadInProgress && romVideoThread?.isAlive != true && hleWorker == null && !romTraceInProgress
                                 mainActionButton?.isEnabled = idle
                                 romTraceButton?.isEnabled = idle && cartridgeBus != null
                                 hleBootButton?.isEnabled = idle && cartridgeBus != null
@@ -1345,7 +1346,7 @@ class MainActivity : Activity() {
      * selected cartridge session and must never be presented as game compatibility.
      */
     private fun openDiagnosticTools() {
-        if (diagnosticExportInProgress || romTraceInProgress || hleWorker != null || romVideoThread?.isAlive == true) {
+        if (romLoadInProgress || diagnosticExportInProgress || romTraceInProgress || hleWorker != null || romVideoThread?.isAlive == true) {
             status.text = "Aguarde a operação atual terminar antes de abrir as ferramentas."
             return
         }
@@ -1484,7 +1485,7 @@ class MainActivity : Activity() {
     }
 
     private fun openRomPicker() {
-        if (diagnosticExportInProgress || romTraceInProgress || hleWorker != null || romVideoThread?.isAlive == true) {
+        if (romLoadInProgress || diagnosticExportInProgress || romTraceInProgress || hleWorker != null || romVideoThread?.isAlive == true) {
             status.text = "Aguarde a operação atual terminar antes de selecionar outra ROM."
             return
         }
@@ -1505,18 +1506,21 @@ class MainActivity : Activity() {
 
     /** Reads and validates a document off the UI thread to keep large ROM loads responsive. */
     private fun loadRomFromUri(uri: Uri, rememberSelection: Boolean, restoring: Boolean = false) {
-        if (diagnosticExportInProgress || romTraceInProgress || hleWorker != null || romVideoThread?.isAlive == true) {
+        if (romLoadInProgress || diagnosticExportInProgress || romTraceInProgress || hleWorker != null || romVideoThread?.isAlive == true) {
             status.text = "Não é possível trocar a ROM enquanto outra operação está em andamento."
             return
         }
         val loadGeneration = ++romLoadGeneration
+        romLoadInProgress = true
+        mainActionButton?.isEnabled = false
+        romTraceButton?.isEnabled = false
+        hleBootButton?.isEnabled = false
         if (rememberSelection) {
             // Keep the selected document recoverable if Android recreates this Activity
             // while the background read/validation is still running.
             getSharedPreferences(ROM_PREFS, MODE_PRIVATE).edit()
                 .putString(KEY_LAST_ROM_URI, uri.toString()).apply()
         }
-        mainActionButton?.isEnabled = false
         status.text = if (restoring) "Restaurando a última ROM..." else "Lendo e verificando a ROM..."
         cartridgeBus = null
         cartridgeRomBytes = null
@@ -1535,6 +1539,7 @@ class MainActivity : Activity() {
 
             runOnUiThread {
                 if (isFinishing || isDestroyed || loadGeneration != romLoadGeneration) return@runOnUiThread
+                romLoadInProgress = false
                 if (bytes == null) {
                     if (rememberSelection || restoring) {
                         getSharedPreferences(ROM_PREFS, MODE_PRIVATE).edit().remove(KEY_LAST_ROM_URI).apply()
