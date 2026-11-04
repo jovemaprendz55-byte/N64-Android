@@ -1342,3 +1342,14 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - A refatoração não adiciona suporte MIPS nem muda os códigos de exceção. A CI para o commit de código ainda deve ser consultada.
 - A auditoria de CPU é estrutural, não prova de cobertura integral nem validação de hardware. Próximo passo: aguardar CI e continuar a revisão de grupos de instruções/testes procurando duplicação comprovada; evitar dividir o decoder de 900+ linhas sem plano de testes por opcode.
 - Branch `dev/n64-clean-start`; `main` permanece intocada.
+
+
+## 65. Auditoria dirigida do decoder R4300 — 2026-11-04
+
+- CI dos commits ac2a744 (refatoração CPU) e ac12177 (documentação) consultada: runs 41800334365 e 41800415861 concluíram com sucesso, incluindo Build and test e Upload debug APK.
+- Revisados estaticamente R4300Cpu.kt (1.906 linhas na versão consultada) e R4300CpuTest.kt (243 declarações @Test).
+- Grupos verificados: aritmética 32/64 bits e overflow; multiplicação/divisão HI/LO; desvios, delay slots e branch-likely; exceções em delay slot; acessos desalinhados e merge; parte de COP0/TLB/LL-SC.
+- Nenhuma nova duplicação de lógica nem falha funcional foi confirmada nesta passada. O decoder de produção não foi alterado.
+- Oportunidade de cobertura: LDL/LDR têm testes que percorrem todos os offsets; SWL/SWR/SDL/SDR têm casos específicos, sem varredura completa de offsets demonstrada nesta inspeção. Recomendado acrescentar testes de tabela para todos os offsets antes de qualquer alteração de implementação.
+- Relatório detalhado: docs/AUDITORIA_R4300_INSTRUCOES_2026-11-04.md, commit a13153a3c4bd392c6169fd60a0690a910a076c2e.
+- Limites: CI verde confirma build/testes automatizados, não compatibilidade integral R4300, instalação do APK no aparelho ou GoldenEye funcional. main permanece intacta; trabalho continua em dev/n64-clean-start.
