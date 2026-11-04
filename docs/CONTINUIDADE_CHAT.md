@@ -2136,3 +2136,12 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Estes testes caracterizam o contador aproximado atual em scanlines, não o contrato half-line nem fidelidade total do hardware. O teste de VI_V_SYNC não define reset de fase ou comportamento interlaced.
 - Aguardar CI do commit antes de marcar como aprovado. Próximo: analisar reprogramação de VI_V_SYNC/VI_INTR e definir ponte de clock para o ledger CPU; não substituir `advanceViInstructions` ainda.
 - Branch `dev/n64-clean-start`; `main` intacta.
+
+
+### Correção da etapa 100 — expectativa de wrap do VI_V_SYNC
+- CI do commit `318546295a872c263c5181eb2d7e0434bd2fb1b6` falhou em `viCurrentWrapUsesMostRecentlyProgrammedVSync` (linha 216); 644 testes passaram e 1 falhou.
+- Causa: o teste programava `VI_V_SYNC=4` e esperava CURRENT=4 após quatro avanços, mas o runtime aproximado existente usa o valor programado diretamente como módulo: `(current + 1) % VI_V_SYNC`. Com 4, o quarto avanço retorna a 0. A expectativa original contradizia a implementação que o teste pretendia caracterizar.
+- Correção restrita ao teste: usa `VI_V_SYNC=5`, avança quatro linhas e verifica CURRENT=4; reprograma para `VI_V_SYNC=3`, avança uma linha e verifica CURRENT=2. Assim, demonstra que o novo valor de V_SYNC rege o wrap seguinte, sem alterar código de produção nem afirmar semântica fiel ao hardware.
+- Commit da correção: `18b512b8d51e8025531013dcb109901fb4d6c9b4`.
+- CI da correção ainda precisa ser consultado. APK não foi disponibilizado pelo run falho; aguardar novo artifact após CI verde.
+- Branch `dev/n64-clean-start`; `main` permanece intocada.
