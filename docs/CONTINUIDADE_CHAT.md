@@ -2251,8 +2251,8 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 ### Inspeção do código anterior
 - `N64Bus.write32` armazenava qualquer escrita de VI_ORIGIN no array genérico `viRegisters`, sem máscara.
 - `read32` devolvia o valor bruto armazenado.
-- `captureViFrame` passava esse valor diretamente ao leitor de framebuffer.
-- Isso permitia que bits 24–31 contaminassem o endereço usado na captura, apesar de não fazerem parte do campo documentado de endereço.
+- `captureViFrame` passava o valor bruto ao `N64ViFramebufferReader`, mas o leitor já aplicava internamente `RDRAM_ADDRESS_MASK = 0x00FFFFFF` antes de acessar a memória.
+- Portanto, a falha confirmada era o readback MMIO de VI_ORIGIN preservar bits altos indevidos; o endereço efetivo da captura já era limitado pelo leitor. A mudança também torna o estado MMIO consistente com o campo documentado.
 
 ### Alteração isolada
 - Adicionada a constante `VI_ORIGIN_MASK = 0x00FFFFFF`.
