@@ -2145,3 +2145,30 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Commit da correção: `18b512b8d51e8025531013dcb109901fb4d6c9b4`.
 - CI da correção ainda precisa ser consultado. APK não foi disponibilizado pelo run falho; aguardar novo artifact após CI verde.
 - Branch `dev/n64-clean-start`; `main` permanece intocada.
+
+
+## 101. Auditoria do contrato de reprogramação dos registradores VI — 2026-11-04
+
+### Confirmação dos CI após correção da etapa 100
+- Commit de teste `18b512b8d51e8025531013dcb109901fb4d6c9b4`: run `41897053700`, build/test success e upload debug APK success.
+- Artifact `n64-android-debug-apk`, id `13355712289`, tamanho 1.048.401 bytes; disponível no GitHub Actions enquanto não expirar.
+- Commit de documentação `62d3a302cb3a5143da1ec55cc9656f3d5821c191`: run `41897088389`, build/test success e upload debug APK success.
+- Esses resultados validam compilação e testes automatizados; não validam o jogo no dispositivo.
+
+### Auditoria do modelo VI isolado
+- `N64ViHalfLineCounter.advanceScanline(viVSync)` recebe o valor de V_SYNC a cada avanço e calcula `(current + 2) % (viVSync + 1)`. Não há método de escrita/reprogramação nem evento de reset de fase.
+- Portanto, na implementação isolada atual, uma alteração de V_SYNC só influencia o próximo `advanceScanline`; o contador mantém o valor anterior até esse avanço e então é reduzido pelo novo módulo. Isso descreve o helper, não prova que o hardware real preserve fase dessa forma.
+- `N64ViInterruptController.advanceScanline(viVSync, viIntr)` também recebe VI_INTR a cada amostra. A nova comparação só acontece durante o próximo avanço; não existe método separado de escrita de VI_INTR que provoque comparação imediata.
+- O latch retém pending até acknowledge. O acknowledge não altera current.
+- O helper não restringe `viVSync`/`viIntr` a 10 bits; o `N64Bus` runtime mascara os registradores com `VI_WINDOW_COORD_MASK`. Essa diferença deve ser tratada explicitamente antes de qualquer integração MMIO, sem restringir a classe de modelo por suposição.
+
+### Referências técnicas adicionais
+- O header RCP do SDK define VI_INTR como comparação com VI_CURRENT em half-lines; VI_CURRENT é amostrado uma vez por linha, seu bit 0 representa o campo em interlace, e qualquer escrita em VI_CURRENT limpa a linha de interrupção. Também define VI_V_SYNC como número de half-lines por campo. https://ultra64.ca/files/documentation/online-manuals/man/header/rcp.htm
+- A referência de timing documenta VI_V_TOTAL/VI_V_SYNC como terminal count, com contagem efetiva REG+1, VI_CURRENT incrementando duas half-lines por scanline, e valores NTSC progressive/interlaced distintos. https://github.com/meauxdal/N64-Refresh-Rate-Reference/blob/main/N64_Timing_Reference.md
+- A documentação libdragon publica presets NTSC progressive `0x20D`, interlaced `0x20C`, PAL progressive `0x271`, interlaced `0x270`. Isso confirma que V_SYNC depende do modo/região; não define por si só o comportamento de escrita no meio de um campo. https://libdragon.dev/ref/vi_8h.html
+
+### Decisão e próximo passo
+- Não há evidência técnica suficiente nas referências consultadas para afirmar se uma escrita de V_SYNC durante um campo reinicia o contador, preserva a fase absoluta ou só altera o terminal count no próximo wrap. Não implementar nenhuma dessas hipóteses no runtime.
+- A amostragem do comparador deve permanecer explícita como evento temporal; não fazer comparação imediata em write de VI_INTR até haver evidência de hardware.
+- Próxima etapa: criar uma matriz de testes/contrato para presets NTSC/PAL e progressive/interlaced, incluindo a relação entre VI_STATUS.SERRATE e VI_V_SYNC; manter a política de reprogramação em aberto. Depois, avaliar limites de 10 bits e compatibilidade entre os helpers e o MMIO real.
+- `N64Bus` e o loop de execução permanecem sem alterações nesta etapa. Branch `dev/n64-clean-start`; `main` intacta. Auditoria global de duplicação continua aberta.
