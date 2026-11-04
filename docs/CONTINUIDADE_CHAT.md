@@ -2810,3 +2810,8 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Testes adicionados para imediato negativo, resultado 64-bit e overflow de DADDI sem mutação.
 - Commits: implementação `4d85023a1b72f4a611bf4e679e457634aebd8361`; testes `d699d8b9252a6ce83b42bd4a303826024cb0b100`.
 - CI pendente.
+### Validação CI da seção 135 — 2026-11-04
+
+- Implementação ADD/SUB/DADD/DSUB passou no run `41936582292`; testes passaram no run `41936609044`; documentação passou no run `41936627182`.
+- Artifact do run de testes `13374796084`, 845.327 bytes, SHA-256 `4f1f3337d3e657cecfb76d59a631b37b0f335437cf956a90117f958228758cc4`.
+- Seção 135 validada em CI: testes unitários e `assembleDebug` passaram. Não houve teste em dispositivo.
