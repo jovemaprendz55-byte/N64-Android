@@ -4,7 +4,7 @@ package com.jsr.n64android
  * Executes the supported, side-effect-limited R4300 SPECIAL integer operations.
  *
  * This class deliberately does not advance PC and does not implement control
- * transfers, delay slots, exceptions, HI/LO arithmetic, or memory operations.
+ * transfers, delay slots, exceptions, HI/LO multiply/divide, or memory operations.
  * The caller owns instruction sequencing. Unsupported operations fail before
  * reading or mutating architectural state.
  */
@@ -17,6 +17,30 @@ class N64HleR4300SpecialExecutor {
         require(instruction.isSpecial) { "Instruction is not SPECIAL" }
         val operation = instruction.specialOperation
             ?: throw UnsupportedOperationException("Unknown SPECIAL function 0x${instruction.functionCode.toString(16)}")
+
+        when (operation) {
+            N64HleR4300SpecialOperation.MFHI -> {
+                val value = state.readHi()
+                state.writeGpr(instruction.rd, value)
+                return
+            }
+            N64HleR4300SpecialOperation.MFLO -> {
+                val value = state.readLo()
+                state.writeGpr(instruction.rd, value)
+                return
+            }
+            N64HleR4300SpecialOperation.MTHI -> {
+                val value = state.readGpr(instruction.rs)
+                state.writeHi(value)
+                return
+            }
+            N64HleR4300SpecialOperation.MTLO -> {
+                val value = state.readGpr(instruction.rs)
+                state.writeLo(value)
+                return
+            }
+            else -> Unit
+        }
 
         val result = when (operation) {
             N64HleR4300SpecialOperation.ADDU ->
