@@ -125,4 +125,47 @@ class N64HleR4300MemoryExecutorTest {
         assertEquals(0x80002000L, state.programCounter)
     }
 
+    @Test fun bigEndianLwlMergesMemoryIntoMostSignificantWordBytes() {
+        memory.write32(0x80000100L, 0xAABBCCDDL)
+        val state = N64HleR4300CpuState(
+            0x80001000L,
+            mapOf(1 to 0x80000101L, 2 to 0x11223344L)
+        )
+        executor.execute(N64HleR4300InstructionDecoder().decode(i(0x22, 1, 2, 0)), state)
+        assertEquals(0xBBCCDD44L, state.readGpr(2))
+    }
+
+    @Test fun bigEndianLwrMergesMemoryIntoLeastSignificantWordBytes() {
+        memory.write32(0x80000100L, 0xAABBCCDDL)
+        val state = N64HleR4300CpuState(
+            0x80001000L,
+            mapOf(1 to 0x80000101L, 2 to 0x11223344L)
+        )
+        executor.execute(N64HleR4300InstructionDecoder().decode(i(0x26, 1, 2, 0)), state)
+        assertEquals(0x1122AABBL, state.readGpr(2))
+    }
+
+    @Test fun bigEndianSwlAndSwrPreserveUnwrittenMemoryBytes() {
+        memory.write32(0x80000100L, 0x11223344L)
+        val state = N64HleR4300CpuState(
+            0x80001000L,
+            mapOf(1 to 0x80000101L, 2 to 0xAABBCCDDL)
+        )
+        executor.execute(N64HleR4300InstructionDecoder().decode(i(0x2A, 1, 2, 0)), state)
+        assertEquals(0x11AABBCCL, memory.read32(0x80000100L))
+
+        memory.write32(0x80000100L, 0x11223344L)
+        executor.execute(N64HleR4300InstructionDecoder().decode(i(0x2E, 1, 2, 0)), state)
+        assertEquals(0xCCDD3344L, memory.read32(0x80000100L))
+    }
+
+    @Test fun partialWordLoadRequiresPreviouslyKnownDestinationBytes() {
+        memory.write32(0x80000100L, 0xAABBCCDDL)
+        val state = N64HleR4300CpuState(0x80001000L, mapOf(1 to 0x80000101L))
+        assertThrows(IllegalStateException::class.java) {
+            executor.execute(N64HleR4300InstructionDecoder().decode(i(0x22, 1, 2, 0)), state)
+        }
+        assertEquals(false, state.isGprKnown(2))
+    }
+
 }
