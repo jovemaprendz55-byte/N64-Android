@@ -178,3 +178,32 @@ Commits: queue `6606f3dca938e5fca90c6725ca5b439bc6ec9c67`; testes `0521a1c4ffc0a
 - Artifact `n64-android-debug-apk`: ID `13360140948`, 1,061,938 bytes, SHA-256 `6477f7ccbaf66b6992d2646648738b48fc0563127345c3a1c22fd423bfe5336d`, expira em 2026-11-18.
 - Run: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41903604215
 - Isso valida build e testes unitários. Não valida execução de GoldenEye no aparelho, troca de contexto em runtime real, dispatch de threads ou APIs libultra.
+
+
+## Etapa 6 — transições de estado e seleção de thread — 2026-11-04
+
+Implementado `N64HleGuestThreadScheduler.kt` com endereços globais explicitamente fornecidos pelo chamador (endereços de words que contêm ponteiros; nenhum endereço simbólico foi inventado):
+
+- `registerCreatedThread`: replica o prepend em `__osActiveQueue` via `OSThread.tlnext`, com detecção de duplicação/ciclo.
+- `startThread`: implementa ramos STOPPED/WAITING/RUNNABLE/RUNNING de GoldenEye `osStartThread`, inclusive reativação de fila anterior e teste de preempção por prioridade.
+- `stopThread`: remove RUNNABLE/WAITING da fila proprietária; para a thread corrente marca STOPPED e solicita próxima seleção.
+- `yieldThread`: marca a corrente RUNNABLE, reinsere por prioridade/FIFO e seleciona a próxima.
+- `dispatchNext`: retira a cabeça da run queue, marca RUNNING e atualiza o word guest `__osRunningThread`; quando a fila contém apenas o sentinel, o modelo limpa o ponteiro corrente e retorna sem thread selecionada.
+- Todas as operações usam `N64HleGuestMemory`, codec OSThread e filas guest já testados.
+
+Limites intencionais: isso ainda é o modelo de estado/filas e decisão de dispatch, não uma troca de contexto real. Não salva/restaura R4300 ContextSnapshot, não executa `__osEnqueueAndYield` assembly, não mascara interrupções e não é chamado por ROM call gates. O chamador precisa fornecer os endereços reais de `__osRunQueue`, `__osActiveQueue`, `__osRunningThread` e `__osThreadTail` resolvidos do jogo.
+
+Testes `N64HleGuestThreadSchedulerTest.kt`: active queue prepend; start inicial; preempção somente por prioridade maior; FIFO em yield de prioridade igual; stop de thread runnable e corrente; caminho STOPPED com fila anterior; despertar de WAITING.
+
+Fontes diretas GoldenEye:
+- `createthread.c`: https://github.com/n64decomp/007/blob/master/src/libultra/os/createthread.c
+- `startthread.c`: https://github.com/n64decomp/007/blob/master/src/libultra/os/startthread.c
+- `stopthread.c`: https://github.com/n64decomp/007/blob/master/src/libultra/os/stopthread.c
+- `yieldthread.c`: https://github.com/n64decomp/007/blob/master/src/libultra/os/yieldthread.c
+- `thread.c` e rotinas de enqueue/pop/dispatch em `exception.s`: https://github.com/n64decomp/007/tree/master/src/libultra/os
+
+Commits: scheduler `449446f799934f9a4ca90ea9ef7f11e78b2a3938`; testes `8b44afefa94580f3af5e90c23ad4076c49b8c942`; limpeza do running pointer vazio `602ab8d9d03b09fcb537776a9b9c65acc91a5084`; teste de regressão `af94314c001a2eccd3727393c16f3534f02a0996`.
+
+CI final: run `41906618830` — success; `gradle testDebugUnitTest assembleDebug` concluído. APK artifact `13360316775`, 1,065,632 bytes, SHA-256 `38d891b491c27ddbf7cefcb5a0938e901de3647879508a2270391fad3ca17662`, expira 2026-11-18. Run: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41906618830
+
+Próxima etapa: codec e operações de OSMesgQueue (mtqueue/fullqueue, ring buffer, send/recv/jam), incluindo bloqueio/desbloqueio usando as transições acima. Depois disso, revisar call gate e salvar/restaurar contexto antes de integrar o runtime à MainActivity.
