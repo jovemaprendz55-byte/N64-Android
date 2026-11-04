@@ -190,4 +190,79 @@ class N64HleR4300SpecialExecutorTest {
         assertEquals(1L, s.readHi())
         assertEquals(-2L, s.readLo())
     }
+
+    @Test fun signedWordDivisionTruncatesTowardZeroAndStoresRemainderInHi() {
+        val s = state(-7L, 3L)
+        executor.execute(r(1, 2, 0, funct = 0x1A), s) // DIV
+        assertEquals(-1L, s.readHi())
+        assertEquals(-2L, s.readLo())
+    }
+
+    @Test fun unsignedWordDivisionUsesLowWordsAndUnsignedInterpretation() {
+        val s = state(0x00000000FFFFFFFFL, 2L)
+        executor.execute(r(1, 2, 0, funct = 0x1B), s) // DIVU
+        assertEquals(1L, s.readHi())
+        assertEquals(0x7FFFFFFFL, s.readLo())
+    }
+
+    @Test fun doublewordSignedDivisionHandlesNegativeRemainder() {
+        val s = state(-17L, 5L)
+        executor.execute(r(1, 2, 0, funct = 0x1E), s) // DDIV
+        assertEquals(-2L, s.readHi())
+        assertEquals(-3L, s.readLo())
+    }
+
+    @Test fun doublewordUnsignedDivisionUsesFullUnsignedRange() {
+        val s = state(-1L, 2L)
+        executor.execute(r(1, 2, 0, funct = 0x1F), s) // DDIVU
+        assertEquals(1L, s.readHi())
+        assertEquals(Long.MAX_VALUE, s.readLo())
+    }
+
+    @Test fun wordDivisionByZeroPreservesPreviouslyKnownHiLo() {
+        val s = N64HleR4300CpuState(0x80001000L, mapOf(1 to 10L, 2 to 0L), initialHi = 7L, initialLo = 9L)
+        assertThrows(IllegalStateException::class.java) {
+            executor.execute(r(1, 2, 0, funct = 0x1A), s)
+        }
+        assertEquals(7L, s.readHi())
+        assertEquals(9L, s.readLo())
+    }
+
+    @Test fun signedWordDivisionOverflowPreservesPreviouslyKnownHiLo() {
+        val s = N64HleR4300CpuState(
+            0x80001000L,
+            mapOf(1 to Int.MIN_VALUE.toLong(), 2 to -1L),
+            initialHi = 7L,
+            initialLo = 9L
+        )
+        assertThrows(IllegalStateException::class.java) {
+            executor.execute(r(1, 2, 0, funct = 0x1A), s)
+        }
+        assertEquals(7L, s.readHi())
+        assertEquals(9L, s.readLo())
+    }
+
+    @Test fun doublewordDivisionByZeroPreservesPreviouslyKnownHiLo() {
+        val s = N64HleR4300CpuState(0x80001000L, mapOf(1 to 10L, 2 to 0L), initialHi = 7L, initialLo = 9L)
+        assertThrows(IllegalStateException::class.java) {
+            executor.execute(r(1, 2, 0, funct = 0x1E), s)
+        }
+        assertEquals(7L, s.readHi())
+        assertEquals(9L, s.readLo())
+    }
+
+    @Test fun doublewordSignedDivisionOverflowPreservesPreviouslyKnownHiLo() {
+        val s = N64HleR4300CpuState(
+            0x80001000L,
+            mapOf(1 to Long.MIN_VALUE, 2 to -1L),
+            initialHi = 7L,
+            initialLo = 9L
+        )
+        assertThrows(IllegalStateException::class.java) {
+            executor.execute(r(1, 2, 0, funct = 0x1E), s)
+        }
+        assertEquals(7L, s.readHi())
+        assertEquals(9L, s.readLo())
+    }
+
 }
