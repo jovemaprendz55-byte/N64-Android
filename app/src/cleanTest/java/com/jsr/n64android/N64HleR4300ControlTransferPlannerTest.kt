@@ -40,7 +40,7 @@ class N64HleR4300ControlTransferPlannerTest {
         val state = N64HleR4300CpuState(0x0FFFFFFCL)
         val plan = planner.plan(decoder.decode((0x02 shl 26) or 0x00001234), state)
         assertEquals(0x10000000L, plan.delaySlotAddress)
-        assertEquals(0xFFFFFFFF800048D0UL.toLong(), plan.continuationAddress)
+        assertEquals(0x100048D0L, plan.continuationAddress)
     }
 
     @Test fun jalReturnsLinkRegisterAndPcPlusEightWithoutMutatingState() {
