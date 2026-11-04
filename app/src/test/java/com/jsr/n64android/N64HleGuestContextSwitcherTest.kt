@@ -82,7 +82,7 @@ class N64HleGuestContextSwitcherTest {
         val savedLow = f.codec.read(low)
         assertEquals(0xABCDL, savedLow.context.gpr[16])
         assertEquals(0x4444L, savedLow.context.gpr[4])
-        assertEquals(0x80005000, savedLow.context.pc)
+        assertEquals(0x80005000.toInt(), savedLow.context.pc)
     }
 
     @Test
@@ -102,7 +102,7 @@ class N64HleGuestContextSwitcherTest {
         assertEquals(N64HleGuestOsThreadLayout.STATE_STOPPED, f.codec.read(high).state)
         assertEquals(0xFFFFFFFF80005000UL.toLong(), f.cpu.pc)
         assertEquals(0xAAAAL, f.cpu.gpr[16])
-        assertEquals(0x80006000, f.codec.read(high).context.pc)
+        assertEquals(0x80006000.toInt(), f.codec.read(high).context.pc)
     }
 
     @Test
@@ -120,7 +120,7 @@ class N64HleGuestContextSwitcherTest {
 
         assertEquals(0L, blocked.selectedThread)
         assertEquals(N64HleGuestOsThreadLayout.STATE_WAITING, f.codec.read(thread).state)
-        assertEquals(0x80007000, f.codec.read(thread).context.pc)
+        assertEquals(0x80007000.toInt(), f.codec.read(thread).context.pc)
         assertEquals(0x12345678L, f.codec.read(thread).context.gpr[4])
 
         val resumed = f.switcher.startThread(thread, 0xFFFFFFFF80008000UL.toLong())
