@@ -269,4 +269,55 @@ class N64HleR4300SpecialExecutorTest {
         assertEquals(9L, s.readLo())
     }
 
+    @Test fun addAndSubExecuteSignedWordArithmetic() {
+        val addState = state(20L, 22L)
+        executor.execute(r(1, 2, 3, funct = 0x20), addState) // ADD
+        assertEquals(42L, addState.readGpr(3))
+
+        val subState = state(-20L, 5L)
+        executor.execute(r(1, 2, 3, funct = 0x22), subState) // SUB
+        assertEquals(-25L, subState.readGpr(3))
+    }
+
+    @Test fun addWordOverflowIsRejectedWithoutMutation() {
+        val s = state(Int.MAX_VALUE.toLong(), 1L)
+        assertThrows(IllegalStateException::class.java) {
+            executor.execute(r(1, 2, 3, funct = 0x20), s)
+        }
+        assertEquals(false, s.isGprKnown(3))
+        assertEquals(0x80001000L, s.programCounter)
+    }
+
+    @Test fun subWordOverflowIsRejectedWithoutMutation() {
+        val s = state(Int.MIN_VALUE.toLong(), 1L)
+        assertThrows(IllegalStateException::class.java) {
+            executor.execute(r(1, 2, 3, funct = 0x22), s)
+        }
+        assertEquals(false, s.isGprKnown(3))
+    }
+
+    @Test fun daddAndDsubExecuteSignedDoublewordArithmetic() {
+        val addState = state(100L, 23L)
+        executor.execute(r(1, 2, 3, funct = 0x2C), addState) // DADD
+        assertEquals(123L, addState.readGpr(3))
+
+        val subState = state(-100L, 23L)
+        executor.execute(r(1, 2, 3, funct = 0x2E), subState) // DSUB
+        assertEquals(-123L, subState.readGpr(3))
+    }
+
+    @Test fun doublewordSignedOverflowIsRejectedWithoutMutation() {
+        val addState = state(Long.MAX_VALUE, 1L)
+        assertThrows(IllegalStateException::class.java) {
+            executor.execute(r(1, 2, 3, funct = 0x2C), addState)
+        }
+        assertEquals(false, addState.isGprKnown(3))
+
+        val subState = state(Long.MIN_VALUE, 1L)
+        assertThrows(IllegalStateException::class.java) {
+            executor.execute(r(1, 2, 3, funct = 0x2E), subState)
+        }
+        assertEquals(false, subState.isGprKnown(3))
+    }
+
 }
