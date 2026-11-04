@@ -4,8 +4,7 @@ package com.jsr.n64android
  * Guest-memory representation of libultra OSThread and __OSThreadContext.
  *
  * The floating-point slots are deliberately kept as opaque 64-bit pairs.
- * Their mapping to the emulator's FR=0/FR=1 FPR representation is a separate
- * CPU-context task and must not be guessed here.
+ * N64HleGuestOsThreadContextMapper handles conversion to the CPU FR=0 FPR layout.
  */
 data class N64HleGuestOsThreadContext(
     val gpr: LongArray = LongArray(32),
