@@ -1,5 +1,7 @@
 package com.jsr.n64android
 
+import java.math.BigInteger
+
 /**
  * Executes the supported, side-effect-limited R4300 SPECIAL integer operations.
  *
