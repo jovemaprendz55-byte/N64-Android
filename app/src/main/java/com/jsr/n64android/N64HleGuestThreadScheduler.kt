@@ -123,7 +123,8 @@ class N64HleGuestThreadScheduler(
     fun dispatchNext(previousRunningThread: Long = readPointer(runningThreadAddress)): DispatchDecision {
         val candidate = queues.head(runQueueAddress)
         if (candidate == NULL_POINTER || candidate == runQueueTailAddress) {
-            return DispatchDecision(previousRunningThread, NULL_POINTER, false)
+            writePointer(runningThreadAddress, NULL_POINTER)
+            return DispatchDecision(previousRunningThread, NULL_POINTER, previousRunningThread != NULL_POINTER)
         }
         val selected = queues.pop(runQueueAddress)
         validateThread(selected)
