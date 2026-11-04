@@ -15,7 +15,7 @@ class N64HleGuestCallDispatcherTest {
         val resume = 0xFFFFFFFF80000004UL.toLong()
         cpu.setProgramCounter(entry)
         val dispatcher = N64HleGuestCallDispatcher(cpu)
-        dispatcher.register("osStartThread", entry, "GoldenEye USA symbol map fixture") { liveCpu ->
+        dispatcher.register("osStartThread", 0x80000000L, "GoldenEye USA symbol map fixture") { liveCpu ->
             assertEquals(entry, liveCpu.pc)
             liveCpu.setProgramCounter(resume)
             4
