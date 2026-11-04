@@ -2537,3 +2537,16 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Importante: isto é um mecanismo genérico para representar/aplicar um perfil explícito, não um perfil real de GoldenEye ou CIC. Não configura COP0, TLB, caches, SP/RSP, PIF, scheduler ou APIs libultra. Ainda não executa CPU e não inicia jogo.
 - CI para commits `154226a1f74e9db3f354747ea0c82a696d7af0c6` e `3e825f01abfd173cef6e479bbc5e76caf0e12ca2` está pendente no momento desta atualização; verificar antes de declarar aprovado.
 - Próximo: conferir a CI; depois criar contrato de estado COP0/boot handoff sem valores padrão inventados e desenhar integração explícita do estado HLE com o futuro núcleo R4300 limpo. Não ligar Activity nem declarar boot de jogo ainda.
+
+
+## 122. Estado COP0 explícito no handoff HLE — 2026-11-04
+
+- Adicionado `N64HleCop0EntryState.kt`: snapshot imutável de registradores COP0 informados explicitamente, com rótulo de evidência.
+- Registradores ausentes permanecem desconhecidos: `valueOrNull` retorna null, `isKnown` retorna false e `requireValue` falha claramente. Nenhum valor de reset de Status/Cause/EPC/Config/TLB é presumido.
+- `N64HleBootProfile` agora aceita mapa COP0 opcional e exige evidência própria quando algum valor for fornecido. O handoff `N64HleCpuEntryState` carrega o snapshot COP0.
+- Quando o perfil omite COP0, o estado resultante é explicitamente não especificado, sem preencher registradores com zeros ou constantes inventadas.
+- Testes cobrem estado desconhecido, valores explícitos, índices inválidos, evidência obrigatória, cópia defensiva e integração com o boot initializer.
+- Commits: modelo `cfd5c0c1a2d4e59f0c3e4664d04c86fbe93178da`; testes `64fb1d294bddf1f9e42e184b5223c1e6d762800d`; integração `7ed71bc6ab5ffbdc57d4eb1c725cdad3108ca8ef`; testes integrados `de61daed3babb1dcc9f0bc37260785664b594e95`.
+- CI para a nova camada ainda precisa ser confirmada.
+- Limites: não há núcleo R4300 limpo para consumir o snapshot; não há semântica COP0, exceções, TLB, Count/Compare, interrupções ou boot real implementados nesta camada. Os valores precisam vir de documentação/trace comprovável da revisão-alvo; não importar defaults de um boot anterior.
+- Próximo: conferir CI e revisar o contrato de entrada do futuro R4300 limpo para consumir GPR/PC/COP0 sem perda de informação. Depois implementar o primeiro núcleo CPU limpo com testes dirigidos, sem conectar a Activity antes de um ciclo de execução mínimo verificável.
