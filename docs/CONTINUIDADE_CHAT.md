@@ -2759,3 +2759,8 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Commits: executor `6949095dc5bafe6e09ee3a3972882c88b15b4798`; correção da semântica word `69e25e3041d5e7ae593a70df0653253ef9120ccb`; integração do stepper `e441e3fb438304b8a1ebddc7c1a5d3b14ee96f1e`; testes `9455d7d19f66647988cd492ed00b5ce03e166df1`.
 - CI de implementação, testes e documentação deve ser confirmada antes de considerar a seção validada.
 - Limites: ainda não há busca de instruções em RDRAM, load/store, COP0/TLB, entrega de exceções, interrupções, FPU, MMIO, DMA ou boot de ROM.
+### Correção de testes legados da seção 132
+
+- A primeira execução da CI da seção 132 compilou o APK, mas falhou em dois testes antigos do stepper. O word `0x24010001` é ADDIU (opcode `0x09`), agora implementado; os testes ainda o tratavam incorretamente como instrução não suportada.
+- Corrigidos os dois vetores para `0x80010001` (LB, opcode `0x20`), que permanece fora do conjunto implementado. Os testes continuam verificando que uma instrução não suportada não avança PC e não completa um delay slot pendente.
+- Commit da correção dos testes: `442f4bd0e5b377e36b9a2bb0d51be63dc7a1b133`. A nova CI precisa confirmar os testes e o APK antes da aprovação da seção.
