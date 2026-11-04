@@ -62,10 +62,10 @@ class N64HleGuestOsThreadContextMapperTest {
         assertEquals(original.context.cause.toUInt().toLong(), mapped.cop0[13])
         assertEquals(original.context.pc.toLong(), mapped.cop0[14])
         assertEquals(original.context.pc.toLong(), mapped.pc)
-        assertEquals(0x11223344L, mapped.fpr[0])
-        assertEquals(0L, mapped.fpr[1])
-        assertEquals(0x11223344L, mapped.fpr[30])
-        assertEquals(15L, mapped.fpr[31])
+        assertEquals(0L, mapped.fpr[0])
+        assertEquals(0x11223344L, mapped.fpr[1])
+        assertEquals(15L, mapped.fpr[30])
+        assertEquals(0x11223344L, mapped.fpr[31])
         assertEquals(original.context.fpcsr.toUInt().toLong(), mapped.fcr[31])
         assertEquals(template.tlb, mapped.tlb)
         assertEquals(template.countCycleRemainder, mapped.countCycleRemainder)
@@ -81,8 +81,8 @@ class N64HleGuestOsThreadContextMapperTest {
         val mapped = N64HleGuestOsThreadContextMapper.toCpuSnapshot(original, base)
         val gpr = mapped.gpr.toMutableList().apply { this[16] = 0x123456789ABCDEFL }
         val fpr = mapped.fpr.toMutableList().apply {
-            this[20] = 0x89ABCDEFL
-            this[21] = 0x01234567L
+            this[20] = 0x01234567L
+            this[21] = 0x89ABCDEFL
         }
         val cop0 = mapped.cop0.toMutableList().apply {
             this[8] = 0x80001234L
