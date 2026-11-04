@@ -1405,3 +1405,35 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Continuar auditoria de duplicações em outros grupos ainda não comparados em profundidade (bus/MMIO, VI/framebuffer/presenter, ROM/diagnóstico e UI).
 - Fazer comparação semântica e de chamadas; não confundir nomes parecidos, responsabilidades complementares ou configuração em escopos diferentes com arquivos duplicados.
 - `main` permanece intocada.
+
+
+
+## 69. Auditoria da interface Android e fluxo de ROM — 2026-11-04
+
+### CI e limpeza pequena
+- CI do commit `3ad4b4f4837ca8ebfe87882ddf48b284facd7067` (remoção de guardas redundantes SI/SP DMA) concluiu com sucesso: run `41802414913`.
+- Revisado `MainActivity.kt` na branch `dev/n64-clean-start`.
+- Removidos cinco imports sem uso (`ClipData`, `ClipboardManager`, `Bitmap`, `ImageView`, `ByteArrayOutputStream`) e o helper sem chamadas `sessionSafeInstructionCount()`.
+- Commit da limpeza: `a9225ad384027a2689bb4aa863acc977940898f0`. CI run `41802747240` estava em execução na última consulta; aguardar resultado antes de declarar validado.
+
+### Achados de conectividade da UI
+- A tela criada em `onCreate()` contém o título, status, botão principal de selecionar/iniciar ROM e botão de exportação de diagnóstico completo.
+- `runVideoTest()`, `runTrianglePipelineDemo()` e `runCpuDiagnostic()` existem, mas não possuem chamadas no código consultado. São caminhos de teste atualmente inacessíveis pela interface.
+- `romTraceButton` e `hleBootButton` são campos consultados/habilitados/desabilitados em vários fluxos, mas não são instanciados nem adicionados à tela atual. Os métodos de diagnóstico associados não estão acessíveis pelo menu.
+- Não apagar esses caminhos nesta auditoria: são ferramentas de diagnóstico úteis e a decisão correta é planejar sua reconexão ou remoção deliberada depois de confirmar a finalidade atual.
+- `sessionSafeFrameCount()` continua em uso no progresso da sessão; somente `sessionSafeInstructionCount()` foi removido.
+- `appendBusDiagnostics()` tem chamada nos dois caminhos de exportação/diagnóstico e foi mantido.
+
+### Fluxo de carregamento e execução — observações
+- `loadRomFromUri()` lê o documento em thread de fundo, valida via `N64RomLoader`, e usa `romLoadGeneration` para impedir que uma carga antiga sobrescreva uma seleção mais recente. A URI persistida só é salva após ROM validada.
+- O seletor usa Storage Access Framework (`ACTION_OPEN_DOCUMENT`) e permissões persistíveis; o Manifest não solicita permissões gerais de armazenamento, coerente com esse fluxo.
+- `startRomVideoExecution()` cria `N64VideoPresenterView`, prepara HLE, executa `N64RomVideoSession` e encaminha quadros para a View. A própria tela descreve o caminho como experimental e reconhece que o despacho automático de OSTasks ainda não está implementado.
+- `onDestroy()` solicita parada ao worker HLE e à sessão de vídeo. Não foi executado teste de ciclo de vida em aparelho nesta revisão.
+- Manifest declara apenas `MainActivity` como launcher; Gradle usa compile/target SDK 36, min SDK 26 e Java/Kotlin 17. Nenhuma duplicação de configuração foi comprovada.
+- Não foi feita alteração no fluxo de execução, carregamento ou Manifest nesta etapa.
+
+### Próximo passo
+- Consultar o resultado do run `41802747240`.
+- Revisar testes e pontos de entrada de UI para decidir como tornar acessíveis os diagnósticos sem duplicar telas ou criar botões desconectados.
+- Depois continuar auditoria de recursos Android, ciclo de vida e concorrência; manter a distinção entre função sem chamada, função intencionalmente interna e duplicação funcional comprovada.
+- A auditoria global ainda não terminou. `main` permanece intocada; branch de trabalho `dev/n64-clean-start`. CI verde não comprova instalação no Android 16 nem GoldenEye funcional.
