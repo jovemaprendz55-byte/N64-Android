@@ -101,7 +101,7 @@ class N64HleGuestContextSwitcherTest {
         assertEquals(low, stopped.selectedThread)
         assertEquals(N64HleGuestOsThreadLayout.STATE_STOPPED, f.codec.read(high).state)
         assertEquals(0xFFFFFFFF80005000UL.toLong(), f.cpu.pc)
-        assertEquals(0xAAAA, f.cpu.gpr[16])
+        assertEquals(0xAAAAL, f.cpu.gpr[16])
         assertEquals(0x80006000, f.codec.read(high).context.pc)
     }
 
