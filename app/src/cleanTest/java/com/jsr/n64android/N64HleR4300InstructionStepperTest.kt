@@ -44,7 +44,7 @@ class N64HleR4300InstructionStepperTest {
     @Test fun unsupportedInstructionDoesNotAdvancePc() {
         val state = N64HleR4300CpuState(0x80001000L)
         assertThrows(IllegalArgumentException::class.java) {
-            stepper.step(0x80010001, state) // LB is not implemented yet
+            stepper.step(0x80010001.toInt(), state) // LB is not implemented yet
         }
         assertEquals(0x80001000L, state.programCounter)
     }
