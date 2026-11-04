@@ -2091,3 +2091,38 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Commits: controlador e906d889c79b89618d9498eb3e4d1d33bc291721; testes f0b05bd67baad0dc9a9dfb544979011cd95b2feb.
 - CI dos testes precisa ser confirmado antes de marcar esta etapa como validada.
 - Branch `dev/n64-clean-start`; `main` intacta.
+
+
+## 99. Revisão pós-etapa 98 e bloqueios para integração no N64Bus — 2026-11-04
+
+### Confirmação do estado remoto
+- HEAD observado na branch `dev/n64-clean-start`: `7e571a1ab653b7289bbc1b65da9571a1745bf7c0` (`Document isolated VI interrupt controller`).
+- A seção 98 e os arquivos do controlador foram lidos novamente no repositório remoto.
+- `N64ViInterruptController` compõe `N64ViHalfLineCounter` e `N64ViInterruptLatch`; avança duas half-lines por scanline, compara após o avanço e mantém o pending até acknowledge.
+- O controlador não está conectado a `N64Bus`, não converte ciclos CPU em clocks VI e não emite MI_INTR_VI.
+
+### Auditoria do caminho MMIO existente
+- `N64Bus.read32(VI_CURRENT_REG)` ainda retorna `viCurrentLine`, o contador antigo de scanlines aproximadas.
+- `N64Bus.advanceViInstructions` ainda usa `VI_INSTRUCTIONS_PER_SCANLINE = 5_661`, incrementa o contador antigo em uma unidade e compara diretamente com VI_INTR.
+- A escrita em `VI_CURRENT_REG` limpa MI_INTR_VI através de `setMiInterruptSource`, sem alterar o contador. Esse acknowledge existente precisa ser preservado.
+- Os registradores VI restantes continuam armazenados em `viRegisters`; a escrita genérica ainda não atualiza o novo controlador.
+- Portanto, integrar somente a classe nova agora criaria duas fontes de verdade para VI_CURRENT/MI_INTR_VI ou mudaria o timing de maneira não calibrada. A integração foi deliberadamente adiada.
+
+### Validação CI das etapas 97 e 98
+- Etapa 97 — latch: run `41894901464` (implementação) e `41894910586` (testes), ambos success.
+- Etapa 98 — controlador: run `41895281902` (testes) e `41895314750` (documentação/HEAD), ambos success.
+- Nos runs da etapa 98, o job build e as etapas `Build and test` e `Upload debug APK` concluíram com success.
+- Isso valida compilação, testes unitários e upload do artifact desses commits; não valida instalação nem execução de GoldenEye no Poco C85.
+
+### Decisão técnica
+- Não integrar ainda ao `N64Bus`. O relógio CPU atual contabiliza dois ciclos-base estimados por etapa CPU, sem latência por opcode nem tempo de DMA/RSP. O avanço VI atual é um orçamento separado de 5.661 instruções por scanline.
+- O controlador isolado usa o contrato half-line/terminal-count, mas não existe conversão validada entre esse relógio e o ledger CPU. Substituir o contador antigo neste momento alteraria comportamento sem uma base temporal demonstrada.
+- A integração futura deve ser feita numa única fonte de estado para VI_CURRENT, VI_INTR e pending; preservar leitura de VI_CURRENT, acknowledge por escrita em VI_CURRENT e MI_INTR_VI sem limpar fontes MI não relacionadas.
+- Antes da integração, especificar e testar: unidade de entrada do relógio; razão CPU→VI; região/modo; efeito de reprogramar VI_V_SYNC; amostragem do comparador; e comportamento quando VI_INTR é reprogramado.
+- A próxima tarefa de código deve preparar um contrato de integração e testes de regressão MMIO, sem ligar o novo contador ao loop principal até a conversão temporal ser justificada.
+
+### Estado geral
+- Branch: `dev/n64-clean-start`.
+- `main` permanece intocada.
+- GoldenEye não foi validado no aparelho nesta etapa.
+- Auditoria transversal de duplicação de código e arquivos repetidos continua aberta; esta revisão focou o caminho VI e não declara a auditoria global concluída.
