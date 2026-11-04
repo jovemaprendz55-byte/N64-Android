@@ -2047,7 +2047,7 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 
 ### Limites e decisão
 - O helper é uma unidade isolada de modelo, não um relógio VI completo.
-- Ainda não lê `VI_STATUS.SERRATE`, não acompanha escrita de `VI_V_SYNC` durante execução, não compara `VI_INTR`, não gera MI_INTR_VI e não implementa o acknowledge de `VI_CURRENT`.
+- O helper agora oferece comparação exata `current == VI_INTR` e teste unitário dessa igualdade. Ainda não lê `VI_STATUS.SERRATE`, não acompanha escrita de `VI_V_SYNC` durante execução, não faz latch/geração de MI_INTR_VI e não implementa o acknowledge de `VI_CURRENT`.
 - O runtime antigo de `N64Bus.advanceViInstructions` permanece intacto. Não integrar antes de definir a conversão temporal CPU→VI e criar testes de integração que preservem o comportamento de acknowledge e de reprogramação dos registradores.
 - A paridade foi derivada da sequência documentada de half-lines e dos terminais NTSC citados na seção 94; PAL e outros modos ainda precisam de fixtures próprios.
 
@@ -2061,3 +2061,10 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Nenhuma alteração foi feita na branch `main`; o runtime VI ainda usa o avanço aproximado antigo.
 - Auditoria global de duplicações de código e arquivos continua aberta.
 
+
+
+### Complemento da seção 95 — comparador VI_INTR isolado
+- Adicionado `matchesInterrupt(viIntr)`, que compara o valor amostrado de VI_CURRENT diretamente com VI_INTR em unidades de half-line.
+- Teste cobre igualdade, valor diferente e comparação com valor fora da faixa observada.
+- O método não gera nem limpa MI_INTR_VI; latch, timing de amostragem e acknowledge continuam reservados à integração posterior.
+- Commits: comparador fc4d3df83257b975870a7a386a168b0b4a9c92d3; teste 2d493e3fd67707c4d8eaaf9cee14d1bbee5867d.
