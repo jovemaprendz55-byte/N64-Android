@@ -44,7 +44,7 @@ class R4300CpuTest {
 
         cpu.step()
 
-        assertEquals(0xFF74FFFFL, cpu.cop0[12])
+        assertEquals(0xFF77FFFFL, cpu.cop0[12])
     }
 
     @Test fun mtc0StatusCannotSetHardwareMaintainedTsBit() {
