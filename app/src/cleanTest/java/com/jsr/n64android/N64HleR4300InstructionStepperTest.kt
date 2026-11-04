@@ -44,7 +44,7 @@ class N64HleR4300InstructionStepperTest {
     @Test fun unsupportedInstructionDoesNotAdvancePc() {
         val state = N64HleR4300CpuState(0x80001000L)
         assertThrows(IllegalArgumentException::class.java) {
-            stepper.step(0x80010001.toInt(), state) // LB is not implemented yet
+            stepper.step(0xC4010000.toInt(), state) // LWC1 is not implemented yet
         }
         assertEquals(0x80001000L, state.programCounter)
     }
@@ -63,7 +63,7 @@ class N64HleR4300InstructionStepperTest {
         val state = N64HleR4300CpuState(0x80001000L)
         stepper.step((0x02 shl 26) or 0x800, state)
         assertThrows(IllegalArgumentException::class.java) {
-            stepper.step(0x80010001, state)
+            stepper.step(0xC4010000.toInt(), state)
         }
         assertEquals(0x80001004L, state.programCounter)
         assertTrue(stepper.hasPendingDelaySlot())
