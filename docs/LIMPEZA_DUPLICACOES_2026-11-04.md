@@ -42,19 +42,39 @@ Escopo: limpeza conservadora, sem alteração da branch `main`.
 ### Sessões de execução e módulos SP/RSP
 
 - `N64CpuExecutionSession` adapta o runner à interface comum de sessão.
+- `N64HleCpuScheduler` coordena contextos R4300 e despacho; `N64HleOsKernel` mantém estados de threads, filas e eventos. Métodos com nomes semelhantes pertencem a camadas diferentes.
 - Bootstrap, runner, lifecycle, coordinator e microcode tracker SP têm responsabilidades distintas.
 - `N64RspCore` e `N64RspVectorUnit` separam despacho/instruções da unidade vetorial.
 - Não remover ou fundir esses componentes por semelhança de nomes.
 
-## Verificações pendentes
+### RDP e vídeo
 
-- Os workflows Android build disparados pelos commits `d0997d7` e `d4f88c4` foram encontrados em execução na última consulta:
-  - run `41799039823` para `d0997d7`;
-  - run `41799094882` para `d4f88c4`.
-- Aguardar conclusão e inspecionar os resultados antes de declarar a limpeza validada por CI.
-- Ainda não foi executada uma análise AST/clone local de todos os 122 arquivos. Esta etapa foi uma auditoria estrutural/estática da árvore e dos módulos centrais, não uma prova de ausência de toda duplicação textual.
-- Não foi feita limpeza adicional no RDP ou nos rastreadores porque a sobreposição observada é funcionalmente distinta e coberta por testes separados.
+- `N64RdpCommandStreamParser` faz enquadramento dos pacotes; `N64RdpTriangleSetup` decodifica coeficientes; `N64RdpTriangleEdgeWalker` gera spans; `N64RdpFlatTriangleRasterizer` grava pixels.
+- `N64ViFramebufferReader` converte a memória de vídeo em frame; `N64VideoPresenterView` apresenta o frame no Android. Não são duplicações.
+
+## Verificações de CI
+
+Os quatro workflows Android build associados à sequência de limpeza foram consultados e concluíram com sucesso, incluindo a etapa Build and test e Upload debug APK:
+
+- Run `41799039823` — commit `d0997d7`.
+- Run `41799094882` — commit `d4f88c4`.
+- Run `41799163527` — commit `6be1def`.
+- Run `41799184370` — commit `3aefade`.
+
+Links:
+- https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41799039823
+- https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41799094882
+- https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41799163527
+- https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41799184370
+
+A CI confirma compilação/testes automatizados e upload do APK de debug. Não confirma instalação no aparelho, execução de ROM ou compatibilidade completa com GoldenEye.
+
+## Limites da auditoria
+
+- A árvore consultada tinha 122 arquivos. A revisão foi estrutural/estática, com leitura dos módulos centrais e comparação de responsabilidades; não foi executada análise AST ou ferramenta de clone textual em todos os arquivos.
+- Portanto, não se afirma ausência total de duplicação em todo o repositório.
+- Não foi feita limpeza adicional no RDP, nos rastreadores, no scheduler/kernel ou nos módulos SP porque as semelhanças observadas não demonstram duplicação funcional segura para remoção.
 
 ## Resultado
 
-A limpeza removeu 366 linhas de código legado sem chamadas e substituiu dois blocos duplicados de relatório por um único helper. Nenhuma funcionalidade ativa do emulador foi intencionalmente removida. A validação final depende do resultado dos workflows citados.
+A limpeza removeu 366 linhas de código legado sem chamadas e substituiu dois blocos duplicados de relatório por um único helper. Os quatro workflows consultados passaram. Nenhuma funcionalidade ativa do emulador foi intencionalmente removida. A validação em aparelho e com ROM continua pendente.
