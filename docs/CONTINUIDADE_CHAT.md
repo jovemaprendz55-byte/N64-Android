@@ -2512,3 +2512,28 @@ Adicionado `N64HleVerifiedSymbolTable.kt`:
 - Commits: tabela `c7258f35a523cce27badb8e3f33fcd65dee61617`; testes `22be380dff96039e6f7a70c7b4c3488923bba220`.
 
 Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser de linker map/symbol map com formato explícito e testes de parsing. Só depois poderá ser produzido um catálogo de funções libultra para o alvo. Sem mapa final do GoldenEye USA, endereços de APIs permanecem desconhecidos e não devem ser inventados.
+
+
+
+## 120. Parser estrito de linker map — 2026-11-04
+
+- Adicionado `N64HleLinkerMapParser.kt` em `src/clean/java`.
+- Aceita linhas com endereço hexadecimal de 32/64 bits seguido de um único nome de símbolo; demais linhas de map são ignoradas.
+- Cada símbolo recebe evidência com o rótulo da fonte e número da linha. A validação de KSEG0/alinhamento permanece na tabela `N64HleVerifiedSymbolTable`.
+- Faz pré-validação e staging numa tabela temporária para evitar mutação parcial, inclusive em conflito com símbolos já registrados.
+- Testes em `N64HleLinkerMapParserTest.kt`: linhas aceitas/ignoradas, evidência, segmentos inválidos, duplicações, atomicidade e formato malformado.
+- A primeira expressão regular foi gravada com escapes incorretos e algumas execuções iniciais da CI falharam; corrigida para whitespace regex real. A execução final que incluiu o teste de conflito com tabela preexistente foi aprovada.
+- CI final: run `41928743224`, success, commit `1f0a8371c36b795d66b7a99d946bf95fe9f87f1e`.
+- APK artifact `13369758141`, 818,787 bytes, SHA-256 `d935b3e01ad8539a6727b9341f0c0573c6116e4787a24aabb1ee0ad81bbeeeac`, expira 2026-11-18.
+- Limite: parser não prova que o mapa corresponde à ROM/build exata; precisa de proveniência confiável. Nenhum endereço GoldenEye foi carregado. Não há call gates funcionais a partir deste parser.
+
+## 121. Perfil explícito de handoff HLE — 2026-11-04
+
+- Adicionado `N64HleBootProfile.kt` em `src/clean/java`.
+- O perfil exige PC KSEG0 alinhado, evidência não vazia, GPRs explicitamente informados (GPR0 é sempre zero), cópias de ROM e escritas de memória explicitamente descritas.
+- `N64HleBootInitializer` pré-valida todas as faixas da ROM/RDRAM e larguras/valores das escritas antes de alterar memória; depois aplica cópias, inicializações e produz snapshot dos 32 GPRs + PC.
+- `N64HleCpuEntryState` fornece cópia defensiva dos GPRs.
+- Testes em `N64HleBootInitializerTest.kt`: handoff sintético, cópia e registradores, rejeição de perfil inválido, GPR0, larguras/valores e atomicidade quando uma cópia posterior falha.
+- Importante: isto é um mecanismo genérico para representar/aplicar um perfil explícito, não um perfil real de GoldenEye ou CIC. Não configura COP0, TLB, caches, SP/RSP, PIF, scheduler ou APIs libultra. Ainda não executa CPU e não inicia jogo.
+- CI para commits `154226a1f74e9db3f354747ea0c82a696d7af0c6` e `3e825f01abfd173cef6e479bbc5e76caf0e12ca2` está pendente no momento desta atualização; verificar antes de declarar aprovado.
+- Próximo: conferir a CI; depois criar contrato de estado COP0/boot handoff sem valores padrão inventados e desenhar integração explícita do estado HLE com o futuro núcleo R4300 limpo. Não ligar Activity nem declarar boot de jogo ainda.
