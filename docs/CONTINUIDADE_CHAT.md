@@ -2293,3 +2293,18 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - CI dos commits acima e da documentação está em andamento; consultar runs do HEAD antes de declarar verde. Runs anteriores `41900220274`, `41900225774`, `41900294202` estão success, mas os dois primeiros testaram a versão antiga do offset.
 - Próximo: esperar CI; se verde, implementar codec OSThread usando N64HleGuestMemory, com campos de largura assinada/sem sinal explicitados e validação de todos os offsets. Depois mapear o contexto para R4300, ainda sem call gates até validar a semântica FPU FR.
 - O caminho MainActivity → N64HleBoot → N64RomVideoSession permanece ativo; não foi substituído. Nenhum GoldenEye funcional confirmado. `main` intacta. Auditoria global de duplicação de código/arquivos repetidos continua aberta.
+
+
+## 107. Codec guest OSThread — 2026-11-04
+
+- Implementado `N64HleGuestOsThreadCodec.kt` para ler/gravar cabeçalho e contexto libultra pela ponte segura `N64HleGuestMemory`.
+- Campos do cabeçalho: pointers 32-bit, priority s32, state/flags u16, id/fp s32, profile pointer. Contexto começa em 0x20 (ABI corrigido).
+- GPRs mapeados: AT, V0/V1, A0–A3, T0–T9, S0–S7, GP, SP, S8, RA. Zero/K0/K1 não são salvos pelo ABI e são ignorados na escrita/retornados zero na leitura.
+- HI/LO 64-bit; SR/PC/Cause/BadVAddr/RCP/FPCSR 32-bit. Os 16 slots FP permanecem pares 64-bit opacos; sem mapeamento para FPR do CPU até validar FR=0/FR=1.
+- Escrita valida estrutura completa, estado, flags e todos os pointers antes de alterar memória. Pointers maiores que 32 bits são rejeitados, zero-extended e sign-extended aceitos.
+- Testes de round-trip verificam cabeçalho, GPRs salvos, FP pairs, endereços absolutos e rejeições.
+- Commits: codec `888784e76cbc0c1657d3f249667b3ac4c9303ccc`; pointer validation `26f6c0e346470749494b941ca632176fb3b1d539`; testes `68630641cb13cdb9a344d00115dbdfe8eb2a45fe`; prevalidation `2a303d27e61960832a2d0ab2d1c28ba84a512974`; teste extra `dc17b95513905a61d14567d91255da8f6ce86ee7`.
+- CI dos commits de codec ainda está em andamento; não declarar aprovado até consultar os runs.
+- O codec é somente serialização ABI. Não enfileira threads, não implementa chamadas libultra, não troca contexto da CPU e não integra a MainActivity. Nenhum jogo funcional confirmado.
+- Próximo: confirmar CI; então mapear explicitamente contexto serializado para `R4300Cpu.ContextSnapshot`, incluindo Status/PC/HI/LO/GPR, e documentar os campos não preservados (K0/K1, reservation LL/SC, delay-slot e FR/FPU). Criar testes round-trip snapshot↔ABI antes de qualquer scheduler guest.
+- Branch `dev/n64-clean-start`; `main` intacta. Auditoria global de duplicação de código/arquivos repetidos continua aberta.
