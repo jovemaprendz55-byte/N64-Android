@@ -2724,3 +2724,11 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Os runs anteriores `41934197429`, `41934202816`, `41934229782`, `41934396304`, `41934400258` e `41934421718` falharam por teste obsoleto de sign-extension word e/ou expectativa errada no vetor de fronteira do jump. As falhas foram localizadas nos logs e corrigidas; os runs posteriores citados passaram.
 - A extensão REGIMM (BLTZ/BGEZ/BLTZAL/BGEZAL) está incluída no run `41934581909`, que passou.
 - A CI do sequenciador de delay slot e seu teste de destino JAL distinto ainda está pendente; verificar os runs `41934691929`, `41934696799`, `41934717212` e a documentação posterior antes de declarar seção 130 aprovada.
+
+
+### Ajuste de representação de endereço em J/JAL — seção 130
+
+- O primeiro teste do sequenciador falhou no destino JAL porque o planner convertia sempre o endereço de jump para sign-extended, mesmo quando o estado PC fornecido estava em forma zero-extended. O código-base aceita as duas formas de endereços guest de 32 bits.
+- Corrigido: J/JAL preservam a forma de extensão do PC atual (zero-extended ou sign-extended) ao compor o destino. Adicionado teste para as duas representações.
+- CI do sequenciador inicial (`41934691929`) compilou e passou; a execução do teste (`41934696799`) falhou apenas na expectativa de representação acima. A correção está nos commits `e1568258042c6ad7128ba9548510962d94c1359d` e `b27e4922027cc664b8fbf74386d6a3956eebbd9e`.
+- CI final dessa correção e do sequenciador ainda pendente.
