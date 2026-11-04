@@ -2068,3 +2068,15 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Teste cobre igualdade, valor diferente e comparação com valor fora da faixa observada.
 - O método não gera nem limpa MI_INTR_VI; latch, timing de amostragem e acknowledge continuam reservados à integração posterior.
 - Commits: comparador fc4d3df83257b975870a7a386a168b0b4a9c92d3; teste 2d493e3fd67707c4d8eaaf9cee14d1bbee5867d.
+
+
+### Etapa 97 — latch VI e acknowledge isolados
+- Criado `N64ViInterruptLatch`, sem conexão ao barramento.
+- `sampleCurrent(currentHalfLine, interruptHalfLine)` ativa a linha pendente somente quando os valores são iguais; uma vez ativada, permanece pendente mesmo que amostras seguintes não coincidam.
+- `acknowledge()` limpa somente o latch. O contador VI_CURRENT não é modificado.
+- Testes cobrem match, não-match, retenção do pending, acknowledge e preservação do contador.
+- A cadência de amostragem, a geração de MI_INTR_VI e a ligação com a escrita MMIO em VI_CURRENT continuam sob responsabilidade da futura integração ao N64Bus.
+- Arquivos: `N64ViInterruptLatch.kt` e `N64ViInterruptLatchTest.kt`.
+- Commits: implementação 0ea1072ae5dbccaa3056d8875a87c8a1fde3987e; testes 8a608ee01329f26bf671dd9bf4b7577c2c1c87ee.
+- CI: consultar workflow do commit de teste antes de marcar como validado.
+- Branch `dev/n64-clean-start`; `main` intacta.
