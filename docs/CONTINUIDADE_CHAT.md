@@ -2054,10 +2054,10 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 ### Commits
 - Modelo isolado: c7a2a3a5c13b8330589b3df3616b8236361f426d.
 - Testes iniciais: 41f6fcd719773900bd086fe76da9e541598421b7.
-- Correção da expectativa de módulo no limite inteiro: c777695c5f3c14c8515d767bb6550c26be58317d.
+- Correção final da expectativa de módulo no limite inteiro (resultado correto = 1): 7cdaef3d281d28a63bf743e618e02818cad93ff3.
 
 ### Validação
-- Consultar CI do último commit antes de declarar testes aprovados ou disponibilizar APK.
+- CI da implementação/testes/documentação foi consultado; a correção final de expectativa acima disparou uma nova execução. Confirmar o resultado dessa execução antes de declarar testes aprovados ou disponibilizar APK.
 - Nenhuma alteração foi feita na branch `main`; o runtime VI ainda usa o avanço aproximado antigo.
 - Auditoria global de duplicações de código e arquivos continua aberta.
 
