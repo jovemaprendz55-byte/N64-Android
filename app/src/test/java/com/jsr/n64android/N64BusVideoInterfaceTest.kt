@@ -222,6 +222,15 @@ class N64BusVideoInterfaceTest {
     }
 
 
+    @Test fun viOriginWriteUsesOnlyTheDocumentedTwentyFourBitRdramAddress() {
+        val bus = N64Bus()
+        val viOrigin = N64Bus.VI_REG_BASE + N64Bus.VI_ORIGIN_OFFSET
+
+        bus.write32(viOrigin, 0xAB000120.toInt())
+
+        assertEquals(0x00000120, bus.read32(viOrigin))
+    }
+
     @Test fun viStatusSerrateBitCanBeProgrammedForProgressiveAndInterlacedModes() {
         val bus = N64Bus()
         val viStatus = N64Bus.VI_REG_BASE + N64Bus.VI_STATUS_OFFSET
