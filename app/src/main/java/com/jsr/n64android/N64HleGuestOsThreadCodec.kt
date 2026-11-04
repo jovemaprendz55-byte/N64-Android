@@ -96,15 +96,15 @@ class N64HleGuestOsThreadCodec(private val memory: N64HleGuestMemory) {
         require(thread.flags in 0..0xFFFF) { "OSThread flags must fit in u16." }
         val l = N64HleGuestOsThreadLayout
         val contextAddress = address + l.THREAD_CONTEXT
-        memory.write32(address + l.THREAD_NEXT, thread.next.toInt())
+        memory.write32(address + l.THREAD_NEXT, thread.next.toGuestPointer())
         memory.write32(address + l.THREAD_PRIORITY, thread.priority)
-        memory.write32(address + l.THREAD_QUEUE, thread.queue.toInt())
-        memory.write32(address + l.THREAD_TL_NEXT, thread.threadListNext.toInt())
+        memory.write32(address + l.THREAD_QUEUE, thread.queue.toGuestPointer())
+        memory.write32(address + l.THREAD_TL_NEXT, thread.threadListNext.toGuestPointer())
         memory.write16(address + l.THREAD_STATE, thread.state)
         memory.write16(address + l.THREAD_FLAGS, thread.flags)
         memory.write32(address + l.THREAD_ID, thread.id)
         memory.write32(address + l.THREAD_FP_USED, thread.fpUsed)
-        memory.write32(address + l.THREAD_PROFILE, thread.profile.toInt())
+        memory.write32(address + l.THREAD_PROFILE, thread.profile.toGuestPointer())
 
         GPR_OFFSETS.forEachIndexed { register, offset ->
             if (offset >= 0) memory.write64(contextAddress + offset, thread.context.gpr[register])
@@ -123,6 +123,14 @@ class N64HleGuestOsThreadCodec(private val memory: N64HleGuestMemory) {
     }
 
     private fun Int.toUnsignedLong(): Long = toUInt().toLong()
+
+    private fun Long.toGuestPointer(): Int {
+        val low = toInt()
+        require(this == (low.toLong() and 0xFFFFFFFFL) || this == low.toLong()) {
+            "Guest pointer must fit in 32 bits."
+        }
+        return low
+    }
 
     companion object {
         private val VALID_STATES = setOf(
