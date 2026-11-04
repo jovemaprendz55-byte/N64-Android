@@ -5,8 +5,8 @@ package com.jsr.n64android
  *
  * Instructions may be supplied directly with step(), or fetched from an
  * explicitly configured guest RDRAM space with stepFromMemory(). Architectural
- * exception delivery is not implemented. Supported SPECIAL, immediate and
- * aligned RDRAM load/store operations share one delay-slot sequencing path.
+ * exception delivery is not implemented. Supported SPECIAL, immediate, basic COP0 transfer and
+ * RDRAM load/store operations share one delay-slot sequencing path.
  */
 class N64HleR4300InstructionStepper(
     private val decoder: N64HleR4300InstructionDecoder = N64HleR4300InstructionDecoder(),
@@ -16,7 +16,8 @@ class N64HleR4300InstructionStepper(
     private val immediateExecutor: N64HleR4300ImmediateExecutor = N64HleR4300ImmediateExecutor(),
     private val memorySpace: N64HleGuestAddressSpace? = null,
     private val memoryExecutor: N64HleR4300MemoryExecutor? =
-        memorySpace?.let { N64HleR4300MemoryExecutor(it) }
+        memorySpace?.let { N64HleR4300MemoryExecutor(it) },
+    private val cop0Executor: N64HleR4300Cop0Executor = N64HleR4300Cop0Executor()
 ) {
     fun hasPendingDelaySlot(): Boolean = controlSequencer.hasPendingDelaySlot()
 
@@ -68,6 +69,7 @@ class N64HleR4300InstructionStepper(
     ) {
         when {
             instruction.isSpecial -> specialExecutor.execute(instruction, state)
+            cop0Executor.supports(instruction) -> cop0Executor.execute(instruction, state)
             immediateExecutor.supports(instruction.opcode) -> immediateExecutor.execute(instruction, state)
             memoryExecutor?.supports(instruction.opcode) == true -> memoryExecutor.execute(instruction, state)
             else -> immediateExecutor.execute(instruction, state)
