@@ -1817,3 +1817,25 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - A máscara não implementa efeitos ainda ausentes dos campos Status, como RE, RP, KX/SX/UX e todos os diagnósticos; filtrar a escrita não significa que todos esses recursos estejam simulados.
 - Não foi feita validação de hardware nem de ROM comercial.
 - Branch: dev/n64-clean-start. main permanece intocada.
+
+
+## 84. COP0 — privilégio da instrução CACHE — 2026-11-04
+
+### Referência
+- O manual NEC VR4300 especifica que CACHE depende de CP0 estar utilizável: em User ou Supervisor, CU0=0 gera Coprocessor Unusable; CU0=1 permite a instrução.
+- Referências: descrição da instrução CACHE, manual VR4300, página impressa 402; exceção Coprocessor Unusable, página impressa 193. https://hack64.net/docs/VR43XX.pdf
+
+### Revisão do código
+- A verificação de privilégio já ocorre antes da execução para opcode CACHE (0x2F), usando o modo efetivo Kernel/User/Supervisor e Status.CU0.
+- O executor não modela conteúdo/tag das caches; para algumas operações D-cache, mantém o efeito de invalidar a reserva LL. Isso não equivale a uma cache funcional.
+- A auditoria não encontrou motivo suficiente para alterar o executor nesta etapa; foi adicionada cobertura direta do contrato de privilégio.
+
+### Testes adicionados
+- CACHE em User com CU0=0: exige exceção Coprocessor Unusable, CE=0, EPC correto e vetor geral.
+- CACHE em User com CU0=1: não gera Coprocessor Unusable e avança PC.
+- Os testes não comprovam tradução TLB de CACHE nem comportamento de tags/linhas; esses aspectos permanecem em aberto.
+
+### Limites e próximos passos
+- CACHE não implementa dados/tags reais, index/hit operations, writeback/fill ou estados de cache.
+- Investigar separadamente a tradução do endereço e os efeitos das operações suportadas antes de ampliar a emulação.
+- Branch: dev/n64-clean-start. main permanece intocada.
