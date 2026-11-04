@@ -766,6 +766,10 @@ class N64Bus(
             AI_STATUS_REG -> { return } // Write clears the AI interrupt; interrupts are not yet modeled.
             AI_DACRATE_REG -> { aiDacRate = value and 0x3FFF; return }
             AI_BITRATE_REG -> { aiBitRate = value and 0xF; return }
+            VI_REG_BASE + VI_ORIGIN_OFFSET -> {
+                viRegisters[VI_ORIGIN_OFFSET / 4] = value and VI_ORIGIN_MASK
+                return
+            }
             VI_CURRENT_REG -> {
                 // VI_CURRENT is read-only; writing it acknowledges the VI interrupt.
                 setMiInterruptSource(MI_INTR_VI, "VI", false, "VI_CURRENT acknowledge")
@@ -1206,6 +1210,7 @@ class N64Bus(
         const val VI_V_START_OFFSET = 0x28
         const val VI_X_SCALE_OFFSET = 0x30
         const val VI_Y_SCALE_OFFSET = 0x34
+        const val VI_ORIGIN_MASK = 0x00FFFFFF
         const val VI_WINDOW_COORD_MASK = 0x3FF
         const val VI_SCALE_MASK = 0xFFF
         const val VI_X_SCALE_ONE = 1024L
