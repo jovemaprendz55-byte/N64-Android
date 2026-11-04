@@ -4,7 +4,7 @@ package com.jsr.n64android
  * Executes aligned RDRAM integer loads/stores for the initial R4300 subset.
  *
  * This is not a complete bus: only the injected KSEG0/KSEG1 RDRAM address
- * space is accessible. MMIO, TLB translation, unaligned merge operations,
+ * space is accessible. MMIO, TLB translation, doubleword merge operations,
  * cache operations and architectural address exceptions are not implemented.
  */
 class N64HleR4300MemoryExecutor(
