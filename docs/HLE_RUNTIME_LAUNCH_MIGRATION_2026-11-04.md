@@ -244,3 +244,21 @@ CI:
 - Run: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41907192238
 
 Remaining: validate ABI with actual GoldenEye symbols/data, integrate true context save/restore and guest call gates, then test in device. Do not claim game launch success.
+
+
+## Etapa 8 — save/restore real de ContextSnapshot no scheduler — 2026-11-04
+
+Adicionado `N64HleGuestContextSwitcher.kt`:
+- `startThread`, `yieldCurrent`, `stopCurrent` e `blockCurrent` coordenam o scheduler guest com o estado real do `R4300Cpu`.
+- Quando a decisão troca de thread, captura o snapshot live da thread anterior e grava o contexto ABI via `N64HleGuestOsThreadContextMapper` + `N64HleGuestOsThreadCodec`; usa o PC de continuação explicitamente fornecido e limpa branch-delay pendente.
+- Restaura a thread selecionada mapeando OSThread para ContextSnapshot e chamando `R4300Cpu.restoreContext`; TLB/Count-phase e campos não presentes no ABI permanecem do template CPU, e o restore limpa LL reservation.
+- Quando não há troca, só atualiza PC via `setProgramCounter` para continuar após a chamada HLE.
+- PC de continuação é validado como alinhado e 32-bit.
+
+Testes `N64HleGuestContextSwitcherTest.kt`: preempção por prioridade salva GPR/PC da thread anterior e restaura a nova; stop da corrente restaura thread runnable; bloqueio salva continuação guest e o wake restaura PC/GPR.
+
+Commits: switcher `3828470d7b19ff43da25e90eb1b40b3c38f6f558`; testes iniciais `722435a173676ada12d79eab7aa5ab8e80bf087e`; PC setter `09a2fa67b97f80fb73d1cbbff9f5f494338bcc44`; assertion GPR `161414ce6224680660b06af5e5c2bff211282c12`; PCs guest 32-bit `bd7136eeed45ca01e376194cd4408b3ff9467425`.
+
+CI final: run `41908404540` success — `testDebugUnitTest assembleDebug` passou. APK artifact `13362056253`, 1,072,204 bytes, SHA-256 `96caed88143b02b7312bffdeb214ef7eba43b5e660b73e14e53c34157c6d7b8b`, expira 2026-11-18. https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41908404540
+
+Limites: o switcher ainda não é invocado pelo N64RomVideoSession, não há interceptação de PC nem endereços confirmados de API libultra; o `N64HleGuestMessageQueue` ainda chama o scheduler de estado, não o switcher, então BLOCK/wake ainda não preserva contexto live nesse caminho. A integração só pode avançar depois de um dispatcher com endereços de função comprovados e sem inventar offsets. Nenhum teste GoldenEye no aparelho foi feito.
