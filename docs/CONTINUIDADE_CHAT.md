@@ -2342,3 +2342,18 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Commits: queue 6606f3dca938e5fca90c6725ca5b439bc6ec9c67; testes 0521a1c4ffc0a646fabdfc52a54f1e8ba2e54380.
 - CI consolidada do mapper, fila e testes passou no run 41903604215 (671 testes). APK artifact 13360140948, 1,061,938 bytes, SHA-256 6477f7ccbaf66b6992d2646648738b48fc0563127345c3a1c22fd423bfe5336d, expira 2026-11-18.
 - Próximo: implementar operações de estado e active queue com base em startthread.c/stopthread.c/yieldthread.c, e em seguida OSMesgQueue send/recv. Nenhum guest call gate ainda.
+
+## 111. Scheduler guest: estados, active queue e dispatch — 2026-11-04
+
+- Adicionado `N64HleGuestThreadScheduler.kt`; todos os endereços de globals são parâmetros explícitos apontando para words guest que contêm ponteiros. Nenhum endereço fixo de símbolo ROM foi inventado.
+- `registerCreatedThread`: replica `osCreateThread` inserindo em `__osActiveQueue` por `tlnext`.
+- `startThread`: ramos STOPPED/WAITING/RUNNABLE/RUNNING e preempção por prioridade, conforme GoldenEye `startthread.c`.
+- `stopThread`: remove runnable/waiting da fila proprietária; para a corrente marca STOPPED e escolhe próxima.
+- `yieldThread`: corrente vira RUNNABLE, retorna à run queue ordenada e escolhe próxima.
+- `dispatchNext`: remove head da run queue, marca RUNNING e atualiza `__osRunningThread`. Quando run queue só contém sentinel, limpa o pointer corrente no modelo.
+- Testes `N64HleGuestThreadSchedulerTest.kt`: active list, start, preempção, yield FIFO, stop, fila anterior e WAITING.
+- Fontes: https://github.com/n64decomp/007/blob/master/src/libultra/os/createthread.c ; https://github.com/n64decomp/007/blob/master/src/libultra/os/startthread.c ; https://github.com/n64decomp/007/blob/master/src/libultra/os/stopthread.c ; https://github.com/n64decomp/007/blob/master/src/libultra/os/yieldthread.c ; https://github.com/n64decomp/007/blob/master/src/libultra/os/exception.s
+- Limites: ainda não salva/restaura ContextSnapshot nem executa `__osEnqueueAndYield` real; sem interrupções mascaradas e sem guest call gates; não integrado à MainActivity.
+- Commits: scheduler `449446f799934f9a4ca90ea9ef7f11e78b2a3938`; testes `8b44afefa94580f3af5e90c23ad4076c49b8c942`; pointer vazio `602ab8d9d03b09fcb537776a9b9c65acc91a5084`; teste final `af94314c001a2eccd3727393c16f3534f02a0996`.
+- CI final `41906618830`: success; `testDebugUnitTest assembleDebug` aprovados. APK artifact `13360316775`, 1,065,632 bytes, SHA-256 `38d891b491c27ddbf7cefcb5a0938e901de3647879508a2270391fad3ca17662`, expira 2026-11-18. https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41906618830
+- Próximo: OSMesgQueue guest ABI e operações ring-buffer send/recv/jam; adicionar bloqueio da thread corrente na mtqueue/fullqueue e despertar com osStartThread. Depois validar context save/restore e call gates. Não declarar GoldenEye funcional.
