@@ -1663,3 +1663,33 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 ### Próxima etapa
 - Revisar o mecanismo `romLoadGeneration` e o comportamento quando leituras concorrentes terminam fora de ordem, incluindo consistência entre URI persistida e ROM carregada.
 - Em seguida, voltar à auditoria do núcleo R4300/COP0/COP1 e criar testes de conformidade onde houver lacunas demonstráveis.
+
+
+## 79. Serialização do carregamento de ROM com diagnósticos e exportação — 2026-11-04
+
+### CI anterior
+- Run 41805853873, commit ef03bd17 (seção 78): completed/success.
+
+### Achado confirmado
+- loadRomFromUri() desabilitava o botão principal durante a leitura, mas não mantinha um estado explícito de carregamento.
+- Os botões de diagnóstico e exportação tinham suas próprias verificações de concorrência, porém não verificavam uma leitura de ROM em andamento.
+- Como cartridgeBus era limpo no início da leitura, uma exportação iniciada nesse intervalo poderia coletar um diagnóstico parcial sem barramento; outras ferramentas também poderiam abrir durante a leitura.
+- O contador romLoadGeneration protegia contra callbacks obsoletos, mas não era um bloqueio de exclusão mútua.
+
+### Correção
+- Introduzido @Volatile romLoadInProgress.
+- O estado é ativado ao iniciar a leitura e desativado somente pelo callback da geração atual, após leitura e validação.
+- Durante a leitura, são desabilitados os botões de diagnóstico HLE e IPL3/CPU, além do botão principal.
+- A abertura das ferramentas, execução experimental da ROM, diagnósticos, exportação e nova seleção de ROM agora recusam iniciar enquanto romLoadInProgress estiver ativo.
+- A rotina que restaura os controles após exportação também considera o estado de carregamento.
+- O mecanismo de geração continua responsável por ignorar resultados antigos; o novo estado tem responsabilidade distinta: impedir operações concorrentes.
+
+### Limites
+- Não foi adicionada fila de carregamento nem cancelamento de I/O: uma leitura obsoleta ainda pode continuar até o provedor terminar de entregar os bytes, mas seu callback não pode substituir o resultado da geração atual.
+- A verificação e alteração do estado ocorrem no fluxo da Activity; o callback de UI valida a geração antes de liberar o bloqueio.
+- CI e testes automatizados deste commit devem ser confirmados após a execução.
+- Não houve alteração em CPU, RSP, RDP, HLE ou branch main.
+
+### Próxima etapa
+- Confirmar CI e revisar se todas as rotas de entrada de ferramentas respeitam o novo estado.
+- Depois retomar testes de conformidade COP1 (arredondamento, flags IEEE-754 e comparações) conforme a auditoria da seção 67.
