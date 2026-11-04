@@ -22,6 +22,8 @@ class MainActivity : Activity() {
     private var cartridgeBus: N64Bus? = null
     private var cartridgeRomBytes: ByteArray? = null
     @Volatile private var romLoadGeneration = 0
+    @Volatile private var diagnosticExportInProgress = false
+    @Volatile private var romTraceInProgress = false
     private var romTraceButton: Button? = null
     private var hleBootButton: Button? = null
     private var mainActionButton: Button? = null
@@ -160,6 +162,10 @@ class MainActivity : Activity() {
      * is not yet automatic, so this is a bring-up path, not a playable-game claim.
      */
     private fun startRomVideoExecution() {
+        if (diagnosticExportInProgress || romTraceInProgress || hleWorker != null) {
+            status.text = "Aguarde o diagnóstico ou a exportação atual terminar."
+            return
+        }
         val bus = cartridgeBus
         if (bus == null) {
             status.text = "Selecione uma ROM primeiro."
@@ -540,6 +546,7 @@ class MainActivity : Activity() {
             return
         }
         romTraceStopRequested = false
+        romTraceInProgress = true
         mainActionButton?.isEnabled = false
         romTraceButton?.isEnabled = false
         hleBootButton?.isEnabled = false
@@ -557,6 +564,8 @@ class MainActivity : Activity() {
                     hleBootButton?.isEnabled = cartridgeBus != null
                     }
                 }
+            } finally {
+                romTraceInProgress = false
             }
         }, "N64-ROM-Diagnostic").start()
     }
@@ -1059,6 +1068,15 @@ class MainActivity : Activity() {
             text = "GERAR LOG COMPLETO DO EMULADOR"
             isAllCaps = false
             setOnClickListener {
+                if (diagnosticExportInProgress) return@setOnClickListener
+                if (hleWorker != null || romTraceInProgress) {
+                    Toast.makeText(this@MainActivity, "Aguarde o diagnóstico em andamento terminar antes de exportar.", Toast.LENGTH_LONG).show()
+                    return@setOnClickListener
+                }
+                diagnosticExportInProgress = true
+                mainActionButton?.isEnabled = false
+                romTraceButton?.isEnabled = false
+                hleBootButton?.isEnabled = false
                 isEnabled = false
                 val button = this
                 // Capture UI text on the main thread; all expensive work stays on the exporter thread.
@@ -1242,7 +1260,14 @@ class MainActivity : Activity() {
                         }
                     } finally {
                         if (!isFinishing && !isDestroyed) runOnUiThread {
-                            if (!isFinishing && !isDestroyed) button.isEnabled = true
+                            if (!isFinishing && !isDestroyed) {
+                                diagnosticExportInProgress = false
+                                button.isEnabled = true
+                                val idle = romVideoThread?.isAlive != true && hleWorker == null && !romTraceInProgress
+                                mainActionButton?.isEnabled = idle
+                                romTraceButton?.isEnabled = idle && cartridgeBus != null
+                                hleBootButton?.isEnabled = idle && cartridgeBus != null
+                            }
                         }
                     }
                 }, "N64-Diagnostic-Export").start()
@@ -1373,6 +1398,10 @@ class MainActivity : Activity() {
     }
 
     private fun openRomPicker() {
+        if (diagnosticExportInProgress || romTraceInProgress || hleWorker != null || romVideoThread?.isAlive == true) {
+            status.text = "Aguarde a operação atual terminar antes de selecionar outra ROM."
+            return
+        }
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "*/*"
@@ -1390,6 +1419,10 @@ class MainActivity : Activity() {
 
     /** Reads and validates a document off the UI thread to keep large ROM loads responsive. */
     private fun loadRomFromUri(uri: Uri, rememberSelection: Boolean, restoring: Boolean = false) {
+        if (diagnosticExportInProgress || romTraceInProgress || hleWorker != null || romVideoThread?.isAlive == true) {
+            status.text = "Não é possível trocar a ROM enquanto outra operação está em andamento."
+            return
+        }
         val loadGeneration = ++romLoadGeneration
         if (rememberSelection) getSharedPreferences(ROM_PREFS, MODE_PRIVATE).edit().remove(KEY_LAST_ROM_URI).apply()
         mainActionButton?.isEnabled = false
