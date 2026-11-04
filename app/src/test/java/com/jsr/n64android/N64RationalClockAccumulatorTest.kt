@@ -28,7 +28,7 @@ class N64RationalClockAccumulatorTest {
         assertEquals(3L, clock.remainder())
         assertEquals(1L, clock.advance(1L))
         assertEquals(1L, clock.remainder())
-        assertEquals(1L, clock.advance(3L))
+        assertEquals(2L, clock.advance(3L))
         assertEquals(0L, clock.remainder())
     }
 
