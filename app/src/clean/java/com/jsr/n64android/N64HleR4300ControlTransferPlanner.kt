@@ -70,6 +70,21 @@ class N64HleR4300ControlTransferPlanner {
                 val taken = if (instruction.opcode == 0x06) value <= 0L else value > 0L
                 branchPlan(pc, delayPc, afterDelay, instruction.immediateSigned, taken)
             }
+            0x01 -> {
+                val value = state.readGpr(instruction.rs)
+                val isLink = instruction.rt == 0x10 || instruction.rt == 0x11
+                val taken = when (instruction.rt) {
+                    0x00, 0x10 -> value < 0L // BLTZ / BLTZAL
+                    0x01, 0x11 -> value >= 0L // BGEZ / BGEZAL
+                    else -> throw UnsupportedOperationException(
+                        "REGIMM rt=0x${instruction.rt.toString(16)} is not supported"
+                    )
+                }
+                branchPlan(
+                    pc, delayPc, afterDelay, instruction.immediateSigned, taken,
+                    linkRegister = if (isLink && taken) 31 else null
+                )
+            }
             else -> throw UnsupportedOperationException(
                 "Opcode 0x${instruction.opcode.toString(16)} is not a supported control transfer"
             )
@@ -81,11 +96,14 @@ class N64HleR4300ControlTransferPlanner {
         delayPc: Long,
         afterDelay: Long,
         immediate: Int,
-        taken: Boolean
+        taken: Boolean,
+        linkRegister: Int? = null
     ): N64HleR4300ControlTransferPlan {
         val target = delayPc + (immediate.toLong() shl 2)
         return N64HleR4300ControlTransferPlan(
-            pc, delayPc, if (taken) target else afterDelay, taken
+            pc, delayPc, if (taken) target else afterDelay, taken,
+            linkRegister = linkRegister,
+            linkValue = if (linkRegister != null) afterDelay else null
         )
     }
 
