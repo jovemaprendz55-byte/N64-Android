@@ -1693,3 +1693,42 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 ### Próxima etapa
 - Confirmar CI e revisar se todas as rotas de entrada de ferramentas respeitam o novo estado.
 - Depois retomar testes de conformidade COP1 (arredondamento, flags IEEE-754 e comparações) conforme a auditoria da seção 67.
+
+
+## 80. COP1 — comparações signaling e quiet com NaN — 2026-11-04
+
+### CI da etapa anterior
+- Run 41806253071, commit c222af97 (seção 79): completed/success.
+- Run 41806198296, commit 321193c7 (bloqueio de carregamento): completed/success.
+
+### Achado confirmado
+- A comparação COP1 calculava unordered/equal/less e atualizava FCC0, mas ignorava o bit S (bit 3) do campo condition.
+- Com operando NaN, comparações signaling devem levantar Invalid Operation; comparações quiet não devem levantar Invalid apenas por unordered.
+- Antes da correção, ambas eram tratadas da mesma forma: nenhuma atualizava Cause/Flag Invalid e nenhuma podia gerar FPE por essa condição.
+
+### Correção
+- Comparações com bit S=1 e operando NaN agora chamam recordFpuExceptions(Invalid).
+- Com Invalid desabilitada, Cause Invalid é atualizada, Flag Invalid fica sticky e o resultado da comparação atualiza FCC0.
+- Com Invalid habilitada, o mecanismo existente levanta Floating Point Exception antes da escrita de FCC0; o FCC0 anterior permanece preservado.
+- Comparações quiet permanecem sem Invalid por unordered.
+
+### Testes adicionados
+- C.NGLE.S com NaN: Cause/Flag Invalid e FCC0.
+- C.NGLE.S com Invalid habilitada: FPE e FCC0 preservado.
+- C.UN.S quiet com NaN: FCC0 verdadeiro sem Cause/Flag Invalid.
+
+### Commits
+- Código: 82d665c803d4c474e16ae62d03c6142ab9d9dee3.
+- Testes: 607b31a59201e11caa9658c95f269e7d7fae3d17.
+
+### Limites ainda existentes no COP1
+- Aritmética S/D continua usando operações Float/Double da JVM; o RM de FCR31 não é aplicado a ADD/SUB/MUL/DIV/SQRT.
+- classifyBasicFpuExceptions não implementa Underflow nem Inexact; as conversões CVT/ROUND/TRUNC/CEIL/FLOOR também não registram todas as exceções IEEE-754.
+- Ainda falta uma matriz de testes para signed zero, NaN signaling versus quiet payloads e arredondamento dirigido.
+- A correção desta seção cobre comparações signaling, não completa a FPU.
+- CI dos dois commits acima estava em execução no momento da atualização desta seção; verificar os resultados antes de considerar a etapa concluída.
+- Branch main não foi alterada.
+
+### Próxima etapa
+- Verificar CI dos dois commits.
+- Em seguida construir testes de conformidade para underflow/inexact e arredondamento em aritmética S/D. Não afirmar FPU completa até fechar esses casos.
