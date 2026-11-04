@@ -169,3 +169,12 @@ Fontes do alvo:
 Testes `N64HleGuestThreadQueueTest.kt`: prioridade decrescente, FIFO para empates, sentinel, pop/dequeue com semântica libultra, duplicação, prioridade inválida, ciclos e ponteiros inválidos.
 
 Commits: queue `6606f3dca938e5fca90c6725ca5b439bc6ec9c67`; testes `0521a1c4ffc0a646fabdfc52a54f1e8ba2e54380`. CI em andamento; consultar antes de declarar aprovação.
+
+
+## Verificação consolidada — 2026-11-04
+
+- Run GitHub Actions: `41903604215` — **success** no commit `36aeaf8912017ed12d9351703b0354d700e3eb32`.
+- A suíte completou 671 testes sem falhas; `assembleDebug` e upload do APK também passaram.
+- Artifact `n64-android-debug-apk`: ID `13360140948`, 1,061,938 bytes, SHA-256 `6477f7ccbaf66b6992d2646648738b48fc0563127345c3a1c22fd423bfe5336d`, expira em 2026-11-18.
+- Run: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41903604215
+- Isso valida build e testes unitários. Não valida execução de GoldenEye no aparelho, troca de contexto em runtime real, dispatch de threads ou APIs libultra.
