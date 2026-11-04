@@ -2715,3 +2715,12 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Commits: sequenciador `078422d370ca65059f2b95453c2e273f628500e4`; testes iniciais `f71f114cce732182f23d3ccfff1a5455b7bd358a`; ajuste do alvo de teste `621b4c7341ad2c26e8f08dc911d264b0c60a379c`.
 - Não é ainda o stepper R4300: o chamador precisa decodificar/executar a instrução do delay slot e chamar a conclusão. Exceções em delay slot, BD/EPC, branch em delay slot, REGIMM exceptions e integração com o executor SPECIAL ainda não estão implementados.
 - CI para planner, REGIMM e sequenciador está pendente. Não declarar build/testes aprovados antes dos runs finais e artifact.
+
+
+### Validação da divisão e do planejador inicial — 2026-11-04
+
+- A correção de semântica word e o conjunto de testes de divisão foram aprovados no run `41934466196` (commit `095d455abe87ea6a01e290e0772e62f642a543df`). O workflow executou testes unitários e `assembleDebug`; artifact `13372798568`, 838.617 bytes, SHA-256 `f04331760d57746f9ceba464719dbd25f3cdc84ee68d11a053b107738a9ec7bb`.
+- O planner inicial de branches/jumps, com os vetores corrigidos, passou no run `41934581909` (commit `067fbf3f27196e9d4a8c426173edce2155fbd9a0`). Artifact `13372319876`, 839.153 bytes, SHA-256 `3a9bfcf2fc395b2b69c44d1ed9257bcd21790a671f0ad7442c08530311b96df4`.
+- Os runs anteriores `41934197429`, `41934202816`, `41934229782`, `41934396304`, `41934400258` e `41934421718` falharam por teste obsoleto de sign-extension word e/ou expectativa errada no vetor de fronteira do jump. As falhas foram localizadas nos logs e corrigidas; os runs posteriores citados passaram.
+- A extensão REGIMM (BLTZ/BGEZ/BLTZAL/BGEZAL) está incluída no run `41934581909`, que passou.
+- A CI do sequenciador de delay slot e seu teste de destino JAL distinto ainda está pendente; verificar os runs `41934691929`, `41934696799`, `41934717212` e a documentação posterior antes de declarar seção 130 aprovada.
