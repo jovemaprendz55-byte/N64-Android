@@ -1573,3 +1573,35 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Confirmar CI dos commits `53b64eb`, `e01b2de` e `d6d55cf`.
 - Depois revisar navegação/retorno das telas e considerar um teste automatizado para as travas de operação.
 - Branch de trabalho: `dev/n64-clean-start`.
+
+
+## 76. Navegação pelo botão Voltar do Android — 2026-11-04
+
+### CI confirmado da seção 75
+- Run `41805031804`, commit `53b64eb`: `completed/success`.
+- Run `41805056017`, commit `e01b2de`: `completed/success`.
+- Run `41805084255`, commit `de28f37` (documentação da seção 75): estava `in_progress` na consulta desta etapa; confirmar depois.
+- Os dois commits de código da tela de ferramentas passaram pelo workflow Android.
+
+### Achado
+- A Activity não implementava `onBackPressed()`.
+- Várias telas internas possuem botão próprio de retorno, mas o botão físico/gestual Voltar do Android podia encerrar a Activity em vez de retornar ao menu principal.
+- Isso afetava a navegação das ferramentas sintéticas e páginas de diagnóstico/vídeo; não era uma falha do núcleo de emulação.
+
+### Correção
+- Adicionado tratamento de Voltar na `MainActivity`.
+- Se a tela atual não for o menu principal, o retorno troca para `mainLayout`.
+- Se a tela atual for a execução experimental de ROM e o worker de vídeo estiver ativo, solicita parada cooperativa antes de retornar.
+- Se já estiver no menu principal, mantém o comportamento padrão do Android e permite sair da Activity.
+- O código usa o container `android.R.id.content` para distinguir o menu principal das páginas internas; não adiciona dependências.
+
+### Limites
+- Correção estática; precisa de CI e teste em aparelho para validar botão/gesto Voltar.
+- Não persiste estado da CPU nem da sessão ao girar a tela ou recriar a Activity. A ROM pode ser recarregada pela URI persistida, mas uma sessão em execução é interrompida pelo `onDestroy()`.
+- Não foram alterados R4300, RSP, RDP, HLE ou formato de ROM.
+- Branch: `dev/n64-clean-start`; `main` permanece intocada.
+
+### Próxima etapa
+- Confirmar CI do commit de navegação e da documentação da seção 75.
+- Revisar tratamento de rotação/recriação da Activity e garantir que a seleção ROM seja restaurada sem iniciar sessão automaticamente.
+- Em seguida, acrescentar testes de unidade para a política de navegação/estado, se a arquitetura permitir sem dependência AndroidX adicional.
