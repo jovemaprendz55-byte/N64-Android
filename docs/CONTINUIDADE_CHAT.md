@@ -2280,3 +2280,16 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Nenhuma alteração em MainActivity ainda: não remover o worker atual até que o novo runtime guest tenha cobertura suficiente. Nenhum jogo declarado funcional.
 - Próximo: acesso seguro a memória guest e codec OSThread; depois context ABI, resolução/interceptação de APIs libultra, eventos reais e agendamento RSP. Detalhes em docs/HLE_RUNTIME_LAUNCH_MIGRATION_2026-11-04.md.
 - Branch dev/n64-clean-start; main permanece intocada. Auditoria global de duplicação segue aberta.
+
+## 106. Memória guest segura e correção do ABI OSThread — 2026-11-04
+
+- Etapa 2: criado `N64HleGuestMemory.kt`, ponte explícita de endereços guest para RDRAM física.
+- KSEG0 `0x80000000–0x9FFFFFFF` e KSEG1 `0xA0000000–0xBFFFFFFF` são aceitos e alias para o mesmo endereço físico. Suporta ponteiros Long zero-extended e sign-extended.
+- KUSEG/KSSEG/KSEG3 são rejeitados: exigiriam tradução TLB, que esta classe não implementa.
+- Cada acesso valida segmento, alinhamento natural e faixa completa dentro do tamanho de RDRAM. Valores multi-byte são big-endian via N64AddressSpace.
+- Testes adicionados em `N64HleGuestMemoryTest.kt`: alias KSEG0/KSEG1, sign-extension, big-endian, rejeição de TLB segments, desalinhamento, limites e ponteiros de 64 bits inválidos.
+- Correção ABI encontrada antes do codec: `os_thread.h` inclui `thprof` pointer no offset `0x1C`; `context` inicia em `0x20`. O tamanho de OSThread é `0x1B0`, não `0x1AC`. Layout atualizado com `THREAD_PROFILE=0x1C`, `THREAD_CONTEXT=0x20`, `THREAD_SIZE=0x1B0`; prioridade é s32, aplicação 0–127 e sistema até 255. Fonte: https://harbourmasters.github.io/SpaghettiKart/os__thread_8h_source.html
+- Commits: guest memory `c675fc353ee3a4182ca18a866f353c1083b73001`; testes memória `95fe590fe8d59ea3cbec86115f7e42d86bf6e16d`; correção ABI `1d149fbcbd96796493d8351d73630453efedf8e9`; teste ABI corrigido `31ab1aed2682f21af9af52b81161522064dbca11`.
+- CI dos commits acima e da documentação está em andamento; consultar runs do HEAD antes de declarar verde. Runs anteriores `41900220274`, `41900225774`, `41900294202` estão success, mas os dois primeiros testaram a versão antiga do offset.
+- Próximo: esperar CI; se verde, implementar codec OSThread usando N64HleGuestMemory, com campos de largura assinada/sem sinal explicitados e validação de todos os offsets. Depois mapear o contexto para R4300, ainda sem call gates até validar a semântica FPU FR.
+- O caminho MainActivity → N64HleBoot → N64RomVideoSession permanece ativo; não foi substituído. Nenhum GoldenEye funcional confirmado. `main` intacta. Auditoria global de duplicação de código/arquivos repetidos continua aberta.
