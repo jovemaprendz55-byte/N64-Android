@@ -1476,3 +1476,16 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Limitação restante: o diagnóstico IPL3/CPU não oferece cancelamento manual por botão; o cancelamento foi ligado ao encerramento da Activity. O worker de carregamento de ROM usa romLoadGeneration para descartar resultados antigos, mas pode continuar lendo o documento em segundo plano até terminar. A sessão de vídeo solicita parada cooperativa; não foi feito teste de instrumentação/lifecycle em aparelho real.
 - Nenhum código de CPU/RSP/RDP foi alterado. Nenhuma ROM foi executada no aparelho. main permanece intocada.
 - Próxima etapa: confirmar CI; inspecionar fluxo de seleção/rotação/retorno e o exportador de diagnóstico; depois avaliar teste automatizado de UI/lifecycle e organizar os testes sintéticos numa área de ferramentas sem sobrecarregar a tela inicial.
+
+
+## 72. Proteção do exportador de diagnóstico após encerramento da Activity — 2026-11-04
+
+- Na revisão do fluxo de exportação, foi confirmado que o trabalho de gravação já ocorre em thread de fundo, mas os callbacks de sucesso, falha e reabilitação do botão ainda podiam tentar atualizar a UI depois de a Activity ser destruída.
+- Corrigido em `MainActivity.createCompleteDiagnosticButton()`: os três caminhos de callback agora verificam `isFinishing` e `isDestroyed` antes de postar no thread principal e novamente dentro do callback.
+- O exportador passa a usar `applicationContext` para obter `packageName`, `PackageManager` e `ContentResolver`, reduzindo dependência de serviços vinculados à Activity durante a gravação.
+- A exportação não é cancelada quando a Activity termina: se já começou, continua tentando salvar o arquivo em Downloads/N64Android; somente notificações e alterações de botão são suprimidas após o encerramento. Isso evita descartar um diagnóstico solicitado pelo usuário.
+- ROM loader verificado nesta etapa: `N64RomLoader.readAllBytes()` já limita o fluxo a 64 MiB antes de bufferizar, trata leituras temporariamente zeradas e possui testes de limite exato, excesso e leitura zero temporária. Nenhuma alteração necessária nesse módulo.
+- Commit da proteção do exportador: `4e632e28303842d08e1a34420411eea538ae62fb`.
+- CI deste commit deve ser consultado antes de considerar a alteração validada.
+- Não houve teste em aparelho nem mudança no motor de emulação. `main` permanece intocada; branch de trabalho `dev/n64-clean-start`.
+- Próxima etapa: validar CI; continuar a revisão de concorrência entre exportação, troca de ROM e encerramento, e avaliar testes automatizados da Activity sem introduzir dependências instrumentadas sem necessidade.
