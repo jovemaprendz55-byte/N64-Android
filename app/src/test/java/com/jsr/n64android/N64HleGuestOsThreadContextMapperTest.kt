@@ -86,7 +86,7 @@ class N64HleGuestOsThreadContextMapperTest {
         }
         val cop0 = mapped.cop0.toMutableList().apply {
             this[8] = 0x80001234L
-            this[12] = 0x34000000L
+            this[12] = 0x0000FF03L
             this[13] = 0x80000400L
         }
         val changed = mapped.copy(
