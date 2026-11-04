@@ -2831,3 +2831,10 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 
 - A primeira CI dos testes de LWL/LWR falhou porque os valores esperados para resultados com bit 31 ligado foram escritos como zero-extended. O executor estava retornando corretamente um word sign-extended para 64 bits.
 - Corrigidos os vetores LWL em todos os offsets e LWR offset 3 para esperar a extensão de sinal arquitetural. Commits da correção dos testes: `94c2222c8da0067f7259d774b0e2badc8427c950`.
+## 138. Merge loads/stores doubleword big-endian — 2026-11-04
+
+- Adicionados LDL (`0x1A`), LDR (`0x1B`), SDL (`0x2C`) e SDR (`0x2D`) ao `N64HleR4300MemoryExecutor`.
+- Operações trabalham sobre a doubleword alinhada de 8 bytes. LDL/LDR mesclam bytes com o GPR antigo; SDL/SDR preservam bytes não selecionados na memória. Endereço efetivo continua sendo base + imediato signed de 16 bits.
+- Testes planejados cobrem os oito offsets e valores de preservação para as quatro instruções.
+- Commits: implementação `4112bae658a3401b2a116ea71c02fede26c2d189`; testes iniciais `06111bb0a285b3ed51303d2e9210d7f72a634c14`; correção de vetores esperados `1bf98754cedbd11ed511959a4e71727cead0e7f8`.
+- CI pendente. Não inclui LL/SC, cache, MMIO ou exceções de endereço.
