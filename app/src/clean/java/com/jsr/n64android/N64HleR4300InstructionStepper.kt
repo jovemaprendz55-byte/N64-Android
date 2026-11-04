@@ -3,10 +3,10 @@ package com.jsr.n64android
 /**
  * Integrates the implemented SPECIAL integer subset with classic control flow.
  *
- * The caller supplies the instruction word fetched at the current PC. This
- * stepper does not fetch memory or implement architectural exception delivery.
- * Supported SPECIAL and immediate integer operations are sequenced with
- * exactly one delay-slot instruction.
+ * Instructions may be supplied directly with step(), or fetched from an
+ * explicitly configured guest RDRAM space with stepFromMemory(). Architectural
+ * exception delivery is not implemented. Supported SPECIAL, immediate and
+ * aligned RDRAM load/store operations share one delay-slot sequencing path.
  */
 class N64HleR4300InstructionStepper(
     private val decoder: N64HleR4300InstructionDecoder = N64HleR4300InstructionDecoder(),
