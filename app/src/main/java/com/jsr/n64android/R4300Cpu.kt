@@ -905,6 +905,12 @@ class R4300Cpu(private val memory: N64AddressSpace) {
                                 equal = !unordered && x == y
                                 less = !unordered && x < y
                             }
+                            // The condition's S bit (bit 3) selects a signaling comparison.
+                            // Any NaN operand raises Invalid; an enabled exception prevents FCC0
+                            // from being updated because recordFpuExceptions throws before this write.
+                            if (unordered && (condition and 0x08) != 0) {
+                                recordFpuExceptions(1L shl 16)
+                            }
                             val result = (unordered && (condition and 0x01) != 0) ||
                                 (equal && (condition and 0x02) != 0) ||
                                 (less && (condition and 0x04) != 0)
