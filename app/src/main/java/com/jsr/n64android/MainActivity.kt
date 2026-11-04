@@ -57,6 +57,30 @@ class MainActivity : Activity() {
                 true
             }
         }
+        hleBootButton = Button(this).apply {
+            text = "DIAGNÓSTICO HLE"
+            isAllCaps = false
+            isEnabled = false
+            setOnClickListener {
+                if (romVideoThread?.isAlive == true || hleWorker != null) {
+                    status.text = "Pare a execução atual antes de iniciar outro diagnóstico."
+                } else {
+                    runHleBootDiagnostic()
+                }
+            }
+        }
+        romTraceButton = Button(this).apply {
+            text = "DIAGNÓSTICO IPL3 / CPU"
+            isAllCaps = false
+            isEnabled = false
+            setOnClickListener {
+                if (romVideoThread?.isAlive == true || hleWorker != null) {
+                    status.text = "Pare a execução atual antes de iniciar outro diagnóstico."
+                } else {
+                    runRomInstructionDiagnostic()
+                }
+            }
+        }
         val completeDiagnosticButton = createCompleteDiagnosticButton { status.text.toString() }
         mainLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -82,6 +106,14 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ))
+            addView(hleBootButton, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = 10 })
+            addView(romTraceButton, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = 8 })
             addView(completeDiagnosticButton, LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -497,6 +529,7 @@ class MainActivity : Activity() {
             return
         }
         romTraceButton?.isEnabled = false
+        hleBootButton?.isEnabled = false
         status.text = "Executando diagnóstico em segundo plano. Aguarde; a tela continuará responsiva."
         Thread({
             try {
@@ -506,6 +539,7 @@ class MainActivity : Activity() {
                 runOnUiThread {
                     status.text = message + "\nA ROM permanece selecionada se o processo não tiver sido reiniciado."
                     romTraceButton?.isEnabled = cartridgeBus != null
+                    hleBootButton?.isEnabled = cartridgeBus != null
                 }
             }
         }, "N64-ROM-Diagnostic").start()
@@ -525,7 +559,8 @@ class MainActivity : Activity() {
         } catch (error: Exception) {
             runOnUiThread {
                 status.text = "Não foi possível preparar IPL3 na SP DMEM: ${error.message ?: error.javaClass.simpleName}"
-                romTraceButton?.isEnabled = true
+                romTraceButton?.isEnabled = cartridgeBus != null
+                hleBootButton?.isEnabled = cartridgeBus != null
             }
             return
         }
@@ -976,7 +1011,8 @@ class MainActivity : Activity() {
             "PI_RD_LEN readback: 0x" + bus.read32(N64Bus.PI_RD_LEN_REG).toUInt().toString(16).uppercase().padStart(8, '0') + "\n" +
             "PI_WR_LEN readback: 0x" + bus.read32(N64Bus.PI_WR_LEN_REG).toUInt().toString(16).uppercase().padStart(8, '0')
         runOnUiThread {
-            romTraceButton?.isEnabled = true
+            romTraceButton?.isEnabled = cartridgeBus != null
+            hleBootButton?.isEnabled = cartridgeBus != null
             showRomDiagnosticPage(diagnostic)
         }
     }
