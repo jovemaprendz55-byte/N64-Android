@@ -2308,3 +2308,15 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - O codec é somente serialização ABI. Não enfileira threads, não implementa chamadas libultra, não troca contexto da CPU e não integra a MainActivity. Nenhum jogo funcional confirmado.
 - Próximo: confirmar CI; então mapear explicitamente contexto serializado para `R4300Cpu.ContextSnapshot`, incluindo Status/PC/HI/LO/GPR, e documentar os campos não preservados (K0/K1, reservation LL/SC, delay-slot e FR/FPU). Criar testes round-trip snapshot↔ABI antes de qualquer scheduler guest.
 - Branch `dev/n64-clean-start`; `main` intacta. Auditoria global de duplicação de código/arquivos repetidos continua aberta.
+
+## 108. Confirmação do ABI OSThread específico de GoldenEye — 2026-11-04
+
+- Foi feita uma distinção entre headers de versões diferentes do libultra. O header oficial público de 1998 consultado e o header posterior SpaghettiKart não devem ser usados isoladamente para atribuir campos ao ABI do GoldenEye.
+- A árvore de descompilação do alvo n64decomp/007 contém include/PR/os.h revisão 1.149, datado de 1997-12-15. Nesse header, OSThread não tem thprof; após fp em 0x18, começa __OSThreadContext, cujos primeiros membros são u64.
+- O alinhamento de 8 bytes coloca context em 0x20, deixando padding de quatro bytes em 0x1C. A assembly src/libultra/os/exception.s confirma o início: S0 é salvo em 0x98, igual a 0x20 + 0x78 (offset S0 dentro do contexto).
+- Portanto, 0x20 é o offset correto para o contexto GoldenEye, mas 0x1C é padding, não ponteiro thprof. THREAD_CONTEXT_PADDING=0x1C; THREAD_CONTEXT=0x20; CONTEXT_SIZE=0x190; THREAD_SIZE=0x1B0.
+- O codec foi corrigido para preservar a palavra de padding sem interpretá-la como ponteiro. Teste de round-trip confirma padding 0xDEADBEEF em 0x1C e PC em thread+0x20+0xFC.
+- Fontes: https://github.com/n64decomp/007/blob/master/include/PR/os.h ; https://github.com/n64decomp/007/blob/master/src/libultra/os/exception.s
+- Commits de correção: layout/padding 3c039a0661b30c8a92e2711a77efc037e34d0478; codec 9ed00726665158538d940c877b3de3ca5af242d2; teste padding 7ecb2f1170de94940743d61ab198e653a1d8224c; teste de ponteiro duplicado removido acc3dac8cc94c389e9f99e17352612328f3caae3; comentário alinhamento dfdc3b713124df8040e81f517ba4010acbb28c01.
+- Os commits anteriores que chamavam o campo THREAD_PROFILE/profile foram supersedidos e não devem ser usados como ABI final. A CI dos commits de correção ainda precisa ser consultada.
+- Próximo: validar CI do codec corrigido; então preparar o mapper parcial entre ABI e R4300Cpu.ContextSnapshot. O mapper deve deixar TLB/Count/delay-slot e FR/FPU explicitamente fora até haver contrato comprovado. Nenhum scheduler guest ou call gate ainda.
