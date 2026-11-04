@@ -56,7 +56,7 @@ class N64HleGuestContextSwitcher(
         } else {
             // No scheduler switch: the current thread simply returns from the HLE call.
             if (selected != N64HleGuestThreadScheduler.NULL_POINTER) {
-                cpu.pc = resumePc
+                cpu.setProgramCounter(resumePc)
             }
         }
     }
