@@ -2025,3 +2025,39 @@ Consultar CI. Se passar, gerar APK debug e recolher log novo no Android 16 para 
 - Só depois ligar esse contador ao relógio racional. A razão CPU→VI ainda é provisória enquanto o ledger CPU usa dois ciclos estimados por etapa, sem latência por opcode e sem ciclos de DMA/RSP.
 - Não interpretar os testes atuais como prova de VI fiel; eles validam apenas a aproximação antiga.
 - Branch: `dev/n64-clean-start`. `main` permanece intocada.
+
+
+## 95. Modelo isolado de contador VI em half-lines — 2026-11-04
+
+### Implementação isolada
+- Criada `N64ViHalfLineCounter`, sem ligação ao `N64Bus` ou à sessão de execução.
+- O contador recebe o valor de `VI_V_SYNC` como terminal count; a quantidade de posições é `VI_V_SYNC + 1`.
+- Cada avanço de scanline acrescenta duas unidades ao `VI_CURRENT`, que representa half-lines.
+- A paridade do campo é exposta pelo bit 0 do contador. Com os valores de referência NTSC, a progressão aritmética demonstra:
+  - Progressive: terminal count 525 → 526 posições; 262 avanços chegam a 524 e o seguinte volta a 0.
+  - Interlaced: terminal count 524 → 525 posições; 262 avanços chegam a 524, o seguinte chega a 1 (campo ímpar), e a sequência retorna a 0 após mais 262 avanços.
+- A implementação usa Long para calcular o módulo e evita overflow no caso `Int.MAX_VALUE`.
+
+### Testes
+- Avanço de duas half-lines por scanline.
+- Wrap progressive e interlaced usando terminal count + 1.
+- Alternância observável do bit de campo no caso interlaced.
+- Fase inicial não zero.
+- Rejeição de entradas negativas e limite aritmético.
+
+### Limites e decisão
+- O helper é uma unidade isolada de modelo, não um relógio VI completo.
+- Ainda não lê `VI_STATUS.SERRATE`, não acompanha escrita de `VI_V_SYNC` durante execução, não compara `VI_INTR`, não gera MI_INTR_VI e não implementa o acknowledge de `VI_CURRENT`.
+- O runtime antigo de `N64Bus.advanceViInstructions` permanece intacto. Não integrar antes de definir a conversão temporal CPU→VI e criar testes de integração que preservem o comportamento de acknowledge e de reprogramação dos registradores.
+- A paridade foi derivada da sequência documentada de half-lines e dos terminais NTSC citados na seção 94; PAL e outros modos ainda precisam de fixtures próprios.
+
+### Commits
+- Modelo isolado: c7a2a3a5c13b8330589b3df3616b8236361f426d.
+- Testes iniciais: 41f6fcd719773900bd086fe76da9e541598421b7.
+- Correção da expectativa de módulo no limite inteiro: c777695c5f3c14c8515d767bb6550c26be58317d.
+
+### Validação
+- Consultar CI do último commit antes de declarar testes aprovados ou disponibilizar APK.
+- Nenhuma alteração foi feita na branch `main`; o runtime VI ainda usa o avanço aproximado antigo.
+- Auditoria global de duplicações de código e arquivos continua aberta.
+
