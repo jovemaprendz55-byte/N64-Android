@@ -50,6 +50,10 @@ class N64HleGuestMessageQueue(
             }
         }
 
+        ensureWakeContinuation(
+            queueAddress + N64HleGuestOsMesgQueueLayout.MT_QUEUE,
+            callerResumePc
+        )
         val last = (queue.first + queue.validCount) % queue.msgCount
         memory.write32(queue.msgBuffer + last * MESSAGE_SIZE, value)
         codec.updateCount(queueAddress, queue.validCount + 1)
@@ -84,6 +88,10 @@ class N64HleGuestMessageQueue(
             }
         }
 
+        ensureWakeContinuation(
+            queueAddress + N64HleGuestOsMesgQueueLayout.FULL_QUEUE,
+            callerResumePc
+        )
         val message = memory.read32(queue.msgBuffer + queue.first * MESSAGE_SIZE).toUInt().toLong()
         codec.updateFirst(queueAddress, (queue.first + 1) % queue.msgCount)
         codec.updateCount(queueAddress, queue.validCount - 1)
@@ -121,6 +129,10 @@ class N64HleGuestMessageQueue(
             }
         }
 
+        ensureWakeContinuation(
+            queueAddress + N64HleGuestOsMesgQueueLayout.MT_QUEUE,
+            callerResumePc
+        )
         val first = (queue.first + queue.msgCount - 1) % queue.msgCount
         memory.write32(queue.msgBuffer + first * MESSAGE_SIZE, value)
         codec.updateFirst(queueAddress, first)
@@ -143,6 +155,16 @@ class N64HleGuestMessageQueue(
             "A blocked HLE message call requires its guest API-entry retry PC."
         }
         return contextSwitcher.blockCurrent(waitQueueAddress, retryPc)
+    }
+
+    private fun ensureWakeContinuation(waitQueueAddress: Long, callerResumePc: Long?) {
+        if (contextSwitcher == null) return
+        val head = queues.head(waitQueueAddress)
+        if (head != N64HleGuestThreadQueue.NULL_POINTER && head != threadTailAddress) {
+            requireNotNull(callerResumePc) {
+                "Waking a guest thread requires the current caller's return PC."
+            }
+        }
     }
 
     private fun wakeOne(
