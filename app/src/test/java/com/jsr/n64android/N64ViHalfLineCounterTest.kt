@@ -32,6 +32,16 @@ class N64ViHalfLineCounterTest {
         assertEquals(0, counter.fieldParity)
     }
 
+    @Test fun interruptComparatorUsesExactHalfLineValue() {
+        val counter = N64ViHalfLineCounter()
+
+        repeat(262) { counter.advanceScanline(524) }
+        assertEquals(524, counter.current)
+        assertEquals(true, counter.matchesInterrupt(524))
+        assertEquals(false, counter.matchesInterrupt(262))
+        assertEquals(false, counter.matchesInterrupt(525))
+    }
+
     @Test fun counterSupportsNonzeroInitialPhase() {
         val counter = N64ViHalfLineCounter(initialCurrent = 7)
 
