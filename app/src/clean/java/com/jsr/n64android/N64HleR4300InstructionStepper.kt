@@ -14,11 +14,23 @@ class N64HleR4300InstructionStepper(
     private val controlPlanner: N64HleR4300ControlTransferPlanner = N64HleR4300ControlTransferPlanner(),
     private val controlSequencer: N64HleR4300ControlFlowSequencer = N64HleR4300ControlFlowSequencer(),
     private val immediateExecutor: N64HleR4300ImmediateExecutor = N64HleR4300ImmediateExecutor(),
-    memorySpace: N64HleGuestAddressSpace? = null,
+    private val memorySpace: N64HleGuestAddressSpace? = null,
     private val memoryExecutor: N64HleR4300MemoryExecutor? =
         memorySpace?.let { N64HleR4300MemoryExecutor(it) }
 ) {
     fun hasPendingDelaySlot(): Boolean = controlSequencer.hasPendingDelaySlot()
+
+    /**
+     * Fetches one big-endian instruction word from the configured guest RDRAM
+     * at the current PC, then executes it through the same validated step path.
+     */
+    fun stepFromMemory(state: N64HleR4300CpuState): N64HleR4300DecodedInstruction {
+        val guestMemory = checkNotNull(memorySpace) {
+            "Instruction fetch requires an explicitly configured RDRAM address space"
+        }
+        val instructionWord = guestMemory.read32(state.programCounter).toInt()
+        return step(instructionWord, state)
+    }
 
     /**
      * Executes one supplied instruction word.
