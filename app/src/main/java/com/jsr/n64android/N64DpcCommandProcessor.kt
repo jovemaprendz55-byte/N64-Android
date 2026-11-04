@@ -37,29 +37,11 @@ class N64DpcCommandProcessor(
 
     /**
      * Processes commands in [startAddress, endAddressExclusive).
-     * Reads packet lengths from the RDP opcode table and validates the complete stream
-     * before dispatch. Supported multiword execution is currently limited to opcode 0x08.
+     * The command-stream parser owns range validation and packet framing so
+     * the DPC bridge has a single source of truth for those rules.
+     * Supported multiword execution is currently limited to opcode 0x08.
      */
     fun process(startAddress: Int, endAddressExclusive: Int): Result {
-        require(startAddress >= 0) { "DPC start address cannot be negative." }
-        require(endAddressExclusive >= startAddress) {
-            "DPC end address must not precede start address."
-        }
-        require((startAddress and (COMMAND_BYTES - 1)) == 0) {
-            "DPC start address must be $COMMAND_BYTES-byte aligned."
-        }
-        require((endAddressExclusive and (COMMAND_BYTES - 1)) == 0) {
-            "DPC end address must be $COMMAND_BYTES-byte aligned."
-        }
-        require(endAddressExclusive <= rdramSize) {
-            "DPC command range exceeds RDRAM: end=0x${endAddressExclusive.toString(16)}, RDRAM=$rdramSize."
-        }
-
-        val byteCount = endAddressExclusive - startAddress
-        require(byteCount <= maxCommandBytes) {
-            "DPC command range exceeds processing limit: bytes=$byteCount, limit=$maxCommandBytes."
-        }
-
         val packets = N64RdpCommandStreamParser.parse(
             memory = memory,
             startAddress = startAddress,
