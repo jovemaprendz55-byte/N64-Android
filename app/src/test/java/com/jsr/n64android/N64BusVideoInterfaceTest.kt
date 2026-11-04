@@ -221,4 +221,17 @@ class N64BusVideoInterfaceTest {
         assertEquals(2, bus.read32(N64Bus.VI_CURRENT_REG))
     }
 
+
+    @Test fun viStatusSerrateBitCanBeProgrammedForProgressiveAndInterlacedModes() {
+        val bus = N64Bus()
+        val viStatus = N64Bus.VI_REG_BASE + N64Bus.VI_STATUS_OFFSET
+        val serrate = 1 shl 6
+
+        bus.write32(viStatus, 0)
+        assertEquals(0, bus.read32(viStatus) and serrate)
+
+        bus.write32(viStatus, serrate)
+        assertEquals(serrate, bus.read32(viStatus) and serrate)
+    }
+
 }
