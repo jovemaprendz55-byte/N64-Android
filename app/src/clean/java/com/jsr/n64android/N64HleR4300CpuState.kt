@@ -134,4 +134,20 @@ class N64HleR4300CpuState(
     private fun requireAlignedPc(value: Long) {
         require((value and 3L) == 0L) { "R4300 instruction PC must be word-aligned" }
     }
+    
+    companion object {
+        /**
+         * Builds mutable execution state from an explicit HLE entry snapshot.
+         * HI/LO remain unknown because the entry profile does not describe them.
+         */
+        fun fromEntryState(entryState: N64HleCpuEntryState): N64HleR4300CpuState {
+            val registers = entryState.copyRegisters()
+            val knownGprs = (1..31).associateWith { registers[it] }
+            return N64HleR4300CpuState(
+                programCounter = entryState.programCounter,
+                initialGprValues = knownGprs,
+                cop0 = entryState.cop0State
+            )
+        }
+    }
 }
