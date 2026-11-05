@@ -424,4 +424,32 @@ class N64HleR4300InstructionStepperTest {
         assertFalse(stepperWithMemory.hasPendingDelaySlot())
     }
 
+    @Test fun addiOverflowEntersArithmeticExceptionWithoutWritingDestination() {
+        val state = exceptionState(0x80001000L, mapOf(1 to Int.MAX_VALUE.toLong()))
+        val signal = assertThrows(N64HleR4300ArchitecturalException::class.java) {
+            stepper.step(i(0x08, 1, 2, 1), state)
+        }
+        assertEquals(N64HleR4300ExceptionCode.ARITHMETIC_OVERFLOW, signal.context.code)
+        assertEquals(0x30L, state.readCop0(13))
+        assertEquals(0x80001000L, state.readCop0(14))
+        assertEquals(0x2L, state.readCop0(12))
+        assertFalse(state.isGprKnown(2))
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
+    }
+
+    @Test fun signedOverflowInDelaySlotSetsBdAndBranchEpc() {
+        val state = exceptionState(0x80001000L, mapOf(1 to Int.MAX_VALUE.toLong(), 2 to 1L))
+        stepper.step((0x02 shl 26) or 0x800, state)
+        val signal = assertThrows(N64HleR4300ArchitecturalException::class.java) {
+            stepper.step(r(1, 2, 3, 0x20), state) // ADD overflow in delay slot
+        }
+        assertEquals(N64HleR4300ExceptionCode.ARITHMETIC_OVERFLOW, signal.context.code)
+        assertTrue(signal.context.inDelaySlot)
+        assertEquals(0x80001000L, state.readCop0(14))
+        assertEquals(0xFFFFFFFF80000030UL.toLong(), state.readCop0(13))
+        assertFalse(state.isGprKnown(3))
+        assertFalse(stepper.hasPendingDelaySlot())
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
+    }
+
 }
