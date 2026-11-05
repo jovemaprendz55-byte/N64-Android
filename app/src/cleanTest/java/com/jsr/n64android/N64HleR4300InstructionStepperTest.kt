@@ -85,4 +85,48 @@ class N64HleR4300InstructionStepperTest {
         assertFalse(stepper.hasPendingDelaySlot())
     }
 
+
+    @Test fun bgezalTakenWritesReturnAddressBeforeDelaySlotAndBranches() {
+        val state = N64HleR4300CpuState(0x80001000L, mapOf(1 to 0L))
+        val bgezal = (0x01 shl 26) or (1 shl 21) or (0x11 shl 16) or 4
+
+        stepper.step(bgezal, state)
+        assertEquals(0x80001004L, state.programCounter)
+        assertEquals(0x80001008L, state.readGpr(31))
+        assertTrue(stepper.hasPendingDelaySlot())
+
+        stepper.step(0, state) // NOP delay slot
+        assertEquals(0x80001014L, state.programCounter)
+        assertFalse(stepper.hasPendingDelaySlot())
+    }
+
+    @Test fun bltzalNotTakenDoesNotWriteReturnAddressAndFallsThrough() {
+        val state = N64HleR4300CpuState(0x80001000L, mapOf(1 to 1L))
+        val bltzal = (0x01 shl 26) or (1 shl 21) or (0x10 shl 16) or 4
+
+        stepper.step(bltzal, state)
+        assertFalse(state.isGprKnown(31))
+        assertEquals(0x80001004L, state.programCounter)
+        assertTrue(stepper.hasPendingDelaySlot())
+
+        stepper.step(0, state) // NOP delay slot
+        assertEquals(0x80001008L, state.programCounter)
+        assertFalse(stepper.hasPendingDelaySlot())
+        assertFalse(state.isGprKnown(31))
+    }
+
+    @Test fun blezAndBgtzUseSignedRegisterValuesAndExecuteDelaySlots() {
+        val blezState = N64HleR4300CpuState(0x80001000L, mapOf(1 to Long.MIN_VALUE))
+        val blez = (0x06 shl 26) or (1 shl 21) or 2
+        stepper.step(blez, blezState)
+        stepper.step(0, blezState)
+        assertEquals(0x8000100CL, blezState.programCounter)
+
+        val bgtzState = N64HleR4300CpuState(0x80002000L, mapOf(1 to Long.MAX_VALUE))
+        val bgtz = (0x07 shl 26) or (1 shl 21) or 3
+        stepper.step(bgtz, bgtzState)
+        stepper.step(0, bgtzState)
+        assertEquals(0x80002010L, bgtzState.programCounter)
+    }
+
 }
