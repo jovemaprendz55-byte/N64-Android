@@ -23,7 +23,9 @@ class N64HleR4300InstructionStepper(
     private val exceptionRegisterUpdater: N64HleR4300ExceptionRegisterUpdater =
         N64HleR4300ExceptionRegisterUpdater(),
     private val exceptionVectorResolver: N64HleR4300ExceptionVectorResolver =
-        N64HleR4300ExceptionVectorResolver()
+        N64HleR4300ExceptionVectorResolver(),
+    private val exceptionInstructionClassifier: N64HleR4300ExceptionInstructionClassifier =
+        N64HleR4300ExceptionInstructionClassifier()
 ) {
     fun hasPendingDelaySlot(): Boolean = controlSequencer.hasPendingDelaySlot()
 
@@ -53,13 +55,11 @@ class N64HleR4300InstructionStepper(
     fun step(instructionWord: Int, state: N64HleR4300CpuState): N64HleR4300DecodedInstruction {
         val instruction = decoder.decode(instructionWord)
 
-        // SPECIAL function codes not defined by the R4300 encoding are RI,
-        // not an arbitrary host-side UnsupportedOperationException.
-        if (instruction.isSpecial && instruction.specialOperation == null) {
-            enterSimpleArchitecturalException(
-                N64HleR4300ExceptionCode.RESERVED_INSTRUCTION,
-                state
-            )
+        // Classify architecturally exception-causing SPECIAL encodings before
+        // executor dispatch (RI, SYSCALL and BREAK). Unimplemented valid
+        // instructions remain distinct and are not mislabeled as RI.
+        exceptionInstructionClassifier.classify(instruction)?.let { code ->
+            enterSimpleArchitecturalException(code, state)
         }
 
         if (controlSequencer.hasPendingDelaySlot()) {
