@@ -3222,3 +3222,17 @@ Arquivo: `app/src/cleanTest/java/com/jsr/n64android/N64HleGuestAddressSpaceTest.
 - A captura mostra o texto superior do handoff ainda com “0 instruções executadas”, enquanto o painel de diagnóstico da sessão mostra 2. Isso indica que o resumo de handoff é um snapshot inicial e não se atualiza com o stepper; o diagnóstico inferior é a fonte atualizada para contagem/PC. Corrigir futuramente a UI para evitar esse valor superior aparentemente contraditório.
 - Próximo passo físico: tocar mais uma vez em **EXECUTAR 1 INSTRUÇÃO** e registrar o novo PC/opcode; a sequência de ROM previamente observada sugere que a próxima palavra pode ser `0x2508D2E0`, mas só a nova captura confirma o valor efetivamente executado.
 - Ainda não é boot completo de GoldenEye nem renderização: a própria tela informa que execução do jogo, vídeo e áudio não estão conectados à tela.
+
+
+### Terceiro passo físico — confirmação por captura (2026-11-05)
+
+- Captura versionada: `Screenshot_2026-11-05-05-24-09-793_com.jsr.n64android.jpg`.
+- O painel de status informa: **Uma instrução executada com sucesso. Total: 3**.
+- PC seguinte: `0x000000008000040C`.
+- Último PC concluído / PC da última tentativa: `0x0000000080000408`.
+- Última instrução: `0x2508D2E0`, decodificada como `ADDIU $t0, $t0, -11552`.
+- Considerando a instrução anterior `LUI $t0, 0x8006`, o resultado esperado em GPR8 é `0xFFFFFFFF8005D2E0` (sem overflow trap, conforme a semântica de ADDIU).
+- A tela não indica falha: tipo e mensagem permanecem vazios.
+- O resumo superior do handoff continua exibindo zero instruções, enquanto o painel inferior registra três. Portanto, o resumo superior permanece um snapshot inicial; usar o painel inferior para o estado atual do stepper. Corrigir essa inconsistência visual em uma etapa separada.
+- Próximo passo físico: executar exatamente mais uma instrução e enviar a captura para confirmar PC/opcode/resultado. Não presumir o opcode seguinte.
+- Limite: este teste confirma três passos do executor no aparelho, não boot completo de GoldenEye, execução RSP/OSTask, vídeo, áudio ou controles.
