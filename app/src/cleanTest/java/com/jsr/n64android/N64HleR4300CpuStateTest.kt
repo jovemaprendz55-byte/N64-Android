@@ -66,14 +66,10 @@ class N64HleR4300CpuStateTest {
     }
 
     @Test
-    fun programCounterMustBeWordAligned() {
-        assertThrows(IllegalArgumentException::class.java) {
-            N64HleR4300CpuState(0x80000402L)
-        }
-        val state = N64HleR4300CpuState(0x80000400L)
-        assertThrows(IllegalArgumentException::class.java) {
-            state.setProgramCounter(0x80000402L)
-        }
+    fun programCounterCanRepresentUnalignedFetchAddress() {
+        val state = N64HleR4300CpuState(0x80000402L)
+        assertEquals(0x80000402L, state.programCounter)
+
         state.setProgramCounter(0x80000404L)
         assertEquals(0x80000404L, state.programCounter)
     }
