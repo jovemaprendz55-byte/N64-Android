@@ -89,7 +89,7 @@ class N64HleR4300SpecialExecutorTest {
 
     @Test fun unknownOperandFailsWithoutChangingDestinationOrPc() {
         val s = N64HleR4300CpuState(0x80001000L, initialGprValues = mapOf(2 to 7L, 3 to 99L))
-        assertThrows(N64HleR4300ArithmeticOverflow::class.java) {
+        assertThrows(IllegalStateException::class.java) {
             executor.execute(r(1, 2, 3, funct = 0x21), s)
         }
         assertEquals(99L, s.readGpr(3))
@@ -134,7 +134,7 @@ class N64HleR4300SpecialExecutorTest {
     @Test fun moveFromUnknownHiFailsWithoutChangingDestination() {
         val s = state(1L, 2L)
         s.writeGpr(3, 99L)
-        assertThrows(N64HleR4300ArithmeticOverflow::class.java) {
+        assertThrows(IllegalStateException::class.java) {
             executor.execute(r(0, 0, 3, funct = 0x10), s)
         }
         assertEquals(99L, s.readGpr(3))
@@ -143,7 +143,7 @@ class N64HleR4300SpecialExecutorTest {
 
     @Test fun moveToHiWithUnknownSourceDoesNotChangeHi() {
         val s = N64HleR4300CpuState(0x80001000L, initialHi = 7L)
-        assertThrows(N64HleR4300ArithmeticOverflow::class.java) {
+        assertThrows(IllegalStateException::class.java) {
             executor.execute(r(1, 0, 0, funct = 0x11), s)
         }
         assertEquals(7L, s.readHi())
@@ -225,7 +225,7 @@ class N64HleR4300SpecialExecutorTest {
 
     @Test fun wordDivisionByZeroPreservesPreviouslyKnownHiLo() {
         val s = N64HleR4300CpuState(0x80001000L, mapOf(1 to 10L, 2 to 0L), initialHi = 7L, initialLo = 9L)
-        assertThrows(N64HleR4300ArithmeticOverflow::class.java) {
+        assertThrows(IllegalStateException::class.java) {
             executor.execute(r(1, 2, 0, funct = 0x1A), s)
         }
         assertEquals(7L, s.readHi())
@@ -239,7 +239,7 @@ class N64HleR4300SpecialExecutorTest {
             initialHi = 7L,
             initialLo = 9L
         )
-        assertThrows(N64HleR4300ArithmeticOverflow::class.java) {
+        assertThrows(IllegalStateException::class.java) {
             executor.execute(r(1, 2, 0, funct = 0x1A), s)
         }
         assertEquals(7L, s.readHi())
@@ -248,7 +248,7 @@ class N64HleR4300SpecialExecutorTest {
 
     @Test fun doublewordDivisionByZeroPreservesPreviouslyKnownHiLo() {
         val s = N64HleR4300CpuState(0x80001000L, mapOf(1 to 10L, 2 to 0L), initialHi = 7L, initialLo = 9L)
-        assertThrows(N64HleR4300ArithmeticOverflow::class.java) {
+        assertThrows(IllegalStateException::class.java) {
             executor.execute(r(1, 2, 0, funct = 0x1E), s)
         }
         assertEquals(7L, s.readHi())
@@ -262,7 +262,7 @@ class N64HleR4300SpecialExecutorTest {
             initialHi = 7L,
             initialLo = 9L
         )
-        assertThrows(N64HleR4300ArithmeticOverflow::class.java) {
+        assertThrows(IllegalStateException::class.java) {
             executor.execute(r(1, 2, 0, funct = 0x1E), s)
         }
         assertEquals(7L, s.readHi())
