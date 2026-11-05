@@ -58,6 +58,24 @@ class N64HleR4300ExceptionInstructionClassifierTest {
         assertEquals(N64HleR4300ExceptionCode.TRAP, classifier.classify(instruction(0x0E, 1), state)) // TNEI
     }
 
+    @Test fun reservedRegimmRtEncodingsAreReservedInstructions() {
+        for (rt in listOf(0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x0D, 0x0F, 0x12, 0x1F)) {
+            val word = (0x01 shl 26) or (rt shl 16)
+            assertEquals(
+                "REGIMM rt=0x${rt.toString(16)}",
+                N64HleR4300ExceptionCode.RESERVED_INSTRUCTION,
+                classifier.classify(decoder.decode(word))
+            )
+        }
+    }
+
+    @Test fun definedRegimmBranchesAndTrapImmediateFormsAreNotReserved() {
+        for (rt in listOf(0x00, 0x01, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0E, 0x10, 0x11)) {
+            val word = (0x01 shl 26) or (rt shl 16)
+            assertNull("REGIMM rt=0x${rt.toString(16)}", classifier.classify(decoder.decode(word)))
+        }
+    }
+
     @Test fun nonSpecialInstructionIsNotClassifiedHere() {
         assertNull(classifier.classify(decoder.decode(0xFC000000.toInt())))
     }
