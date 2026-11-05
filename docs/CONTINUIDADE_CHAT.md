@@ -3753,3 +3753,11 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
 - Commits: [RI no stepper](https://github.com/jovemaprendz55-byte/N64-Android/commit/7478123d800287d04a9cf66f218b092af0811913), [testes RI](https://github.com/jovemaprendz55-byte/N64-Android/commit/e841cafc4233696b73e7150de2f42cb8482f9e03).
 - Limite explícito: esta entrega cobre apenas function code SPECIAL não definido. Não classificar ainda opcode desconhecido genérico, COP0/COP1 não suportado, SYSCALL, BREAK ou TRAP. Cada classe precisa de regra arquitetural própria; não converter exceções internas genéricas indiscriminadamente em RI.
 - CI dos novos commits pendente de confirmação.
+
+
+### Ajuste de compilação da exceção RI — 2026-11-05
+
+- O workflow [42105361434](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42105361434) falhou na compilação Kotlin, antes de executar testes: o construtor de N64HleR4300ArchitecturalException recebe `Throwable` como causa, mas o primeiro patch passou diretamente `N64HleR4300ExceptionCode`.
+- Corrigido o sinal para carregar um `IllegalStateException` descritivo como causa de host, mantendo `context.code` como a classificação arquitetural RI (ExcCode 10). A causa de host não substitui nem altera o código arquitetural.
+- Commit de correção: [0bebf46](https://github.com/jovemaprendz55-byte/N64-Android/commit/0bebf46112868de1bb4258e44b32efc50f138a46).
+- Aguardar CI deste commit e dos testes RI. Não considerar a implementação validada até build e testes passarem.
