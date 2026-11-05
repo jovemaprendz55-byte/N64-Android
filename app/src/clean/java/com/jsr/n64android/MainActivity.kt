@@ -27,6 +27,7 @@ class MainActivity : Activity() {
     private lateinit var cpuDiagnosticsText: TextView
     private lateinit var hlePreparationText: TextView
     private lateinit var prepareHleButton: Button
+    private lateinit var stepCpuButton: Button
     private var selectedRomUri: Uri? = null
     private var loadedCartridgeSession: N64HleCartridgeSession? = null
     private var preparedHandoff: N64HlePreparedHandoff? = null
@@ -123,6 +124,14 @@ class MainActivity : Activity() {
         val diagnosticsPanel = panel()
         cpuDiagnosticsText = label("", 13, Color.WHITE, false)
         diagnosticsPanel.addView(cpuDiagnosticsText)
+        diagnosticsPanel.addView(space(12))
+        stepCpuButton = Button(this).apply {
+            text = "EXECUTAR 1 INSTRUÇÃO"
+            isAllCaps = false
+            isEnabled = false
+            setOnClickListener { executeOneCpuInstruction() }
+        }
+        diagnosticsPanel.addView(stepCpuButton, matchWidthWrapHeight())
         root.addView(diagnosticsPanel)
         renderCpuDiagnostics(null)
 
@@ -201,6 +210,7 @@ class MainActivity : Activity() {
         preparedHandoff = null
         preparedExecutionSession = null
         prepareHleButton.isEnabled = false
+        stepCpuButton.isEnabled = false
         hlePreparationText.text = "Aguardando inspeção da nova ROM."
         renderCpuDiagnostics(null)
         val name = queryDisplayName(uri) ?: uri.lastPathSegment ?: "Arquivo selecionado"
@@ -229,6 +239,7 @@ class MainActivity : Activity() {
                         preparedHandoff = null
                         preparedExecutionSession = null
                         prepareHleButton.isEnabled = true
+                        stepCpuButton.isEnabled = false
                         hlePreparationText.text = "ROM carregada. Toque em PREPARAR HANDOFF HLE para validar CIC 6102/7101 e preparar a memória convidada."
                         val byteOrder = when (cartridge.byteOrder) {
                             N64HleCartridgeImage.ByteOrder.BIG_ENDIAN -> "Z64 (big-endian)"
@@ -253,6 +264,7 @@ class MainActivity : Activity() {
                         preparedHandoff = null
                         preparedExecutionSession = null
                         prepareHleButton.isEnabled = false
+                        stepCpuButton.isEnabled = false
                         hlePreparationText.text = "Não foi possível preparar: ROM não identificada."
                         statusText.text = "Falha ao identificar a ROM. ${result.reason}"
                         renderCpuDiagnostics(null)
@@ -277,6 +289,7 @@ class MainActivity : Activity() {
             val executionSession = handoff.createR4300ExecutionSession()
             preparedHandoff = handoff
             preparedExecutionSession = executionSession
+            stepCpuButton.isEnabled = true
             renderCpuDiagnostics(executionSession)
             hlePreparationText.text = buildString {
                 appendLine("HANDOFF HLE PREPARADO")
@@ -289,10 +302,50 @@ class MainActivity : Activity() {
         } catch (error: Exception) {
             preparedHandoff = null
             preparedExecutionSession = null
+            stepCpuButton.isEnabled = false
             renderCpuDiagnostics(null)
             hlePreparationText.text = "PERFIL HLE REJEITADO\n${error.message ?: error.javaClass.simpleName}"
         } finally {
             prepareHleButton.isEnabled = true
+        }
+    }
+
+
+    /**
+     * Executes exactly one guest instruction after an explicit user tap.
+     * Failures remain visible and stop further stepping; no automatic loop is started.
+     */
+    private fun executeOneCpuInstruction() {
+        val session = preparedExecutionSession
+        if (session == null) {
+            statusText.text = "Nenhuma sessão R4300 preparada."
+            stepCpuButton.isEnabled = false
+            return
+        }
+
+        stepCpuButton.isEnabled = false
+        statusText.text = "Executando exatamente uma instrução R4300..."
+        try {
+            val result = session.runChunk(1)
+            renderCpuDiagnostics(session)
+            statusText.text = buildString {
+                appendLine("Uma instrução executada com sucesso.")
+                appendLine("Total: ${result.totalExecutedInstructions}")
+                appendLine("PC seguinte: ${formatAddress(result.programCounter)}")
+                append("Última instrução: 0x" +
+                    result.lastInstruction?.rawWord?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0'))
+            }
+            stepCpuButton.isEnabled = true
+        } catch (error: Exception) {
+            renderCpuDiagnostics(session)
+            statusText.text = buildString {
+                appendLine("EXECUÇÃO INTERROMPIDA.")
+                appendLine("Nenhuma instrução foi contabilizada como concluída.")
+                appendLine("PC da tentativa: ${formatAddress(session.cpuState.programCounter)}")
+                append(error.message ?: error.javaClass.simpleName)
+            }
+            // An unsupported opcode or memory fault will repeat at the same PC.
+            stepCpuButton.isEnabled = false
         }
     }
 
