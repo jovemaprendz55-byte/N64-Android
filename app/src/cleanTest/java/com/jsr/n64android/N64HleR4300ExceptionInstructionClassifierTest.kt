@@ -24,6 +24,27 @@ class N64HleR4300ExceptionInstructionClassifierTest {
         assertNull(classifier.classify(decoder.decode(0x30))) // TGE
     }
 
+    @Test fun signedAndUnsignedTrapConditionsAreEvaluated() {
+        val state = N64HleR4300CpuState(0x80000000L, mapOf(1 to -1L, 2 to 1L))
+        fun instruction(function: Int) = decoder.decode((1 shl 21) or (2 shl 16) or function)
+
+        assertEquals(N64HleR4300ExceptionCode.TRAP, classifier.classify(instruction(0x30), state)) // TGE signed
+        assertEquals(N64HleR4300ExceptionCode.TRAP, classifier.classify(instruction(0x33), state)) // TLTU unsigned
+        assertEquals(N64HleR4300ExceptionCode.TRAP, classifier.classify(instruction(0x36), state)) // TNE
+        assertNull(classifier.classify(instruction(0x31), state)) // TGEU false
+        assertNull(classifier.classify(instruction(0x32), state)) // TLT false
+        assertNull(classifier.classify(instruction(0x34), state)) // TEQ false
+    }
+
+    @Test fun equalRegistersTriggerEqualAndGreaterEqualTraps() {
+        val state = N64HleR4300CpuState(0x80000000L, mapOf(1 to 42L, 2 to 42L))
+        fun instruction(function: Int) = decoder.decode((1 shl 21) or (2 shl 16) or function)
+
+        assertEquals(N64HleR4300ExceptionCode.TRAP, classifier.classify(instruction(0x31), state))
+        assertEquals(N64HleR4300ExceptionCode.TRAP, classifier.classify(instruction(0x34), state))
+        assertNull(classifier.classify(instruction(0x36), state))
+    }
+
     @Test fun nonSpecialInstructionIsNotClassifiedHere() {
         assertNull(classifier.classify(decoder.decode(0xFC000000.toInt())))
     }
