@@ -35,7 +35,11 @@ class N64HleR4300InstructionStepper(
         val guestMemory = checkNotNull(memorySpace) {
             "Instruction fetch requires an explicitly configured RDRAM address space"
         }
-        val instructionWord = guestMemory.read32(state.programCounter).toInt()
+        val instructionWord = try {
+            guestMemory.read32(state.programCounter).toInt()
+        } catch (fault: N64HleGuestMemoryFault) {
+            enterInstructionFetchException(fault, state)
+        }
         return step(instructionWord, state)
     }
 
@@ -67,6 +71,36 @@ class N64HleR4300InstructionStepper(
         executeNonControlWithExceptionEntry(instruction, state)
         state.setProgramCounter(state.programCounter + 4L)
         return instruction
+    }
+
+
+    /**
+     * Instruction fetch has its own architectural classification: an
+     * unaligned PC raises AdEL, while an unmapped instruction address raises IBE.
+     * It is intentionally not represented as a data LOAD fault.
+     */
+    private fun enterInstructionFetchException(
+        fault: N64HleGuestMemoryFault,
+        state: N64HleR4300CpuState
+    ): Nothing {
+        val code = when (fault) {
+            is N64HleGuestAddressAlignmentFault -> N64HleR4300ExceptionCode.ADDRESS_LOAD
+            is N64HleGuestAddressMappingFault -> N64HleR4300ExceptionCode.INSTRUCTION_BUS_ERROR
+        }
+        val inDelaySlot = controlSequencer.hasPendingDelaySlot()
+        val context = N64HleR4300ExceptionContext(
+            code = code,
+            faultingPc = state.programCounter,
+            inDelaySlot = inDelaySlot,
+            branchPc = if (inDelaySlot) controlSequencer.pendingBranchAddress() else null,
+            badVirtualAddress = fault.virtualAddress
+        )
+        val status = state.readCop0(COP0_STATUS)
+        val vectorAddress = exceptionVectorResolver.resolveGeneralVector(status)
+        val update = exceptionRegisterUpdater.apply(context, state)
+        if (inDelaySlot) controlSequencer.cancelPendingDelaySlot()
+        state.setProgramCounter(vectorAddress)
+        throw N64HleR4300ArchitecturalException(context, update, vectorAddress, fault)
     }
 
     /**
