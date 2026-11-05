@@ -3469,3 +3469,20 @@ Arquivo: `app/src/cleanTest/java/com/jsr/n64android/N64HleGuestAddressSpaceTest.
 ### Próximo passo
 
 - Acompanhar o CI do commit final `d1505c90c690020e8618e2fb8b34daf6bc6389df`. Se passar, continuar com testes integrados de `SW` desalinhado e preservar o estado de memória/PC; se falhar, corrigir antes de ampliar a cobertura.
+
+## Seção 165 — SW desalinhado integrado ao stepper — 2026-11-05
+
+**Status: teste adicionado; CI do commit de código em andamento na última verificação.**
+
+- Adicionado em `N64HleR4300MemoryExecutorTest.kt` o teste `stepperRejectsMisalignedWordStoreWithoutChangingPcOrMemory`.
+- O teste executa `SW` (opcode `0x2B`) com endereço efetivo desalinhado em 1 byte pelo `N64HleR4300InstructionStepper`.
+- Verifica exceção, PC preservado em `0x80002000` e palavra anterior `0xAABBCCDD` preservada na memória.
+- Commit do teste: `d2d353d0c344c6d246c201a793efa21965c5b7fb`.
+- Workflow associado: `42087415846`; estava em andamento na última consulta. Não afirmar aprovação até conclusão.
+- A validação é sintética/unitária: o executor lança `IllegalArgumentException` por desalinhamento; ainda não implementa entrega arquitetural MIPS/R4300 (Cause, BadVAddr, EXL).
+- Branch `dev/n64-hle-clean-reboot`; `main` não alterada. Nenhum APK novo foi validado.
+
+### Próximo passo
+
+- Aguardar o workflow `42087415846`. Se passar, continuar com testes de efeitos colaterais para outros acessos de memória e depois priorizar exceções arquiteturais de endereço; se falhar, corrigir a causa antes de ampliar a cobertura.
+
