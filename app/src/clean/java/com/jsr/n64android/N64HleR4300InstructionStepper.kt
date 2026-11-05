@@ -99,7 +99,12 @@ class N64HleR4300InstructionStepper(
         val update = exceptionRegisterUpdater.apply(context, state)
         if (inDelaySlot) controlSequencer.cancelPendingDelaySlot()
         state.setProgramCounter(vectorAddress)
-        throw N64HleR4300ArchitecturalException(context, update, vectorAddress, code)
+        throw N64HleR4300ArchitecturalException(
+            context,
+            update,
+            vectorAddress,
+            IllegalStateException("Reserved instruction at 0x${context.faultingPc.toString(16)}")
+        )
     }
 
     /**
