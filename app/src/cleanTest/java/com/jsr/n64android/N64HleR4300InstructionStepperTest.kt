@@ -476,6 +476,24 @@ class N64HleR4300InstructionStepperTest {
     }
 
 
+    @Test fun regimmTrapImmediateEntersTrapExceptionOrAdvancesNormally() {
+        val trapped = exceptionState(0x80003000L, mapOf(1 to -1L))
+        val tgeiu = (0x01 shl 26) or (1 shl 21) or (0x09 shl 16) or 1
+        val signal = assertThrows(N64HleR4300ArchitecturalException::class.java) {
+            stepper.step(tgeiu, trapped)
+        }
+        assertEquals(N64HleR4300ExceptionCode.TRAP, signal.context.code)
+        assertEquals(0x34L, trapped.readCop0(13))
+        assertEquals(0xFFFFFFFF80003000UL.toLong(), trapped.readCop0(14))
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, trapped.programCounter)
+
+        val notTrapped = exceptionState(0x80004000L, mapOf(1 to -1L))
+        val tltiu = (0x01 shl 26) or (1 shl 21) or (0x0B shl 16) or 1
+        stepper.step(tltiu, notTrapped)
+        assertEquals(0x80004004L, notTrapped.programCounter)
+        assertEquals(0L, notTrapped.readCop0(13))
+    }
+
     @Test fun trueTrapEntersTrapExceptionAndFalseTrapAdvancesNormally() {
         val trapped = exceptionState(0x80001000L, mapOf(1 to -1L, 2 to 1L))
         val signal = assertThrows(N64HleR4300ArchitecturalException::class.java) {
