@@ -3097,3 +3097,13 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - APK debug da seção 154: artifact ID `13394762075`, tamanho 873.115 bytes, SHA-256 `9b1930c6cc6bcbe923cc7a4afbe514fa486aceb321486aaba95841396cd064ae`. [Abrir execução 41982919943 e baixar o APK](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41982919943). Artefato disponível até 2026-11-19.
 - **Seção 154 aprovada em CI.** Isso confirma build e testes automatizados; não confirma instalação/teste físico, boot de ROM comercial ou renderização.
 - O botão ainda prepara apenas o handoff e cria a sessão; não executa `runChunk`, IPL3/PIF, RSP/RDP, VI ou áudio. Próximo passo: instalar este APK no Android 16, carregar ROM conhecida CIC 6102/7101 e tocar `PREPARAR HANDOFF HLE`. Conferir a mensagem de sucesso, PC, RDRAM e painel CPU com zero instruções. Não habilitar execução ainda.
+
+## 155. Mapeamento de SP DMEM/IMEM para acessos da CPU — 2026-11-05 (CI pendente)
+
+- Auditoria do handoff mostrou que o perfil CIC 6102/7101 inicializa `$sp = 0xFFFFFFFFA4001FF0`, endereço dentro da SP IMEM (faixa física `0x04001000..0x04001FFF`). O mapa anterior da source set clean aceitava somente RDRAM, então instruções de pilha que acessassem esse endereço falhariam como memória não mapeada.
+- A tabela de memória N64 distingue RDRAM, SP DMEM (`0x04000000..0x04000FFF`) e SP IMEM (`0x04001000..0x04001FFF`). Referências: [ReverseEngineering.wiki — mapa e sequência de boot](https://reverseengineering.wiki/index.php/Platform%3ANintendo_64) e [n64docs — mapa físico](https://n64.readthedocs.io/).
+- `N64HleGuestAddressSpace` agora mantém arrays independentes de 4 KiB para DMEM e IMEM e mapeia ambas as áreas via KSEG0/KSEG1, preservando RDRAM e ordem big-endian. MMIO, DMA, TLB e dispositivos continuam não implementados.
+- Testes adicionados para alias KSEG, limites entre bancos e escrita SW no endereço inicial de pilha `0xA4001FEC`. A implementação não presume que SP DMEM/IMEM seja RDRAM nem mistura seus bytes.
+- Commits: mapeamento `ddf1d041864c5b12f4fe1470682e5a77b2ee60fe`; testes de mapa `4ae2e2fbddf707047d9aa431b254e94ce890f4e5`; teste do executor `cd899519fd827bb71d3e1135188be766ca8f5979`.
+- **CI pendente.** Esta correção permite acesso de memória à região SP usada pelo valor inicial de stack, mas não implementa o RSP, DMA ou registradores SP; não comprova boot de jogo. Não executar ROM comercial antes de CI e teste físico do handoff.
+- Próximo passo: aguardar build/testes e documentação no Actions; se passarem, gerar APK novo e validar no aparelho com ROM CIC 6102/7101, mantendo o driver CPU sem execução automática.
