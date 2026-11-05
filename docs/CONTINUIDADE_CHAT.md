@@ -3441,3 +3441,14 @@ Arquivo: `app/src/cleanTest/java/com/jsr/n64android/N64HleGuestAddressSpaceTest.
 
 ### Próximo passo
 - Acompanhar CI do commit de testes. Se passar, escolher os próximos casos a partir do decoder/executor e manter as limitações de execução real explicitadas.
+
+## Seção 163 — falha de alinhamento em LW não avança CPU — 2026-11-05
+
+**Status: teste integrado adicionado; CI pendente.**
+
+- A suíte já tinha testes unitários de alinhamento/memória no executor; foi acrescentado um teste pelo `N64HleR4300InstructionStepper` para `LW` em endereço desalinhado.
+- O teste exige que a instrução falhe sem avançar o PC e sem marcar o registrador de destino como conhecido.
+- Isso protege o comportamento de falha transacional do stepper para esse caso; não implementa exceções arquiteturais MIPS/R4300.
+- Commit: `d34c564263bca4c76b1fb4cd4153523150540da7`.
+- CI da etapa 162 ainda estava em andamento na última consulta; este novo commit também precisa de CI próprio.
+- Nenhum APK novo validado; branch `main` permanece intocada.
