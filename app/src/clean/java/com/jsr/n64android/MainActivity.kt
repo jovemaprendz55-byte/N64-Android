@@ -277,6 +277,7 @@ class MainActivity : Activity() {
             val executionSession = handoff.createR4300ExecutionSession()
             preparedHandoff = handoff
             preparedExecutionSession = executionSession
+            renderCpuDiagnostics(executionSession)
             hlePreparationText.text = buildString {
                 appendLine("HANDOFF HLE PREPARADO")
                 appendLine("Perfil: CIC 6102/7101 (seed 0x3F)")
@@ -288,6 +289,7 @@ class MainActivity : Activity() {
         } catch (error: Exception) {
             preparedHandoff = null
             preparedExecutionSession = null
+            renderCpuDiagnostics(null)
             hlePreparationText.text = "PERFIL HLE REJEITADO\n${error.message ?: error.javaClass.simpleName}"
         } finally {
             prepareHleButton.isEnabled = true
