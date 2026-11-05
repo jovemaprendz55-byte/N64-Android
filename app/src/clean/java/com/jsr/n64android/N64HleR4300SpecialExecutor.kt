@@ -141,8 +141,8 @@ class N64HleR4300SpecialExecutor {
                 val left = state.readGpr(instruction.rs).toInt()
                 val right = state.readGpr(instruction.rt).toInt()
                 val sum = left.toLong() + right.toLong()
-                check(sum in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()) {
-                    "ADD signed overflow requires an architectural exception, which is not implemented"
+                if (sum !in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()) {
+                    throw N64HleR4300ArithmeticOverflow("ADD")
                 }
                 sum.toInt().toLong()
             }
@@ -150,8 +150,8 @@ class N64HleR4300SpecialExecutor {
                 val left = state.readGpr(instruction.rs).toInt()
                 val right = state.readGpr(instruction.rt).toInt()
                 val difference = left.toLong() - right.toLong()
-                check(difference in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()) {
-                    "SUB signed overflow requires an architectural exception, which is not implemented"
+                if (difference !in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()) {
+                    throw N64HleR4300ArithmeticOverflow("SUB")
                 }
                 difference.toInt().toLong()
             }
@@ -159,8 +159,8 @@ class N64HleR4300SpecialExecutor {
                 val left = state.readGpr(instruction.rs)
                 val right = state.readGpr(instruction.rt)
                 val sum = left + right
-                check(((left xor sum) and (right xor sum)) >= 0L) {
-                    "DADD signed overflow requires an architectural exception, which is not implemented"
+                if (((left xor sum) and (right xor sum)) < 0L) {
+                    throw N64HleR4300ArithmeticOverflow("DADD")
                 }
                 sum
             }
@@ -168,8 +168,8 @@ class N64HleR4300SpecialExecutor {
                 val left = state.readGpr(instruction.rs)
                 val right = state.readGpr(instruction.rt)
                 val difference = left - right
-                check(((left xor right) and (left xor difference)) >= 0L) {
-                    "DSUB signed overflow requires an architectural exception, which is not implemented"
+                if (((left xor right) and (left xor difference)) < 0L) {
+                    throw N64HleR4300ArithmeticOverflow("DSUB")
                 }
                 difference
             }
