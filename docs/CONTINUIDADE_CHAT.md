@@ -3306,3 +3306,14 @@ Arquivo: `app/src/cleanTest/java/com/jsr/n64android/N64HleGuestAddressSpaceTest.
 - A captura reporta sucesso e nenhum tipo/mensagem de falha, mas isso não prova que a condição e o destino do branch foram tratados corretamente.
 - **Pausar novos testes físicos de stepping neste ponto.** Antes de executar a instrução seguinte, inspecionar no código da branch ativa a leitura/escrita de GPR, decodificação BNE, cálculo de alvo, delay slot MIPS e atualização do PC; adicionar testes unitários que validem tanto branch tomado quanto não tomado. Não alterar a main.
 - Limite: oito instruções aceitas no aparelho; correção do fluxo de controle ainda não confirmada.
+
+
+### Correção da análise do oitavo passo — delay slot MIPS confirmado no código
+
+- Revisão dos arquivos atuais na branch `dev/n64-hle-clean-reboot` confirmou que o PC `0x80000420` exibido imediatamente após executar `BNE` em `0x8000041C` é o comportamento arquitetural esperado: o processador ainda precisa executar a instrução do delay slot.
+- `N64HleR4300InstructionStepper.step()` detecta transferências de controle, calcula o plano e agenda a transferência; `N64HleR4300ControlFlowSequencer.schedule()` coloca o PC em `PC+4` e guarda o destino final pendente.
+- `N64HleR4300ControlTransferPlanner` calcula BNE comparando os GPRs e define o destino como `PC+4 + (sign-extended immediate << 2)` quando tomado. Para opcode `0x1520FFFC` em `0x8000041C`, o destino tomado é `0x80000410`.
+- Ao executar a instrução no delay slot, o stepper chama `completeDelaySlot()`, que instala o destino pendente. Portanto, a captura com PC seguinte `0x80000420` **não demonstra por si só erro de branch**; a interpretação anterior como possível falha foi prematura.
+- Os testes já existentes cobrem BNE não tomado com delay slot e a sequenciação de branch; o planner possui teste de BEQ tomado, mas falta um teste explícito de BNE tomado com o offset negativo usado nesta captura. Adicionar esse teste automatizado é uma melhoria de cobertura, não uma correção comprovada do executor.
+- Próximo teste físico seguro: executar exatamente mais uma instrução (o delay slot em `0x80000420`) e enviar captura. Se o mecanismo estiver correto e a condição BNE tiver sido tomada, o PC seguinte deverá passar a `0x80000410`. Se a instrução no delay slot falhar, o branch deve permanecer pendente.
+- Não habilitar execução contínua. Ainda não foi inspecionado na captura o valor efetivo de `$t1`; a conclusão sobre branch tomado depende de confirmar que GPR9 contém valor diferente de zero.
