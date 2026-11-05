@@ -79,4 +79,23 @@ class N64HleR4300ExceptionInstructionClassifierTest {
     @Test fun nonSpecialInstructionIsNotClassifiedHere() {
         assertNull(classifier.classify(decoder.decode(0xFC000000.toInt())))
     }
+
+    @Test fun definedCop0CoOperationsAreNotMisclassifiedAsReserved() {
+        // Valid COP0 CO-format operations; execution support is a separate concern.
+        for (function in listOf(0x01, 0x02, 0x06, 0x08, 0x18)) {
+            val word = (0x10 shl 26) or (0x10 shl 21) or function
+            assertNull(
+                "COP0 CO funct=0x${function.toString(16)}",
+                classifier.classify(decoder.decode(word))
+            )
+        }
+    }
+
+    @Test fun cop0EncodingsAreNotGuessedByTheGenericExceptionClassifier() {
+        // COP0 privilege/format validation needs its own architectural rules.
+        for (rs in listOf(0x00, 0x04, 0x10, 0x01, 0x05)) {
+            val word = (0x10 shl 26) or (rs shl 21)
+            assertNull("COP0 rs=0x${rs.toString(16)}", classifier.classify(decoder.decode(word)))
+        }
+    }
 }
