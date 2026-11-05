@@ -3209,3 +3209,16 @@ Arquivo: `app/src/cleanTest/java/com/jsr/n64android/N64HleGuestAddressSpaceTest.
 - Continuar com passo único, inspecionando cada instrução/PC e primeiro erro, sem habilitar execução contínua ainda.
 - Auditar o próximo estado do executor e a cobertura do decoder antes de propor lote maior. Registrar os valores reais do próximo toque; não assumir qual instrução vem a seguir.
 - Branch `dev/n64-hle-clean-reboot`; `main` permanece intocada.
+
+
+### Segundo passo físico — confirmação por captura (2026-11-05)
+
+- Captura versionada no repositório: `Screenshot_2026-11-05-05-17-40-629_com.jsr.n64android.jpg`.
+- O painel de status informa: **Uma instrução executada com sucesso. Total: 2**.
+- PC seguinte: `0x0000000080000408`.
+- Último PC concluído / PC da última tentativa: `0x0000000080000404`.
+- Última instrução: `0x3C090003`, decodificada como `LUI $t1, 0x0003`; resultado esperado no GPR1-index 9: `0x0000000000030000`.
+- Nenhuma falha é indicada (`Tipo da falha: —`, `Mensagem: —`).
+- A captura mostra o texto superior do handoff ainda com “0 instruções executadas”, enquanto o painel de diagnóstico da sessão mostra 2. Isso indica que o resumo de handoff é um snapshot inicial e não se atualiza com o stepper; o diagnóstico inferior é a fonte atualizada para contagem/PC. Corrigir futuramente a UI para evitar esse valor superior aparentemente contraditório.
+- Próximo passo físico: tocar mais uma vez em **EXECUTAR 1 INSTRUÇÃO** e registrar o novo PC/opcode; a sequência de ROM previamente observada sugere que a próxima palavra pode ser `0x2508D2E0`, mas só a nova captura confirma o valor efetivamente executado.
+- Ainda não é boot completo de GoldenEye nem renderização: a própria tela informa que execução do jogo, vídeo e áudio não estão conectados à tela.
