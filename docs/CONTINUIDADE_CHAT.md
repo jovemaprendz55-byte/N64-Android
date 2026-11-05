@@ -3621,7 +3621,7 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
 
 ## Seção 173 — cancelamento explícito do delay slot para unwind de exceção — 2026-11-05
 
-**Status: primitiva adicionada e teste escrito; integração com o stepper ainda não realizada.**
+**Status: primitiva, teste e documentação aprovados no CI.**
 
 - O CI da seção 172 passou integralmente: [classificador inicial](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42090833612), [correção sem PC inventado](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42090855358), [testes](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42090879165) e [documentação](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42090912845).
 - Inspeção do sequenciador confirmou que, quando uma instrução no delay slot falha, o PC permanece no endereço do slot e a transferência continua pendente. Para uma futura entrada de exceção, esse estado pendente não pode sobreviver como se a instrução ainda fosse completar normalmente.
@@ -3633,6 +3633,23 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
 
 ### Próximo passo
 
-- Confirmar o CI da seção 173.
-- Depois implementar uma sinalização tipada de exceção de dados no stepper: capturar somente `N64HleR4300MemoryAccessFault`, classificar AdEL/AdES/DBE, construir EPC/BD com o PC e branch PC reais, aplicar o atualizador COP0 com preflight e cancelar o delay slot somente após a atualização bem-sucedida.
-- Se Status ou Cause necessários forem desconhecidos, não alterar CPU nem sequenciador. Falhas de fetch permanecem fora desse caminho. A escolha do vetor BEV/EXL fica para etapa posterior.
+- Próxima etapa: implementar e testar a sinalização tipada de exceção de dados no stepper.
+
+## Seção 174 — entrada COP0 para falhas de memória de dados no stepper — 2026-11-05
+
+**Status: integração implementada e testes escritos; CI desta seção precisa ser confirmado.**
+
+- Confirmados como aprovados os três workflows da seção 173: [sequenciador](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42091222615), [teste de cancelamento](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42091239037) e [documentação](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42091290926).
+- Criada `N64HleR4300ArchitecturalException`, sinalização tipada para o host contendo contexto arquitetural, resultado da atualização COP0 e a falha de memória original como causa.
+- O stepper captura exclusivamente `N64HleR4300MemoryAccessFault` no caminho de execução de instrução de dados. Classifica AdEL/AdES/DBE, combina com PC atual e metadados reais do delay slot, e chama `N64HleR4300ExceptionRegisterUpdater`.
+- Depois da atualização COP0 bem-sucedida, se a falha ocorreu no delay slot, o stepper cancela a transferência pendente. O PC permanece no endereço da instrução que falhou; EPC recebe o PC do branch no delay slot; Cause.BD é definido. Não há redirecionamento automático do PC nem seleção de vetor.
+- Se Status ou Cause não forem conhecidos, o preflight do atualizador falha antes das mutações e o delay slot continua pendente. Não se converte essa falha de estado em exceção de convidado.
+- Testes adicionados para AdEL em LOAD, AdES em STORE, DBE em LOAD não mapeado, EPC/BD e cancelamento de delay slot, além de preflight COP0 desconhecido sem mutação e confirmação de que falhas de fetch não entram no caminho de exceção de dados.
+- Commits: [sinalização tipada](https://github.com/jovemaprendz55-byte/N64-Android/commit/2e1104ee27b12f4cef91cb37bf11bc16fc92423b), [integração stepper](https://github.com/jovemaprendz55-byte/N64-Android/commit/4906fc7382cc869cbcc1e7c2f278c04772f02431), [testes de integração](https://github.com/jovemaprendz55-byte/N64-Android/commit/10d35fb2783dd3a40efb359640a68aa4da248116), [DBE e separação do fetch](https://github.com/jovemaprendz55-byte/N64-Android/commit/455cea60b98db5a861bfbd5456e7b5655853e912), [documentação do stepper](https://github.com/jovemaprendz55-byte/N64-Android/commit/4b54768fd4a915cdaa5dbca54e7515b20fdf67eb).
+- Limitações deliberadas: ainda não seleciona vetor de exceção, não interpreta BEV para vetor, não redireciona PC e não implementa IBE para falhas de fetch. O host recebe a sinalização e decide a próxima ação.
+- Nenhuma ROM real foi executada e não houve teste no Poco C85. Alterações somente em `dev/n64-hle-clean-reboot`; `main` permanece intocada.
+
+### Próximo passo
+
+- Confirmar todos os workflows da seção 174 e corrigir eventuais falhas.
+- Depois projetar separadamente a política de despacho de exceções: BEV/EXL, endereço do vetor e transição de PC, sem misturar isso com o classificador de falhas ou com a captura de fetch.
