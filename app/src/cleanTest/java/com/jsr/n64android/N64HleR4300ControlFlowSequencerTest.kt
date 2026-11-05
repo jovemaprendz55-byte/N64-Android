@@ -18,6 +18,8 @@ class N64HleR4300ControlFlowSequencerTest {
         assertEquals(0x80001004L, state.programCounter)
         assertEquals(0x80001008L, state.readGpr(31))
         assertTrue(sequencer.hasPendingDelaySlot())
+        assertEquals(0x80001000L, sequencer.pendingBranchAddress())
+        assertEquals(0x80001004L, sequencer.pendingDelaySlotAddress())
 
         // The delay-slot instruction executes while PC is still PC+4.
         state.writeGpr(2, 55L)
@@ -25,6 +27,8 @@ class N64HleR4300ControlFlowSequencerTest {
         assertEquals(0x80002000L, state.programCounter)
         assertEquals(55L, state.readGpr(2))
         assertFalse(sequencer.hasPendingDelaySlot())
+        assertEquals(null, sequencer.pendingBranchAddress())
+        assertEquals(null, sequencer.pendingDelaySlotAddress())
     }
 
     @Test fun notTakenBranchStillSchedulesAndCompletesDelaySlot() {
@@ -32,8 +36,10 @@ class N64HleR4300ControlFlowSequencerTest {
         val plan = planner.plan(decoder.decode((0x05 shl 26) or (1 shl 21) or (2 shl 16) or 1), state)
         sequencer.schedule(state, plan)
         assertEquals(0x80001004L, state.programCounter)
+        assertEquals(0x80001000L, sequencer.pendingBranchAddress())
         sequencer.completeDelaySlot(state)
         assertEquals(0x80001008L, state.programCounter)
+        assertEquals(null, sequencer.pendingBranchAddress())
     }
 
     @Test fun invalidPlanDoesNotChangePcOrLinkRegister() {
