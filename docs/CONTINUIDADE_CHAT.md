@@ -2944,3 +2944,16 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Artifact: `n64-android-debug-apk`, ID `13392865725`, tamanho 857.531 bytes. Build: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41978077048
 - O APK foi gerado e publicado pelo CI; ainda precisa ser instalado e testado no aparelho Android 16. A tela anterior preta deve ser substituída pela nova interface se a versão correta for instalada.
 - Próxima etapa: testar a nova interface no aparelho; depois implementar leitura real do documento selecionado, cópia/stream controlado para o carregador de ROM, inspeção de cabeçalho e mensagens de erro. Não iniciar a execução da ROM antes de validar carregamento e inspeção.
+
+
+## 145. Leitura limitada e inspeção do documento ROM — 2026-11-05
+
+- Após confirmação do usuário de que a interface aparece e que o seletor exibe o nome do arquivo, foi conectado um fluxo de leitura real ao botão de seleção.
+- Adicionado `N64RomDocumentReader` na source set clean. O leitor consome um `InputStream` com limite máximo de 64 MiB, trata leituras parciais/retorno zero, não confia no tamanho informado pelo provedor e reporta falhas de I/O.
+- O leitor encaminha os bytes ao `N64HleCartridgeImage.parse`, já existente na source set clean, que reconhece Z64 big-endian, V64 byte-swapped e N64 word-swapped e normaliza os dados para big-endian.
+- A Activity abre o documento pelo SAF e faz a leitura em thread de trabalho, sem bloquear a interface. Exibe título, tamanho, ordem de bytes e CRC1/CRC2 quando o cabeçalho é reconhecido.
+- Foram adicionados testes para leitura/inspeção, limite de tamanho, arquivo curto, magic desconhecido e erro de I/O.
+- A leitura/inspeção não inicia CPU, HLE boot, RSP, RDP ou áudio. Ainda não há alegação de jogo carregado ou executado.
+- Commits: leitor `77f7545b9c821ac1a5a884b735869b86a0883895`; testes `67dd3658ed53ab01f5a9a8e4ae98480f4f58a5ca`; integração na Activity `3eca5a8cd235f8cf3da7bd1ef1a38d84bdfc2edc`.
+- CI Android dos três commits está em execução; registrar os resultados finais e o artifact após conclusão.
+- Próxima etapa: validar a leitura/identificação no Android 16 com uma ROM legítima que o usuário tenha direito de usar; conferir título, tamanho, formato e CRC exibidos. Depois auditar a compatibilidade entre a imagem canônica e o caminho de boot HLE antes de conectar a ROM ao runtime. Não iniciar execução automaticamente nesta etapa.
