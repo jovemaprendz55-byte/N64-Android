@@ -3079,3 +3079,11 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - CI do código no run [41982671471](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41982671471) e CI documental no run [41982638918](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41982638918) estavam em execução na última consulta. **Não marcar a seção como aprovada até ambos terminarem com sucesso.**
 - Limites mantidos: o botão prepara memória/estado e cria a sessão R4300, mas não chama `runChunk`, não executa IPL3/PIF, não inicia RSP/RDP/VI/áudio e não prova boot de ROM comercial. Primeiro teste físico deve observar apenas a preparação ou a rejeição do perfil.
 - Próximo passo: concluir CI; corrigir qualquer falha; depois gerar APK atualizado e pedir teste físico do botão com uma ROM CIC 6102/7101 conhecida, registrando o texto exato da tela.
+
+### Fechamento da seção 153 — CI aprovado
+
+- Build Android e testes passaram no run [41982671471](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41982671471), commit `75358ba2a678d49ec02c698ea5e153d2d37fd67f`.
+- CI documental passou no run [41982638918](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41982638918).
+- APK debug gerado: artifact ID `13394801033`, 873.142 bytes, SHA-256 `0f3956cdfad2fa6369d11e80b284bbe4e0dc19dd2a625587fcec8a46eaa5292f`. Download pela página [41982671471](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41982671471).
+- A seção 153 está aprovada em CI. Isso confirma compilação/testes automatizados, não instalação física, compatibilidade de uma ROM comercial ou renderização.
+- Antes de habilitar execução de CPU na tela, aguardar teste físico da preparação HLE com uma ROM conhecida. Registrar resultado literal (perfil aceito/rejeitado, PC e tamanho RDRAM). Não executar `runChunk` ainda.
