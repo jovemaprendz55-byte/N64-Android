@@ -69,7 +69,7 @@ class N64HleR4300ExceptionRegisterUpdaterTest {
             state
         )
         assertEquals(0xFFFFFFFF80000044uL.toLong(), state.readCop0(14))
-        assertEquals(0x80000025L, state.readCop0(13))
+        assertEquals(0x25L, state.readCop0(13))
         assertFalse(result.epcWritten)
         assertTrue(result.exlWasAlreadySet)
     }
