@@ -2863,3 +2863,14 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Implementação COP0 passou no run `41937654023`; integração ao stepper passou no run `41937669816`; testes passaram no run `41937692898`; documentação passou no run `41937719265`.
 - Artifact do run de testes `13374554917`, 848.157 bytes, SHA-256 `913b9792ca60642bc82e2b5369ac6d1e61396ed8bdd1992d773723769726c342`.
 - Seção 139 validada em CI: testes unitários e `assembleDebug` passaram. Não houve teste em dispositivo.
+
+## 140. Modelo explícito de contexto de exceção R4300 — 2026-11-05
+
+- Adicionado `N64HleR4300ExceptionContext.kt` com enumeração explícita de categorias de exceção MIPS/R4300 e seus códigos ExcCode documentados no modelo.
+- O contexto registra PC da instrução causadora, categoria, endereço virtual inválido opcional e número de coprocessador opcional.
+- Para exceção em delay slot, exige branchPc explícito e valida que a instrução causadora esteja exatamente em branchPc + 4. Nesse caso EPC calculado é branchPc e a informação Cause.BD é exposta como fato booleano.
+- Para exceção fora de delay slot, EPC é o próprio faultingPc e branchPc é proibido.
+- Testes cobrem EPC normal, EPC/BD em delay slot, ausência de branchPc, endereço não adjacente, metadado indevido e metadados opcionais.
+- Commits: modelo `b5029ad02f993ac8f858920c95c66a66f975b57b`; testes `e0ca60d2f6ff19722713db39c59cc3db8eab20d7`.
+- **Limite importante:** este commit cria apenas um modelo imutável de contexto. Ainda não escreve Cause/EPC/BadVAddr em COP0, não consulta Status/BEV/EXL, não seleciona vetor de exceção, não altera PC e não entrega exceções durante execução. Nenhum valor inicial de COP0 é presumido.
+- CI de implementação e testes ainda precisa concluir; não declarar seção aprovada até testes e APK passarem.
