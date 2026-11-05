@@ -3411,3 +3411,19 @@ Arquivo: `app/src/cleanTest/java/com/jsr/n64android/N64HleGuestAddressSpaceTest.
 
 - Aguardar `testDebugUnitTest` e `assembleDebug` do commit `7674e6c7b37f508112ec84bcbff87438cc9280ea`.
 - Se CI falhar, analisar o erro e corrigir antes de seguir; se passar, ampliar os testes de fluxo de controle com condições-limite e então escolher o próximo subsistema guiado por evidência da ROM.
+
+## Seção 161 — testes de saltos por registrador JR/JALR — 2026-11-05
+
+**Status: testes adicionados; CI do commit atual ainda precisa concluir.**
+
+- Adicionados testes para JR: usa o endereço-alvo de um registrador e só instala o alvo depois do delay slot.
+- Adicionados testes para JALR: grava PC+8 no registrador de link selecionado (`rd`) e transfere após o delay slot.
+- Adicionado teste negativo: JR com alvo desalinhado deve falhar sem alterar PC nem criar delay slot pendente.
+- Commit: `cb28278bb5d64b8eafd5fc7448c027790ba45c5b`.
+- Esses são testes unitários sintéticos do fluxo de controle. Não demonstram que a ROM GoldenEye executou esses saltos no dispositivo.
+- A branch `main` permanece intocada; nenhum APK novo deve ser considerado validado até CI completo.
+
+### Próxima verificação
+
+- Acompanhar o workflow do commit `cb28278bb5d64b8eafd5fc7448c027790ba45c5b`.
+- Se testes e build passarem, continuar com casos-limite de J/JAL e instruções de memória; se falharem, corrigir primeiro.
