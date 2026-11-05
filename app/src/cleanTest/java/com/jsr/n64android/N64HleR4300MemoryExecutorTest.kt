@@ -74,6 +74,15 @@ class N64HleR4300MemoryExecutorTest {
         }
         assertEquals(0xAABBCCDDL, memory.read32(0x80000000L))
     }
+    @Test fun stackStoreCanWriteToInitialSpImemAddress() {
+        val state = N64HleR4300CpuState(
+            0x80001000L,
+            mapOf(1 to 0xFFFFFFFFA4001FF0UL.toLong(), 2 to 0x12345678L)
+        )
+        executor.execute(N64HleR4300InstructionDecoder().decode(i(0x2B, 1, 2, -4)), state)
+        assertEquals(0x12345678L, memory.read32(0xA4001FEC))
+    }
+
     @Test fun stepperExecutesLoadAndStoreAndAdvancesPc() {
         val sharedMemory = N64HleGuestAddressSpace()
         val stepper = N64HleR4300InstructionStepper(memorySpace = sharedMemory)
