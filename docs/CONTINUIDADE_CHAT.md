@@ -3544,3 +3544,24 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
 ### Próximo passo
 
 - Aguardar os dois workflows. Se passarem, integrar o contexto com estado COP0 persistente (Cause, EPC, BadVAddr e Status.EXL) e depois conectar falhas de alinhamento/acesso no stepper à entrega arquitetural, incluindo BD/EPC em delay slot. Se falharem, corrigir antes de avançar.
+
+
+## Seção 169 — persistência inicial dos registradores de exceção COP0 — 2026-11-05
+
+**Status: atualizador e testes presentes; CI da correção de compilação aprovado. Integração com o stepper ainda pendente.**
+
+- O CI do commit que removeu as declarações duplicadas concluiu com sucesso: [run 42089265529](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42089265529).
+- Commit de correção: [580b0dd7e5cd9bb60610551e7baab0b2204ac9cc](https://github.com/jovemaprendz55-byte/N64-Android/commit/580b0dd7e5cd9bb60610551e7baab0b2204ac9cc).
+- O modelo de exceção foi mantido em `N64HleR4300ExceptionContext.kt`; a duplicação no arquivo `N64HleR4300CpuState.kt` foi removida.
+- Inspeção confirmou a presença de `N64HleR4300ExceptionRegisterUpdater`, que atualiza Cause.ExcCode, Cause.BD, Status.EXL, EPC e BadVAddr opcional.
+- A política implementada preserva EPC quando EXL já estava ativo e exige Status/Cause conhecidos antes de qualquer mutação. O atualizador ainda não seleciona vetor nem é chamado pelo stepper.
+- Testes em `N64HleR4300ExceptionRegisterUpdaterTest.kt` cobrem exceção normal, delay slot, exceção aninhada, BadVAddr e falha de preflight para registradores desconhecidos.
+- A inspeção do stepper confirmou que falhas de execução ainda são exceções Kotlin; não são convertidas em exceções arquiteturais. O sequenciador já expõe `pendingBranchAddress()`, útil para construir EPC/BD no delay slot.
+- Não houve teste de ROM real nem validação no Poco C85 nesta etapa. Branch `dev/n64-hle-clean-reboot`; branch `main` permanece intocada.
+
+### Próximo passo
+
+- Projetar a entrega de exceções no stepper sem alterar a semântica de falhas ainda não classificadas.
+- Primeiro classificar falhas de memória em AdEL/AdES/IBE/DBE e transportar o endereço virtual que falhou para BadVAddr.
+- Capturar o PC atual e `pendingBranchAddress()` antes de consumir/alterar o delay slot; aplicar Cause/EPC/Status e só então transferir para o vetor correto, depois de definir e testar a política de vetores R4300/HLE.
+- Adicionar testes do stepper para falha de load/store normal e no delay slot, preservando atomicidade e verificando os registradores COP0. Não afirmar compatibilidade com ROM real até teste no aparelho.
