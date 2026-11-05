@@ -84,4 +84,23 @@ class N64HleR4300ControlFlowSequencerTest {
         sequencer.completeDelaySlot(state)
         assertThrows(IllegalStateException::class.java) { sequencer.completeDelaySlot(state) }
     }
+
+    @Test fun cancelPendingDelaySlotClearsSequencingWithoutChangingPcOrRegisters() {
+        val state = N64HleR4300CpuState(0x80001000L)
+        val plan = planner.plan(decoder.decode((0x03 shl 26) or 0x800), state)
+        sequencer.schedule(state, plan)
+
+        val delaySlotPc = state.programCounter
+        val linkValue = state.readGpr(31)
+        assertTrue(sequencer.hasPendingDelaySlot())
+
+        sequencer.cancelPendingDelaySlot()
+
+        assertFalse(sequencer.hasPendingDelaySlot())
+        assertEquals(null, sequencer.pendingBranchAddress())
+        assertEquals(null, sequencer.pendingDelaySlotAddress())
+        assertEquals(delaySlotPc, state.programCounter)
+        assertEquals(linkValue, state.readGpr(31))
+    }
+
 }
