@@ -3030,3 +3030,16 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Commits: implementação `ddea71fc3207b08746f90a4185598cf00f4d83f1`; testes `2d1cf4edd6490d1e568e07f99fb0b9376f009ede`.
 - **Limites:** o campo de falha contém apenas tipo e mensagem da exceção Java/Kotlin, não um diagnóstico arquitetural R4300 nem uma classificação automática de exceções guest. Se a falha ocorrer depois do fetch, o stepper atual não expõe o word decodificado que falhou; portanto, o snapshot registra o PC tentado e conserva a última instrução concluída, sem inventar a instrução que falhou. Não há ainda exibição desse diagnóstico na Activity.
 - Próxima etapa: aguardar CI de implementação/testes e documentação. Se aprovado, avaliar uma tela de diagnóstico manual na Activity, sem iniciar execução de ROM automaticamente e sem confundir logs sintéticos com boot real de jogo.
+
+
+- **Validação final da seção 150 — 2026-11-05:** implementação R4300 validada no run [41981425367](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41981425367), testes no run [41981451166](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41981451166) e documentação no run [41981471360](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41981471360). Todos terminaram com sucesso.
+
+## 151. Painel de diagnóstico R4300 na interface — 2026-11-05
+
+- A Activity clean ganhou a seção visual **DIAGNÓSTICO DA CPU R4300**.
+- O painel aceita renderizar o snapshot real de uma `N64HleR4300ExecutionSession`: total de instruções, último PC concluído, palavra da última instrução, PC da última tentativa e resumo da última falha.
+- Enquanto não existir sessão guest ativa, a interface mostra explicitamente que não há CPU ativa, usa traços em vez de zeros/endereço inventados e informa que falta um perfil HLE validado.
+- Ao selecionar outra ROM, o painel volta ao estado sem sessão. A inspeção do cabeçalho não é apresentada como boot ou execução.
+- **Limite importante:** o painel está preparado para receber uma sessão, mas a Activity ainda não cria nem executa uma sessão R4300. Não existe perfil HLE de jogo validado conectado ao botão de seleção; nenhum PC/instrução real de jogo é exibido ainda.
+- Commit da interface: `23a27441572e8ad8ea226b8c4d501b6467b652e0`.
+- Próximo passo: validar build/testes da Activity e documentação. Se aprovado, inspecionar a cadeia de evidências para o primeiro perfil HLE real antes de conectar execução à interface. Não usar perfil sintético como se fosse boot de ROM comercial.
