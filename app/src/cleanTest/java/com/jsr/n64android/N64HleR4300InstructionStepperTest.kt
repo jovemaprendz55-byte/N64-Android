@@ -524,4 +524,18 @@ class N64HleR4300InstructionStepperTest {
         assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
     }
 
+
+    @Test fun reservedCop0TransferFormatEntersReservedInstructionException() {
+        val state = exceptionState(0x80006000L, emptyMap())
+        val reservedCop0 = (0x10 shl 26) or (0x02 shl 21) // COP0 rs=2 is reserved
+        val signal = assertThrows(N64HleR4300ArchitecturalException::class.java) {
+            stepper.step(reservedCop0, state)
+        }
+
+        assertEquals(N64HleR4300ExceptionCode.RESERVED_INSTRUCTION, signal.context.code)
+        assertEquals(0x28L, state.readCop0(13))
+        assertEquals(0xFFFFFFFF80006000UL.toLong(), state.readCop0(14))
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
+    }
+
 }
