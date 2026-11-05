@@ -5,8 +5,8 @@ package com.jsr.n64android
  *
  * Instructions may be supplied directly with step(), or fetched from an
  * explicitly configured guest RDRAM space with stepFromMemory(). Typed data-memory
- * faults enter COP0 and are signaled to the host; vector selection and guest-PC
- * redirection are not implemented. Supported instruction subsets share one delay-slot path.
+ * faults enter COP0, redirect PC to the BEV-selected general vector, and are
+ * signaled to the host. Supported instruction subsets share one delay-slot path.
  */
 class N64HleR4300InstructionStepper(
     private val decoder: N64HleR4300InstructionDecoder = N64HleR4300InstructionDecoder(),
@@ -21,7 +21,9 @@ class N64HleR4300InstructionStepper(
     private val memoryExceptionClassifier: N64HleR4300MemoryExceptionClassifier =
         N64HleR4300MemoryExceptionClassifier(),
     private val exceptionRegisterUpdater: N64HleR4300ExceptionRegisterUpdater =
-        N64HleR4300ExceptionRegisterUpdater()
+        N64HleR4300ExceptionRegisterUpdater(),
+    private val exceptionVectorResolver: N64HleR4300ExceptionVectorResolver =
+        N64HleR4300ExceptionVectorResolver()
 ) {
     fun hasPendingDelaySlot(): Boolean = controlSequencer.hasPendingDelaySlot()
 
@@ -41,8 +43,8 @@ class N64HleR4300InstructionStepper(
      * Executes one supplied instruction word.
      *
      * Returns the decoded instruction on success. Typed data-memory faults
-     * update COP0 and throw N64HleR4300ArchitecturalException without advancing
-     * PC. Delay-slot control transfers remain unsupported.
+     * update COP0, redirect PC to the general exception vector, and throw
+     * N64HleR4300ArchitecturalException. Delay-slot control transfers remain unsupported.
      */
     fun step(instructionWord: Int, state: N64HleR4300CpuState): N64HleR4300DecodedInstruction {
         val instruction = decoder.decode(instructionWord)
@@ -69,8 +71,8 @@ class N64HleR4300InstructionStepper(
 
     /**
      * Enters COP0 for typed data-memory faults only. Unknown required COP0
-     * inputs fail during updater preflight, before the pending slot is cleared.
-     * Vector selection and guest-PC redirection remain the host's responsibility.
+     * inputs fail before mutation. The general vector is resolved from Status.BEV;
+     * PC redirection happens only after COP0 update succeeds.
      */
     private fun executeNonControlWithExceptionEntry(
         instruction: N64HleR4300DecodedInstruction,
@@ -88,9 +90,14 @@ class N64HleR4300InstructionStepper(
                 branchPc = if (inDelaySlot) controlSequencer.pendingBranchAddress() else null,
                 badVirtualAddress = classification.badVirtualAddress
             )
+            // Read Status before mutation: it is both required by the updater and
+            // the source of BEV. Unknown Status must leave CPU and delay metadata intact.
+            val status = state.readCop0(COP0_STATUS)
+            val vectorAddress = exceptionVectorResolver.resolveGeneralVector(status)
             val update = exceptionRegisterUpdater.apply(context, state)
             if (inDelaySlot) controlSequencer.cancelPendingDelaySlot()
-            throw N64HleR4300ArchitecturalException(context, update, fault)
+            state.setProgramCounter(vectorAddress)
+            throw N64HleR4300ArchitecturalException(context, update, vectorAddress, fault)
         }
     }
 
@@ -106,6 +113,8 @@ class N64HleR4300InstructionStepper(
             else -> immediateExecutor.execute(instruction, state)
         }
     }
+
+    private companion object { const val COP0_STATUS = 12 }
 
     private fun isControlTransfer(instruction: N64HleR4300DecodedInstruction): Boolean {
         if (instruction.isSpecial) {
