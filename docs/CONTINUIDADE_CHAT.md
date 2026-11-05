@@ -2970,3 +2970,15 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - CI dos três commits foi disparada: runs `41979469303`, `41979479834` e `41979493285`; validar conclusão antes de declarar a seção aprovada.
 - **Limite:** a ROM está apenas armazenada numa sessão de dados da aplicação. Nenhum barramento/RDRAM é criado; não há boot HLE, execução de CPU, scheduler RSP, renderização ou áudio.
 - Próxima etapa: planejar a migração mínima e testada dos módulos HLE necessários para a source set clean, começando por dependências/cartridge-bus e sem reativar a antiga Activity/runtime de uma só vez.
+
+
+## 147. Preparação explícita de handoff HLE a partir da sessão ROM — 2026-11-05
+
+- Auditoria da source set clean confirmou que `N64HleBootProfile`, `N64HleBootInitializer` e `N64HleGuestAddressSpace` já existem e têm testes. O antigo `N64HleBoot.prepare(N64Bus, R4300Cpu)` continua em `src/main` e não é a implementação usada pelo APK clean.
+- A sessão `N64HleCartridgeSession` agora oferece `prepareHleHandoff(profile, rdramSize)`: cria uma RDRAM nova e aplica exclusivamente as cópias, escritas, GPRs, PC e COP0 explicitamente fornecidos no perfil.
+- O resultado `N64HlePreparedHandoff` expõe a memória convidada e o snapshot de entrada da CPU, mas não instancia nem executa o stepper R4300. Nenhum CIC, stack, registro COP0, parâmetros libultra ou perfil de jogo é inventado.
+- Testes adicionais validam a aplicação de perfil sintético explícito, leitura de dados copiados e COP0 desconhecido quando omitido; perfil com origem ROM inválida é rejeitado.
+- Commits: API `caea8762230199e35b3cbf676cd29f197d952a64`; testes `c4b94d61005e48551f3c3dde09b0d9835d260d0a`.
+- CI da implementação iniciou no run `41979759339`; confirmar resultado final e artefato antes de marcar a seção aprovada.
+- **Limite:** isto prepara um handoff genérico apenas com perfil sintético/evidenciado fornecido pelo chamador. A Activity não oferece ainda um perfil automático para GoldenEye ou outros jogos; não há detecção CIC integrada, validação CRC específica do boot, execução R4300, scheduler RSP, RDP, vídeo ou áudio.
+- Próxima etapa: auditar como o stepper R4300 clean consome `N64HleCpuEntryState` e `N64HleGuestAddressSpace`; definir uma fronteira explícita de memória para instruções/dados antes de criar o primeiro executor de passos integrado.
