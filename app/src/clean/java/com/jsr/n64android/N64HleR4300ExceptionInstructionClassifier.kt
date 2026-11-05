@@ -18,6 +18,9 @@ class N64HleR4300ExceptionInstructionClassifier {
             if (instruction.opcode == OP_REGIMM && instruction.rt !in REGIMM_VALID_RT) {
                 return N64HleR4300ExceptionCode.RESERVED_INSTRUCTION
             }
+            if (instruction.opcode == OP_COP0) {
+                return classifyCop0Encoding(instruction)
+            }
             return null
         }
 
@@ -76,8 +79,35 @@ class N64HleR4300ExceptionInstructionClassifier {
         return if (condition) N64HleR4300ExceptionCode.TRAP else null
     }
 
+    private fun classifyCop0Encoding(
+        instruction: N64HleR4300DecodedInstruction
+    ): N64HleR4300ExceptionCode? {
+        // MFC0/DMFC0/MTC0/DMTC0 are architecturally defined transfer formats.
+        // Only MFC0/MTC0 are currently executed; the 64-bit forms remain valid
+        // but unimplemented and therefore must not be reported as RI.
+        if (instruction.rs in COP0_TRANSFER_RS) return null
+
+        // COP0 CO format contains TLB operations, ERET and WAIT. Preserve these
+        // known-valid operations for later execution/privilege handling.
+        if (instruction.rs == COP0_RS_CO) {
+            return if (instruction.functionCode in COP0_KNOWN_CO_FUNCTIONS) {
+                null
+            } else {
+                N64HleR4300ExceptionCode.RESERVED_INSTRUCTION
+            }
+        }
+
+        // Other rs formats in the COP0 opcode space are reserved on R4300.
+        return N64HleR4300ExceptionCode.RESERVED_INSTRUCTION
+    }
+
     private companion object {
         const val OP_REGIMM = 0x01
+        const val OP_COP0 = 0x10
+        const val COP0_RS_CO = 0x10
+        val COP0_TRANSFER_RS = setOf(0x00, 0x01, 0x04, 0x05)
+        // TLBR, TLBWI, TLBWR, TLBP, ERET, WAIT.
+        val COP0_KNOWN_CO_FUNCTIONS = setOf(0x01, 0x02, 0x06, 0x08, 0x18, 0x20)
         const val RT_TGEI = 0x08
         const val RT_TGEIU = 0x09
         const val RT_TLTI = 0x0A
