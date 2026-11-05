@@ -25,7 +25,7 @@ class N64HleR4300ExceptionRegisterUpdaterTest {
             state
         )
         assertEquals(0x80001020L, state.readCop0(14))
-        assertEquals(0x0000A033L, state.readCop0(13))
+        assertEquals(0x0000A0B3L, state.readCop0(13))
         assertEquals(0x00000003L, state.readCop0(12))
         assertTrue(result.epcWritten)
         assertFalse(result.exlWasAlreadySet)
@@ -69,7 +69,7 @@ class N64HleR4300ExceptionRegisterUpdaterTest {
             state
         )
         assertEquals(0x80000044L, state.readCop0(14))
-        assertEquals(0x80000024L, state.readCop0(13))
+        assertEquals(0x80000025L, state.readCop0(13))
         assertFalse(result.epcWritten)
         assertTrue(result.exlWasAlreadySet)
     }
