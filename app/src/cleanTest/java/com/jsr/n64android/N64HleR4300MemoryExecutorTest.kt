@@ -345,4 +345,22 @@ class N64HleR4300MemoryExecutorTest {
         assertEquals(0x1234, storeMemory.read16(0x80000100L))
     }
 
+
+
+    @Test fun stepperRejectsMisalignedWordStoreWithoutChangingPcOrMemory() {
+        val sharedMemory = N64HleGuestAddressSpace()
+        sharedMemory.write32(0x80000100L, 0xAABBCCDDL)
+        val stepper = N64HleR4300InstructionStepper(memorySpace = sharedMemory)
+        val state = N64HleR4300CpuState(
+            0x80002000L,
+            mapOf(1 to 0x80000101L, 2 to 0x12345678L)
+        )
+
+        assertThrows(IllegalArgumentException::class.java) {
+            stepper.step(i(0x2B, 1, 2, 0), state) // SW to unaligned address
+        }
+        assertEquals(0x80002000L, state.programCounter)
+        assertEquals(0xAABBCCDDL, sharedMemory.read32(0x80000100L))
+    }
+
 }
