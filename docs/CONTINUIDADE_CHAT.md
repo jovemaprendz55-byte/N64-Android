@@ -2958,3 +2958,15 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - CI Android concluída com sucesso nos três commits de código: leitor run `41978857923`; testes run `41978862147`; integração Activity run `41978866307`. O commit documental `6ef248e8d59491bbbc1b187f7d1deb73636e7925` também passou no run `41978908507`.
 - Artifact APK do commit documental: `n64-android-debug-apk`, ID `13392548735`, 861.641 bytes, SHA-256 `d124ace64baedd1c7ee7f95d11167fae7abc111e033ce1c1af15de16a994b251`, não expirado no momento da geração.
 - Próxima etapa: validar a leitura/identificação no Android 16 com uma ROM legítima que o usuário tenha direito de usar; conferir título, tamanho, formato e CRC exibidos. Depois auditar a compatibilidade entre a imagem canônica e o caminho de boot HLE antes de conectar a ROM ao runtime. Não iniciar execução automaticamente nesta etapa.
+
+
+## 146. Retenção da ROM validada na sessão limpa — 2026-11-05
+
+- Auditoria confirmou que `app/build.gradle.kts` substitui as source sets principais por `src/clean/java` e `src/cleanTest/java`. Portanto, os módulos antigos em `src/main/java` (incluindo `N64RomLoader`, `N64HleBoot` e o runtime R4300 legado) **não são compilados no APK clean atual**. Não é seguro conectar a Activity a essas classes sem uma migração/auditoria explícita.
+- Criado `N64HleCartridgeSession` na source set clean para reter a imagem `N64HleCartridgeImage` já validada e normalizada em memória. A sessão expõe tamanho e leitura por faixa usando cópias defensivas.
+- A Activity agora guarda a sessão após a inspeção bem-sucedida; ao escolher outro arquivo, descarta a sessão anterior. A tela informa que a ROM está retida em memória, mas CPU e HLE boot ainda não começaram.
+- Testes cobrem retenção e metadados, leitura de faixa, isolamento de cópia e rejeição de faixa fora da ROM.
+- Commits: sessão `fb7c2c8ec615e02ddb31b8595f86a24287f181ba`; testes `97d575bf4f07fe025a552665cdef7cbb439a29ad`; Activity `26db8656f410cf6f770e1cd7a98b95566e732fa0`.
+- CI dos três commits foi disparada: runs `41979469303`, `41979479834` e `41979493285`; validar conclusão antes de declarar a seção aprovada.
+- **Limite:** a ROM está apenas armazenada numa sessão de dados da aplicação. Nenhum barramento/RDRAM é criado; não há boot HLE, execução de CPU, scheduler RSP, renderização ou áudio.
+- Próxima etapa: planejar a migração mínima e testada dos módulos HLE necessários para a source set clean, começando por dependências/cartridge-bus e sem reativar a antiga Activity/runtime de uma só vez.
