@@ -3236,3 +3236,17 @@ Arquivo: `app/src/cleanTest/java/com/jsr/n64android/N64HleGuestAddressSpaceTest.
 - O resumo superior do handoff continua exibindo zero instruções, enquanto o painel inferior registra três. Portanto, o resumo superior permanece um snapshot inicial; usar o painel inferior para o estado atual do stepper. Corrigir essa inconsistência visual em uma etapa separada.
 - Próximo passo físico: executar exatamente mais uma instrução e enviar a captura para confirmar PC/opcode/resultado. Não presumir o opcode seguinte.
 - Limite: este teste confirma três passos do executor no aparelho, não boot completo de GoldenEye, execução RSP/OSTask, vídeo, áudio ou controles.
+
+
+### Quarto passo físico — confirmação por captura (2026-11-05)
+
+- Captura versionada: `Screenshot_2026-11-05-05-35-25-905_com.jsr.n64android.jpg`.
+- O painel STATUS informa: **Uma instrução executada com sucesso. Total: 4**.
+- PC seguinte: `0x0000000080000410`.
+- Último PC concluído / PC da última tentativa: `0x000000008000040C`.
+- Última instrução: `0x35291080`, decodificada como `ORI $t1, $t1, 0x1080`.
+- Após o passo anterior ter carregado `$t1 = 0x0000000000030000`, o resultado esperado é `$t1 = 0x0000000000031080`.
+- A captura não indica falha: tipo e mensagem permanecem vazios.
+- O painel superior ainda exibe zero instruções por ser snapshot inicial do handoff; o painel inferior apresenta a contagem atualizada (4).
+- Próximo passo físico: tocar uma vez em **EXECUTAR 1 INSTRUÇÃO** e registrar o próximo PC/opcode. Não assumir o opcode seguinte.
+- Limite: quatro passos confirmados no aparelho não equivalem a boot completo do jogo, nem comprovam RSP/OSTask, vídeo, áudio ou controles.
