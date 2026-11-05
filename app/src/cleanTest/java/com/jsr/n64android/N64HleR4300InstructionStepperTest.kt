@@ -220,7 +220,7 @@ class N64HleR4300InstructionStepperTest {
 
         assertEquals(N64HleR4300ExceptionCode.ADDRESS_LOAD, signal.context.code)
         assertEquals(0x80001000L, signal.context.exceptionProgramCounter)
-        assertEquals(0x80000101L, state.readCop0(8))
+        assertEquals(0xFFFFFFFF80000101UL.toLong(), state.readCop0(8))
         assertEquals(0x10L, state.readCop0(13))
         assertEquals(0x2L, state.readCop0(12))
         assertEquals(0x80001000L, state.programCounter)
@@ -238,7 +238,7 @@ class N64HleR4300InstructionStepperTest {
 
         assertEquals(N64HleR4300ExceptionCode.ADDRESS_STORE, signal.context.code)
         assertEquals(0x14L, state.readCop0(13))
-        assertEquals(0x80000102L, state.readCop0(8))
+        assertEquals(0xFFFFFFFF80000102UL.toLong(), state.readCop0(8))
         assertEquals(0x80001100L, state.programCounter)
     }
 
@@ -256,7 +256,7 @@ class N64HleR4300InstructionStepperTest {
         assertTrue(signal.context.inDelaySlot)
         assertEquals(0x80001000L, signal.context.exceptionProgramCounter)
         assertEquals(0x80000101L, signal.context.badVirtualAddress)
-        assertEquals(0x80000010L, state.readCop0(13))
+        assertEquals(0xFFFFFFFF80000010UL.toLong(), state.readCop0(13))
         assertEquals(0x2L, state.readCop0(12))
         assertEquals(0x80001004L, state.programCounter)
         assertFalse(stepperWithMemory.hasPendingDelaySlot())
@@ -292,7 +292,7 @@ class N64HleR4300InstructionStepperTest {
         }
 
         assertEquals(N64HleR4300ExceptionCode.DATA_BUS_ERROR, signal.context.code)
-        assertEquals(0x80800000L, state.readCop0(8))
+        assertEquals(0xFFFFFFFF80800000UL.toLong(), state.readCop0(8))
         assertEquals(0x1CL, state.readCop0(13))
         assertEquals(0x80001200L, state.programCounter)
     }
