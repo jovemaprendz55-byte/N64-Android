@@ -53,6 +53,15 @@ class N64HleR4300InstructionStepper(
     fun step(instructionWord: Int, state: N64HleR4300CpuState): N64HleR4300DecodedInstruction {
         val instruction = decoder.decode(instructionWord)
 
+        // SPECIAL function codes not defined by the R4300 encoding are RI,
+        // not an arbitrary host-side UnsupportedOperationException.
+        if (instruction.isSpecial && instruction.specialOperation == null) {
+            enterSimpleArchitecturalException(
+                N64HleR4300ExceptionCode.RESERVED_INSTRUCTION,
+                state
+            )
+        }
+
         if (controlSequencer.hasPendingDelaySlot()) {
             check(!isControlTransfer(instruction)) {
                 "Control transfer in a delay slot requires exception handling, which is not implemented"
@@ -73,6 +82,25 @@ class N64HleR4300InstructionStepper(
         return instruction
     }
 
+
+    private fun enterSimpleArchitecturalException(
+        code: N64HleR4300ExceptionCode,
+        state: N64HleR4300CpuState
+    ): Nothing {
+        val inDelaySlot = controlSequencer.hasPendingDelaySlot()
+        val context = N64HleR4300ExceptionContext(
+            code = code,
+            faultingPc = state.programCounter,
+            inDelaySlot = inDelaySlot,
+            branchPc = if (inDelaySlot) controlSequencer.pendingBranchAddress() else null
+        )
+        val status = state.readCop0(COP0_STATUS)
+        val vectorAddress = exceptionVectorResolver.resolveGeneralVector(status)
+        val update = exceptionRegisterUpdater.apply(context, state)
+        if (inDelaySlot) controlSequencer.cancelPendingDelaySlot()
+        state.setProgramCounter(vectorAddress)
+        throw N64HleR4300ArchitecturalException(context, update, vectorAddress, code)
+    }
 
     /**
      * Instruction fetch has its own architectural classification: an
