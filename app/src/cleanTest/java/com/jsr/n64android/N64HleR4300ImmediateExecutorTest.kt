@@ -78,7 +78,7 @@ class N64HleR4300ImmediateExecutorTest {
             stepper.step(i(0x18, 1, 2, 1), overflow)
         }
         assertEquals(false, overflow.isGprKnown(2))
-        assertEquals(0x80001000L, overflow.programCounter)
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, overflow.programCounter)
     }
 
     private fun exceptionState(pc: Long, gprs: Map<Int, Long>): N64HleR4300CpuState =
