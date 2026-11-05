@@ -23,7 +23,7 @@ class N64HleR4300ImmediateExecutorTest {
             stepper.step(i(0x08, 1, 2, 1), state)
         }
         assertEquals(false, state.isGprKnown(2))
-        assertEquals(0x80001000L, state.programCounter)
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
     }
 
     @Test fun logicalImmediatesAreZeroExtended() {
