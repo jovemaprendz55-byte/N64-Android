@@ -3365,3 +3365,34 @@ Arquivo: `app/src/cleanTest/java/com/jsr/n64android/N64HleGuestAddressSpaceTest.
 - APK disponível na página da execução acima.
 - Isso comprova compilação e testes automatizados. O lote em segundo plano ainda não foi validado fisicamente no Android 16.
 - Próximo passo de validação: instalar o APK desta execução, preparar a mesma ROM GoldenEye e executar primeiro o lote de 10. Conferir total acumulado, PC/opcode e ausência de travamento; só depois testar 100 e 1.000.
+
+## Seção 159 — validação física dos lotes e proteção contra troca de ROM durante execução — 2026-11-05
+
+**Status: lotes 10/100/1.000 confirmados por capturas no Android 16; proteção adicional implementada; CI desta proteção ainda precisa ser verificado.**
+
+### Teste físico reportado pelo usuário
+
+- Captura `Screenshot_2026-11-05-12-20-55-872_com.jsr.n64android.jpg`: lote concluído com 10 instruções; total acumulado 10; PC seguinte `0x80000414`; última instrução `0x2129FFF8`; sem falha indicada.
+- Captura `Screenshot_2026-11-05-12-24-51-938_com.jsr.n64android.jpg`: lote concluído com 100 instruções; total acumulado 100; PC seguinte `0x80000414`; última instrução `0x2129FFF8`; sem falha indicada.
+- Captura `Screenshot_2026-11-05-12-27-24-890_com.jsr.n64android.jpg`: lote concluído com 1.000 instruções; total acumulado 1.100; PC seguinte `0x80000414`; última instrução `0x2129FFF8`; sem falha indicada.
+- As três capturas mostram o mesmo PC/opcode final porque o trecho executado é um ciclo curto. Isso valida o mecanismo de execução em lotes para esse ciclo, não cobertura ampla de instruções nem boot do GoldenEye.
+- A própria tela informa que execução do jogo, vídeo e áudio ainda não estão conectados à tela.
+
+### Proteção de concorrência adicional
+
+- Foi identificada uma janela de corrida: o seletor de ROM poderia ter sido aberto antes do início do lote e retornar enquanto a thread da CPU ainda estivesse executando.
+- `MainActivity.onActivityResult()` agora verifica `isCpuBatchRunning` antes de aceitar a URI, persistir permissão ou substituir as sessões. Se o lote estiver ativo, a troca é recusada com a mensagem: “Aguarde o lote terminar antes de trocar a ROM.”
+- Commit: `fb20c8d7442b64e74de1c9b05d48c68f59044c97` — [ver alteração](https://github.com/jovemaprendz55-byte/N64-Android/commit/fb20c8d7442b64e74de1c9b05d48c68f59044c97).
+- Branch: `dev/n64-hle-clean-reboot`; `main` não foi alterada.
+
+### Limitações ainda abertas
+
+- Não há cancelamento cooperativo de lote.
+- Não há persistência/restauração de CPU e memória; encerrar o processo pode perder a sessão.
+- A thread de lote ainda usa a Activity para atualizar a interface; gerenciamento robusto de ciclo de vida (por exemplo, sobreviver a recriação/fechamento da Activity) ainda precisa ser projetado.
+- O ciclo observado não prova suporte geral do decoder, boot completo, RSP/OSTask, RDP/framebuffer, áudio ou controles.
+
+### Próxima validação
+
+- Verificar o CI do commit de proteção antes de gerar/instalar APK novo.
+- Depois, ampliar a cobertura automatizada de instruções R4300 e adicionar diagnósticos úteis dos registradores/fluxo de controle, sem confundir o ciclo atual com execução real do jogo.
