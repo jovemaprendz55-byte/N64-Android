@@ -64,15 +64,22 @@ class N64HleR4300ExecutionSessionTest {
     @Test
     fun failedFetchDoesNotIncrementExecutedInstructionCountAndIsDiagnosed() {
         val memory = N64HleGuestAddressSpace()
-        val state = N64HleR4300CpuState(0xA1000000L) // KSEG1 address outside configured 8 MiB RDRAM
+        val state = N64HleR4300CpuState(
+            0xA1000000L, // KSEG1 address outside configured 8 MiB RDRAM
+            cop0 = N64HleCop0EntryState(
+                mapOf(8 to 0L, 12 to 0L, 13 to 0L, 14 to 0L),
+                "instruction-fetch exception session test"
+            )
+        )
         val session = N64HleR4300ExecutionSession(
             state,
             N64HleR4300InstructionStepper(memorySpace = memory)
         )
 
-        val error = assertThrows(IllegalArgumentException::class.java) { session.runChunk(1) }
+        val error = assertThrows(N64HleR4300ArchitecturalException::class.java) { session.runChunk(1) }
+        assertEquals(N64HleR4300ExceptionCode.INSTRUCTION_BUS_ERROR, error.context.code)
         assertEquals(0L, session.totalExecutedInstructions)
-        assertEquals(0xA1000000L, state.programCounter)
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
 
         val diagnostics = session.diagnostics()
         assertEquals(0L, diagnostics.totalExecutedInstructions)
@@ -87,7 +94,13 @@ class N64HleR4300ExecutionSessionTest {
     fun preservesLastSuccessfulInstructionWhenFollowingFetchFails() {
         val memory = N64HleGuestAddressSpace()
         memory.write32(0x80000400L, 0x2402002AL) // ADDIU r2, r0, 42
-        val state = N64HleR4300CpuState(0x80000400L)
+        val state = N64HleR4300CpuState(
+            0x80000400L,
+            cop0 = N64HleCop0EntryState(
+                mapOf(8 to 0L, 12 to 0L, 13 to 0L, 14 to 0L),
+                "instruction-fetch exception session test"
+            )
+        )
         val session = N64HleR4300ExecutionSession(
             state,
             N64HleR4300InstructionStepper(memorySpace = memory)
@@ -95,7 +108,7 @@ class N64HleR4300ExecutionSessionTest {
 
         assertEquals(1, session.runChunk(1).executedInstructions)
         state.setProgramCounter(0xA1000000L)
-        assertThrows(IllegalArgumentException::class.java) { session.runChunk(1) }
+        assertThrows(N64HleR4300ArchitecturalException::class.java) { session.runChunk(1) }
 
         val diagnostics = session.diagnostics()
         assertEquals(1L, diagnostics.totalExecutedInstructions)
