@@ -45,6 +45,19 @@ class N64HleR4300ExceptionInstructionClassifierTest {
         assertNull(classifier.classify(instruction(0x36), state))
     }
 
+    @Test fun regimmTrapImmediateConditionsUseSignExtendedImmediate() {
+        val state = N64HleR4300CpuState(0x80000000L, mapOf(1 to -1L))
+        fun instruction(rt: Int, immediate: Int) =
+            decoder.decode((0x01 shl 26) or (1 shl 21) or (rt shl 16) or (immediate and 0xFFFF))
+
+        assertNull(classifier.classify(instruction(0x08, 1), state))
+        assertEquals(N64HleR4300ExceptionCode.TRAP, classifier.classify(instruction(0x09, 1), state)) // TGEIU unsigned max >= 1
+        assertEquals(N64HleR4300ExceptionCode.TRAP, classifier.classify(instruction(0x0A, 1), state)) // TLTI signed -1 < 1
+        assertNull(classifier.classify(instruction(0x0B, 1), state)) // TLTIU unsigned max < 1 is false
+        assertNull(classifier.classify(instruction(0x0C, 1), state)) // TEQI -1 == 1
+        assertEquals(N64HleR4300ExceptionCode.TRAP, classifier.classify(instruction(0x0E, 1), state)) // TNEI
+    }
+
     @Test fun nonSpecialInstructionIsNotClassifiedHere() {
         assertNull(classifier.classify(decoder.decode(0xFC000000.toInt())))
     }
