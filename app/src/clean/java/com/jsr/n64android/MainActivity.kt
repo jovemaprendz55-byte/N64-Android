@@ -25,8 +25,12 @@ class MainActivity : Activity() {
     private lateinit var selectedRomText: TextView
     private lateinit var statusText: TextView
     private lateinit var cpuDiagnosticsText: TextView
+    private lateinit var hlePreparationText: TextView
+    private lateinit var prepareHleButton: Button
     private var selectedRomUri: Uri? = null
     private var loadedCartridgeSession: N64HleCartridgeSession? = null
+    private var preparedHandoff: N64HlePreparedHandoff? = null
+    private var preparedExecutionSession: N64HleR4300ExecutionSession? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,6 +79,27 @@ class MainActivity : Activity() {
             setOnClickListener { openRomPicker() }
         }
         root.addView(chooseButton, matchWidthWrapHeight())
+
+        root.addView(space(18))
+        root.addView(sectionTitle("PREPARAÇÃO HLE MANUAL"))
+        root.addView(space(8))
+        val hlePanel = panel()
+        hlePreparationText = label(
+            "Selecione uma ROM compatível para verificar o perfil CIC 6102/7101. Nenhuma CPU será executada automaticamente.",
+            13,
+            Color.WHITE,
+            false
+        )
+        hlePanel.addView(hlePreparationText)
+        hlePanel.addView(space(12))
+        prepareHleButton = Button(this).apply {
+            text = "PREPARAR HANDOFF HLE"
+            isAllCaps = false
+            isEnabled = false
+            setOnClickListener { prepareSelectedHleHandoff() }
+        }
+        hlePanel.addView(prepareHleButton, matchWidthWrapHeight())
+        root.addView(hlePanel)
 
         root.addView(space(28))
         root.addView(sectionTitle("ESTADO DO EMULADOR"))
@@ -173,6 +198,10 @@ class MainActivity : Activity() {
         }
         selectedRomUri = uri
         loadedCartridgeSession = null
+        preparedHandoff = null
+        preparedExecutionSession = null
+        prepareHleButton.isEnabled = false
+        hlePreparationText.text = "Aguardando inspeção da nova ROM."
         renderCpuDiagnostics(null)
         val name = queryDisplayName(uri) ?: uri.lastPathSegment ?: "Arquivo selecionado"
         selectedRomText.text = name
@@ -197,6 +226,10 @@ class MainActivity : Activity() {
                     is N64RomDocumentReader.Result.Success -> {
                         val cartridge = result.cartridge
                         loadedCartridgeSession = N64HleCartridgeSession.fromValidatedImage(cartridge)
+                        preparedHandoff = null
+                        preparedExecutionSession = null
+                        prepareHleButton.isEnabled = true
+                        hlePreparationText.text = "ROM carregada. Toque em PREPARAR HANDOFF HLE para validar CIC 6102/7101 e preparar a memória convidada."
                         val byteOrder = when (cartridge.byteOrder) {
                             N64HleCartridgeImage.ByteOrder.BIG_ENDIAN -> "Z64 (big-endian)"
                             N64HleCartridgeImage.ByteOrder.BYTE_SWAPPED_16 -> "V64 (bytes trocados)"
@@ -217,12 +250,48 @@ class MainActivity : Activity() {
                     }
                     is N64RomDocumentReader.Result.Failure -> {
                         loadedCartridgeSession = null
+                        preparedHandoff = null
+                        preparedExecutionSession = null
+                        prepareHleButton.isEnabled = false
+                        hlePreparationText.text = "Não foi possível preparar: ROM não identificada."
                         statusText.text = "Falha ao identificar a ROM. ${result.reason}"
                         renderCpuDiagnostics(null)
                     }
                 }
             }
         }, "N64-ROM-Reader").start()
+    }
+
+    private fun prepareSelectedHleHandoff() {
+        val cartridgeSession = loadedCartridgeSession
+        if (cartridgeSession == null) {
+            hlePreparationText.text = "Nenhuma ROM válida está carregada."
+            return
+        }
+
+        prepareHleButton.isEnabled = false
+        hlePreparationText.text = "Verificando CIC 6102/7101, CRC1/CRC2 e preparando RDRAM..."
+        try {
+            val profile = N64HleBootProfileFactory.createCic6102Profile(cartridgeSession.cartridge)
+            val handoff = cartridgeSession.prepareHleHandoff(profile)
+            val executionSession = handoff.createR4300ExecutionSession()
+            preparedHandoff = handoff
+            preparedExecutionSession = executionSession
+            hlePreparationText.text = buildString {
+                appendLine("HANDOFF HLE PREPARADO")
+                appendLine("Perfil: CIC 6102/7101 (seed 0x3F)")
+                appendLine("PC de entrada: 0x${handoff.cpuEntryState.programCounter.toString(16).uppercase()}")
+                appendLine("RDRAM preparada: ${handoff.guestMemory.sizeBytes} bytes")
+                appendLine("CPU R4300: sessão criada, 0 instruções executadas")
+                append("IPL3/PIF não executados; vídeo, RSP e áudio não iniciados.")
+            }
+        } catch (error: Exception) {
+            preparedHandoff = null
+            preparedExecutionSession = null
+            hlePreparationText.text = "PERFIL HLE REJEITADO\n${error.message ?: error.javaClass.simpleName}"
+        } finally {
+            prepareHleButton.isEnabled = true
+        }
     }
 
     private fun queryDisplayName(uri: Uri): String? {
