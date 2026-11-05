@@ -430,7 +430,7 @@ class N64HleR4300InstructionStepperTest {
             stepper.step(i(0x08, 1, 2, 1), state)
         }
         assertEquals(N64HleR4300ExceptionCode.ARITHMETIC_OVERFLOW, signal.context.code)
-        assertEquals(0xFFFFFFFF80000030UL.toLong(), state.readCop0(13))
+        assertEquals(0x30L, state.readCop0(13))
         assertEquals(0xFFFFFFFF80001000UL.toLong(), state.readCop0(14))
         assertEquals(0x2L, state.readCop0(12))
         assertFalse(state.isGprKnown(2))
@@ -445,7 +445,7 @@ class N64HleR4300InstructionStepperTest {
         }
         assertEquals(N64HleR4300ExceptionCode.ARITHMETIC_OVERFLOW, signal.context.code)
         assertTrue(signal.context.inDelaySlot)
-        assertEquals(0x80001000L, state.readCop0(14))
+        assertEquals(0xFFFFFFFF80001000UL.toLong(), state.readCop0(14))
         assertEquals(0xFFFFFFFF80000030UL.toLong(), state.readCop0(13))
         assertFalse(state.isGprKnown(3))
         assertFalse(stepper.hasPendingDelaySlot())
