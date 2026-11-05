@@ -103,20 +103,26 @@ class N64HleGuestAddressSpace(
     }
 
     private fun requireAligned(address: Long, alignment: Int) {
-        require((address and (alignment - 1).toLong()) == 0L) {
-            "Guest address must be aligned to $alignment bytes"
+        if ((address and (alignment - 1).toLong()) != 0L) {
+            throw N64HleGuestAddressAlignmentFault(address, alignment)
         }
     }
 
     private fun physicalAddress(address: Long): Int {
         val upper = address ushr 32
-        require(upper == 0L || upper == 0xFFFF_FFFFL) {
-            "Guest address must be a 32-bit zero-extended or sign-extended value"
+        if (upper != 0L && upper != 0xFFFF_FFFFL) {
+            throw N64HleGuestAddressMappingFault(
+                address,
+                "address is not a 32-bit zero-extended or sign-extended value"
+            )
         }
         val guest = address and 0xFFFF_FFFFL
         val segment = guest ushr 29
-        require(segment == 4L || segment == 5L) {
-            "Only KSEG0 and KSEG1 guest addresses map to this guest memory space"
+        if (segment != 4L && segment != 5L) {
+            throw N64HleGuestAddressMappingFault(
+                address,
+                "only KSEG0 and KSEG1 are mapped by this HLE memory space"
+            )
         }
         return (guest and PHYSICAL_MASK).toInt()
     }
@@ -191,11 +197,8 @@ class N64HleGuestAddressSpace(
         spDramAddress = dramAddress and SP_DRAM_ADDR_MASK
     }
     private fun translateAligned(address: Long, length: Int, alignment: Int): Pair<ByteArray, Int> {
-        val resolved = translate(address, length)
-        require((address and (alignment - 1).toLong()) == 0L) {
-            "Guest address must be aligned to $alignment bytes"
-        }
-        return resolved
+        requireAligned(address, alignment)
+        return translate(address, length)
     }
 
     private fun translate(address: Long, length: Int): Pair<ByteArray, Int> {
@@ -212,8 +215,9 @@ class N64HleGuestAddressSpace(
             length <= SP_MEMORY_SIZE - (physical - SP_IMEM_PHYSICAL)) {
             return spImem to (physical - SP_IMEM_PHYSICAL)
         }
-        throw IllegalArgumentException(
-            "Guest address 0x${(address and 0xFFFF_FFFFL).toString(16)} is outside mapped RDRAM/SP memory"
+        throw N64HleGuestAddressMappingFault(
+            address,
+            "outside mapped RDRAM/SP memory"
         )
     }
 
