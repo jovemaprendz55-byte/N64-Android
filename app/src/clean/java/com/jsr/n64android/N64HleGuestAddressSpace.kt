@@ -13,6 +13,11 @@ class N64HleGuestAddressSpace(
     private val rdram: ByteArray
     private val spDmem = ByteArray(SP_MEMORY_SIZE)
     private val spImem = ByteArray(SP_MEMORY_SIZE)
+    private var spMemAddress = 0
+    private var spDramAddress = 0
+    private var spStatus = SP_STATUS_HALT
+    private var spPc = 0
+    private var spSemaphore = 0
 
     val sizeBytes: Int get() = rdram.size
 
@@ -47,7 +52,10 @@ class N64HleGuestAddressSpace(
     }
 
     fun read32(address: Long): Long {
-        val (bytes, p) = translateAligned(address, 4, 4)
+        requireAligned(address, 4)
+        val physical = physicalAddress(address)
+        if (isSpRegister(physical)) return readSpRegister(physical).toLong() and 0xFFFF_FFFFL
+        val (bytes, p) = translate(address, 4)
         return ((bytes[p].toLong() and 0xFF) shl 24) or
             ((bytes[p + 1].toLong() and 0xFF) shl 16) or
             ((bytes[p + 2].toLong() and 0xFF) shl 8) or
@@ -56,7 +64,13 @@ class N64HleGuestAddressSpace(
 
     fun write32(address: Long, value: Long) {
         require(value in 0L..0xFFFF_FFFFL) { "Word value is outside 0..0xFFFFFFFF" }
-        val (bytes, p) = translateAligned(address, 4, 4)
+        requireAligned(address, 4)
+        val physical = physicalAddress(address)
+        if (isSpRegister(physical)) {
+            writeSpRegister(physical, value.toInt())
+            return
+        }
+        val (bytes, p) = translate(address, 4)
         bytes[p] = (value ushr 24).toByte()
         bytes[p + 1] = (value ushr 16).toByte()
         bytes[p + 2] = (value ushr 8).toByte()
@@ -88,6 +102,94 @@ class N64HleGuestAddressSpace(
         bytes.copyInto(target, offset)
     }
 
+    private fun requireAligned(address: Long, alignment: Int) {
+        require((address and (alignment - 1).toLong()) == 0L) {
+            "Guest address must be aligned to $alignment bytes"
+        }
+    }
+
+    private fun physicalAddress(address: Long): Int {
+        val upper = address ushr 32
+        require(upper == 0L || upper == 0xFFFF_FFFFL) {
+            "Guest address must be a 32-bit zero-extended or sign-extended value"
+        }
+        val guest = address and 0xFFFF_FFFFL
+        val segment = guest ushr 29
+        require(segment == 4L || segment == 5L) {
+            "Only KSEG0 and KSEG1 guest addresses map to this guest memory space"
+        }
+        return (guest and PHYSICAL_MASK).toInt()
+    }
+
+    private fun isSpRegister(physical: Int): Boolean =
+        (physical in SP_REG_BASE..(SP_REG_BASE + 0x1C) && (physical and 3) == 0) ||
+            physical == SP_PC_REG
+
+    private fun readSpRegister(address: Int): Int = when (address) {
+        SP_MEM_ADDR_REG -> spMemAddress
+        SP_DRAM_ADDR_REG -> spDramAddress
+        SP_RD_LEN_REG, SP_WR_LEN_REG -> 0
+        SP_STATUS_REG -> spStatus
+        SP_DMA_FULL_REG, SP_DMA_BUSY_REG -> 0
+        SP_SEMAPHORE_REG -> spSemaphore
+        SP_PC_REG -> spPc
+        else -> throw IllegalArgumentException("Unsupported SP register 0x${address.toString(16)}")
+    }
+
+    private fun writeSpRegister(address: Int, value: Int) {
+        when (address) {
+            SP_MEM_ADDR_REG -> spMemAddress = value and SP_MEM_ADDR_MASK
+            SP_DRAM_ADDR_REG -> spDramAddress = value and SP_DRAM_ADDR_MASK
+            SP_RD_LEN_REG -> transferSpDma(value, toSp = true)
+            SP_WR_LEN_REG -> transferSpDma(value, toSp = false)
+            SP_STATUS_REG -> writeSpStatusCommand(value)
+            SP_DMA_FULL_REG, SP_DMA_BUSY_REG -> Unit
+            SP_SEMAPHORE_REG -> spSemaphore = 1
+            SP_PC_REG -> spPc = value and SP_PC_MASK
+            else -> throw IllegalArgumentException("Unsupported SP register 0x${address.toString(16)}")
+        }
+    }
+
+    private fun writeSpStatusCommand(command: Int) {
+        if (command and SP_STATUS_CMD_CLR_HALT != 0) spStatus = spStatus and SP_STATUS_HALT.inv()
+        if (command and SP_STATUS_CMD_SET_HALT != 0) spStatus = spStatus or SP_STATUS_HALT
+        if (command and SP_STATUS_CMD_CLR_BROKE != 0) spStatus = spStatus and SP_STATUS_BROKE.inv()
+        if (command and SP_STATUS_CMD_CLR_INTR != 0) spStatus = spStatus and SP_STATUS_INTR.inv()
+        if (command and SP_STATUS_CMD_SET_INTR != 0) spStatus = spStatus or SP_STATUS_INTR
+        if (command and SP_STATUS_CMD_CLR_SSTEP != 0) spStatus = spStatus and SP_STATUS_SSTEP.inv()
+        if (command and SP_STATUS_CMD_SET_SSTEP != 0) spStatus = spStatus or SP_STATUS_SSTEP
+        if (command and SP_STATUS_CMD_CLR_INTR_BREAK != 0) spStatus = spStatus and SP_STATUS_INTR_BREAK.inv()
+        if (command and SP_STATUS_CMD_SET_INTR_BREAK != 0) spStatus = spStatus or SP_STATUS_INTR_BREAK
+    }
+
+    /** Synchronous, simplified SP DMA with length/count/skip fields and 4 KiB wrap. */
+    private fun transferSpDma(command: Int, toSp: Boolean) {
+        val blockLength = (command and 0xFFF) + 1
+        val blockCount = ((command ushr 12) and 0xFF) + 1
+        val dramSkip = (command ushr 20) and 0xFFF
+        val memorySelect = spMemAddress and 0x1000
+        var memoryOffset = spMemAddress and 0xFFF
+        var dramAddress = spDramAddress and SP_DRAM_ADDR_MASK
+        var checkAddress = dramAddress.toLong()
+        repeat(blockCount) {
+            require(checkAddress >= 0L && checkAddress + blockLength <= rdram.size.toLong()) {
+                "SP DMA RDRAM range is invalid: address=0x${checkAddress.toString(16)}, length=$blockLength"
+            }
+            checkAddress += blockLength + dramSkip
+        }
+        repeat(blockCount) {
+            val selected = if (memorySelect == 0) spDmem else spImem
+            repeat(blockLength) { index ->
+                val spOffset = memoryOffset and 0xFFF
+                if (toSp) selected[spOffset] = rdram[dramAddress + index]
+                else rdram[dramAddress + index] = selected[spOffset]
+                memoryOffset = (memoryOffset + 1) and 0xFFF
+            }
+            dramAddress += blockLength + dramSkip
+        }
+        spMemAddress = memorySelect or memoryOffset
+        spDramAddress = dramAddress and SP_DRAM_ADDR_MASK
+    }
     private fun translateAligned(address: Long, length: Int, alignment: Int): Pair<ByteArray, Int> {
         val resolved = translate(address, length)
         require((address and (alignment - 1).toLong()) == 0L) {
@@ -98,16 +200,7 @@ class N64HleGuestAddressSpace(
 
     private fun translate(address: Long, length: Int): Pair<ByteArray, Int> {
         require(length >= 0) { "Length must be non-negative" }
-        val upper = address ushr 32
-        require(upper == 0L || upper == 0xFFFF_FFFFL) {
-            "Guest address must be a 32-bit zero-extended or sign-extended value"
-        }
-        val guest = address and 0xFFFF_FFFFL
-        val segment = guest ushr 29
-        require(segment == 4L || segment == 5L) {
-            "Only KSEG0 and KSEG1 guest addresses map to this guest memory space"
-        }
-        val physical = (guest and PHYSICAL_MASK).toInt()
+        val physical = physicalAddress(address)
         if (physical >= 0 && physical <= rdram.size && length <= rdram.size - physical) {
             return rdram to physical
         }
@@ -131,5 +224,32 @@ class N64HleGuestAddressSpace(
         private const val SP_DMEM_PHYSICAL = 0x0400_0000
         private const val SP_IMEM_PHYSICAL = 0x0400_1000
         private const val SP_MEMORY_SIZE = 0x1000
+        private const val SP_REG_BASE = 0x0404_0000
+        private const val SP_MEM_ADDR_REG = SP_REG_BASE
+        private const val SP_DRAM_ADDR_REG = SP_REG_BASE + 0x04
+        private const val SP_RD_LEN_REG = SP_REG_BASE + 0x08
+        private const val SP_WR_LEN_REG = SP_REG_BASE + 0x0C
+        private const val SP_STATUS_REG = SP_REG_BASE + 0x10
+        private const val SP_DMA_FULL_REG = SP_REG_BASE + 0x14
+        private const val SP_DMA_BUSY_REG = SP_REG_BASE + 0x18
+        private const val SP_SEMAPHORE_REG = SP_REG_BASE + 0x1C
+        private const val SP_PC_REG = 0x0408_0000
+        private const val SP_MEM_ADDR_MASK = 0x1FFF
+        private const val SP_DRAM_ADDR_MASK = 0x00FF_FFFF
+        private const val SP_PC_MASK = 0x1FFC
+        private const val SP_STATUS_HALT = 1 shl 0
+        private const val SP_STATUS_BROKE = 1 shl 1
+        private const val SP_STATUS_INTR = 1 shl 2
+        private const val SP_STATUS_SSTEP = 1 shl 5
+        private const val SP_STATUS_INTR_BREAK = 1 shl 6
+        private const val SP_STATUS_CMD_CLR_HALT = 1 shl 0
+        private const val SP_STATUS_CMD_SET_HALT = 1 shl 1
+        private const val SP_STATUS_CMD_CLR_BROKE = 1 shl 2
+        private const val SP_STATUS_CMD_CLR_INTR = 1 shl 3
+        private const val SP_STATUS_CMD_SET_INTR = 1 shl 4
+        private const val SP_STATUS_CMD_CLR_SSTEP = 1 shl 5
+        private const val SP_STATUS_CMD_SET_SSTEP = 1 shl 6
+        private const val SP_STATUS_CMD_CLR_INTR_BREAK = 1 shl 7
+        private const val SP_STATUS_CMD_SET_INTR_BREAK = 1 shl 8
     }
 }
