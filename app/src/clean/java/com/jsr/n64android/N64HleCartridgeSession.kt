@@ -9,7 +9,15 @@ package com.jsr.n64android
 class N64HlePreparedHandoff internal constructor(
     val guestMemory: N64HleGuestAddressSpace,
     val cpuEntryState: N64HleCpuEntryState
-)
+) {
+    /** Creates mutable CPU state without inventing HI/LO or unspecified COP0 values. */
+    fun createR4300CpuState(): N64HleR4300CpuState =
+        N64HleR4300CpuState.fromEntryState(cpuEntryState)
+
+    /** Creates a stepper explicitly connected to this handoff's guest RDRAM. */
+    fun createR4300InstructionStepper(): N64HleR4300InstructionStepper =
+        N64HleR4300InstructionStepper(memorySpace = guestMemory)
+}
 
 /**
  * In-memory, validated cartridge held by the clean application session.
