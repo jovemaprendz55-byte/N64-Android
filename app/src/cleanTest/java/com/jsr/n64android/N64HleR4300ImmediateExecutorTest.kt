@@ -18,7 +18,7 @@ class N64HleR4300ImmediateExecutorTest {
     }
 
     @Test fun addiRejectsSignedOverflowWithoutMutatingStateOrPc() {
-        val state = N64HleR4300CpuState(0x80001000L, mapOf(1 to Int.MAX_VALUE.toLong()))
+        val state = exceptionState(0x80001000L, mapOf(1 to Int.MAX_VALUE.toLong()))
         assertThrows(N64HleR4300ArchitecturalException::class.java) {
             stepper.step(i(0x08, 1, 2, 1), state)
         }
@@ -73,7 +73,7 @@ class N64HleR4300ImmediateExecutorTest {
         stepper.step(i(0x18, 1, 2, -7), normal)
         assertEquals(93L, normal.readGpr(2))
 
-        val overflow = N64HleR4300CpuState(0x80001000L, mapOf(1 to Long.MAX_VALUE))
+        val overflow = exceptionState(0x80001000L, mapOf(1 to Long.MAX_VALUE))
         assertThrows(N64HleR4300ArchitecturalException::class.java) {
             stepper.step(i(0x18, 1, 2, 1), overflow)
         }
@@ -81,4 +81,13 @@ class N64HleR4300ImmediateExecutorTest {
         assertEquals(0x80001000L, overflow.programCounter)
     }
 
+    private fun exceptionState(pc: Long, gprs: Map<Int, Long>): N64HleR4300CpuState =
+        N64HleR4300CpuState(
+            pc,
+            gprs,
+            cop0 = N64HleCop0EntryState(
+                mapOf(8 to 0L, 12 to 0L, 13 to 0L, 14 to 0L),
+                "explicit arithmetic-exception test state"
+            )
+        )
 }
