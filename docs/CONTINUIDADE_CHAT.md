@@ -2911,3 +2911,13 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Construir o contexto com PC e metadados de delay slot explícitos; aplicar o updater COP0 apenas depois de preflight completo. Não limpar estado pendente nem alterar PC em caso de falha ao preparar a exceção.
 - Vetorização/handler, BEV, TLB refill, interrupções e ERET ficam fora até serem implementados e testados separadamente. Nenhum vetor ou valor COP0 deve ser presumido.
 - Adicionar testes de ausência de mutação em erro interno, exceção fora/em delay slot, EPC/BD e preservação do sequenciador. Atualizar esta documentação e exigir CI verde antes de avançar.
+
+
+## 142. Classificador conservador de instruções que geram exceção — 2026-11-05
+
+- Adicionado `N64HleR4300ExceptionInstructionClassifier.kt`, que classifica somente três casos SPECIAL inequívocos: SYSCALL (ExcCode 8), BREAK (ExcCode 9) e função SPECIAL desconhecida (Reserved Instruction, ExcCode 10).
+- O classificador retorna `null` para instruções não SPECIAL e para operações SPECIAL conhecidas, mesmo que ainda não estejam implementadas pelo executor. Isso evita confundir "instrução válida não implementada" com Reserved Instruction.
+- Testes adicionados para SYSCALL, BREAK, função desconhecida, TGE conhecido porém não implementado e opcode não SPECIAL.
+- Commits: implementação `a7f256b36869b61f0114bc07f1b98f3158cebb5c`; testes `f51dedd6d02f56ba30f3f1faeaed2f9d3148ae80`.
+- **Limite desta etapa:** o classificador ainda não está integrado ao stepper, não altera COP0/PC, não consome delay slots e não entrega exceções. Overflow e instruções não SPECIAL permanecem sem classificação. Próximo incremento: integrar apenas as três classificações com contexto de PC/delay slot e updater COP0, mantendo erros internos fora do caminho de exceção guest.
+- CI da seção 142 pendente; não declarar validada até testes e APK passarem.
