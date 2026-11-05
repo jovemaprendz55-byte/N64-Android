@@ -19,7 +19,7 @@ class N64HleR4300ImmediateExecutorTest {
 
     @Test fun addiRejectsSignedOverflowWithoutMutatingStateOrPc() {
         val state = N64HleR4300CpuState(0x80001000L, mapOf(1 to Int.MAX_VALUE.toLong()))
-        assertThrows(IllegalStateException::class.java) {
+        assertThrows(N64HleR4300ArchitecturalException::class.java) {
             stepper.step(i(0x08, 1, 2, 1), state)
         }
         assertEquals(false, state.isGprKnown(2))
@@ -74,7 +74,7 @@ class N64HleR4300ImmediateExecutorTest {
         assertEquals(93L, normal.readGpr(2))
 
         val overflow = N64HleR4300CpuState(0x80001000L, mapOf(1 to Long.MAX_VALUE))
-        assertThrows(IllegalStateException::class.java) {
+        assertThrows(N64HleR4300ArchitecturalException::class.java) {
             stepper.step(i(0x18, 1, 2, 1), overflow)
         }
         assertEquals(false, overflow.isGprKnown(2))
