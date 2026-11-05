@@ -3798,3 +3798,13 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
   - [1292574](https://github.com/jovemaprendz55-byte/N64-Android/commit/1292574b304664c040e978953511473a322689f5): testes imediatos agora esperam o vetor de exceção.
   - [c936e5](https://github.com/jovemaprendz55-byte/N64-Android/commit/c936e5ec400300cd8d1c9d11ff984da48043915a): Cause e EPC com valores de 32 bits/sign-extension corretos.
 - CI dos commits: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42107431781 e https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42107440139. Ainda aguardando conclusão; não marcar overflow como aprovado antes de CI verde.
+
+
+### Entrega de SYSCALL/BREAK e último ajuste de DADDI — 2026-11-05
+
+- O log da CI `42107440139` revelou uma única falha remanescente: o teste DADDI ainda esperava PC no endereço anterior, mas a exceção arquitetural corretamente redireciona para o vetor geral.
+- Correção: [11202c9](https://github.com/jovemaprendz55-byte/N64-Android/commit/11202c9633c598e4567b42ad17e6b975525c3ef5).
+- O stepper passou a usar `N64HleR4300ExceptionInstructionClassifier` para classificar RI, SYSCALL e BREAK antes do dispatch, em vez de tratar apenas SPECIAL desconhecida manualmente: [9cb9923](https://github.com/jovemaprendz55-byte/N64-Android/commit/9cb9923f0cad866ab51a36817f41ecbca22b9079).
+- Testes de integração adicionados para SYSCALL (ExcCode 8, Cause 0x20) e BREAK (ExcCode 9, Cause 0x24), verificando EPC e vetor: [ddb08da](https://github.com/jovemaprendz55-byte/N64-Android/commit/ddb08daa4fb5a4181c066740d44cb52150b15ccb).
+- CI para integração SYSCALL/BREAK: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42107623930; CI do ajuste DADDI: será gerada pela alteração posterior. Não marcar overflow como concluído até confirmar execução verde no HEAD mais recente.
+- Próximo: conferir CI, então implementar TRAP condicional TGE/TGEU/TLT/TLTU/TEQ/TNE (ExcCode 13) sem converter operações válidas não implementadas em RI.
