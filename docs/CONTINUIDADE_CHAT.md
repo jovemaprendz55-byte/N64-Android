@@ -3060,3 +3060,6 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 
 
 - **Correção após a primeira compilação:** o CI do factory identificou três erros Kotlin: conversão `ULong.toLong()` não pode inicializar `const val`, e os CRCs retornados como `Int` precisavam ser comparados com os campos `Long` do cabeçalho. Corrigido no commit `0fb6cf10d2a4a265301c7e14b441bb12c3fea0ad`. A falha anterior foi de compilação/tipos, não evidência de erro na lógica de checksum. Os workflows posteriores precisam validar o commit corrigido.
+
+
+- **Correção de checksum sem sinal:** os CRC1/CRC2 do cabeçalho são valores unsigned de 32 bits armazenados em `Long`. A primeira comparação convertia o `Int` assinado diretamente para `Long`, o que falha quando o bit 31 está ligado. A comparação agora mascara com `0xFFFF_FFFF` antes de comparar. Commit `87174bd6e1bf5bd91e351aa0298a7cc41af91829`. CI ainda pendente.
