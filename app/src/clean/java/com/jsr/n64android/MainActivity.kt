@@ -24,6 +24,7 @@ import android.widget.TextView
 class MainActivity : Activity() {
     private lateinit var selectedRomText: TextView
     private lateinit var statusText: TextView
+    private lateinit var cpuDiagnosticsText: TextView
     private var selectedRomUri: Uri? = null
     private var loadedCartridgeSession: N64HleCartridgeSession? = null
 
@@ -92,6 +93,15 @@ class MainActivity : Activity() {
         root.addView(statusPanel)
 
         root.addView(space(22))
+        root.addView(sectionTitle("DIAGNÓSTICO DA CPU R4300"))
+        root.addView(space(10))
+        val diagnosticsPanel = panel()
+        cpuDiagnosticsText = label("", 13, Color.WHITE, false)
+        diagnosticsPanel.addView(cpuDiagnosticsText)
+        root.addView(diagnosticsPanel)
+        renderCpuDiagnostics(null)
+
+        root.addView(space(22))
         root.addView(label(
             "Esta versão lê e identifica o cabeçalho da ROM selecionada. " +
                 "A execução do jogo, vídeo e áudio ainda não estão conectados à tela.",
@@ -104,6 +114,42 @@ class MainActivity : Activity() {
 
         setContentView(scroll)
     }
+
+    /**
+     * Renders real session diagnostics when a CPU session is supplied.
+     * Null means there is no active guest CPU session; no counters or PCs are fabricated.
+     */
+    private fun renderCpuDiagnostics(session: N64HleR4300ExecutionSession?) {
+        if (session == null) {
+            cpuDiagnosticsText.text = buildString {
+                appendLine("Nenhuma sessão de CPU ativa.")
+                appendLine("Instruções executadas: —")
+                appendLine("Último PC: —")
+                appendLine("Última instrução: —")
+                appendLine("Última falha: —")
+                append("A ROM pode estar identificada, mas ainda falta um perfil HLE validado.")
+            }
+            return
+        }
+
+        val snapshot = session.diagnostics()
+        cpuDiagnosticsText.text = buildString {
+            appendLine("Instruções executadas: ${snapshot.totalExecutedInstructions}")
+            appendLine("Último PC concluído: ${snapshot.lastSuccessfulInstructionPc?.let(::formatAddress) ?: "—"}")
+            appendLine(
+                "Última instrução: " +
+                    (snapshot.lastSuccessfulInstruction?.rawWord?.let {
+                        "0x" + it.toUInt().toString(16).uppercase().padStart(8, '0')
+                    } ?: "—")
+            )
+            appendLine("PC da última tentativa: ${snapshot.lastAttemptedInstructionPc?.let(::formatAddress) ?: "—"}")
+            appendLine("Tipo da falha: ${snapshot.failureType ?: "—"}")
+            append("Mensagem: ${snapshot.failureMessage ?: "—"}")
+        }
+    }
+
+    private fun formatAddress(address: Long): String =
+        "0x" + address.toULong().toString(16).uppercase().padStart(16, '0')
 
     private fun openRomPicker() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
@@ -127,6 +173,7 @@ class MainActivity : Activity() {
         }
         selectedRomUri = uri
         loadedCartridgeSession = null
+        renderCpuDiagnostics(null)
         val name = queryDisplayName(uri) ?: uri.lastPathSegment ?: "Arquivo selecionado"
         selectedRomText.text = name
         statusText.text = "Lendo arquivo e verificando o cabeçalho da ROM..."
@@ -166,9 +213,12 @@ class MainActivity : Activity() {
                             appendLine("ROM mantida na sessão de memória.")
                             append("CPU/HLE boot ainda não foram iniciados.")
                         }
+                        renderCpuDiagnostics(null)
                     }
                     is N64RomDocumentReader.Result.Failure -> {
+                        loadedCartridgeSession = null
                         statusText.text = "Falha ao identificar a ROM. ${result.reason}"
+                        renderCpuDiagnostics(null)
                     }
                 }
             }
