@@ -3808,3 +3808,26 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
 - Testes de integração adicionados para SYSCALL (ExcCode 8, Cause 0x20) e BREAK (ExcCode 9, Cause 0x24), verificando EPC e vetor: [ddb08da](https://github.com/jovemaprendz55-byte/N64-Android/commit/ddb08daa4fb5a4181c066740d44cb52150b15ccb).
 - CI para integração SYSCALL/BREAK: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42107623930; CI do ajuste DADDI: será gerada pela alteração posterior. Não marcar overflow como concluído até confirmar execução verde no HEAD mais recente.
 - Próximo: conferir CI, então implementar TRAP condicional TGE/TGEU/TLT/TLTU/TEQ/TNE (ExcCode 13) sem converter operações válidas não implementadas em RI.
+
+
+### Confirmação de overflow e implementação inicial de TRAP — 2026-11-05
+
+- **Overflow assinado confirmado:** CI verde no commit `11202c9`, incluindo `testDebugUnitTest` e `assembleDebug`: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42107689513
+- A CI do commit de documentação SYSCALL/BREAK também ficou verde: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42107712800
+- A falha da execução anterior de SYSCALL/BREAK ocorreu antes da correção DADDI; não usar aquela execução antiga para avaliar o estado corrigido.
+- TRAP foi implementado no classificador com comparações R4300 de 64 bits:
+  - TGE/TLT usam comparação signed.
+  - TGEU/TLTU usam comparação unsigned.
+  - TEQ/TNE comparam igualdade.
+  - Condição verdadeira gera ExcCode 13; condição falsa completa sem exceção e sem escrita em registradores.
+- Stepper passa o estado da CPU ao classificador; executor reconhece as seis instruções e conclui o caminho de condição falsa sem side effects.
+- Testes adicionados para comparações signed/unsigned, igualdade, entrada em TRAP (Cause ExcCode 13 = 0x34), e condição falsa avançando PC normalmente.
+- Commits TRAP:
+  - classificador: https://github.com/jovemaprendz55-byte/N64-Android/commit/c35819308faabe1d6d2d5c1a5e9c3a646f52779b
+  - integração stepper: https://github.com/jovemaprendz55-byte/N64-Android/commit/4892193a12a9be7091dd3b5692199ba367add57f
+  - executor: https://github.com/jovemaprendz55-byte/N64-Android/commit/cd0b2e6bad2e489ee39cf5ec9831ed6c3c91dd33
+  - testes classifier: https://github.com/jovemaprendz55-byte/N64-Android/commit/0a41ff68c2dc5193f1a9c6fad7482a184f06170d
+  - testes stepper: https://github.com/jovemaprendz55-byte/N64-Android/commit/1b0a4312393a6639dac578df2a09c27a315c2251
+  - correção dos casos signed/unsigned nos testes: https://github.com/jovemaprendz55-byte/N64-Android/commit/784a555dd3ebeb3379f11c808028c6be2527e4e0
+- CI dos commits TRAP está em execução no momento deste registro; não declarar TRAP concluído até a execução do HEAD ficar verde.
+- Próximo: verificar a CI mais recente; se houver falha, corrigir pelo log. Se ficar verde, avaliar validação dos campos reservados das instruções TRAP e depois classificação de opcodes primários reservados/COP0/COP1, sem classificar instruções válidas não implementadas como RI.
