@@ -28,6 +28,8 @@ class MainActivity : Activity() {
     private lateinit var hlePreparationText: TextView
     private lateinit var prepareHleButton: Button
     private lateinit var stepCpuButton: Button
+    private lateinit var batchCpuButtons: List<Button>
+    private var isCpuBatchRunning: Boolean = false
     private var selectedRomUri: Uri? = null
     private var loadedCartridgeSession: N64HleCartridgeSession? = null
     private var preparedHandoff: N64HlePreparedHandoff? = null
@@ -132,6 +134,17 @@ class MainActivity : Activity() {
             setOnClickListener { executeOneCpuInstruction() }
         }
         diagnosticsPanel.addView(stepCpuButton, matchWidthWrapHeight())
+        diagnosticsPanel.addView(space(8))
+        diagnosticsPanel.addView(label("EXECUÇÃO EM LOTES (FINITA)", 12, Color.rgb(91, 190, 255), true))
+        diagnosticsPanel.addView(space(6))
+        batchCpuButtons = listOf(10, 100, 1000).map { budget ->
+            Button(this).apply {
+                text = "EXECUTAR $budget INSTRUÇÕES"
+                isAllCaps = false
+                isEnabled = false
+                setOnClickListener { executeCpuBatch(budget) }
+            }.also { diagnosticsPanel.addView(it, matchWidthWrapHeight()) }
+        }
         root.addView(diagnosticsPanel)
         renderCpuDiagnostics(null)
 
@@ -211,6 +224,7 @@ class MainActivity : Activity() {
         preparedExecutionSession = null
         prepareHleButton.isEnabled = false
         stepCpuButton.isEnabled = false
+        setBatchButtonsEnabled(false)
         hlePreparationText.text = "Aguardando inspeção da nova ROM."
         renderCpuDiagnostics(null)
         val name = queryDisplayName(uri) ?: uri.lastPathSegment ?: "Arquivo selecionado"
@@ -240,6 +254,7 @@ class MainActivity : Activity() {
                         preparedExecutionSession = null
                         prepareHleButton.isEnabled = true
                         stepCpuButton.isEnabled = false
+                        setBatchButtonsEnabled(false)
                         hlePreparationText.text = "ROM carregada. Toque em PREPARAR HANDOFF HLE para validar CIC 6102/7101 e preparar a memória convidada."
                         val byteOrder = when (cartridge.byteOrder) {
                             N64HleCartridgeImage.ByteOrder.BIG_ENDIAN -> "Z64 (big-endian)"
@@ -265,6 +280,7 @@ class MainActivity : Activity() {
                         preparedExecutionSession = null
                         prepareHleButton.isEnabled = false
                         stepCpuButton.isEnabled = false
+                        setBatchButtonsEnabled(false)
                         hlePreparationText.text = "Não foi possível preparar: ROM não identificada."
                         statusText.text = "Falha ao identificar a ROM. ${result.reason}"
                         renderCpuDiagnostics(null)
@@ -290,6 +306,7 @@ class MainActivity : Activity() {
             preparedHandoff = handoff
             preparedExecutionSession = executionSession
             stepCpuButton.isEnabled = true
+            setBatchButtonsEnabled(true)
             renderCpuDiagnostics(executionSession)
             hlePreparationText.text = buildString {
                 appendLine("HANDOFF HLE PREPARADO")
@@ -303,6 +320,7 @@ class MainActivity : Activity() {
             preparedHandoff = null
             preparedExecutionSession = null
             stepCpuButton.isEnabled = false
+            setBatchButtonsEnabled(false)
             renderCpuDiagnostics(null)
             hlePreparationText.text = "PERFIL HLE REJEITADO\n${error.message ?: error.javaClass.simpleName}"
         } finally {
@@ -349,6 +367,53 @@ class MainActivity : Activity() {
         }
     }
 
+    /** Runs one finite instruction batch off the UI thread. */
+    private fun executeCpuBatch(instructionBudget: Int) {
+        val session = preparedExecutionSession
+        if (session == null || isCpuBatchRunning) {
+            statusText.text = "Nenhuma sessão R4300 disponível ou lote já em execução."
+            return
+        }
+        if (instructionBudget !in listOf(10, 100, 1000)) return
+        isCpuBatchRunning = true
+        stepCpuButton.isEnabled = false
+        setBatchButtonsEnabled(false)
+        prepareHleButton.isEnabled = false
+        statusText.text = "Executando lote finito de " + instructionBudget + " instruções em segundo plano..."
+        Thread({
+            var result: N64HleR4300ExecutionSession.ChunkResult? = null
+            var failure: Exception? = null
+            try { result = session.runChunk(instructionBudget) } catch (error: Exception) { failure = error }
+            runOnUiThread {
+                isCpuBatchRunning = false
+                prepareHleButton.isEnabled = loadedCartridgeSession != null
+                renderCpuDiagnostics(session)
+                if (failure == null && result != null) {
+                    val completed = result!!
+                    val lastWord = completed.lastInstruction?.rawWord?.toUInt()?.toString(16)?.uppercase()?.padStart(8, '0')
+                    statusText.text = "LOTE CONCLUÍDO.\n" +
+                        "Instruções neste lote: " + completed.executedInstructions + "\n" +
+                        "Total acumulado: " + completed.totalExecutedInstructions + "\n" +
+                        "PC seguinte: " + formatAddress(completed.programCounter) + "\n" +
+                        "Última instrução: " + (lastWord?.let { "0x" + it } ?: "—")
+                    stepCpuButton.isEnabled = true
+                    setBatchButtonsEnabled(true)
+                } else {
+                    statusText.text = "LOTE INTERROMPIDO POR FALHA.\n" +
+                        "Instruções concluídas: " + session.totalExecutedInstructions + "\n" +
+                        "PC da tentativa: " + formatAddress(session.cpuState.programCounter) + "\n" +
+                        (failure?.message ?: failure?.javaClass?.simpleName ?: "Falha desconhecida.")
+                    stepCpuButton.isEnabled = false
+                    setBatchButtonsEnabled(false)
+                }
+            }
+        }, "N64-R4300-Batch-" + instructionBudget).start()
+    }
+
+    private fun setBatchButtonsEnabled(enabled: Boolean) {
+        if (!::batchCpuButtons.isInitialized) return
+        batchCpuButtons.forEach { it.isEnabled = enabled && !isCpuBatchRunning }
+    }
     private fun queryDisplayName(uri: Uri): String? {
         var cursor: Cursor? = null
         return try {
