@@ -1,13 +1,21 @@
 package com.jsr.n64android
 
+/** Exception code and BadVAddr metadata, independent of the current CPU PC. */
+data class N64HleR4300MemoryExceptionClassification(
+    val code: N64HleR4300ExceptionCode,
+    val badVirtualAddress: Long
+)
+
 /**
  * Converts typed data-memory faults into R4300 exception metadata.
  *
- * Instruction-fetch faults are intentionally not accepted here: they need a
- * separate fetch path and must not be guessed to be instruction bus errors.
+ * Instruction-fetch faults are intentionally handled elsewhere: this class
+ * never guesses that a fetch failure is an instruction bus error.
  */
 class N64HleR4300MemoryExceptionClassifier {
-    fun classify(fault: N64HleR4300MemoryAccessFault): N64HleR4300ExceptionContext {
+    fun classify(
+        fault: N64HleR4300MemoryAccessFault
+    ): N64HleR4300MemoryExceptionClassification {
         val code = when (fault.memoryFault) {
             is N64HleGuestAddressAlignmentFault ->
                 if (fault.accessKind == N64HleR4300MemoryAccessKind.LOAD) {
@@ -19,9 +27,8 @@ class N64HleR4300MemoryExceptionClassifier {
             is N64HleGuestAddressMappingFault ->
                 N64HleR4300ExceptionCode.DATA_BUS_ERROR
         }
-        return N64HleR4300ExceptionContext(
+        return N64HleR4300MemoryExceptionClassification(
             code = code,
-            faultingPc = 0L,
             badVirtualAddress = fault.memoryFault.virtualAddress
         )
     }
