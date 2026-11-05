@@ -68,4 +68,21 @@ class N64HleR4300InstructionStepperTest {
         assertEquals(0x80001004L, state.programCounter)
         assertTrue(stepper.hasPendingDelaySlot())
     }
+
+    @Test fun goldenEyeTakenBneExecutesDelaySlotThenBranchesToNegativeTarget() {
+        val state = N64HleR4300CpuState(
+            0xFFFFFFFF8000041CUL.toLong(),
+            mapOf(9 to 0x0000000000031078L)
+        )
+        val goldenEyeBne = 0x1520FFFC
+
+        stepper.step(goldenEyeBne, state)
+        assertEquals(0xFFFFFFFF80000420UL.toLong(), state.programCounter)
+        assertTrue(stepper.hasPendingDelaySlot())
+
+        stepper.step(0x00000000, state) // NOP in the delay slot
+        assertEquals(0xFFFFFFFF80000410UL.toLong(), state.programCounter)
+        assertFalse(stepper.hasPendingDelaySlot())
+    }
+
 }
