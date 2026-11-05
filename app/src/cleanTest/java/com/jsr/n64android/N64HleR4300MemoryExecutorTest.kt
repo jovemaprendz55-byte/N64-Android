@@ -317,7 +317,7 @@ class N64HleR4300MemoryExecutorTest {
 
     @Test fun stepperRejectsMisalignedHalfwordLoadAndStoreWithoutSideEffects() {
         val loadMemory = N64HleGuestAddressSpace()
-        loadMemory.write16(0x80000100L, 0xAABBL)
+        loadMemory.write16(0x80000100L, 0xAABB)
         val loadStepper = N64HleR4300InstructionStepper(memorySpace = loadMemory)
         val loadState = N64HleR4300CpuState(
             0x80001000L,
@@ -342,7 +342,7 @@ class N64HleR4300MemoryExecutorTest {
             storeStepper.step(i(0x29, 1, 2, 0), storeState) // SH to odd address
         }
         assertEquals(0x80002000L, storeState.programCounter)
-        assertEquals(0x1234L, storeMemory.read16(0x80000100L))
+        assertEquals(0x1234, storeMemory.read16(0x80000100L))
     }
 
 }
