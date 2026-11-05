@@ -2889,3 +2889,5 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - CI de implementação/testes/APK pendente de conclusão; confirmar antes de marcar como aprovado.
 
 - **Correção de teste após CI:** os registradores COP0 são expostos como valores de 32 bits com extensão de sinal no estado R4300; os testes iniciais comparavam alguns resultados com Long positivo. Expectativas ajustadas para a extensão de sinal correta. Commit de correção `292dbdac437a7716903d92af3ce4741cd7afb528`. CI anterior falhou em 4 assertions de expectativa; a compilação Kotlin e o APK chegaram a ser produzidos, mas o workflow não publicou artefato porque os testes falharam. Nova validação pendente.
+
+- **Ajuste adicional de compilação dos testes:** Kotlin não aceita literais hexadecimais assinados acima de `Long.MAX_VALUE`; as expectativas com padrão de bits de 32 bits estendido foram expressas como `ULong.toLong()`. Commit `002182e03f66e35263a0c3b8551973a9331ba12e`. A CI da tentativa anterior falhou ao compilar os testes (não foi falha do código de produção); nova validação pendente.
