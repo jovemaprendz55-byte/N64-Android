@@ -49,7 +49,7 @@ class N64HleR4300ExceptionRegisterUpdaterTest {
             state
         )
         assertEquals(0xFFFFFFFF80001020uL.toLong(), state.readCop0(14))
-        assertEquals(0x80000028L, state.readCop0(13))
+        assertEquals(0xFFFFFFFF80000028uL.toLong(), state.readCop0(13))
         assertEquals(0x2L, state.readCop0(12))
     }
 
