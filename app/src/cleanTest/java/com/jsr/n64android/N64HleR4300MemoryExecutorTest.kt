@@ -322,7 +322,7 @@ class N64HleR4300MemoryExecutorTest {
         assertThrows(N64HleR4300ArchitecturalException::class.java) {
             stepper.step(i(0x23, 1, 2, 0), state) // LW from unaligned address
         }
-        assertEquals(0x80001000L, state.programCounter)
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
         assertEquals(false, state.isGprKnown(2))
     }
 
@@ -339,7 +339,7 @@ class N64HleR4300MemoryExecutorTest {
         assertThrows(N64HleR4300ArchitecturalException::class.java) {
             loadStepper.step(i(0x21, 1, 2, 0), loadState) // LH from odd address
         }
-        assertEquals(0x80001000L, loadState.programCounter)
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, loadState.programCounter)
         assertEquals(false, loadState.isGprKnown(2))
 
         val storeMemory = N64HleGuestAddressSpace()
@@ -353,7 +353,7 @@ class N64HleR4300MemoryExecutorTest {
         assertThrows(N64HleR4300ArchitecturalException::class.java) {
             storeStepper.step(i(0x29, 1, 2, 0), storeState) // SH to odd address
         }
-        assertEquals(0x80002000L, storeState.programCounter)
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, storeState.programCounter)
         assertEquals(0x1234, storeMemory.read16(0x80000100L))
     }
 
@@ -371,7 +371,7 @@ class N64HleR4300MemoryExecutorTest {
         assertThrows(N64HleR4300ArchitecturalException::class.java) {
             stepper.step(i(0x2B, 1, 2, 0), state) // SW to unaligned address
         }
-        assertEquals(0x80002000L, state.programCounter)
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
         assertEquals(0xAABBCCDDL, sharedMemory.read32(0x80000100L))
     }
 
@@ -388,7 +388,7 @@ class N64HleR4300MemoryExecutorTest {
         assertThrows(N64HleR4300ArchitecturalException::class.java) {
             loadStepper.step(i(0x37, 1, 2, 0), loadState) // LD from address not aligned to 8
         }
-        assertEquals(0x80003000L, loadState.programCounter)
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, loadState.programCounter)
         assertEquals(false, loadState.isGprKnown(2))
         assertEquals(0x1122334455667788L, loadMemory.read64(0x80000100L))
 
@@ -403,7 +403,7 @@ class N64HleR4300MemoryExecutorTest {
         assertThrows(N64HleR4300ArchitecturalException::class.java) {
             storeStepper.step(i(0x3F, 1, 2, 0), storeState) // SD to address not aligned to 8
         }
-        assertEquals(0x80004000L, storeState.programCounter)
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, storeState.programCounter)
         assertEquals(0xAABBCCDDEEFF0011UL.toLong(), storeMemory.read64(0x80000100L))
     }
 
@@ -420,7 +420,7 @@ class N64HleR4300MemoryExecutorTest {
         assertThrows(N64HleR4300ArchitecturalException::class.java) {
             loadStepper.step(i(0x23, 1, 2, 0), loadState) // LW beyond mapped RDRAM
         }
-        assertEquals(0x80005000L, loadState.programCounter)
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, loadState.programCounter)
         assertEquals(false, loadState.isGprKnown(2))
         assertEquals(0xAABBCCDDL, loadMemory.read32(0x80000000L))
 
@@ -435,7 +435,7 @@ class N64HleR4300MemoryExecutorTest {
         assertThrows(N64HleR4300ArchitecturalException::class.java) {
             storeStepper.step(i(0x2B, 1, 2, 0), storeState) // SW beyond mapped RDRAM
         }
-        assertEquals(0x80006000L, storeState.programCounter)
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, storeState.programCounter)
         assertEquals(0x11223344L, storeMemory.read32(0x80000000L))
     }
 
