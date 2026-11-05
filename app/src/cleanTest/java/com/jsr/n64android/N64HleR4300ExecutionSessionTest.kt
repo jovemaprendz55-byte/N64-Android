@@ -53,7 +53,7 @@ class N64HleR4300ExecutionSessionTest {
     @Test
     fun failedFetchDoesNotIncrementExecutedInstructionCount() {
         val memory = N64HleGuestAddressSpace()
-        val state = N64HleR4300CpuState(0x80000400L)
+        val state = N64HleR4300CpuState(0xA1000000L) // KSEG1 address outside configured 8 MiB RDRAM
         val session = N64HleR4300ExecutionSession(
             state,
             N64HleR4300InstructionStepper(memorySpace = memory)
