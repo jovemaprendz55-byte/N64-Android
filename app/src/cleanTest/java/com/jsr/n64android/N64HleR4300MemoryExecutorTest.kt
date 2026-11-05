@@ -395,4 +395,36 @@ class N64HleR4300MemoryExecutorTest {
         assertEquals(0xAABBCCDDEEFF0011UL.toLong(), storeMemory.read64(0x80000100L))
     }
 
+
+    @Test fun stepperRejectsUnmappedLoadAndStoreWithoutSideEffects() {
+        val loadMemory = N64HleGuestAddressSpace()
+        loadMemory.write32(0x80000000L, 0xAABBCCDDL)
+        val loadStepper = N64HleR4300InstructionStepper(memorySpace = loadMemory)
+        val loadState = N64HleR4300CpuState(
+            0x80005000L,
+            mapOf(1 to 0x80800000L)
+        )
+
+        assertThrows(IllegalArgumentException::class.java) {
+            loadStepper.step(i(0x23, 1, 2, 0), loadState) // LW beyond mapped RDRAM
+        }
+        assertEquals(0x80005000L, loadState.programCounter)
+        assertEquals(false, loadState.isGprKnown(2))
+        assertEquals(0xAABBCCDDL, loadMemory.read32(0x80000000L))
+
+        val storeMemory = N64HleGuestAddressSpace()
+        storeMemory.write32(0x80000000L, 0x11223344L)
+        val storeStepper = N64HleR4300InstructionStepper(memorySpace = storeMemory)
+        val storeState = N64HleR4300CpuState(
+            0x80006000L,
+            mapOf(1 to 0x80800000L, 2 to 0x55667788L)
+        )
+
+        assertThrows(IllegalArgumentException::class.java) {
+            storeStepper.step(i(0x2B, 1, 2, 0), storeState) // SW beyond mapped RDRAM
+        }
+        assertEquals(0x80006000L, storeState.programCounter)
+        assertEquals(0x11223344L, storeMemory.read32(0x80000000L))
+    }
+
 }
