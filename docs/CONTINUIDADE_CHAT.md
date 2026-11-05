@@ -3327,3 +3327,31 @@ Arquivo: `app/src/cleanTest/java/com/jsr/n64android/N64HleGuestAddressSpaceTest.
 - Próximo passo: aguardar o CI deste commit. Se aprovado, não é necessário reinstalar APK apenas para o teste unitário. No aparelho, executar exatamente mais uma instrução no PC `0xFFFFFFFF80000420`; a expectativa, se o estado real de GPR9 for diferente de zero e o delay slot concluir, é PC `0xFFFFFFFF80000410`.
 - A UI ainda não expõe GPR9 diretamente; portanto, a previsão física depende de o estado real do registrador coincidir com o valor inferido da sequência anterior. Não interpretar a previsão como resultado já observado.
 - Limite permanece: ainda não há comprovação de boot completo, execução RSP/OSTask, renderização, áudio ou controles.
+
+
+## Seção 158 — lotes finitos da CPU R4300 em segundo plano — 2026-11-05
+
+**Status: implementação publicada; aguardando CI. Sem APK validado e sem teste físico desta alteração.**
+
+### Implementação
+
+- A tela de diagnóstico da CPU ganhou botões para executar lotes explícitos de 10, 100 e 1.000 instruções.
+- Cada ação chama o executor existente `runChunk(instructionBudget)`; não foi criado loop infinito.
+- A execução ocorre em uma thread de trabalho chamada `N64-R4300-Batch-<orçamento>`, mantendo o trabalho de CPU fora da thread da interface.
+- Durante o lote, os botões de passo único e lotes ficam desabilitados e a preparação HLE também fica temporariamente bloqueada, evitando acesso concorrente à sessão pela UI.
+- Ao concluir, a tela mostra instruções executadas no lote, total acumulado, PC seguinte e última instrução.
+- Se ocorrer uma exceção, a tela mostra o total concluído e PC da tentativa, e mantém os controles de execução desabilitados para não repetir automaticamente a instrução problemática.
+- Os lotes disponíveis (10/100/1.000) permanecem abaixo do limite rígido de 4.096 instruções por chamada já aplicado por `N64HleR4300ExecutionSession.runChunk()`.
+
+### Limitações
+
+- Ainda não existe botão de cancelamento cooperativo no meio de um lote.
+- Ainda não existe persistência/restauração do estado da CPU e memória. Fechar o processo pode perder a sessão atual; não há retomada garantida.
+- A execução em lote não prova boot completo de GoldenEye, execução de RSP/OSTask, renderização, áudio ou controles.
+- Esta alteração ainda precisa passar pelo CI e gerar um novo APK antes de qualquer teste no aparelho.
+
+### Commit
+
+- `377771b4c9552190fde4b9170b8d67fc23b21245` — [Add bounded background R4300 instruction batches](https://github.com/jovemaprendz55-byte/N64-Android/commit/377771b4c9552190fde4b9170b8d67fc23b21245)
+- Branch: `dev/n64-hle-clean-reboot`. A branch `main` não foi alterada.
+- Próximo passo: verificar CI/build e revisar os testes; só então instalar o APK e validar primeiro o lote de 10 instruções no aparelho.
