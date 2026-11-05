@@ -85,7 +85,8 @@ class N64HleR4300InstructionStepper(
 
     private fun enterSimpleArchitecturalException(
         code: N64HleR4300ExceptionCode,
-        state: N64HleR4300CpuState
+        state: N64HleR4300CpuState,
+        cause: Throwable = IllegalStateException("Reserved instruction")
     ): Nothing {
         val inDelaySlot = controlSequencer.hasPendingDelaySlot()
         val context = N64HleR4300ExceptionContext(
@@ -103,7 +104,7 @@ class N64HleR4300InstructionStepper(
             context,
             update,
             vectorAddress,
-            IllegalStateException("Reserved instruction at 0x${context.faultingPc.toString(16)}")
+            cause
         )
     }
 
@@ -165,6 +166,12 @@ class N64HleR4300InstructionStepper(
             if (inDelaySlot) controlSequencer.cancelPendingDelaySlot()
             state.setProgramCounter(vectorAddress)
             throw N64HleR4300ArchitecturalException(context, update, vectorAddress, fault)
+        } catch (overflow: N64HleR4300ArithmeticOverflow) {
+            enterSimpleArchitecturalException(
+                N64HleR4300ExceptionCode.ARITHMETIC_OVERFLOW,
+                state,
+                overflow
+            )
         }
     }
 
