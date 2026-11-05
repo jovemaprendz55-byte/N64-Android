@@ -3396,3 +3396,18 @@ Arquivo: `app/src/cleanTest/java/com/jsr/n64android/N64HleGuestAddressSpaceTest.
 
 - Verificar o CI do commit de proteção antes de gerar/instalar APK novo.
 - Depois, ampliar a cobertura automatizada de instruções R4300 e adicionar diagnósticos úteis dos registradores/fluxo de controle, sem confundir o ciclo atual com execução real do jogo.
+
+## Seção 160 — testes adicionais de desvios condicionais R4300 — 2026-11-05
+
+**Status: testes adicionados à branch; CI do commit de testes precisa ser acompanhado.**
+
+- Commit anterior de proteção contra troca de ROM durante lote: `fb20c8d7442b64e74de1c9b05d48c68f59044c97`; GitHub Actions run `42055619135` concluiu com sucesso.
+- Novos testes em `N64HleR4300InstructionStepperTest.kt`: BGEZAL tomado grava RA=`PC+8` antes do delay slot e transfere ao alvo após o slot; BLTZAL não tomado não grava RA e segue para `PC+8`; BLEZ/BGTZ usam comparação assinada e executam o delay slot.
+- Commit dos testes: `7674e6c7b37f508112ec84bcbff87438cc9280ea`.
+- Esses testes cobrem semântica do stepper/planner para esses casos sintéticos; não provam que GoldenEye já alcançou ou executou esses opcodes no aparelho.
+- Nenhuma alteração na branch `main`; nenhum APK novo declarado até o CI terminar.
+
+### Próxima verificação
+
+- Aguardar `testDebugUnitTest` e `assembleDebug` do commit `7674e6c7b37f508112ec84bcbff87438cc9280ea`.
+- Se CI falhar, analisar o erro e corrigir antes de seguir; se passar, ampliar os testes de fluxo de controle com condições-limite e então escolher o próximo subsistema guiado por evidência da ROM.
