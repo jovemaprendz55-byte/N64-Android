@@ -3901,3 +3901,12 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
 - Referência técnica: manual NEC VR4300, Figura 16-1, tabela COP0/CO e legenda de códigos φ/γ/ξ: https://n64dev.org/p/U10504EJ7V0UMJ1.pdf
 - **CI ainda precisa ser conferida para os commits acima.** Não declarar a classificação COP0 aprovada até a execução no HEAD mais recente ficar verde.
 - Limite preservado: isso só classifica codificações. Não implementa execução de TLB/ERET/WAIT, modo de privilégio/CU0 ou side effects de registradores COP0.
+
+### Ajustes de CI na classificação COP0 — 2026-11-05
+
+- A CI do primeiro refinamento COP0 apontou duas expectativas antigas/incompatíveis:
+  - O teste genérico ainda esperava que rs=0x10 (formato CO) nunca fosse classificado, embora a regra do manual identifique RFE (funct 0x10) como RI. Removida essa asserção contraditória: https://github.com/jovemaprendz55-byte/N64-Android/commit/222c0d023b720659720aa69b4552a323e3c7408c
+  - O teste de integração de RFE foi inicialmente acrescentado fora do fechamento da classe de testes, causando referências não resolvidas a stepper/exceptionState. Movido para dentro da classe: https://github.com/jovemaprendz55-byte/N64-Android/commit/c8d5807224ea40b8cdf5f7bb0ab962c21b9082b4
+- A CI também revelou que o teste anterior considerava funct=0x3F como RI; o manual VR4300 marca certas codificações φ como inválidas sem gerar RI. A matriz de testes foi atualizada para testar separadamente funções RI (0x0D, 0x0F, 0x10) e não-RI (incluindo 0x3F). Não generalizar a regra de funct desconhecido para todo CO.
+- Execuções anteriores com falha, anteriores às correções: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42111297712 ; https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42111314007 ; https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42111327470 ; https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42111357672 ; https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42111452351 ; https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42111478271
+- As correções foram publicadas; confirmar as novas execuções no HEAD mais recente antes de declarar COP0 reservado aprovado.
