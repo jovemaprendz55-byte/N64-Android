@@ -129,4 +129,43 @@ class N64HleR4300InstructionStepperTest {
         assertEquals(0x80002010L, bgtzState.programCounter)
     }
 
+
+    @Test fun jrUsesRegisterTargetAfterExecutingDelaySlot() {
+        val state = N64HleR4300CpuState(0x80001000L, mapOf(5 to 0x80003400L))
+        val jr = (5 shl 21) or 0x08
+
+        stepper.step(jr, state)
+        assertEquals(0x80001004L, state.programCounter)
+        assertTrue(stepper.hasPendingDelaySlot())
+
+        stepper.step(0, state)
+        assertEquals(0x80003400L, state.programCounter)
+        assertFalse(stepper.hasPendingDelaySlot())
+    }
+
+    @Test fun jalrWritesSelectedLinkRegisterAndTransfersAfterDelaySlot() {
+        val state = N64HleR4300CpuState(0xFFFFFFFF80001000UL.toLong(), mapOf(5 to 0xFFFFFFFF80004000UL.toLong()))
+        val jalr = (5 shl 21) or (7 shl 11) or 0x09
+
+        stepper.step(jalr, state)
+        assertEquals(0xFFFFFFFF80001004UL.toLong(), state.programCounter)
+        assertEquals(0xFFFFFFFF80001008UL.toLong(), state.readGpr(7))
+        assertTrue(stepper.hasPendingDelaySlot())
+
+        stepper.step(0, state)
+        assertEquals(0xFFFFFFFF80004000UL.toLong(), state.programCounter)
+        assertFalse(stepper.hasPendingDelaySlot())
+    }
+
+    @Test fun jrRejectsUnalignedTargetWithoutChangingCpuState() {
+        val state = N64HleR4300CpuState(0x80001000L, mapOf(5 to 0x80003402L))
+        val jr = (5 shl 21) or 0x08
+
+        assertThrows(IllegalArgumentException::class.java) {
+            stepper.step(jr, state)
+        }
+        assertEquals(0x80001000L, state.programCounter)
+        assertFalse(stepper.hasPendingDelaySlot())
+    }
+
 }
