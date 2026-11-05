@@ -3264,3 +3264,17 @@ Arquivo: `app/src/cleanTest/java/com/jsr/n64android/N64HleGuestAddressSpaceTest.
 - O resumo superior continua exibindo zero instruções porque é snapshot inicial; o painel inferior mostra o contador atualizado (5).
 - Próximo passo físico: executar uma instrução e registrar o PC/opcode reais; não presumir o opcode seguinte.
 - Limite: cinco instruções confirmadas não comprovam boot completo do jogo, RSP/OSTask, vídeo, áudio ou controles.
+
+
+### Sexto passo físico — confirmação por captura (2026-11-05)
+
+- Captura versionada: `Screenshot_2026-11-05-05-40-23-593_com.jsr.n64android.jpg`.
+- STATUS: **Uma instrução executada com sucesso. Total: 6**.
+- PC seguinte: `0x0000000080000418`.
+- Último PC concluído / PC da última tentativa: `0x0000000080000414`.
+- Última instrução: `0xAD000000`, decodificada como `SW $zero, 0($t0)`.
+- Pela sequência anterior, `$t0` esperado é `0xFFFFFFFF8005D2E0`; o endereço físico KSEG0 correspondente é `0x0005D2E0`, dentro da RDRAM de 8 MiB preparada. A instrução grava a palavra zero nesse endereço.
+- A tela não indica falha (tipo e mensagem vazios). A captura confirma que o executor aceitou/concluiu o passo; não exibe diretamente o conteúdo de memória após a escrita, portanto o valor gravado é deduzido da semântica da instrução e do registrador esperado.
+- O painel superior continua sendo snapshot inicial (zero instruções); o painel inferior mostra o total atual (6).
+- Próximo passo físico: executar uma instrução e registrar PC/opcode reais; não presumir o próximo opcode.
+- Limite: seis instruções confirmadas não comprovam boot completo, RSP/OSTask, vídeo, áudio ou controles.
