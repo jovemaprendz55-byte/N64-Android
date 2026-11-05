@@ -1,6 +1,7 @@
 package com.jsr.n64android
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
@@ -427,4 +428,35 @@ class N64HleR4300MemoryExecutorTest {
         assertEquals(0x11223344L, storeMemory.read32(0x80000000L))
     }
 
+
+    @Test fun memoryFaultRetainsLoadDirectionAndOriginalAlignmentFault() {
+        val state = N64HleR4300CpuState(
+            0x80001000L,
+            mapOf(1 to 0x80000101L)
+        )
+
+        val fault = assertThrows(N64HleR4300MemoryAccessFault::class.java) {
+            executor.execute(N64HleR4300InstructionDecoder().decode(i(0x23, 1, 2, 0)), state)
+        }
+
+        assertEquals(N64HleR4300MemoryAccessKind.LOAD, fault.accessKind)
+        assertEquals(0x80000101L, fault.memoryFault.virtualAddress)
+        assertTrue(fault.memoryFault is N64HleGuestAddressAlignmentFault)
+        assertEquals(false, state.isGprKnown(2))
+    }
+
+    @Test fun memoryFaultRetainsStoreDirectionAndOriginalMappingFault() {
+        val state = N64HleR4300CpuState(
+            0x80001000L,
+            mapOf(1 to 0x80800000L, 2 to 0x12345678L)
+        )
+
+        val fault = assertThrows(N64HleR4300MemoryAccessFault::class.java) {
+            executor.execute(N64HleR4300InstructionDecoder().decode(i(0x2B, 1, 2, 0)), state)
+        }
+
+        assertEquals(N64HleR4300MemoryAccessKind.STORE, fault.accessKind)
+        assertEquals(0x80800000L, fault.memoryFault.virtualAddress)
+        assertTrue(fault.memoryFault is N64HleGuestAddressMappingFault)
+    }
 }
