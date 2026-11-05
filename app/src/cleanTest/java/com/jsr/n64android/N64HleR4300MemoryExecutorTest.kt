@@ -363,4 +363,36 @@ class N64HleR4300MemoryExecutorTest {
         assertEquals(0xAABBCCDDL, sharedMemory.read32(0x80000100L))
     }
 
+
+    @Test fun stepperRejectsMisalignedDoublewordLoadAndStoreWithoutSideEffects() {
+        val loadMemory = N64HleGuestAddressSpace()
+        loadMemory.write64(0x80000100L, 0x1122334455667788L)
+        val loadStepper = N64HleR4300InstructionStepper(memorySpace = loadMemory)
+        val loadState = N64HleR4300CpuState(
+            0x80003000L,
+            mapOf(1 to 0x80000104L)
+        )
+
+        assertThrows(IllegalArgumentException::class.java) {
+            loadStepper.step(i(0x37, 1, 2, 0), loadState) // LD from address not aligned to 8
+        }
+        assertEquals(0x80003000L, loadState.programCounter)
+        assertEquals(false, loadState.isGprKnown(2))
+        assertEquals(0x1122334455667788L, loadMemory.read64(0x80000100L))
+
+        val storeMemory = N64HleGuestAddressSpace()
+        storeMemory.write64(0x80000100L, 0xAABBCCDDEEFF0011UL.toLong())
+        val storeStepper = N64HleR4300InstructionStepper(memorySpace = storeMemory)
+        val storeState = N64HleR4300CpuState(
+            0x80004000L,
+            mapOf(1 to 0x80000104L, 2 to 0x123456789ABCDEF0L)
+        )
+
+        assertThrows(IllegalArgumentException::class.java) {
+            storeStepper.step(i(0x3F, 1, 2, 0), storeState) // SD to address not aligned to 8
+        }
+        assertEquals(0x80004000L, storeState.programCounter)
+        assertEquals(0xAABBCCDDEEFF0011UL.toLong(), storeMemory.read64(0x80000100L))
+    }
+
 }
