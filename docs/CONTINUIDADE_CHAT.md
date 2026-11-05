@@ -2930,3 +2930,17 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Testes verificam os endereços após agendar JAL e branch condicional, e a volta para null após completar o delay slot.
 - Commits: accessor af45a90681a646383ee0ab0b0ade150cbc7f8afd; testes 85e84a0b50265fa8d2d28cd8a12bb6207d74d3c3.
 - Limite: esta etapa ainda não entrega exceções no stepper. O accessor apenas fornece os fatos necessários para formar N64HleR4300ExceptionContext; não muda PC para vetor, não atualiza COP0 e não resolve exceções dentro de delay slot. CI pendente.
+
+
+## 144. Primeira interface nativa e seletor de ROM — 2026-11-05
+
+- Substituída a Activity preta vazia em `app/src/clean/java/com/jsr/n64android/MainActivity.kt` por uma primeira tela nativa Android.
+- A tela apresenta identidade do N64 Android, área de biblioteca, estado do emulador e botão para escolher ROM.
+- O seletor usa Storage Access Framework (`ACTION_OPEN_DOCUMENT`) e solicita acesso de leitura persistente quando o provedor permite.
+- Ao escolher um arquivo, a interface mostra o nome e informa que a ROM foi selecionada.
+- **Limite funcional:** esta etapa não lê nem interpreta o conteúdo da ROM, não valida formato/CRC, não cria sessão de execução e não executa CPU/RSP/RDP. A seleção do arquivo não significa que o jogo esteja carregado.
+- Commit da interface: `13b4c5bde747a09472dda49d1357c1cd249eab59`.
+- CI Android build: run `41978077048`, **success**. Testes unitários e `assembleDebug` passaram.
+- Artifact: `n64-android-debug-apk`, ID `13392865725`, tamanho 857.531 bytes. Build: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41978077048
+- O APK foi gerado e publicado pelo CI; ainda precisa ser instalado e testado no aparelho Android 16. A tela anterior preta deve ser substituída pela nova interface se a versão correta for instalada.
+- Próxima etapa: testar a nova interface no aparelho; depois implementar leitura real do documento selecionado, cópia/stream controlado para o carregador de ROM, inspeção de cabeçalho e mensagens de erro. Não iniciar a execução da ROM antes de validar carregamento e inspeção.
