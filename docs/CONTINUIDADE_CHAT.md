@@ -3015,3 +3015,18 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Próxima etapa: validar CI. Se aprovado, criar observabilidade de execução (último PC/instrução, contagem e erro) e só depois avaliar integração manual à Activity, sempre sem alegar compatibilidade de jogos não testados.
 - **Correção de teste após CI:** build da seção 149 passou, mas um teste de fetch falhou porque a RDRAM é inicializada com zeros; a palavra zero é uma instrução NOP válida (SLL r0,r0,0), portanto endereço válido sem conteúdo não gera erro de leitura. O teste estava incorreto, não o stepper. Corrigido para buscar em `0xA1000000`, endereço KSEG1 fora da janela de 8 MiB, que deve produzir erro de faixa. Commit da correção: `272b446fd7b754df003b757dfa37253e709d2034`. Reexecutar CI completo antes de aprovar a seção.
 - **Segunda correção do teste de fetch:** a primeira correção mudou o PC inicial para `0xA1000000`, mas deixou a asserção final comparando com o PC antigo `0x80000400`. A falha atual foi essa asserção desatualizada. Corrigida para confirmar que o PC permanece em `0xA1000000` após o fetch falhar. Commit: `d844a8793bece807c5f7e2c8779969f9d050cc8f`. CI deve ser revalidado.
+
+
+- **Validação final da seção 149 — 2026-11-05:** após as duas correções do teste de fetch inválido, o workflow de código terminou com sucesso no run [41981212908](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41981212908), commit `d844a8793bece807c5f7e2c8779969f9d050cc8f`. A validação documental terminou com sucesso no run [41981226432](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41981226432), commit `fabfa474502c6b494d6623f9f07668a8f497c411`. A seção 149 está aprovada em CI.
+
+## 150. Diagnóstico observável da sessão R4300 — 2026-11-05
+
+- `N64HleR4300ExecutionSession` agora mantém um snapshot diagnóstico somente-leitura, obtido por `diagnostics()`.
+- O snapshot registra total de instruções concluídas, PC da última instrução concluída, instrução decodificada correspondente, PC da tentativa mais recente e tipo/mensagem da última falha.
+- O PC da tentativa é registrado antes do fetch. Se o fetch ou execução lançar uma exceção, a sessão registra o resumo e **relança a mesma exceção**; não transforma falha em sucesso e não incrementa a contagem.
+- Uma instrução concluída atualiza o último PC/instrução bem-sucedidos e limpa a falha anterior. Uma falha posterior preserva os dados da última instrução concluída.
+- O diagnóstico não modifica registradores guest, COP0, memória, SP_STATUS, estado de delay slot ou PC para tentar recuperar execução.
+- Testes cobrem diagnóstico de duas instruções, orçamento inválido, fetch fora da RDRAM e preservação do último passo bem-sucedido após falha subsequente.
+- Commits: implementação `ddea71fc3207b08746f90a4185598cf00f4d83f1`; testes `2d1cf4edd6490d1e568e07f99fb0b9376f009ede`.
+- **Limites:** o campo de falha contém apenas tipo e mensagem da exceção Java/Kotlin, não um diagnóstico arquitetural R4300 nem uma classificação automática de exceções guest. Se a falha ocorrer depois do fetch, o stepper atual não expõe o word decodificado que falhou; portanto, o snapshot registra o PC tentado e conserva a última instrução concluída, sem inventar a instrução que falhou. Não há ainda exibição desse diagnóstico na Activity.
+- Próxima etapa: aguardar CI de implementação/testes e documentação. Se aprovado, avaliar uma tela de diagnóstico manual na Activity, sem iniciar execução de ROM automaticamente e sem confundir logs sintéticos com boot real de jogo.
