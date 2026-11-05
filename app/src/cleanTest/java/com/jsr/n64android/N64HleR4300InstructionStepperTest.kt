@@ -168,4 +168,32 @@ class N64HleR4300InstructionStepperTest {
         assertFalse(stepper.hasPendingDelaySlot())
     }
 
+
+    @Test fun jUsesRegionFromPcPlusFourAndCompletesAfterDelaySlot() {
+        val state = N64HleR4300CpuState(0x0FFFFFFCL)
+        val j = (0x02 shl 26) or 0x00001234
+
+        stepper.step(j, state)
+        assertEquals(0x10000000L, state.programCounter)
+        assertTrue(stepper.hasPendingDelaySlot())
+
+        stepper.step(0, state)
+        assertEquals(0x100048D0L, state.programCounter)
+        assertFalse(stepper.hasPendingDelaySlot())
+    }
+
+    @Test fun jalWritesRaBeforeDelaySlotAndPreservesSignExtendedTarget() {
+        val state = N64HleR4300CpuState(0xFFFFFFFF80001000UL.toLong())
+        val jal = (0x03 shl 26) or 0x00000800
+
+        stepper.step(jal, state)
+        assertEquals(0xFFFFFFFF80001004UL.toLong(), state.programCounter)
+        assertEquals(0xFFFFFFFF80001008UL.toLong(), state.readGpr(31))
+        assertTrue(stepper.hasPendingDelaySlot())
+
+        stepper.step(0, state)
+        assertEquals(0xFFFFFFFF80002000UL.toLong(), state.programCounter)
+        assertFalse(stepper.hasPendingDelaySlot())
+    }
+
 }
