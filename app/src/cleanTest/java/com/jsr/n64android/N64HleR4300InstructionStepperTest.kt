@@ -368,4 +368,31 @@ class N64HleR4300InstructionStepperTest {
         assertEquals(0x2L, state.readCop0(12))
         assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
     }
+
+    @Test fun instructionFetchFaultInDelaySlotSetsBdAndUsesBranchPcForEpc() {
+        val memory = N64HleGuestAddressSpace()
+        val stepperWithMemory = N64HleR4300InstructionStepper(memorySpace = memory)
+        val state = exceptionState(0x80001000L, emptyMap())
+
+        stepperWithMemory.step((0x02 shl 26) or 0x800, state) // J; delay slot fetch is unmapped
+        assertEquals(0x80001004L, state.programCounter)
+        assertTrue(stepperWithMemory.hasPendingDelaySlot())
+
+        val signal = assertThrows(N64HleR4300ArchitecturalException::class.java) {
+            stepperWithMemory.stepFromMemory(state)
+        }
+
+        assertEquals(N64HleR4300ExceptionCode.INSTRUCTION_BUS_ERROR, signal.context.code)
+        assertTrue(signal.context.inDelaySlot)
+        assertEquals(0x80001004L, signal.context.faultingPc)
+        assertEquals(0x80001000L, signal.context.exceptionProgramCounter)
+        assertEquals(0x80001004L, signal.context.badVirtualAddress)
+        assertEquals(0xFFFFFFFF80001000UL.toLong(), state.readCop0(14))
+        assertEquals(0xFFFFFFFF80001004UL.toLong(), state.readCop0(8))
+        assertEquals(0x80000018L, state.readCop0(13))
+        assertEquals(0x2L, state.readCop0(12))
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
+        assertFalse(stepperWithMemory.hasPendingDelaySlot())
+    }
+
 }
