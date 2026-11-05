@@ -3068,3 +3068,14 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Artefato APK debug produzido pelo run `41982419303`: [abrir execução e baixar n64-android-debug-apk](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41982419303). Artifact ID `13393629748`, tamanho 871.560 bytes, SHA-256 `b8e8e451ada430bab8fc3892fef160bcd9ff8bdb47b01674be0e13715ddf04cd`. É um APK de debug compilado e testado por CI; ainda não foi instalado nem testado fisicamente no aparelho.
 - **Seção 152 aprovada em CI**, com a ressalva de que a fixture é sintética. O perfil CIC 6102/7101 ainda não foi validado com ROM comercial e não deve ser descrito como boot funcional de GoldenEye ou outro jogo.
 - Próxima etapa: integrar à Activity um comando manual de preparação do perfil e do handoff, exibindo claramente sucesso/falha e PC de entrada. Não executar ainda o driver R4300 nem iniciar jogo automaticamente. Testar em ROM real somente se a identificação CIC/CRC passar; rejeições devem permanecer visíveis.
+
+## 153. Preparação HLE manual na Activity — 2026-11-05 (CI pendente)
+
+- A Activity clean agora oferece a ação explícita `PREPARAR HANDOFF HLE`, inicialmente desabilitada até uma ROM ser carregada e identificada.
+- Ao tocar no botão, chama `N64HleBootProfileFactory.createCic6102Profile`, prepara uma RDRAM nova com `prepareHleHandoff` e cria uma `N64HleR4300ExecutionSession` sem executar instruções.
+- A tela apresenta perfil CIC 6102/7101, seed 0x3F, PC de entrada, tamanho da RDRAM e a informação explícita de que foram executadas zero instruções. CIC/CRC não reconhecidos são apresentados como rejeição; não há fallback silencioso.
+- Ao selecionar outra ROM ou falhar a leitura, o handoff anterior é descartado e o botão é desabilitado até uma nova ROM ser carregada.
+- Commit da Activity: `75358ba2a678d49ec02c698ea5e153d2d37fd67f`.
+- CI do código no run [41982671471](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41982671471) e CI documental no run [41982638918](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41982638918) estavam em execução na última consulta. **Não marcar a seção como aprovada até ambos terminarem com sucesso.**
+- Limites mantidos: o botão prepara memória/estado e cria a sessão R4300, mas não chama `runChunk`, não executa IPL3/PIF, não inicia RSP/RDP/VI/áudio e não prova boot de ROM comercial. Primeiro teste físico deve observar apenas a preparação ou a rejeição do perfil.
+- Próximo passo: concluir CI; corrigir qualquer falha; depois gerar APK atualizado e pedir teste físico do botão com uma ROM CIC 6102/7101 conhecida, registrando o texto exato da tela.
