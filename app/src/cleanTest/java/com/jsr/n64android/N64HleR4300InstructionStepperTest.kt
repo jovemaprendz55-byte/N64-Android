@@ -475,4 +475,21 @@ class N64HleR4300InstructionStepperTest {
         assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
     }
 
+
+    @Test fun trueTrapEntersTrapExceptionAndFalseTrapAdvancesNormally() {
+        val trapped = exceptionState(0x80001000L, mapOf(1 to -1L, 2 to 1L))
+        val signal = assertThrows(N64HleR4300ArchitecturalException::class.java) {
+            stepper.step(r(1, 2, 0, 0x32), trapped) // TLT signed: -1 < 1
+        }
+        assertEquals(N64HleR4300ExceptionCode.TRAP, signal.context.code)
+        assertEquals(0x34L, trapped.readCop0(13))
+        assertEquals(0xFFFFFFFF80001000UL.toLong(), trapped.readCop0(14))
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, trapped.programCounter)
+
+        val notTrapped = exceptionState(0x80002000L, mapOf(1 to 5L, 2 to 5L))
+        stepper.step(r(1, 2, 0, 0x36), notTrapped) // TNE: equal operands do not trap
+        assertEquals(0x80002004L, notTrapped.programCounter)
+        assertEquals(0L, notTrapped.readCop0(13))
+    }
+
 }
