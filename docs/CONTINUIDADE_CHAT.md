@@ -3600,3 +3600,22 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
 - Confirmar os workflows gerados pelos três commits da seção 171.
 - Se aprovados, conectar a captura no stepper, preservando PC, delay slot e estado COP0 quando a falha ocorre. Antes da entrega arquitetural, testar AdEL/AdES/DBE e EPC/BD em delay slot; manter o vetor de exceção como etapa separada até definir e testar a política BEV/EXL.
 
+## Seção 172 — classificação de falhas de dados em códigos R4300 — 2026-11-05
+
+**Status: classificador puro e testes adicionados; CI pendente.**
+
+- Confirmado que os três workflows da seção 171 passaram: [classe](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42090460140), [executor](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42090479990) e [testes](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42090506140).
+- Inspeção do stepper confirmou que a falha do executor ocorre antes do avanço do PC e, no delay slot, antes de `completeDelaySlot`. O sequenciador expõe `pendingBranchAddress()` sem consumir o slot.
+- Criado `N64HleR4300MemoryExceptionClassifier`, que converte falhas de alinhamento LOAD em AdEL, alinhamento STORE em AdES e falhas de mapeamento de dados em DBE.
+- O resultado do classificador é apenas metadado (`code` e `badVirtualAddress`), sem inventar PC de falha e sem mutar CPU/COP0. O stepper ainda precisa combinar esse resultado com o PC atual e branch PC do delay slot.
+- Testes cobrem AdEL, AdES, DBE para LOAD/STORE e preservação do endereço virtual original.
+- Commits: [classificador inicial](https://github.com/jovemaprendz55-byte/N64-Android/commit/6a94cfce52dd0bc14b92c31ffda89a918000831c), [correção para manter PC fora do classificador](https://github.com/jovemaprendz55-byte/N64-Android/commit/db46fd510546b4fe924c21af22067ba3d8dfde48), [testes](https://github.com/jovemaprendz55-byte/N64-Android/commit/115f0ac53109168e833836e2e539537ba7a83011).
+- Não há entrega de exceção no stepper, atualização COP0 nem despacho de vetor nesta seção. Falhas de fetch permanecem separadas; IBE não foi inferido.
+- Nenhum teste de ROM real ou no Poco C85 foi executado. Alterações apenas na branch `dev/n64-hle-clean-reboot`; `main` não alterada.
+
+### Próximo passo
+
+- Confirmar os workflows da seção 172.
+- Depois implementar a integração no stepper de modo atômico: construir contexto com PC atual, branch PC e BD; aplicar o atualizador COP0 apenas após preflight; definir como sinalizar a exceção e resolver o estado pendente do delay slot.
+- A seleção do vetor de exceção continua separada até a política BEV/EXL estar especificada e testada.
+
