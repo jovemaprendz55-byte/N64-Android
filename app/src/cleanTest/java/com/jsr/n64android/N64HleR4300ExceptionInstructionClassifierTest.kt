@@ -104,9 +104,14 @@ class N64HleR4300ExceptionInstructionClassifierTest {
             val word = (0x10 shl 26) or (rs shl 21)
             assertNull("COP0 transfer rs=0x${rs.toString(16)}", classifier.classify(decoder.decode(word)))
         }
-        for (function in listOf(0x01, 0x02, 0x06, 0x08, 0x18, 0x20)) {
+        for (function in listOf(0x01, 0x02, 0x06, 0x08, 0x18)) {
             val word = (0x10 shl 26) or (0x10 shl 21) or function
             assertNull("COP0 CO funct=0x${function.toString(16)}", classifier.classify(decoder.decode(word)))
+        }
+        // The manual marks these encodings invalid but not RI-generating.
+        for (function in listOf(0x00, 0x03, 0x20, 0x3F)) {
+            val word = (0x10 shl 26) or (0x10 shl 21) or function
+            assertNull("non-RI COP0 CO funct=0x${function.toString(16)}", classifier.classify(decoder.decode(word)))
         }
     }
 
@@ -119,11 +124,14 @@ class N64HleR4300ExceptionInstructionClassifierTest {
                 classifier.classify(decoder.decode(word))
             )
         }
-        val unknownCo = (0x10 shl 26) or (0x10 shl 21) or 0x3F
-        assertEquals(
-            N64HleR4300ExceptionCode.RESERVED_INSTRUCTION,
-            classifier.classify(decoder.decode(unknownCo))
-        )
+        for (function in listOf(0x0D, 0x0F, 0x10)) {
+            val reservedCo = (0x10 shl 26) or (0x10 shl 21) or function
+            assertEquals(
+                "COP0 CO reserved funct=0x${function.toString(16)}",
+                N64HleR4300ExceptionCode.RESERVED_INSTRUCTION,
+                classifier.classify(decoder.decode(reservedCo))
+            )
+        }
     }
 
 }
