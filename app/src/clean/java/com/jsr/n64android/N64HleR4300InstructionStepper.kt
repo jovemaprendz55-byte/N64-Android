@@ -4,9 +4,9 @@ package com.jsr.n64android
  * Integrates the implemented SPECIAL integer subset with classic control flow.
  *
  * Instructions may be supplied directly with step(), or fetched from an
- * explicitly configured guest RDRAM space with stepFromMemory(). Architectural
- * exception delivery is not implemented. Supported SPECIAL, immediate, basic COP0 transfer and
- * RDRAM load/store operations share one delay-slot sequencing path.
+ * explicitly configured guest RDRAM space with stepFromMemory(). Typed data-memory
+ * faults enter COP0 and are signaled to the host; vector selection and guest-PC
+ * redirection are not implemented. Supported instruction subsets share one delay-slot path.
  */
 class N64HleR4300InstructionStepper(
     private val decoder: N64HleR4300InstructionDecoder = N64HleR4300InstructionDecoder(),
@@ -40,9 +40,9 @@ class N64HleR4300InstructionStepper(
     /**
      * Executes one supplied instruction word.
      *
-     * Returns the decoded instruction. Unsupported instructions fail without
-     * advancing PC. Delay-slot control transfers are rejected because the
-     * R4300's corresponding exception/BD/EPC behavior is not yet modeled.
+     * Returns the decoded instruction on success. Typed data-memory faults
+     * update COP0 and throw N64HleR4300ArchitecturalException without advancing
+     * PC. Delay-slot control transfers remain unsupported.
      */
     fun step(instructionWord: Int, state: N64HleR4300CpuState): N64HleR4300DecodedInstruction {
         val instruction = decoder.decode(instructionWord)
