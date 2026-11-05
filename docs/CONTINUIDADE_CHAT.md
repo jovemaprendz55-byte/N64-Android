@@ -3176,3 +3176,36 @@ Arquivo: `app/src/cleanTest/java/com/jsr/n64android/N64HleGuestAddressSpaceTest.
 - Download do APK pelo run: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41984152091
 - Expiração do artifact: 2026-11-19.
 - CI confirma compilação e testes automatizados, não teste físico desta nova versão nem boot/renderização de jogos.
+
+
+## Seção 157 — execução manual de uma instrução R4300 na UI — 2026-11-05
+
+**Status: implementado; CI aprovado; APK debug gerado; primeiro passo confirmado pelo usuário no aparelho.**
+
+### Implementação
+
+- A Activity clean ganhou o botão explícito **EXECUTAR 1 INSTRUÇÃO**, inicialmente desabilitado.
+- O botão só é habilitado depois que o handoff HLE cria uma sessão R4300 válida; ao trocar/carregar ROM ou falhar a preparação, permanece desabilitado.
+- Cada toque chama `runChunk(1)`, portanto solicita exatamente uma instrução ao executor, sem loop automático.
+- Em sucesso, a UI atualiza diagnóstico, total de instruções, PC seguinte e palavra da última instrução.
+- Em falha, a UI apresenta interrupção e PC da tentativa; o botão é desabilitado para não repetir indefinidamente a mesma falha.
+- Commit: `aa47b9e9577bd6c3319869513dec97c120a96031` — [ver alteração](https://github.com/jovemaprendz55-byte/N64-Android/commit/aa47b9e9577bd6c3319869513dec97c120a96031).
+
+### Validação automatizada
+
+- GitHub Actions: [run 41992709779](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41992709779) — `completed/success`.
+- Etapas do workflow: testes unitários e montagem do APK debug.
+- Artifact: `n64-android-debug-apk`, ID `13399230557`, tamanho 876.444 bytes, SHA-256 `dca6d8e01f8e6f7ef2c23d3938c60bb3b1c67e049457111956f3738241c83c6f`.
+- [Abrir execução e baixar APK](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41992709779). Expira em 2026-11-19.
+
+### Primeiro teste físico reportado
+
+- O usuário enviou captura do aplicativo após usar a ação de passo único. A tela foi interpretada como uma instrução concluída: total 1, PC de entrada `0x80000400`, próxima posição `0x80000404`, word `0x3C088006`.
+- `0x3C088006` decodifica como MIPS `LUI $t0, 0x8006`; o avanço de PC em quatro bytes é coerente com uma instrução de 32 bits sem desvio.
+- Isso é evidência de que o caminho de execução manual avançou uma instrução no aparelho. Não prova execução completa de GoldenEye, inicialização do RSP/OSTask, geração de display list, framebuffer do jogo, áudio ou controles.
+
+### Próximo passo
+
+- Continuar com passo único, inspecionando cada instrução/PC e primeiro erro, sem habilitar execução contínua ainda.
+- Auditar o próximo estado do executor e a cobertura do decoder antes de propor lote maior. Registrar os valores reais do próximo toque; não assumir qual instrução vem a seguir.
+- Branch `dev/n64-hle-clean-reboot`; `main` permanece intocada.
