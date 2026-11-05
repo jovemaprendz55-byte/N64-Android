@@ -3525,3 +3525,22 @@ Arquivo: `app/src/cleanTest/java/com/jsr/n64android/N64HleGuestAddressSpaceTest.
 
 Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da CPU é representado atualmente e desenhar testes para BadVAddr/Cause/EXL antes de implementar o tratamento arquitetural.
 
+
+
+## Seção 168 — modelo inicial de contexto de exceção R4300 — 2026-11-05
+
+**Status: modelo e testes adicionados; CI em andamento.**
+
+- Confirmado que o workflow da seção 167 concluiu com sucesso: [run 42088321465](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42088321465).
+- A inspeção mostrou que N64HleR4300CpuState já mantém COP0 conhecido/desconhecido, mas o stepper ainda não entrega exceções arquiteturais.
+- Adicionado ao N64HleR4300CpuState.kt um modelo imutável de contexto de exceção e enum de códigos R4300.
+- O contexto calcula apenas os bits BD e ExcCode do Cause; em delay slot, EPC aponta para o branch e o endereço da instrução que falhou permanece separado.
+- BadVAddr é apenas transportado como metadado opcional neste estágio. Ainda não é escrito no COP0; Status.EXL, EPC/Cause persistentes e vetor de exceção também não foram integrados.
+- Testes adicionados para exceção normal, exceção no delay slot, BadVAddr opcional e validação de alinhamento/posição do branch.
+- Commits: modelo e6c48f12f4bfc2c40b1276d997154605dc09ce26; testes da8251515640d2f101f68570d1ae1199c4f9ed16.
+- CI do modelo: [run 42088943734](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42088943734); CI dos testes: [run 42088950168](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42088950168). Ambos estavam pendentes/em andamento na última consulta.
+- Nenhuma execução de ROM real no aparelho foi validada por esta etapa. Branch main permanece intocada.
+
+### Próximo passo
+
+- Aguardar os dois workflows. Se passarem, integrar o contexto com estado COP0 persistente (Cause, EPC, BadVAddr e Status.EXL) e depois conectar falhas de alinhamento/acesso no stepper à entrega arquitetural, incluindo BD/EPC em delay slot. Se falharem, corrigir antes de avançar.
