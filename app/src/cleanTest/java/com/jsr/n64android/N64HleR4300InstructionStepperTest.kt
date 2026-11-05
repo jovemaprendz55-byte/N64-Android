@@ -281,4 +281,33 @@ class N64HleR4300InstructionStepperTest {
         assertEquals(0L, state.readCop0(13))
         assertFalse(state.isCop0Known(12))
     }
+
+    @Test fun unmappedDataLoadEntersDataBusError() {
+        val memory = N64HleGuestAddressSpace()
+        val stepperWithMemory = N64HleR4300InstructionStepper(memorySpace = memory)
+        val state = exceptionState(0x80001200L, mapOf(1 to 0x80800000L))
+
+        val signal = assertThrows(N64HleR4300ArchitecturalException::class.java) {
+            stepperWithMemory.step(i(0x23, 1, 2, 0), state)
+        }
+
+        assertEquals(N64HleR4300ExceptionCode.DATA_BUS_ERROR, signal.context.code)
+        assertEquals(0x80800000L, state.readCop0(8))
+        assertEquals(0x1CL, state.readCop0(13))
+        assertEquals(0x80001200L, state.programCounter)
+    }
+
+    @Test fun instructionFetchFaultIsNotConvertedIntoDataException() {
+        val memory = N64HleGuestAddressSpace()
+        val stepperWithMemory = N64HleR4300InstructionStepper(memorySpace = memory)
+        val state = exceptionState(0x80800000L, emptyMap())
+
+        assertThrows(N64HleGuestMemoryFault::class.java) {
+            stepperWithMemory.stepFromMemory(state)
+        }
+
+        assertEquals(0L, state.readCop0(12))
+        assertEquals(0L, state.readCop0(13))
+        assertEquals(0x80800000L, state.programCounter)
+    }
 }
