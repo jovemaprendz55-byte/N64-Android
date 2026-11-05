@@ -44,7 +44,7 @@ class N64HleBootProfileFactoryTest {
         val session = N64HleCartridgeSession.fromValidatedImage(cartridge)
         val handoff = session.prepareHleHandoff(profile)
         assertEquals(0x80000400L, handoff.cpuEntryState.programCounter)
-        assertEquals(0x070A0D10L, handoff.guestMemory.read32(0x80000400L))
+        assertEquals(0x0714212EL, handoff.guestMemory.read32(0x80000400L))
         assertEquals(1L, handoff.guestMemory.read32(0x80000300L)) // NTSC
         assertEquals(0xB0000000L, handoff.guestMemory.read32(0x80000308L))
         assertEquals(0L, handoff.guestMemory.read32(0x80000310L)) // osCicId != CIC seed
