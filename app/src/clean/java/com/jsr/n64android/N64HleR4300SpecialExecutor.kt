@@ -115,6 +115,14 @@ class N64HleR4300SpecialExecutor {
                 state.writeLo(value)
                 return
             }
+            // The stepper has already evaluated the trap condition and entered
+            // COP0 when true. A false condition completes without side effects.
+            N64HleR4300SpecialOperation.TGE,
+            N64HleR4300SpecialOperation.TGEU,
+            N64HleR4300SpecialOperation.TLT,
+            N64HleR4300SpecialOperation.TLTU,
+            N64HleR4300SpecialOperation.TEQ,
+            N64HleR4300SpecialOperation.TNE -> return
             else -> Unit
         }
 
