@@ -3581,3 +3581,22 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
 - Integrar o tratamento tipado no stepper, convertendo fault de alinhamento em AdEL para load/fetch e AdES para store; map faults em DBE para data load/store. Não classificar automaticamente falhas de fetch como IBE até haver caminho de fetch tipado.
 - Construir o contexto com PC atual e branch PC quando estiver no delay slot; testar que COP0 e PC ficam consistentes.
 - Definir explicitamente a política de vetor HLE e o comportamento de falhas de fetch antes de afirmar entrega arquitetural completa.
+
+## Seção 171 — direção da falha de memória no executor R4300 — 2026-11-05
+
+**Status: metadados tipados adicionados e testes escritos; CI desta seção precisa ser confirmado.**
+
+- Os três workflows da seção 170 terminaram com sucesso: [classes de falha](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42089939071), [espaço de memória](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42089962948) e [testes de memória](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42089981667).
+- Criada `N64HleR4300MemoryAccessFault.kt`, com `N64HleR4300MemoryAccessKind.LOAD/STORE`. A falha transporta a falha original de memória como causa, mantendo o endereço virtual e a distinção entre alinhamento e mapeamento.
+- `N64HleR4300MemoryExecutor` agora captura somente `N64HleGuestMemoryFault` e a envolve com a direção derivada do opcode. Falhas de programação/estado e instruções não suportadas não são convertidas por esse caminho.
+- Adicionados testes para confirmar LOAD + falha de alinhamento e STORE + falha de mapeamento, preservando o endereço virtual e o tipo original.
+- Commits: [classe de metadados](https://github.com/jovemaprendz55-byte/N64-Android/commit/7945a01df6652520ab93250ecc40ad597afed775), [executor](https://github.com/jovemaprendz55-byte/N64-Android/commit/c8bee118576d76840113c7839890726b2b2a81f8), [testes](https://github.com/jovemaprendz55-byte/N64-Android/commit/697624fcf119b35c01e2eecb081340422c2cde70).
+- Importante: o stepper ainda não captura `N64HleR4300MemoryAccessFault`, não atualiza COP0 e não muda para vetor de exceção. Esta etapa apenas fornece informação suficiente para a próxima classificação: alinhamento LOAD→AdEL, STORE→AdES; falha de mapeamento de dados→DBE.
+- Fetch de instrução continua fora desta classificação. Não afirmar IBE até implementar um caminho de fetch tipado.
+- Nenhuma ROM real foi executada e não houve validação no Poco C85. Todas as alterações permanecem em `dev/n64-hle-clean-reboot`; `main` não foi alterada.
+
+### Próximo passo
+
+- Confirmar os workflows gerados pelos três commits da seção 171.
+- Se aprovados, conectar a captura no stepper, preservando PC, delay slot e estado COP0 quando a falha ocorre. Antes da entrega arquitetural, testar AdEL/AdES/DBE e EPC/BD em delay slot; manter o vetor de exceção como etapa separada até definir e testar a política BEV/EXL.
+
