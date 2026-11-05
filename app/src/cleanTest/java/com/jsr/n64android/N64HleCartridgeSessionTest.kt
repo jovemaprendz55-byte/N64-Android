@@ -45,4 +45,42 @@ class N64HleCartridgeSessionTest {
         val session = N64HleCartridgeSession.fromValidatedImage(cartridge())
         session.readRomBytes(0x7F, 2)
     }
+    @Test
+    fun preparesOnlyTheExplicitHleHandoffProfile() {
+        val session = N64HleCartridgeSession.fromValidatedImage(cartridge())
+        val profile = N64HleBootProfile(
+            entryPc = 0x80000400L,
+            registerValues = mapOf(29 to 0x80001000L),
+            romCopies = listOf(N64HleBootProfile.RomCopy(0x40, 0x80000400L, 8)),
+            memoryWrites = listOf(
+                N64HleBootProfile.MemoryWrite(0x80000010L, 4, 0x12345678L)
+            ),
+            evidence = "synthetic unit-test fixture"
+        )
+
+        val handoff = session.prepareHleHandoff(profile)
+
+        assertEquals(0x80000400L, handoff.cpuEntryState.programCounter)
+        assertEquals(0x80001000L, handoff.cpuEntryState.copyRegisters()[29])
+        assertEquals(0x40414243L, handoff.guestMemory.read32(0x80000400L))
+        assertEquals(0x12345678L, handoff.guestMemory.read32(0x80000010L))
+        assertEquals(false, handoff.cpuEntryState.cop0State.isKnown(12))
+    }
+
+    @Test
+    fun failedHandoffPreparationDoesNotExposePartialGuestMemory() {
+        val session = N64HleCartridgeSession.fromValidatedImage(cartridge())
+        val invalidProfile = N64HleBootProfile(
+            entryPc = 0x80000400L,
+            registerValues = emptyMap(),
+            romCopies = listOf(N64HleBootProfile.RomCopy(0x7F, 0x80000400L, 4)),
+            memoryWrites = emptyList(),
+            evidence = "invalid synthetic source range"
+        )
+
+        org.junit.Assert.assertThrows(IllegalArgumentException::class.java) {
+            session.prepareHleHandoff(invalidProfile)
+        }
+    }
+
 }
