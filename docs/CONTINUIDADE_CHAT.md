@@ -3087,3 +3087,11 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - APK debug gerado: artifact ID `13394801033`, 873.142 bytes, SHA-256 `0f3956cdfad2fa6369d11e80b284bbe4e0dc19dd2a625587fcec8a46eaa5292f`. Download pela página [41982671471](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41982671471).
 - A seção 153 está aprovada em CI. Isso confirma compilação/testes automatizados, não instalação física, compatibilidade de uma ROM comercial ou renderização.
 - Antes de habilitar execução de CPU na tela, aguardar teste físico da preparação HLE com uma ROM conhecida. Registrar resultado literal (perfil aceito/rejeitado, PC e tamanho RDRAM). Não executar `runChunk` ainda.
+
+## 154. Sincronização do painel de diagnóstico após handoff — 2026-11-05
+
+- Auditoria pós-seção 153 encontrou um detalhe de UI: o handoff criava uma sessão R4300, mas o painel `DIAGNÓSTICO DA CPU R4300` continuava mostrando o estado nulo inicial.
+- Corrigido para chamar `renderCpuDiagnostics(executionSession)` somente após a preparação bem-sucedida e voltar a `renderCpuDiagnostics(null)` em caso de rejeição. Assim o painel passa a exibir a sessão real com zero instruções, sem fabricar PC concluído ou instrução anterior.
+- Commit: `0f7bd7b623d2b5dc7fad5d812852b1f1d13bbf21`.
+- CI do código e testes: [run 41982895850](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41982895850), ainda em execução na última consulta. Não usar APK anterior como se contivesse esta correção.
+- Próximo passo: confirmar CI, gerar novo APK e atualizar a seção de continuidade. O botão continua sem executar `runChunk`.
