@@ -3772,3 +3772,17 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
 - Testes adicionados para ADDI em execução normal e ADD em delay slot; testes de executor atualizados para esperar o sinal tipado.
 - Commits: [SPECIAL](https://github.com/jovemaprendz55-byte/N64-Android/commit/299383b302dee29dd8a5d17ef67dfeaeeec3ffeb), [imediatas](https://github.com/jovemaprendz55-byte/N64-Android/commit/c208f849516f7ab5f575188e8e661501f569ff3a), [sinal tipado](https://github.com/jovemaprendz55-byte/N64-Android/commit/c6fd3984f09699aeb3fba7c40b8c94bf97fa4876), [stepper](https://github.com/jovemaprendz55-byte/N64-Android/commit/0d875ec91b39919b444afbab0167b9bc9a35639c), [testes SPECIAL](https://github.com/jovemaprendz55-byte/N64-Android/commit/bbe2f007148a5df473999976def098b7e9c572ec), [testes imediatos](https://github.com/jovemaprendz55-byte/N64-Android/commit/f83799fe81d9a3dfcb0dddfdffad37dfe8f79af9), [testes stepper](https://github.com/jovemaprendz55-byte/N64-Android/commit/cdd1c57515969dd741db7623887b8bcc97b11ab8).
 - Aguardando CI; não considerar validado até workflow verde.
+
+
+## 2026-11-05 — correção em andamento dos testes de overflow
+
+- A implementação de overflow aritmético está integrada ao stepper: ADD/SUB/DADD/DSUB e ADDI/DADDI emitem sinal tipado; o stepper converte em exceção COP0 ExcCode 12, preservando o destino e cancelando o delay slot quando aplicável.
+- Auditoria da execução CI `42106150708`: compilação Kotlin e `assembleDebug` passaram; `testDebugUnitTest` falhou em quatro testes. A causa foi encontrada nos fixtures/asserções: os testes do executor imediato não forneciam COP0 Status conhecido; os testes do stepper comparavam EPC/Cause sem a extensão de sinal de 32 bits usada pelo modelo COP0.
+- Correções aplicadas:
+  - [aa4d2b1](https://github.com/jovemaprendz55-byte/N64-Android/commit/aa4d2b1f1ee5795cca4b81b26f23c222c5dfebdd): fixtures de overflow imediato passam a fornecer COP0 Status/Cause/EPC/BadVAddr conhecidos.
+  - [f478d57](https://github.com/jovemaprendz55-byte/N64-Android/commit/f478d5722799eccad9defdcb098c1f8c7ad53bb6): asserções de Cause/EPC do stepper passam a respeitar a extensão de sinal COP0.
+  - [alteração do KDoc](https://github.com/jovemaprendz55-byte/N64-Android/commit/aguardando): comentário do executor atualizado para refletir o tratamento arquitetural já implementado.
+- CI das duas correções ainda estava em execução no momento do registro:
+  - https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42107209320
+  - https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42107215574
+- **Não declarar overflow concluído até a CI mais recente passar.** Se falhar, inspecionar os logs e corrigir a causa real; não enfraquecer testes nem remover a validação COP0.
