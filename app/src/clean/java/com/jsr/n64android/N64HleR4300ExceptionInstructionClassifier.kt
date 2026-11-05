@@ -12,7 +12,14 @@ class N64HleR4300ExceptionInstructionClassifier {
     fun classify(
         instruction: N64HleR4300DecodedInstruction
     ): N64HleR4300ExceptionCode? {
-        if (!instruction.isSpecial) return null
+        if (!instruction.isSpecial) {
+            // REGIMM only defines four branch forms and six trap-immediate forms.
+            // Every other rt encoding in this opcode space is reserved.
+            if (instruction.opcode == OP_REGIMM && instruction.rt !in REGIMM_VALID_RT) {
+                return N64HleR4300ExceptionCode.RESERVED_INSTRUCTION
+            }
+            return null
+        }
 
         return when (instruction.specialOperation) {
             null -> N64HleR4300ExceptionCode.RESERVED_INSTRUCTION
@@ -77,6 +84,10 @@ class N64HleR4300ExceptionInstructionClassifier {
         const val RT_TLTIU = 0x0B
         const val RT_TEQI = 0x0C
         const val RT_TNEI = 0x0E
+
+        val REGIMM_VALID_RT = setOf(
+            0x00, 0x01, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0E, 0x10, 0x11
+        )
 
         val TRAP_OPERATIONS = setOf(
             N64HleR4300SpecialOperation.TGE,
