@@ -3427,3 +3427,17 @@ Arquivo: `app/src/cleanTest/java/com/jsr/n64android/N64HleGuestAddressSpaceTest.
 
 - Acompanhar o workflow do commit `cb28278bb5d64b8eafd5fc7448c027790ba45c5b`.
 - Se testes e build passarem, continuar com casos-limite de J/JAL e instruções de memória; se falharem, corrigir primeiro.
+
+## Seção 162 — testes integrados J/JAL e fronteira de região — 2026-11-05
+
+**Status: testes adicionados; CI pendente.**
+
+- Etapa 161: workflow `42056131595` concluiu com sucesso (`completed/success`).
+- Novos testes no stepper cobrem J atravessando a fronteira de região em `PC+4 = 0x10000000`, confirmando o alvo formado pelos quatro bits superiores de PC+4 e execução do delay slot.
+- Novo teste JAL valida RA=`PC+8` antes do delay slot e alvo com representação sign-extended em endereço KSEG.
+- Commit dos testes: `9e6acdda1a61b52567b8657ca8ad67999ed11ed3`.
+- Cobertura sintética automatizada; não comprova que a ROM GoldenEye executou J/JAL no dispositivo.
+- Branch ativa `dev/n64-hle-clean-reboot`; `main` não alterada. Nenhum APK novo declarado até CI terminar.
+
+### Próximo passo
+- Acompanhar CI do commit de testes. Se passar, escolher os próximos casos a partir do decoder/executor e manter as limitações de execução real explicitadas.
