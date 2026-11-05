@@ -17,7 +17,11 @@ class N64HleR4300InstructionStepper(
     private val memorySpace: N64HleGuestAddressSpace? = null,
     private val memoryExecutor: N64HleR4300MemoryExecutor? =
         memorySpace?.let { N64HleR4300MemoryExecutor(it) },
-    private val cop0Executor: N64HleR4300Cop0Executor = N64HleR4300Cop0Executor()
+    private val cop0Executor: N64HleR4300Cop0Executor = N64HleR4300Cop0Executor(),
+    private val memoryExceptionClassifier: N64HleR4300MemoryExceptionClassifier =
+        N64HleR4300MemoryExceptionClassifier(),
+    private val exceptionRegisterUpdater: N64HleR4300ExceptionRegisterUpdater =
+        N64HleR4300ExceptionRegisterUpdater()
 ) {
     fun hasPendingDelaySlot(): Boolean = controlSequencer.hasPendingDelaySlot()
 
@@ -47,7 +51,7 @@ class N64HleR4300InstructionStepper(
             check(!isControlTransfer(instruction)) {
                 "Control transfer in a delay slot requires exception handling, which is not implemented"
             }
-            executeNonControl(instruction, state)
+            executeNonControlWithExceptionEntry(instruction, state)
             controlSequencer.completeDelaySlot(state)
             return instruction
         }
@@ -58,9 +62,36 @@ class N64HleR4300InstructionStepper(
             return instruction
         }
 
-        executeNonControl(instruction, state)
+        executeNonControlWithExceptionEntry(instruction, state)
         state.setProgramCounter(state.programCounter + 4L)
         return instruction
+    }
+
+    /**
+     * Enters COP0 for typed data-memory faults only. Unknown required COP0
+     * inputs fail during updater preflight, before the pending slot is cleared.
+     * Vector selection and guest-PC redirection remain the host's responsibility.
+     */
+    private fun executeNonControlWithExceptionEntry(
+        instruction: N64HleR4300DecodedInstruction,
+        state: N64HleR4300CpuState
+    ) {
+        try {
+            executeNonControl(instruction, state)
+        } catch (fault: N64HleR4300MemoryAccessFault) {
+            val classification = memoryExceptionClassifier.classify(fault)
+            val inDelaySlot = controlSequencer.hasPendingDelaySlot()
+            val context = N64HleR4300ExceptionContext(
+                code = classification.code,
+                faultingPc = state.programCounter,
+                inDelaySlot = inDelaySlot,
+                branchPc = if (inDelaySlot) controlSequencer.pendingBranchAddress() else null,
+                badVirtualAddress = classification.badVirtualAddress
+            )
+            val update = exceptionRegisterUpdater.apply(context, state)
+            if (inDelaySlot) controlSequencer.cancelPendingDelaySlot()
+            throw N64HleR4300ArchitecturalException(context, update, fault)
+        }
     }
 
     private fun executeNonControl(
