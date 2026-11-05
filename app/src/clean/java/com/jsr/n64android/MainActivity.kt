@@ -25,6 +25,7 @@ class MainActivity : Activity() {
     private lateinit var selectedRomText: TextView
     private lateinit var statusText: TextView
     private var selectedRomUri: Uri? = null
+    private var loadedCartridgeSession: N64HleCartridgeSession? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -125,6 +126,7 @@ class MainActivity : Activity() {
             // Some document providers return a temporary grant only.
         }
         selectedRomUri = uri
+        loadedCartridgeSession = null
         val name = queryDisplayName(uri) ?: uri.lastPathSegment ?: "Arquivo selecionado"
         selectedRomText.text = name
         statusText.text = "Lendo arquivo e verificando o cabeçalho da ROM..."
@@ -147,6 +149,7 @@ class MainActivity : Activity() {
                 when (result) {
                     is N64RomDocumentReader.Result.Success -> {
                         val cartridge = result.cartridge
+                        loadedCartridgeSession = N64HleCartridgeSession.fromValidatedImage(cartridge)
                         val byteOrder = when (cartridge.byteOrder) {
                             N64HleCartridgeImage.ByteOrder.BIG_ENDIAN -> "Z64 (big-endian)"
                             N64HleCartridgeImage.ByteOrder.BYTE_SWAPPED_16 -> "V64 (bytes trocados)"
@@ -160,7 +163,8 @@ class MainActivity : Activity() {
                             appendLine("CRC1: 0x${cartridge.crc1.toString(16).uppercase().padStart(8, '0')}")
                             append("CRC2: 0x${cartridge.crc2.toString(16).uppercase().padStart(8, '0')}")
                             appendLine()
-                            append("A ROM foi lida, mas o jogo ainda não foi iniciado.")
+                            appendLine("ROM mantida na sessão de memória.")
+                            append("CPU/HLE boot ainda não foram iniciados.")
                         }
                     }
                     is N64RomDocumentReader.Result.Failure -> {
