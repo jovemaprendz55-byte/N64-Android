@@ -116,6 +116,8 @@ class N64HleCartridgeSessionTest {
         assertEquals(42L, cpuState.readGpr(2))
         assertEquals(0x80000404L, cpuState.programCounter)
         assertEquals(0x80001000L, cpuState.readGpr(29))
+        assertEquals(true, cpuState.isGprKnown(29))
+        assertEquals(false, cpuState.isGprKnown(1))
         assertEquals(false, cpuState.isHiKnown())
         assertEquals(false, cpuState.isLoKnown())
         assertEquals(false, cpuState.isCop0Known(12))
