@@ -179,6 +179,10 @@ class N64HleR4300InstructionStepper(
         instruction: N64HleR4300DecodedInstruction,
         state: N64HleR4300CpuState
     ) {
+        // A REGIMM trap-immediate whose condition is false completes normally
+        // without writing a register; the classifier already handled true traps.
+        if (instruction.opcode == 0x01 && instruction.rt in REGIMM_TRAP_IMMEDIATE_RT) return
+
         when {
             instruction.isSpecial -> specialExecutor.execute(instruction, state)
             cop0Executor.supports(instruction) -> cop0Executor.execute(instruction, state)
@@ -188,13 +192,18 @@ class N64HleR4300InstructionStepper(
         }
     }
 
-    private companion object { const val COP0_STATUS = 12 }
+    private companion object {
+        const val COP0_STATUS = 12
+        val REGIMM_TRAP_IMMEDIATE_RT = setOf(0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0E)
+        val REGIMM_BRANCH_RT = setOf(0x00, 0x01, 0x10, 0x11)
+    }
 
     private fun isControlTransfer(instruction: N64HleR4300DecodedInstruction): Boolean {
         if (instruction.isSpecial) {
             return instruction.specialOperation == N64HleR4300SpecialOperation.JR ||
                 instruction.specialOperation == N64HleR4300SpecialOperation.JALR
         }
-        return instruction.opcode in setOf(0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07)
+        return instruction.opcode == 0x01 && instruction.rt in REGIMM_BRANCH_RT ||
+            instruction.opcode in setOf(0x02, 0x03, 0x04, 0x05, 0x06, 0x07)
     }
 }
