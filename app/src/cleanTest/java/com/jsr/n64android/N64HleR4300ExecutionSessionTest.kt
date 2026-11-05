@@ -61,6 +61,6 @@ class N64HleR4300ExecutionSessionTest {
 
         assertThrows(IllegalArgumentException::class.java) { session.runChunk(1) }
         assertEquals(0L, session.totalExecutedInstructions)
-        assertEquals(0x80000400L, state.programCounter)
+        assertEquals(0xA1000000L, state.programCounter)
     }
 }
