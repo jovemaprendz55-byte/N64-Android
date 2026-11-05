@@ -70,14 +70,27 @@ class N64HleBootProfile(
 class N64HleCpuEntryState(
     val programCounter: Long,
     registers: LongArray,
-    val cop0State: N64HleCop0EntryState = N64HleCop0EntryState.unspecified()
+    val cop0State: N64HleCop0EntryState = N64HleCop0EntryState.unspecified(),
+    knownGprIndices: Set<Int> = emptySet()
 ) {
     private val values = registers.copyOf()
+    private val knownGprs = knownGprIndices.toSet() + 0
 
     init {
         require(values.size == 32) { "R4300 state must contain 32 GPRs" }
         require(values[0] == 0L) { "R4300 GPR0 must remain zero" }
+        require(knownGprs.all { it in 0..31 }) {
+            "Known GPR indices must be in 0..31"
+        }
     }
+
+    fun isGprKnown(index: Int): Boolean {
+        require(index in 0..31) { "GPR index must be in 0..31" }
+        return index in knownGprs
+    }
+
+    fun copyKnownGprs(): Map<Int, Long> =
+        knownGprs.associateWith { values[it] }
 
     fun copyRegisters(): LongArray = values.copyOf()
 }
@@ -137,6 +150,11 @@ class N64HleBootInitializer {
                 requireNotNull(profile.cop0Evidence)
             )
         }
-        return N64HleCpuEntryState(profile.entryPc, registers, cop0State)
+        return N64HleCpuEntryState(
+            profile.entryPc,
+            registers,
+            cop0State,
+            profile.registerValues.keys
+        )
     }
 }
