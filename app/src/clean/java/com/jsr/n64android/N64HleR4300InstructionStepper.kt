@@ -58,7 +58,7 @@ class N64HleR4300InstructionStepper(
         // Classify architecturally exception-causing SPECIAL encodings before
         // executor dispatch (RI, SYSCALL and BREAK). Unimplemented valid
         // instructions remain distinct and are not mislabeled as RI.
-        exceptionInstructionClassifier.classify(instruction)?.let { code ->
+        exceptionInstructionClassifier.classify(instruction, state)?.let { code ->
             enterSimpleArchitecturalException(code, state)
         }
 
