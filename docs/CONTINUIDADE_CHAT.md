@@ -3841,3 +3841,11 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
 - Auditoria do decoder/stepper encontrou seis instruções de trap imediato ainda não classificadas: TGEI, TGEIU, TLTI, TLTIU, TEQI e TNEI (opcode REGIMM=0x01; rt=0x08, 0x09, 0x0A, 0x0B, 0x0C e 0x0E).
 - Implementada classificação condicional no classificador de exceções, usando imediato de 16 bits com extensão de sinal e comparação assinada/não assinada de 64 bits. Condição falsa segue como instrução normal; condição verdadeira entra em TRAP (ExcCode 13) pelo caminho existente do stepper.
 - Testes adicionados para comparações assinadas/não assinadas, igualdade/diferença e entrega da exceção via COP0. CI desta implementação ainda precisa ser conferido.
+
+
+### Correção — execução normal de trap-immediate falso
+
+- CI inicial identificou que a condição falsa de TLTIU seguia indevidamente para o planejador de desvios REGIMM, que rejeitava o rt=0x0B como desvio não suportado.
+- Corrigido o stepper: só os rt de desvios REGIMM implementados são tratados como transferências de controle; trap-immediate com condição falsa conclui sem efeito lateral e avança PC normalmente.
+- CI de diagnóstico: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42108549245
+- Implementação corretiva enviada; CI novo pendente.
