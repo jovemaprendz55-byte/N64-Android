@@ -17,6 +17,13 @@ class N64HlePreparedHandoff internal constructor(
     /** Creates a stepper explicitly connected to this handoff's guest RDRAM. */
     fun createR4300InstructionStepper(): N64HleR4300InstructionStepper =
         N64HleR4300InstructionStepper(memorySpace = guestMemory)
+
+    /** Creates a bounded execution driver; it does not execute until runChunk is called. */
+    fun createR4300ExecutionSession(): N64HleR4300ExecutionSession =
+        N64HleR4300ExecutionSession(
+            createR4300CpuState(),
+            createR4300InstructionStepper()
+        )
 }
 
 /**
