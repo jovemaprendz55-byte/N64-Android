@@ -3877,3 +3877,13 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
   - testes do classificador: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42109835482
   - integração stepper: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42109855537
 - Próxima auditoria: COP0. O executor limpo atual suporta somente MFC0/MTC0. Não classificar indiscriminadamente outros formatos COP0 como RI: investigar formatos válidos (por exemplo, CO/TLB/ERET e transferências de 64 bits) e distinguir instrução reservada, coprocessador não utilizável e operação válida ainda não implementada. Exigir testes de classificação antes de alterar a execução.
+
+### 2026-11-05 — início da auditoria COP0 sem falsos RI
+
+- A CI da documentação da etapa REGIMM reservada foi confirmada verde: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42110171026
+- A inspeção do executor limpo confirmou suporte atual apenas a MFC0/MTC0. A inspeção do interpretador legado R4300Cpu.kt mostrou referências/implementações separadas para TLBR, TLBWI, TLBWR, TLBP e ERET, mas isso não significa que essas operações estejam integradas ao stepper limpo.
+- Decisão de segurança: não converter automaticamente todo COP0 que o executor limpo não suporta em Reserved Instruction. Operações válidas podem estar ausentes do caminho limpo; privilégio CU0 e validação dos campos reservados exigem classificação própria.
+- Adicionados testes de guarda no N64HleR4300ExceptionInstructionClassifierTest: os formatos CO de TLBR/TLBWI/TLBWR/TLBP/ERET e formatos COP0 selecionados não podem ser marcados como RI pelo classificador genérico. Isso é uma proteção de classificação, não implementação de execução COP0.
+- Commit dos testes: https://github.com/jovemaprendz55-byte/N64-Android/commit/a67d772382fee3c60ab49499b53bd4409ddaaab8
+- Nenhum código de produção COP0 foi alterado nesta etapa.
+- Próximo passo: executar CI dos testes; depois desenhar uma classificação COP0 dedicada que diferencie operação conhecida/válida, codificação reservada e falta de CU0, com testes para modo Kernel/User e Status.CU0. Não integrar TLB/ERET no stepper até haver estado COP0/TLB suficiente e semântica de PC/delay-slot claramente definida.
