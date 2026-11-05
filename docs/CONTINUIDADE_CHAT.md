@@ -3887,3 +3887,17 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
 - Commit dos testes: https://github.com/jovemaprendz55-byte/N64-Android/commit/a67d772382fee3c60ab49499b53bd4409ddaaab8
 - Nenhum código de produção COP0 foi alterado nesta etapa.
 - Próximo passo: executar CI dos testes; depois desenhar uma classificação COP0 dedicada que diferencie operação conhecida/válida, codificação reservada e falta de CU0, com testes para modo Kernel/User e Status.CU0. Não integrar TLB/ERET no stepper até haver estado COP0/TLB suficiente e semântica de PC/delay-slot claramente definida.
+
+### 2026-11-05 — refinamento da classificação COP0 pelo manual do VR4300
+
+- A inspeção do manual NEC VR4300 (U10504EJ7V0UMJ1), seção 16.7 / Figura 16-1, revelou uma distinção essencial: nem toda codificação COP0 CO sem mnemonic válido gera Reserved Instruction. O manual separa funções marcadas como RI das codificações φ, que são inválidas mas não geram RI.
+- O classificador foi corrigido para não transformar todas as funções CO desconhecidas em RI. No campo CO, somente as funções reservadas marcadas no manual (0x0D, 0x0F e RFE 0x10) geram RI; TLBR/TLBWI/TLBWR/TLBP/ERET continuam fora do caminho RI, e codificações φ também não são rotuladas como RI.
+- Os formatos COP0 rs que o conjunto de instruções do VR4300 não define continuam classificados como reservados; MFC0/DMFC0/MTC0/DMTC0 permanecem reconhecidos como formatos válidos, embora o executor limpo ainda só execute MFC0/MTC0.
+- Testes cobrem formatos COP0 transfer válidos, CO válido, CO reservado que gera RI, e CO φ que não gera RI. O stepper também testa entrada completa em RI para RFE (Cause 0x28, EPC e vetor).
+- Commits desta correção:
+  - classificador: https://github.com/jovemaprendz55-byte/N64-Android/commit/d8429d7463d77142531e185968cc323e009b8795
+  - testes do classificador: https://github.com/jovemaprendz55-byte/N64-Android/commit/64f2132095b5a2c247d7cd6608476ba2e4cf59e6
+  - teste integrado stepper: https://github.com/jovemaprendz55-byte/N64-Android/commit/3bdba4d255fe67299faf7e7460264e8c68e5d33f
+- Referência técnica: manual NEC VR4300, Figura 16-1, tabela COP0/CO e legenda de códigos φ/γ/ξ: https://n64dev.org/p/U10504EJ7V0UMJ1.pdf
+- **CI ainda precisa ser conferida para os commits acima.** Não declarar a classificação COP0 aprovada até a execução no HEAD mais recente ficar verde.
+- Limite preservado: isso só classifica codificações. Não implementa execução de TLB/ERET/WAIT, modo de privilégio/CU0 ou side effects de registradores COP0.
