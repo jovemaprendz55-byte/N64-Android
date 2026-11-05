@@ -3278,3 +3278,17 @@ Arquivo: `app/src/cleanTest/java/com/jsr/n64android/N64HleGuestAddressSpaceTest.
 - O painel superior continua sendo snapshot inicial (zero instruções); o painel inferior mostra o total atual (6).
 - Próximo passo físico: executar uma instrução e registrar PC/opcode reais; não presumir o próximo opcode.
 - Limite: seis instruções confirmadas não comprovam boot completo, RSP/OSTask, vídeo, áudio ou controles.
+
+
+### Sétimo passo físico — confirmação por captura (2026-11-05)
+
+- Captura versionada: `Screenshot_2026-11-05-05-42-47-065_com.jsr.n64android.jpg`.
+- STATUS: **Uma instrução executada com sucesso. Total: 7**.
+- PC seguinte: `0x000000008000041C`.
+- Último PC concluído / PC da última tentativa: `0x0000000080000418`.
+- Última instrução: `0xAD000004`, decodificada como `SW $zero, 4($t0)`.
+- O opcode confirma a sequência esperada após `0xAD000000`. Com `$t0` esperado em `0xFFFFFFFF8005D2E0`, o endereço virtual do store é `0xFFFFFFFF8005D2E4`, correspondente ao endereço físico `0x0005D2E4`; grava zero na palavra seguinte.
+- Portanto, os dois stores consecutivos visam os endereços físicos `0x0005D2E0` e `0x0005D2E4`. A UI confirma a conclusão dos passos, mas não mostra uma leitura posterior dos bytes gravados.
+- A tela não indica falha; tipo e mensagem permanecem vazios. O painel superior continua sendo snapshot inicial (zero), enquanto o inferior informa 7 instruções.
+- Próximo passo físico: executar uma instrução e registrar PC/opcode reais; não inferir o próximo opcode sem captura.
+- Limite: sete instruções confirmadas no aparelho não equivalem a boot completo, execução RSP/OSTask, renderização, áudio ou controles.
