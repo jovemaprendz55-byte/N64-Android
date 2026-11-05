@@ -2921,3 +2921,12 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Commits: implementação `a7f256b36869b61f0114bc07f1b98f3158cebb5c`; testes `f51dedd6d02f56ba30f3f1faeaed2f9d3148ae80`.
 - **Limite desta etapa:** o classificador ainda não está integrado ao stepper, não altera COP0/PC, não consome delay slots e não entrega exceções. Overflow e instruções não SPECIAL permanecem sem classificação. Próximo incremento: integrar apenas as três classificações com contexto de PC/delay slot e updater COP0, mantendo erros internos fora do caminho de exceção guest.
 - CI da seção 142 pendente; não declarar validada até testes e APK passarem.
+
+
+## 143. Exposição somente-leitura do PC do branch pendente — 2026-11-05
+
+- O N64HleR4300ControlFlowSequencer agora expõe pendingBranchAddress() e pendingDelaySlotAddress() para permitir construir contexto explícito de exceção durante o delay slot.
+- Os métodos são somente-leitura: retornam null sem transferência pendente e não consomem o delay slot, não limpam o estado pendente e não alteram PC/GPR/COP0.
+- Testes verificam os endereços após agendar JAL e branch condicional, e a volta para null após completar o delay slot.
+- Commits: accessor af45a90681a646383ee0ab0b0ade150cbc7f8afd; testes 85e84a0b50265fa8d2d28cd8a12bb6207d74d3c3.
+- Limite: esta etapa ainda não entrega exceções no stepper. O accessor apenas fornece os fatos necessários para formar N64HleR4300ExceptionContext; não muda PC para vetor, não atualiza COP0 e não resolve exceções dentro de delay slot. CI pendente.
