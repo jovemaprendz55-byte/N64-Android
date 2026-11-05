@@ -45,7 +45,8 @@ object N64HleBootProfileFactory {
 
         val gameImage = cartridge.readBytes(GAME_IMAGE_ROM_OFFSET, GAME_IMAGE_SIZE)
         val computed = calculate6102Checksum(gameImage)
-        require(computed.first.toLong() == cartridge.crc1 && computed.second.toLong() == cartridge.crc2) {
+        require((computed.first.toLong() and 0xFFFF_FFFFL) == cartridge.crc1 &&
+            (computed.second.toLong() and 0xFFFF_FFFFL) == cartridge.crc2) {
             "CIC 6102 game-image checksum mismatch: header=" +
                 "0x${cartridge.crc1.toString(16)}:0x${cartridge.crc2.toString(16)}, " +
                 "computed=0x${computed.first.toString(16)}:0x${computed.second.toString(16)}."
