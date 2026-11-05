@@ -538,8 +538,6 @@ class N64HleR4300InstructionStepperTest {
         assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
     }
 
-}
-
 
     @Test fun reservedCop0CoFunctionEntersReservedInstructionException() {
         val state = exceptionState(0x80007000L, emptyMap())
@@ -553,3 +551,4 @@ class N64HleR4300InstructionStepperTest {
         assertEquals(0xFFFFFFFF80007000UL.toLong(), state.readCop0(14))
         assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
     }
+}
