@@ -3711,3 +3711,19 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
 - Confirmar o CI dos commits 217ab05, 7ffb5ca e 88335f3; corrigir qualquer falha restante.
 - Se tudo passar, considerar concluída a entrada de fetch no vetor geral para o mapa HLE atual.
 - Depois revisar AdEL por PC desalinhado e a preservação de estado COP0/delay slot, antes de avançar para qualquer implementação de TLB/refill.
+
+
+### Complemento técnico — PC desalinhado e validação COP0 (2026-11-05)
+
+- O CI dos commits anteriores mostrou que `N64HleR4300CpuState` rejeitava PC desalinhado no construtor e em `setProgramCounter()`. Isso impedia que o caminho `read32()` produzisse a falha tipada de alinhamento necessária para classificar AdEL no fetch. Removida essa validação de estado; a validação arquitetural de alinhamento fica no acesso de instrução (`N64HleGuestAddressSpace.read32()`), que pode agora sinalizar AdEL com BadVAddr igual ao PC real.
+- O PC continua sendo redirecionado para o vetor alinhado depois da entrada de exceção. A mudança não transforma acesso de memória desalinhado em acesso válido; somente permite representar o endereço defeituoso para que o mecanismo de fetch classifique a exceção.
+- COP0 é armazenado como registrador de 32 bits e lido com extensão de sinal para `Long`. Ajustados os testes de EPC/BadVAddr/Cause para comparar a representação correta de endereços KSEG e Cause.BD/ExcCode.
+- O teste de fetch no delay slot agora usa RDRAM de apenas 4 bytes: a instrução de branch está mapeada em `0x80000000`, enquanto o fetch do slot em `0x80000004` cai fora da janela e realmente gera IBE. O teste verifica Cause.BD, EPC no branch, BadVAddr no slot e cancelamento da transferência pendente.
+- Commits: [estado permite PC desalinhado](https://github.com/jovemaprendz55-byte/N64-Android/commit/36f8792ddc8428325aefadc2e2d76e497060c826), [COP0 de endereço de fetch](https://github.com/jovemaprendz55-byte/N64-Android/commit/303c27d392cd41b3cec4e20097d4d9e28c33fe41), [teste de delay slot fora da RDRAM](https://github.com/jovemaprendz55-byte/N64-Android/commit/a02d2d85770cb930ce4df7d4cc689c32de33f392), [expectativas de PC/COP0 corrigidas](https://github.com/jovemaprendz55-byte/N64-Android/commit/a84841d5241eff62d13ccdd93735d7dcfd0f57b1), [restauração de expectativas não relacionadas](https://github.com/jovemaprendz55-byte/N64-Android/commit/0f87acef9f47876b803ac640caaad4fa84dde50e), [BadVAddr/EPC AdEL](https://github.com/jovemaprendz55-byte/N64-Android/commit/75f5804fe89f85b4c281ecb560b4588bbd0e9d92).
+- Os workflows mais recentes ainda estavam em execução no momento desta atualização. O último commit de teste é `75f5804`; seu workflow é [42102914876](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42102914876). Não declarar a etapa aprovada até o job `Build and test` terminar com sucesso.
+
+### Próximo passo atualizado
+
+- Confirmar o workflow do commit `75f5804` e corrigir qualquer falha que restar. O workflow mais recente inclui as correções anteriores.
+- Se passar, marcar o caminho de fetch AdEL/IBE, inclusive delay slot, como coberto por testes unitários para o mapa HLE atual.
+- Depois, auditar exceções de instrução inválida/overflow e avaliar a semântica de nested exception e vetores especiais antes de começar TLB/refill. Não declarar suporte completo ao R4300/MMU.
