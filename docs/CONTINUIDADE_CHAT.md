@@ -2955,5 +2955,6 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Foram adicionados testes para leitura/inspeção, limite de tamanho, arquivo curto, magic desconhecido e erro de I/O.
 - A leitura/inspeção não inicia CPU, HLE boot, RSP, RDP ou áudio. Ainda não há alegação de jogo carregado ou executado.
 - Commits: leitor `77f7545b9c821ac1a5a884b735869b86a0883895`; testes `67dd3658ed53ab01f5a9a8e4ae98480f4f58a5ca`; integração na Activity `3eca5a8cd235f8cf3da7bd1ef1a38d84bdfc2edc`.
-- CI Android dos três commits está em execução; registrar os resultados finais e o artifact após conclusão.
+- CI Android concluída com sucesso nos três commits de código: leitor run `41978857923`; testes run `41978862147`; integração Activity run `41978866307`. O commit documental `6ef248e8d59491bbbc1b187f7d1deb73636e7925` também passou no run `41978908507`.
+- Artifact APK do commit documental: `n64-android-debug-apk`, ID `13392548735`, 861.641 bytes, SHA-256 `d124ace64baedd1c7ee7f95d11167fae7abc111e033ce1c1af15de16a994b251`, não expirado no momento da geração.
 - Próxima etapa: validar a leitura/identificação no Android 16 com uma ROM legítima que o usuário tenha direito de usar; conferir título, tamanho, formato e CRC exibidos. Depois auditar a compatibilidade entre a imagem canônica e o caminho de boot HLE antes de conectar a ROM ao runtime. Não iniciar execução automaticamente nesta etapa.
