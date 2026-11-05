@@ -58,6 +58,15 @@ class N64HleR4300ControlFlowSequencer {
         pending = Pending(plan.delaySlotAddress, plan.continuationAddress)
     }
 
+    /**
+     * Aborts a pending delay-slot sequence after the caller has committed an
+     * architectural exception entry. This only clears sequencing metadata;
+     * it does not alter PC or any CPU register.
+     */
+    fun cancelPendingDelaySlot() {
+        pending = null
+    }
+
     /** Completes the delay slot and installs the transfer's final PC. */
     fun completeDelaySlot(state: N64HleR4300CpuState) {
         val transfer = pending
