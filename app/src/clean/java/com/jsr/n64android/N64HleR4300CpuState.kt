@@ -141,8 +141,7 @@ class N64HleR4300CpuState(
          * HI/LO remain unknown because the entry profile does not describe them.
          */
         fun fromEntryState(entryState: N64HleCpuEntryState): N64HleR4300CpuState {
-            val registers = entryState.copyRegisters()
-            val knownGprs = (1..31).associateWith { registers[it] }
+            val knownGprs = entryState.copyKnownGprs().filterKeys { it != 0 }
             return N64HleR4300CpuState(
                 programCounter = entryState.programCounter,
                 initialGprValues = knownGprs,
