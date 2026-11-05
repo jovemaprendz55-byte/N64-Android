@@ -29,6 +29,20 @@ class N64HleR4300ControlTransferPlannerTest {
         assertEquals(false, plan.taken)
     }
 
+    @Test fun bneTakenWithNegativeOffsetUsesTheObservedGoldenEyeBranchTarget() {
+        val state = N64HleR4300CpuState(
+            0xFFFFFFFF8000041CUL.toLong(),
+            mapOf(9 to 0x0000000000031078L)
+        )
+        val instruction = decoder.decode(0x1520FFFC)
+        val plan = planner.plan(instruction, state)
+
+        assertEquals(0xFFFFFFFF80000420UL.toLong(), plan.delaySlotAddress)
+        assertEquals(0xFFFFFFFF80000410UL.toLong(), plan.continuationAddress)
+        assertEquals(true, plan.taken)
+        assertEquals(0xFFFFFFFF8000041CUL.toLong(), state.programCounter)
+    }
+
     @Test fun blezAndBgtzUseSignedComparison() {
         val negative = N64HleR4300CpuState(0x80001000L, mapOf(1 to Long.MIN_VALUE))
         val positive = N64HleR4300CpuState(0x80001000L, mapOf(1 to 1L))
