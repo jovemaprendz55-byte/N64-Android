@@ -42,6 +42,24 @@ class N64HleR4300ControlFlowSequencerTest {
         assertEquals(null, sequencer.pendingBranchAddress())
     }
 
+    @Test fun takenBneExecutesDelaySlotBeforeInstallingNegativeBranchTarget() {
+        val state = N64HleR4300CpuState(
+            0xFFFFFFFF8000041CUL.toLong(),
+            mapOf(9 to 0x0000000000031078L)
+        )
+        val instruction = decoder.decode(0x1520FFFC)
+        val plan = planner.plan(instruction, state)
+
+        sequencer.schedule(state, plan)
+        assertEquals(0xFFFFFFFF80000420UL.toLong(), state.programCounter)
+        assertTrue(sequencer.hasPendingDelaySlot())
+
+        // The actual delay-slot instruction runs at 0x80000420.
+        sequencer.completeDelaySlot(state)
+        assertEquals(0xFFFFFFFF80000410UL.toLong(), state.programCounter)
+        assertFalse(sequencer.hasPendingDelaySlot())
+    }
+
     @Test fun invalidPlanDoesNotChangePcOrLinkRegister() {
         val state = N64HleR4300CpuState(0x80001000L)
         val invalid = N64HleR4300ControlTransferPlan(
