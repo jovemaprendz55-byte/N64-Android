@@ -3727,3 +3727,11 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
 - Confirmar o workflow do commit `75f5804` e corrigir qualquer falha que restar. O workflow mais recente inclui as correções anteriores.
 - Se passar, marcar o caminho de fetch AdEL/IBE, inclusive delay slot, como coberto por testes unitários para o mapa HLE atual.
 - Depois, auditar exceções de instrução inválida/overflow e avaliar a semântica de nested exception e vetores especiais antes de começar TLB/refill. Não declarar suporte completo ao R4300/MMU.
+
+
+### Correção de teste de PC desalinhado — 2026-11-05
+
+- O workflow [42102914876](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42102914876) compilou o app e executou 208 testes, mas falhou em um teste antigo: N64HleR4300CpuStateTest.programCounterMustBeWordAligned. Esse teste ainda exigia que o estado da CPU rejeitasse PC desalinhado, contradizendo o comportamento agora necessário para que o fetch gere AdEL.
+- Substituído por programCounterCanRepresentUnalignedFetchAddress, que confirma que o estado representa 0x80000402 e continua aceitando atualização para PC alinhado.
+- Commit: [5b85863](https://github.com/jovemaprendz55-byte/N64-Android/commit/5b85863e3856eaa924ed62e08b534f8b370a4aeb).
+- O workflow anterior não está aprovado. Aguardar e inspecionar o CI deste novo commit antes de prosseguir com a auditoria arquitetural.
