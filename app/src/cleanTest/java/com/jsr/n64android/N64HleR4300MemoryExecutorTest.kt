@@ -152,8 +152,8 @@ class N64HleR4300MemoryExecutorTest {
 
         assertEquals(N64HleR4300ExceptionCode.INSTRUCTION_BUS_ERROR, signal.context.code)
         assertEquals(0x80800000L, signal.context.badVirtualAddress)
-        assertEquals(0x80800000L, state.readCop0(14))
-        assertEquals(0x80800000L, state.readCop0(8))
+        assertEquals(0xFFFFFFFF80800000UL.toLong(), state.readCop0(14))
+        assertEquals(0xFFFFFFFF80800000UL.toLong(), state.readCop0(8))
         assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
         assertEquals(6, (state.readCop0(13).toInt() ushr 2) and 0x1F)
     }
