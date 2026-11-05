@@ -3761,3 +3761,14 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
 - Corrigido o sinal para carregar um `IllegalStateException` descritivo como causa de host, mantendo `context.code` como a classificação arquitetural RI (ExcCode 10). A causa de host não substitui nem altera o código arquitetural.
 - Commit de correção: [0bebf46](https://github.com/jovemaprendz55-byte/N64-Android/commit/0bebf46112868de1bb4258e44b32efc50f138a46).
 - Aguardar CI deste commit e dos testes RI. Não considerar a implementação validada até build e testes passarem.
+
+
+### Exceção arquitetural de overflow — 2026-11-05
+
+- Criado `N64HleR4300ArithmeticOverflow`, sinal interno tipado para diferenciar overflow aritmético guest de erros genéricos do host.
+- SPECIAL: ADD, SUB, DADD e DSUB agora sinalizam overflow sem escrever o registrador destino.
+- Imediatas: ADDI e DADDI usam o mesmo sinal tipado; ADDIU/DADDIU continuam com wrap sem trap.
+- O stepper converte o sinal em `ARITHMETIC_OVERFLOW` (ExcCode 12), atualiza COP0 Cause/Status/EPC, seleciona vetor por BEV e cancela corretamente delay slot após a atualização.
+- Testes adicionados para ADDI em execução normal e ADD em delay slot; testes de executor atualizados para esperar o sinal tipado.
+- Commits: [SPECIAL](https://github.com/jovemaprendz55-byte/N64-Android/commit/299383b302dee29dd8a5d17ef67dfeaeeec3ffeb), [imediatas](https://github.com/jovemaprendz55-byte/N64-Android/commit/c208f849516f7ab5f575188e8e661501f569ff3a), [sinal tipado](https://github.com/jovemaprendz55-byte/N64-Android/commit/c6fd3984f09699aeb3fba7c40b8c94bf97fa4876), [stepper](https://github.com/jovemaprendz55-byte/N64-Android/commit/0d875ec91b39919b444afbab0167b9bc9a35639c), [testes SPECIAL](https://github.com/jovemaprendz55-byte/N64-Android/commit/bbe2f007148a5df473999976def098b7e9c572ec), [testes imediatos](https://github.com/jovemaprendz55-byte/N64-Android/commit/f83799fe81d9a3dfcb0dddfdffad37dfe8f79af9), [testes stepper](https://github.com/jovemaprendz55-byte/N64-Android/commit/cdd1c57515969dd741db7623887b8bcc97b11ab8).
+- Aguardando CI; não considerar validado até workflow verde.
