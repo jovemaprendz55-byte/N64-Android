@@ -3506,3 +3506,22 @@ Arquivo: `app/src/cleanTest/java/com/jsr/n64android/N64HleGuestAddressSpaceTest.
 
 - Acompanhar o CI do commit `250c94910bea0fa9ebfd2d694cb3bb4e6a752aa7`. Se passar, avançar para cobertura de falhas de acesso fora da região mapeada e, em seguida, planejar a implementação das exceções arquiteturais sem misturar esse trabalho com a validação sintética de alinhamento.
 
+
+
+## Seção 167 — acessos fora da memória mapeada no stepper — 2026-11-05
+
+**Status: teste adicionado; CI em andamento.**
+
+- O teste da seção 166 foi aprovado: [workflow 42087846841](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42087846841).
+- Adicionado `stepperRejectsUnmappedLoadAndStoreWithoutSideEffects` em `N64HleR4300MemoryExecutorTest.kt`.
+- O teste executa `LW` e `SW` no endereço KSEG0 `0x80800000`, fora da janela padrão de 8 MiB de RDRAM.
+- Confere que a exceção é lançada, o PC não avança, o destino do `LW` continua desconhecido e uma região válida de memória permanece inalterada.
+- Commit: `d2234198fe470a449a6247dc228cfe0d2623dc37`.
+- CI: [workflow 42088321465](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42088321465), em andamento na última consulta.
+- Esta é validação do comportamento interno de memória não mapeada; ainda não implementa exceções arquiteturais MIPS/R4300 (BadVAddr, Cause, EXL) nem comprova execução de ROM real.
+- Tudo permanece na branch `dev/n64-hle-clean-reboot`; `main` não foi alterada.
+
+### Próximo passo
+
+Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da CPU é representado atualmente e desenhar testes para BadVAddr/Cause/EXL antes de implementar o tratamento arquitetural.
+
