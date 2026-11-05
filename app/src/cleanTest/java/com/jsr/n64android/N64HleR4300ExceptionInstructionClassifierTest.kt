@@ -28,11 +28,11 @@ class N64HleR4300ExceptionInstructionClassifierTest {
         val state = N64HleR4300CpuState(0x80000000L, mapOf(1 to -1L, 2 to 1L))
         fun instruction(function: Int) = decoder.decode((1 shl 21) or (2 shl 16) or function)
 
-        assertEquals(N64HleR4300ExceptionCode.TRAP, classifier.classify(instruction(0x30), state)) // TGE signed
-        assertEquals(N64HleR4300ExceptionCode.TRAP, classifier.classify(instruction(0x33), state)) // TLTU unsigned
+        assertNull(classifier.classify(instruction(0x30), state)) // TGE signed: -1 >= 1 is false
+        assertNull(classifier.classify(instruction(0x33), state)) // TLTU unsigned: -1 < 1 is false
         assertEquals(N64HleR4300ExceptionCode.TRAP, classifier.classify(instruction(0x36), state)) // TNE
-        assertNull(classifier.classify(instruction(0x31), state)) // TGEU false
-        assertNull(classifier.classify(instruction(0x32), state)) // TLT false
+        assertEquals(N64HleR4300ExceptionCode.TRAP, classifier.classify(instruction(0x31), state)) // TGEU true
+        assertEquals(N64HleR4300ExceptionCode.TRAP, classifier.classify(instruction(0x32), state)) // TLT true
         assertNull(classifier.classify(instruction(0x34), state)) // TEQ false
     }
 
