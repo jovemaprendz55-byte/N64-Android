@@ -22,8 +22,8 @@ class N64HleR4300ImmediateExecutor {
                 val left = state.readGpr(instruction.rs).toInt()
                 val immediate = instruction.immediateSigned
                 val sum = left.toLong() + immediate.toLong()
-                check(sum in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()) {
-                    "ADDI signed overflow requires an architectural exception, which is not implemented"
+                if (sum !in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()) {
+                    throw N64HleR4300ArithmeticOverflow("ADDI")
                 }
                 sum.toInt().toLong()
             }
@@ -32,8 +32,8 @@ class N64HleR4300ImmediateExecutor {
                 val left = state.readGpr(instruction.rs)
                 val immediate = instruction.immediateSigned.toLong()
                 val sum = left + immediate
-                check(((left xor sum) and (immediate xor sum)) >= 0L) {
-                    "DADDI signed overflow requires an architectural exception, which is not implemented"
+                if (((left xor sum) and (immediate xor sum)) < 0L) {
+                    throw N64HleR4300ArithmeticOverflow("DADDI")
                 }
                 sum
             }
