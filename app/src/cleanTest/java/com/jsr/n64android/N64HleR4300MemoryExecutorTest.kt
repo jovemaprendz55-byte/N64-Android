@@ -123,6 +123,41 @@ class N64HleR4300MemoryExecutorTest {
         assertEquals(false, stepper.hasPendingDelaySlot())
     }
 
+
+    @Test fun stepperFetchMisalignedPcEntersAdelAndRecordsBadVaddr() {
+        val sharedMemory = N64HleGuestAddressSpace()
+        val stepper = N64HleR4300InstructionStepper(memorySpace = sharedMemory)
+        val state = exceptionReadyState(0x80001002L, emptyMap())
+
+        val signal = assertThrows(N64HleR4300ArchitecturalException::class.java) {
+            stepper.stepFromMemory(state)
+        }
+
+        assertEquals(N64HleR4300ExceptionCode.ADDRESS_LOAD, signal.context.code)
+        assertEquals(0x80001002L, signal.context.badVirtualAddress)
+        assertEquals(0x80001002L, state.readCop0(14))
+        assertEquals(0x80001002L, state.readCop0(8))
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
+        assertEquals(4, (state.readCop0(13).toInt() ushr 2) and 0x1F)
+    }
+
+    @Test fun stepperFetchUnmappedPcEntersIbeAndRecordsBadVaddr() {
+        val sharedMemory = N64HleGuestAddressSpace()
+        val stepper = N64HleR4300InstructionStepper(memorySpace = sharedMemory)
+        val state = exceptionReadyState(0x80800000L, emptyMap())
+
+        val signal = assertThrows(N64HleR4300ArchitecturalException::class.java) {
+            stepper.stepFromMemory(state)
+        }
+
+        assertEquals(N64HleR4300ExceptionCode.INSTRUCTION_BUS_ERROR, signal.context.code)
+        assertEquals(0x80800000L, signal.context.badVirtualAddress)
+        assertEquals(0x80800000L, state.readCop0(14))
+        assertEquals(0x80800000L, state.readCop0(8))
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
+        assertEquals(6, (state.readCop0(13).toInt() ushr 2) and 0x1F)
+    }
+
     @Test fun stepperFetchesBigEndianInstructionsFromGuestRdram() {
         val sharedMemory = N64HleGuestAddressSpace()
         val stepper = N64HleR4300InstructionStepper(memorySpace = sharedMemory)
