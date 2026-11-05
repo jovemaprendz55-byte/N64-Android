@@ -2874,3 +2874,16 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Commits: modelo `b5029ad02f993ac8f858920c95c66a66f975b57b`; testes `e0ca60d2f6ff19722713db39c59cc3db8eab20d7`.
 - **Limite importante:** este commit cria apenas um modelo imutável de contexto. Ainda não escreve Cause/EPC/BadVAddr em COP0, não consulta Status/BEV/EXL, não seleciona vetor de exceção, não altera PC e não entrega exceções durante execução. Nenhum valor inicial de COP0 é presumido.
 - CI de implementação e testes ainda precisa concluir; não declarar seção aprovada até testes e APK passarem.
+
+
+## 141. Atualização dos registradores COP0 na entrada de exceção — 2026-11-05
+
+- Adicionado `N64HleR4300ExceptionRegisterUpdater.kt` e testes automatizados.
+- Exige Status (COP0 12) e Cause (COP0 13) explicitamente conhecidos antes de qualquer alteração; se faltarem, falha sem mutação.
+- Atualiza Cause.ExcCode (bits 6..2) e Cause.BD (bit 31), preservando os demais bits conhecidos de Cause.
+- Define Status.EXL (bit 1). Se EXL estava limpo, grava EPC (COP0 14) com o EPC calculado pelo contexto; se EXL já estava ativo, preserva EPC, conforme regra de exceção aninhada.
+- Atualiza BadVAddr (COP0 8) somente quando o contexto fornece endereço virtual inválido.
+- Testes cobrem exceção normal, delay slot, preservação de EPC com EXL já ativo, BadVAddr opcional e ausência de Status/Cause sem mutação.
+- Commits: updater `8588c5724e526fd15a2fb269a661b62e31cf20c1`; testes iniciais `4477bd6d53e3a9144c108743ddc7c9745f043df3`; correção de expectativas de bits preservados `c01a6eb6dad95f0f634b14ea039b799d026a6119`.
+- **Limites:** ainda não há integração automática com o stepper/executores de instrução; não seleciona vetor, não altera PC para handler, não implementa BEV/Status interrupt masks, TLB refill, ERET ou entrega arquitetural completa. Valores COP0 de entrada continuam explícitos.
+- CI de implementação/testes/APK pendente de conclusão; confirmar antes de marcar como aprovado.
