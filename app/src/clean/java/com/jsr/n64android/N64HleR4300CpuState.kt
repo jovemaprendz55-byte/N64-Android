@@ -26,7 +26,6 @@ class N64HleR4300CpuState(
     private var loValue: Long? = initialLo
 
     init {
-        requireAlignedPc(programCounter)
         require(initialGprValues.keys.all { it in 1..31 }) {
             "Initial GPR indices must be in 1..31; GPR0 is constant zero"
         }
@@ -110,7 +109,6 @@ class N64HleR4300CpuState(
     }
 
     fun setProgramCounter(value: Long) {
-        requireAlignedPc(value)
         programCounter = value
     }
 
@@ -131,10 +129,6 @@ class N64HleR4300CpuState(
         require(index in 0..31) { "GPR index must be in 0..31" }
     }
 
-    private fun requireAlignedPc(value: Long) {
-        require((value and 3L) == 0L) { "R4300 instruction PC must be word-aligned" }
-    }
-    
     companion object {
         /**
          * Builds mutable execution state from an explicit HLE entry snapshot.
