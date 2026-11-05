@@ -20,7 +20,8 @@ class N64HleR4300MemoryExecutor(
         val base = state.readGpr(instruction.rs)
         val address = base + instruction.immediateSigned.toLong()
 
-        when (opcode) {
+        try {
+            when (opcode) {
             OP_LB -> state.writeGpr(instruction.rt, memory.read8(address).toByte().toLong())
             OP_LBU -> state.writeGpr(instruction.rt, memory.read8(address).toLong())
             OP_LH -> state.writeGpr(instruction.rt, memory.read16(address).toShort().toLong())
@@ -40,6 +41,14 @@ class N64HleR4300MemoryExecutor(
             OP_SDL -> storeDoublewordLeft(address, instruction.rt, state)
             OP_SDR -> storeDoublewordRight(address, instruction.rt, state)
             OP_SD -> memory.write64(address, state.readGpr(instruction.rt))
+            }
+        } catch (fault: N64HleGuestMemoryFault) {
+            val kind = if (opcode in STORE_OPCODES) {
+                N64HleR4300MemoryAccessKind.STORE
+            } else {
+                N64HleR4300MemoryAccessKind.LOAD
+            }
+            throw N64HleR4300MemoryAccessFault(kind, fault)
         }
     }
 
