@@ -3,8 +3,9 @@ package com.jsr.n64android
 /**
  * Executes the initial non-control R4300 immediate-integer subset.
  *
- * ADDI overflow is rejected before mutation because architectural exceptions
- * are not implemented yet. ADDIU wraps without trapping. Logical immediates
+ * ADDI/DADDI signed overflow raises a typed architectural signal before mutation;
+ * the instruction stepper converts it into the R4300 overflow exception. ADDIU
+ * and DADDIU wrap without trapping. Logical immediates
  * are zero-extended; arithmetic/comparison immediates are sign-extended.
  */
 class N64HleR4300ImmediateExecutor {
