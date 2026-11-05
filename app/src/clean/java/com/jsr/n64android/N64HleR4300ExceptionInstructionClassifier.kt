@@ -31,6 +31,24 @@ class N64HleR4300ExceptionInstructionClassifier {
         state: N64HleR4300CpuState
     ): N64HleR4300ExceptionCode? {
         classify(instruction)?.let { return it }
+
+        // REGIMM trap-immediate operations use the sign-extended 16-bit
+        // immediate as the second operand; they are exceptions, not branches.
+        if (instruction.opcode == OP_REGIMM) {
+            val left = state.readGpr(instruction.rs)
+            val right = instruction.immediateSigned.toLong()
+            val condition = when (instruction.rt) {
+                RT_TGEI -> left >= right
+                RT_TGEIU -> java.lang.Long.compareUnsigned(left, right) >= 0
+                RT_TLTI -> left < right
+                RT_TLTIU -> java.lang.Long.compareUnsigned(left, right) < 0
+                RT_TEQI -> left == right
+                RT_TNEI -> left != right
+                else -> return null
+            }
+            return if (condition) N64HleR4300ExceptionCode.TRAP else null
+        }
+
         if (!instruction.isSpecial) return null
 
         val operation = instruction.specialOperation ?: return null
@@ -52,6 +70,14 @@ class N64HleR4300ExceptionInstructionClassifier {
     }
 
     private companion object {
+        const val OP_REGIMM = 0x01
+        const val RT_TGEI = 0x08
+        const val RT_TGEIU = 0x09
+        const val RT_TLTI = 0x0A
+        const val RT_TLTIU = 0x0B
+        const val RT_TEQI = 0x0C
+        const val RT_TNEI = 0x0E
+
         val TRAP_OPERATIONS = setOf(
             N64HleR4300SpecialOperation.TGE,
             N64HleR4300SpecialOperation.TGEU,
