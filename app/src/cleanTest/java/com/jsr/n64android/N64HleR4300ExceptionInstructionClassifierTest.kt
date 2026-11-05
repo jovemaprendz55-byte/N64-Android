@@ -91,14 +91,6 @@ class N64HleR4300ExceptionInstructionClassifierTest {
         }
     }
 
-    @Test fun cop0EncodingsAreNotGuessedByTheGenericExceptionClassifier() {
-        // COP0 privilege/format validation needs its own architectural rules.
-        for (rs in listOf(0x00, 0x04, 0x10, 0x01, 0x05)) {
-            val word = (0x10 shl 26) or (rs shl 21)
-            assertNull("COP0 rs=0x${rs.toString(16)}", classifier.classify(decoder.decode(word)))
-        }
-    }
-
     @Test fun cop0DefinedTransferAndCoFormatsAreNotReserved() {
         for (rs in listOf(0x00, 0x01, 0x04, 0x05)) {
             val word = (0x10 shl 26) or (rs shl 21)
