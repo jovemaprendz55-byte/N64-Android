@@ -3317,3 +3317,13 @@ Arquivo: `app/src/cleanTest/java/com/jsr/n64android/N64HleGuestAddressSpaceTest.
 - Os testes já existentes cobrem BNE não tomado com delay slot e a sequenciação de branch; o planner possui teste de BEQ tomado, mas falta um teste explícito de BNE tomado com o offset negativo usado nesta captura. Adicionar esse teste automatizado é uma melhoria de cobertura, não uma correção comprovada do executor.
 - Próximo teste físico seguro: executar exatamente mais uma instrução (o delay slot em `0x80000420`) e enviar captura. Se o mecanismo estiver correto e a condição BNE tiver sido tomada, o PC seguinte deverá passar a `0x80000410`. Se a instrução no delay slot falhar, o branch deve permanecer pendente.
 - Não habilitar execução contínua. Ainda não foi inspecionado na captura o valor efetivo de `$t1`; a conclusão sobre branch tomado depende de confirmar que GPR9 contém valor diferente de zero.
+
+### Auditoria adicional — BNE tomado do GoldenEye e delay slot pelo stepper (2026-11-05)
+
+- Revisão do código confirma que N64HleR4300ControlTransferPlanner compara `$t1` com `$zero` para o opcode `0x1520FFFC` em `0xFFFFFFFF8000041C`. Com `$t1 = 0x0000000000031078`, a condição BNE é tomada e o destino calculado é `0xFFFFFFFF80000410`.
+- O sequenciador coloca primeiro o PC em `0xFFFFFFFF80000420`, mantendo o delay slot pendente. Após a execução de uma instrução comum nesse endereço, instala o destino `0xFFFFFFFF80000410`.
+- Os testes de planner e sequenciador já cobriam o destino negativo. Foi acrescentado também um teste de integração no N64HleR4300InstructionStepperTest, usando exatamente o opcode observado no aparelho e um NOP no delay slot, para validar a sequência completa pelo stepper.
+- Commit do teste de integração: `c63fc07de66b1dac168168884f4e48cf9bb58935`.
+- Próximo passo: aguardar o CI deste commit. Se aprovado, não é necessário reinstalar APK apenas para o teste unitário. No aparelho, executar exatamente mais uma instrução no PC `0xFFFFFFFF80000420`; a expectativa, se o estado real de GPR9 for diferente de zero e o delay slot concluir, é PC `0xFFFFFFFF80000410`.
+- A UI ainda não expõe GPR9 diretamente; portanto, a previsão física depende de o estado real do registrador coincidir com o valor inferido da sequência anterior. Não interpretar a previsão como resultado já observado.
+- Limite permanece: ainda não há comprovação de boot completo, execução RSP/OSTask, renderização, áudio ou controles.
