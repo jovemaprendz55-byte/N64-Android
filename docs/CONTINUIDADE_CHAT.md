@@ -3452,3 +3452,20 @@ Arquivo: `app/src/cleanTest/java/com/jsr/n64android/N64HleGuestAddressSpaceTest.
 - Commit: `d34c564263bca4c76b1fb4cd4153523150540da7`.
 - CI da etapa 162 ainda estava em andamento na última consulta; este novo commit também precisa de CI próprio.
 - Nenhum APK novo validado; branch `main` permanece intocada.
+
+
+## Seção 164 — alinhamento de LH/SH integrado ao stepper — 2026-11-05
+
+**Status: teste automatizado adicionado; CI pendente.**
+
+- Etapas 162 e 163 foram verificadas novamente: workflows `42084856444` e `42084999164` concluíram com sucesso.
+- Novo teste em `N64HleR4300MemoryExecutorTest.kt` cobre `LH` em endereço ímpar e `SH` em endereço ímpar pelo `N64HleR4300InstructionStepper`.
+- Para `LH`, exige exceção, PC sem avanço e registrador de destino ainda desconhecido.
+- Para `SH`, exige exceção, PC sem avanço e memória original preservada.
+- Isso valida a rejeição/alinhamento e ausência de efeitos colaterais nesses casos sintéticos. Não implementa ainda exceções arquiteturais MIPS (Cause/BadVAddr/EXL) nem prova execução desses opcodes por GoldenEye.
+- Commits: `1715bdd40f02718bfa8f3b3fc30da13f68c6cb26` (teste inicial) e `d1505c90c690020e8618e2fb8b34daf6bc6389df` (correção de tipos dos literais no teste).
+- Branch `dev/n64-hle-clean-reboot`; `main` não foi alterada. Nenhum APK novo declarado.
+
+### Próximo passo
+
+- Acompanhar o CI do commit final `d1505c90c690020e8618e2fb8b34daf6bc6389df`. Se passar, continuar com testes integrados de `SW` desalinhado e preservar o estado de memória/PC; se falhar, corrigir antes de ampliar a cobertura.
