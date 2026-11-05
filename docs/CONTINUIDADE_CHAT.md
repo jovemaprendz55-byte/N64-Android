@@ -3250,3 +3250,17 @@ Arquivo: `app/src/cleanTest/java/com/jsr/n64android/N64HleGuestAddressSpaceTest.
 - O painel superior ainda exibe zero instruções por ser snapshot inicial do handoff; o painel inferior apresenta a contagem atualizada (4).
 - Próximo passo físico: tocar uma vez em **EXECUTAR 1 INSTRUÇÃO** e registrar o próximo PC/opcode. Não assumir o opcode seguinte.
 - Limite: quatro passos confirmados no aparelho não equivalem a boot completo do jogo, nem comprovam RSP/OSTask, vídeo, áudio ou controles.
+
+
+### Quinto passo físico — confirmação por captura (2026-11-05)
+
+- Captura versionada: `Screenshot_2026-11-05-05-37-50-934_com.jsr.n64android.jpg`.
+- STATUS: **Uma instrução executada com sucesso. Total: 5**.
+- PC seguinte: `0x0000000080000414`.
+- Último PC concluído / PC da última tentativa: `0x0000000080000410`.
+- Última instrução: `0x2129FFF8`, decodificada como `ADDI $t1, $t1, -8`.
+- Considerando o valor esperado após o passo 4 (`$t1 = 0x0000000000031080`), o resultado esperado é `$t1 = 0x0000000000031078`.
+- A tela não indica falha (tipo e mensagem vazios). Lembrar que ADDI, ao contrário de ADDIU, verifica overflow assinado; neste valor não há overflow.
+- O resumo superior continua exibindo zero instruções porque é snapshot inicial; o painel inferior mostra o contador atualizado (5).
+- Próximo passo físico: executar uma instrução e registrar o PC/opcode reais; não presumir o opcode seguinte.
+- Limite: cinco instruções confirmadas não comprovam boot completo do jogo, RSP/OSTask, vídeo, áudio ou controles.
