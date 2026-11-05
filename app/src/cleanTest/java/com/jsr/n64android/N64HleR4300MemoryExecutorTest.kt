@@ -135,8 +135,8 @@ class N64HleR4300MemoryExecutorTest {
 
         assertEquals(N64HleR4300ExceptionCode.ADDRESS_LOAD, signal.context.code)
         assertEquals(0x80001002L, signal.context.badVirtualAddress)
-        assertEquals(0x80001002L, state.readCop0(14))
-        assertEquals(0x80001002L, state.readCop0(8))
+        assertEquals(0xFFFFFFFF80001002UL.toLong(), state.readCop0(14))
+        assertEquals(0xFFFFFFFF80001002UL.toLong(), state.readCop0(8))
         assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
         assertEquals(4, (state.readCop0(13).toInt() ushr 2) and 0x1F)
     }
