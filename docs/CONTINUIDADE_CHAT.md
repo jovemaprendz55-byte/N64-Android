@@ -3486,3 +3486,23 @@ Arquivo: `app/src/cleanTest/java/com/jsr/n64android/N64HleGuestAddressSpaceTest.
 
 - Aguardar o workflow `42087415846`. Se passar, continuar com testes de efeitos colaterais para outros acessos de memória e depois priorizar exceções arquiteturais de endereço; se falhar, corrigir a causa antes de ampliar a cobertura.
 
+
+
+## Seção 166 — alinhamento de LD/SD integrado ao stepper — 2026-11-05
+
+**Status: teste adicionado; CI em andamento.**
+
+- O workflow da seção 165 concluiu com sucesso: [run 42087415846](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42087415846).
+- Adicionado o teste `stepperRejectsMisalignedDoublewordLoadAndStoreWithoutSideEffects` em `N64HleR4300MemoryExecutorTest.kt`.
+- O teste usa endereços alinhados a 4 bytes, mas desalinhados a 8 bytes, para verificar `LD` e `SD`.
+- Para `LD`, exige exceção, PC preservado, registrador de destino desconhecido e memória original intacta.
+- Para `SD`, exige exceção, PC preservado e palavra dupla original intacta.
+- Commit do teste: `250c94910bea0fa9ebfd2d694cb3bb4e6a752aa7`.
+- Workflow associado: [run 42087846841](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42087846841), em andamento na última consulta.
+- Isso verifica efeitos colaterais no stepper para acessos de 64 bits desalinhados; ainda não implementa exceções arquiteturais MIPS/R4300 (Cause, BadVAddr, EXL).
+- Branch `dev/n64-hle-clean-reboot`; `main` não alterada. Não declarar APK validado até o CI terminar.
+
+### Próximo passo
+
+- Acompanhar o CI do commit `250c94910bea0fa9ebfd2d694cb3bb4e6a752aa7`. Se passar, avançar para cobertura de falhas de acesso fora da região mapeada e, em seguida, planejar a implementação das exceções arquiteturais sem misturar esse trabalho com a validação sintética de alinhamento.
+
