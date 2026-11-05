@@ -3786,3 +3786,15 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
   - https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42107209320
   - https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42107215574
 - **Não declarar overflow concluído até a CI mais recente passar.** Se falhar, inspecionar os logs e corrigir a causa real; não enfraquecer testes nem remover a validação COP0.
+
+
+### Correção seguinte dos testes de overflow — 2026-11-05
+
+- A inspeção dos logs de CI mostrou que os testes já entravam na exceção arquitetural; as falhas restantes eram expectativas incorretas, não ausência de COP0:
+  - ADDI/DADDI devem redirecionar PC ao vetor geral, não mantê-lo no PC anterior.
+  - Cause ExcCode 12 é `0x30` (valor positivo após leitura sign-extended de 32 bits; não `0xFFFFFFFF80000030`).
+  - EPC `0x80001000` é lido como `0xFFFFFFFF80001000` pelo modelo COP0.
+- Correções publicadas:
+  - [1292574](https://github.com/jovemaprendz55-byte/N64-Android/commit/1292574b304664c040e978953511473a322689f5): testes imediatos agora esperam o vetor de exceção.
+  - [c936e5](https://github.com/jovemaprendz55-byte/N64-Android/commit/c936e5ec400300cd8d1c9d11ff984da48043915a): Cause e EPC com valores de 32 bits/sign-extension corretos.
+- CI dos commits: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42107431781 e https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42107440139. Ainda aguardando conclusão; não marcar overflow como aprovado antes de CI verde.
