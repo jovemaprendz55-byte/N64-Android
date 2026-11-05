@@ -3109,3 +3109,70 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - APK debug gerado na execução principal: artifact ID `13395630073`, tamanho 873.505 bytes, SHA-256 `ab844a6b9d80ae9404fbaa35952d5bd630364f6dbf2f4d4260d8575222f51144`. [Abrir execução e baixar APK](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41983559156). Expira em 2026-11-19.
 - **Seção 155 aprovada em CI e APK gerado.** Isso confirma compilação/testes automatizados, não teste físico, boot de ROM ou renderização. DMEM/IMEM estão representadas como arrays independentes; não há RSP, DMA nem registradores SP implementados. Acesso pela CPU à IMEM neste mapa é apenas uma janela de memória e não significa que a CPU esteja executando o RSP.
 - Próximo passo: instalar este APK no Android 16 e validar novamente o handoff HLE com ROM CIC 6102/7101 conhecida. Depois, avaliar separadamente os registradores SP/DMA e só então permitir uma instrução manual da CPU; manter sem execução automática.
+
+## Seção 156 — registradores SP e DMA no caminho HLE limpo
+
+**Status: implementado; CI aprovado; APK debug gerado.**
+
+### Confirmação no aparelho
+
+- O usuário instalou o APK da seção 155 e confirmou que o aplicativo abre, apresenta a interface e que o botão **PREPARAR HANDOFF HLE** exibe informações.
+- Isso confirma a abertura da UI e a preparação/relato do handoff HLE. Não confirma execução sustentada da CPU, execução de OSTask/RSP, renderização de uma ROM ou áudio.
+
+### Descoberta da auditoria
+
+- O barramento principal `N64Bus` já possui implementação parcial de registradores SP e DMA síncrono.
+- O espaço de memória do runtime HLE limpo (`N64HleGuestAddressSpace`) era isolado e mapeava RDRAM, DMEM e IMEM, mas rejeitava os endereços MMIO SP.
+- A seção 156 adiciona suporte correspondente no caminho HLE limpo sem trocar o runtime por núcleo de terceiros nem alterar `main`.
+
+### Implementação
+
+Arquivo: `app/src/clean/java/com/jsr/n64android/N64HleGuestAddressSpace.kt`
+
+- Registradores SP mapeados via KSEG0/KSEG1:
+  - `SP_MEM_ADDR` 0x04040000
+  - `SP_DRAM_ADDR` 0x04040004
+  - `SP_RD_LEN` 0x04040008
+  - `SP_WR_LEN` 0x0404000C
+  - `SP_STATUS` 0x04040010
+  - `SP_DMA_FULL` 0x04040014
+  - `SP_DMA_BUSY` 0x04040018
+  - `SP_SEMAPHORE` 0x0404001C
+  - `SP_PC` 0x04080000
+- Implementados os campos de endereço, máscara do SP_PC e comandos básicos de HALT/BROKE/INTR/SSTEP/INTR_BREAK.
+- `SP_RD_LEN`: cópia síncrona RDRAM → DMEM/IMEM.
+- `SP_WR_LEN`: cópia síncrona DMEM/IMEM → RDRAM.
+- DMA aplica comprimento, contagem, DRAM skip, seleção DMEM/IMEM e wrap de 4 KiB.
+- A transferência valida todos os intervalos RDRAM antes de modificar a memória, evitando cópia parcial em DMA inválido.
+- Registradores BUSY/FULL permanecem zero neste modelo síncrono simplificado.
+
+### Limitações explícitas
+
+- Não há latência, fila ou temporização de DMA.
+- Não há sinalização de interrupção ao MI a partir do SP nesta camada HLE limpa.
+- Semáforo e registradores de controle ainda são parciais; não se afirma equivalência completa ao hardware.
+- SP_PC é armazenado/máscarado, mas isso não inicia automaticamente o RSP.
+- Não foi integrado scheduler automático de OSTask, nem execução automática do RSP/RDP.
+- O mapa SP MMIO desta seção aceita acessos de palavra alinhados; acessos byte/halfword e doubleword aos registradores não foram implementados.
+
+### Testes
+
+Arquivo: `app/src/cleanTest/java/com/jsr/n64android/N64HleGuestAddressSpaceTest.kt`
+
+- Alias KSEG para registradores SP e SP_PC.
+- Comandos de HALT.
+- DMA RDRAM → DMEM.
+- DMA IMEM → RDRAM.
+- Blocos múltiplos e DRAM skip.
+- DMA inválido sem alteração parcial da memória.
+
+### CI e APK
+
+- Commit de implementação/correção: `ffd748994220a7ed5176ff18f37d79964f80be5c`
+- Commit: https://github.com/jovemaprendz55-byte/N64-Android/commit/ffd748994220a7ed5176ff18f37d79964f80be5c
+- GitHub Actions run: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41984152091
+- Resultado: **success** — `testDebugUnitTest assembleDebug`.
+- Artifact: `n64-android-debug-apk`, ID `13395695873`, tamanho 875.326 bytes.
+- Download do APK pelo run: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/41984152091
+- Expiração do artifact: 2026-11-19.
+- CI confirma compilação e testes automatizados, não teste físico desta nova versão nem boot/renderização de jogos.
