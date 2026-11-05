@@ -20,12 +20,40 @@ class N64HleR4300ExecutionSession(
         val lastInstruction: N64HleR4300DecodedInstruction?
     )
 
+    /** Immutable diagnostic view; it never changes guest CPU/device state. */
+    data class DiagnosticsSnapshot(
+        val totalExecutedInstructions: Long,
+        val lastSuccessfulInstructionPc: Long?,
+        val lastSuccessfulInstruction: N64HleR4300DecodedInstruction?,
+        val lastAttemptedInstructionPc: Long?,
+        val failureType: String?,
+        val failureMessage: String?
+    )
+
     var totalExecutedInstructions: Long = 0L
         private set
+
+    private var lastSuccessfulInstructionPc: Long? = null
+    private var lastSuccessfulInstruction: N64HleR4300DecodedInstruction? = null
+    private var lastAttemptedInstructionPc: Long? = null
+    private var failureType: String? = null
+    private var failureMessage: String? = null
+
+    fun diagnostics(): DiagnosticsSnapshot = DiagnosticsSnapshot(
+        totalExecutedInstructions = totalExecutedInstructions,
+        lastSuccessfulInstructionPc = lastSuccessfulInstructionPc,
+        lastSuccessfulInstruction = lastSuccessfulInstruction,
+        lastAttemptedInstructionPc = lastAttemptedInstructionPc,
+        failureType = failureType,
+        failureMessage = failureMessage
+    )
 
     /**
      * Executes at most [instructionBudget] sequential instructions.
      * The hard cap prevents accidental unbounded execution in callers.
+     *
+     * On a failed step, records the attempted PC and exception summary, then
+     * rethrows the original exception. No exception is converted to success.
      */
     fun runChunk(instructionBudget: Int): ChunkResult {
         require(instructionBudget in 1..MAX_INSTRUCTIONS_PER_CHUNK) {
@@ -34,7 +62,19 @@ class N64HleR4300ExecutionSession(
         var executed = 0
         var last: N64HleR4300DecodedInstruction? = null
         while (executed < instructionBudget) {
-            last = stepper.stepFromMemory(cpuState)
+            val attemptedPc = cpuState.programCounter
+            lastAttemptedInstructionPc = attemptedPc
+            try {
+                last = stepper.stepFromMemory(cpuState)
+            } catch (error: Exception) {
+                failureType = error.javaClass.name
+                failureMessage = error.message
+                throw error
+            }
+            lastSuccessfulInstructionPc = attemptedPc
+            lastSuccessfulInstruction = last
+            failureType = null
+            failureMessage = null
             executed++
             totalExecutedInstructions++
         }
