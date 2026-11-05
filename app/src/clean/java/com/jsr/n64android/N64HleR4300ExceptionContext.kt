@@ -44,9 +44,8 @@ data class N64HleR4300ExceptionContext(
     val exceptionProgramCounter: Long
 
     init {
-        require((faultingPc and 3L) == 0L) {
-            "Faulting instruction PC must be word-aligned"
-        }
+        // An unaligned instruction fetch is an AdEL condition. Preserve the
+        // original PC so BadVAddr and EPC can report the actual fault.
         if (inDelaySlot) {
             requireNotNull(branchPc) {
                 "A delay-slot exception requires the address of its branch instruction"
