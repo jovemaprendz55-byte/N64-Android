@@ -83,4 +83,42 @@ class N64HleCartridgeSessionTest {
         }
     }
 
+    @Test
+    fun preparedHandoffExecutesFetchedInstructionFromItsGuestMemory() {
+        val rom = ByteArray(0x80).also {
+            it[0] = 0x80.toByte()
+            it[1] = 0x37
+            it[2] = 0x12
+            it[3] = 0x40
+            // ADDIU r2, r0, 42 at cartridge offset 0x40 (big-endian).
+            it[0x40] = 0x24
+            it[0x41] = 0x02
+            it[0x42] = 0x00
+            it[0x43] = 0x2A
+        }
+        val session = N64HleCartridgeSession.fromValidatedImage(
+            N64HleCartridgeImage.parse(rom)
+        )
+        val profile = N64HleBootProfile(
+            entryPc = 0x80000400L,
+            registerValues = mapOf(29 to 0x80001000L),
+            romCopies = listOf(N64HleBootProfile.RomCopy(0x40, 0x80000400L, 4)),
+            memoryWrites = emptyList(),
+            evidence = "synthetic one-instruction R4300 integration fixture"
+        )
+        val handoff = session.prepareHleHandoff(profile)
+        val cpuState = handoff.createR4300CpuState()
+        val stepper = handoff.createR4300InstructionStepper()
+
+        val decoded = stepper.stepFromMemory(cpuState)
+
+        assertEquals(0x09, decoded.opcode) // ADDIU
+        assertEquals(42L, cpuState.readGpr(2))
+        assertEquals(0x80000404L, cpuState.programCounter)
+        assertEquals(0x80001000L, cpuState.readGpr(29))
+        assertEquals(false, cpuState.isHiKnown())
+        assertEquals(false, cpuState.isLoKnown())
+        assertEquals(false, cpuState.isCop0Known(12))
+    }
+
 }
