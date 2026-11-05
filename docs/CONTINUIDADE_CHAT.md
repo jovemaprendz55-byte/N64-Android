@@ -3292,3 +3292,17 @@ Arquivo: `app/src/cleanTest/java/com/jsr/n64android/N64HleGuestAddressSpaceTest.
 - A tela não indica falha; tipo e mensagem permanecem vazios. O painel superior continua sendo snapshot inicial (zero), enquanto o inferior informa 7 instruções.
 - Próximo passo físico: executar uma instrução e registrar PC/opcode reais; não inferir o próximo opcode sem captura.
 - Limite: sete instruções confirmadas no aparelho não equivalem a boot completo, execução RSP/OSTask, renderização, áudio ou controles.
+
+
+### Oitavo passo físico — desvio condicional requer investigação (2026-11-05)
+
+- Captura versionada: `Screenshot_2026-11-05-05-44-47-028_com.jsr.n64android.jpg`.
+- STATUS: **Uma instrução executada com sucesso. Total: 8**.
+- PC da instrução: `0x000000008000041C`; PC seguinte exibido: `0x0000000080000420`.
+- Opcode: `0x1520FFFC`, decodificado como `BNE $t1, $zero, -4`.
+- Alvo do branch, se tomado: `0x0000000080000410` (PC+4 + sign-extended offset<<2).
+- Pela sequência anterior, o valor esperado de `$t1` é `0x0000000000031078`, portanto BNE deveria ser tomado e o PC seguinte esperado seria `0x80000410`. A UI, porém, mostra `0x80000420` (sequencial).
+- Isso é uma discrepância observável, não prova isolada de bug no branch: pode decorrer de valor real diferente de `$t1`, estado do registrador, semântica de branch/delay slot ou implementação do executor. Não afirmar ainda qual causa.
+- A captura reporta sucesso e nenhum tipo/mensagem de falha, mas isso não prova que a condição e o destino do branch foram tratados corretamente.
+- **Pausar novos testes físicos de stepping neste ponto.** Antes de executar a instrução seguinte, inspecionar no código da branch ativa a leitura/escrita de GPR, decodificação BNE, cálculo de alvo, delay slot MIPS e atualização do PC; adicionar testes unitários que validem tanto branch tomado quanto não tomado. Não alterar a main.
+- Limite: oito instruções aceitas no aparelho; correção do fluxo de controle ainda não confirmada.
