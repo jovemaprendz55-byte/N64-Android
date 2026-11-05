@@ -3695,3 +3695,19 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
 - Aguardar CI e corrigir qualquer falha de compilação/teste antes de avançar.
 - Acrescentar teste de falha de fetch no delay slot para validar Cause.BD e EPC apontando para a instrução de branch.
 - Revisar tratamento de PC desalinhado versus endereço KSEG mapeado e a semântica de BadVAddr para AdEL antes de declarar o caminho concluído.
+
+
+### Complemento da seção 176 — ajustes após a primeira execução do CI
+
+- A primeira execução revelou que três testes ainda esperavam a antiga exceção simples de memória (`N64HleGuestMemoryFault`/`IllegalArgumentException`). Com a nova entrada arquitetural, o comportamento correto é propagar `N64HleR4300ArchitecturalException`, com código IBE e PC já redirecionado ao vetor.
+- Atualizados os testes de `N64HleR4300InstructionStepperTest` e `N64HleR4300ExecutionSessionTest` para verificar a exceção arquitetural, o contador de instruções e o diagnóstico preservado pela sessão.
+- Adicionado teste de fetch não mapeado no delay slot: verifica `Cause.BD=1`, ExcCode IBE, EPC apontando para o branch, BadVAddr apontando para o endereço do fetch defeituoso, PC redirecionado e cancelamento do delay slot.
+- Commits dos ajustes: [teste de fetch IBE](https://github.com/jovemaprendz55-byte/N64-Android/commit/217ab05c67465051cbbe9006f064ae3415126043), [testes da sessão de execução](https://github.com/jovemaprendz55-byte/N64-Android/commit/7ffb5ca9a3c1b9e586fe7f27dea4ef0b5939f8c9), [fetch em delay slot](https://github.com/jovemaprendz55-byte/N64-Android/commit/88335f3882340ce3f955872ce21a4ddc909a2566).
+- Workflows disparados para os três commits: [42102371947](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42102371947), [42102397369](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42102397369), [42102426355](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42102426355). No momento deste registro, permanecem em execução; ainda não declarar a seção aprovada.
+- Os workflows anteriores da primeira implementação falharam por expectativas de teste incompatíveis com a nova entrada arquitetural e por uma incompatibilidade de tipo durante a compilação em um commit intermediário. Essas falhas foram identificadas; os commits posteriores corrigem o teste e a API de causa, mas dependem da conclusão dos workflows atuais.
+
+### Próximo passo
+
+- Confirmar o CI dos commits 217ab05, 7ffb5ca e 88335f3; corrigir qualquer falha restante.
+- Se tudo passar, considerar concluída a entrada de fetch no vetor geral para o mapa HLE atual.
+- Depois revisar AdEL por PC desalinhado e a preservação de estado COP0/delay slot, antes de avançar para qualquer implementação de TLB/refill.
