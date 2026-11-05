@@ -24,7 +24,7 @@ class N64HleR4300ExceptionRegisterUpdaterTest {
             ),
             state
         )
-        assertEquals(0xFFFFFFFF80001020L, state.readCop0(14))
+        assertEquals(0xFFFFFFFF80001020uL.toLong(), state.readCop0(14))
         assertEquals(0x0000A0B3L, state.readCop0(13))
         assertEquals(0x00000003L, state.readCop0(12))
         assertTrue(result.epcWritten)
@@ -48,7 +48,7 @@ class N64HleR4300ExceptionRegisterUpdaterTest {
             ),
             state
         )
-        assertEquals(0xFFFFFFFF80001020L, state.readCop0(14))
+        assertEquals(0xFFFFFFFF80001020uL.toLong(), state.readCop0(14))
         assertEquals(0x80000028L, state.readCop0(13))
         assertEquals(0x2L, state.readCop0(12))
     }
@@ -68,7 +68,7 @@ class N64HleR4300ExceptionRegisterUpdaterTest {
             ),
             state
         )
-        assertEquals(0xFFFFFFFF80000044L, state.readCop0(14))
+        assertEquals(0xFFFFFFFF80000044uL.toLong(), state.readCop0(14))
         assertEquals(0x80000025L, state.readCop0(13))
         assertFalse(result.epcWritten)
         assertTrue(result.exlWasAlreadySet)
@@ -90,7 +90,7 @@ class N64HleR4300ExceptionRegisterUpdaterTest {
             ),
             state
         )
-        assertEquals(0xFFFFFFFFDEADBEEFL, state.readCop0(8))
+        assertEquals(0xFFFFFFFFDEADBEEFuL.toLong(), state.readCop0(8))
     }
 
     @Test fun unknownRequiredStatusOrCauseFailsBeforeAnyMutation() {
