@@ -90,4 +90,74 @@ class N64HleGuestAddressSpaceTest {
         assertThrows(IllegalArgumentException::class.java) { memory.read8(0x80001000L) }
         assertEquals(0x1000, memory.sizeBytes)
     }
+
+    @Test
+    fun mapsSpRegistersThroughKsegAliasesAndAppliesStatusCommands() {
+        val memory = N64HleGuestAddressSpace()
+        assertEquals(1L, memory.read32(0xA4040010L)) // HALT after reset
+        memory.write32(0xA4040010L, 1L) // clear HALT command
+        assertEquals(0L, memory.read32(0xA0040010L))
+        memory.write32(0xA4040010L, 2L) // set HALT command
+        assertEquals(1L, memory.read32(0xA4040010L))
+
+        memory.write32(0xA4080000L, 0x1237L)
+        assertEquals(0x1234L, memory.read32(0xA4080000L))
+        memory.write32(0xA4040000L, 0x3456L)
+        assertEquals(0x1456L, memory.read32(0xA4040000L))
+    }
+
+    @Test
+    fun spReadLengthDmaCopiesRdramIntoDmemAndUpdatesAddresses() {
+        val memory = N64HleGuestAddressSpace()
+        memory.write32(0x80000100L, 0x12345678L)
+        memory.write32(0xA4040000L, 0x20L)
+        memory.write32(0xA4040004L, 0x100L)
+        memory.write32(0xA4040008L, 3L)
+
+        assertEquals(0x12345678L, memory.read32(0xA4000020L))
+        assertEquals(0x24L, memory.read32(0xA4040000L))
+        assertEquals(0x104L, memory.read32(0xA4040004L))
+        assertEquals(0L, memory.read32(0xA4040018L))
+    }
+
+    @Test
+    fun spWriteLengthDmaCopiesImemIntoRdram() {
+        val memory = N64HleGuestAddressSpace()
+        memory.write32(0xA4001040L, 0x89ABCDEF)
+        memory.write32(0xA4040000L, 0x1040L)
+        memory.write32(0xA4040004L, 0x200L)
+        memory.write32(0xA404000CL, 3L)
+
+        assertEquals(0x89ABCDEFL, memory.read32(0x80000200L))
+        assertEquals(0x1044L, memory.read32(0xA4040000L))
+        assertEquals(0x204L, memory.read32(0xA4040004L))
+    }
+
+    @Test
+    fun spDmaHonorsBlockCountAndDramSkip() {
+        val memory = N64HleGuestAddressSpace()
+        memory.write32(0x80000100L, 0x11223344L)
+        memory.write32(0x80000108L, 0x55667788L)
+        memory.write32(0xA4040000L, 0x40L)
+        memory.write32(0xA4040004L, 0x100L)
+        memory.write32(0xA4040008L, ((4 shl 20) or (1 shl 12) or 3).toLong())
+
+        assertEquals(0x11223344L, memory.read32(0xA4000040L))
+        assertEquals(0x55667788L, memory.read32(0xA4000044L))
+        assertEquals(0x48L, memory.read32(0xA4040000L))
+        assertEquals(0x110L, memory.read32(0xA4040004L))
+    }
+
+    @Test
+    fun invalidSpDmaDoesNotPartiallyModifySpMemory() {
+        val memory = N64HleGuestAddressSpace(0x1000)
+        memory.write32(0xA4000000L, 0xAABBCCDDL)
+        memory.write32(0xA4040000L, 0L)
+        memory.write32(0xA4040004L, 0xFFEL)
+        assertThrows(IllegalArgumentException::class.java) {
+            memory.write32(0xA4040008L, 3L)
+        }
+        assertEquals(0xAABBCCDDL, memory.read32(0xA4000000L))
+    }
+
 }
