@@ -357,12 +357,15 @@ class N64HleR4300InstructionStepperTest {
         val stepperWithMemory = N64HleR4300InstructionStepper(memorySpace = memory)
         val state = exceptionState(0x80800000L, emptyMap())
 
-        assertThrows(N64HleGuestMemoryFault::class.java) {
+        val signal = assertThrows(N64HleR4300ArchitecturalException::class.java) {
             stepperWithMemory.stepFromMemory(state)
         }
 
-        assertEquals(0L, state.readCop0(12))
-        assertEquals(0L, state.readCop0(13))
-        assertEquals(0x80800000L, state.programCounter)
+        assertEquals(N64HleR4300ExceptionCode.INSTRUCTION_BUS_ERROR, signal.context.code)
+        assertEquals(0x80800000L, signal.context.badVirtualAddress)
+        assertEquals(0x80800000L, signal.context.exceptionProgramCounter)
+        assertEquals(0x18L, state.readCop0(13))
+        assertEquals(0x2L, state.readCop0(12))
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
     }
 }
