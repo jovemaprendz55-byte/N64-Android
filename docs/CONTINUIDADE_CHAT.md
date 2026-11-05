@@ -3831,3 +3831,13 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
   - correção dos casos signed/unsigned nos testes: https://github.com/jovemaprendz55-byte/N64-Android/commit/784a555dd3ebeb3379f11c808028c6be2527e4e0
 - CI dos commits TRAP está em execução no momento deste registro; não declarar TRAP concluído até a execução do HEAD ficar verde.
 - Próximo: verificar a CI mais recente; se houver falha, corrigir pelo log. Se ficar verde, avaliar validação dos campos reservados das instruções TRAP e depois classificação de opcodes primários reservados/COP0/COP1, sem classificar instruções válidas não implementadas como RI.
+
+
+## 2026-11-05 — REGIMM trap-immediate
+
+- CI TRAP SPECIAL confirmado verde:
+  - https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42107999414
+  - CI da atualização documental anterior: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42108041664
+- Auditoria do decoder/stepper encontrou seis instruções de trap imediato ainda não classificadas: TGEI, TGEIU, TLTI, TLTIU, TEQI e TNEI (opcode REGIMM=0x01; rt=0x08, 0x09, 0x0A, 0x0B, 0x0C e 0x0E).
+- Implementada classificação condicional no classificador de exceções, usando imediato de 16 bits com extensão de sinal e comparação assinada/não assinada de 64 bits. Condição falsa segue como instrução normal; condição verdadeira entra em TRAP (ExcCode 13) pelo caminho existente do stepper.
+- Testes adicionados para comparações assinadas/não assinadas, igualdade/diferença e entrega da exceção via COP0. CI desta implementação ainda precisa ser conferido.
