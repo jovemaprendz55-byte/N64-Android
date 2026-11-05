@@ -2995,3 +2995,21 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - **Limites:** teste sintético de uma instrução, não boot real de ROM comercial. Não há execução automática na Activity, loop de CPU, tratamento completo de exceções, scheduler RSP, RDP, vídeo ou áudio. A API permite ao chamador executar passos explicitamente; não inicia o jogo sozinha.
 - Próxima etapa: validar CI e, se verde, criar uma camada pequena de sessão de execução com ciclo de passos explicitamente limitado e estado observável, mantendo o início manual e sem loop infinito na interface.
 - **Precisão de estado antes da validação final:** auditoria do adaptador identificou que o snapshot inicial armazenava zeros para GPRs não fornecidos e não distinguia zero explícito de valor desconhecido. Corrigido: `N64HleCpuEntryState` agora preserva o conjunto de GPRs explicitamente conhecidos; o adaptador importa apenas esses GPRs. GPR0 é sempre conhecido e zero. Teste reforçado para confirmar que GPR29 explicitamente definido é conhecido e GPR1 omitido continua desconhecido. Commits da correção: snapshot `7505f6522b6878f479e5cbdadf1069598b141d5f`; adaptador `09457436fa1ffb74f75cf345cd6c85a7e7cadb00`; teste `132b2b9c41acd61a625b87df1780277a92b4b6f8`. As execuções CI anteriores à correção não validam esta versão final; aguardar os workflows dos commits corrigidos.
+
+## 149. Driver de execução R4300 em blocos limitados — 2026-11-05
+
+- Seção 148 validada: os workflows de adaptação do snapshot, integração handoff/stepper, testes e documentação terminaram com sucesso:
+  - estado inicial corrigido: run `41980466921` success;
+  - ponte handoff/stepper: run `41980471859` success;
+  - teste da integração: run `41980475893` success;
+  - documentação: run `41980493244` success.
+- Criada `N64HleR4300ExecutionSession.kt`, uma camada explícita para executar um número finito de instruções com `runChunk(instructionBudget)`.
+- O limite é de 1 a 4096 instruções por chamada. Não existe thread, timer, loop automático ou início automático na Activity.
+- O resultado informa instruções executadas na chamada, total acumulado, PC, estado de delay slot e última instrução decodificada.
+- Falhas de fetch, memória ou instrução não suportada continuam visíveis como exceções; o contador só aumenta depois que um passo termina com sucesso.
+- `N64HlePreparedHandoff.createR4300ExecutionSession()` monta estado e stepper conectados à RDRAM do handoff, sem executar nada até o chamador solicitar `runChunk`.
+- Testes novos cobrem dois blocos sucessivos de uma instrução (ADDIU r2=42; ADDIU r3=r2+8), rejeição de orçamento zero/acima do limite e fetch inválido sem incremento do contador.
+- Commits: driver `5bab653df926f2a4591c2dde4700100fe358f284`; testes `2fc6d037c36934ca1ffaf96874db7a966ee03aa5`; factory `d2f8a872996a90aa722692076361baf1775a570b`.
+- CI da seção 149 deve validar build e testes antes de qualquer APK ser considerado apto para instalação.
+- **Limites:** execução de instruções sintéticas da subset atualmente implementada. Não é execução completa de ROM comercial, não há tratamento completo de exceções, MMIO, TLB, RSP scheduler, RDP, vídeo ou áudio. A interface Android ainda não inicia este driver.
+- Próxima etapa: validar CI. Se aprovado, criar observabilidade de execução (último PC/instrução, contagem e erro) e só depois avaliar integração manual à Activity, sempre sem alegar compatibilidade de jogos não testados.
