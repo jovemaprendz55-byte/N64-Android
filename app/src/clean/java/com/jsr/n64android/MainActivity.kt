@@ -18,8 +18,8 @@ import android.widget.TextView
 /**
  * First native launcher screen for the clean HLE reboot.
  *
- * ROM selection uses Android's Storage Access Framework. Selecting a file only
- * grants access and displays its name; it does not parse or execute the ROM.
+ * ROM selection and bounded cartridge inspection use Android's Storage Access
+ * Framework. A successful inspection does not boot or execute the selected game.
  */
 class MainActivity : Activity() {
     private lateinit var selectedRomText: TextView
@@ -92,7 +92,7 @@ class MainActivity : Activity() {
 
         root.addView(space(22))
         root.addView(label(
-            "Nesta versão, você já pode abrir o seletor e escolher um arquivo de ROM. " +
+            "Esta versão lê e identifica o cabeçalho da ROM selecionada. " +
                 "A execução do jogo, vídeo e áudio ainda não estão conectados à tela.",
             13,
             Color.rgb(177, 190, 207),
@@ -127,7 +127,48 @@ class MainActivity : Activity() {
         selectedRomUri = uri
         val name = queryDisplayName(uri) ?: uri.lastPathSegment ?: "Arquivo selecionado"
         selectedRomText.text = name
-        statusText.text = "ROM selecionada. A leitura do conteúdo e a execução ainda não foram iniciadas."
+        statusText.text = "Lendo arquivo e verificando o cabeçalho da ROM..."
+        inspectSelectedRom(uri)
+    }
+
+    private fun inspectSelectedRom(uri: Uri) {
+        Thread({
+            val result = try {
+                val stream = contentResolver.openInputStream(uri)
+                    ?: throw java.io.IOException("O provedor não abriu o arquivo.")
+                stream.use { N64RomDocumentReader.read(it) }
+            } catch (error: Exception) {
+                N64RomDocumentReader.Result.Failure(
+                    "Não foi possível abrir a ROM: ${error.message ?: "erro desconhecido"}."
+                )
+            }
+
+            runOnUiThread {
+                when (result) {
+                    is N64RomDocumentReader.Result.Success -> {
+                        val cartridge = result.cartridge
+                        val byteOrder = when (cartridge.byteOrder) {
+                            N64HleCartridgeImage.ByteOrder.BIG_ENDIAN -> "Z64 (big-endian)"
+                            N64HleCartridgeImage.ByteOrder.BYTE_SWAPPED_16 -> "V64 (bytes trocados)"
+                            N64HleCartridgeImage.ByteOrder.LITTLE_ENDIAN_32 -> "N64 (palavras invertidas)"
+                        }
+                        statusText.text = buildString {
+                            appendLine("ROM identificada com sucesso.")
+                            appendLine("Título: ${cartridge.title.ifBlank { "(sem título)" }}")
+                            appendLine("Tamanho: ${result.sourceSizeBytes} bytes")
+                            appendLine("Formato: $byteOrder")
+                            appendLine("CRC1: 0x${cartridge.crc1.toString(16).uppercase().padStart(8, '0')}")
+                            append("CRC2: 0x${cartridge.crc2.toString(16).uppercase().padStart(8, '0')}")
+                            appendLine()
+                            append("A ROM foi lida, mas o jogo ainda não foi iniciado.")
+                        }
+                    }
+                    is N64RomDocumentReader.Result.Failure -> {
+                        statusText.text = "Falha ao identificar a ROM. ${result.reason}"
+                    }
+                }
+            }
+        }, "N64-ROM-Reader").start()
     }
 
     private fun queryDisplayName(uri: Uri): String? {
