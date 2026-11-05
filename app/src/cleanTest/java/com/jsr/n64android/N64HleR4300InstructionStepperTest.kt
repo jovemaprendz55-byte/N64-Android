@@ -16,7 +16,7 @@ class N64HleR4300InstructionStepperTest {
         val state = N64HleR4300CpuState(0x80001000L, mapOf(1 to 20L, 2 to 22L))
         stepper.step(r(1, 2, 3, 0x21), state) // ADDU
         assertEquals(42L, state.readGpr(3))
-        assertEquals(0x80001004L, state.programCounter)
+        assertEquals(0x80000004L, state.programCounter)
         assertFalse(stepper.hasPendingDelaySlot())
     }
 
@@ -219,7 +219,7 @@ class N64HleR4300InstructionStepperTest {
         }
 
         assertEquals(N64HleR4300ExceptionCode.ADDRESS_LOAD, signal.context.code)
-        assertEquals(0x80001000L, signal.context.exceptionProgramCounter)
+        assertEquals(0x80000000L, signal.context.exceptionProgramCounter)
         assertEquals(0xFFFFFFFF80000101UL.toLong(), state.readCop0(8))
         assertEquals(0x10L, state.readCop0(13))
         assertEquals(0x2L, state.readCop0(12))
@@ -370,11 +370,11 @@ class N64HleR4300InstructionStepperTest {
     }
 
     @Test fun instructionFetchFaultInDelaySlotSetsBdAndUsesBranchPcForEpc() {
-        val memory = N64HleGuestAddressSpace()
+        val memory = N64HleGuestAddressSpace(rdramSize = 4)
         val stepperWithMemory = N64HleR4300InstructionStepper(memorySpace = memory)
-        val state = exceptionState(0x80001000L, emptyMap())
+        val state = exceptionState(0x80000000L, emptyMap())
 
-        stepperWithMemory.step((0x02 shl 26) or 0x800, state) // J; delay slot fetch is unmapped
+        stepperWithMemory.step((0x02 shl 26) or 0x800, state) // J; next word lies outside mapped RDRAM
         assertEquals(0x80001004L, state.programCounter)
         assertTrue(stepperWithMemory.hasPendingDelaySlot())
 
@@ -384,12 +384,12 @@ class N64HleR4300InstructionStepperTest {
 
         assertEquals(N64HleR4300ExceptionCode.INSTRUCTION_BUS_ERROR, signal.context.code)
         assertTrue(signal.context.inDelaySlot)
-        assertEquals(0x80001004L, signal.context.faultingPc)
+        assertEquals(0x80000004L, signal.context.faultingPc)
         assertEquals(0x80001000L, signal.context.exceptionProgramCounter)
-        assertEquals(0x80001004L, signal.context.badVirtualAddress)
-        assertEquals(0xFFFFFFFF80001000UL.toLong(), state.readCop0(14))
-        assertEquals(0xFFFFFFFF80001004UL.toLong(), state.readCop0(8))
-        assertEquals(0x80000018L, state.readCop0(13))
+        assertEquals(0x80000004L, signal.context.badVirtualAddress)
+        assertEquals(0xFFFFFFFF80000000UL.toLong(), state.readCop0(14))
+        assertEquals(0xFFFFFFFF80000004UL.toLong(), state.readCop0(8))
+        assertEquals(0xFFFFFFFF80000018UL.toLong(), state.readCop0(13))
         assertEquals(0x2L, state.readCop0(12))
         assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
         assertFalse(stepperWithMemory.hasPendingDelaySlot())
