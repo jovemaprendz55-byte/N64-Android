@@ -2893,3 +2893,5 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - **Ajuste adicional de compilação dos testes:** Kotlin não aceita literais hexadecimais assinados acima de `Long.MAX_VALUE`; as expectativas com padrão de bits de 32 bits estendido foram expressas como `ULong.toLong()`. Commit `002182e03f66e35263a0c3b8551973a9331ba12e`. A CI da tentativa anterior falhou ao compilar os testes (não foi falha do código de produção); nova validação pendente.
 
 - Expectativa de teste de `Cause` com o bit `BD` ativo também ajustada para a representação Long com extensão de sinal, commit `fcb612e6ac35ad3776bc0a0b773b5d2180b4ef81`. CI atualizada pendente.
+
+- **Correção final de expectativa Cause em exceção aninhada:** o teste esperava incorretamente `0x80000025` mesmo sem `Cause.BD); o valor correto é `0x25`, pois o bit 31 deve permanecer limpo fora de delay slot. Commit `68d32f30072da7c3f11dfa286fda7f82a5b38773`. A tentativa CI `41976344659` executou 140 testes e falhou em apenas essa assertion; build de APK foi concluído, mas upload ficou condicionado ao sucesso dos testes. Nova validação em andamento.
