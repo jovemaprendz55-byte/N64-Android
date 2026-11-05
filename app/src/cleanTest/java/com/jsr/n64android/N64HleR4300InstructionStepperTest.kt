@@ -510,4 +510,18 @@ class N64HleR4300InstructionStepperTest {
         assertEquals(0L, notTrapped.readCop0(13))
     }
 
+
+    @Test fun reservedRegimmEncodingEntersReservedInstructionException() {
+        val state = exceptionState(0x80005000L, emptyMap())
+        val reservedRegimm = (0x01 shl 26) or (0x02 shl 16) // rt=2 is not defined
+        val signal = assertThrows(N64HleR4300ArchitecturalException::class.java) {
+            stepper.step(reservedRegimm, state)
+        }
+
+        assertEquals(N64HleR4300ExceptionCode.RESERVED_INSTRUCTION, signal.context.code)
+        assertEquals(0x28L, state.readCop0(13)) // ExcCode 10
+        assertEquals(0xFFFFFFFF80005000UL.toLong(), state.readCop0(14))
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
+    }
+
 }
