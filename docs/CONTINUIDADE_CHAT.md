@@ -3043,3 +3043,17 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - **Limite importante:** o painel está preparado para receber uma sessão, mas a Activity ainda não cria nem executa uma sessão R4300. Não existe perfil HLE de jogo validado conectado ao botão de seleção; nenhum PC/instrução real de jogo é exibido ainda.
 - Commit da interface: `23a27441572e8ad8ea226b8c4d501b6467b652e0`.
 - Próximo passo: validar build/testes da Activity e documentação. Se aprovado, inspecionar a cadeia de evidências para o primeiro perfil HLE real antes de conectar execução à interface. Não usar perfil sintético como se fosse boot de ROM comercial.
+
+
+## 152. Primeiro perfil HLE clean com evidência CIC 6102/7101 — 2026-11-05
+
+- Auditoria confirmou que o caminho antigo `app/src/main/java` não compõe o APK clean. O antigo `N64HleBoot.prepare` documenta e testa um handoff pós-IPL3 para CIC 6102/7101, mas não podia ser chamado diretamente pela Activity clean.
+- Adicionado `N64HleBootProfileFactory` na source set clean. Ele aceita somente ROMs cujo checksum do bloco IPL3 (ROM `0x40..0xFFF`) corresponde à seed CIC 6102/7101 `0x3F`, valida CRC1/CRC2 do primeiro MiB da imagem de jogo e valida entry point KSEG0/alinhamento/faixa de RDRAM.
+- O perfil monta cópia de 1 MiB de ROM offset `0x1000` para o entry point da ROM, parâmetros de boot frio em `0x80000300..0x80000318`, GPRs `$s3..$s7` e stack `$sp`, além dos valores COP0 Status/Config respaldados pelos testes legados do projeto.
+- `osCicId` para CIC 6102 permanece zero; a seed `0x3F` é separada em `$s6`. A documentação de parâmetros de boot está em `docs/CORRECAO_HLE_OSCICID_2026-11-02.md`.
+- CIC 6105/7105 é deliberadamente rejeitado neste primeiro factory: a detecção existe no legado, mas a validação independente do CRC 6105 não está implementada no caminho clean. Não extrapolar a cobertura de 6102 para 6105.
+- Testes adicionados com fixture sintética: perfil e handoff, bytes copiados, parâmetros low-memory, seed/osCicId, rejeição de CRC de jogo adulterado, CIC desconhecido e entry point inválido.
+- Commits: factory `2e49919f02747154edf58b69496cb6bdaef76b15`; testes `afba6d4c88c1c815df3144f4037c18f9adbd4ad2`; correção da asserção de fixture `563e3aee511f9b7611fe1b42c45df4f813e90798`.
+- **Limites:** perfil derivado de evidência e testes do projeto, mas os testes usam ROM sintética e não provam boot de GoldenEye nem de qualquer ROM comercial. O perfil não modela o write MMIO RI_SELECT `0x14` do caminho 6102, nem inicialização completa de RDRAM/cache/TLB, nem execução automática na Activity. A UI ainda não chama este factory; não ligar ao botão até CI e testes passarem e a integração manual ser planejada.
+- CI dos commits factory/testes/documentação ainda precisa ser verificada. Nenhum APK novo ou teste físico foi confirmado nesta seção.
+- Próximo passo: validar CI; depois adicionar um caminho explícito de preparação de handoff com estado de diagnóstico na Activity, sem iniciar execução ilimitada. O primeiro teste físico deve confirmar a criação do handoff e os valores observados, não prometer renderização do jogo.
