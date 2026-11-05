@@ -18,6 +18,18 @@ class N64HleR4300ControlFlowSequencer {
 
     fun hasPendingDelaySlot(): Boolean = pending != null
 
+    /**
+     * Returns the branch/jump instruction PC associated with the pending
+     * delay slot, or null when no delay slot is pending.
+     *
+     * This is read-only metadata for exception-context construction. It does
+     * not consume the delay slot or alter CPU/sequencer state.
+     */
+    fun pendingBranchAddress(): Long? = pending?.let { it.delaySlotAddress - 4L }
+
+    /** Returns the pending delay-slot PC, or null when no slot is pending. */
+    fun pendingDelaySlotAddress(): Long? = pending?.delaySlotAddress
+
     /** Applies link state and moves PC to the delay slot after full preflight. */
     fun schedule(
         state: N64HleR4300CpuState,
