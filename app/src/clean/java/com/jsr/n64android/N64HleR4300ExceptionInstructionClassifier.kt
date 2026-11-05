@@ -87,13 +87,14 @@ class N64HleR4300ExceptionInstructionClassifier {
         // but unimplemented and therefore must not be reported as RI.
         if (instruction.rs in COP0_TRANSFER_RS) return null
 
-        // COP0 CO format contains TLB operations, ERET and WAIT. Preserve these
-        // known-valid operations for later execution/privilege handling.
+        // The VR4300 manual distinguishes reserved CO functions from invalid
+        // encodings that do not raise RI. Only starred/xi-marked functions
+        // in the CO table are classified as Reserved Instruction here.
         if (instruction.rs == COP0_RS_CO) {
-            return if (instruction.functionCode in COP0_KNOWN_CO_FUNCTIONS) {
-                null
-            } else {
+            return if (instruction.functionCode in COP0_RESERVED_CO_FUNCTIONS) {
                 N64HleR4300ExceptionCode.RESERVED_INSTRUCTION
+            } else {
+                null
             }
         }
 
@@ -106,8 +107,9 @@ class N64HleR4300ExceptionInstructionClassifier {
         const val OP_COP0 = 0x10
         const val COP0_RS_CO = 0x10
         val COP0_TRANSFER_RS = setOf(0x00, 0x01, 0x04, 0x05)
-        // TLBR, TLBWI, TLBWR, TLBP, ERET, WAIT.
-        val COP0_KNOWN_CO_FUNCTIONS = setOf(0x01, 0x02, 0x06, 0x08, 0x18, 0x20)
+        // VR4300 CO table: starred functions 0x0D/0x0F and xi-marked RFE
+        // (0x10) cause RI. Phi-marked encodings do not cause RI.
+        val COP0_RESERVED_CO_FUNCTIONS = setOf(0x0D, 0x0F, 0x10)
         const val RT_TGEI = 0x08
         const val RT_TGEIU = 0x09
         const val RT_TLTI = 0x0A
