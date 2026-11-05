@@ -3849,3 +3849,16 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
 - Corrigido o stepper: só os rt de desvios REGIMM implementados são tratados como transferências de controle; trap-immediate com condição falsa conclui sem efeito lateral e avança PC normalmente.
 - CI de diagnóstico: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42108549245
 - Implementação corretiva enviada; CI novo pendente.
+
+
+
+## 2026-11-05 — REGIMM trap-immediate aprovado
+
+- Correção do caminho de condição falsa integrada no stepper: somente os rt de desvios REGIMM reconhecidos são tratados como transferências de controle; TGEI/TGEIU/TLTI/TLTIU/TEQI/TNEI com condição falsa terminam normalmente, sem efeito lateral, e avançam o PC.
+- **CI do commit corretivo confirmado verde:** https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42109100076
+- **CI da documentação confirmada verde:** https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42109108037
+- Commits:
+  - correção stepper: https://github.com/jovemaprendz55-byte/N64-Android/commit/8587a29a4ddd6a46e63ab8b57a48668df6908486
+  - documentação: https://github.com/jovemaprendz55-byte/N64-Android/commit/baf2ba11a87648d70383396d2b10368be3029110
+- O classificador e o executor COP0 foram inspecionados para planejar a próxima etapa. O COP0 atual executa apenas MFC0/MTC0; operações CO/TLB/ERET e validação de codificações reservadas ainda exigem classificação separada. Não transformar indiscriminadamente todo COP0 não implementado em RI, pois há instruções COP0 válidas.
+- Próxima etapa recomendada: auditar e classificar codificações REGIMM reservadas (distinguindo-as dos quatro desvios e seis traps imediatos reconhecidos), com testes de integração no stepper. Depois, avançar para classificação COP0/COP1 com distinção entre instrução reservada, coprocessador não utilizável e operação válida ainda não implementada.
