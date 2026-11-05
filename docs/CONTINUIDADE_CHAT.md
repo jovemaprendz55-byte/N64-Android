@@ -2982,3 +2982,15 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - CI da implementação iniciou no run `41979759339`; confirmar resultado final e artefato antes de marcar a seção aprovada.
 - **Limite:** isto prepara um handoff genérico apenas com perfil sintético/evidenciado fornecido pelo chamador. A Activity não oferece ainda um perfil automático para GoldenEye ou outros jogos; não há detecção CIC integrada, validação CRC específica do boot, execução R4300, scheduler RSP, RDP, vídeo ou áudio.
 - Próxima etapa: auditar como o stepper R4300 clean consome `N64HleCpuEntryState` e `N64HleGuestAddressSpace`; definir uma fronteira explícita de memória para instruções/dados antes de criar o primeiro executor de passos integrado.
+
+## 148. Integração controlada do handoff com o stepper R4300 — 2026-11-05
+
+- Adicionado `N64HleR4300CpuState.fromEntryState(entryState)`: converte o snapshot imutável do boot HLE em estado mutável de execução, preservando apenas os 32 GPRs e os valores COP0 explicitamente conhecidos.
+- HI e LO permanecem desconhecidos porque `N64HleCpuEntryState` não fornece esses registradores. GPR0 permanece arquiteturalmente zero.
+- `N64HlePreparedHandoff.createR4300CpuState()` cria o estado da CPU e `createR4300InstructionStepper()` cria o stepper injetado com a mesma RDRAM preparada no handoff.
+- Teste de integração usa uma ROM sintética com uma instrução MIPS ADDIU (`0x2402002A`) copiada para `0x80000400). O stepper busca a instrução na memória big-endian e executa um único passo: GPR2 recebe 42 e PC avança para `0x80000404`.
+- O teste também verifica preservação do GPR29 e que HI/LO/COP0 não especificados continuam desconhecidos.
+- Commits: adaptação CPU `f923719f380b08997d302efb44bf9d4257e6c798`; handoff/stepper `1c27e4662b72afb7a1e0106a16870e137d6b8f50`; teste `ad03742eaaec158d76cd5c3a2a00fedd1e3d942d`.
+- CI da adaptação e integração está em execução nos runs `41980342618` e `41980346874`; confirmar resultados antes de declarar a seção validada.
+- **Limites:** teste sintético de uma instrução, não boot real de ROM comercial. Não há execução automática na Activity, loop de CPU, tratamento completo de exceções, scheduler RSP, RDP, vídeo ou áudio. A API permite ao chamador executar passos explicitamente; não inicia o jogo sozinha.
+- Próxima etapa: validar CI e, se verde, criar uma camada pequena de sessão de execução com ciclo de passos explicitamente limitado e estado observável, mantendo o início manual e sem loop infinito na interface.
