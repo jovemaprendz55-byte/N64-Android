@@ -3565,3 +3565,19 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
 - Primeiro classificar falhas de memória em AdEL/AdES/IBE/DBE e transportar o endereço virtual que falhou para BadVAddr.
 - Capturar o PC atual e `pendingBranchAddress()` antes de consumir/alterar o delay slot; aplicar Cause/EPC/Status e só então transferir para o vetor correto, depois de definir e testar a política de vetores R4300/HLE.
 - Adicionar testes do stepper para falha de load/store normal e no delay slot, preservando atomicidade e verificando os registradores COP0. Não afirmar compatibilidade com ROM real até teste no aparelho.
+
+## Seção 170 — classificação tipada de falhas de memória — 2026-11-05
+
+**Status: classes de falha e testes adicionados; integração ao stepper ainda não realizada.**
+
+- Aprovado o CI da seção 169: [run 42089739053](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42089739053).
+- Criada `N64HleGuestMemoryFault.kt` com `N64HleGuestAddressAlignmentFault` e `N64HleGuestAddressMappingFault`, ambas carregando o endereço virtual original.
+- `N64HleGuestAddressSpace` agora classifica desalinhamento separadamente de endereços/segmentos não mapeados. A verificação de alinhamento ocorre antes da tradução em acessos alinhados, evitando classificar um endereço simultaneamente desalinhado e fora do mapa como falha de barramento.
+- Adicionado teste para alinhamento, RDRAM fora da faixa e segmento não suportado, incluindo a preservação do endereço virtual.
+- Isso ainda não entrega AdEL/AdES/IBE/DBE ao COP0. A distinção load/store deve ser feita pelo executor/stepper; fetch de instrução exige tratamento próprio. Não foi escolhido nem implementado vetor de exceção.
+- Nenhum teste de ROM real ou no Poco C85 nesta seção. Branch `main` não foi alterada.
+
+### Próximo passo
+- Integrar o tratamento tipado no stepper, convertendo fault de alinhamento em AdEL para load/fetch e AdES para store; map faults em DBE para data load/store. Não classificar automaticamente falhas de fetch como IBE até haver caminho de fetch tipado.
+- Construir o contexto com PC atual e branch PC quando estiver no delay slot; testar que COP0 e PC ficam consistentes.
+- Definir explicitamente a política de vetor HLE e o comportamento de falhas de fetch antes de afirmar entrega arquitetural completa.
