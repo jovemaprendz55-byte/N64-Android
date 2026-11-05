@@ -3862,3 +3862,18 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
   - documentação: https://github.com/jovemaprendz55-byte/N64-Android/commit/baf2ba11a87648d70383396d2b10368be3029110
 - O classificador e o executor COP0 foram inspecionados para planejar a próxima etapa. O COP0 atual executa apenas MFC0/MTC0; operações CO/TLB/ERET e validação de codificações reservadas ainda exigem classificação separada. Não transformar indiscriminadamente todo COP0 não implementado em RI, pois há instruções COP0 válidas.
 - Próxima etapa recomendada: auditar e classificar codificações REGIMM reservadas (distinguindo-as dos quatro desvios e seis traps imediatos reconhecidos), com testes de integração no stepper. Depois, avançar para classificação COP0/COP1 com distinção entre instrução reservada, coprocessador não utilizável e operação válida ainda não implementada.
+
+### 2026-11-05 — codificações REGIMM reservadas aprovadas
+
+- O classificador agora reconhece o espaço opcode REGIMM (0x01) e marca como Reserved Instruction (ExcCode 10) qualquer valor de rt fora das dez codificações definidas: quatro desvios (BLTZ, BGEZ, BLTZAL, BGEZAL) e seis traps imediatos (TGEI, TGEIU, TLTI, TLTIU, TEQI, TNEI).
+- Não confundir rt reservado com trap condicional falso: os seis traps válidos com condição falsa continuam concluindo normalmente; rt inválido entra em RI antes do dispatch.
+- Testes cobrem dez valores rt inválidos e os dez valores válidos, além da entrada integrada no stepper (Cause ExcCode 10 = 0x28, EPC e vetor geral).
+- Commits:
+  - implementação: https://github.com/jovemaprendz55-byte/N64-Android/commit/16da434343106380716a201db4fd7efff9c97d68
+  - testes do classificador: https://github.com/jovemaprendz55-byte/N64-Android/commit/70ea6d2910fe5a65233430f4d169f152eeef5807
+  - teste integrado: https://github.com/jovemaprendz55-byte/N64-Android/commit/9bfb74be199c2539025d3a46e42d47130d7f742a
+- CI confirmada verde nos três commits:
+  - implementação: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42109816677
+  - testes do classificador: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42109835482
+  - integração stepper: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42109855537
+- Próxima auditoria: COP0. O executor limpo atual suporta somente MFC0/MTC0. Não classificar indiscriminadamente outros formatos COP0 como RI: investigar formatos válidos (por exemplo, CO/TLB/ERET e transferências de 64 bits) e distinguir instrução reservada, coprocessador não utilizável e operação válida ainda não implementada. Exigir testes de classificação antes de alterar a execução.
