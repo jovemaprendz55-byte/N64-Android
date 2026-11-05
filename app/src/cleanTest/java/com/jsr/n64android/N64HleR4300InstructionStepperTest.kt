@@ -452,4 +452,27 @@ class N64HleR4300InstructionStepperTest {
         assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
     }
 
+
+    @Test fun syscallEntersSyscallExceptionAndRedirectsToVector() {
+        val state = exceptionState(0x80001000L, emptyMap())
+        val signal = assertThrows(N64HleR4300ArchitecturalException::class.java) {
+            stepper.step(0x0000000C, state)
+        }
+        assertEquals(N64HleR4300ExceptionCode.SYSCALL, signal.context.code)
+        assertEquals(0x20L, state.readCop0(13))
+        assertEquals(0xFFFFFFFF80001000UL.toLong(), state.readCop0(14))
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
+    }
+
+    @Test fun breakEntersBreakpointExceptionAndRedirectsToVector() {
+        val state = exceptionState(0x80001000L, emptyMap())
+        val signal = assertThrows(N64HleR4300ArchitecturalException::class.java) {
+            stepper.step(0x0000000D, state)
+        }
+        assertEquals(N64HleR4300ExceptionCode.BREAKPOINT, signal.context.code)
+        assertEquals(0x24L, state.readCop0(13))
+        assertEquals(0xFFFFFFFF80001000UL.toLong(), state.readCop0(14))
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
+    }
+
 }
