@@ -151,15 +151,15 @@ class N64HleGuestAddressSpace(
     }
 
     private fun writeSpStatusCommand(command: Int) {
-        if (command and SP_STATUS_CMD_CLR_HALT != 0) spStatus = spStatus and SP_STATUS_HALT.inv()
-        if (command and SP_STATUS_CMD_SET_HALT != 0) spStatus = spStatus or SP_STATUS_HALT
-        if (command and SP_STATUS_CMD_CLR_BROKE != 0) spStatus = spStatus and SP_STATUS_BROKE.inv()
-        if (command and SP_STATUS_CMD_CLR_INTR != 0) spStatus = spStatus and SP_STATUS_INTR.inv()
-        if (command and SP_STATUS_CMD_SET_INTR != 0) spStatus = spStatus or SP_STATUS_INTR
-        if (command and SP_STATUS_CMD_CLR_SSTEP != 0) spStatus = spStatus and SP_STATUS_SSTEP.inv()
-        if (command and SP_STATUS_CMD_SET_SSTEP != 0) spStatus = spStatus or SP_STATUS_SSTEP
-        if (command and SP_STATUS_CMD_CLR_INTR_BREAK != 0) spStatus = spStatus and SP_STATUS_INTR_BREAK.inv()
-        if (command and SP_STATUS_CMD_SET_INTR_BREAK != 0) spStatus = spStatus or SP_STATUS_INTR_BREAK
+        if ((command and SP_STATUS_CMD_CLR_HALT) != 0) spStatus = spStatus and SP_STATUS_HALT.inv()
+        if ((command and SP_STATUS_CMD_SET_HALT) != 0) spStatus = spStatus or SP_STATUS_HALT
+        if ((command and SP_STATUS_CMD_CLR_BROKE) != 0) spStatus = spStatus and SP_STATUS_BROKE.inv()
+        if ((command and SP_STATUS_CMD_CLR_INTR) != 0) spStatus = spStatus and SP_STATUS_INTR.inv()
+        if ((command and SP_STATUS_CMD_SET_INTR) != 0) spStatus = spStatus or SP_STATUS_INTR
+        if ((command and SP_STATUS_CMD_CLR_SSTEP) != 0) spStatus = spStatus and SP_STATUS_SSTEP.inv()
+        if ((command and SP_STATUS_CMD_SET_SSTEP) != 0) spStatus = spStatus or SP_STATUS_SSTEP
+        if ((command and SP_STATUS_CMD_CLR_INTR_BREAK) != 0) spStatus = spStatus and SP_STATUS_INTR_BREAK.inv()
+        if ((command and SP_STATUS_CMD_SET_INTR_BREAK) != 0) spStatus = spStatus or SP_STATUS_INTR_BREAK
     }
 
     /** Synchronous, simplified SP DMA with length/count/skip fields and 4 KiB wrap. */
@@ -213,7 +213,7 @@ class N64HleGuestAddressSpace(
             return spImem to (physical - SP_IMEM_PHYSICAL)
         }
         throw IllegalArgumentException(
-            "Guest address 0x${guest.toString(16)} is outside mapped RDRAM/SP memory"
+            "Guest address 0x${(address and 0xFFFF_FFFFL).toString(16)} is outside mapped RDRAM/SP memory"
         )
     }
 
