@@ -160,4 +160,24 @@ class N64HleGuestAddressSpaceTest {
         assertEquals(0xAABBCCDDL, memory.read32(0xA4000000L))
     }
 
+    @Test
+    fun reportsTypedAlignmentAndMappingFaultsWithOriginalVirtualAddress() {
+        val memory = N64HleGuestAddressSpace()
+        val alignment = assertThrows(N64HleGuestAddressAlignmentFault::class.java) {
+            memory.read32(0x80000002L)
+        }
+        assertEquals(0x80000002L, alignment.virtualAddress)
+        assertEquals(4, alignment.requiredAlignment)
+
+        val unmapped = assertThrows(N64HleGuestAddressMappingFault::class.java) {
+            memory.read32(0x80800000L)
+        }
+        assertEquals(0x80800000L, unmapped.virtualAddress)
+
+        val unsupportedSegment = assertThrows(N64HleGuestAddressMappingFault::class.java) {
+            memory.read32(0x00000100L)
+        }
+        assertEquals(0x00000100L, unsupportedSegment.virtualAddress)
+    }
+
 }
