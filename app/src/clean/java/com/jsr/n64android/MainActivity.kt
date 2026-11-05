@@ -210,6 +210,10 @@ class MainActivity : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode != REQUEST_PICK_ROM || resultCode != RESULT_OK) return
+        if (isCpuBatchRunning) {
+            statusText.text = "Aguarde o lote terminar antes de trocar a ROM."
+            return
+        }
         val uri = data?.data ?: return
         val flags = data.flags and
             (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
