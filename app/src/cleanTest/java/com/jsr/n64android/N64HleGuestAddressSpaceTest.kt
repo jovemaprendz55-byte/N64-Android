@@ -60,6 +60,28 @@ class N64HleGuestAddressSpaceTest {
     }
 
     @Test
+    fun mapsSpDmemAndImemThroughKsegAliases() {
+        val memory = N64HleGuestAddressSpace()
+        memory.write32(0xA4000000L, 0x11223344L)
+        memory.write32(0xFFFFFFFFA4001FF0UL.toLong(), 0xAABBCCDDL)
+
+        assertEquals(0x11223344L, memory.read32(0xA0000000L + 0x04000000L))
+        assertEquals(0xAABBCCDDL, memory.read32(0xA4001FF0L))
+        assertEquals(0x11223344L, memory.read32(0xFFFFFFFFA4000000UL.toLong()))
+    }
+
+    @Test
+    fun rejectsAccessesThatCrossSpMemoryBankBoundaries() {
+        val memory = N64HleGuestAddressSpace()
+        assertThrows(IllegalArgumentException::class.java) {
+            memory.read32(0xA4000FFEL)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            memory.read32(0xA4001FFEL)
+        }
+    }
+
+    @Test
     fun validatesWriteWidthsAndMemorySize() {
         val memory = N64HleGuestAddressSpace(0x1000)
         assertThrows(IllegalArgumentException::class.java) { memory.write8(0x80000000L, 256) }
