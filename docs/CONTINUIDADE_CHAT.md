@@ -3602,7 +3602,7 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
 
 ## Seção 172 — classificação de falhas de dados em códigos R4300 — 2026-11-05
 
-**Status: classificador puro e testes adicionados; CI pendente.**
+**Status: classificador puro, testes e documentação concluídos; todos os workflows aprovados.**
 
 - Confirmado que os três workflows da seção 171 passaram: [classe](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42090460140), [executor](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42090479990) e [testes](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42090506140).
 - Inspeção do stepper confirmou que a falha do executor ocorre antes do avanço do PC e, no delay slot, antes de `completeDelaySlot`. O sequenciador expõe `pendingBranchAddress()` sem consumir o slot.
@@ -3619,3 +3619,20 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
 - Depois implementar a integração no stepper de modo atômico: construir contexto com PC atual, branch PC e BD; aplicar o atualizador COP0 apenas após preflight; definir como sinalizar a exceção e resolver o estado pendente do delay slot.
 - A seleção do vetor de exceção continua separada até a política BEV/EXL estar especificada e testada.
 
+## Seção 173 — cancelamento explícito do delay slot para unwind de exceção — 2026-11-05
+
+**Status: primitiva adicionada e teste escrito; integração com o stepper ainda não realizada.**
+
+- O CI da seção 172 passou integralmente: [classificador inicial](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42090833612), [correção sem PC inventado](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42090855358), [testes](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42090879165) e [documentação](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42090912845).
+- Inspeção do sequenciador confirmou que, quando uma instrução no delay slot falha, o PC permanece no endereço do slot e a transferência continua pendente. Para uma futura entrada de exceção, esse estado pendente não pode sobreviver como se a instrução ainda fosse completar normalmente.
+- Adicionado `cancelPendingDelaySlot()` em `N64HleR4300ControlFlowSequencer`. A operação limpa somente os metadados da transferência pendente; não altera PC, GPR ou COP0. O chamador deverá invocá-la somente depois que a entrada de exceção tiver sido validada e registrada.
+- Adicionado teste que agenda um JAL, captura PC e valor de RA, cancela o slot e confirma que o PC e o registrador de link permanecem intactos, enquanto os metadados pendentes são removidos.
+- Commits: [primitiva de cancelamento](https://github.com/jovemaprendz55-byte/N64-Android/commit/998e96397682ba7d4d33944c5cd81244e774aa03) e [teste](https://github.com/jovemaprendz55-byte/N64-Android/commit/d015507fea78b14576a6868e07dd7e3696fda54d).
+- Esta seção não conecta exceções ao stepper e não altera COP0, PC ou vetor. Não afirmar entrega arquitetural completa.
+- Nenhuma ROM real foi executada; não houve validação no Poco C85. Branch `main` permanece intocada.
+
+### Próximo passo
+
+- Confirmar o CI da seção 173.
+- Depois implementar uma sinalização tipada de exceção de dados no stepper: capturar somente `N64HleR4300MemoryAccessFault`, classificar AdEL/AdES/DBE, construir EPC/BD com o PC e branch PC reais, aplicar o atualizador COP0 com preflight e cancelar o delay slot somente após a atualização bem-sucedida.
+- Se Status ou Cause necessários forem desconhecidos, não alterar CPU nem sequenciador. Falhas de fetch permanecem fora desse caminho. A escolha do vetor BEV/EXL fica para etapa posterior.
