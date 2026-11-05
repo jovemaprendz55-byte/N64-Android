@@ -2895,3 +2895,19 @@ Próxima etapa: CI de memória e tabela de símbolos; em seguida, criar parser d
 - Expectativa de teste de `Cause` com o bit `BD` ativo também ajustada para a representação Long com extensão de sinal, commit `fcb612e6ac35ad3776bc0a0b773b5d2180b4ef81`. CI atualizada pendente.
 
 - **Correção final de expectativa Cause em exceção aninhada:** o teste esperava incorretamente `0x80000025` mesmo sem `Cause.BD); o valor correto é `0x25`, pois o bit 31 deve permanecer limpo fora de delay slot. Commit `68d32f30072da7c3f11dfa286fda7f82a5b38773`. A tentativa CI `41976344659` executou 140 testes e falhou em apenas essa assertion; build de APK foi concluído, mas upload ficou condicionado ao sucesso dos testes. Nova validação em andamento.
+
+
+### Validação final da seção 141 — 2026-11-05
+
+- A correção final do teste de Cause em exceção aninhada foi validada no run `41976507288` (commit `68d32f30072da7c3f11dfa286fda7f82a5b38773`): **success**. Os testes unitários e `assembleDebug` passaram.
+- A atualização documental foi validada no run `41976521202` (commit `8eed1db589b9b5541cc417f0bc02f7e4a8189720`): **success**.
+- Artifact publicado pelo run de testes: `n64-android-debug-apk`, ID `13392182291`, tamanho 852.524 bytes, SHA-256 `483a17947b74cb7840c2d48a8339b2cce553659f6839980d8247f957a0d0b69c`. Artifact confirmado pela API do GitHub; expira em 19/11/2026.
+- A seção 141 está validada em CI. Isso confirma testes automatizados e compilação do APK, não execução de ROM nem teste no aparelho.
+
+## Próxima etapa — seção 142: integração controlada da entrada de exceção
+
+- Antes de integrar, mapear como o sequenciador mantém o branch PC durante o delay slot e como cada executor sinaliza falhas. Não converter indiscriminadamente `IllegalStateException`/falhas de validação em exceções guest: valores desconhecidos, estado HLE incompleto e bugs internos devem continuar sendo erros do emulador.
+- Implementar primeiro uma fronteira explícita entre exceções arquiteturais identificáveis e erros internos. Casos candidatos: Reserved Instruction, SYSCALL, BREAK e overflow aritmético; manter os demais opcodes/falhas sem classificação até existir evidência e semântica segura.
+- Construir o contexto com PC e metadados de delay slot explícitos; aplicar o updater COP0 apenas depois de preflight completo. Não limpar estado pendente nem alterar PC em caso de falha ao preparar a exceção.
+- Vetorização/handler, BEV, TLB refill, interrupções e ERET ficam fora até serem implementados e testados separadamente. Nenhum vetor ou valor COP0 deve ser presumido.
+- Adicionar testes de ausência de mutação em erro interno, exceção fora/em delay slot, EPC/BD e preservação do sequenciador. Atualizar esta documentação e exigir CI verde antes de avançar.
