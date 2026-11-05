@@ -41,6 +41,35 @@ class N64HleR4300InstructionStepperTest {
         assertEquals(10L, state.readGpr(3))
     }
 
+    @Test fun unknownSpecialFunctionEntersReservedInstructionException() {
+        val state = exceptionState(0x80001000L, emptyMap())
+        val signal = assertThrows(N64HleR4300ArchitecturalException::class.java) {
+            stepper.step(r(1, 2, 3, 0x01), state)
+        }
+
+        assertEquals(N64HleR4300ExceptionCode.RESERVED_INSTRUCTION, signal.context.code)
+        assertEquals(0x80001000L, signal.context.exceptionProgramCounter)
+        assertEquals(0x28L, state.readCop0(13))
+        assertEquals(0x2L, state.readCop0(12))
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
+    }
+
+    @Test fun unknownSpecialFunctionInDelaySlotSetsBdAndBranchEpc() {
+        val state = exceptionState(0x80001000L, emptyMap())
+        stepper.step((0x02 shl 26) or 0x800, state)
+
+        val signal = assertThrows(N64HleR4300ArchitecturalException::class.java) {
+            stepper.step(r(1, 2, 3, 0x01), state)
+        }
+
+        assertEquals(N64HleR4300ExceptionCode.RESERVED_INSTRUCTION, signal.context.code)
+        assertTrue(signal.context.inDelaySlot)
+        assertEquals(0x80001000L, signal.context.exceptionProgramCounter)
+        assertEquals(0xFFFFFFFF80000028UL.toLong(), state.readCop0(13))
+        assertFalse(stepper.hasPendingDelaySlot())
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
+    }
+
     @Test fun unsupportedInstructionDoesNotAdvancePc() {
         val state = N64HleR4300CpuState(0x80001000L)
         assertThrows(IllegalArgumentException::class.java) {
