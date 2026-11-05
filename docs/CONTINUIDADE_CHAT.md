@@ -3355,3 +3355,13 @@ Arquivo: `app/src/cleanTest/java/com/jsr/n64android/N64HleGuestAddressSpaceTest.
 - `377771b4c9552190fde4b9170b8d67fc23b21245` — [Add bounded background R4300 instruction batches](https://github.com/jovemaprendz55-byte/N64-Android/commit/377771b4c9552190fde4b9170b8d67fc23b21245)
 - Branch: `dev/n64-hle-clean-reboot`. A branch `main` não foi alterada.
 - Próximo passo: verificar CI/build e revisar os testes; só então instalar o APK e validar primeiro o lote de 10 instruções no aparelho.
+
+
+### Resultado do CI — seção 158
+
+- GitHub Actions: [run 42053450447](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42053450447) — `completed/success`.
+- O job `build` concluiu com sucesso, incluindo `Build and test` e `Upload debug APK`.
+- Artifact: `n64-android-debug-apk`, ID `13427553612`, tamanho 879.170 bytes, expira em 2026-11-19.
+- APK disponível na página da execução acima.
+- Isso comprova compilação e testes automatizados. O lote em segundo plano ainda não foi validado fisicamente no Android 16.
+- Próximo passo de validação: instalar o APK desta execução, preparar a mesma ROM GoldenEye e executar primeiro o lote de 10. Conferir total acumulado, PC/opcode e ausência de travamento; só depois testar 100 e 1.000.
