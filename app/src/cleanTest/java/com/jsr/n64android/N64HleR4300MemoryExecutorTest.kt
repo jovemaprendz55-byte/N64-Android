@@ -9,6 +9,17 @@ class N64HleR4300MemoryExecutorTest {
     private val memory = N64HleGuestAddressSpace()
     private val executor = N64HleR4300MemoryExecutor(memory)
 
+
+    private fun exceptionReadyState(pc: Long, gprs: Map<Int, Long>): N64HleR4300CpuState =
+        N64HleR4300CpuState(
+            pc,
+            gprs,
+            cop0 = N64HleCop0EntryState(
+                mapOf(8 to 0L, 12 to 0L, 13 to 0L, 14 to 0L),
+                "explicit memory stepper exception test state"
+            )
+        )
+
     private fun i(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
@@ -303,12 +314,12 @@ class N64HleR4300MemoryExecutorTest {
     @Test fun stepperRejectsMisalignedWordLoadWithoutChangingPcOrDestination() {
         val sharedMemory = N64HleGuestAddressSpace()
         val stepper = N64HleR4300InstructionStepper(memorySpace = sharedMemory)
-        val state = N64HleR4300CpuState(
+        val state = exceptionReadyState(
             0x80001000L,
             mapOf(1 to 0x80000101L)
         )
 
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows(N64HleR4300ArchitecturalException::class.java) {
             stepper.step(i(0x23, 1, 2, 0), state) // LW from unaligned address
         }
         assertEquals(0x80001000L, state.programCounter)
@@ -320,12 +331,12 @@ class N64HleR4300MemoryExecutorTest {
         val loadMemory = N64HleGuestAddressSpace()
         loadMemory.write16(0x80000100L, 0xAABB)
         val loadStepper = N64HleR4300InstructionStepper(memorySpace = loadMemory)
-        val loadState = N64HleR4300CpuState(
+        val loadState = exceptionReadyState(
             0x80001000L,
             mapOf(1 to 0x80000101L)
         )
 
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows(N64HleR4300ArchitecturalException::class.java) {
             loadStepper.step(i(0x21, 1, 2, 0), loadState) // LH from odd address
         }
         assertEquals(0x80001000L, loadState.programCounter)
@@ -334,12 +345,12 @@ class N64HleR4300MemoryExecutorTest {
         val storeMemory = N64HleGuestAddressSpace()
         storeMemory.write16(0x80000100L, 0x1234)
         val storeStepper = N64HleR4300InstructionStepper(memorySpace = storeMemory)
-        val storeState = N64HleR4300CpuState(
+        val storeState = exceptionReadyState(
             0x80002000L,
             mapOf(1 to 0x80000101L, 2 to 0xABCDL)
         )
 
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows(N64HleR4300ArchitecturalException::class.java) {
             storeStepper.step(i(0x29, 1, 2, 0), storeState) // SH to odd address
         }
         assertEquals(0x80002000L, storeState.programCounter)
@@ -352,12 +363,12 @@ class N64HleR4300MemoryExecutorTest {
         val sharedMemory = N64HleGuestAddressSpace()
         sharedMemory.write32(0x80000100L, 0xAABBCCDDL)
         val stepper = N64HleR4300InstructionStepper(memorySpace = sharedMemory)
-        val state = N64HleR4300CpuState(
+        val state = exceptionReadyState(
             0x80002000L,
             mapOf(1 to 0x80000101L, 2 to 0x12345678L)
         )
 
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows(N64HleR4300ArchitecturalException::class.java) {
             stepper.step(i(0x2B, 1, 2, 0), state) // SW to unaligned address
         }
         assertEquals(0x80002000L, state.programCounter)
@@ -369,12 +380,12 @@ class N64HleR4300MemoryExecutorTest {
         val loadMemory = N64HleGuestAddressSpace()
         loadMemory.write64(0x80000100L, 0x1122334455667788L)
         val loadStepper = N64HleR4300InstructionStepper(memorySpace = loadMemory)
-        val loadState = N64HleR4300CpuState(
+        val loadState = exceptionReadyState(
             0x80003000L,
             mapOf(1 to 0x80000104L)
         )
 
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows(N64HleR4300ArchitecturalException::class.java) {
             loadStepper.step(i(0x37, 1, 2, 0), loadState) // LD from address not aligned to 8
         }
         assertEquals(0x80003000L, loadState.programCounter)
@@ -384,12 +395,12 @@ class N64HleR4300MemoryExecutorTest {
         val storeMemory = N64HleGuestAddressSpace()
         storeMemory.write64(0x80000100L, 0xAABBCCDDEEFF0011UL.toLong())
         val storeStepper = N64HleR4300InstructionStepper(memorySpace = storeMemory)
-        val storeState = N64HleR4300CpuState(
+        val storeState = exceptionReadyState(
             0x80004000L,
             mapOf(1 to 0x80000104L, 2 to 0x123456789ABCDEF0L)
         )
 
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows(N64HleR4300ArchitecturalException::class.java) {
             storeStepper.step(i(0x3F, 1, 2, 0), storeState) // SD to address not aligned to 8
         }
         assertEquals(0x80004000L, storeState.programCounter)
@@ -401,12 +412,12 @@ class N64HleR4300MemoryExecutorTest {
         val loadMemory = N64HleGuestAddressSpace()
         loadMemory.write32(0x80000000L, 0xAABBCCDDL)
         val loadStepper = N64HleR4300InstructionStepper(memorySpace = loadMemory)
-        val loadState = N64HleR4300CpuState(
+        val loadState = exceptionReadyState(
             0x80005000L,
             mapOf(1 to 0x80800000L)
         )
 
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows(N64HleR4300ArchitecturalException::class.java) {
             loadStepper.step(i(0x23, 1, 2, 0), loadState) // LW beyond mapped RDRAM
         }
         assertEquals(0x80005000L, loadState.programCounter)
@@ -416,12 +427,12 @@ class N64HleR4300MemoryExecutorTest {
         val storeMemory = N64HleGuestAddressSpace()
         storeMemory.write32(0x80000000L, 0x11223344L)
         val storeStepper = N64HleR4300InstructionStepper(memorySpace = storeMemory)
-        val storeState = N64HleR4300CpuState(
+        val storeState = exceptionReadyState(
             0x80006000L,
             mapOf(1 to 0x80800000L, 2 to 0x55667788L)
         )
 
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows(N64HleR4300ArchitecturalException::class.java) {
             storeStepper.step(i(0x2B, 1, 2, 0), storeState) // SW beyond mapped RDRAM
         }
         assertEquals(0x80006000L, storeState.programCounter)
@@ -430,7 +441,7 @@ class N64HleR4300MemoryExecutorTest {
 
 
     @Test fun memoryFaultRetainsLoadDirectionAndOriginalAlignmentFault() {
-        val state = N64HleR4300CpuState(
+        val state = exceptionReadyState(
             0x80001000L,
             mapOf(1 to 0x80000101L)
         )
@@ -446,7 +457,7 @@ class N64HleR4300MemoryExecutorTest {
     }
 
     @Test fun memoryFaultRetainsStoreDirectionAndOriginalMappingFault() {
-        val state = N64HleR4300CpuState(
+        val state = exceptionReadyState(
             0x80001000L,
             mapOf(1 to 0x80800000L, 2 to 0x12345678L)
         )
