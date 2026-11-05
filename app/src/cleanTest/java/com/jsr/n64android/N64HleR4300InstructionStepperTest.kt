@@ -223,7 +223,8 @@ class N64HleR4300InstructionStepperTest {
         assertEquals(0xFFFFFFFF80000101UL.toLong(), state.readCop0(8))
         assertEquals(0x10L, state.readCop0(13))
         assertEquals(0x2L, state.readCop0(12))
-        assertEquals(0x80001000L, state.programCounter)
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, signal.vectorAddress)
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
         assertFalse(stepperWithMemory.hasPendingDelaySlot())
     }
 
@@ -239,7 +240,8 @@ class N64HleR4300InstructionStepperTest {
         assertEquals(N64HleR4300ExceptionCode.ADDRESS_STORE, signal.context.code)
         assertEquals(0x14L, state.readCop0(13))
         assertEquals(0xFFFFFFFF80000102UL.toLong(), state.readCop0(8))
-        assertEquals(0x80001100L, state.programCounter)
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, signal.vectorAddress)
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
     }
 
     @Test fun delaySlotLoadFaultSetsBdUsesBranchEpcAndCancelsPendingSlot() {
@@ -258,7 +260,8 @@ class N64HleR4300InstructionStepperTest {
         assertEquals(0x80000101L, signal.context.badVirtualAddress)
         assertEquals(0xFFFFFFFF80000010UL.toLong(), state.readCop0(13))
         assertEquals(0x2L, state.readCop0(12))
-        assertEquals(0x80001004L, state.programCounter)
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, signal.vectorAddress)
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
         assertFalse(stepperWithMemory.hasPendingDelaySlot())
     }
 
@@ -294,7 +297,59 @@ class N64HleR4300InstructionStepperTest {
         assertEquals(N64HleR4300ExceptionCode.DATA_BUS_ERROR, signal.context.code)
         assertEquals(0xFFFFFFFF80800000UL.toLong(), state.readCop0(8))
         assertEquals(0x1CL, state.readCop0(13))
-        assertEquals(0x80001200L, state.programCounter)
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, signal.vectorAddress)
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
+    }
+
+
+    @Test fun bevSelectsBootExceptionVectorAndRedirectsPc() {
+        val memory = N64HleGuestAddressSpace()
+        val stepperWithMemory = N64HleR4300InstructionStepper(memorySpace = memory)
+        val state = N64HleR4300CpuState(
+            0x80001300L,
+            mapOf(1 to 0x80000101L),
+            cop0 = N64HleCop0EntryState(
+                mapOf(
+                    8 to 0L,
+                    12 to N64HleR4300ExceptionVectorResolver.STATUS_BEV.toLong(),
+                    13 to 0L,
+                    14 to 0L
+                ),
+                "BEV exception dispatch test"
+            )
+        )
+
+        val signal = assertThrows(N64HleR4300ArchitecturalException::class.java) {
+            stepperWithMemory.step(i(0x23, 1, 2, 0), state)
+        }
+
+        assertEquals(N64HleR4300ExceptionVectorResolver.BOOT_EXCEPTION_VECTOR, signal.vectorAddress)
+        assertEquals(N64HleR4300ExceptionVectorResolver.BOOT_EXCEPTION_VECTOR, state.programCounter)
+        assertEquals(0xFFFFFFFF80001300UL.toLong(), state.readCop0(14))
+    }
+
+    @Test fun nestedExceptionWithExlAlreadySetUsesBevVectorAndPreservesEpc() {
+        val memory = N64HleGuestAddressSpace()
+        val stepperWithMemory = N64HleR4300InstructionStepper(memorySpace = memory)
+        val originalEpc = 0xFFFFFFFF80007770UL.toLong()
+        val state = N64HleR4300CpuState(
+            0x80001400L,
+            mapOf(1 to 0x80000101L),
+            cop0 = N64HleCop0EntryState(
+                mapOf(8 to 0L, 12 to 0x2L, 13 to 0L, 14 to originalEpc),
+                "nested exception dispatch test"
+            )
+        )
+
+        val signal = assertThrows(N64HleR4300ArchitecturalException::class.java) {
+            stepperWithMemory.step(i(0x23, 1, 2, 0), state)
+        }
+
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, signal.vectorAddress)
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
+        assertEquals(originalEpc, state.readCop0(14))
+        assertTrue(signal.registerUpdate.exlWasAlreadySet)
+        assertFalse(signal.registerUpdate.epcWritten)
     }
 
     @Test fun instructionFetchFaultIsNotConvertedIntoDataException() {
