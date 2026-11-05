@@ -3674,3 +3674,24 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
 - Implementar o caminho tipado de fetch separado de LOAD/STORE: classificar falha de alinhamento do PC como AdEL e falha de mapeamento durante fetch como IBE, verificando cuidadosamente BadVAddr, EPC/BD e o comportamento do PC.
 - Adicionar testes para fetch desalinhado, fetch não mapeado, estado COP0 incompleto e fetch em delay slot (quando aplicável ao modelo atual).
 - Só depois considerar TLB/refill; o espaço de memória atual é um mapa HLE de RDRAM KSEG0/KSEG1, não uma MMU/TLB R4300 completa.
+
+
+## Seção 176 — exceções de busca de instrução (fetch) — 2026-11-05
+
+**Status: implementação inicial e testes adicionados; CI em execução.**
+
+- `stepFromMemory()` agora captura apenas falhas tipadas `N64HleGuestMemoryFault` durante a leitura da instrução e encaminha para uma rotina própria de entrada de exceção. O caminho de fetch permanece separado do caminho de LOAD/STORE.
+- Falha de alinhamento do PC durante fetch é classificada como AdEL (`ADDRESS_LOAD`, ExcCode 4). Falha de mapeamento durante fetch é classificada como IBE (`INSTRUCTION_BUS_ERROR`, ExcCode 6).
+- A rotina prepara `N64HleR4300ExceptionContext`, lê Status antes de mutações, resolve o vetor geral conforme BEV, atualiza Cause/Status/EPC/BadVAddr, cancela o delay slot apenas após atualização bem-sucedida e redireciona PC para o vetor.
+- O contexto de exceção deixou de exigir alinhamento do PC de falha para permitir registrar PC desalinhado como AdEL. A validação da relação branch/delay-slot permanece.
+- `N64HleR4300ArchitecturalException` agora aceita `Throwable` como causa para preservar tanto faults de dados quanto faults tipados de fetch.
+- Testes adicionados para fetch desalinhado e fetch não mapeado, verificando ExcCode, BadVAddr, EPC e vetor.
+- Commits da implementação: [stepper](https://github.com/jovemaprendz55-byte/N64-Android/commit/de8fd924c92aa771ace72cc3d788354490975a0b), [contexto](https://github.com/jovemaprendz55-byte/N64-Android/commit/18d9cc0799f80991c8808013cd7a9fc2c1ef71a2), [sinal de exceção](https://github.com/jovemaprendz55-byte/N64-Android/commit/f398fe204ae086962f8a20a04db681230851dab3), [testes](https://github.com/jovemaprendz55-byte/N64-Android/commit/62314d2b056c176137330d4f1313d678c6c058c8).
+- CI associado aos commits: [42102073156](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42102073156), [42102079575](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42102079575), [42102084529](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42102084529). Resultado ainda não confirmado no momento deste registro.
+- Limitação: este tratamento cobre faults lançados pelo mapa HLE de memória atual; não implementa tradução TLB nem garante o comportamento completo de fetch/MMU do R4300.
+
+### Próximo passo
+
+- Aguardar CI e corrigir qualquer falha de compilação/teste antes de avançar.
+- Acrescentar teste de falha de fetch no delay slot para validar Cause.BD e EPC apontando para a instrução de branch.
+- Revisar tratamento de PC desalinhado versus endereço KSEG mapeado e a semântica de BadVAddr para AdEL antes de declarar o caminho concluído.
