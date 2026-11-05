@@ -3653,3 +3653,24 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
 
 - Confirmar todos os workflows da seção 174 e corrigir eventuais falhas.
 - Depois projetar separadamente a política de despacho de exceções: BEV/EXL, endereço do vetor e transição de PC, sem misturar isso com o classificador de falhas ou com a captura de fetch.
+
+
+## Seção 175 — despacho do vetor geral BEV e auditoria do caminho de fetch — 2026-11-05
+
+**Status: despacho BEV integrado; correção dos testes legados aprovada no CI. Auditoria identificou o próximo trabalho: exceções de busca de instrução ainda não são entregues ao COP0.**
+
+- O CI da correção final das expectativas de PC passou: [run 42100848028](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42100848028). O workflow de documentação também passou: [run 42100894654](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42100894654).
+- O stepper agora resolve o vetor geral usando Status.BEV, aplica a atualização COP0, cancela o delay slot somente após a atualização bem-sucedida e redireciona PC para o vetor. A sinalização N64HleR4300ArchitecturalException expõe vectorAddress.
+- Os cinco testes legados que esperavam PC parado na instrução defeituosa foram atualizados para esperar o vetor geral. O workflow de correção passou.
+- Auditoria de stepFromMemory() confirmou que o fetch executa guestMemory.read32(state.programCounter) antes de entrar no caminho de execução protegido. Assim, falhas tipadas de fetch ainda escapam sem classificar IBE/AdEL, sem atualizar COP0 e sem redirecionar PC.
+- A falha de fetch não deve ser simplesmente convertida em N64HleR4300MemoryAccessFault(LOAD): fetch tem semântica própria. A classe N64HleR4300ExceptionCode já possui ADDRESS_LOAD (AdEL) e INSTRUCTION_BUS_ERROR (IBE), mas ainda falta uma representação tipada de fetch e sua entrega pelo stepper.
+- Atenção de projeto: N64HleR4300ExceptionContext atualmente exige que faultingPc seja alinhado. Isso impede representar corretamente uma falha AdEL causada por PC de instrução desalinhado. Antes de implementar fetch, ajustar/testar o modelo de contexto para preservar o PC desalinhado e registrar esse endereço em BadVAddr, sem relaxar indevidamente a validação de branchPc/delay slot.
+- A resolução atual cobre o vetor geral BEV ligado/desligado. Não implementar vetor de TLB refill nem assumir que todos os tipos de exceção usam o mesmo vetor sem especificação e testes.
+- Commits relevantes: [resolver BEV](https://github.com/jovemaprendz55-byte/N64-Android/commit/478701ab1fe0dc4b69c3b39788501e0536d63495), [integração no stepper](https://github.com/jovemaprendz55-byte/N64-Android/commit/5930186488b5c2cb7f00ef04ae005732fc2580dc), [sinalização com vetor](https://github.com/jovemaprendz55-byte/N64-Android/commit/87315ed3a4a9040f0ac536d1e0a90d28cda24f42), [testes BEV/EXL](https://github.com/jovemaprendz55-byte/N64-Android/commit/8987e87d31eb211ff950fb4b8d35c5df87247e44), [expectativas corrigidas](https://github.com/jovemaprendz55-byte/N64-Android/commit/b4986a9b2986bfbfc31050bd7dec3ede7fc2bafc).
+- Nenhuma ROM real foi executada e não houve validação no Poco C85. Todas as alterações permanecem na branch dev/n64-hle-clean-reboot; a branch main permanece intocada.
+
+### Próximo passo
+
+- Implementar o caminho tipado de fetch separado de LOAD/STORE: classificar falha de alinhamento do PC como AdEL e falha de mapeamento durante fetch como IBE, verificando cuidadosamente BadVAddr, EPC/BD e o comportamento do PC.
+- Adicionar testes para fetch desalinhado, fetch não mapeado, estado COP0 incompleto e fetch em delay slot (quando aplicável ao modelo atual).
+- Só depois considerar TLB/refill; o espaço de memória atual é um mapa HLE de RDRAM KSEG0/KSEG1, não uma MMU/TLB R4300 completa.
