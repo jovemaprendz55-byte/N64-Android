@@ -196,4 +196,89 @@ class N64HleR4300InstructionStepperTest {
         assertFalse(stepper.hasPendingDelaySlot())
     }
 
+    private fun i(op: Int, rs: Int, rt: Int, imm: Int): Int =
+        (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
+
+    private fun exceptionState(pc: Long, gprs: Map<Int, Long>): N64HleR4300CpuState =
+        N64HleR4300CpuState(
+            pc,
+            gprs,
+            cop0 = N64HleCop0EntryState(
+                mapOf(8 to 0L, 12 to 0L, 13 to 0L, 14 to 0L),
+                "explicit stepper memory-exception test state"
+            )
+        )
+
+    @Test fun alignedLoadFaultEntersAdelInCop0WithoutAdvancingPc() {
+        val memory = N64HleGuestAddressSpace()
+        val stepperWithMemory = N64HleR4300InstructionStepper(memorySpace = memory)
+        val state = exceptionState(0x80001000L, mapOf(1 to 0x80000101L))
+
+        val signal = assertThrows(N64HleR4300ArchitecturalException::class.java) {
+            stepperWithMemory.step(i(0x23, 1, 2, 0), state)
+        }
+
+        assertEquals(N64HleR4300ExceptionCode.ADDRESS_LOAD, signal.context.code)
+        assertEquals(0x80001000L, signal.context.exceptionProgramCounter)
+        assertEquals(0x80000101L, state.readCop0(8))
+        assertEquals(0x10L, state.readCop0(13))
+        assertEquals(0x2L, state.readCop0(12))
+        assertEquals(0x80001000L, state.programCounter)
+        assertFalse(stepperWithMemory.hasPendingDelaySlot())
+    }
+
+    @Test fun misalignedStoreFaultEntersAdesInCop0() {
+        val memory = N64HleGuestAddressSpace()
+        val stepperWithMemory = N64HleR4300InstructionStepper(memorySpace = memory)
+        val state = exceptionState(0x80001100L, mapOf(1 to 0x80000102L, 2 to 0x12345678L))
+
+        val signal = assertThrows(N64HleR4300ArchitecturalException::class.java) {
+            stepperWithMemory.step(i(0x2B, 1, 2, 0), state)
+        }
+
+        assertEquals(N64HleR4300ExceptionCode.ADDRESS_STORE, signal.context.code)
+        assertEquals(0x14L, state.readCop0(13))
+        assertEquals(0x80000102L, state.readCop0(8))
+        assertEquals(0x80001100L, state.programCounter)
+    }
+
+    @Test fun delaySlotLoadFaultSetsBdUsesBranchEpcAndCancelsPendingSlot() {
+        val memory = N64HleGuestAddressSpace()
+        val stepperWithMemory = N64HleR4300InstructionStepper(memorySpace = memory)
+        val state = exceptionState(0x80001000L, mapOf(1 to 0x80000101L))
+        stepperWithMemory.step((0x02 shl 26) or 0x800, state)
+
+        val signal = assertThrows(N64HleR4300ArchitecturalException::class.java) {
+            stepperWithMemory.step(i(0x23, 1, 2, 0), state)
+        }
+
+        assertEquals(N64HleR4300ExceptionCode.ADDRESS_LOAD, signal.context.code)
+        assertTrue(signal.context.inDelaySlot)
+        assertEquals(0x80001000L, signal.context.exceptionProgramCounter)
+        assertEquals(0x80000101L, signal.context.badVirtualAddress)
+        assertEquals(0x80000010L, state.readCop0(13))
+        assertEquals(0x2L, state.readCop0(12))
+        assertEquals(0x80001004L, state.programCounter)
+        assertFalse(stepperWithMemory.hasPendingDelaySlot())
+    }
+
+    @Test fun unknownCop0PreflightLeavesPcAndPendingDelaySlotUntouched() {
+        val memory = N64HleGuestAddressSpace()
+        val stepperWithMemory = N64HleR4300InstructionStepper(memorySpace = memory)
+        val state = N64HleR4300CpuState(
+            0x80001000L,
+            mapOf(1 to 0x80000101L),
+            cop0 = N64HleCop0EntryState(mapOf(13 to 0L), "Status intentionally unknown")
+        )
+        stepperWithMemory.step((0x02 shl 26) or 0x800, state)
+
+        assertThrows(IllegalStateException::class.java) {
+            stepperWithMemory.step(i(0x23, 1, 2, 0), state)
+        }
+
+        assertEquals(0x80001004L, state.programCounter)
+        assertTrue(stepperWithMemory.hasPendingDelaySlot())
+        assertEquals(0L, state.readCop0(13))
+        assertFalse(state.isCop0Known(12))
+    }
 }
