@@ -26,7 +26,7 @@ class N64HleRspInstructionStepper(
 
         when (opcode) {
             0x00 -> executeSpecial(state, instruction, rs, rt, rd, shift, function, pendingTarget)
-            0x12 -> executeVector(instruction, pc)
+            0x12 -> executeCop2(state, instruction, pc, rs, rt, rd)
             0x01 -> {
                 val value = state.readGpr(rs)
                 val take = when (rt) {
@@ -71,6 +71,37 @@ class N64HleRspInstructionStepper(
         return instruction
     }
 
+
+
+    private fun executeCop2(
+        state: N64HleRspCpuState,
+        instruction: Int,
+        pc: Int,
+        cop2Operation: Int,
+        rt: Int,
+        rd: Int
+    ) {
+        val element = (instruction ushr 7) and 15
+        when (cop2Operation) {
+            0x00 -> {
+                val high = vectorState.readByte(rd, element)
+                val low = vectorState.readByte(rd, (element + 1) and 15)
+                val half = (high shl 8) or low
+                state.writeGpr(rt, half.toShort().toInt())
+            }
+            0x02 -> {
+                val value = vectorState.readControlRegister(rd)
+                state.writeGpr(rt, value.toShort().toInt())
+            }
+            0x04 -> {
+                val value = state.readGpr(rt)
+                vectorState.writeByte(rd, element, (value ushr 8) and 0xFF)
+                vectorState.writeByte(rd, (element + 1) and 15, value and 0xFF)
+            }
+            0x06 -> vectorState.writeControlRegister(rd, state.readGpr(rt))
+            else -> executeVector(instruction, pc)
+        }
+    }
 
     private fun executeVector(instruction: Int, pc: Int) {
         val vt = (instruction ushr 16) and 31
