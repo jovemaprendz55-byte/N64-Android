@@ -47,13 +47,13 @@ class N64HleRspVectorState {
     }
 
     /** RSP VADD: signed lane addition, VCO carry-in, signed saturation, then clear VCO. */
-    fun add(destination: Int, left: Int, right: Int) {
+    fun add(destination: Int, left: Int, right: Int, rightElement: Int? = null) {
         validateRegister(destination)
         validateRegister(left)
         validateRegister(right)
         for (lane in 0 until VECTOR_LANES) {
             val carry = (vco ushr lane) and 1
-            val sum = readSignedElement(left, lane) + readSignedElement(right, lane) + carry
+            val sum = readSignedElement(left, lane) + readSignedElement(right, rightElement ?: lane) + carry
             val result = saturateSigned16(sum.toLong())
             writeElement(destination, lane, result)
             writeAccumulatorLane(lane, result.toLong() shl 16)
@@ -62,13 +62,13 @@ class N64HleRspVectorState {
     }
 
     /** RSP VSUB: signed lane subtraction, VCO borrow-in, signed saturation, then clear VCO. */
-    fun subtract(destination: Int, left: Int, right: Int) {
+    fun subtract(destination: Int, left: Int, right: Int, rightElement: Int? = null) {
         validateRegister(destination)
         validateRegister(left)
         validateRegister(right)
         for (lane in 0 until VECTOR_LANES) {
             val borrow = (vco ushr lane) and 1
-            val difference = readSignedElement(left, lane) - readSignedElement(right, lane) - borrow
+            val difference = readSignedElement(left, lane) - readSignedElement(right, rightElement ?: lane) - borrow
             val result = saturateSigned16(difference.toLong())
             writeElement(destination, lane, result)
             writeAccumulatorLane(lane, result.toLong() shl 16)
@@ -77,13 +77,13 @@ class N64HleRspVectorState {
     }
 
     /** RSP VMULF: signed fractional multiply with the architectural rounding bias. */
-    fun multiplyFractional(destination: Int, left: Int, right: Int) {
+    fun multiplyFractional(destination: Int, left: Int, right: Int, rightElement: Int? = null) {
         validateRegister(destination)
         validateRegister(left)
         validateRegister(right)
         for (lane in 0 until VECTOR_LANES) {
             val product = readSignedElement(left, lane).toLong() *
-                readSignedElement(right, lane).toLong()
+                readSignedElement(right, rightElement ?: lane).toLong()
             val accumulated = (product shl 1) + 0x8000L
             writeAccumulatorLane(lane, accumulated)
             writeElement(destination, lane, saturateSigned16(accumulated shr 16))
