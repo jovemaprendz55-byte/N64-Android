@@ -25,7 +25,7 @@ class N64HleRspInstructionStepper(
 
         when (opcode) {
             0x00 -> executeSpecial(state, instruction, rs, rt, rd, shift, function, pendingTarget)
-            0x01 -> {
+            0x12 -> executeVector(instruction, pc)\n            0x01 -> {
                 val value = state.readGpr(rs)
                 val take = when (rt) {
                     0, 16 -> value < 0
@@ -67,6 +67,19 @@ class N64HleRspInstructionStepper(
         if (pendingTarget != null) state.clearPendingBranchTarget()
         state.programCounter = pendingTarget ?: ((pc + 4) and N64HleRspCpuState.PC_MASK)
         return instruction
+    }
+
+
+    private fun executeVector(instruction: Int, pc: Int) {
+        val vt = (instruction ushr 16) and 31
+        val vs = (instruction ushr 11) and 31
+        val vd = (instruction ushr 6) and 31
+        when (instruction and 63) {
+            0x00 -> vectorState.multiplyFractional(vd, vs, vt) // VMULF
+            0x10 -> vectorState.add(vd, vs, vt) // VADD
+            0x11 -> vectorState.subtract(vd, vs, vt) // VSUB
+            else -> throw N64HleRspUnsupportedInstructionException(pc, instruction)
+        }
     }
 
     private fun executeSpecial(
