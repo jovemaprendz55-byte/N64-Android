@@ -272,7 +272,7 @@ class N64HleRspInstructionStepperTest {
         val subState = N64HleRspCpuState().also { it.programCounter = 4 }
         stepper.step(subState)
         assertEquals(0xFFFF, vectors.readElement(4, 0))
-        assertEquals(0x0101, vectors.vco)
+        assertEquals("VSUBC VCO after 0x0000 - 0x0001", 0x0101, vectors.vco)
     }
 
     @Test
