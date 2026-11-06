@@ -28,10 +28,10 @@ class N64HleRspCpuState(initialProgramCounter: Int = 0) {
         if (index != 0) gpr[index] = value
     }
 
-    internal fun takePendingBranchTarget(): Int? {
-        val target = pendingBranchTarget
+    internal fun pendingBranchTarget(): Int? = pendingBranchTarget
+
+    internal fun clearPendingBranchTarget() {
         pendingBranchTarget = null
-        return target
     }
 
     internal fun scheduleBranch(target: Int) {
