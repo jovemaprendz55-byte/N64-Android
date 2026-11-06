@@ -25,6 +25,18 @@ class N64HleRspInstructionStepper(
 
         when (opcode) {
             0x00 -> executeSpecial(state, instruction, rs, rt, rd, shift, function, pendingTarget)
+            0x01 -> {
+                val value = state.readGpr(rs)
+                val take = when (rt) {
+                    0, 16 -> value < 0
+                    1, 17 -> value >= 0
+                    else -> throw N64HleRspUnsupportedInstructionException(pc, instruction)
+                }
+                if (take) {
+                    if (rt == 16 || rt == 17) state.writeGpr(31, (pc + 8) and N64HleRspCpuState.PC_MASK)
+                    scheduleBranch(state, pendingTarget, branchTarget)
+                }
+            }
             0x02, 0x03 -> {
                 check(pendingTarget == null) { "RSP control transfer in a delay slot is unsupported" }
                 if (opcode == 0x03) state.writeGpr(31, (pc + 8) and N64HleRspCpuState.PC_MASK)
@@ -110,6 +122,11 @@ class N64HleRspInstructionStepper(
             }
             0x08 -> {
                 check(pendingTarget == null) { "RSP control transfer in a delay slot is unsupported" }
+                state.scheduleBranch(left)
+            }
+            0x09 -> {
+                check(pendingTarget == null) { "RSP control transfer in a delay slot is unsupported" }
+                state.writeGpr(rd, (state.programCounter + 8) and N64HleRspCpuState.PC_MASK)
                 state.scheduleBranch(left)
             }
             0x0D -> {
