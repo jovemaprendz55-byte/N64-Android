@@ -3957,3 +3957,22 @@ Foi criado o relatório [AUDITORIA_COP0_CLASSIFICACAO_CLEAN_2026-11-06.md](AUDIT
 
 O ajuste do classificador não corrige o problema independente de despacho do stepper descrito em AUDITORIA_R4300_CLEAN_2026-11-06.md. Permanecem pendentes a confirmação da CI, o resultado tipado para instruções válidas não suportadas e os testes de preservação integral do estado da CPU.
 
+
+
+## Auditoria do despacho R4300 — matriz de capacidades — 2026-11-06
+
+Novo relatório: [AUDITORIA_DESPACHO_R4300_CLEAN_2026-11-06.md](AUDITORIA_DESPACHO_R4300_CLEAN_2026-11-06.md).
+
+Inspeção dos source sets limpos confirmou que `N64HleR4300InstructionStepper.executeNonControl()` ainda termina com `else -> immediateExecutor.execute(instruction, state)`. Esse fallback encaminha instruções de classes não imediatas para o executor errado.
+
+Casos concretos:
+- COP1 LWC1/SWC1: sem executor COP1; LWC1 tem teste atual que espera IllegalArgumentException gerada pelo fallback.
+- COP0 DMFC0/DMTC0: formatos não classificados como RI, mas executor COP0 só suporta MFC0/MTC0; caem no fallback imediato.
+- SPECIAL SYNC: reconhecida pelo decoder, mas não executada pelo executor SPECIAL.
+- Instrução não suportada no delay slot: teste atual espera erro e preservação da transferência pendente.
+
+A matriz de capacidades e o contrato recomendado foram documentados. O stepper precisa distinguir instrução executada, exceção arquitetural, válida não implementada, codificação reservada e encoding ainda não classificado. Instruções sem suporte não devem alterar PC, registradores, memória ou delay slot.
+
+**Validação:** auditoria estática dos arquivos ativos e dos testes-fonte. Nenhuma suíte Gradle foi executada nesta auditoria; nenhum código de produção ou teste foi alterado. Não declarar a CPU completa nem jogo funcional.
+
+Próximo passo: implementar o despacho tipado e testes de snapshot integral quando houver autorização explícita para alterar código. A auditoria COP0 anterior permanece como registro separado; este relatório detalha o problema independente do stepper.
