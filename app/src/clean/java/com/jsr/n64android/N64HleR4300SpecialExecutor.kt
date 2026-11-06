@@ -12,6 +12,13 @@ import java.math.BigInteger
  */
 class N64HleR4300SpecialExecutor {
 
+    /** True only for operations with an execution case in this clean executor. */
+    fun supports(instruction: N64HleR4300DecodedInstruction): Boolean {
+        if (!instruction.isSpecial) return false
+        return instruction.specialOperation in IMPLEMENTED_OPERATIONS
+    }
+
+
     fun execute(
         instruction: N64HleR4300DecodedInstruction,
         state: N64HleR4300CpuState
@@ -230,6 +237,52 @@ class N64HleR4300SpecialExecutor {
     }
 
     private companion object {
+        val IMPLEMENTED_OPERATIONS = setOf(
+            N64HleR4300SpecialOperation.MFHI,
+            N64HleR4300SpecialOperation.MFLO,
+            N64HleR4300SpecialOperation.MULT,
+            N64HleR4300SpecialOperation.MULTU,
+            N64HleR4300SpecialOperation.DIV,
+            N64HleR4300SpecialOperation.DIVU,
+            N64HleR4300SpecialOperation.DMULT,
+            N64HleR4300SpecialOperation.DMULTU,
+            N64HleR4300SpecialOperation.DDIV,
+            N64HleR4300SpecialOperation.DDIVU,
+            N64HleR4300SpecialOperation.MTHI,
+            N64HleR4300SpecialOperation.MTLO,
+            N64HleR4300SpecialOperation.TGE,
+            N64HleR4300SpecialOperation.TGEU,
+            N64HleR4300SpecialOperation.TLT,
+            N64HleR4300SpecialOperation.TLTU,
+            N64HleR4300SpecialOperation.TEQ,
+            N64HleR4300SpecialOperation.TNE,
+            N64HleR4300SpecialOperation.ADDU,
+            N64HleR4300SpecialOperation.SUBU,
+            N64HleR4300SpecialOperation.AND,
+            N64HleR4300SpecialOperation.OR,
+            N64HleR4300SpecialOperation.XOR,
+            N64HleR4300SpecialOperation.NOR,
+            N64HleR4300SpecialOperation.SLT,
+            N64HleR4300SpecialOperation.SLTU,
+            N64HleR4300SpecialOperation.ADD,
+            N64HleR4300SpecialOperation.SUB,
+            N64HleR4300SpecialOperation.DADD,
+            N64HleR4300SpecialOperation.DSUB,
+            N64HleR4300SpecialOperation.DADDU,
+            N64HleR4300SpecialOperation.DSUBU,
+            N64HleR4300SpecialOperation.SLL,
+            N64HleR4300SpecialOperation.SRL,
+            N64HleR4300SpecialOperation.SRA,
+            N64HleR4300SpecialOperation.SLLV,
+            N64HleR4300SpecialOperation.SRLV,
+            N64HleR4300SpecialOperation.SRAV,
+            N64HleR4300SpecialOperation.DSLL,
+            N64HleR4300SpecialOperation.DSRL,
+            N64HleR4300SpecialOperation.DSRA,
+            N64HleR4300SpecialOperation.DSLL32,
+            N64HleR4300SpecialOperation.DSRL32,
+            N64HleR4300SpecialOperation.DSRA32
+        )
         val WORD_MASK: BigInteger = BigInteger.ONE.shiftLeft(32).subtract(BigInteger.ONE)
         val DWORD_MASK: BigInteger = BigInteger.ONE.shiftLeft(64).subtract(BigInteger.ONE)
     }
