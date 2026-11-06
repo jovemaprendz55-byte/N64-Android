@@ -31,6 +31,43 @@ class N64HleRspVectorState {
         registers[register][element] = value.toShort()
     }
 
+
+    /** Read one byte from the architectural big-endian 16-byte vector view. */
+    fun readByte(register: Int, byteIndex: Int): Int {
+        validateRegister(register)
+        require(byteIndex in 0..15)
+        val lane = byteIndex ushr 1
+        return if ((byteIndex and 1) == 0) readElement(register, lane) ushr 8
+        else readElement(register, lane) and 0xFF
+    }
+
+    /** Write one byte in the architectural big-endian 16-byte vector view. */
+    fun writeByte(register: Int, byteIndex: Int, value: Int) {
+        validateRegister(register)
+        require(byteIndex in 0..15 && value in 0..0xFF)
+        val lane = byteIndex ushr 1
+        val old = readElement(register, lane)
+        val next = if ((byteIndex and 1) == 0) ((value shl 8) or (old and 0xFF))
+            else ((old and 0xFF00) or value)
+        writeElement(register, lane, next)
+    }
+
+    fun readControlRegister(register: Int): Int = when (register) {
+        0 -> vco
+        1 -> vcc
+        2 -> vce
+        else -> throw IllegalArgumentException("Unsupported RSP vector control register")
+    }
+
+    fun writeControlRegister(register: Int, value: Int) {
+        when (register) {
+            0 -> setFlags(value and 0xFFFF, vcc, vce)
+            1 -> setFlags(vco, value and 0xFFFF, vce)
+            2 -> setFlags(vco, vcc, value and 0xFF)
+            else -> throw IllegalArgumentException("Unsupported RSP vector control register")
+        }
+    }
+
     fun readAccumulatorLane(lane: Int): Long {
         validateElement(lane)
         return accumulator[lane]
