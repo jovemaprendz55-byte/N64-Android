@@ -140,6 +140,7 @@ class N64HleRspInstructionStepper(
             0x00 -> vectorState.multiplyFractional(vd, vs, vt, element) // VMULF
             0x10 -> vectorState.add(vd, vs, vt, element) // VADD
             0x11 -> vectorState.subtract(vd, vs, vt, element) // VSUB
+            0x13 -> vectorState.absolute(vd, vs, vt, element) // VABS
             0x14 -> vectorState.addCarry(vd, vs, vt, element) // VADDC
             0x15 -> vectorState.subtractCarry(vd, vs, vt, element) // VSUBC
             0x28 -> vectorState.bitwiseAnd(vd, vs, vt, element) // VAND
