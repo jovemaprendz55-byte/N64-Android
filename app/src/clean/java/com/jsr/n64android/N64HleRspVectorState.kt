@@ -113,6 +113,25 @@ class N64HleRspVectorState {
         vco = 0
     }
 
+    /** RSP VABS: select the magnitude/sign of VT using the signed VS lane. */
+    fun absolute(destination: Int, signSource: Int, valueSource: Int, rightElement: Int? = null) {
+        validateRegister(destination)
+        validateRegister(signSource)
+        validateRegister(valueSource)
+        if (rightElement != null) validateElement(rightElement)
+        for (lane in 0 until VECTOR_LANES) {
+            val sign = readSignedElement(signSource, lane)
+            val value = readSignedElement(valueSource, rightElement ?: lane)
+            val result = when {
+                sign < 0 -> -value
+                sign > 0 -> value
+                else -> 0
+            }.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+            writeElement(destination, lane, result)
+            writeAccumulatorLane(lane, result.toLong() shl 16)
+        }
+    }
+
     /** RSP VADDC: unsigned lane addition with per-lane carry-out in VCO[7:0]. */
     fun addCarry(destination: Int, left: Int, right: Int, rightElement: Int? = null) {
         validateRegister(destination)
