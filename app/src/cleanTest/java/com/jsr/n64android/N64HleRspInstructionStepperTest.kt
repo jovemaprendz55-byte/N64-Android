@@ -222,4 +222,33 @@ class N64HleRspInstructionStepperTest {
         stepper.step(mulState)
         assertEquals(0x2000, vectors.readElement(5, 0))
     }
+
+    @Test
+    fun vectorElementSelectorBroadcastsSelectedVtLaneToAllLanes() {
+        val memory = N64HleGuestAddressSpace()
+        val vectors = N64HleRspVectorState()
+        for (lane in 0 until 8) {
+            vectors.writeElement(1, lane, 10 + lane)
+            vectors.writeElement(2, lane, 100 + lane)
+        }
+        val selectedElement = 3
+        val instruction = (0x12 shl 26) or (selectedElement shl 21) or
+            (2 shl 16) or (1 shl 11) or (3 shl 6) or 0x10
+        put(memory, 0, instruction)
+        N64HleRspInstructionStepper(memory, vectors).step(N64HleRspCpuState())
+        for (lane in 0 until 8) {
+            assertEquals(113 + lane, vectors.readSignedElement(3, lane))
+        }
+    }
+
+    @Test
+    fun unsupportedVectorElementPermutationIsRejectedExplicitly() {
+        val memory = N64HleGuestAddressSpace()
+        val instruction = (0x12 shl 26) or (8 shl 21) or (2 shl 16) or
+            (1 shl 11) or (3 shl 6) or 0x10
+        put(memory, 0, instruction)
+        assertThrows(N64HleRspUnsupportedInstructionException::class.java) {
+            N64HleRspInstructionStepper(memory).step(N64HleRspCpuState())
+        }
+    }
 }
