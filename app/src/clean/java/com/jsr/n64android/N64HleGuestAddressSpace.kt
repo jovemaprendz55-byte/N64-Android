@@ -227,7 +227,10 @@ class N64HleGuestAddressSpace(
             }
             PI_STATUS_REG -> {
                 if ((value and PI_STATUS_CMD_RESET) != 0) piStatus = piStatus and PI_STATUS_ERROR.inv()
-                if ((value and PI_STATUS_CMD_CLR_INTR) != 0) piStatus = piStatus and PI_STATUS_INTR.inv()
+                if ((value and PI_STATUS_CMD_CLR_INTR) != 0) {
+                    piStatus = piStatus and PI_STATUS_INTR.inv()
+                    miInterrupt = miInterrupt and MI_INTR_PI.inv()
+                }
             }
             else -> throw IllegalArgumentException("Unsupported PI register 0x${address.toString(16)}")
         }
@@ -258,7 +261,7 @@ class N64HleGuestAddressSpace(
             )
             piDramAddress = (dramOffset + length).toInt() and PI_DRAM_ADDR_MASK
             piCartAddress = (piCartAddress.toLong() + length).toInt()
-            piStatus = piStatus and PI_STATUS_ERROR.inv()
+            piStatus = (piStatus and PI_STATUS_ERROR.inv()) or PI_STATUS_INTR
             miInterrupt = miInterrupt or MI_INTR_PI
         } catch (error: Exception) {
             piStatus = piStatus or PI_STATUS_ERROR
