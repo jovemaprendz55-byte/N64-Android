@@ -213,4 +213,21 @@ class N64HleGuestAddressSpaceTest {
         assertEquals(4L, memory.read32(0xA4600010L))
     }
 
+
+    @Test
+    fun piDmaRaisesMiPendingBitAndMiMaskUsesSetClearCommandPairs() {
+        val memory = N64HleGuestAddressSpace(cartridgeRom = ByteArray(16) { it.toByte() })
+        memory.write32(0xA4600000L, 0x100L)
+        memory.write32(0xA4600004L, 0x10000000L)
+        memory.write32(0xA4600008L, 3L)
+
+        assertEquals(0x10L, memory.read32(0xA4300008L)) // MI_INTR.PI
+        memory.write32(0xA430000CL, 1L shl 9) // set PI mask
+        assertEquals(0x10L, memory.read32(0xA430000CL))
+        memory.write32(0xA430000CL, 1L shl 8) // clear PI mask
+        assertEquals(0L, memory.read32(0xA430000CL))
+        assertEquals(0x10L, memory.read32(0xA4300008L)) // mask does not clear pending
+    }
+
+
 }
