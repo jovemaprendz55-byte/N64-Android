@@ -192,4 +192,34 @@ class N64HleRspInstructionStepperTest {
         assertEquals(0x30, state.programCounter)
     }
 
+
+    @Test
+    fun decodesAndExecutesRspVectorArithmetic() {
+        val memory = N64HleGuestAddressSpace()
+        val vectors = N64HleRspVectorState()
+        val stepper = N64HleRspInstructionStepper(memory, vectors)
+        fun encode(pc: Int, vd: Int, vs: Int, vt: Int, function: Int) {
+            put(memory, pc, (0x12 shl 26) or (vt shl 16) or (vs shl 11) or (vd shl 6) or function)
+        }
+        vectors.writeElement(1, 0, 100)
+        vectors.writeElement(2, 0, 25)
+        encode(0, 3, 1, 2, 0x10)
+        val addState = N64HleRspCpuState()
+        stepper.step(addState)
+        assertEquals(125, vectors.readSignedElement(3, 0))
+
+        vectors.writeElement(1, 0, 100)
+        vectors.writeElement(2, 0, 25)
+        encode(4, 4, 1, 2, 0x11)
+        val subState = N64HleRspCpuState().also { it.programCounter = 4 }
+        stepper.step(subState)
+        assertEquals(75, vectors.readSignedElement(4, 0))
+
+        vectors.writeElement(1, 0, 0x4000)
+        vectors.writeElement(2, 0, 0x4000)
+        encode(8, 5, 1, 2, 0x00)
+        val mulState = N64HleRspCpuState().also { it.programCounter = 8 }
+        stepper.step(mulState)
+        assertEquals(0x2000, vectors.readElement(5, 0))
+    }
 }
