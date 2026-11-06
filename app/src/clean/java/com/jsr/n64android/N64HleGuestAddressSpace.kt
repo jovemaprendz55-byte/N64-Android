@@ -175,7 +175,7 @@ class N64HleGuestAddressSpace(
         PI_CART_ADDR_REG -> piCartAddress
         PI_RD_LEN_REG, PI_WR_LEN_REG -> 0
         PI_STATUS_REG -> piStatus
-        else -> throw IllegalArgumentException("Unsupported PI register 0x\${address.toString(16)}")
+        else -> throw IllegalArgumentException("Unsupported PI register 0x${address.toString(16)}")
     }
 
     private fun writePiRegister(address: Int, value: Int) {
@@ -194,7 +194,7 @@ class N64HleGuestAddressSpace(
                 if ((value and PI_STATUS_CMD_RESET) != 0) piStatus = piStatus and PI_STATUS_ERROR.inv()
                 if ((value and PI_STATUS_CMD_CLR_INTR) != 0) piStatus = piStatus and PI_STATUS_INTR.inv()
             }
-            else -> throw IllegalArgumentException("Unsupported PI register 0x\${address.toString(16)}")
+            else -> throw IllegalArgumentException("Unsupported PI register 0x${address.toString(16)}")
         }
     }
 
@@ -210,10 +210,10 @@ class N64HleGuestAddressSpace(
         piStatus = piStatus or PI_STATUS_DMA_BUSY
         try {
             require(cartOffset >= 0L && cartOffset + length <= cartridgeRom.size.toLong()) {
-                "PI DMA cartridge range is invalid: cart=0x\${piCartAddress.toUInt().toString(16)}, length=$length, ROM=\${cartridgeRom.size}"
+                "PI DMA cartridge range is invalid: cart=0x${piCartAddress.toUInt().toString(16)}, length=$length, ROM=${cartridgeRom.size}"
             }
             require(dramOffset >= 0L && dramOffset + length <= rdram.size.toLong()) {
-                "PI DMA RDRAM range is invalid: dram=0x\${dramOffset.toString(16)}, length=$length"
+                "PI DMA RDRAM range is invalid: dram=0x${dramOffset.toString(16)}, length=$length"
             }
             cartridgeRom.copyInto(
                 destination = rdram,
