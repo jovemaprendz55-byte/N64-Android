@@ -15,7 +15,7 @@ class N64HleR4300SpecialExecutor {
     /** True only for operations with an execution case in this clean executor. */
     fun supports(instruction: N64HleR4300DecodedInstruction): Boolean {
         if (!instruction.isSpecial) return false
-        return instruction.specialOperation in IMPLEMENTED_OPERATIONS
+        return instruction.specialOperation?.let { it in IMPLEMENTED_OPERATIONS } == true
     }
 
 
