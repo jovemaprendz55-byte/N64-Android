@@ -91,6 +91,37 @@ class N64HleRspVectorState {
         vco = 0
     }
 
+
+    /** Bitwise vector operations preserve all 16 result bits and do not alter flags. */
+    fun bitwiseAnd(destination: Int, left: Int, right: Int, rightElement: Int? = null) =
+        bitwise(destination, left, right, rightElement) { a, b -> a and b }
+
+    fun bitwiseOr(destination: Int, left: Int, right: Int, rightElement: Int? = null) =
+        bitwise(destination, left, right, rightElement) { a, b -> a or b }
+
+    fun bitwiseXor(destination: Int, left: Int, right: Int, rightElement: Int? = null) =
+        bitwise(destination, left, right, rightElement) { a, b -> a xor b }
+
+    fun bitwiseNor(destination: Int, left: Int, right: Int, rightElement: Int? = null) =
+        bitwise(destination, left, right, rightElement) { a, b -> (a or b).inv() }
+
+    private inline fun bitwise(
+        destination: Int,
+        left: Int,
+        right: Int,
+        rightElement: Int?,
+        operation: (Int, Int) -> Int
+    ) {
+        validateRegister(destination)
+        validateRegister(left)
+        validateRegister(right)
+        if (rightElement != null) validateElement(rightElement)
+        for (lane in 0 until VECTOR_LANES) {
+            val rhs = readElement(right, rightElement ?: lane)
+            writeElement(destination, lane, operation(readElement(left, lane), rhs) and 0xFFFF)
+        }
+    }
+
     fun setFlags(vco: Int, vcc: Int, vce: Int) {
         require(vco in 0..0xFFFF && vcc in 0..0xFFFF && vce in 0..0xFF)
         this.vco = vco
