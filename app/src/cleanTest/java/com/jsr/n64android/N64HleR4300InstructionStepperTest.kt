@@ -225,6 +225,64 @@ class N64HleR4300InstructionStepperTest {
         assertFalse(stepper.hasPendingDelaySlot())
     }
 
+
+    @Test fun typedResultDistinguishesValidUnsupportedCop1LoadWithoutMutation() {
+        val state = N64HleR4300CpuState(0x80001000L, mapOf(1 to 0x1234L))
+        val beforeGprs = state.copyKnownGprs()
+        val result = stepper.stepWithResult(0xC4010000.toInt(), state) // LWC1
+
+        assertTrue(result is N64HleR4300StepResult.ValidButNotImplemented)
+        assertEquals(0x80001000L, state.programCounter)
+        assertEquals(beforeGprs, state.copyKnownGprs())
+        assertFalse(state.isGprKnown(2))
+        assertFalse(stepper.hasPendingDelaySlot())
+    }
+
+    @Test fun typedResultDistinguishesValidUnsupportedCop0DoublewordTransfer() {
+        val state = N64HleR4300CpuState(0x80002000L, mapOf(1 to 0x55L))
+        val dmfc0 = (0x10 shl 26) or (0x01 shl 21) or (1 shl 16) or (2 shl 11)
+        val beforeGprs = state.copyKnownGprs()
+
+        val result = stepper.stepWithResult(dmfc0, state)
+
+        assertTrue(result is N64HleR4300StepResult.ValidButNotImplemented)
+        assertEquals(0x80002000L, state.programCounter)
+        assertEquals(beforeGprs, state.copyKnownGprs())
+    }
+
+    @Test fun typedResultDoesNotGuessUnknownOpcodeIsReservedOrValid() {
+        val state = N64HleR4300CpuState(0x80003000L)
+        val unknownOpcode = (0x3F shl 26) or 0x1234
+
+        val result = stepper.stepWithResult(unknownOpcode, state)
+
+        assertTrue(result is N64HleR4300StepResult.UnclassifiedEncoding)
+        assertEquals(0x80003000L, state.programCounter)
+    }
+
+    @Test fun typedResultReportsReservedEncodingAsArchitecturalRi() {
+        val state = exceptionState(0x80004000L, emptyMap())
+        val reserved = (0x01 shl 26) or (0x02 shl 16)
+
+        val result = stepper.stepWithResult(reserved, state)
+
+        assertTrue(result is N64HleR4300StepResult.ReservedEncoding)
+        assertEquals(0x28L, state.readCop0(13))
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
+    }
+
+    @Test fun validUnsupportedInstructionInDelaySlotPreservesPendingTransfer() {
+        val state = N64HleR4300CpuState(0x80005000L)
+        stepper.step((0x02 shl 26) or 0x800, state)
+        val beforePc = state.programCounter
+
+        val result = stepper.stepWithResult(0xC4010000.toInt(), state)
+
+        assertTrue(result is N64HleR4300StepResult.ValidButNotImplemented)
+        assertEquals(beforePc, state.programCounter)
+        assertTrue(stepper.hasPendingDelaySlot())
+    }
+
     private fun i(op: Int, rs: Int, rt: Int, imm: Int): Int =
         (op shl 26) or (rs shl 21) or (rt shl 16) or (imm and 0xFFFF)
 
