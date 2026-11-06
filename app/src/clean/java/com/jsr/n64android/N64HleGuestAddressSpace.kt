@@ -277,8 +277,11 @@ class N64HleGuestAddressSpace(
 
     /** Marks an RSP BREAK: halt the SP and raise its MI interrupt source. */
     fun signalRspBreak() {
-        spStatus = spStatus or SP_STATUS_HALT or SP_STATUS_BROKE or SP_STATUS_INTR
-        miInterrupt = miInterrupt or MI_INTR_SP
+        spStatus = spStatus or SP_STATUS_HALT or SP_STATUS_BROKE
+        if ((spStatus and SP_STATUS_INTR_BREAK) != 0) {
+            spStatus = spStatus or SP_STATUS_INTR
+            miInterrupt = miInterrupt or MI_INTR_SP
+        }
     }
 
     private fun writeSpStatusCommand(command: Int) {
