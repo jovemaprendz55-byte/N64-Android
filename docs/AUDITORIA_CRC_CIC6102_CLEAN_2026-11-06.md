@@ -89,6 +89,11 @@ Os valores foram calculados com uma tradução independente da implementação d
 - Reimplementação independente em C: https://github.com/z64dev/z64decompress/blob/main/src/n64crc.c
 - Notas de pesquisa sobre checksums N64: https://github.com/Dragorn421/n64checksum
 
-### Validação pendente
+### Validação CI — concluída
 
-As alterações de código e teste foram enviadas à branch limpa. A aprovação de CI ainda deve ser consultada após o push. Estes vetores são fixtures sintéticas; não substituem a verificação da ROM GoldenEye legítima do usuário e não demonstram execução do jogo.
+- Workflow GitHub Actions: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42188454083
+- Run ID: `42188454083`; job `build` concluído com `success`.
+- Etapas `Build and test` e `Upload debug APK` concluídas com sucesso.
+- Commit: `fad26533442362675f784c6fef8440fdfaa11688`.
+
+O CI confirma compilação e testes automatizados da branch limpa. Estes vetores continuam sendo fixtures sintéticas; não substituem a verificação da ROM GoldenEye legítima do usuário e não demonstram execução do jogo no Android.
