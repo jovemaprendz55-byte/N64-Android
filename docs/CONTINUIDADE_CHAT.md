@@ -4154,3 +4154,16 @@ Achados:
 
 ### Próxima tarefa
 Obter evidência técnica sobre o CIC/revisão do GoldenEye alvo (sem pedir nem distribuir ROM comercial; usar metadados de uma cópia legítima do usuário quando disponíveis). Em seguida, documentar uma matriz de compatibilidade entre esse CIC e o perfil atual, e listar o caminho mínimo de boot e subsistemas que faltam. Não presumir que 6102 atende GoldenEye. Não alterar produção até haver um plano de implementação específico, testável e baseado em evidência.
+
+
+### Evidência externa complementar sobre o CIC de GoldenEye — 2026-11-06
+
+A auditoria externa encontrou uma evidência específica para a edição americana: a matéria do N64 Brasil sobre identificação de cartuchos mostra a placa de GoldenEye com código NUS-NGEE-0 e identifica o CIC como 6102. Fonte: https://www.n64brasil.com.br/2017/09/utilidade-publica-como-identificar-os.html. A página de referência de ROMs de GoldenEye distingue três lançamentos regionais (NGEE/NTSC-U, NGEJ/NTSC-J e NGEP/PAL): https://goldeneye.fandom.com/wiki/Read-Only_Memory.
+
+Consequência técnica:
+- Para o alvo NTSC-U/NUS-NGEE, a família CIC 6102 é compatível com o escopo nominal do factory atual (6102/7101), então não é correto dizer que GoldenEye americano exige 6105.
+- Ainda falta validar a ROM exata: o factory atual verifica soma IPL3 e CRC1/CRC2, e os testes existentes usam dados sintéticos, não uma ROM GoldenEye real.
+- Não generalizar o CIC da edição americana para as edições PAL/Japonesa. Identificar separadamente a edição pretendida e a assinatura real do IPL3.
+- O caminho HLE atual apenas prepara um handoff após IPL3; ainda não substitui o trabalho de boot/runtime e não significa que o jogo executa.
+
+Nenhuma ROM comercial foi baixada, compartilhada ou anexada. Nenhuma alteração de produção foi feita.
