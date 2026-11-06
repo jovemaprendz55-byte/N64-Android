@@ -23,6 +23,8 @@ class N64HleGuestAddressSpace(
     private var piDramAddress = 0
     private var piCartAddress = PI_CART_BASE
     private var piStatus = 0
+    private var miInterrupt = 0
+    private var miInterruptMask = 0
 
     val sizeBytes: Int get() = rdram.size
 
@@ -60,6 +62,7 @@ class N64HleGuestAddressSpace(
         requireAligned(address, 4)
         val physical = physicalAddress(address)
         if (isPiRegister(physical)) return readPiRegister(physical).toLong() and 0xFFFF_FFFFL
+        if (isMiRegister(physical)) return readMiRegister(physical).toLong() and 0xFFFF_FFFFL
         if (isSpRegister(physical)) return readSpRegister(physical).toLong() and 0xFFFF_FFFFL
         val (bytes, p) = translate(address, 4)
         return ((bytes[p].toLong() and 0xFF) shl 24) or
@@ -74,6 +77,10 @@ class N64HleGuestAddressSpace(
         val physical = physicalAddress(address)
         if (isPiRegister(physical)) {
             writePiRegister(physical, value.toInt())
+            return
+        }
+        if (isMiRegister(physical)) {
+            writeMiRegister(physical, value.toInt())
             return
         }
         if (isSpRegister(physical)) {
@@ -167,6 +174,34 @@ class N64HleGuestAddressSpace(
     }
 
 
+
+    private fun isMiRegister(physical: Int): Boolean =
+        physical in MI_REG_BASE..(MI_REG_BASE + 0x0C) && (physical and 3) == 0
+
+    private fun readMiRegister(address: Int): Int = when (address) {
+        MI_INTR_REG -> miInterrupt
+        MI_INTR_MASK_REG -> miInterruptMask
+        else -> throw IllegalArgumentException("Unsupported MI register 0x\${address.toString(16)}")
+    }
+
+    private fun writeMiRegister(address: Int, command: Int) {
+        when (address) {
+            MI_INTR_MASK_REG -> {
+                for (source in 0 until MI_INTERRUPT_SOURCE_COUNT) {
+                    val clearBit = 1 shl (source * 2)
+                    val setBit = 1 shl (source * 2 + 1)
+                    if ((command and clearBit) != 0) miInterruptMask = miInterruptMask and (1 shl source).inv()
+                    if ((command and setBit) != 0) miInterruptMask = miInterruptMask or (1 shl source)
+                }
+            }
+            MI_INTR_REG -> throw N64HleGuestAddressMappingFault(
+                0xA0000000L or address.toLong(),
+                "MI_INTR is read-only; device interrupt sources control its pending bits"
+            )
+            else -> throw IllegalArgumentException("Unsupported MI register 0x\${address.toString(16)}")
+        }
+    }
+
     private fun isPiRegister(physical: Int): Boolean =
         physical in PI_REG_BASE..(PI_REG_BASE + 0x10) && (physical and 3) == 0
 
@@ -224,6 +259,7 @@ class N64HleGuestAddressSpace(
             piDramAddress = (dramOffset + length).toInt() and PI_DRAM_ADDR_MASK
             piCartAddress = (piCartAddress.toLong() + length).toInt()
             piStatus = piStatus and PI_STATUS_ERROR.inv()
+            miInterrupt = miInterrupt or MI_INTR_PI
         } catch (error: Exception) {
             piStatus = piStatus or PI_STATUS_ERROR
             throw error
@@ -302,6 +338,12 @@ class N64HleGuestAddressSpace(
         private const val MAX_PHYSICAL_RDRAM = 0x2000_0000
         private const val PHYSICAL_MASK = 0x1FFF_FFFFL
 
+
+        private const val MI_REG_BASE = 0x0430_0000
+        private const val MI_INTR_REG = MI_REG_BASE + 0x08
+        private const val MI_INTR_MASK_REG = MI_REG_BASE + 0x0C
+        private const val MI_INTR_PI = 1 shl 4
+        private const val MI_INTERRUPT_SOURCE_COUNT = 6
         private const val PI_REG_BASE = 0x0460_0000
         private const val PI_DRAM_ADDR_REG = PI_REG_BASE
         private const val PI_CART_ADDR_REG = PI_REG_BASE + 0x04
