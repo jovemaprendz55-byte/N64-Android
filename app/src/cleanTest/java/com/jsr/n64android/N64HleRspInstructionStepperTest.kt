@@ -272,4 +272,36 @@ class N64HleRspInstructionStepperTest {
         assertEquals(0x000F, vectors.readElement(5, 0))
         assertEquals(0xFF00, vectors.readElement(6, 0))
     }
+
+    @Test
+    fun cop2TransfersMoveVectorElementsAndControlFlags() {
+        val memory = N64HleGuestAddressSpace()
+        val vectors = N64HleRspVectorState()
+        val stepper = N64HleRspInstructionStepper(memory, vectors)
+        fun cop2(pc: Int, operation: Int, rt: Int, rd: Int, element: Int) {
+            put(memory, pc, (0x12 shl 26) or (operation shl 21) or (rt shl 16) or
+                (rd shl 11) or (element shl 7))
+        }
+        vectors.writeElement(3, 2, 0x8123)
+        cop2(0, 0x00, 1, 3, 4) // MFC2 r1,v3[e=4]
+        val mfc = N64HleRspCpuState()
+        stepper.step(mfc)
+        assertEquals(0xFFFF8123.toInt(), mfc.readGpr(1))
+
+        val mtc = N64HleRspCpuState().also { it.writeGpr(2, 0x1234) }
+        cop2(4, 0x04, 2, 4, 2) // MTC2 r2,v4[e=2]
+        mtc.programCounter = 4
+        stepper.step(mtc)
+        assertEquals(0x1234, vectors.readElement(4, 1))
+
+        val flags = N64HleRspCpuState().also { it.writeGpr(5, 0xA55A) }
+        cop2(8, 0x06, 5, 0, 0) // CTC2 r5,VCO
+        flags.programCounter = 8
+        stepper.step(flags)
+        cop2(12, 0x02, 6, 0, 0) // CFC2 r6,VCO
+        flags.programCounter = 12
+        stepper.step(flags)
+        assertEquals(0xA55A, vectors.vco)
+        assertEquals(0xFFFFA55A.toInt(), flags.readGpr(6))
+    }
 }
