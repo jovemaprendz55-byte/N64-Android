@@ -25,6 +25,7 @@ class MainActivity : Activity() {
     private lateinit var selectedRomText: TextView
     private lateinit var statusText: TextView
     private lateinit var cpuDiagnosticsText: TextView
+    private lateinit var romDiagnosticsText: TextView
     private lateinit var hlePreparationText: TextView
     private lateinit var prepareHleButton: Button
     private lateinit var stepCpuButton: Button
@@ -121,6 +122,19 @@ class MainActivity : Activity() {
         root.addView(statusPanel)
 
         root.addView(space(22))
+        root.addView(sectionTitle("DIAGNÓSTICO OFFLINE DA ROM"))
+        root.addView(space(10))
+        val romDiagnosticsPanel = panel()
+        romDiagnosticsText = label(
+            "Selecione uma ROM para analisar cabeçalho, IPL3, perfil CIC e CRC sem iniciar o jogo.",
+            13,
+            Color.WHITE,
+            false
+        )
+        romDiagnosticsPanel.addView(romDiagnosticsText)
+        root.addView(romDiagnosticsPanel)
+
+        root.addView(space(22))
         root.addView(sectionTitle("DIAGNÓSTICO DA CPU R4300"))
         root.addView(space(10))
         val diagnosticsPanel = panel()
@@ -160,6 +174,54 @@ class MainActivity : Activity() {
         root.addView(label("N64 Android • versão de desenvolvimento", 12, Color.rgb(115, 130, 150), false))
 
         setContentView(scroll)
+    }
+
+    private fun renderRomDiagnostics(report: N64HleRomDiagnostics.Report?) {
+        if (report == null) {
+            romDiagnosticsText.text = "Diagnóstico indisponível."
+            return
+        }
+        fun hex(value: Long): String =
+            "0x" + value.toULong().toString(16).uppercase().padStart(8, '0')
+        val byteOrder = when (report.byteOrder) {
+            N64HleCartridgeImage.ByteOrder.BIG_ENDIAN -> "Z64 / big-endian"
+            N64HleCartridgeImage.ByteOrder.BYTE_SWAPPED_16 -> "V64 / bytes trocados"
+            N64HleCartridgeImage.ByteOrder.LITTLE_ENDIAN_32 -> "N64 / little-endian 32-bit"
+            null -> "—"
+        }
+        val cic = when (report.cicProfile) {
+            N64HleRomDiagnostics.CicProfile.CIC_6102_7101 -> "CIC 6102/7101 (seed 0x3F)"
+            N64HleRomDiagnostics.CicProfile.UNKNOWN -> "Assinatura CIC não reconhecida"
+            N64HleRomDiagnostics.CicProfile.INSUFFICIENT_DATA -> "Dados IPL3 insuficientes"
+        }
+        val status = when (report.status) {
+            N64HleRomDiagnostics.Status.VALID -> "VÁLIDO"
+            N64HleRomDiagnostics.Status.DIVERGENT -> "DIVERGENTE"
+            N64HleRomDiagnostics.Status.UNSUPPORTED -> "NÃO SUPORTADO"
+            N64HleRomDiagnostics.Status.INSUFFICIENT_DATA -> "DADOS INSUFICIENTES"
+            N64HleRomDiagnostics.Status.READ_ERROR -> "ERRO DE LEITURA"
+        }
+        romDiagnosticsText.text = buildString {
+            appendLine("Resultado: $status")
+            appendLine("Título: ${report.title?.ifBlank { "(sem título)" } ?: "—"}")
+            appendLine("Tamanho: ${report.romSizeBytes ?: "—"} bytes")
+            appendLine("Formato: $byteOrder")
+            appendLine("Game/cartridge ID: ${report.cartridgeId ?: "—"}")
+            appendLine("País/região: ${report.countryCode?.let { it.toChar() } ?: "—"}")
+            appendLine("Entry point: ${report.entryPoint?.let(::hex) ?: "—"}")
+            appendLine("CIC: $cic")
+            appendLine("Soma IPL3: ${report.ipl3WordSum?.let { "0x" + it.toString(16).uppercase() } ?: "—"}")
+            report.checksum?.let { crc ->
+                appendLine("CRC1 cabeçalho: ${hex(crc.headerCrc1)}")
+                appendLine("CRC2 cabeçalho: ${hex(crc.headerCrc2)}")
+                appendLine("CRC1 calculado: ${crc.calculatedCrc1?.let(::hex) ?: "não calculado"}")
+                appendLine("CRC2 calculado: ${crc.calculatedCrc2?.let(::hex) ?: "não calculado"}")
+                appendLine("Resultado CRC: ${crc.status}")
+            }
+            append(report.message ?: "Diagnóstico concluído.")
+            appendLine()
+            append("Este relatório não inicia CPU, não prepara HLE e não altera a ROM.")
+        }
     }
 
     /**
@@ -230,6 +292,7 @@ class MainActivity : Activity() {
         stepCpuButton.isEnabled = false
         setBatchButtonsEnabled(false)
         hlePreparationText.text = "Aguardando inspeção da nova ROM."
+        romDiagnosticsText.text = "Analisando a nova ROM..."
         renderCpuDiagnostics(null)
         val name = queryDisplayName(uri) ?: uri.lastPathSegment ?: "Arquivo selecionado"
         selectedRomText.text = name
@@ -248,6 +311,10 @@ class MainActivity : Activity() {
                     "Não foi possível abrir a ROM: ${error.message ?: "erro desconhecido"}."
                 )
             }
+
+            val romDiagnostics = if (result is N64RomDocumentReader.Result.Success) {
+                N64HleRomDiagnostics.diagnose(result.cartridge)
+            } else null
 
             runOnUiThread {
                 when (result) {
@@ -276,6 +343,7 @@ class MainActivity : Activity() {
                             appendLine("ROM mantida na sessão de memória.")
                             append("CPU/HLE boot ainda não foram iniciados.")
                         }
+                        renderRomDiagnostics(romDiagnostics)
                         renderCpuDiagnostics(null)
                     }
                     is N64RomDocumentReader.Result.Failure -> {
@@ -287,6 +355,8 @@ class MainActivity : Activity() {
                         setBatchButtonsEnabled(false)
                         hlePreparationText.text = "Não foi possível preparar: ROM não identificada."
                         statusText.text = "Falha ao identificar a ROM. ${result.reason}"
+                        renderRomDiagnostics(null)
+                        romDiagnosticsText.text = "Falha de leitura: ${result.reason}"
                         renderCpuDiagnostics(null)
                     }
                 }
