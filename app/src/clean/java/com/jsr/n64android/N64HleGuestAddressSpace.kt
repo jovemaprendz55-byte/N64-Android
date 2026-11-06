@@ -28,6 +28,10 @@ class N64HleGuestAddressSpace(
 
     val sizeBytes: Int get() = rdram.size
 
+    /** True when at least one MI source is both pending and unmasked. */
+    fun hasEnabledPendingInterrupt(): Boolean = (miInterrupt and miInterruptMask) != 0
+
+
     init {
         require(rdramSize > 0) { "RDRAM size must be positive" }
         require(rdramSize <= MAX_PHYSICAL_RDRAM) { "RDRAM size exceeds the supported physical window" }
