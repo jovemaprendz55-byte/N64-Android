@@ -299,6 +299,37 @@ class N64HleRspInstructionStepperTest {
         assertEquals(0xFF00, vectors.readElement(6, 0))
     }
 
+
+    @Test
+    fun lqvAndSqvTransferOnlyBytesRemainingInAlignedMemoryBlock() {
+        val memory = N64HleGuestAddressSpace()
+        val vectors = N64HleRspVectorState()
+        val stepper = N64HleRspInstructionStepper(memory, vectors)
+        val address = 0x23
+        for (index in 0 until 16) memory.write8(0xA4000000L + address + index, 0x40 + index)
+
+        // LQV v2[e=2], 0(r1): address 0x23 leaves 13 bytes in its 16-byte block.
+        put(memory, 0, (0x32 shl 26) or (1 shl 21) or (2 shl 16) or (2 shl 7))
+        val loadState = N64HleRspCpuState().also { it.writeGpr(1, address) }
+        stepper.step(loadState)
+        for (index in 0 until 13) {
+            assertEquals(0x40 + index, vectors.readByte(2, 2 + index))
+        }
+
+        // SQV writes those same 13 bytes back and leaves the following block untouched.
+        for (index in 0 until 13) vectors.writeByte(2, 2 + index, 0x70 + index)
+        put(memory, 4, (0x3A shl 26) or (1 shl 21) or (2 shl 16) or (2 shl 7))
+        val storeState = N64HleRspCpuState().also {
+            it.writeGpr(1, address)
+            it.programCounter = 4
+        }
+        stepper.step(storeState)
+        for (index in 0 until 13) {
+            assertEquals(0x70 + index, memory.read8(0xA4000000L + address + index))
+        }
+        assertEquals(0x4D, memory.read8(0xA4000000L + address + 13))
+    }
+
     @Test
     fun cop2TransfersMoveVectorElementsAndControlFlags() {
         val memory = N64HleGuestAddressSpace()
