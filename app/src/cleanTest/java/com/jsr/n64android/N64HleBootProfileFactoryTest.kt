@@ -21,9 +21,9 @@ class N64HleBootProfileFactoryTest {
         for (i in 0 until 0x100000) {
             rom[0x1000 + i] = ((i * 13 + 7) and 0xFF).toByte()
         }
-        val checksum = checksum6102(rom.copyOfRange(0x1000, 0x101000))
-        putWord(rom, 0x10, checksum.first)
-        putWord(rom, 0x14, checksum.second)
+        // Fixed vector generated with the independent n64dev.org reference algorithm.
+        putWord(rom, 0x10, 0xF6CC53D6.toInt())
+        putWord(rom, 0x14, 0x5198A84B)
         return N64HleCartridgeImage.parse(rom)
     }
 
@@ -49,6 +49,21 @@ class N64HleBootProfileFactoryTest {
         assertEquals(0xB0000000L, handoff.guestMemory.read32(0x80000308L))
         assertEquals(0L, handoff.guestMemory.read32(0x80000310L)) // osCicId != CIC seed
         assertEquals(0x3FL, handoff.cpuEntryState.copyRegisters()[22])
+    }
+
+    @Test
+    fun acceptsIndependentCic6102VectorWhenAccumulatorEqualsCurrentWord() {
+        val rom = validCic6102Cartridge().copyCanonicalBytes()
+        for (i in 0 until 0x100000) rom[0x1000 + i] = 0
+        // First d equals the initial t2 seed (0xF8CA4DDC), exercising t2 == d.
+        putWord(rom, 0x1000, 0xF8CA4DDC.toInt())
+        // Fixed CRC1/CRC2 calculated with the independent n64dev.org reference.
+        putWord(rom, 0x10, 0x095ED665)
+        putWord(rom, 0x14, 0x12367389)
+
+        val cartridge = N64HleCartridgeImage.parse(rom)
+        val profile = N64HleBootProfileFactory.createCic6102Profile(cartridge)
+        assertEquals(0x80000400L, profile.entryPc)
     }
 
     @Test
@@ -83,28 +98,5 @@ class N64HleBootProfileFactoryTest {
         bytes[offset + 3] = value.toByte()
     }
 
-    private fun checksum6102(image: ByteArray): kotlin.Pair<Int, Int> {
-        val mask = 0xFFFF_FFFFL
-        val initial = (0x3FL * 0x5D588B65L + 1L) and mask
-        var a3 = initial; var t2 = initial; var t3 = initial
-        var s0 = initial; var a2 = initial; var t4 = initial
-        var offset = 0
-        while (offset < image.size) {
-            val word = ((image[offset].toLong() and 0xFFL) shl 24) or
-                ((image[offset + 1].toLong() and 0xFFL) shl 16) or
-                ((image[offset + 2].toLong() and 0xFFL) shl 8) or
-                (image[offset + 3].toLong() and 0xFFL)
-            val sum = (a3 + word) and mask
-            if (sum < a3) t2 = (t2 + 1L) and mask
-            a3 = sum
-            val rotate = Integer.rotateLeft(word.toInt(), (word and 0x1FL).toInt()).toLong() and mask
-            t3 = (t3 xor word) and mask
-            s0 = (s0 + rotate) and mask
-            val mixed = if (a2 < word) (a3 xor word) else rotate
-            a2 = (a2 xor mixed) and mask
-            t4 = (t4 + (word xor s0)) and mask
-            offset += 4
-        }
-        return kotlin.Pair(((a3 xor t2) xor t3).toInt(), ((s0 xor a2) xor t4).toInt())
-    }
+
 }
