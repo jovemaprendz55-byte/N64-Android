@@ -76,10 +76,12 @@ class N64HleRspInstructionStepper(
         val vt = (instruction ushr 16) and 31
         val vs = (instruction ushr 11) and 31
         val vd = (instruction ushr 6) and 31
+        val element = (instruction ushr 21) and 15
+        if (element !in 0..7) throw N64HleRspUnsupportedInstructionException(pc, instruction)
         when (instruction and 63) {
-            0x00 -> vectorState.multiplyFractional(vd, vs, vt) // VMULF
-            0x10 -> vectorState.add(vd, vs, vt) // VADD
-            0x11 -> vectorState.subtract(vd, vs, vt) // VSUB
+            0x00 -> vectorState.multiplyFractional(vd, vs, vt, element) // VMULF
+            0x10 -> vectorState.add(vd, vs, vt, element) // VADD
+            0x11 -> vectorState.subtract(vd, vs, vt, element) // VSUB
             else -> throw N64HleRspUnsupportedInstructionException(pc, instruction)
         }
     }
