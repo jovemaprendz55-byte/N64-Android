@@ -233,4 +233,32 @@ class N64HleGuestAddressSpaceTest {
     }
 
 
+    @Test
+    fun spInterruptSetsMiPendingBitAndClearingSpInterruptAcknowledgesIt() {
+        val memory = N64HleGuestAddressSpace()
+
+        memory.write32(0xA4040010L, 1L shl 4) // set SP interrupt
+        assertEquals(1L shl 2, memory.read32(0xA4040010L))
+        assertEquals(1L, memory.read32(0xA4300008L)) // MI_INTR.SP
+
+        memory.write32(0xA430000CL, 1L shl 1) // set SP interrupt mask
+        assertEquals(1L, memory.read32(0xA430000CL))
+        memory.write32(0xA4040010L, 1L shl 3) // clear SP interrupt
+        assertEquals(0L, memory.read32(0xA4040010L))
+        assertEquals(0L, memory.read32(0xA4300008L))
+        assertEquals(1L, memory.read32(0xA430000CL)) // acknowledge does not change mask
+    }
+
+    @Test
+    fun clearingSpInterruptDoesNotClearPendingPiInterrupt() {
+        val memory = N64HleGuestAddressSpace(cartridgeRom = ByteArray(8) { it.toByte() })
+        memory.write32(0xA4600000L, 0x100L)
+        memory.write32(0xA4600004L, 0x10000000L)
+        memory.write32(0xA4600008L, 0L)
+        memory.write32(0xA4040010L, 1L shl 4)
+        memory.write32(0xA4040010L, 1L shl 3)
+
+        assertEquals(1L shl 4, memory.read32(0xA4300008L))
+    }
+
 }
