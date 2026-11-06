@@ -6,7 +6,8 @@ package com.jsr.n64android
  * This is not yet the vector unit or the RSP microcode execution engine.
  */
 class N64HleRspInstructionStepper(
-    private val memory: N64HleGuestAddressSpace
+    private val memory: N64HleGuestAddressSpace,
+    val vectorState: N64HleRspVectorState = N64HleRspVectorState()
 ) {
     fun step(state: N64HleRspCpuState): Int {
         check(!state.halted) { "RSP is halted" }
@@ -25,7 +26,8 @@ class N64HleRspInstructionStepper(
 
         when (opcode) {
             0x00 -> executeSpecial(state, instruction, rs, rt, rd, shift, function, pendingTarget)
-            0x12 -> executeVector(instruction, pc)\n            0x01 -> {
+            0x12 -> executeVector(instruction, pc)
+            0x01 -> {
                 val value = state.readGpr(rs)
                 val take = when (rt) {
                     0, 16 -> value < 0
