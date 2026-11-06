@@ -261,4 +261,16 @@ class N64HleGuestAddressSpaceTest {
         assertEquals(1L shl 4, memory.read32(0xA4300008L))
     }
 
+
+    @Test
+    fun spSemaphoreReadSetsItAndWriteClearsIt() {
+        val memory = N64HleGuestAddressSpace()
+
+        assertEquals(0L, memory.read32(0xA404001CL))
+        assertEquals(1L, memory.read32(0xA404001CL))
+        memory.write32(0xA404001CL, 0L)
+        assertEquals(0L, memory.read32(0xA404001CL))
+        assertEquals(1L, memory.read32(0xA404001CL))
+    }
+
 }
