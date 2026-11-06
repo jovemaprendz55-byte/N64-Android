@@ -8,6 +8,10 @@ package com.jsr.n64android
  */
 class N64HleRspCpuState(initialProgramCounter: Int = 0) {
     private val gpr = IntArray(32)
+    var hi: Int = 0
+        internal set
+    var lo: Int = 0
+        internal set
     var programCounter: Int = initialProgramCounter and PC_MASK
         internal set
     var halted: Boolean = false
@@ -27,6 +31,9 @@ class N64HleRspCpuState(initialProgramCounter: Int = 0) {
         require(index in 0..31)
         if (index != 0) gpr[index] = value
     }
+
+    internal fun writeHi(value: Int) { hi = value }
+    internal fun writeLo(value: Int) { lo = value }
 
     internal fun pendingBranchTarget(): Int? = pendingBranchTarget
 
