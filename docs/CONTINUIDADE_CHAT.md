@@ -3941,3 +3941,19 @@ Próxima tarefa: auditar os arquivos ativos de estado R4300, decoder, stepper, e
 Foi feita inspeção estática dos arquivos ativos de estado, decoder, stepper, executores e sessão. A principal lacuna identificada é o fallback do `executeNonControl()`: instruções não tratadas acabam encaminhadas ao executor imediato, gerando erro genérico em classes como COP0 DMFC0/DMTC0 e COP1 LWC1/SWC1, em vez de um resultado tipado de instrução válida não implementada. O relatório detalhado, com matriz e plano de testes, está em [AUDITORIA_R4300_CLEAN_2026-11-06.md](AUDITORIA_R4300_CLEAN_2026-11-06.md).
 
 Nenhum código CPU foi modificado e nenhum teste novo foi executado nesta auditoria. Próximo passo técnico: corrigir o despacho com uma classificação explícita de capacidade, preservar o estado arquitetural em instruções válidas não suportadas e adicionar testes para COP0, COP1, SPECIAL, opcodes reservados e delay slots.
+
+
+## Consolidação da classificação COP0 — 2026-11-06
+
+Foi criado o relatório [AUDITORIA_COP0_CLASSIFICACAO_CLEAN_2026-11-06.md](AUDITORIA_COP0_CLASSIFICACAO_CLEAN_2026-11-06.md), consolidando as alterações verificadas por diff no classificador R4300/COP0 e nos testes da arquitetura limpa.
+
+- A classificação CO deixou de tratar toda função desconhecida como RI. A lista explícita de funções reservadas documentadas é 0x0D, 0x0F e RFE (0x10).
+- Encodings φ selecionados são mantidos fora da classificação RI; não presumir que todo encoding inválido gere Reserved Instruction.
+- Formatos MFC0/DMFC0/MTC0/DMTC0 continuam reconhecidos, mas isso não significa execução completa. O executor ainda precisa ser avaliado separadamente.
+- O teste integrado de RFE verifica Cause, EPC e vetor geral; o escopo do teste foi corrigido para permanecer dentro da classe.
+- Commits de referência: d8429d7, 64f2132, 3bdba4d, 222c0d0 e c8d5807.
+
+**Validação:** a consulta de status combinado para os SHAs examinados não retornou verificações e a consulta de workflow associada ao SHA consultado não retornou execuções. Portanto, esta consolidação confirma os diffs, não uma CI verde. Não marcar a etapa como aprovada até validar o workflow no HEAD efetivo da branch.
+
+O ajuste do classificador não corrige o problema independente de despacho do stepper descrito em AUDITORIA_R4300_CLEAN_2026-11-06.md. Permanecem pendentes a confirmação da CI, o resultado tipado para instruções válidas não suportadas e os testes de preservação integral do estado da CPU.
+
