@@ -126,4 +126,45 @@ class N64HleRspInstructionStepperTest {
         assertEquals(16, state.programCounter)
         assertFalse(state.halted)
     }
+
+    @Test
+    fun variableShiftsAndHiLoMultiplyDivideAreImplemented() {
+        val memory = N64HleGuestAddressSpace()
+        put(memory, 0, (0x00 shl 26) or (1 shl 21) or (2 shl 16) or (3 shl 11) or 0x04) // SLLV r3,r2,r1
+        put(memory, 4, (0x00 shl 26) or (1 shl 21) or (2 shl 16) or 0x19) // MULTU r1,r2
+        put(memory, 8, (0x00 shl 26) or (4 shl 11) or 0x10) // MFHI r4
+        put(memory, 12, (0x00 shl 26) or (5 shl 11) or 0x12) // MFLO r5
+        put(memory, 16, (0x00 shl 26) or (1 shl 21) or (2 shl 16) or 0x1B) // DIVU r1,r2
+        put(memory, 20, (0x00 shl 26) or (6 shl 11) or 0x12) // MFLO r6
+        put(memory, 24, (0x00 shl 26) or (7 shl 11) or 0x10) // MFHI r7
+        val state = N64HleRspCpuState()
+        state.writeGpr(1, 40)
+        state.writeGpr(2, 3)
+        val stepper = N64HleRspInstructionStepper(memory)
+
+        repeat(7) { stepper.step(state) }
+
+        assertEquals(24, state.readGpr(3))
+        assertEquals(0, state.readGpr(4))
+        assertEquals(120, state.readGpr(5))
+        assertEquals(13, state.readGpr(6))
+        assertEquals(1, state.readGpr(7))
+    }
+
+    @Test
+    fun signedDivideByZeroUsesR4300CompatibleRspResultConvention() {
+        val memory = N64HleGuestAddressSpace()
+        put(memory, 0, (0x00 shl 26) or (1 shl 21) or 0x1A) // DIV r1,r0
+        put(memory, 4, (0x00 shl 26) or (2 shl 11) or 0x12) // MFLO r2
+        put(memory, 8, (0x00 shl 26) or (3 shl 11) or 0x10) // MFHI r3
+        val state = N64HleRspCpuState()
+        state.writeGpr(1, -9)
+        val stepper = N64HleRspInstructionStepper(memory)
+
+        repeat(3) { stepper.step(state) }
+
+        assertEquals(1, state.readGpr(2))
+        assertEquals(-9, state.readGpr(3))
+    }
+
 }
