@@ -239,6 +239,48 @@ class N64HleR4300InstructionStepperTest {
         assertEquals(beforeGprs, state.copyKnownGprs())
     }
 
+
+    @Test fun validIntegerLoadWithoutConfiguredMemoryIsNotUnclassified() {
+        val state = N64HleR4300CpuState(0x80002600L, mapOf(1 to 0x80001000L))
+        val lw = (0x23 shl 26) or (1 shl 21) or (2 shl 16)
+
+        val result = stepper.stepWithResult(lw, state)
+
+        assertTrue(result is N64HleR4300StepResult.ValidButNotImplemented)
+        assertEquals(0x80002600L, state.programCounter)
+        assertFalse(state.isGprKnown(2))
+    }
+
+    @Test fun unsupportedInstructionPreservesCompleteKnownCpuSnapshot() {
+        val state = N64HleR4300CpuState(
+            0x80002700L,
+            mapOf(1 to 0x1111L, 7 to 0x7777L),
+            initialHi = 0x12345678L,
+            initialLo = 0x76543210L,
+            cop0 = N64HleCop0EntryState(
+                mapOf(8 to 0L, 12 to 0L, 13 to 0L, 14 to 0x80000000L),
+                "complete unsupported-instruction snapshot"
+            )
+        )
+        val beforePc = state.programCounter
+        val beforeGprs = state.copyKnownGprs()
+        val beforeCop0 = state.copyKnownCop0()
+        val beforeHi = state.readHi()
+        val beforeLo = state.readLo()
+
+        val result = stepper.stepWithResult(0xC4010000.toInt(), state)
+
+        assertTrue(result is N64HleR4300StepResult.ValidButNotImplemented)
+        assertEquals(beforePc, state.programCounter)
+        assertEquals(beforeGprs, state.copyKnownGprs())
+        assertEquals(beforeCop0, state.copyKnownCop0())
+        assertTrue(state.isHiKnown())
+        assertTrue(state.isLoKnown())
+        assertEquals(beforeHi, state.readHi())
+        assertEquals(beforeLo, state.readLo())
+        assertFalse(stepper.hasPendingDelaySlot())
+    }
+
     @Test fun typedResultDistinguishesValidUnsupportedCop1LoadWithoutMutation() {
         val state = N64HleR4300CpuState(0x80001000L, mapOf(1 to 0x1234L))
         val beforeGprs = state.copyKnownGprs()
