@@ -4015,3 +4015,14 @@ A matriz discrimina os campos de shifts imediatos/variáveis, aritmética e lóg
 A matriz também registra que as operações doubleword shifts têm requisito de modo: o manual descreve RI em modo User/Supervisor de 32 bits. Isso não pode ser confundido com erro estrutural de campo. O decoder limpo não enumera DSLLV/DSRLV/DSRAV, então não foram adicionadas como operações cobertas.
 
 **Validação:** matriz documental conferida com os diagramas e descrições do manual VR4300. Nenhum código de produção/teste foi alterado e Gradle/aparelho não foram executados. Próximo passo: implementar testes puros para cada máscara e preservar os campos code permitidos, antes de introduzir o validador no stepper.
+
+
+## Auditoria de aplicação da matriz SPECIAL — 2026-11-06
+
+Criado [AUDITORIA_APLICACAO_MATRIZ_SPECIAL_CLEAN_2026-11-06.md](AUDITORIA_APLICACAO_MATRIZ_SPECIAL_CLEAN_2026-11-06.md).
+
+Inspecionados decoder, executor SPECIAL, classificador de exceções, stepper, planner de controle e testes-fonte. Achado: não há validação estrutural dos campos SPECIAL. O decoder reconhece pelo function code; executor ignora campos reservados; JR/JALR desviam pelo planner antes do executor; SYSCALL/BREAK são classificados antes de validar a estrutura. Portanto, validar apenas dentro do executor SPECIAL seria insuficiente.
+
+A validação precisa ficar no caminho comum do stepper, imediatamente após decode e antes de classificar exceções ou despachar controle. Encoding legal sem implementação continua distinto de RI. Os testes atuais verificam decodificação e resultados de execução, mas não uma matriz de campos reservados.
+
+Nenhum código de produção/teste foi alterado; nenhum Gradle, CI ou dispositivo foi executado. Próximo passo recomendado: adicionar primeiro um validador puro e testes parametrizados no source set limpo; só então integrá-lo ao stepper e validar RI em delay slots.
