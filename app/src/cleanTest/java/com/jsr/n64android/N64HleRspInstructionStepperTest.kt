@@ -224,6 +224,32 @@ class N64HleRspInstructionStepperTest {
     }
 
     @Test
+    fun decodesRspVectorAddCarryAndSubtractCarry() {
+        val memory = N64HleGuestAddressSpace()
+        val vectors = N64HleRspVectorState()
+        fun putVector(pc: Int, vd: Int, function: Int) {
+            put(memory, pc, (0x12 shl 26) or (16 shl 21) or (2 shl 16) or
+                (1 shl 11) or (vd shl 6) or function)
+        }
+        vectors.writeElement(1, 0, 0xFFFF)
+        vectors.writeElement(2, 0, 1)
+        putVector(0, 3, 0x14) // VADDC
+        val addState = N64HleRspCpuState()
+        val stepper = N64HleRspInstructionStepper(memory, vectors)
+        stepper.step(addState)
+        assertEquals(0, vectors.readElement(3, 0))
+        assertEquals(1, vectors.vco)
+
+        vectors.writeElement(1, 0, 0)
+        vectors.writeElement(2, 0, 1)
+        putVector(4, 4, 0x15) // VSUBC
+        val subState = N64HleRspCpuState().also { it.programCounter = 4 }
+        stepper.step(subState)
+        assertEquals(0xFFFF, vectors.readElement(4, 0))
+        assertEquals(0x0101, vectors.vco)
+    }
+
+    @Test
     fun vectorElementSelectorBroadcastsSelectedVtLaneToAllLanes() {
         val memory = N64HleGuestAddressSpace()
         val vectors = N64HleRspVectorState()
