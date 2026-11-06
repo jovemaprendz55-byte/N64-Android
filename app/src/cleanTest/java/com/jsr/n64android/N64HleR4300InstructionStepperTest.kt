@@ -713,4 +713,30 @@ class N64HleR4300InstructionStepperTest {
     }
 
 
+    @Test
+    fun enabledSpInterruptEntersR4300ThroughMiAndCop0() {
+        val memory = N64HleGuestAddressSpace()
+        memory.write32(0xA4040010L, 1L shl 4) // SP interrupt pending
+        memory.write32(0xA430000CL, 1L shl 1) // enable MI SP source
+
+        val interruptStepper = N64HleR4300InstructionStepper(memorySpace = memory)
+        val state = N64HleR4300CpuState(
+            0xFFFFFFFF80003000UL.toLong(),
+            cop0 = N64HleCop0EntryState(
+                mapOf(12 to 0x401L, 13 to 0L, 14 to 0L),
+                "explicit enabled SP interrupt test state"
+            )
+        )
+        val signal = assertThrows(N64HleR4300ArchitecturalException::class.java) {
+            interruptStepper.step(0, state)
+        }
+
+        assertEquals(N64HleR4300ExceptionCode.INTERRUPT, signal.context.code)
+        assertEquals(0x400L, state.readCop0(13)) // Cause.IP2
+        assertEquals(0x403L, state.readCop0(12)) // IE, IM2, EXL
+        assertEquals(0xFFFFFFFF80003000UL.toLong(), state.readCop0(14))
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
+        assertEquals(1L, memory.read32(0xA4300008L)) // pending until SP acknowledgement
+    }
+
 }
