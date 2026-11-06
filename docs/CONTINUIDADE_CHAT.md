@@ -4190,3 +4190,19 @@ Criado [AUDITORIA_CRC_CIC6102_CLEAN_2026-11-06.md](AUDITORIA_CRC_CIC6102_CLEAN_2
 Após conferir os operadores com mais cuidado, corrigir a descrição anterior: a condição não está globalmente invertida. Para valores diferentes, os ramos atuais coincidem com a referência. A divergência é **somente no caso de igualdade** (`a2 == word)): a referência escolhe `t6 XOR d`, enquanto a implementação atual escolhe `rotate`. O helper de teste repete a mesma condição e não cobre esse caso.
 
 O relatório `AUDITORIA_CRC_CIC6102_CLEAN_2026-11-06.md` foi corrigido. Não afirmar que o CRC2 de GoldenEye está necessariamente errado ou que o jogo será rejeitado; a ocorrência e o impacto em ROM real ainda precisam ser medidos com vetor independente. Nenhuma produção/teste foi alterado e nenhum CI foi executado nesta etapa.
+
+
+## Correção CIC 6102 CRC e testes independentes — 2026-11-06
+
+Relatório detalhado: [AUDITORIA_CRC_CIC6102_CLEAN_2026-11-06.md](AUDITORIA_CRC_CIC6102_CLEAN_2026-11-06.md).
+
+- Referência confirmada: https://n64dev.org/n64crc.html e reimplementação C independente https://github.com/z64dev/z64decompress/blob/main/src/n64crc.c.
+- Regra de referência: `if (t2 > d) t2 ^= rotateLeft(d, d & 31); else t2 ^= t6 ^ d`.
+- A divergência anterior existia apenas quando `a2 == word`; a implementação antiga escolhia rotate, mas a referência escolhe `a3 xor word`.
+- Corrigido `N64HleBootProfileFactory.kt`: `if (a2 > word) rotate else (a3 xor word)`.
+- Removido o helper Kotlin de teste que duplicava o algoritmo de produção.
+- Vetor independente do fixture determinístico: CRC1 `0xF6CC53D6`, CRC2 `0x5198A84B`.
+- Novo vetor que força igualdade na primeira palavra (`d = 0xF8CA4DDC`, restante do MiB zero): CRC1 `0x095ED665`, CRC2 `0x12367389`. A implementação antiga calculava CRC2 `0xD4E40130`, então o novo teste detecta a regressão.
+- Os valores foram calculados com tradução independente da implementação de referência, não pelo helper Kotlin de produção/teste.
+- Código, teste e relatório foram enviados à branch `dev/n64-hle-clean-reboot`. Consultar CI após o push antes de considerar validado.
+- Ainda não houve teste com ROM GoldenEye real nem execução do jogo. Não declarar compatibilidade funcional.
