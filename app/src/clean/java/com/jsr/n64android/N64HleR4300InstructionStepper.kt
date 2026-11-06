@@ -283,6 +283,7 @@ class N64HleR4300InstructionStepper(
 
     private companion object {
         const val COP0_STATUS = 12
+        const val COP0_CAUSE = 13
         const val STATUS_IE = 1 shl 0
         const val STATUS_EXL = 1 shl 1
         const val STATUS_ERL = 1 shl 2
