@@ -307,7 +307,7 @@ class N64HleR4300InstructionStepperTest {
 
     @Test fun typedResultDoesNotGuessUnknownOpcodeIsReservedOrValid() {
         val state = N64HleR4300CpuState(0x80003000L)
-        val unknownOpcode = (0x3F shl 26) or 0x1234
+        val unknownOpcode = (0x3E shl 26) or 0x1234
 
         val result = stepper.stepWithResult(unknownOpcode, state)
 
