@@ -63,6 +63,8 @@ class N64HleRspInstructionStepper(
             0x28 -> memory.write8(DMEM_BASE + ((state.readGpr(rs) + immediate) and 0xFFF), state.readGpr(rt) and 0xFF)
             0x29 -> memory.write16(DMEM_BASE + ((state.readGpr(rs) + immediate) and 0xFFE), state.readGpr(rt) and 0xFFFF)
             0x2B -> memory.write32(DMEM_BASE + ((state.readGpr(rs) + immediate) and 0xFFC), state.readGpr(rt).toLong() and 0xFFFF_FFFFL)
+            0x32 -> executeVectorMemory(instruction, state, load = true)
+            0x3A -> executeVectorMemory(instruction, state, load = false)
             else -> throw N64HleRspUnsupportedInstructionException(pc, instruction)
         }
 
@@ -72,6 +74,30 @@ class N64HleRspInstructionStepper(
     }
 
 
+
+    /** LQV/SQV: transfer the bytes remaining in the aligned 16-byte memory block. */
+    private fun executeVectorMemory(instruction: Int, state: N64HleRspCpuState, load: Boolean) {
+        val base = (instruction ushr 21) and 31
+        val vector = (instruction ushr 16) and 31
+        val format = (instruction ushr 11) and 31
+        val element = (instruction ushr 7) and 15
+        if (format != 0) throw N64HleRspUnsupportedInstructionException(state.programCounter, instruction)
+
+        val encodedOffset = instruction and 0x7F
+        val signedOffset = if (encodedOffset and 0x40 != 0) encodedOffset - 0x80 else encodedOffset
+        val address = state.readGpr(base) + (signedOffset shl 4)
+        val byteInBlock = address and 15
+        val count = minOf(16 - byteInBlock, 16 - element)
+        for (index in 0 until count) {
+            val dmemAddress = DMEM_BASE + ((address + index) and 0xFFF)
+            val vectorByte = element + index
+            if (load) {
+                vectorState.writeByte(vector, vectorByte, memory.read8(dmemAddress))
+            } else {
+                memory.write8(dmemAddress, vectorState.readByte(vector, vectorByte))
+            }
+        }
+    }
 
     private fun executeCop2(
         state: N64HleRspCpuState,
