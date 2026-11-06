@@ -4080,3 +4080,24 @@ Todo chat que trabalhar neste repositório deve seguir estas regras:
 12. Se o acesso ao GitHub ou a execução de alguma tarefa falhar, registrar a limitação com precisão e não afirmar que a operação foi concluída.
 
 **Regra de continuidade:** este documento é a fonte principal de passagem de contexto entre chats. Todo chat novo deve consultá-lo primeiro e todo chat que fizer trabalho deve atualizá-lo antes de encerrar.
+
+
+## Definição do primeiro alvo funcional — 2026-11-06
+
+O usuário definiu explicitamente que o primeiro objetivo do emulador N64 Android construído do zero é executar **GoldenEye 007 (Nintendo 64)**. Somente depois de alcançar esse primeiro alvo funcional serão priorizados outros jogos.
+
+### Diretriz de escopo
+
+- Não desviar o primeiro marco para uma ROM homebrew como objetivo final. Testes sintéticos e ROMs de diagnóstico podem ser usados internamente para validar CPU, memória, RSP/RDP e vídeo, mas o critério de sucesso do projeto é GoldenEye 007 executando.
+- Priorizar o caminho mínimo tecnicamente correto que leve ao jogo: inicialização/boot, CPU R4300, memória e mapeamento de dispositivos, RSP/microcódigo usado pelo jogo, RDP, VI/framebuffer, entrada e áudio conforme necessário.
+- Implementar por camadas com testes automatizados e evidências; evitar tentar implementar todo o hardware de uma vez ou fingir compatibilidade.
+- Não usar Mupen64Plus nem copiar/adaptar código de emuladores antigos. A arquitetura continua sendo própria e limpa.
+- A ROM deve ser obtida legalmente pelo próprio usuário a partir de uma cópia que possua; o projeto não deve distribuir ROM comercial.
+
+### Critério de conclusão do primeiro marco
+
+Considerar o primeiro objetivo atingido somente quando uma cópia legítima de GoldenEye 007 for carregada e alcançar execução jogável verificável no Android, com vídeo e controles funcionais. Tela de boot, seleção da ROM, execução parcial da CPU, logs ou framebuffer estático não contam como jogo funcional.
+
+### Próxima ação técnica
+
+Replanejar a trilha de implementação a partir do estado real da branch limpa, com foco em GoldenEye 007: inventariar o caminho de boot atual e as lacunas que bloqueiam o jogo, identificar os subsistemas mínimos exigidos e ordenar tarefas pelo bloqueio mais cedo. A auditoria anterior do validador SPECIAL continua relevante para a correção da CPU, mas deixa de ser tratada como objetivo isolado; deve ser encaixada no plano do primeiro jogo. Não alterar código de produção/testes sem autorização explícita. Registrar separadamente qualquer teste de diagnóstico e qualquer teste real de GoldenEye 007.
