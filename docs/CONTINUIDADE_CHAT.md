@@ -3934,3 +3934,10 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
 Documento de referência atualizado: [ESTADO_ATUAL_VERSAO_LIMPA_2026-11-06.md](ESTADO_ATUAL_VERSAO_LIMPA_2026-11-06.md).
 
 Próxima tarefa: auditar os arquivos ativos de estado R4300, decoder, stepper, executores e sessão; classificar instruções implementadas, válidas ainda não suportadas e reservadas; criar testes direcionados e registrar resultados reais.
+
+
+## Auditoria adicional do núcleo R4300 limpo — 2026-11-06
+
+Foi feita inspeção estática dos arquivos ativos de estado, decoder, stepper, executores e sessão. A principal lacuna identificada é o fallback do `executeNonControl()`: instruções não tratadas acabam encaminhadas ao executor imediato, gerando erro genérico em classes como COP0 DMFC0/DMTC0 e COP1 LWC1/SWC1, em vez de um resultado tipado de instrução válida não implementada. O relatório detalhado, com matriz e plano de testes, está em [AUDITORIA_R4300_CLEAN_2026-11-06.md](AUDITORIA_R4300_CLEAN_2026-11-06.md).
+
+Nenhum código CPU foi modificado e nenhum teste novo foi executado nesta auditoria. Próximo passo técnico: corrigir o despacho com uma classificação explícita de capacidade, preservar o estado arquitetural em instruções válidas não suportadas e adicionar testes para COP0, COP1, SPECIAL, opcodes reservados e delay slots.
