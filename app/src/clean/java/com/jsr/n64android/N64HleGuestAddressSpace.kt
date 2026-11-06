@@ -158,7 +158,11 @@ class N64HleGuestAddressSpace(
         SP_RD_LEN_REG, SP_WR_LEN_REG -> 0
         SP_STATUS_REG -> spStatus
         SP_DMA_FULL_REG, SP_DMA_BUSY_REG -> 0
-        SP_SEMAPHORE_REG -> spSemaphore
+        SP_SEMAPHORE_REG -> {
+            val previous = spSemaphore
+            spSemaphore = 1
+            previous
+        }
         SP_PC_REG -> spPc
         else -> throw IllegalArgumentException("Unsupported SP register 0x${address.toString(16)}")
     }
@@ -171,7 +175,7 @@ class N64HleGuestAddressSpace(
             SP_WR_LEN_REG -> transferSpDma(value, toSp = false)
             SP_STATUS_REG -> writeSpStatusCommand(value)
             SP_DMA_FULL_REG, SP_DMA_BUSY_REG -> Unit
-            SP_SEMAPHORE_REG -> spSemaphore = 1
+            SP_SEMAPHORE_REG -> spSemaphore = 0
             SP_PC_REG -> spPc = value and SP_PC_MASK
             else -> throw IllegalArgumentException("Unsupported SP register 0x${address.toString(16)}")
         }
