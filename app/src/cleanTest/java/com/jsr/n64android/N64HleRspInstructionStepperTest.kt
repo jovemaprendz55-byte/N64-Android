@@ -397,6 +397,27 @@ class N64HleRspInstructionStepperTest {
     }
 
     @Test
+    fun decodesRspVectorMergeUsingVccLowAndPreservesFlags() {
+        val memory = N64HleGuestAddressSpace()
+        val vectors = N64HleRspVectorState()
+        for (lane in 0 until 8) {
+            vectors.writeElement(1, lane, 0x1100 + lane)
+            vectors.writeElement(2, lane, 0x2200 + lane)
+        }
+        vectors.setFlags(0xA55A, 0b0101_0101, 0xA5)
+        put(memory, 0, (0x12 shl 26) or (16 shl 21) or (2 shl 16) or
+            (1 shl 11) or (3 shl 6) or 0x27) // VMRG v3,v1,v2[e=0]
+        N64HleRspInstructionStepper(memory, vectors).step(N64HleRspCpuState())
+        for (lane in 0 until 8) {
+            val expected = if ((0b0101_0101 and (1 shl lane)) != 0) 0x1100 + lane else 0x2200
+            assertEquals(expected, vectors.readElement(3, lane))
+        }
+        assertEquals(0xA55A, vectors.vco)
+        assertEquals(0b0101_0101, vectors.vcc)
+        assertEquals(0xA5, vectors.vce)
+    }
+
+    @Test
     fun cop2TransfersMoveVectorElementsAndControlFlags() {
         val memory = N64HleGuestAddressSpace()
         val vectors = N64HleRspVectorState()
