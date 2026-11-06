@@ -3910,3 +3910,27 @@ Aguardar o workflow 42088321465. Se passar, mapear como o estado de exceção da
 - A CI também revelou que o teste anterior considerava funct=0x3F como RI; o manual VR4300 marca certas codificações φ como inválidas sem gerar RI. A matriz de testes foi atualizada para testar separadamente funções RI (0x0D, 0x0F, 0x10) e não-RI (incluindo 0x3F). Não generalizar a regra de funct desconhecido para todo CO.
 - Execuções anteriores com falha, anteriores às correções: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42111297712 ; https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42111314007 ; https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42111327470 ; https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42111357672 ; https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42111452351 ; https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42111478271
 - As correções foram publicadas; confirmar as novas execuções no HEAD mais recente antes de declarar COP0 reservado aprovado.
+
+
+---
+
+# Atualização de continuidade — 2026-11-06 — somente versão limpa
+
+> Esta atualização prevalece sobre fotografias anteriores deste documento quando houver divergência de branch, commit ou arquitetura. O escopo ativo é exclusivamente a versão limpa.
+
+- Branch auditada: `dev/n64-hle-clean-reboot`.
+- HEAD auditado antes desta atualização documental: `3da17d5f8d77e1c49d9797e0d47619fe4f40f148`.
+- O Gradle seleciona `app/src/clean/java` para produção e `app/src/cleanTest/java` para testes.
+- Inventário confirmado: 29 arquivos Kotlin de produção e 24 arquivos de teste no source set limpo.
+- A interface limpa seleciona ROM, inspeciona cabeçalho, prepara handoff HLE explícito e permite execução manual em passos/lotes finitos.
+- O handoff CIC 6102/7101 não executa IPL3/PIF e não comprova boot completo de jogo.
+- CPU R4300 é parcial. TLB/MMU completa, COP1/FPU e diversos comportamentos arquiteturais ainda precisam de implementação/testes.
+- RSP, RDP, VI, apresentação de framebuffer e áudio não estão conectados ao fluxo executável da interface limpa.
+- Workflow `42111831579` para o HEAD auditado terminou `completed/success`; isso valida o workflow, não a execução de jogos no aparelho.
+- Nenhuma ROM comercial foi executada ou validada como jogo funcional nesta auditoria.
+
+**Regra permanente:** não usar código de outra implementação do repositório como fonte de migração. Projetar e implementar os subsistemas necessários diretamente na arquitetura limpa. Não alterar `main` nem fazer merge sem autorização explícita.
+
+Documento de referência atualizado: [ESTADO_ATUAL_VERSAO_LIMPA_2026-11-06.md](ESTADO_ATUAL_VERSAO_LIMPA_2026-11-06.md).
+
+Próxima tarefa: auditar os arquivos ativos de estado R4300, decoder, stepper, executores e sessão; classificar instruções implementadas, válidas ainda não suportadas e reservadas; criar testes direcionados e registrar resultados reais.
