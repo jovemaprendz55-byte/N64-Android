@@ -38,7 +38,7 @@ Somente a arquitetura limpa: `app/src/clean/java`, `app/src/cleanTest/java` e `d
 ## Validação
 
 - Commits de implementação: `cd311ae`, `027e3fb`, `5cb0ed1`, `4edf686`, `7f58c43`, `9089e66`.
-- Ações do GitHub foram disparadas pelos pushes. No momento do registro, as execuções ainda estavam `in_progress`; não declarar CI aprovada até conferir o workflow no HEAD final.
+- CI confirmada: o workflow [42186546728](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42186546728), no commit `9089e66`, concluiu `success`; o log registra `:app:compileDebugKotlin`, `:app:testDebugUnitTest` e `BUILD SUCCESSFUL`. O commit `027e3fb` intermediário falhou porque a classe de resultado foi adicionada no commit seguinte; a versão integrada no HEAD `9089e66` passou.
 - Nenhuma execução em aparelho foi realizada nesta etapa.
 
 ## Próximo passo
