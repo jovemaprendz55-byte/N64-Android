@@ -4101,3 +4101,20 @@ Considerar o primeiro objetivo atingido somente quando uma cópia legítima de G
 ### Próxima ação técnica
 
 Replanejar a trilha de implementação a partir do estado real da branch limpa, com foco em GoldenEye 007: inventariar o caminho de boot atual e as lacunas que bloqueiam o jogo, identificar os subsistemas mínimos exigidos e ordenar tarefas pelo bloqueio mais cedo. A auditoria anterior do validador SPECIAL continua relevante para a correção da CPU, mas deixa de ser tratada como objetivo isolado; deve ser encaixada no plano do primeiro jogo. Não alterar código de produção/testes sem autorização explícita. Registrar separadamente qualquer teste de diagnóstico e qualquer teste real de GoldenEye 007.
+
+
+## Implementação inicial do despacho tipado R4300 — 2026-11-06
+
+Criado o relatório [IMPLEMENTACAO_DESPACHO_TIPADO_R4300_CLEAN_2026-11-06.md](IMPLEMENTACAO_DESPACHO_TIPADO_R4300_CLEAN_2026-11-06.md).
+
+- O fallback genérico do `N64HleR4300InstructionStepper.executeNonControl()` foi removido.
+- O executor SPECIAL agora declara explicitamente quais operações realmente executa.
+- Foram adicionados `N64HleR4300StepResult`, `stepWithResult()` e `stepFromMemoryWithResult()`, sem remover as APIs antigas.
+- A nova API diferencia execução, exceção arquitetural, RI, instrução válida não implementada e encoding não classificado.
+- Testes adicionados para LWC1, DMFC0, SPECIAL SYNC, opcode desconhecido, RI e preservação de delay slot.
+- A falta de executor agora é identificada antes de chamar o executor imediato incorreto; não deve avançar PC nem concluir delay slot.
+- **CI pendente:** os workflows dos pushes foram disparados, mas ainda estavam em andamento no momento desta atualização. Conferir o HEAD final antes de aprovar.
+- Nenhum jogo foi executado e nenhuma implementação de COP1/TLB/RDP/RSP foi acrescentada nesta etapa.
+
+HEAD de referência desta etapa: `9089e664768ff78f6eac3106f6954b2afd831f75`.
+Próxima tarefa: validar CI, corrigir eventuais falhas e fortalecer snapshots de preservação integral do estado.
