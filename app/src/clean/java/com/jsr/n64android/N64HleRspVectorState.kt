@@ -113,6 +113,23 @@ class N64HleRspVectorState {
         vco = 0
     }
 
+    /** RSP VMRG: select VS or the selected VT lane using VCC_LO; flags are preserved. */
+    fun merge(destination: Int, left: Int, right: Int, rightElement: Int? = null) {
+        validateRegister(destination)
+        validateRegister(left)
+        validateRegister(right)
+        if (rightElement != null) validateElement(rightElement)
+        for (lane in 0 until VECTOR_LANES) {
+            val selected = if ((vcc and (1 shl lane)) != 0) {
+                readElement(left, lane)
+            } else {
+                readElement(right, rightElement ?: lane)
+            }
+            writeElement(destination, lane, selected)
+            writeAccumulatorLane(lane, selected.toShort().toLong() shl 16)
+        }
+    }
+
     /** RSP VSAW: copy one 16-bit accumulator slice to every destination lane. */
     fun accumulatorSlice(destination: Int, slice: Int) {
         validateRegister(destination)
