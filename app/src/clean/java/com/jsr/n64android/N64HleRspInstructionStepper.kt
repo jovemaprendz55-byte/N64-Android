@@ -21,10 +21,10 @@ class N64HleRspInstructionStepper(
         val immediate = instruction.toShort().toInt()
         val unsignedImmediate = instruction and 0xFFFF
         val branchTarget = (pc + 4 + (immediate shl 2)) and N64HleRspCpuState.PC_MASK
-        val pendingTarget = state.takePendingBranchTarget()
+        val pendingTarget = state.pendingBranchTarget()
 
         when (opcode) {
-            0x00 -> executeSpecial(state, instruction, rs, rt, rd, shift, function)
+            0x00 -> executeSpecial(state, instruction, rs, rt, rd, shift, function, pendingTarget)
             0x02, 0x03 -> {
                 check(pendingTarget == null) { "RSP control transfer in a delay slot is unsupported" }
                 if (opcode == 0x03) state.writeGpr(31, (pc + 8) and N64HleRspCpuState.PC_MASK)
@@ -52,6 +52,7 @@ class N64HleRspInstructionStepper(
             else -> throw N64HleRspUnsupportedInstructionException(pc, instruction)
         }
 
+        if (pendingTarget != null) state.clearPendingBranchTarget()
         state.programCounter = pendingTarget ?: ((pc + 4) and N64HleRspCpuState.PC_MASK)
         return instruction
     }
@@ -63,7 +64,8 @@ class N64HleRspInstructionStepper(
         rt: Int,
         rd: Int,
         shift: Int,
-        function: Int
+        function: Int,
+        pendingTarget: Int?
     ) {
         val left = state.readGpr(rs)
         val right = state.readGpr(rt)
@@ -72,7 +74,7 @@ class N64HleRspInstructionStepper(
             0x02 -> state.writeGpr(rd, right ushr shift)
             0x03 -> state.writeGpr(rd, right shr shift)
             0x08 -> {
-                check(!state.hasPendingBranch()) { "RSP control transfer in a delay slot is unsupported" }
+                check(pendingTarget == null) { "RSP control transfer in a delay slot is unsupported" }
                 state.scheduleBranch(left)
             }
             0x0D -> {
