@@ -4128,3 +4128,29 @@ Próxima tarefa: validar CI, corrigir eventuais falhas e fortalecer snapshots de
 - A validação aprova somente compilação e testes automatizados da etapa; não comprova GoldenEye, renderização, áudio ou execução no aparelho.
 - Próximo trabalho: fortalecer snapshots de estado e classificar instruções de memória válidas sem executor configurado, mantendo a distinção entre válido não implementado e reservado.
 
+
+
+## Registro de continuidade — 2026-11-06 (CI e auditoria GoldenEye)
+
+Branch: `dev/n64-hle-clean-reboot`  
+HEAD confirmado: `01df520d2af71c9bf6c81db340b94bd8ca5a6580`.
+
+### CI
+- Workflow [42187019787](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42187019787) concluído com sucesso no commit `01df520`; job build e upload do APK passaram.
+- A falha anterior em `42186767528` foi causada pelo teste de opcode desconhecido usar `0x3F`, que corresponde a SD (instrução válida). O teste foi corrigido para `0x3E`; CI passou sem alterar produção.
+- Testes acrescentados na etapa anterior classificam LW sem executor de memória como válido não implementado e verificam preservação de PC/GPR/COP0/HI/LO/delay slot para LWC1 não implementada.
+- Isso confirma build e testes automatizados, não teste físico no Android e não execução de GoldenEye.
+
+### Auditoria do caminho de boot/runtime para GoldenEye
+Arquivos lidos: `N64HleBootProfile.kt`, `N64HleBootProfileFactory.kt`, `N64HleCartridgeImage.kt`, `N64HleCartridgeSession.kt`, `N64HleGuestAddressSpace.kt`, `N64HleR4300ExecutionSession.kt`, `MainActivity.kt`, além dos testes de boot, sessão, cartucho e memória.
+
+Achados:
+1. O app seleciona e identifica ROM, normaliza byte order e prepara sessão. A própria tela declara que execução do jogo, vídeo e áudio ainda não estão conectados.
+2. O perfil HLE automático atual cobre somente CIC 6102/7101; rejeita 6105/7105. Valida um checksum de IPL3 e CRC1/CRC2 para uma imagem de 1 MiB, mas não executa IPL3/PIF nem inicializa hardware real.
+3. Não há evidência de que esse perfil seja compatível com a revisão/região de GoldenEye que será o alvo. Identificar CIC e revisão antes de implementar um novo perfil.
+4. O mapa atual cobre RDRAM, SP DMEM/IMEM e parte de registradores SP/DMA. MMIO geral, TLB e dispositivos adicionais continuam ausentes.
+5. A sessão R4300 executa instruções em lotes limitados, mas não há runtime integrado de RSP/RDP/VI/framebuffer/áudio/controles demonstrado.
+6. Os testes de boot usam ROM sintética CIC 6102; não comprovam GoldenEye.
+
+### Próxima tarefa
+Obter evidência técnica sobre o CIC/revisão do GoldenEye alvo (sem pedir nem distribuir ROM comercial; usar metadados de uma cópia legítima do usuário quando disponíveis). Em seguida, documentar uma matriz de compatibilidade entre esse CIC e o perfil atual, e listar o caminho mínimo de boot e subsistemas que faltam. Não presumir que 6102 atende GoldenEye. Não alterar produção até haver um plano de implementação específico, testável e baseado em evidência.
