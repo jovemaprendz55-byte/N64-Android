@@ -267,6 +267,9 @@ class N64HleRspInstructionStepperTest {
         assertEquals(1, vectors.vco)
 
         vectors.writeElement(1, 0, 0)
+        // The selected VT element is broadcast to every lane; make lanes 1..7
+        // subtract 1 - 1 so only lane 0 raises borrow and non-zero flags.
+        for (lane in 1 until 8) vectors.writeElement(1, lane, 1)
         vectors.writeElement(2, 0, 1)
         putVector(4, 4, 0x15) // VSUBC
         val subState = N64HleRspCpuState().also { it.programCounter = 4 }
