@@ -54,7 +54,7 @@ class N64HleRspVectorState {
         for (lane in 0 until VECTOR_LANES) {
             val carry = (vco ushr lane) and 1
             val sum = readSignedElement(left, lane) + readSignedElement(right, lane) + carry
-            val result = saturateSigned16(sum)
+            val result = saturateSigned16(sum.toLong())
             writeElement(destination, lane, result)
             writeAccumulatorLane(lane, result.toLong() shl 16)
         }
@@ -69,7 +69,7 @@ class N64HleRspVectorState {
         for (lane in 0 until VECTOR_LANES) {
             val borrow = (vco ushr lane) and 1
             val difference = readSignedElement(left, lane) - readSignedElement(right, lane) - borrow
-            val result = saturateSigned16(difference)
+            val result = saturateSigned16(difference.toLong())
             writeElement(destination, lane, result)
             writeAccumulatorLane(lane, result.toLong() shl 16)
         }
