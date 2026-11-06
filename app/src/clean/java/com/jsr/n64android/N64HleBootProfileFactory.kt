@@ -11,11 +11,11 @@ package com.jsr.n64android
  * implemented and validated in this clean source set.
  */
 object N64HleBootProfileFactory {
-    private const val IPL3_CHECKSUM_OFFSET = 0x40
-    private const val IPL3_CHECKSUM_END = 0x1000
+    internal const val IPL3_CHECKSUM_OFFSET = 0x40
+    internal const val IPL3_CHECKSUM_END = 0x1000
     private const val CIC_6102_IPL3_SUM = 0xD057C85244L
-    private const val GAME_IMAGE_ROM_OFFSET = 0x1000
-    private const val GAME_IMAGE_SIZE = 0x100000
+    internal const val GAME_IMAGE_ROM_OFFSET = 0x1000
+    internal const val GAME_IMAGE_SIZE = 0x100000
     private const val BOOT_FLAGS = 0x80000300L
     private val ENTRY_STACK = 0xFFFFFFFFA4001FF0UL.toLong()
     private const val INITIAL_STATUS = 0x34000000L
@@ -87,10 +87,12 @@ object N64HleBootProfileFactory {
         )
     }
 
-    private fun detectCicSeed(cartridge: N64HleCartridgeImage): Int? {
-        if (cartridge.sizeBytes < IPL3_CHECKSUM_END) return null
-        var sum = 0L
+    internal fun calculateIpl3WordSum(cartridge: N64HleCartridgeImage): Long {
+        require(cartridge.sizeBytes >= IPL3_CHECKSUM_END) {
+            "ROM does not contain the complete IPL3 block."
+        }
         val bytes = cartridge.readBytes(IPL3_CHECKSUM_OFFSET, IPL3_CHECKSUM_END - IPL3_CHECKSUM_OFFSET)
+        var sum = 0L
         var offset = 0
         while (offset < bytes.size) {
             val word = ((bytes[offset].toLong() and 0xFFL) shl 24) or
@@ -100,16 +102,20 @@ object N64HleBootProfileFactory {
             sum += word
             offset += 4
         }
-        return if (sum == CIC_6102_IPL3_SUM) 0x3F else null
+        return sum
     }
 
+    internal fun detectCicSeed(cartridge: N64HleCartridgeImage): Int? {
+        if (cartridge.sizeBytes < IPL3_CHECKSUM_END) return null
+        return if (calculateIpl3WordSum(cartridge) == CIC_6102_IPL3_SUM) 0x3F else null
+    }
     private fun detectTvType(region: Int): Int = when (region.toChar().uppercaseChar()) {
         'P', 'D', 'F', 'I', 'S', 'U', 'X', 'Y' -> 0
         'B' -> 2
         else -> 1
     }
 
-    private fun calculate6102Checksum(image: ByteArray): kotlin.Pair<Int, Int> {
+    internal fun calculate6102Checksum(image: ByteArray): kotlin.Pair<Int, Int> {
         require(image.size == GAME_IMAGE_SIZE)
         val mask = 0xFFFF_FFFFL
         val initial = (0x3FL * 0x5D588B65L + 1L) and mask
