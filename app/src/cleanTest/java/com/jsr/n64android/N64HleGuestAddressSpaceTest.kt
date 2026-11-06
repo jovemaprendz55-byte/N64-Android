@@ -180,4 +180,37 @@ class N64HleGuestAddressSpaceTest {
         assertEquals(0x00000100L, unsupportedSegment.virtualAddress)
     }
 
+
+    @Test
+    fun piReadLengthDmaCopiesCartridgeBytesIntoRdramAndAdvancesAddresses() {
+        val rom = ByteArray(64) { (it + 1).toByte() }
+        val memory = N64HleGuestAddressSpace(cartridgeRom = rom)
+        memory.write32(0xA4600000L, 0x100L)
+        memory.write32(0xA4600004L, 0x10000008L)
+        memory.write32(0xA4600008L, 7L)
+
+        assertArrayEquals(byteArrayOf(9, 10, 11, 12, 13, 14, 15, 16), memory.readBytes(0x80000100L, 8))
+        assertEquals(0x108L, memory.read32(0xA4600000L))
+        assertEquals(0x10000010L, memory.read32(0xA4600004L))
+        assertEquals(0L, memory.read32(0xA4600010L))
+    }
+
+    @Test
+    fun invalidPiDmaDoesNotPartiallyModifyRdramAndSetsError() {
+        val memory = N64HleGuestAddressSpace(cartridgeRom = ByteArray(16) { it.toByte() })
+        memory.write32(0x80000100L, 0xAABBCCDDL)
+        memory.write32(0xA4600000L, 0x100L)
+        memory.write32(0xA4600004L, 0x1000000CL)
+        assertThrows(IllegalArgumentException::class.java) { memory.write32(0xA4600008L, 7L) }
+        assertEquals(0xAABBCCDDL, memory.read32(0x80000100L))
+        assertEquals(4L, memory.read32(0xA4600010L))
+    }
+
+    @Test
+    fun piWriteLengthIsRejectedAndSetsErrorInsteadOfWritingRom() {
+        val memory = N64HleGuestAddressSpace(cartridgeRom = byteArrayOf(1, 2, 3, 4))
+        assertThrows(N64HleGuestAddressMappingFault::class.java) { memory.write32(0xA460000CL, 3L) }
+        assertEquals(4L, memory.read32(0xA4600010L))
+    }
+
 }
