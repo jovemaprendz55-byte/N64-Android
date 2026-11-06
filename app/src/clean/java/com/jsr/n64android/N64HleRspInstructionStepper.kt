@@ -135,8 +135,14 @@ class N64HleRspInstructionStepper(
         val vs = (instruction ushr 11) and 31
         val vd = (instruction ushr 6) and 31
         val element = (instruction ushr 21) and 15
+        val function = instruction and 63
+        if (function == 0x1D) {
+            if (element !in 8..10) throw N64HleRspUnsupportedInstructionException(pc, instruction)
+            vectorState.accumulatorSlice(vd, element)
+            return
+        }
         if (element !in 0..7) throw N64HleRspUnsupportedInstructionException(pc, instruction)
-        when (instruction and 63) {
+        when (function) {
             0x00 -> vectorState.multiplyFractional(vd, vs, vt, element) // VMULF
             0x10 -> vectorState.add(vd, vs, vt, element) // VADD
             0x11 -> vectorState.subtract(vd, vs, vt, element) // VSUB
