@@ -99,7 +99,8 @@ class N64HleRspInstructionStepper(
                 vectorState.writeByte(rd, (element + 1) and 15, value and 0xFF)
             }
             0x06 -> vectorState.writeControlRegister(rd, state.readGpr(rt))
-            else -> executeVector(instruction, pc)
+            in 16..31 -> executeVector(instruction, pc)
+            else -> throw N64HleRspUnsupportedInstructionException(pc, instruction)
         }
     }
 
