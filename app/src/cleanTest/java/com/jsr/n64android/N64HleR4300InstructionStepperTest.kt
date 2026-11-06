@@ -226,6 +226,19 @@ class N64HleR4300InstructionStepperTest {
     }
 
 
+
+    @Test fun syncIsRecognizedAsValidButNotImplemented() {
+        val state = N64HleR4300CpuState(0x80002500L, mapOf(1 to 0x44L))
+        val beforeGprs = state.copyKnownGprs()
+        val sync = (1 shl 21) or 0x0F
+
+        val result = stepper.stepWithResult(sync, state)
+
+        assertTrue(result is N64HleR4300StepResult.ValidButNotImplemented)
+        assertEquals(0x80002500L, state.programCounter)
+        assertEquals(beforeGprs, state.copyKnownGprs())
+    }
+
     @Test fun typedResultDistinguishesValidUnsupportedCop1LoadWithoutMutation() {
         val state = N64HleR4300CpuState(0x80001000L, mapOf(1 to 0x1234L))
         val beforeGprs = state.copyKnownGprs()
