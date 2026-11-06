@@ -4221,3 +4221,18 @@ Relatório detalhado: [AUDITORIA_CRC_CIC6102_CLEAN_2026-11-06.md](AUDITORIA_CRC_
 ### Próxima tarefa técnica recomendada
 
 Criar uma ferramenta offline de diagnóstico de ROM que rode localmente no aparelho do usuário e mostre tamanho, byte order/magic, game code/country, CRC do cabeçalho, assinatura/soma IPL3, CIC inferido e CRC1/CRC2 esperado versus calculado. Não enviar nem solicitar a ROM; usar somente metadados e resultados locais. Antes de implementar, inspecionar o fluxo limpo atual de carregamento/inspeção para reaproveitar interfaces sem alterar o caminho de boot. Depois validar com fixtures sintéticas e, se o usuário quiser, com a própria cópia legítima de GoldenEye no aparelho. CI aprovado não significa que o jogo já funciona.
+
+
+## Auditoria do diagnóstico offline de ROM — 2026-11-06
+
+Criado [AUDITORIA_DIAGNOSTICO_ROM_CLEAN_2026-11-06.md](AUDITORIA_DIAGNOSTICO_ROM_CLEAN_2026-11-06.md) após leitura do fluxo limpo de ROM.
+
+- A versão limpa já seleciona ROM via Storage Access Framework, lê com limite de 64 MiB e normaliza Z64/V64/N64 em `N64HleCartridgeImage`.
+- O cabeçalho já fornece tamanho, entry point, CRC1/CRC2, título, cartridge ID e country code; a tela mostra título, tamanho, byte order e CRCs do cabeçalho.
+- O factory CIC 6102/7101 calcula soma IPL3 e CRC1/CRC2, mas as rotinas são privadas e misturam diagnóstico com validação do handoff por exceções.
+- Os antigos `N64RomLoader.kt` e `N64RomInspector.kt` estão em `app/src/main`, fora do source set limpo. Não reutilizar/copiar esses arquivos.
+- Plano proposto: inspetor puro `N64HleRomDiagnostics.kt`, relatório imutável e estados explícitos para assinatura CIC, CRC calculado versus cabeçalho, dados insuficientes e não suportado. Mostrar relatório sem boot/CPU; manter preparação HLE separada.
+- Foram listados testes para byte orders, campos do cabeçalho, IPL3 insuficiente/desconhecido, CRC correspondente/divergente e ausência de efeitos colaterais.
+- Esta etapa foi somente leitura estática e documentação; nenhum Gradle/CI/aparelho foi executado nesta auditoria.
+- **Aguardando autorização explícita para alterar produção/testes**, conforme a regra permanente do projeto. Quando autorizado, implementar primeiro o inspetor puro e seus testes; depois integrar a tela.
+
