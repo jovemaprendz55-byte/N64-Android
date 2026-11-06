@@ -167,4 +167,29 @@ class N64HleRspInstructionStepperTest {
         assertEquals(-9, state.readGpr(3))
     }
 
+
+    @Test
+    fun regimmBranchesAndJalrRespectDelaySlots() {
+        val memory = N64HleGuestAddressSpace()
+        put(memory, 0, (0x01 shl 26) or (1 shl 16) or 2) // BGEZ r0,+2
+        put(memory, 4, (0x09 shl 26) or (2 shl 16) or 5) // delay slot
+        put(memory, 16, (0x00 shl 26) or (3 shl 21) or (4 shl 11) or 0x09) // JALR r4,r3
+        put(memory, 20, (0x09 shl 26) or (5 shl 16) or 6) // delay slot
+        val state = N64HleRspCpuState()
+        state.writeGpr(3, 0x30)
+        val stepper = N64HleRspInstructionStepper(memory)
+
+        stepper.step(state)
+        stepper.step(state)
+        assertEquals(5, state.readGpr(2))
+        assertEquals(12, state.programCounter)
+        state.programCounter = 16
+        stepper.step(state)
+        assertEquals(24, state.readGpr(4))
+        stepper.step(state)
+
+        assertEquals(6, state.readGpr(5))
+        assertEquals(0x30, state.programCounter)
+    }
+
 }
