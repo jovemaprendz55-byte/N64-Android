@@ -4236,3 +4236,28 @@ Criado [AUDITORIA_DIAGNOSTICO_ROM_CLEAN_2026-11-06.md](AUDITORIA_DIAGNOSTICO_ROM
 - Esta etapa foi somente leitura estática e documentação; nenhum Gradle/CI/aparelho foi executado nesta auditoria.
 - **Aguardando autorização explícita para alterar produção/testes**, conforme a regra permanente do projeto. Quando autorizado, implementar primeiro o inspetor puro e seus testes; depois integrar a tela.
 
+## Continuidade — diagnóstico offline de ROM implementado — 2026-11-06
+
+Branch exclusiva: `dev/n64-hle-clean-reboot`. A branch `main` não foi usada nas alterações desta etapa.
+
+### Implementação
+- Criado `app/src/clean/java/com/jsr/n64android/N64HleRomDiagnostics.kt`: relatório imutável e somente leitura com tamanho, byte order, título, cartridge ID, país, entry point, CRCs do cabeçalho, soma IPL3, perfil CIC/seed e CRCs calculados quando aplicáveis.
+- Estados explícitos: `VALID`, `DIVERGENT`, `UNSUPPORTED`, `INSUFFICIENT_DATA` e `READ_ERROR`.
+- Não infere CIC pelo título/região. Reconhece somente a assinatura IPL3 CIC 6102/7101 já suportada pelo projeto (seed 0x3F); não é detector universal.
+- Só calcula CRC1/CRC2 quando há bloco de jogo de 1 MiB e perfil CIC reconhecido.
+- Factory compartilha as rotinas de soma IPL3 e CRC com o diagnóstico; o algoritmo não foi duplicado.
+- Integrado painel "DIAGNÓSTICO OFFLINE DA ROM" à tela inicial. O cálculo roda na thread de leitura e não prepara HLE, não inicia CPU e não altera a ROM. O botão PREPARAR HANDOFF HLE continua separado.
+- Testes em `app/src/cleanTest/java/com/jsr/n64android/N64HleRomDiagnosticsTest.kt` cobrem CRC válido/divergente, CIC conhecido/desconhecido, IPL3 insuficiente, imagem de jogo insuficiente e preservação dos bytes.
+
+### Commits e CI
+- Código e UI: [8afbb8929061a953569bb192222b49b79b87a034](https://github.com/jovemaprendz55-byte/N64-Android/commit/8afbb8929061a953569bb192222b49b79b87a034).
+- GitHub Actions [42237127590](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42237127590): `Build and test` e `Upload debug APK` passaram; workflow concluído com sucesso.
+- Testes com o caso de imagem de jogo insuficiente: [42237007266](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42237007266) concluído com sucesso.
+- Relatório detalhado: [IMPLEMENTACAO_DIAGNOSTICO_ROM_CLEAN_2026-11-06.md](IMPLEMENTACAO_DIAGNOSTICO_ROM_CLEAN_2026-11-06.md).
+
+### Limites
+CI confirma compilação/testes automatizados, não execução de GoldenEye, não validação de ROM comercial real e não teste no aparelho. Nenhuma ROM comercial foi compartilhada.
+
+### Próxima tarefa
+Instalar o APK no Android e verificar o painel com a cópia legítima de ROM do usuário, sem enviar o arquivo. Depois, retomar o boot/runtime do GoldenEye 007 NTSC-U com evidência real do diagnóstico, investigando a primeira falha de CPU/memória e priorizando TLB, MMIO, DMA e interrupções conforme necessário. Não declarar que o jogo funciona até haver prova no aparelho.
+
