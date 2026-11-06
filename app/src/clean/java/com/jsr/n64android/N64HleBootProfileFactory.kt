@@ -131,7 +131,7 @@ object N64HleBootProfileFactory {
             val rotate = Integer.rotateLeft(word.toInt(), (word and 0x1FL).toInt()).toLong() and mask
             t3 = (t3 xor word) and mask
             s0 = (s0 + rotate) and mask
-            val mixed = if (a2 < word) (a3 xor word) else rotate
+            val mixed = if (a2 > word) rotate else (a3 xor word)
             a2 = (a2 xor mixed) and mask
             t4 = (t4 + (word xor s0)) and mask
             offset += 4
