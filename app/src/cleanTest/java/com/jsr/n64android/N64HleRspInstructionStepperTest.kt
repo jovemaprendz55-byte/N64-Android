@@ -67,6 +67,7 @@ class N64HleRspInstructionStepperTest {
     fun breakHaltsSpAndRaisesMiSpInterrupt() {
         val memory = N64HleGuestAddressSpace()
         put(memory, 0, 0x0000000D) // BREAK
+        memory.write32(0xA4040010L, 1L shl 8) // enable interrupt-on-break
         memory.write32(0xA4040010L, 1L) // release SP HALT
         val state = N64HleRspCpuState()
         val stepper = N64HleRspInstructionStepper(memory)
@@ -74,9 +75,22 @@ class N64HleRspInstructionStepperTest {
         stepper.step(state)
 
         assertTrue(state.halted)
-        assertEquals(7L, memory.read32(0xA4040010L)) // HALT | BROKE | INTR
+        assertEquals(71L, memory.read32(0xA4040010L)) // HALT | BROKE | INTR | INTR_BREAK
         assertEquals(1L, memory.read32(0xA4300008L)) // MI_INTR.SP
         assertThrows(IllegalStateException::class.java) { stepper.step(state) }
+    }
+
+    @Test
+    fun breakWithoutInterruptOnBreakHaltsWithoutRaisingMiInterrupt() {
+        val memory = N64HleGuestAddressSpace()
+        put(memory, 0, 0x0000000D) // BREAK
+        memory.write32(0xA4040010L, 1L) // release SP HALT
+        val state = N64HleRspCpuState()
+        N64HleRspInstructionStepper(memory).step(state)
+
+        assertTrue(state.halted)
+        assertEquals(3L, memory.read32(0xA4040010L)) // HALT | BROKE
+        assertEquals(0L, memory.read32(0xA4300008L))
     }
 
     @Test
