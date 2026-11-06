@@ -4323,3 +4323,30 @@ Complemento após a implementação inicial de PI DMA:
 - Teste de status/acknowledge: `a0c74015ce8270de422f4d9d377caaecc76ef209`
 
 CI do commit `a0c74015ce8270de422f4d9d377caaecc76ef209` ainda deve ser consultada antes de declarar esta etapa validada.
+
+
+## Continuidade — entrega de interrupção MI ao COP0/R4300 — 2026-11-06
+
+Implementação adicional após a etapa PI/MI:
+
+- `N64HleGuestAddressSpace.hasEnabledPendingInterrupt()` expõe a linha MI quando existe fonte pendente e desmascarada.
+- `N64HleR4300InstructionStepper` consulta essa linha antes da execução/fetch e entrega MI como Cause.IP2.
+- A entrega só ocorre quando Status.IE=1, Status.IM2=1, Status.EXL=0 e Status.ERL=0.
+- Entrada usa ExceptionCode INTERRUPT, preserva Cause.IP2, atualiza Status.EXL, EPC e PC para o vetor geral conforme BEV.
+- A pendência do dispositivo não é apagada pela CPU; continua até acknowledge do PI_STATUS, como esperado.
+- Testes novos cobrem interrupção PI habilitada e interrupção bloqueada por máscara COP0.
+
+Commits:
+- API da linha MI: `50a4aae71207d7a4c84a19cdd9223349374643bb`
+- Entrega ao COP0/R4300: `d14bbf7c1db862f0f5f6206fb346caa6defc420f`
+- Testes de interrupção: `a613bd66b8daf6bba43a09d6e0b92b8035beb883`
+
+CI do commit de testes: workflow `42240654965`; verificar conclusão antes de declarar esta etapa validada.
+
+Limites: somente fonte MI PI está conectada nesta etapa. Não há ainda contadores/timing de ciclos, interrupções SP/SI/AI/VI/DP, exceção de interrupção vetorizada, RSP/RDP/VI ou áudio/controles. O processamento da interrupção ocorre na fronteira de instrução, de forma síncrona.
+
+Próximo foco de alto impacto:
+1. Verificar e corrigir CI do HEAD.
+2. Integrar contagem de ciclos e um scheduler simples por eventos para que PI DMA não seja um efeito instantâneo isolado.
+3. Adicionar SI DMA e interrupção SI para permitir caminho de comunicação/controlador.
+4. Avançar no SP task scheduler, depois RSP/RDP/VI para produzir quadro real.
