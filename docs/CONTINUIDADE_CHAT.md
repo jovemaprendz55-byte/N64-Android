@@ -4026,3 +4026,57 @@ Inspecionados decoder, executor SPECIAL, classificador de exceções, stepper, p
 A validação precisa ficar no caminho comum do stepper, imediatamente após decode e antes de classificar exceções ou despachar controle. Encoding legal sem implementação continua distinto de RI. Os testes atuais verificam decodificação e resultados de execução, mas não uma matriz de campos reservados.
 
 Nenhum código de produção/teste foi alterado; nenhum Gradle, CI ou dispositivo foi executado. Próximo passo recomendado: adicionar primeiro um validador puro e testes parametrizados no source set limpo; só então integrá-lo ao stepper e validar RI em delay slots.
+
+
+# Registro desta conversa e instrução obrigatória para os próximos chats — 2026-11-06
+
+## O que foi realizado nesta conversa
+
+O trabalho permaneceu restrito à branch `dev/n64-hle-clean-reboot` e à versão limpa do N64 Android. A branch `main` não foi modificada.
+
+1. Foi retomada a auditoria dos encodings SPECIAL do R4300, usando a matriz normativa criada nesta sequência.
+2. Foi feita inspeção estática do decoder, executor SPECIAL, classificador de exceções, stepper, planner de transferências de controle e testes-fonte.
+3. Foi confirmado que o decoder associa a operação SPECIAL principalmente pelo `functionCode`, sem validar todas as restrições dos campos `rs`, `rt`, `rd` e `shiftAmount`.
+4. Foi observado que validar apenas dentro do executor SPECIAL não basta:
+   - instruções SPECIAL comuns chegam ao executor;
+   - JR/JALR são encaminhadas ao planner de controle antes do executor;
+   - SYSCALL/BREAK são classificados pelo caminho de exceções.
+5. Foi documentado que a validação estrutural precisa acontecer no caminho comum do stepper, após o decode e antes da classificação de exceções e do despacho de execução.
+6. Foi reforçada a distinção entre encoding reservado (RI) e encoding válido cuja operação ainda não possui implementação.
+7. Foi criado o documento [AUDITORIA_APLICACAO_MATRIZ_SPECIAL_CLEAN_2026-11-06.md](AUDITORIA_APLICACAO_MATRIZ_SPECIAL_CLEAN_2026-11-06.md).
+8. A matriz de referência usada nesta etapa está em [MATRIZ_ENCODING_SPECIAL_R4300_CLEAN_2026-11-06.md](MATRIZ_ENCODING_SPECIAL_R4300_CLEAN_2026-11-06.md).
+9. Este registro cumulativo foi atualizado para que outro chat consiga retomar sem depender do histórico da conversa.
+
+## Estado ao encerrar esta conversa
+
+- Auditoria estática e leitura de testes-fonte concluídas para o escopo descrito.
+- Nenhum arquivo de produção foi alterado nesta conversa.
+- Nenhum arquivo de teste foi alterado nesta conversa.
+- Não foi executado Gradle nesta etapa.
+- Não foi executado teste CI nesta etapa.
+- Não foi feito teste em dispositivo Android.
+- Não afirmar que o validador estrutural já existe: ele ainda precisa ser criado.
+- Não afirmar que a CPU R4300 está completa ou que jogos funcionam.
+
+## Próxima tarefa técnica
+
+Na versão limpa, criar primeiro um validador estrutural SPECIAL puro e seus testes parametrizados, sem integrar imediatamente ao stepper. A matriz deve orientar casos válidos e inválidos por formato. Preservar valores de code permitidos em SYSCALL/BREAK/traps. Em seguida, revisar os resultados e só então planejar a integração comum ao stepper, cobrindo JR/JALR, exceções RI e delay slots. Não alterar produção sem evidência e registrar cada alteração e teste.
+
+## INSTRUÇÃO PERMANENTE PARA TODO CHAT QUE CONTINUAR ESTE PROJETO
+
+Todo chat que trabalhar neste repositório deve seguir estas regras:
+
+1. **Antes de começar**, abrir e ler este arquivo `docs/CONTINUIDADE_CHAT.md` na branch `dev/n64-hle-clean-reboot`, além dos documentos específicos citados na seção relevante. Não depender somente do resumo da conversa anterior.
+2. Trabalhar exclusivamente na versão limpa: produção em `app/src/clean/java`, testes em `app/src/cleanTest/java` e documentação em `docs/`.
+3. Não tocar na branch `main`, não fazer merge, não apagar branches e não copiar/adaptar código da implementação antiga.
+4. Ao receber “Continua”, retomar a próxima tarefa técnica registrada neste documento, sem perguntar o que fazer, respeitando os limites de autorização já definidos.
+5. Distinguir claramente auditoria estática, leitura de testes-fonte, execução local do Gradle, resultado de CI e teste real em dispositivo. Nunca dizer que um teste foi executado sem executá-lo nem transformar ausência de resultado em sucesso.
+6. Não alterar código de produção ou testes sem autorização explícita do usuário. Quando houver autorização, fazer alterações pequenas, justificadas e acompanhadas de testes adequados.
+7. Não declarar funcionalidades completas, compatibilidade de ROM ou jogabilidade sem evidências verificáveis.
+8. Depois de cada sessão de trabalho, **atualizar este mesmo arquivo cumulativo** com: data, branch/HEAD quando conhecido, arquivos examinados ou alterados, achados, decisões, testes realmente executados e seus resultados, limitações e próxima tarefa.
+9. Criar documentos específicos em `docs/` quando uma auditoria ou decisão técnica justificar; incluir links relativos neste arquivo cumulativo.
+10. Após atualizar a documentação, buscar novamente os arquivos no GitHub para confirmar que foram publicados e fornecer ao usuário o link direto para este documento e para qualquer novo relatório.
+11. Não substituir nem reescrever o histórico anterior. Acrescentar registros datados, preservando as decisões e evidências já documentadas.
+12. Se o acesso ao GitHub ou a execução de alguma tarefa falhar, registrar a limitação com precisão e não afirmar que a operação foi concluída.
+
+**Regra de continuidade:** este documento é a fonte principal de passagem de contexto entre chats. Todo chat novo deve consultá-lo primeiro e todo chat que fizer trabalho deve atualizá-lo antes de encerrar.
