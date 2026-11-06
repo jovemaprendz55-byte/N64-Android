@@ -4004,3 +4004,14 @@ A solução proposta é uma etapa pura de validação estrutural entre decode e 
 Esse achado é independente do fallback de despacho já documentado: RI para encoding inválido, capacidade ausente para encoding válido não implementado, execução somente para encoding válido suportado.
 
 **Validação:** inspeção estática e leitura dos testes-fonte. Não foram executados Gradle/testes/aparelho. Nenhum código de produção ou teste foi alterado. Próxima etapa: construir matriz normativa por operação SPECIAL e testes parametrizados.
+
+
+## Matriz normativa inicial de encodings SPECIAL — 2026-11-06
+
+Criado [MATRIZ_ENCODING_SPECIAL_R4300_CLEAN_2026-11-06.md](MATRIZ_ENCODING_SPECIAL_R4300_CLEAN_2026-11-06.md), usando como referência primária o manual NEC VR4300/VR4305/VR4310 U10504EJ7V0UMJ1 (7ª edição, 2000): https://n64dev.org/p/U10504EJ7V0UMJ1.pdf.
+
+A matriz discrimina os campos de shifts imediatos/variáveis, aritmética e lógica, JR/JALR, HI/LO, multiply/divide, traps, SYSCALL/BREAK e SYNC. Ponto crítico: code de SYSCALL/BREAK (20 bits) e code dos traps SPECIAL (10 bits) são parâmetros válidos, não campos que devam ser zerados. SYNC, ao contrário, exige bits 25..6 zero. Shifts variáveis exigem sa=0; shifts imediatos exigem rs=0; operações de três registradores exigem sa=0.
+
+A matriz também registra que as operações doubleword shifts têm requisito de modo: o manual descreve RI em modo User/Supervisor de 32 bits. Isso não pode ser confundido com erro estrutural de campo. O decoder limpo não enumera DSLLV/DSRLV/DSRAV, então não foram adicionadas como operações cobertas.
+
+**Validação:** matriz documental conferida com os diagramas e descrições do manual VR4300. Nenhum código de produção/teste foi alterado e Gradle/aparelho não foram executados. Próximo passo: implementar testes puros para cada máscara e preservar os campos code permitidos, antes de introduzir o validador no stepper.
