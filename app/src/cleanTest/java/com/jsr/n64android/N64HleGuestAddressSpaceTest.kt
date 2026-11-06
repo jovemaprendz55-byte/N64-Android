@@ -238,13 +238,13 @@ class N64HleGuestAddressSpaceTest {
         val memory = N64HleGuestAddressSpace()
 
         memory.write32(0xA4040010L, 1L shl 4) // set SP interrupt
-        assertEquals(1L shl 2, memory.read32(0xA4040010L))
+        assertEquals(5L, memory.read32(0xA4040010L))
         assertEquals(1L, memory.read32(0xA4300008L)) // MI_INTR.SP
 
         memory.write32(0xA430000CL, 1L shl 1) // set SP interrupt mask
         assertEquals(1L, memory.read32(0xA430000CL))
         memory.write32(0xA4040010L, 1L shl 3) // clear SP interrupt
-        assertEquals(0L, memory.read32(0xA4040010L))
+        assertEquals(1L, memory.read32(0xA4040010L)) // HALT remains set
         assertEquals(0L, memory.read32(0xA4300008L))
         assertEquals(1L, memory.read32(0xA430000CL)) // acknowledge does not change mask
     }
