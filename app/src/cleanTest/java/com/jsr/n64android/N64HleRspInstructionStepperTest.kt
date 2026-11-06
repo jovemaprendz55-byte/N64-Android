@@ -251,4 +251,25 @@ class N64HleRspInstructionStepperTest {
             N64HleRspInstructionStepper(memory).step(N64HleRspCpuState())
         }
     }
+
+    @Test
+    fun decodesRspVectorBitwiseOperations() {
+        val memory = N64HleGuestAddressSpace()
+        val vectors = N64HleRspVectorState()
+        val stepper = N64HleRspInstructionStepper(memory, vectors)
+        vectors.writeElement(1, 0, 0xF0F0)
+        vectors.writeElement(2, 0, 0x0FF0)
+        val functions = listOf(0x28, 0x2A, 0x2B, 0x2C)
+        val destinations = listOf(3, 4, 5, 6)
+        functions.forEachIndexed { index, function ->
+            put(memory, index * 4, (0x12 shl 26) or (2 shl 16) or (1 shl 11) or
+                (destinations[index] shl 6) or function)
+            val state = N64HleRspCpuState().also { it.programCounter = index * 4 }
+            stepper.step(state)
+        }
+        assertEquals(0x00F0, vectors.readElement(3, 0))
+        assertEquals(0xFFF0, vectors.readElement(4, 0))
+        assertEquals(0x000F, vectors.readElement(5, 0))
+        assertEquals(0xFF00, vectors.readElement(6, 0))
+    }
 }
