@@ -279,8 +279,14 @@ class N64HleGuestAddressSpace(
         if ((command and SP_STATUS_CMD_CLR_HALT) != 0) spStatus = spStatus and SP_STATUS_HALT.inv()
         if ((command and SP_STATUS_CMD_SET_HALT) != 0) spStatus = spStatus or SP_STATUS_HALT
         if ((command and SP_STATUS_CMD_CLR_BROKE) != 0) spStatus = spStatus and SP_STATUS_BROKE.inv()
-        if ((command and SP_STATUS_CMD_CLR_INTR) != 0) spStatus = spStatus and SP_STATUS_INTR.inv()
-        if ((command and SP_STATUS_CMD_SET_INTR) != 0) spStatus = spStatus or SP_STATUS_INTR
+        if ((command and SP_STATUS_CMD_CLR_INTR) != 0) {
+            spStatus = spStatus and SP_STATUS_INTR.inv()
+            miInterrupt = miInterrupt and MI_INTR_SP.inv()
+        }
+        if ((command and SP_STATUS_CMD_SET_INTR) != 0) {
+            spStatus = spStatus or SP_STATUS_INTR
+            miInterrupt = miInterrupt or MI_INTR_SP
+        }
         if ((command and SP_STATUS_CMD_CLR_SSTEP) != 0) spStatus = spStatus and SP_STATUS_SSTEP.inv()
         if ((command and SP_STATUS_CMD_SET_SSTEP) != 0) spStatus = spStatus or SP_STATUS_SSTEP
         if ((command and SP_STATUS_CMD_CLR_INTR_BREAK) != 0) spStatus = spStatus and SP_STATUS_INTR_BREAK.inv()
@@ -350,6 +356,7 @@ class N64HleGuestAddressSpace(
         private const val MI_INTR_REG = MI_REG_BASE + 0x08
         private const val MI_INTR_MASK_REG = MI_REG_BASE + 0x0C
         private const val MI_INTR_PI = 1 shl 4
+        private const val MI_INTR_SP = 1 shl 0
         private const val MI_INTERRUPT_SOURCE_COUNT = 6
         private const val PI_REG_BASE = 0x0460_0000
         private const val PI_DRAM_ADDR_REG = PI_REG_BASE
