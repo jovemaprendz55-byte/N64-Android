@@ -3991,3 +3991,16 @@ O planner/sequencer confirma que branch/jump e delay slot são passos separados.
 **Validação:** inspeção estática dos arquivos e leitura dos testes-fonte. Nenhum teste Gradle foi executado; nenhum código de produção ou teste foi alterado. A auditoria não prova execução de ROM nem jogo funcional.
 
 Próximos testes recomendados: instrução não suportada buscada da memória, falha em delay slot, snapshot de valores e flags de conhecimento, e contagem de branch mais delay slot. A correção tipada do despacho continua pendente.
+
+
+## Auditoria de validação de encodings SPECIAL — 2026-11-06
+
+Criado [AUDITORIA_ENCODING_SPECIAL_R4300_CLEAN_2026-11-06.md](AUDITORIA_ENCODING_SPECIAL_R4300_CLEAN_2026-11-06.md).
+
+Achado: o decoder resolve `specialOperation` pelo function code e extrai os demais campos, mas isso não valida as restrições de codificação específicas de cada operação. O classificador trata function code desconhecido como RI, porém não há validação geral de campos reservados para operações SPECIAL conhecidas antes da execução. Assim, um encoding com function code reconhecido e campos auxiliares inválidos pode alcançar o executor como operação normal.
+
+A solução proposta é uma etapa pura de validação estrutural entre decode e execução, com resultado distinto para encoding legal, encoding reservado e operação desconhecida. A tabela normativa de restrições deve ser derivada da especificação VR4300/R4300; não presumir regras de campos sem confirmação.
+
+Esse achado é independente do fallback de despacho já documentado: RI para encoding inválido, capacidade ausente para encoding válido não implementado, execução somente para encoding válido suportado.
+
+**Validação:** inspeção estática e leitura dos testes-fonte. Não foram executados Gradle/testes/aparelho. Nenhum código de produção ou teste foi alterado. Próxima etapa: construir matriz normativa por operação SPECIAL e testes parametrizados.
