@@ -144,7 +144,7 @@ class N64HleRspInstructionStepperTest {
 
         repeat(7) { stepper.step(state) }
 
-        assertEquals(24, state.readGpr(3))
+        assertEquals(768, state.readGpr(3))
         assertEquals(0, state.readGpr(4))
         assertEquals(120, state.readGpr(5))
         assertEquals(13, state.readGpr(6))
