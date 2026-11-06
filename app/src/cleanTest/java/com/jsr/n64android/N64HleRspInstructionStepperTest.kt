@@ -199,7 +199,7 @@ class N64HleRspInstructionStepperTest {
         val vectors = N64HleRspVectorState()
         val stepper = N64HleRspInstructionStepper(memory, vectors)
         fun encode(pc: Int, vd: Int, vs: Int, vt: Int, function: Int) {
-            put(memory, pc, (0x12 shl 26) or (vt shl 16) or (vs shl 11) or (vd shl 6) or function)
+            put(memory, pc, (0x12 shl 26) or (16 shl 21) or (vt shl 16) or (vs shl 11) or (vd shl 6) or function)
         }
         vectors.writeElement(1, 0, 100)
         vectors.writeElement(2, 0, 25)
@@ -232,7 +232,7 @@ class N64HleRspInstructionStepperTest {
             vectors.writeElement(2, lane, 100 + lane)
         }
         val selectedElement = 3
-        val instruction = (0x12 shl 26) or (selectedElement shl 21) or
+        val instruction = (0x12 shl 26) or ((16 + selectedElement) shl 21) or
             (2 shl 16) or (1 shl 11) or (3 shl 6) or 0x10
         put(memory, 0, instruction)
         N64HleRspInstructionStepper(memory, vectors).step(N64HleRspCpuState())
@@ -244,7 +244,7 @@ class N64HleRspInstructionStepperTest {
     @Test
     fun unsupportedVectorElementPermutationIsRejectedExplicitly() {
         val memory = N64HleGuestAddressSpace()
-        val instruction = (0x12 shl 26) or (8 shl 21) or (2 shl 16) or
+        val instruction = (0x12 shl 26) or (24 shl 21) or (2 shl 16) or
             (1 shl 11) or (3 shl 6) or 0x10
         put(memory, 0, instruction)
         assertThrows(N64HleRspUnsupportedInstructionException::class.java) {
@@ -262,7 +262,7 @@ class N64HleRspInstructionStepperTest {
         val functions = listOf(0x28, 0x2A, 0x2B, 0x2C)
         val destinations = listOf(3, 4, 5, 6)
         functions.forEachIndexed { index, function ->
-            put(memory, index * 4, (0x12 shl 26) or (2 shl 16) or (1 shl 11) or
+            put(memory, index * 4, (0x12 shl 26) or (16 shl 21) or (2 shl 16) or (1 shl 11) or
                 (destinations[index] shl 6) or function)
             val state = N64HleRspCpuState().also { it.programCounter = index * 4 }
             stepper.step(state)
