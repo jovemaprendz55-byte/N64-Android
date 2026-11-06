@@ -3976,3 +3976,18 @@ A matriz de capacidades e o contrato recomendado foram documentados. O stepper p
 **Validação:** auditoria estática dos arquivos ativos e dos testes-fonte. Nenhuma suíte Gradle foi executada nesta auditoria; nenhum código de produção ou teste foi alterado. Não declarar a CPU completa nem jogo funcional.
 
 Próximo passo: implementar o despacho tipado e testes de snapshot integral quando houver autorização explícita para alterar código. A auditoria COP0 anterior permanece como registro separado; este relatório detalha o problema independente do stepper.
+
+
+## Auditoria da sessão de execução e estado arquitetural — 2026-11-06
+
+Criado [AUDITORIA_SESSAO_ESTADO_R4300_CLEAN_2026-11-06.md](AUDITORIA_SESSAO_ESTADO_R4300_CLEAN_2026-11-06.md).
+
+A inspeção de `N64HleR4300ExecutionSession` confirma orçamento finito de 1 a 4096 passos, fetch via memória, incremento dos contadores somente após sucesso, registro da tentativa e propagação da exceção original. Os testes-fonte já cobrem chunks sucessivos, orçamento inválido, falha de fetch sem incremento e preservação do último sucesso.
+
+A inspeção de `N64HleR4300CpuState` confirma semântica explícita de valores conhecidos/desconhecidos: GPR0 é zero; GPRs não inicializados, HI/LO e COP0 desconhecidos não devem ser tratados como zero. Testes de preservação precisam comparar tanto valores quanto flags de conhecimento.
+
+O planner/sequencer confirma que branch/jump e delay slot são passos separados. O contador de instruções da sessão conta passos concluídos pelo stepper, não ciclos de hardware nem aposentadoria de pipeline. O sequencer depende do stepper para tratar exceções e não é uma CPU completa.
+
+**Validação:** inspeção estática dos arquivos e leitura dos testes-fonte. Nenhum teste Gradle foi executado; nenhum código de produção ou teste foi alterado. A auditoria não prova execução de ROM nem jogo funcional.
+
+Próximos testes recomendados: instrução não suportada buscada da memória, falha em delay slot, snapshot de valores e flags de conhecimento, e contagem de branch mais delay slot. A correção tipada do despacho continua pendente.
