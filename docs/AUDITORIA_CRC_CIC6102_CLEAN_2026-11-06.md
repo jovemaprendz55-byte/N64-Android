@@ -13,26 +13,23 @@ Escopo: inspeção estática; nenhum código de produção/teste alterado nesta 
 
 ## Achado crítico
 
-A implementação `calculate6102Checksum()` parece divergir da fórmula documentada para CRC1/CRC2 de ROM N64.
+A implementação `calculate6102Checksum()` apresenta uma divergência pontual em relação à fórmula documentada para CRC1/CRC2 de ROM N64.
 
 Na referência técnica `n64dev.org/n64crc.html`, corroborada pelas notas independentes do projeto CC0 `Dragorn421/n64checksum`, a atualização do acumulador equivalente a `t2` é:
 
 - se `t2 > d`: `t2 = t2 XOR rotateLeft(d, d AND 31)`
-- caso contrário: `t2 = t2 XOR t6 XOR d`
+- caso contrário (incluindo igualdade): `t2 = t2 XOR t6 XOR d`
 
-No código limpo atual, a variável equivalente `a2` usa o teste `a2 < word` e seleciona os dois ramos ao contrário:
+No código limpo atual, a variável equivalente `a2` usa `if (a2 < word)` para selecionar `a3 XOR word`; no caso contrário seleciona `rotate`.
 
-- se `a2 < word`: `a2 XOR (a3 XOR word)`
-- caso contrário: `a2 XOR rotate`
-
-Como `a3` já recebeu `a3 + word`, a expressão `a3 XOR word` corresponde ao ramo `t6 XOR d`; portanto, a divergência é a condição de comparação invertida, não apenas uma diferença de nomes.
+Como `a3` já recebeu `a3 + word`, a expressão `a3 XOR word` corresponde ao ramo `t6 XOR d`. Para valores diferentes, os ramos coincidem com a referência: quando `a2 > word`, o código usa rotate; quando `a2 < word`, usa `a3 XOR word`. A divergência ocorre somente quando `a2 == word`: a referência usa `a3 XOR word`, mas o código atual usa rotate. Portanto, não é correto dizer que a condição está globalmente invertida; é um erro no caso de igualdade.
 
 ## Impacto provável
 
 - CRC1 usa `a3 XOR t2(carry) XOR t3`; essa parte aparenta corresponder à fórmula.
-- CRC2 usa `s0 XOR a2 XOR t4`; como `a2` pode divergir a cada palavra, CRC2 calculado pode ficar incorreto.
-- O teste `N64HleBootProfileFactoryTest.checksum6102()` repete a mesma lógica de produção, inclusive a condição suspeita. Por isso, os testes sintéticos podem passar mesmo com a fórmula divergente.
-- O perfil HLE pode rejeitar uma ROM comercial válida por divergência de CRC2. Ainda não foi testada uma ROM GoldenEye real; não afirmar que esse impacto foi reproduzido no jogo.
+- CRC2 usa `s0 XOR a2 XOR t4`; o acumulador pode divergir quando uma palavra processada é exatamente igual ao valor atual de `a2`.
+- O teste `N64HleBootProfileFactoryTest.checksum6102()` repete a mesma lógica de produção, inclusive o caso de igualdade. Por isso, os testes sintéticos não detectam essa divergência.
+- O impacto em ROMs comerciais depende de ocorrer essa igualdade durante o processamento. Não há evidência de que isso ocorra na ROM GoldenEye; não afirmar que GoldenEye é rejeitado por esse motivo.
 
 ## Evidência técnica externa
 
@@ -57,6 +54,6 @@ Como `a3` já recebeu `a3 + word`, a expressão `a3 XOR word` corresponde ao ram
 - Nenhum Gradle/CI executado nesta etapa.
 - Nenhuma ROM comercial foi carregada ou compartilhada.
 - GoldenEye não foi executado.
-- A hipótese de divergência é suficientemente forte para bloquear a confiança no factory até correção e teste independente, mas ainda deve ser validada com vetor externo.
+- A divergência pontual está demonstrada por comparação de código com a fórmula de referência. Sua ocorrência/impacto em ROMs reais ainda precisa ser medido com vetores externos.
 
 Documento exclusivo da versão limpa.
