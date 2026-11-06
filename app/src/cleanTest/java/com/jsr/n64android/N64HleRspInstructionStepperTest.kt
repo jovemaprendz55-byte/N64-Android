@@ -241,9 +241,9 @@ class N64HleRspInstructionStepperTest {
 
         for (lane in 0 until 8) {
             val expected = when (lane % 3) {
-                0 -> -(100 + lane)
+                0 -> -100
                 1 -> 0
-                else -> 100 + lane
+                else -> 100
             }
             assertEquals(expected, vectors.readSignedElement(3, lane))
         }
@@ -380,7 +380,7 @@ class N64HleRspInstructionStepperTest {
         }
         val stepper = N64HleRspInstructionStepper(memory, vectors)
         fun putVsaw(pc: Int, destination: Int, slice: Int) {
-            put(memory, pc, (0x12 shl 26) or (slice shl 21) or
+            put(memory, pc, (0x12 shl 26) or ((16 + slice) shl 21) or
                 (destination shl 6) or 0x1D)
         }
         putVsaw(0, 3, 8) // VSAW ACC_HI
