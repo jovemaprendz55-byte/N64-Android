@@ -1,3 +1,7 @@
+> **Aviso de escopo — 2026-11-06:** este documento contém registros históricos de uma arquitetura anterior e não deve ser usado como especificação de implementação da versão limpa. Não migrar nem reutilizar aqueles módulos/caminhos. O estado e o roteiro vigentes exclusivamente para a versão limpa estão em [ESTADO_ATUAL_VERSAO_LIMPA_2026-11-06.md](ESTADO_ATUAL_VERSAO_LIMPA_2026-11-06.md). Para continuidade, seguir também o adendo mais recente em [CONTINUIDADE_CHAT.md](CONTINUIDADE_CHAT.md).
+
+---
+
 # Plano de MVP: executar o primeiro jogo N64
 
 Data: 2026-11-03  
