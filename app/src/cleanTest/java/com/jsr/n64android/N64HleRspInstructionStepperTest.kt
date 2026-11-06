@@ -224,6 +224,32 @@ class N64HleRspInstructionStepperTest {
     }
 
     @Test
+    fun decodesRspVectorAbsoluteWithSignedSelectorLanes() {
+        val memory = N64HleGuestAddressSpace()
+        val vectors = N64HleRspVectorState()
+        for (lane in 0 until 8) {
+            vectors.writeElement(1, lane, when (lane % 3) {
+                0 -> -1
+                1 -> 0
+                else -> 1
+            })
+            vectors.writeElement(2, lane, 100 + lane)
+        }
+        put(memory, 0, (0x12 shl 26) or (16 shl 21) or (2 shl 16) or
+            (1 shl 11) or (3 shl 6) or 0x13) // VABS v3,v1,v2[e=0]
+        N64HleRspInstructionStepper(memory, vectors).step(N64HleRspCpuState())
+
+        for (lane in 0 until 8) {
+            val expected = when (lane % 3) {
+                0 -> -(100 + lane)
+                1 -> 0
+                else -> 100 + lane
+            }
+            assertEquals(expected, vectors.readSignedElement(3, lane))
+        }
+    }
+
+    @Test
     fun decodesRspVectorAddCarryAndSubtractCarry() {
         val memory = N64HleGuestAddressSpace()
         val vectors = N64HleRspVectorState()
