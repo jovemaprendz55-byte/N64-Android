@@ -664,4 +664,53 @@ class N64HleR4300InstructionStepperTest {
         assertEquals(0xFFFFFFFF80007000UL.toLong(), state.readCop0(14))
         assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
     }
+
+    @Test fun enabledPiInterruptEntersR4300GeneralExceptionVectorThroughCop0() {
+        val memory = N64HleGuestAddressSpace(cartridgeRom = ByteArray(16) { it.toByte() })
+        memory.write32(0xA4600000L, 0x100L)
+        memory.write32(0xA4600004L, 0x10000000L)
+        memory.write32(0xA4600008L, 3L)
+        memory.write32(0xA430000CL, 1L shl 9) // MI mask SET PI
+
+        val interruptStepper = N64HleR4300InstructionStepper(memorySpace = memory)
+        val state = N64HleR4300CpuState(
+            0xFFFFFFFF80001000UL.toLong(),
+            cop0 = N64HleCop0EntryState(
+                mapOf(12 to 0x401L, 13 to 0L, 14 to 0L),
+                "explicit enabled interrupt test state"
+            )
+        )
+        val signal = assertThrows(N64HleR4300ArchitecturalException::class.java) {
+            interruptStepper.step(0, state)
+        }
+        assertEquals(N64HleR4300ExceptionCode.INTERRUPT, signal.context.code)
+        assertEquals(0x400L, state.readCop0(13)) // Cause.IP2, ExcCode=0
+        assertEquals(0x403L, state.readCop0(12)) // IE, IM2, EXL
+        assertEquals(0xFFFFFFFF80001000UL.toLong(), state.readCop0(14))
+        assertEquals(N64HleR4300ExceptionVectorResolver.GENERAL_EXCEPTION_VECTOR, state.programCounter)
+        assertEquals(0x10L, memory.read32(0xA4300008L)) // device remains pending until ack
+    }
+
+    @Test fun maskedPiInterruptDoesNotPreemptR4300Instruction() {
+        val memory = N64HleGuestAddressSpace(cartridgeRom = ByteArray(16) { it.toByte() })
+        memory.write32(0xA4600000L, 0x100L)
+        memory.write32(0xA4600004L, 0x10000000L)
+        memory.write32(0xA4600008L, 3L)
+        memory.write32(0xA430000CL, 1L shl 9)
+
+        val interruptStepper = N64HleR4300InstructionStepper(memorySpace = memory)
+        val state = N64HleR4300CpuState(
+            0xFFFFFFFF80002000UL.toLong(),
+            cop0 = N64HleCop0EntryState(
+                mapOf(12 to 0x001L, 13 to 0L, 14 to 0L),
+                "explicit masked interrupt test state"
+            )
+        )
+        interruptStepper.step(0, state)
+        assertEquals(0xFFFFFFFF80002004UL.toLong(), state.programCounter)
+        assertEquals(0L, state.readCop0(13))
+        assertEquals(0x10L, memory.read32(0xA4300008L))
+    }
+
+
 }
