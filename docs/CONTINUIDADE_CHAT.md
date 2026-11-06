@@ -4118,3 +4118,13 @@ Criado o relatório [IMPLEMENTACAO_DESPACHO_TIPADO_R4300_CLEAN_2026-11-06.md](IM
 
 HEAD de referência desta etapa: `9089e664768ff78f6eac3106f6954b2afd831f75`.
 Próxima tarefa: validar CI, corrigir eventuais falhas e fortalecer snapshots de preservação integral do estado.
+
+
+### Validação da implementação tipada — 2026-11-06
+
+- CI do código e testes confirmada no commit `9089e664768ff78f6eac3106f6954b2afd831f75`: workflow [42186546728](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42186546728) concluiu `success`.
+- O log confirma `:app:compileDebugKotlin`, `:app:testDebugUnitTest` e `BUILD SUCCESSFUL`.
+- O commit intermediário `027e3fb` falhou porque a nova classe de resultado ainda não estava presente naquele snapshot; a implementação integrada seguinte passou. Não tratar falha intermediária como falha do HEAD integrado.
+- A validação aprova somente compilação e testes automatizados da etapa; não comprova GoldenEye, renderização, áudio ou execução no aparelho.
+- Próximo trabalho: fortalecer snapshots de estado e classificar instruções de memória válidas sem executor configurado, mantendo a distinção entre válido não implementado e reservado.
+
