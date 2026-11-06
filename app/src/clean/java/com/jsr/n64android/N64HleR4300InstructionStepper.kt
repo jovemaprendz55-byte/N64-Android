@@ -30,6 +30,50 @@ class N64HleR4300InstructionStepper(
     fun hasPendingDelaySlot(): Boolean = controlSequencer.hasPendingDelaySlot()
 
     /**
+     * Non-throwing host API. Architectural exceptions are returned as outcomes;
+     * unsupported instructions are reported without advancing PC or completing
+     * a pending delay slot. The legacy step() API remains available to callers
+     * that intentionally use exceptions for control flow.
+     */
+    fun stepWithResult(
+        instructionWord: Int,
+        state: N64HleR4300CpuState
+    ): N64HleR4300StepResult = try {
+        N64HleR4300StepResult.Executed(step(instructionWord, state))
+    } catch (signal: N64HleR4300ArchitecturalException) {
+        if (signal.context.code == N64HleR4300ExceptionCode.RESERVED_INSTRUCTION) {
+            N64HleR4300StepResult.ReservedEncoding(signal)
+        } else {
+            N64HleR4300StepResult.ArchitecturalException(signal)
+        }
+    } catch (unsupported: N64HleR4300UnsupportedInstructionException) {
+        when (unsupported.classification) {
+            N64HleR4300UnsupportedInstructionClass.VALID_BUT_NOT_IMPLEMENTED ->
+                N64HleR4300StepResult.ValidButNotImplemented(unsupported.instruction, unsupported.message.orEmpty())
+            N64HleR4300UnsupportedInstructionClass.UNCLASSIFIED_ENCODING ->
+                N64HleR4300StepResult.UnclassifiedEncoding(unsupported.instruction, unsupported.message.orEmpty())
+        }
+    }
+
+    /** Fetches from guest memory and returns the same typed outcomes as stepWithResult(). */
+    fun stepFromMemoryWithResult(state: N64HleR4300CpuState): N64HleR4300StepResult = try {
+        N64HleR4300StepResult.Executed(stepFromMemory(state))
+    } catch (signal: N64HleR4300ArchitecturalException) {
+        if (signal.context.code == N64HleR4300ExceptionCode.RESERVED_INSTRUCTION) {
+            N64HleR4300StepResult.ReservedEncoding(signal)
+        } else {
+            N64HleR4300StepResult.ArchitecturalException(signal)
+        }
+    } catch (unsupported: N64HleR4300UnsupportedInstructionException) {
+        when (unsupported.classification) {
+            N64HleR4300UnsupportedInstructionClass.VALID_BUT_NOT_IMPLEMENTED ->
+                N64HleR4300StepResult.ValidButNotImplemented(unsupported.instruction, unsupported.message.orEmpty())
+            N64HleR4300UnsupportedInstructionClass.UNCLASSIFIED_ENCODING ->
+                N64HleR4300StepResult.UnclassifiedEncoding(unsupported.instruction, unsupported.message.orEmpty())
+        }
+    }
+
+    /**
      * Fetches one big-endian instruction word from the configured guest RDRAM
      * at the current PC, then executes it through the same validated step path.
      */
@@ -184,19 +228,53 @@ class N64HleR4300InstructionStepper(
         if (instruction.opcode == 0x01 && instruction.rt in REGIMM_TRAP_IMMEDIATE_RT) return
 
         when {
-            instruction.isSpecial -> specialExecutor.execute(instruction, state)
-            cop0Executor.supports(instruction) -> cop0Executor.execute(instruction, state)
-            immediateExecutor.supports(instruction.opcode) -> immediateExecutor.execute(instruction, state)
-            memoryExecutor?.supports(instruction.opcode) == true -> memoryExecutor.execute(instruction, state)
-            else -> immediateExecutor.execute(instruction, state)
+            instruction.isSpecial -> {
+                if (specialExecutor.supports(instruction)) {
+                    specialExecutor.execute(instruction, state)
+                } else {
+                    throw unsupportedInstruction(instruction, instruction.specialOperation != null)
+                }
+            }
+            instruction.opcode == OP_COP0 -> {
+                if (cop0Executor.supports(instruction)) {
+                    cop0Executor.execute(instruction, state)
+                } else {
+                    val knownValidCop0 = instruction.rs in COP0_VALID_UNIMPLEMENTED_RS ||
+                        (instruction.rs == COP0_RS_CO && instruction.functionCode in COP0_VALID_UNIMPLEMENTED_CO)
+                    throw unsupportedInstruction(instruction, knownValidCop0)
+                }
+            }
+            immediateExecutor.supports(instruction.opcode) ->
+                immediateExecutor.execute(instruction, state)
+            memoryExecutor?.supports(instruction.opcode) == true ->
+                memoryExecutor.execute(instruction, state)
+            instruction.opcode in COP1_MEMORY_OPCODES ->
+                throw unsupportedInstruction(instruction, valid = true)
+            else -> throw unsupportedInstruction(instruction, valid = false)
         }
     }
 
     private companion object {
         const val COP0_STATUS = 12
+        const val OP_COP0 = 0x10
+        const val COP0_RS_CO = 0x10
+        val COP0_VALID_UNIMPLEMENTED_RS = setOf(0x01, 0x05)
+        val COP0_VALID_UNIMPLEMENTED_CO = setOf(0x01, 0x02, 0x06, 0x08, 0x18, 0x20)
+        val COP1_MEMORY_OPCODES = setOf(0x31, 0x39)
         val REGIMM_TRAP_IMMEDIATE_RT = setOf(0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0E)
         val REGIMM_BRANCH_RT = setOf(0x00, 0x01, 0x10, 0x11)
     }
+
+
+    private fun unsupportedInstruction(
+        instruction: N64HleR4300DecodedInstruction,
+        valid: Boolean
+    ): N64HleR4300UnsupportedInstructionException =
+        N64HleR4300UnsupportedInstructionException(
+            instruction,
+            if (valid) N64HleR4300UnsupportedInstructionClass.VALID_BUT_NOT_IMPLEMENTED
+            else N64HleR4300UnsupportedInstructionClass.UNCLASSIFIED_ENCODING
+        )
 
     private fun isControlTransfer(instruction: N64HleR4300DecodedInstruction): Boolean {
         if (instruction.isSpecial) {
