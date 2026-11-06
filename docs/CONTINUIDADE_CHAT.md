@@ -4167,3 +4167,19 @@ Consequência técnica:
 - O caminho HLE atual apenas prepara um handoff após IPL3; ainda não substitui o trabalho de boot/runtime e não significa que o jogo executa.
 
 Nenhuma ROM comercial foi baixada, compartilhada ou anexada. Nenhuma alteração de produção foi feita.
+
+
+## Auditoria crítica do CRC1/CRC2 CIC 6102 — 2026-11-06
+
+Criado [AUDITORIA_CRC_CIC6102_CLEAN_2026-11-06.md](AUDITORIA_CRC_CIC6102_CLEAN_2026-11-06.md).
+
+- Inspecionados `N64HleBootProfileFactory.kt` e `N64HleBootProfileFactoryTest.kt`.
+- A fórmula de referência de CRC1/CRC2 para CIC 6102 atualiza o acumulador `t2` usando `if (t2 > d)` para XOR com rotate, caso contrário XOR com `t6 ^ d`.
+- A produção atual usa `if (a2 < word)` e escolhe os ramos opostos. Como `a3` já foi atualizado com a soma, `a3 ^ word` representa `t6 ^ d`. A divergência aparente está na condição invertida.
+- O helper de teste `checksum6102()` repete a mesma condição da produção; portanto, os testes sintéticos atuais podem mascarar esse erro.
+- Impacto provável: CRC2 divergente e rejeição de ROMs válidas pelo factory. Não foi testada ROM GoldenEye real, então não afirmar reprodução do problema no jogo.
+- Referências: https://n64dev.org/n64crc.html e https://github.com/Dragorn421/n64checksum/blob/main/README.md (CC0-1.0; notas técnicas independentes sobre checksum N64).
+- Nenhum código de produção/teste foi alterado nesta etapa. Nenhum Gradle/CI/aparelho foi executado nesta auditoria.
+- Próxima ação: criar vetor independente de teste, corrigir condição, provar que o teste falha antes e passa depois; então validar CRC da ROM GoldenEye legítima do usuário sem compartilhar a ROM.
+
+**Importante:** até a correção e validação independente, não confiar no resultado do CRC2 do factory 6102. O CI aprovado anteriormente não cobre a fórmula com vetor externo e não elimina este achado.
