@@ -330,6 +330,21 @@ class N64HleRspInstructionStepperTest {
         assertEquals(0x4D, memory.read8(0xA4000000L + address + 13))
     }
 
+
+    @Test
+    fun lqvWrapsVectorByteIndexAtRegisterBoundary() {
+        val memory = N64HleGuestAddressSpace()
+        val vectors = N64HleRspVectorState()
+        for (index in 0 until 13) memory.write8(0xA4000023L + index, 0x20 + index)
+        put(memory, 0, (0x32 shl 26) or (1 shl 21) or (3 shl 16) or (10 shl 7))
+        val state = N64HleRspCpuState().also { it.writeGpr(1, 0x23) }
+        N64HleRspInstructionStepper(memory, vectors).step(state)
+
+        for (index in 0 until 13) {
+            assertEquals(0x20 + index, vectors.readByte(3, (10 + index) and 15))
+        }
+    }
+
     @Test
     fun cop2TransfersMoveVectorElementsAndControlFlags() {
         val memory = N64HleGuestAddressSpace()
