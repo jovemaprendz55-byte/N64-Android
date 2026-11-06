@@ -87,10 +87,10 @@ class N64HleRspInstructionStepper(
         val signedOffset = if (encodedOffset and 0x40 != 0) encodedOffset - 0x80 else encodedOffset
         val address = state.readGpr(base) + (signedOffset shl 4)
         val byteInBlock = address and 15
-        val count = minOf(16 - byteInBlock, 16 - element)
+        val count = 16 - byteInBlock
         for (index in 0 until count) {
             val dmemAddress = DMEM_BASE + ((address + index) and 0xFFF)
-            val vectorByte = element + index
+            val vectorByte = (element + index) and 15
             if (load) {
                 vectorState.writeByte(vector, vectorByte, memory.read8(dmemAddress))
             } else {
