@@ -18,8 +18,8 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    // Clean reboot build: compile only the empty launcher.
-    // Legacy emulator sources/tests remain in Git but are intentionally excluded.
+    // Clean architecture build: compile only the active clean production and test source sets.
+    // Keep all ongoing emulator implementation and tests inside these directories.
     sourceSets {
         getByName("main") {
             java.setSrcDirs(listOf("src/clean/java"))
