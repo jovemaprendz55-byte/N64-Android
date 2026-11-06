@@ -57,3 +57,38 @@ Como `a3` já recebeu `a3 + word`, a expressão `a3 XOR word` corresponde ao ram
 - A divergência pontual está demonstrada por comparação de código com a fórmula de referência. Sua ocorrência/impacto em ROMs reais ainda precisa ser medido com vetores externos.
 
 Documento exclusivo da versão limpa.
+
+
+## Correção aplicada e vetores independentes — 2026-11-06
+
+A comparação direta com as implementações de referência confirmou o detalhe do caso de igualdade. A regra é:
+
+`if (t2 > d) t2 ^= rotateLeft(d, d & 31); else t2 ^= t6 ^ d;`
+
+O código anterior usava `if (a2 < word) (a3 xor word) else rotate`. Isso coincide com os dois ramos quando os valores são diferentes, mas escolhe `rotate` quando `a2 == word`, enquanto a referência escolhe `a3 xor word`.
+
+### Alterações publicadas
+
+- Produção: `N64HleBootProfileFactory.calculate6102Checksum()` agora usa `if (a2 > word) rotate else (a3 xor word)`.
+- Teste: removido o helper de checksum que copiava a lógica de produção.
+- Teste: substituído o checksum do fixture sintético por valores fixos calculados independentemente.
+- Teste novo: primeiro word do bloco de 1 MiB é exatamente o seed inicial `0xF8CA4DDC`, exercitando `t2 == d`.
+
+### Vetores fixos usados
+
+| Fixture | CRC1 | CRC2 |
+|---|---:|---:|
+| Padrão determinístico `byte(i * 13 + 7)` | `0xF6CC53D6` | `0x5198A84B` |
+| Primeira palavra igual ao seed; restante zero | `0x095ED665` | `0x12367389` |
+
+Os valores foram calculados com uma tradução independente da implementação de referência n64dev.org (não com o helper Kotlin removido). Para o vetor de igualdade, a implementação antiga produzia CRC2 `0xD4E40130`, diferente do valor de referência `0x12367389`; a implementação corrigida produz o par esperado.
+
+### Referências externas
+
+- n64dev.org, algoritmo C de referência: https://n64dev.org/n64crc.html
+- Reimplementação independente em C: https://github.com/z64dev/z64decompress/blob/main/src/n64crc.c
+- Notas de pesquisa sobre checksums N64: https://github.com/Dragorn421/n64checksum
+
+### Validação pendente
+
+As alterações de código e teste foram enviadas à branch limpa. A aprovação de CI ainda deve ser consultada após o push. Estes vetores são fixtures sintéticas; não substituem a verificação da ROM GoldenEye legítima do usuário e não demonstram execução do jogo.
