@@ -8,9 +8,11 @@ package com.jsr.n64android
  * multi-byte values use the N64's big-endian byte order.
  */
 class N64HleGuestAddressSpace(
-    rdramSize: Int = DEFAULT_RDRAM_SIZE
+    rdramSize: Int = DEFAULT_RDRAM_SIZE,
+    cartridgeRom: ByteArray = byteArrayOf()
 ) {
     private val rdram: ByteArray
+    private val cartridgeRom = cartridgeRom.copyOf()
     private val spDmem = ByteArray(SP_MEMORY_SIZE)
     private val spImem = ByteArray(SP_MEMORY_SIZE)
     private var spMemAddress = 0
@@ -18,6 +20,9 @@ class N64HleGuestAddressSpace(
     private var spStatus = SP_STATUS_HALT
     private var spPc = 0
     private var spSemaphore = 0
+    private var piDramAddress = 0
+    private var piCartAddress = PI_CART_BASE
+    private var piStatus = 0
 
     val sizeBytes: Int get() = rdram.size
 
@@ -54,6 +59,7 @@ class N64HleGuestAddressSpace(
     fun read32(address: Long): Long {
         requireAligned(address, 4)
         val physical = physicalAddress(address)
+        if (isPiRegister(physical)) return readPiRegister(physical).toLong() and 0xFFFF_FFFFL
         if (isSpRegister(physical)) return readSpRegister(physical).toLong() and 0xFFFF_FFFFL
         val (bytes, p) = translate(address, 4)
         return ((bytes[p].toLong() and 0xFF) shl 24) or
@@ -66,6 +72,10 @@ class N64HleGuestAddressSpace(
         require(value in 0L..0xFFFF_FFFFL) { "Word value is outside 0..0xFFFFFFFF" }
         requireAligned(address, 4)
         val physical = physicalAddress(address)
+        if (isPiRegister(physical)) {
+            writePiRegister(physical, value.toInt())
+            return
+        }
         if (isSpRegister(physical)) {
             writeSpRegister(physical, value.toInt())
             return
@@ -156,6 +166,72 @@ class N64HleGuestAddressSpace(
         }
     }
 
+
+    private fun isPiRegister(physical: Int): Boolean =
+        physical in PI_REG_BASE..(PI_REG_BASE + 0x10) && (physical and 3) == 0
+
+    private fun readPiRegister(address: Int): Int = when (address) {
+        PI_DRAM_ADDR_REG -> piDramAddress
+        PI_CART_ADDR_REG -> piCartAddress
+        PI_RD_LEN_REG, PI_WR_LEN_REG -> 0
+        PI_STATUS_REG -> piStatus
+        else -> throw IllegalArgumentException("Unsupported PI register 0x\${address.toString(16)}")
+    }
+
+    private fun writePiRegister(address: Int, value: Int) {
+        when (address) {
+            PI_DRAM_ADDR_REG -> piDramAddress = value and PI_DRAM_ADDR_MASK
+            PI_CART_ADDR_REG -> piCartAddress = value
+            PI_RD_LEN_REG -> transferPiDma(value and PI_DMA_LENGTH_MASK)
+            PI_WR_LEN_REG -> {
+                piStatus = piStatus or PI_STATUS_ERROR
+                throw N64HleGuestAddressMappingFault(
+                    0xA0000000L or address.toLong(),
+                    "PI DMA from RDRAM to cartridge is not implemented (save media/write path unavailable)"
+                )
+            }
+            PI_STATUS_REG -> {
+                if ((value and PI_STATUS_CMD_RESET) != 0) piStatus = piStatus and PI_STATUS_ERROR.inv()
+                if ((value and PI_STATUS_CMD_CLR_INTR) != 0) piStatus = piStatus and PI_STATUS_INTR.inv()
+            }
+            else -> throw IllegalArgumentException("Unsupported PI register 0x\${address.toString(16)}")
+        }
+    }
+
+    /**
+     * Synchronous PI cartridge-to-RDRAM DMA. Both ranges are validated before
+     * copying, so a bad request cannot partially modify guest RDRAM.
+     * Timing and MI interrupt delivery are intentionally not modeled yet.
+     */
+    private fun transferPiDma(lengthRegister: Int) {
+        val length = lengthRegister + 1
+        val cartOffset = piCartAddress.toLong() - PI_CART_BASE.toLong()
+        val dramOffset = piDramAddress.toLong()
+        piStatus = piStatus or PI_STATUS_DMA_BUSY
+        try {
+            require(cartOffset >= 0L && cartOffset + length <= cartridgeRom.size.toLong()) {
+                "PI DMA cartridge range is invalid: cart=0x\${piCartAddress.toUInt().toString(16)}, length=$length, ROM=\${cartridgeRom.size}"
+            }
+            require(dramOffset >= 0L && dramOffset + length <= rdram.size.toLong()) {
+                "PI DMA RDRAM range is invalid: dram=0x\${dramOffset.toString(16)}, length=$length"
+            }
+            cartridgeRom.copyInto(
+                destination = rdram,
+                destinationOffset = dramOffset.toInt(),
+                startIndex = cartOffset.toInt(),
+                endIndex = cartOffset.toInt() + length
+            )
+            piDramAddress = (dramOffset + length).toInt() and PI_DRAM_ADDR_MASK
+            piCartAddress = (piCartAddress.toLong() + length).toInt()
+            piStatus = piStatus and PI_STATUS_ERROR.inv()
+        } catch (error: Exception) {
+            piStatus = piStatus or PI_STATUS_ERROR
+            throw error
+        } finally {
+            piStatus = piStatus and PI_STATUS_DMA_BUSY.inv()
+        }
+    }
+
     private fun writeSpStatusCommand(command: Int) {
         if ((command and SP_STATUS_CMD_CLR_HALT) != 0) spStatus = spStatus and SP_STATUS_HALT.inv()
         if ((command and SP_STATUS_CMD_SET_HALT) != 0) spStatus = spStatus or SP_STATUS_HALT
@@ -225,6 +301,21 @@ class N64HleGuestAddressSpace(
         const val DEFAULT_RDRAM_SIZE = 8 * 1024 * 1024
         private const val MAX_PHYSICAL_RDRAM = 0x2000_0000
         private const val PHYSICAL_MASK = 0x1FFF_FFFFL
+
+        private const val PI_REG_BASE = 0x0460_0000
+        private const val PI_DRAM_ADDR_REG = PI_REG_BASE
+        private const val PI_CART_ADDR_REG = PI_REG_BASE + 0x04
+        private const val PI_RD_LEN_REG = PI_REG_BASE + 0x08
+        private const val PI_WR_LEN_REG = PI_REG_BASE + 0x0C
+        private const val PI_STATUS_REG = PI_REG_BASE + 0x10
+        private const val PI_CART_BASE = 0x1000_0000
+        private const val PI_DRAM_ADDR_MASK = 0x00FF_FFFF
+        private const val PI_DMA_LENGTH_MASK = 0x00FF_FFFF
+        private const val PI_STATUS_DMA_BUSY = 1 shl 0
+        private const val PI_STATUS_INTR = 1 shl 3
+        private const val PI_STATUS_ERROR = 1 shl 2
+        private const val PI_STATUS_CMD_RESET = 1 shl 0
+        private const val PI_STATUS_CMD_CLR_INTR = 1 shl 1
         private const val SP_DMEM_PHYSICAL = 0x0400_0000
         private const val SP_IMEM_PHYSICAL = 0x0400_1000
         private const val SP_MEMORY_SIZE = 0x1000
