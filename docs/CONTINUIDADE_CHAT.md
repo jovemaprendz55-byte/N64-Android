@@ -4298,3 +4298,28 @@ Branch exclusiva: `dev/n64-hle-clean-reboot`. `main` permanece intocada.
 2. Adicionar testes de leitura do cartucho e casos de limite/endereço para o PI.
 3. Implementar MI interrupt controller e conectar o fim do PI DMA à fonte de interrupção correspondente, com testes de máscara/pendência/acknowledge.
 4. Em seguida ampliar o mapa de MMIO necessário ao boot do jogo; depois conectar scheduler SP/RSP e DP/RDP/VI para primeiro framebuffer real.
+
+
+## Continuidade — PI DMA com latch MI e acknowledge — 2026-11-06
+
+Complemento após a implementação inicial de PI DMA:
+
+- O término bem-sucedido do PI DMA agora seta `PI_STATUS.INTR` e `MI_INTR.PI` (bit 4).
+- Implementada leitura de `MI_INTR` e `MI_INTR_MASK`.
+- Implementados comandos SET/CLEAR por pares de bits no registrador MI_INTR_MASK para as seis fontes.
+- O acknowledge da interrupção PI ocorre pela escrita do comando CLEAR_INTR em PI_STATUS; isso limpa PI_STATUS.INTR e MI_INTR.PI.
+- Testes verificam pending PI, set/clear da máscara, persistência do pending ao alterar a máscara e acknowledge via PI_STATUS.
+
+### Limites que permanecem
+- O estado MI ainda não injeta Cause.IP2 na CPU nem dispara exceção de interrupção no R4300. A máscara MI e o pending existem, mas a linha de interrupção CPU ainda precisa ser conectada ao COP0 Status/Cause e ao stepper.
+- Não há temporização assíncrona; PI DMA segue síncrono.
+- MI_MODE, MI_VERSION e fontes SP/SI/AI/VI/DP ainda não estão implementadas.
+- Não há ainda RSP/RDP/VI/framebuffer/áudio/controles na arquitetura limpa.
+
+### Commits incrementais
+- MI pending e mask: `7f3fe91a6b5d0f2a95a108c1eeda55f5806f95ee`
+- Teste de pending/mask: `43dba501978493e6254ad99646d84ba19be87db6`
+- PI interrupt status e acknowledge: `879c6035f5d0b49b9d4cacf2bec9cf27d4291f6f`
+- Teste de status/acknowledge: `a0c74015ce8270de422f4d9d377caaecc76ef209`
+
+CI do commit `a0c74015ce8270de422f4d9d377caaecc76ef209` ainda deve ser consultada antes de declarar esta etapa validada.
