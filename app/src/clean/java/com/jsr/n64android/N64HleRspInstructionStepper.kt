@@ -149,6 +149,7 @@ class N64HleRspInstructionStepper(
             0x13 -> vectorState.absolute(vd, vs, vt, element) // VABS
             0x14 -> vectorState.addCarry(vd, vs, vt, element) // VADDC
             0x15 -> vectorState.subtractCarry(vd, vs, vt, element) // VSUBC
+            0x27 -> vectorState.merge(vd, vs, vt, element) // VMRG
             0x28 -> vectorState.bitwiseAnd(vd, vs, vt, element) // VAND
             0x2A -> vectorState.bitwiseOr(vd, vs, vt, element) // VOR
             0x2B -> vectorState.bitwiseNor(vd, vs, vt, element) // VNOR
