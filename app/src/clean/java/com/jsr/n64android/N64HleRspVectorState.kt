@@ -173,7 +173,9 @@ class N64HleRspVectorState {
         for (lane in 0 until VECTOR_LANES) {
             val sum = readElement(left, lane).toLong() +
                 readElement(right, rightElement ?: lane).toLong()
-            writeElement(destination, lane, (sum and 0xFFFF).toInt())
+            val result = (sum and 0xFFFF).toInt()
+            writeElement(destination, lane, result)
+            writeAccumulatorLane(lane, result.toLong())
             if (sum > 0xFFFFL) carries = carries or (1 shl lane)
         }
         vco = carries
@@ -190,9 +192,11 @@ class N64HleRspVectorState {
             val a = readElement(left, lane)
             val b = readElement(right, rightElement ?: lane)
             val difference = a - b
-            writeElement(destination, lane, difference and 0xFFFF)
+            val result = difference and 0xFFFF
+            writeElement(destination, lane, result)
+            writeAccumulatorLane(lane, result.toLong())
             if (a < b) flags = flags or (1 shl lane)
-            if (a != b) flags = flags or (1 shl (lane + 8))
+            if (result != 0) flags = flags or (1 shl (lane + 8))
         }
         vco = flags
     }
