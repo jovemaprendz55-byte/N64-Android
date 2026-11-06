@@ -248,6 +248,8 @@ class N64HleR4300InstructionStepper(
                 immediateExecutor.execute(instruction, state)
             memoryExecutor?.supports(instruction.opcode) == true ->
                 memoryExecutor.execute(instruction, state)
+            instruction.opcode in KNOWN_MEMORY_OPCODES ->
+                throw unsupportedInstruction(instruction, valid = true)
             instruction.opcode in COP1_MEMORY_OPCODES ->
                 throw unsupportedInstruction(instruction, valid = true)
             else -> throw unsupportedInstruction(instruction, valid = false)
@@ -261,6 +263,13 @@ class N64HleR4300InstructionStepper(
         val COP0_VALID_UNIMPLEMENTED_RS = setOf(0x01, 0x05)
         val COP0_VALID_UNIMPLEMENTED_CO = setOf(0x01, 0x02, 0x06, 0x08, 0x18, 0x20)
         val COP1_MEMORY_OPCODES = setOf(0x31, 0x39)
+        // Integer memory forms already defined by this clean R4300 subset.
+        // If no memory bus is injected, they are valid but cannot be executed.
+        val KNOWN_MEMORY_OPCODES = setOf(
+            0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
+            0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E,
+            0x1A, 0x1B, 0x37, 0x3F
+        )
         val REGIMM_TRAP_IMMEDIATE_RT = setOf(0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0E)
         val REGIMM_BRANCH_RT = setOf(0x00, 0x01, 0x10, 0x11)
     }
