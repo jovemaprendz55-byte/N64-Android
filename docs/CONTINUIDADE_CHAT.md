@@ -4206,3 +4206,18 @@ Relatório detalhado: [AUDITORIA_CRC_CIC6102_CLEAN_2026-11-06.md](AUDITORIA_CRC_
 - Os valores foram calculados com tradução independente da implementação de referência, não pelo helper Kotlin de produção/teste.
 - Código, teste e relatório foram enviados à branch `dev/n64-hle-clean-reboot`. Consultar CI após o push antes de considerar validado.
 - Ainda não houve teste com ROM GoldenEye real nem execução do jogo. Não declarar compatibilidade funcional.
+
+
+## Continuidade — correção CRC CIC 6102 validada pelo CI — 2026-11-06
+
+- Branch: `dev/n64-hle-clean-reboot`; `main` permanece intocada.
+- Commit de código/testes: [fad26533442362675f784c6fef8440fdfaa11688](https://github.com/jovemaprendz55-byte/N64-Android/commit/fad26533442362675f784c6fef8440fdfaa11688).
+- GitHub Actions [42188454083](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42188454083): job `build` concluído com `success`; etapas Build and test e Upload debug APK passaram.
+- A rotina CIC 6102 usa agora `if (a2 > word) rotate else (a3 xor word)`, alinhada à referência no caso de igualdade.
+- O teste não duplica mais a lógica de produção e inclui vetor sintético que força `a2 == word`; o vetor antigo falhava em CRC2 (`0xD4E40130`) e o esperado é `0x12367389`.
+- Relatório [AUDITORIA_CRC_CIC6102_CLEAN_2026-11-06.md](AUDITORIA_CRC_CIC6102_CLEAN_2026-11-06.md) atualizado com o resultado do CI.
+- Significado do resultado: build e testes automatizados aprovados. Não houve execução de GoldenEye, validação de ROM comercial real nem teste no Poco C85.
+
+### Próxima tarefa técnica recomendada
+
+Criar uma ferramenta offline de diagnóstico de ROM que rode localmente no aparelho do usuário e mostre tamanho, byte order/magic, game code/country, CRC do cabeçalho, assinatura/soma IPL3, CIC inferido e CRC1/CRC2 esperado versus calculado. Não enviar nem solicitar a ROM; usar somente metadados e resultados locais. Antes de implementar, inspecionar o fluxo limpo atual de carregamento/inspeção para reaproveitar interfaces sem alterar o caminho de boot. Depois validar com fixtures sintéticas e, se o usuário quiser, com a própria cópia legítima de GoldenEye no aparelho. CI aprovado não significa que o jogo já funciona.
