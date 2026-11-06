@@ -78,6 +78,7 @@ class N64HleR4300InstructionStepper(
      * at the current PC, then executes it through the same validated step path.
      */
     fun stepFromMemory(state: N64HleR4300CpuState): N64HleR4300DecodedInstruction {
+        deliverPendingInterruptIfEnabled(state)
         val guestMemory = checkNotNull(memorySpace) {
             "Instruction fetch requires an explicitly configured RDRAM address space"
         }
@@ -97,6 +98,7 @@ class N64HleR4300InstructionStepper(
      * N64HleR4300ArchitecturalException. Delay-slot control transfers remain unsupported.
      */
     fun step(instructionWord: Int, state: N64HleR4300CpuState): N64HleR4300DecodedInstruction {
+        deliverPendingInterruptIfEnabled(state)
         val instruction = decoder.decode(instructionWord)
 
         // Classify architecturally exception-causing SPECIAL encodings before
@@ -126,6 +128,29 @@ class N64HleR4300InstructionStepper(
         return instruction
     }
 
+
+
+    /**
+     * Delivers the MI interrupt line as R4300 Cause.IP2 when Status.IE,
+     * Status.IM2 are enabled and neither EXL nor ERL blocks delivery.
+     */
+    private fun deliverPendingInterruptIfEnabled(state: N64HleR4300CpuState) {
+        val memory = memorySpace ?: return
+        if (!memory.hasEnabledPendingInterrupt()) return
+        val status = state.readCop0(COP0_STATUS).toInt()
+        val enabled = (status and STATUS_IE) != 0 &&
+            (status and STATUS_EXL) == 0 &&
+            (status and STATUS_ERL) == 0 &&
+            (status and STATUS_IM2) != 0
+        if (!enabled) return
+        val cause = state.readCop0(COP0_CAUSE).toInt() or CAUSE_IP2
+        state.writeCop0(COP0_CAUSE, cause.toLong())
+        enterSimpleArchitecturalException(
+            N64HleR4300ExceptionCode.INTERRUPT,
+            state,
+            IllegalStateException("MI interrupt delivered through R4300 Cause.IP2")
+        )
+    }
 
     private fun enterSimpleArchitecturalException(
         code: N64HleR4300ExceptionCode,
@@ -258,6 +283,11 @@ class N64HleR4300InstructionStepper(
 
     private companion object {
         const val COP0_STATUS = 12
+        const val STATUS_IE = 1 shl 0
+        const val STATUS_EXL = 1 shl 1
+        const val STATUS_ERL = 1 shl 2
+        const val STATUS_IM2 = 1 shl 10
+        const val CAUSE_IP2 = 1 shl 10
         const val OP_COP0 = 0x10
         const val COP0_RS_CO = 0x10
         val COP0_VALID_UNIMPLEMENTED_RS = setOf(0x01, 0x05)
