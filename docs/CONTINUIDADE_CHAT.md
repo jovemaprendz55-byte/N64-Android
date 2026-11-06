@@ -4183,3 +4183,10 @@ Criado [AUDITORIA_CRC_CIC6102_CLEAN_2026-11-06.md](AUDITORIA_CRC_CIC6102_CLEAN_2
 - Próxima ação: criar vetor independente de teste, corrigir condição, provar que o teste falha antes e passa depois; então validar CRC da ROM GoldenEye legítima do usuário sem compartilhar a ROM.
 
 **Importante:** até a correção e validação independente, não confiar no resultado do CRC2 do factory 6102. O CI aprovado anteriormente não cobre a fórmula com vetor externo e não elimina este achado.
+
+
+### Correção de precisão da auditoria CRC — 2026-11-06
+
+Após conferir os operadores com mais cuidado, corrigir a descrição anterior: a condição não está globalmente invertida. Para valores diferentes, os ramos atuais coincidem com a referência. A divergência é **somente no caso de igualdade** (`a2 == word)): a referência escolhe `t6 XOR d`, enquanto a implementação atual escolhe `rotate`. O helper de teste repete a mesma condição e não cobre esse caso.
+
+O relatório `AUDITORIA_CRC_CIC6102_CLEAN_2026-11-06.md` foi corrigido. Não afirmar que o CRC2 de GoldenEye está necessariamente errado ou que o jogo será rejeitado; a ocorrência e o impacto em ROM real ainda precisam ser medidos com vetor independente. Nenhuma produção/teste foi alterado e nenhum CI foi executado nesta etapa.
