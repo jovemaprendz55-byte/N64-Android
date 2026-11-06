@@ -75,6 +75,18 @@ class N64HleRomDiagnosticsTest {
     }
 
     @Test
+    fun reportsInsufficientGameImageAfterRecognizingIpl3Signature() {
+        val bytes = validCartridge().copyCanonicalBytes().copyOf(0x1000)
+        val report = N64HleRomDiagnostics.diagnose(N64HleCartridgeImage.parse(bytes))
+
+        assertEquals(N64HleRomDiagnostics.Status.INSUFFICIENT_DATA, report.status)
+        assertEquals(N64HleRomDiagnostics.CicProfile.CIC_6102_7101, report.cicProfile)
+        assertEquals(0x3F, report.cicSeed)
+        assertEquals(0xD057C85244L, report.ipl3WordSum)
+        assertNull(report.checksum?.calculatedCrc1)
+    }
+
+    @Test
     fun reportsInsufficientIpl3DataWithoutAttemptingChecksum() {
         val bytes = validCartridge().copyCanonicalBytes().copyOf(0x80)
         val report = N64HleRomDiagnostics.diagnose(N64HleCartridgeImage.parse(bytes))
