@@ -47,7 +47,6 @@ object N64HleRomDiagnostics {
     fun diagnose(cartridge: N64HleCartridgeImage): Report {
         return try {
             val ipl3End = N64HleBootProfileFactory.IPL3_CHECKSUM_END
-            val ipl3Start = N64HleBootProfileFactory.IPL3_CHECKSUM_OFFSET
             if (cartridge.sizeBytes < ipl3End) {
                 return baseReport(
                     cartridge = cartridge,
@@ -69,14 +68,9 @@ object N64HleRomDiagnostics {
             val cic = if (seed == 0x3F) CicProfile.CIC_6102_7101 else CicProfile.UNKNOWN
 
             if (seed == null) {
-                val status = if (cartridge.sizeBytes < ipl3End) {
-                    Status.INSUFFICIENT_DATA
-                } else {
-                    Status.UNSUPPORTED
-                }
                 return baseReport(
-                    cartridge, status, sum, cic, null,
-                    ChecksumReport(status, cartridge.crc1, cartridge.crc2),
+                    cartridge, Status.UNSUPPORTED, sum, cic, null,
+                    ChecksumReport(Status.UNSUPPORTED, cartridge.crc1, cartridge.crc2),
                     "Assinatura IPL3 não reconhecida pelo conjunto de perfis implementado."
                 )
             }
