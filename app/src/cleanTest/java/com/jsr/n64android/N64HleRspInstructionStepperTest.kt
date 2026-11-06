@@ -372,6 +372,31 @@ class N64HleRspInstructionStepperTest {
     }
 
     @Test
+    fun decodesRspVectorAccumulatorSlicesWithVSAW() {
+        val memory = N64HleGuestAddressSpace()
+        val vectors = N64HleRspVectorState()
+        for (lane in 0 until 8) {
+            vectors.writeAccumulatorLane(lane, 0x1234_5678_9ABCL + lane)
+        }
+        val stepper = N64HleRspInstructionStepper(memory, vectors)
+        fun putVsaw(pc: Int, destination: Int, slice: Int) {
+            put(memory, pc, (0x12 shl 26) or (slice shl 21) or
+                (destination shl 6) or 0x1D)
+        }
+        putVsaw(0, 3, 8) // VSAW ACC_HI
+        putVsaw(4, 4, 9) // VSAW ACC_MID
+        putVsaw(8, 5, 10) // VSAW ACC_LO
+        val state = N64HleRspCpuState()
+        repeat(3) { stepper.step(state) }
+        for (lane in 0 until 8) {
+            val acc = 0x1234_5678_9ABCL + lane
+            assertEquals(((acc ushr 32) and 0xFFFF).toInt(), vectors.readElement(3, lane))
+            assertEquals(((acc ushr 16) and 0xFFFF).toInt(), vectors.readElement(4, lane))
+            assertEquals((acc and 0xFFFF).toInt(), vectors.readElement(5, lane))
+        }
+    }
+
+    @Test
     fun cop2TransfersMoveVectorElementsAndControlFlags() {
         val memory = N64HleGuestAddressSpace()
         val vectors = N64HleRspVectorState()
