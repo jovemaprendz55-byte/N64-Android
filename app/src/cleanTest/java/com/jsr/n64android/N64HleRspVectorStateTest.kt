@@ -78,6 +78,32 @@ class N64HleRspVectorStateTest {
     }
 
     @Test
+    fun vectorAddCarryUsesUnsignedWrapAndSetsLowVcoBits() {
+        val state = N64HleRspVectorState()
+        state.writeElement(1, 0, 0xFFFF)
+        state.writeElement(2, 0, 1)
+        state.writeElement(1, 1, 0x7FFF)
+        state.writeElement(2, 1, 1)
+        state.addCarry(destination = 3, left = 1, right = 2)
+        assertEquals(0, state.readElement(3, 0))
+        assertEquals(0x8000, state.readElement(3, 1))
+        assertEquals(1, state.vco)
+    }
+
+    @Test
+    fun vectorSubtractCarrySetsBorrowAndNotEqualFlags() {
+        val state = N64HleRspVectorState()
+        state.writeElement(1, 0, 0)
+        state.writeElement(2, 0, 1)
+        state.writeElement(1, 1, 5)
+        state.writeElement(2, 1, 5)
+        state.subtractCarry(destination = 3, left = 1, right = 2)
+        assertEquals(0xFFFF, state.readElement(3, 0))
+        assertEquals(0, state.readElement(3, 1))
+        assertEquals(0x0101, state.vco)
+    }
+
+    @Test
     fun vectorFractionalMultiplyRoundsAndSaturates() {
         val state = N64HleRspVectorState()
         state.writeElement(1, 0, 0x4000)
