@@ -73,6 +73,41 @@ class N64HleRspInstructionStepper(
             0x00 -> state.writeGpr(rd, right shl shift)
             0x02 -> state.writeGpr(rd, right ushr shift)
             0x03 -> state.writeGpr(rd, right shr shift)
+            0x04 -> state.writeGpr(rd, right shl (left and 31))
+            0x06 -> state.writeGpr(rd, right ushr (left and 31))
+            0x07 -> state.writeGpr(rd, right shr (left and 31))
+            0x10 -> state.writeGpr(rd, state.hi)
+            0x11 -> state.writeHi(left)
+            0x12 -> state.writeGpr(rd, state.lo)
+            0x13 -> state.writeLo(left)
+            0x18 -> {
+                val product = left.toLong() * right.toLong()
+                state.writeLo(product.toInt())
+                state.writeHi((product shr 32).toInt())
+            }
+            0x19 -> {
+                val product = left.toUInt().toLong() * right.toUInt().toLong()
+                state.writeLo(product.toInt())
+                state.writeHi((product ushr 32).toInt())
+            }
+            0x1A -> {
+                if (right == 0) {
+                    state.writeLo(if (left < 0) 1 else -1)
+                    state.writeHi(left)
+                } else {
+                    state.writeLo(left / right)
+                    state.writeHi(left % right)
+                }
+            }
+            0x1B -> {
+                if (right == 0) {
+                    state.writeLo(-1)
+                    state.writeHi(left)
+                } else {
+                    state.writeLo((left.toUInt() / right.toUInt()).toInt())
+                    state.writeHi((left.toUInt() % right.toUInt()).toInt())
+                }
+            }
             0x08 -> {
                 check(pendingTarget == null) { "RSP control transfer in a delay slot is unsupported" }
                 state.scheduleBranch(left)
