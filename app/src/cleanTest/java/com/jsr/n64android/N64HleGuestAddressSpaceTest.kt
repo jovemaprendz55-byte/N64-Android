@@ -192,7 +192,7 @@ class N64HleGuestAddressSpaceTest {
         assertArrayEquals(byteArrayOf(9, 10, 11, 12, 13, 14, 15, 16), memory.readBytes(0x80000100L, 8))
         assertEquals(0x108L, memory.read32(0xA4600000L))
         assertEquals(0x10000010L, memory.read32(0xA4600004L))
-        assertEquals(0L, memory.read32(0xA4600010L))
+        assertEquals(8L, memory.read32(0xA4600010L))
     }
 
     @Test
@@ -227,6 +227,9 @@ class N64HleGuestAddressSpaceTest {
         memory.write32(0xA430000CL, 1L shl 8) // clear PI mask
         assertEquals(0L, memory.read32(0xA430000CL))
         assertEquals(0x10L, memory.read32(0xA4300008L)) // mask does not clear pending
+        memory.write32(0xA4600010L, 1L shl 1) // PI_STATUS clear interrupt
+        assertEquals(0L, memory.read32(0xA4300008L))
+        assertEquals(0L, memory.read32(0xA4600010L))
     }
 
 
