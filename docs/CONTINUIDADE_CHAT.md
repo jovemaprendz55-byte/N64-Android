@@ -4261,3 +4261,40 @@ CI confirma compilação/testes automatizados, não execução de GoldenEye, nã
 ### Próxima tarefa
 Instalar o APK no Android e verificar o painel com a cópia legítima de ROM do usuário, sem enviar o arquivo. Depois, retomar o boot/runtime do GoldenEye 007 NTSC-U com evidência real do diagnóstico, investigando a primeira falha de CPU/memória e priorizando TLB, MMIO, DMA e interrupções conforme necessário. Não declarar que o jogo funciona até haver prova no aparelho.
 
+
+
+## Continuidade — primeira implementação de PI DMA na arquitetura limpa — 2026-11-06
+
+Branch exclusiva: `dev/n64-hle-clean-reboot`. `main` permanece intocada.
+
+### Implementação iniciada
+- `N64HleGuestAddressSpace` agora aceita uma cópia defensiva da imagem do cartucho.
+- Registradores PI básicos mapeados em KSEG1: DRAM_ADDR, CART_ADDR, RD_LEN, WR_LEN e STATUS.
+- Escrita em PI_RD_LEN inicia DMA síncrono de cartucho para RDRAM, com validação completa das faixas antes da cópia.
+- Após sucesso, DRAM_ADDR e CART_ADDR avançam pelo tamanho transferido.
+- Falha de faixa marca PI_STATUS.ERROR e não deve copiar parcialmente os bytes.
+- PI_WR_LEN (RDRAM para cartucho/save media) permanece explicitamente não implementado e retorna fault; não simular gravação bem-sucedida.
+- `N64HleCartridgeSession.prepareHleHandoff()` conecta a ROM selecionada ao espaço de memória para permitir o PI DMA.
+
+### Testes adicionados
+- Transferência de 8 bytes do cartucho para RDRAM, conteúdo big-endian preservado e endereços avançados.
+- Faixa de ROM inválida não altera RDRAM e marca PI_STATUS.ERROR.
+- PI_WR_LEN é rejeitado e marca erro em vez de fingir gravação.
+
+### Commits desta etapa
+- Memória/PI DMA: `4f7b2aaf05af1aee9cd65f903e2989af4040e3ba`
+- Testes: `4d06b265b57e9e3dbc8326933bf22147eed40f5c`
+- Conexão da ROM ao espaço guest: `8050b0214a4219fbfe8bd1866bfdfcce187ee52f`
+- Correção de interpolação de diagnóstico: `9b40b8c997eef7d250588dd67a067999aa80470c`
+
+### Validação e limites
+- CI do HEAD `9b40b8c997eef7d250588dd67a067999aa80470c`: workflow `42239940861`; aguardando conclusão no momento desta atualização.
+- Esta é uma implementação inicial, síncrona e parcial. Ainda não modela timing/latência PI, MI interrupt delivery, fila de DMA, domínios PI, SRAM/Flash ou DMA RDRAM->cartucho.
+- Ainda não existe integração completa de MI, VI, RSP, RDP, áudio e controles na versão limpa.
+- Não declarar que GoldenEye executa. O teste ainda é unitário/sintético; nenhuma ROM comercial foi compartilhada ou testada no aparelho.
+
+### Próxima prioridade técnica
+1. Confirmar CI do HEAD acima e corrigir qualquer falha antes de continuar.
+2. Adicionar testes de leitura do cartucho e casos de limite/endereço para o PI.
+3. Implementar MI interrupt controller e conectar o fim do PI DMA à fonte de interrupção correspondente, com testes de máscara/pendência/acknowledge.
+4. Em seguida ampliar o mapa de MMIO necessário ao boot do jogo; depois conectar scheduler SP/RSP e DP/RDP/VI para primeiro framebuffer real.
