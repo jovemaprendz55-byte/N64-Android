@@ -113,6 +113,40 @@ class N64HleRspVectorState {
         vco = 0
     }
 
+    /** RSP VADDC: unsigned lane addition with per-lane carry-out in VCO[7:0]. */
+    fun addCarry(destination: Int, left: Int, right: Int, rightElement: Int? = null) {
+        validateRegister(destination)
+        validateRegister(left)
+        validateRegister(right)
+        if (rightElement != null) validateElement(rightElement)
+        var carries = 0
+        for (lane in 0 until VECTOR_LANES) {
+            val sum = readElement(left, lane).toLong() +
+                readElement(right, rightElement ?: lane).toLong()
+            writeElement(destination, lane, (sum and 0xFFFF).toInt())
+            if (sum > 0xFFFFL) carries = carries or (1 shl lane)
+        }
+        vco = carries
+    }
+
+    /** RSP VSUBC: unsigned lane subtraction; VCO_LO records borrow and VCO_HI records nonzero. */
+    fun subtractCarry(destination: Int, left: Int, right: Int, rightElement: Int? = null) {
+        validateRegister(destination)
+        validateRegister(left)
+        validateRegister(right)
+        if (rightElement != null) validateElement(rightElement)
+        var flags = 0
+        for (lane in 0 until VECTOR_LANES) {
+            val a = readElement(left, lane)
+            val b = readElement(right, rightElement ?: lane)
+            val difference = a - b
+            writeElement(destination, lane, difference and 0xFFFF)
+            if (a < b) flags = flags or (1 shl lane)
+            if (a != b) flags = flags or (1 shl (lane + 8))
+        }
+        vco = flags
+    }
+
     /** RSP VMULF: signed fractional multiply with the architectural rounding bias. */
     fun multiplyFractional(destination: Int, left: Int, right: Int, rightElement: Int? = null) {
         validateRegister(destination)
