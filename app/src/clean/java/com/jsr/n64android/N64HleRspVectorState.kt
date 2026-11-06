@@ -113,6 +113,20 @@ class N64HleRspVectorState {
         vco = 0
     }
 
+    /** RSP VSAW: copy one 16-bit accumulator slice to every destination lane. */
+    fun accumulatorSlice(destination: Int, slice: Int) {
+        validateRegister(destination)
+        val shift = when (slice) {
+            8 -> 32 // ACC_HI
+            9 -> 16 // ACC_MID
+            10 -> 0 // ACC_LO
+            else -> throw IllegalArgumentException("VSAW slice must be 8, 9, or 10")
+        }
+        for (lane in 0 until VECTOR_LANES) {
+            writeElement(destination, lane, ((accumulator[lane] ushr shift) and 0xFFFF).toInt())
+        }
+    }
+
     /** RSP VABS: select the magnitude/sign of VT using the signed VS lane. */
     fun absolute(destination: Int, signSource: Int, valueSource: Int, rightElement: Int? = null) {
         validateRegister(destination)
