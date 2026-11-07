@@ -47,9 +47,14 @@ class N64HleCartridgeSession private constructor(
      */
     fun prepareHleHandoff(
         profile: N64HleBootProfile,
-        rdramSize: Int = N64HleGuestAddressSpace.DEFAULT_RDRAM_SIZE
+        rdramSize: Int = N64HleGuestAddressSpace.DEFAULT_RDRAM_SIZE,
+        rdramStorage: N64HleRdramStorage? = null
     ): N64HlePreparedHandoff {
-        val memory = N64HleGuestAddressSpace(rdramSize, cartridge.readBytes(0, cartridge.sizeBytes))
+        val memory = N64HleGuestAddressSpace(
+            rdramSize = rdramSize,
+            cartridgeRom = cartridge.readBytes(0, cartridge.sizeBytes),
+            rdramStorage = rdramStorage
+        )
         val cpuState = N64HleBootInitializer().initialize(cartridge, memory, profile)
         return N64HlePreparedHandoff(memory, cpuState)
     }
