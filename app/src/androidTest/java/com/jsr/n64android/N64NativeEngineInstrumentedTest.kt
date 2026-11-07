@@ -54,4 +54,22 @@ class N64NativeEngineInstrumentedTest {
             engine.apiVersion()
         }
     }
+    @Test
+    fun guestAddressSpaceUsesNativeRdramThroughKseg0() {
+        N64NativeEngine().use { engine ->
+            val storage = N64HleNativeRdramStorage(engine)
+            val memory = N64HleGuestAddressSpace(rdramStorage = storage)
+
+            memory.write32(0x80000100L, 0x89ABCDEF)
+            assertEquals(0x89ABCDEF, memory.read32(0x80000100L).toInt())
+
+            val payload = byteArrayOf(0x10, 0x20, 0x30, 0x40, 0x50)
+            memory.writeBytes(0x80000200L, payload)
+            assertArrayEquals(payload, memory.readBytes(0x80000200L, payload.size))
+
+            // Confirm the same bytes are visible through the native engine API.
+            assertArrayEquals(payload, engine.readRdramBytes(0x200, payload.size))
+        }
+    }
+
 }
