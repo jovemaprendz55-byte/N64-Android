@@ -35,6 +35,8 @@ class MainActivity : Activity() {
     private var loadedCartridgeSession: N64HleCartridgeSession? = null
     private var preparedHandoff: N64HlePreparedHandoff? = null
     private var preparedExecutionSession: N64HleR4300ExecutionSession? = null
+    // Activity owns the native allocation; the guest memory adapter never closes it.
+    private var nativeEngine: N64NativeEngine? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -176,6 +178,12 @@ class MainActivity : Activity() {
         setContentView(scroll)
     }
 
+    override fun onDestroy() {
+        nativeEngine?.close()
+        nativeEngine = null
+        super.onDestroy()
+    }
+
     private fun renderRomDiagnostics(report: N64HleRomDiagnostics.Report?) {
         if (report == null) {
             romDiagnosticsText.text = "Diagnóstico indisponível."
@@ -288,6 +296,8 @@ class MainActivity : Activity() {
         loadedCartridgeSession = null
         preparedHandoff = null
         preparedExecutionSession = null
+        nativeEngine?.close()
+        nativeEngine = null
         prepareHleButton.isEnabled = false
         stepCpuButton.isEnabled = false
         setBatchButtonsEnabled(false)
@@ -373,10 +383,22 @@ class MainActivity : Activity() {
 
         prepareHleButton.isEnabled = false
         hlePreparationText.text = "Verificando CIC 6102/7101, CRC1/CRC2 e preparando RDRAM..."
+        var candidateEngine: N64NativeEngine? = null
         try {
             val profile = N64HleBootProfileFactory.createCic6102Profile(cartridgeSession.cartridge)
-            val handoff = cartridgeSession.prepareHleHandoff(profile)
+            // The clean runtime now prepares guest RDRAM in the independent native
+            // allocation. DMEM/IMEM and MMIO remain in the Kotlin guest address space.
+            candidateEngine = N64NativeEngine()
+            check(candidateEngine.apiVersion() == 4) { "Versão inesperada da API nativa." }
+            val nativeStorage = N64HleNativeRdramStorage(candidateEngine)
+            val handoff = cartridgeSession.prepareHleHandoff(
+                profile = profile,
+                rdramStorage = nativeStorage
+            )
             val executionSession = handoff.createR4300ExecutionSession()
+            nativeEngine?.close()
+            nativeEngine = candidateEngine
+            candidateEngine = null
             preparedHandoff = handoff
             preparedExecutionSession = executionSession
             stepCpuButton.isEnabled = true
@@ -386,11 +408,13 @@ class MainActivity : Activity() {
                 appendLine("HANDOFF HLE PREPARADO")
                 appendLine("Perfil: CIC 6102/7101 (seed 0x3F)")
                 appendLine("PC de entrada: 0x${handoff.cpuEntryState.programCounter.toString(16).uppercase()}")
-                appendLine("RDRAM preparada: ${handoff.guestMemory.sizeBytes} bytes")
+                appendLine("RDRAM nativa preparada: ${handoff.guestMemory.sizeBytes} bytes")
+                appendLine("Engine JNI: API ${nativeEngine?.apiVersion()} • ativa")
                 appendLine("CPU R4300: sessão criada, 0 instruções executadas")
                 append("IPL3/PIF não executados; vídeo, RSP e áudio não iniciados.")
             }
         } catch (error: Exception) {
+            candidateEngine?.close()
             preparedHandoff = null
             preparedExecutionSession = null
             stepCpuButton.isEnabled = false
