@@ -29,6 +29,12 @@ jobs:
           gradle-version: "8.11.1"
       - name: Build and test
         run: gradle testDebugUnitTest assembleDebug
+      - name: Run native JNI instrumentation tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          script: gradle connectedDebugAndroidTest
       - name: Upload debug APK
         if: success()
         uses: actions/upload-artifact@v4
