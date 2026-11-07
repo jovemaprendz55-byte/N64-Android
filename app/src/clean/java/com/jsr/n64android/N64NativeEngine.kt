@@ -1,11 +1,10 @@
 package com.jsr.n64android
 
 /**
- * Owns the lifetime of the independent native engine scaffold.
+ * Owns the independent native engine and its 8 MiB big-endian RDRAM.
  *
- * The native side currently provides an 8 MiB big-endian RDRAM word-access
- * primitive and lifecycle/API diagnostics. CPU, RSP, RDP, audio, and game
- * execution are not implemented by this class.
+ * This is a memory/lifecycle foundation only. CPU execution, RSP, RDP, MMIO,
+ * audio, timing, and game compatibility are not implemented here.
  */
 internal class N64NativeEngine : AutoCloseable {
     private var handle: Long
@@ -29,30 +28,52 @@ internal class N64NativeEngine : AutoCloseable {
         }
     }
 
-    /** Reads one aligned 32-bit word from RDRAM using N64 big-endian byte order. */
-    fun readRdramWord(address: Int): Int {
+    fun readRdramByte(address: Int): Int = read(address, 1, nativeReadRdramByte)
+    fun readRdramHalf(address: Int): Int = read(address, 2, nativeReadRdramHalf)
+    fun readRdramWord(address: Int): Int = read(address, 4, nativeReadRdramWord)
+    fun readRdramDouble(address: Int): Long {
         checkOpen()
-        requireValidWordAddress(address)
-        return nativeReadRdramWord(handle, address)
+        requireAddress(address, 8)
+        return nativeReadRdramDouble(handle, address)
     }
 
-    /** Writes one aligned 32-bit word to RDRAM using N64 big-endian byte order. */
-    fun writeRdramWord(address: Int, value: Int) {
+    fun writeRdramByte(address: Int, value: Int) = write(address, 1, value, 0xFF, nativeWriteRdramByte)
+    fun writeRdramHalf(address: Int, value: Int) = write(address, 2, value, 0xFFFF, nativeWriteRdramHalf)
+    fun writeRdramWord(address: Int, value: Int) = write(address, 4, value, null, nativeWriteRdramWord)
+
+    fun writeRdramDouble(address: Int, value: Long) {
         checkOpen()
-        requireValidWordAddress(address)
-        check(nativeWriteRdramWord(handle, address, value)) {
-            "Não foi possível escrever na RDRAM."
+        requireAddress(address, 8)
+        check(nativeWriteRdramDouble(handle, address, value)) { "Não foi possível escrever na RDRAM." }
+    }
+
+    private fun read(address: Int, width: Int, reader: (Long, Int) -> Int): Int {
+        checkOpen()
+        requireAddress(address, width)
+        return reader(handle, address)
+    }
+
+    private fun write(
+        address: Int,
+        width: Int,
+        value: Int,
+        maxValue: Int?,
+        writer: (Long, Int, Int) -> Boolean
+    ) {
+        checkOpen()
+        requireAddress(address, width)
+        if (maxValue != null) require(value in 0..maxValue) { "Valor excede a largura de $width byte(s)." }
+        check(writer(handle, address, value)) { "Não foi possível escrever na RDRAM." }
+    }
+
+    private fun requireAddress(address: Int, width: Int) {
+        require(address >= 0 && address % width == 0 && address <= RDRAM_SIZE - width) {
+            "Endereço RDRAM inválido ou desalinhado para $width byte(s): 0x${address.toString(16)}"
         }
     }
 
     private fun checkOpen() {
         check(handle != 0L) { "A engine nativa já foi encerrada." }
-    }
-
-    private fun requireValidWordAddress(address: Int) {
-        require(address >= 0 && address % 4 == 0 && address <= RDRAM_SIZE - 4) {
-            "Endereço RDRAM inválido ou desalinhado: 0x${address.toString(16)}"
-        }
     }
 
     override fun close() {
@@ -69,8 +90,14 @@ internal class N64NativeEngine : AutoCloseable {
     private external fun nativeDestroy(handle: Long)
     private external fun nativeGetApiVersion(handle: Long): Int
     private external fun nativeGetState(handle: Long): Int
-    private external fun nativeWriteRdramWord(handle: Long, address: Int, value: Int): Boolean
+    private external fun nativeReadRdramByte(handle: Long, address: Int): Int
+    private external fun nativeWriteRdramByte(handle: Long, address: Int, value: Int): Boolean
+    private external fun nativeReadRdramHalf(handle: Long, address: Int): Int
+    private external fun nativeWriteRdramHalf(handle: Long, address: Int, value: Int): Boolean
     private external fun nativeReadRdramWord(handle: Long, address: Int): Int
+    private external fun nativeWriteRdramWord(handle: Long, address: Int, value: Int): Boolean
+    private external fun nativeReadRdramDouble(handle: Long, address: Int): Long
+    private external fun nativeWriteRdramDouble(handle: Long, address: Int, value: Long): Boolean
 
     private companion object {
         const val STATE_CREATED = 1
