@@ -61,7 +61,7 @@ class N64NativeEngineInstrumentedTest {
             val memory = N64HleGuestAddressSpace(rdramStorage = storage)
 
             memory.write32(0x80000100L, 0x89ABCDEF)
-            assertEquals(0x89ABCDEF, memory.read32(0x80000100L).toInt())
+            assertEquals(0x89ABCDEFL, memory.read32(0x80000100L))
 
             val payload = byteArrayOf(0x10, 0x20, 0x30, 0x40, 0x50)
             memory.writeBytes(0x80000200L, payload)
