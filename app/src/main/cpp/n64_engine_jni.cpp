@@ -4,10 +4,11 @@
 #include <cstddef>
 #include <cstdint>
 #include <new>
+#include <vector>
 
 namespace {
 
-constexpr jint kApiVersion = 3;
+constexpr jint kApiVersion = 4;
 constexpr jint kStateCreated = 1;
 constexpr std::size_t kRdramSize = 8U * 1024U * 1024U;
 
@@ -25,6 +26,12 @@ bool valid_address(jint address, std::size_t width, std::size_t alignment) noexc
     if (address < 0 || width == 0U || alignment == 0U) return false;
     const auto offset = static_cast<std::size_t>(address);
     return (offset % alignment) == 0U && offset <= kRdramSize - width;
+}
+
+bool valid_range(jint address, std::size_t length) noexcept {
+    if (address < 0) return false;
+    const auto offset = static_cast<std::size_t>(address);
+    return offset <= kRdramSize && length <= kRdramSize - offset;
 }
 
 std::uint64_t read_be(const EngineHandle& engine, std::size_t offset,
@@ -141,5 +148,42 @@ Java_com_jsr_n64android_N64NativeEngine_nativeWriteRdramDouble(
     if (engine == nullptr || !valid_address(address, 8U, 8U)) return JNI_FALSE;
     write_be(*engine, static_cast<std::size_t>(address), 8U,
              static_cast<std::uint64_t>(value));
+    return JNI_TRUE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_jsr_n64android_N64NativeEngine_nativeReadRdramBytes(
+        JNIEnv* env, jobject, jlong handle, jint address, jbyteArray output) {
+    const auto* engine = from_handle(handle);
+    if (engine == nullptr || output == nullptr) return JNI_FALSE;
+    const jsize length = env->GetArrayLength(output);
+    if (env->ExceptionCheck() || !valid_range(address, static_cast<std::size_t>(length))) {
+        return JNI_FALSE;
+    }
+    std::vector<jbyte> buffer(static_cast<std::size_t>(length));
+    const auto offset = static_cast<std::size_t>(address);
+    for (std::size_t i = 0; i < buffer.size(); ++i) {
+        buffer[i] = static_cast<jbyte>(engine->rdram[offset + i]);
+    }
+    if (length > 0) env->SetByteArrayRegion(output, 0, length, buffer.data());
+    return env->ExceptionCheck() ? JNI_FALSE : JNI_TRUE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_jsr_n64android_N64NativeEngine_nativeWriteRdramBytes(
+        JNIEnv* env, jobject, jlong handle, jint address, jbyteArray input) {
+    auto* engine = from_handle(handle);
+    if (engine == nullptr || input == nullptr) return JNI_FALSE;
+    const jsize length = env->GetArrayLength(input);
+    if (env->ExceptionCheck() || !valid_range(address, static_cast<std::size_t>(length))) {
+        return JNI_FALSE;
+    }
+    std::vector<jbyte> buffer(static_cast<std::size_t>(length));
+    if (length > 0) env->GetByteArrayRegion(input, 0, length, buffer.data());
+    if (env->ExceptionCheck()) return JNI_FALSE;
+    const auto offset = static_cast<std::size_t>(address);
+    for (std::size_t i = 0; i < buffer.size(); ++i) {
+        engine->rdram[offset + i] = static_cast<std::uint8_t>(buffer[i]);
+    }
     return JNI_TRUE;
 }
