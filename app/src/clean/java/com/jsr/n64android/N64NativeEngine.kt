@@ -66,6 +66,26 @@ internal class N64NativeEngine : AutoCloseable {
         }
     }
 
+    /** Copies a contiguous byte range from native RDRAM without per-byte JNI calls. */
+    fun readRdramBytes(address: Int, length: Int): ByteArray {
+        checkOpen()
+        requireRange(address, length)
+        val output = ByteArray(length)
+        check(nativeReadRdramBytes(handle, address, output)) {
+            "Não foi possível ler o intervalo da RDRAM."
+        }
+        return output
+    }
+
+    /** Copies a contiguous byte range into native RDRAM without per-byte JNI calls. */
+    fun writeRdramBytes(address: Int, bytes: ByteArray) {
+        checkOpen()
+        requireRange(address, bytes.size)
+        check(nativeWriteRdramBytes(handle, address, bytes)) {
+            "Não foi possível escrever o intervalo da RDRAM."
+        }
+    }
+
     private inline fun read(
         address: Int,
         width: Int,
@@ -101,6 +121,12 @@ internal class N64NativeEngine : AutoCloseable {
         }
     }
 
+    private fun requireRange(address: Int, length: Int) {
+        require(length >= 0 && address >= 0 && address <= RDRAM_SIZE - length) {
+            "Intervalo RDRAM inválido: endereço=0x${address.toString(16)}, tamanho=$length"
+        }
+    }
+
     private fun checkOpen() {
         check(handle != 0L) { "A engine nativa já foi encerrada." }
     }
@@ -127,6 +153,8 @@ internal class N64NativeEngine : AutoCloseable {
     private external fun nativeWriteRdramWord(handle: Long, address: Int, value: Int): Boolean
     private external fun nativeReadRdramDouble(handle: Long, address: Int): Long
     private external fun nativeWriteRdramDouble(handle: Long, address: Int, value: Long): Boolean
+    private external fun nativeReadRdramBytes(handle: Long, address: Int, output: ByteArray): Boolean
+    private external fun nativeWriteRdramBytes(handle: Long, address: Int, input: ByteArray): Boolean
 
     private companion object {
         const val STATE_CREATED = 1
