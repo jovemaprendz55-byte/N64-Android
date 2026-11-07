@@ -7,7 +7,7 @@ package com.jsr.n64android
  * KSEG0/KSEG1 virtual addresses. Implementations must preserve raw byte order;
  * N64 big-endian interpretation belongs to the guest bus.
  */
-internal interface N64HleRdramStorage {
+interface N64HleRdramStorage {
     val sizeBytes: Int
 
     fun readByte(offset: Int): Int
