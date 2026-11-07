@@ -15,11 +15,13 @@ internal class N64NativeEngine : AutoCloseable {
         check(handle != 0L) { "Não foi possível criar a engine nativa." }
     }
 
+    @Synchronized
     fun apiVersion(): Int {
         checkOpen()
         return nativeGetApiVersion(handle)
     }
 
+    @Synchronized
     fun state(): State {
         checkOpen()
         return when (nativeGetState(handle)) {
@@ -28,36 +30,44 @@ internal class N64NativeEngine : AutoCloseable {
         }
     }
 
+    @Synchronized
     fun readRdramByte(address: Int): Int =
         read(address, 1) { engine, offset -> nativeReadRdramByte(engine, offset) }
 
+    @Synchronized
     fun readRdramHalf(address: Int): Int =
         read(address, 2) { engine, offset -> nativeReadRdramHalf(engine, offset) }
 
+    @Synchronized
     fun readRdramWord(address: Int): Int =
         read(address, 4) { engine, offset -> nativeReadRdramWord(engine, offset) }
 
+    @Synchronized
     fun readRdramDouble(address: Int): Long {
         checkOpen()
         requireAddress(address, 8)
         return nativeReadRdramDouble(handle, address)
     }
 
+    @Synchronized
     fun writeRdramByte(address: Int, value: Int) =
         write(address, 1, value, 0xFF) { engine, offset, data ->
             nativeWriteRdramByte(engine, offset, data)
         }
 
+    @Synchronized
     fun writeRdramHalf(address: Int, value: Int) =
         write(address, 2, value, 0xFFFF) { engine, offset, data ->
             nativeWriteRdramHalf(engine, offset, data)
         }
 
+    @Synchronized
     fun writeRdramWord(address: Int, value: Int) =
         write(address, 4, value, null) { engine, offset, data ->
             nativeWriteRdramWord(engine, offset, data)
         }
 
+    @Synchronized
     fun writeRdramDouble(address: Int, value: Long) {
         checkOpen()
         requireAddress(address, 8)
@@ -67,6 +77,7 @@ internal class N64NativeEngine : AutoCloseable {
     }
 
     /** Copies a contiguous byte range from native RDRAM without per-byte JNI calls. */
+    @Synchronized
     fun readRdramBytes(address: Int, length: Int): ByteArray {
         checkOpen()
         requireRange(address, length)
@@ -78,6 +89,7 @@ internal class N64NativeEngine : AutoCloseable {
     }
 
     /** Copies a contiguous byte range into native RDRAM without per-byte JNI calls. */
+    @Synchronized
     fun writeRdramBytes(address: Int, bytes: ByteArray) {
         checkOpen()
         requireRange(address, bytes.size)
@@ -131,6 +143,7 @@ internal class N64NativeEngine : AutoCloseable {
         check(handle != 0L) { "A engine nativa já foi encerrada." }
     }
 
+    @Synchronized
     override fun close() {
         val current = handle
         if (current != 0L) {
