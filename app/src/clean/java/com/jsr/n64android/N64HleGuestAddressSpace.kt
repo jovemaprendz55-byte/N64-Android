@@ -9,9 +9,10 @@ package com.jsr.n64android
  */
 class N64HleGuestAddressSpace(
     rdramSize: Int = DEFAULT_RDRAM_SIZE,
-    cartridgeRom: ByteArray = byteArrayOf()
+    cartridgeRom: ByteArray = byteArrayOf(),
+    rdramStorage: N64HleRdramStorage? = null
 ) {
-    private val rdram: ByteArray
+    private val rdramStorage: N64HleRdramStorage
     private val cartridgeRom = cartridgeRom.copyOf()
     private val spDmem = ByteArray(SP_MEMORY_SIZE)
     private val spImem = ByteArray(SP_MEMORY_SIZE)
@@ -26,7 +27,7 @@ class N64HleGuestAddressSpace(
     private var miInterrupt = 0
     private var miInterruptMask = 0
 
-    val sizeBytes: Int get() = rdram.size
+    val sizeBytes: Int get() = rdramStorage.sizeBytes
 
     /** True when at least one MI source is both pending and unmasked. */
     fun hasEnabledPendingInterrupt(): Boolean = (miInterrupt and miInterruptMask) != 0
@@ -35,31 +36,29 @@ class N64HleGuestAddressSpace(
     init {
         require(rdramSize > 0) { "RDRAM size must be positive" }
         require(rdramSize <= MAX_PHYSICAL_RDRAM) { "RDRAM size exceeds the supported physical window" }
-        rdram = ByteArray(rdramSize)
+        require(rdramStorage == null || rdramStorage.sizeBytes == rdramSize) {
+            "Injected RDRAM storage size must match rdramSize"
+        }
+        this.rdramStorage = rdramStorage ?: N64HleByteArrayRdramStorage(rdramSize)
     }
 
-    fun read8(address: Long): Int {
-        val (bytes, offset) = translate(address, 1)
-        return bytes[offset].toInt() and 0xFF
-    }
+    fun read8(address: Long): Int = readRaw(address, 1)[0].toInt() and 0xFF
 
     fun write8(address: Long, value: Int) {
         require(value in 0..0xFF) { "Byte value is outside 0..255" }
-        val (bytes, offset) = translate(address, 1)
-        bytes[offset] = value.toByte()
+        writeRaw(address, byteArrayOf(value.toByte()))
     }
 
     fun read16(address: Long): Int {
-        val (bytes, p) = translateAligned(address, 2, 2)
-        return ((bytes[p].toInt() and 0xFF) shl 8) or
-            (bytes[p + 1].toInt() and 0xFF)
+        requireAligned(address, 2)
+        val bytes = readRaw(address, 2)
+        return ((bytes[0].toInt() and 0xFF) shl 8) or (bytes[1].toInt() and 0xFF)
     }
 
     fun write16(address: Long, value: Int) {
         require(value in 0..0xFFFF) { "Halfword value is outside 0..65535" }
-        val (bytes, p) = translateAligned(address, 2, 2)
-        bytes[p] = (value ushr 8).toByte()
-        bytes[p + 1] = value.toByte()
+        requireAligned(address, 2)
+        writeRaw(address, byteArrayOf((value ushr 8).toByte(), value.toByte()))
     }
 
     fun read32(address: Long): Long {
@@ -68,11 +67,11 @@ class N64HleGuestAddressSpace(
         if (isPiRegister(physical)) return readPiRegister(physical).toLong() and 0xFFFF_FFFFL
         if (isMiRegister(physical)) return readMiRegister(physical).toLong() and 0xFFFF_FFFFL
         if (isSpRegister(physical)) return readSpRegister(physical).toLong() and 0xFFFF_FFFFL
-        val (bytes, p) = translate(address, 4)
-        return ((bytes[p].toLong() and 0xFF) shl 24) or
-            ((bytes[p + 1].toLong() and 0xFF) shl 16) or
-            ((bytes[p + 2].toLong() and 0xFF) shl 8) or
-            (bytes[p + 3].toLong() and 0xFF)
+        val bytes = readRaw(address, 4)
+        return ((bytes[0].toLong() and 0xFF) shl 24) or
+            ((bytes[1].toLong() and 0xFF) shl 16) or
+            ((bytes[2].toLong() and 0xFF) shl 8) or
+            (bytes[3].toLong() and 0xFF)
     }
 
     fun write32(address: Long, value: Long) {
@@ -91,36 +90,36 @@ class N64HleGuestAddressSpace(
             writeSpRegister(physical, value.toInt())
             return
         }
-        val (bytes, p) = translate(address, 4)
-        bytes[p] = (value ushr 24).toByte()
-        bytes[p + 1] = (value ushr 16).toByte()
-        bytes[p + 2] = (value ushr 8).toByte()
-        bytes[p + 3] = value.toByte()
+        writeRaw(address, byteArrayOf(
+            (value ushr 24).toByte(),
+            (value ushr 16).toByte(),
+            (value ushr 8).toByte(),
+            value.toByte()
+        ))
     }
 
     fun read64(address: Long): Long {
-        val (bytes, p) = translateAligned(address, 8, 8)
+        requireAligned(address, 8)
+        val bytes = readRaw(address, 8)
         var value = 0L
-        for (i in 0 until 8) value = (value shl 8) or (bytes[p + i].toLong() and 0xFF)
+        for (i in 0 until 8) value = (value shl 8) or (bytes[i].toLong() and 0xFF)
         return value
     }
 
     fun write64(address: Long, value: Long) {
-        val (bytes, p) = translateAligned(address, 8, 8)
-        for (i in 0 until 8) {
-            bytes[p + i] = (value ushr (56 - i * 8)).toByte()
-        }
+        requireAligned(address, 8)
+        val bytes = ByteArray(8)
+        for (i in 0 until 8) bytes[i] = (value ushr (56 - i * 8)).toByte()
+        writeRaw(address, bytes)
     }
 
     fun readBytes(address: Long, length: Int): ByteArray {
         require(length >= 0) { "Length must be non-negative" }
-        val (bytes, offset) = translate(address, length)
-        return bytes.copyOfRange(offset, offset + length)
+        return readRaw(address, length)
     }
 
     fun writeBytes(address: Long, bytes: ByteArray) {
-        val (target, offset) = translate(address, bytes.size)
-        bytes.copyInto(target, offset)
+        writeRaw(address, bytes)
     }
 
     private fun requireAligned(address: Long, alignment: Int) {
@@ -261,11 +260,9 @@ class N64HleGuestAddressSpace(
             require(dramOffset >= 0L && dramOffset + length <= rdram.size.toLong()) {
                 "PI DMA RDRAM range is invalid: dram=0x${dramOffset.toString(16)}, length=$length"
             }
-            cartridgeRom.copyInto(
-                destination = rdram,
-                destinationOffset = dramOffset.toInt(),
-                startIndex = cartOffset.toInt(),
-                endIndex = cartOffset.toInt() + length
+            rdramStorage.writeBytes(
+                dramOffset.toInt(),
+                cartridgeRom.copyOfRange(cartOffset.toInt(), cartOffset.toInt() + length)
             )
             piDramAddress = (dramOffset + length).toInt() and PI_DRAM_ADDR_MASK
             piCartAddress = (piCartAddress.toLong() + length).toInt()
@@ -323,40 +320,69 @@ class N64HleGuestAddressSpace(
         }
         repeat(blockCount) {
             val selected = if (memorySelect == 0) spDmem else spImem
-            repeat(blockLength) { index ->
-                val spOffset = memoryOffset and 0xFFF
-                if (toSp) selected[spOffset] = rdram[dramAddress + index]
-                else rdram[dramAddress + index] = selected[spOffset]
-                memoryOffset = (memoryOffset + 1) and 0xFFF
+            if (toSp) {
+                val block = rdramStorage.readBytes(dramAddress, blockLength)
+                repeat(blockLength) { index ->
+                    selected[memoryOffset and 0xFFF] = block[index]
+                    memoryOffset = (memoryOffset + 1) and 0xFFF
+                }
+            } else {
+                val block = ByteArray(blockLength)
+                repeat(blockLength) { index ->
+                    block[index] = selected[memoryOffset and 0xFFF]
+                    memoryOffset = (memoryOffset + 1) and 0xFFF
+                }
+                rdramStorage.writeBytes(dramAddress, block)
             }
             dramAddress += blockLength + dramSkip
         }
         spMemAddress = memorySelect or memoryOffset
         spDramAddress = dramAddress and SP_DRAM_ADDR_MASK
     }
-    private fun translateAligned(address: Long, length: Int, alignment: Int): Pair<ByteArray, Int> {
-        requireAligned(address, alignment)
-        return translate(address, length)
-    }
-
-    private fun translate(address: Long, length: Int): Pair<ByteArray, Int> {
+    /**
+     * Reads one contiguous guest range. RDRAM is delegated in a single storage
+     * operation (one JNI bulk copy for the native backend); SP memories remain
+     * local arrays and MMIO is handled by the register-specific paths.
+     */
+    private fun readRaw(address: Long, length: Int): ByteArray {
         require(length >= 0) { "Length must be non-negative" }
         val physical = physicalAddress(address)
-        if (physical >= 0 && physical <= rdram.size && length <= rdram.size - physical) {
-            return rdram to physical
+        if (physical >= 0 && physical <= rdramStorage.sizeBytes &&
+            length <= rdramStorage.sizeBytes - physical) {
+            return rdramStorage.readBytes(physical, length)
         }
         if (physical >= SP_DMEM_PHYSICAL && physical <= SP_DMEM_PHYSICAL + SP_MEMORY_SIZE &&
             length <= SP_MEMORY_SIZE - (physical - SP_DMEM_PHYSICAL)) {
-            return spDmem to (physical - SP_DMEM_PHYSICAL)
+            val offset = physical - SP_DMEM_PHYSICAL
+            return spDmem.copyOfRange(offset, offset + length)
         }
         if (physical >= SP_IMEM_PHYSICAL && physical <= SP_IMEM_PHYSICAL + SP_MEMORY_SIZE &&
             length <= SP_MEMORY_SIZE - (physical - SP_IMEM_PHYSICAL)) {
-            return spImem to (physical - SP_IMEM_PHYSICAL)
+            val offset = physical - SP_IMEM_PHYSICAL
+            return spImem.copyOfRange(offset, offset + length)
         }
-        throw N64HleGuestAddressMappingFault(
-            address,
-            "outside mapped RDRAM/SP memory"
-        )
+        throw N64HleGuestAddressMappingFault(address, "outside mapped RDRAM/SP memory")
+    }
+
+    private fun writeRaw(address: Long, bytes: ByteArray) {
+        val length = bytes.size
+        val physical = physicalAddress(address)
+        if (physical >= 0 && physical <= rdramStorage.sizeBytes &&
+            length <= rdramStorage.sizeBytes - physical) {
+            rdramStorage.writeBytes(physical, bytes)
+            return
+        }
+        if (physical >= SP_DMEM_PHYSICAL && physical <= SP_DMEM_PHYSICAL + SP_MEMORY_SIZE &&
+            length <= SP_MEMORY_SIZE - (physical - SP_DMEM_PHYSICAL)) {
+            bytes.copyInto(spDmem, physical - SP_DMEM_PHYSICAL)
+            return
+        }
+        if (physical >= SP_IMEM_PHYSICAL && physical <= SP_IMEM_PHYSICAL + SP_MEMORY_SIZE &&
+            length <= SP_MEMORY_SIZE - (physical - SP_IMEM_PHYSICAL)) {
+            bytes.copyInto(spImem, physical - SP_IMEM_PHYSICAL)
+            return
+        }
+        throw N64HleGuestAddressMappingFault(address, "outside mapped RDRAM/SP memory")
     }
 
     companion object {
