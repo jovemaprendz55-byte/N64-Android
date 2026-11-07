@@ -28,32 +28,55 @@ internal class N64NativeEngine : AutoCloseable {
         }
     }
 
-    fun readRdramByte(address: Int): Int = read(address, 1, nativeReadRdramByte)
-    fun readRdramHalf(address: Int): Int = read(address, 2, nativeReadRdramHalf)
-    fun readRdramWord(address: Int): Int = read(address, 4, nativeReadRdramWord)
+    fun readRdramByte(address: Int): Int =
+        read(address, 1) { engine, offset -> nativeReadRdramByte(engine, offset) }
+
+    fun readRdramHalf(address: Int): Int =
+        read(address, 2) { engine, offset -> nativeReadRdramHalf(engine, offset) }
+
+    fun readRdramWord(address: Int): Int =
+        read(address, 4) { engine, offset -> nativeReadRdramWord(engine, offset) }
+
     fun readRdramDouble(address: Int): Long {
         checkOpen()
         requireAddress(address, 8)
         return nativeReadRdramDouble(handle, address)
     }
 
-    fun writeRdramByte(address: Int, value: Int) = write(address, 1, value, 0xFF, nativeWriteRdramByte)
-    fun writeRdramHalf(address: Int, value: Int) = write(address, 2, value, 0xFFFF, nativeWriteRdramHalf)
-    fun writeRdramWord(address: Int, value: Int) = write(address, 4, value, null, nativeWriteRdramWord)
+    fun writeRdramByte(address: Int, value: Int) =
+        write(address, 1, value, 0xFF) { engine, offset, data ->
+            nativeWriteRdramByte(engine, offset, data)
+        }
+
+    fun writeRdramHalf(address: Int, value: Int) =
+        write(address, 2, value, 0xFFFF) { engine, offset, data ->
+            nativeWriteRdramHalf(engine, offset, data)
+        }
+
+    fun writeRdramWord(address: Int, value: Int) =
+        write(address, 4, value, null) { engine, offset, data ->
+            nativeWriteRdramWord(engine, offset, data)
+        }
 
     fun writeRdramDouble(address: Int, value: Long) {
         checkOpen()
         requireAddress(address, 8)
-        check(nativeWriteRdramDouble(handle, address, value)) { "Não foi possível escrever na RDRAM." }
+        check(nativeWriteRdramDouble(handle, address, value)) {
+            "Não foi possível escrever na RDRAM."
+        }
     }
 
-    private fun read(address: Int, width: Int, reader: (Long, Int) -> Int): Int {
+    private inline fun read(
+        address: Int,
+        width: Int,
+        reader: (Long, Int) -> Int
+    ): Int {
         checkOpen()
         requireAddress(address, width)
         return reader(handle, address)
     }
 
-    private fun write(
+    private inline fun write(
         address: Int,
         width: Int,
         value: Int,
@@ -62,8 +85,14 @@ internal class N64NativeEngine : AutoCloseable {
     ) {
         checkOpen()
         requireAddress(address, width)
-        if (maxValue != null) require(value in 0..maxValue) { "Valor excede a largura de $width byte(s)." }
-        check(writer(handle, address, value)) { "Não foi possível escrever na RDRAM." }
+        if (maxValue != null) {
+            require(value in 0..maxValue) {
+                "Valor excede a largura de $width byte(s)."
+            }
+        }
+        check(writer(handle, address, value)) {
+            "Não foi possível escrever na RDRAM."
+        }
     }
 
     private fun requireAddress(address: Int, width: Int) {
