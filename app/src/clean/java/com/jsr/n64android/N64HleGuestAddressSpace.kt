@@ -257,7 +257,7 @@ class N64HleGuestAddressSpace(
             require(cartOffset >= 0L && cartOffset + length <= cartridgeRom.size.toLong()) {
                 "PI DMA cartridge range is invalid: cart=0x${piCartAddress.toUInt().toString(16)}, length=$length, ROM=${cartridgeRom.size}"
             }
-            require(dramOffset >= 0L && dramOffset + length <= rdram.size.toLong()) {
+            require(dramOffset >= 0L && dramOffset + length <= rdramStorage.sizeBytes.toLong()) {
                 "PI DMA RDRAM range is invalid: dram=0x${dramOffset.toString(16)}, length=$length"
             }
             rdramStorage.writeBytes(
@@ -313,7 +313,7 @@ class N64HleGuestAddressSpace(
         var dramAddress = spDramAddress and SP_DRAM_ADDR_MASK
         var checkAddress = dramAddress.toLong()
         repeat(blockCount) {
-            require(checkAddress >= 0L && checkAddress + blockLength <= rdram.size.toLong()) {
+            require(checkAddress >= 0L && checkAddress + blockLength <= rdramStorage.sizeBytes.toLong()) {
                 "SP DMA RDRAM range is invalid: address=0x${checkAddress.toString(16)}, length=$blockLength"
             }
             checkAddress += blockLength + dramSkip
