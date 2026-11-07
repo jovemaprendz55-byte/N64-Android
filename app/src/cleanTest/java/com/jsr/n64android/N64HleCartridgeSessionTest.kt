@@ -123,4 +123,26 @@ class N64HleCartridgeSessionTest {
         assertEquals(false, cpuState.isCop0Known(12))
     }
 
+
+    @Test
+    fun handoffUsesCallerSuppliedRdramStorage() {
+        val session = N64HleCartridgeSession.fromValidatedImage(cartridge())
+        val storage = N64HleByteArrayRdramStorage()
+        val profile = N64HleBootProfile(
+            entryPc = 0x80000400L,
+            registerValues = mapOf(29 to 0x80001000L),
+            romCopies = listOf(N64HleBootProfile.RomCopy(0x40, 0x80000400L, 8)),
+            memoryWrites = emptyList(),
+            evidence = "synthetic injected-storage handoff test"
+        )
+
+        val handoff = session.prepareHleHandoff(profile, rdramStorage = storage)
+
+        assertArrayEquals(
+            session.readRomBytes(0x40, 8),
+            storage.readBytes(0x400, 8)
+        )
+        assertEquals(0x40414243L, handoff.guestMemory.read32(0x80000400L))
+    }
+
 }
