@@ -4,6 +4,10 @@
 #include <cstdio>
 #include <mutex>
 #include <dlfcn.h>
+#ifdef N64_HAS_MUPEN64PLUS_HEADERS
+#include "m64p_types.h"
+#include "m64p_frontend.h"
+#endif
 
 namespace {
 std::mutex g_coreMutex;
@@ -208,6 +212,80 @@ Java_com_jsr_n64android_MainActivity_nativeStartCore(
     g_coreStarted = true;
     __android_log_print(ANDROID_LOG_INFO, "N64AndroidCore", "CoreStartup concluido sem ROM.");
     return makeString(env, "CoreStartup concluido com sucesso.\nCore inicializado, sem ROM carregada.\nNenhum jogo foi executado.");
+}
+
+
+#ifdef N64_HAS_MUPEN64PLUS_HEADERS
+namespace {
+m64p_error videoUnsupported() { return M64ERR_UNSUPPORTED; }
+m64p_error videoUnsupportedMode(int, int, int, int, int) { return M64ERR_UNSUPPORTED; }
+m64p_error videoUnsupportedModeRate(int, int, int, int, int, int) { return M64ERR_UNSUPPORTED; }
+m64p_error videoUnsupportedListModes(m64p_2d_size*, int*) { return M64ERR_UNSUPPORTED; }
+m64p_error videoUnsupportedListRates(m64p_2d_size, int*, int*) { return M64ERR_UNSUPPORTED; }
+m64p_function videoNoProc(const char*) { return nullptr; }
+m64p_error videoUnsupportedAttr(m64p_GLattr, int) { return M64ERR_UNSUPPORTED; }
+m64p_error videoUnsupportedGetAttr(m64p_GLattr, int*) { return M64ERR_UNSUPPORTED; }
+m64p_error videoUnsupportedCaption(const char*) { return M64ERR_UNSUPPORTED; }
+m64p_error videoUnsupportedResize(int, int) { return M64ERR_UNSUPPORTED; }
+uint32_t videoDefaultFramebuffer() { return 0; }
+m64p_error videoUnsupportedRenderMode(m64p_render_mode) { return M64ERR_UNSUPPORTED; }
+m64p_error videoUnsupportedVkSurface(void**, void*) { return M64ERR_UNSUPPORTED; }
+m64p_error videoUnsupportedVkExtensions(const char**[], uint32_t*) { return M64ERR_UNSUPPORTED; }
+}
+#endif
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_jsr_n64android_MainActivity_nativeTestVideoOverrideAbi(JNIEnv* env, jobject /* thiz */) {
+#ifndef N64_HAS_MUPEN64PLUS_HEADERS
+    return makeString(env, "Headers oficiais do Core nao estao disponiveis nesta compilacao.");
+#else
+    std::lock_guard<std::mutex> lock(g_coreMutex);
+    if (g_coreHandle == nullptr || !g_coreStarted)
+        return makeString(env, "Inicialize o Core no botao 4 antes deste teste.");
+
+    using CoreOverrideVidExtSymbol = m64p_error (*)(m64p_video_extension_functions*);
+    auto overrideVideo = reinterpret_cast<CoreOverrideVidExtSymbol>(
+        dlsym(g_coreHandle, "CoreOverrideVidExt"));
+    if (overrideVideo == nullptr)
+        return makeString(env, "CoreOverrideVidExt nao foi encontrado.");
+
+    m64p_video_extension_functions probe{};
+    probe.Functions = 17;
+    probe.VidExtFuncInit = videoUnsupported;
+    probe.VidExtFuncQuit = videoUnsupported;
+    probe.VidExtFuncListModes = videoUnsupportedListModes;
+    probe.VidExtFuncListRates = videoUnsupportedListRates;
+    probe.VidExtFuncSetMode = videoUnsupportedMode;
+    probe.VidExtFuncSetModeWithRate = videoUnsupportedModeRate;
+    probe.VidExtFuncGLGetProc = videoNoProc;
+    probe.VidExtFuncGLSetAttr = videoUnsupportedAttr;
+    probe.VidExtFuncGLGetAttr = videoUnsupportedGetAttr;
+    probe.VidExtFuncGLSwapBuf = videoUnsupported;
+    probe.VidExtFuncSetCaption = videoUnsupportedCaption;
+    probe.VidExtFuncToggleFS = videoUnsupported;
+    probe.VidExtFuncResizeWindow = videoUnsupportedResize;
+    probe.VidExtFuncGLGetDefaultFramebuffer = videoDefaultFramebuffer;
+    probe.VidExtFuncInitWithRenderMode = videoUnsupportedRenderMode;
+    probe.VidExtFuncVKGetSurface = videoUnsupportedVkSurface;
+    probe.VidExtFuncVKGetInstanceExtensions = videoUnsupportedVkExtensions;
+
+    const m64p_error registered = overrideVideo(&probe);
+    if (registered != M64ERR_SUCCESS)
+        return makeString(env, "CoreOverrideVidExt rejeitou a tabela de teste.");
+
+    // Clear the probe immediately; no video callback remains active.
+    m64p_video_extension_functions reset{};
+    reset.Functions = 17;
+    const m64p_error cleared = overrideVideo(&reset);
+    if (cleared != M64ERR_SUCCESS)
+        return makeString(env, "Tabela aceita, mas nao foi possivel desativar o teste.");
+
+    return makeString(env,
+        "ABI de video validada: 17 callbacks aceitos pelo Core.\n"
+        "Tabela de teste desativada imediatamente.\n"
+        "Nenhuma janela, plugin GFX ou ROM foi iniciada.");
+#endif
 }
 
 extern "C"
