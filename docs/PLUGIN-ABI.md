@@ -173,3 +173,20 @@ Nenhuma ROM foi carregada.
 ### Próxima etapa segura
 
 Antes de implementar um plugin GFX, criar um teste isolado de passagem de chamada nativa pela thread GL: a View deve enviar uma tarefa para a GL thread, a JNI deve validar contexto/surface e registrar o TID da chamada; a resposta deve voltar à UI sem executar operações GLES na UI. Depois, desenhar a estratégia de ciclo de vida e de execução do Core. Manter ROM_OPEN e EXECUTE bloqueados até que a ponte de thread e os callbacks reais estejam validados.
+
+
+## Resultado do teste JNI despachado pela thread GL no Poco C85 (2026-11-08)
+
+O usuário instalou a compilação do commit `2ca87e1506b03bdf019133a320d7e34477ffbc64` e executou o botão 8. Resultado informado:
+
+```
+Ponte JNI Via GLSurfaceView.queueEvent
+Contexto EGL valido na thread GL. OpenGL ES: OpenGL ES 3.2 v1.r49p1-03bet0.19498e0ae1d5dac2233 83c39a2e58f04
+Thread Linux: 6890
+Contexto: 0xB400007468B98E90 | Surface: 0xB400007468B92D40
+Nenhuma ROM foi carregada.
+```
+
+**Interpretação:** a tarefa enviada por `GLSurfaceView.queueEvent` executou a JNI em uma thread com contexto EGL atual e superfície de desenho válida. Isso confirma a ponte de despacho para a thread GL neste teste real no aparelho. O TID `6890` é o identificador observado nessa execução; ele pode mudar entre execuções e não deve ser fixado como constante.
+
+**Limites:** a validação ainda não chama funções do Core Mupen64Plus nem callbacks de plugin GFX, não testa pause/resume ou perda/recriação do contexto e não renderiza ROM. O próximo trabalho é implementar e testar o ciclo de vida da ponte nativa e callbacks de vídeo mínimos na thread GL, mantendo ROM_OPEN e EXECUTE bloqueados até que esses testes estejam concluídos.
