@@ -193,9 +193,6 @@ void* g_gfxPluginHandle = nullptr;
 bool g_gfxPluginStarted = false;
 bool g_romOpen = false;
 bool g_gfxAttached = false;
-bool g_rspAttached = false;
-bool g_audioAttached = false;
-bool g_inputAttached = false;
 std::atomic<bool> g_coreExecuting{false};
 const char* const kRequiredGfxSymbols[] = {
     "PluginGetVersion", "PluginStartup", "PluginShutdown", "ChangeWindow",
@@ -746,15 +743,17 @@ Java_com_jsr_n64android_MainActivity_nativeExecuteCore(JNIEnv* env, jobject /* t
         // emulation loop. This frontend currently attaches only GLideN64.
         // Do not call M64CMD_EXECUTE until RSP, audio and input are attached;
         // incomplete plugin state can crash inside the native Core.
-        if (!g_rspAttached || !g_audioAttached || !g_inputAttached) {
-            __android_log_print(ANDROID_LOG_WARN, "N64AndroidFlow",
-                                "M64CMD_EXECUTE bloqueado: plugins RSP, audio e input ainda nao foram anexados.");
-            return makeString(env,
-                "Execucao bloqueada por seguranca.\\n"
-                "Plugin GFX: anexado.\\n"
-                "Plugins RSP, audio e controle: ainda nao anexados.\\n"
-                "O Core nao foi iniciado para evitar novo fechamento do aplicativo.");
-        }
+        // Keep the execute loop disabled after the device crash. The pinned
+        // Core provides internal dummy RSP/audio/input plugins, so those are
+        // not prerequisites for this diagnostic gate. First collect native
+        // crash diagnostics and validate the GLideN64/Core frame lifecycle.
+        __android_log_print(ANDROID_LOG_WARN, "N64AndroidFlow",
+                            "M64CMD_EXECUTE temporariamente bloqueado: diagnostico da falha nativa pendente.");
+        return makeString(env,
+            "Execucao temporariamente bloqueada por seguranca.\\n"
+            "O Core e o plugin GFX foram carregados/anexados, mas o primeiro teste fechou o app.\\n"
+            "O Core possui plugins internos de compatibilidade para RSP/audio/input.\\n"
+            "Estamos investigando a falha nativa antes de liberar novo teste.");
         if (!androidVideoContextReady())
             return makeString(env, "Execucao recusada: contexto EGL nao esta atual na thread GL.");
         if (g_coreExecuting.load())
