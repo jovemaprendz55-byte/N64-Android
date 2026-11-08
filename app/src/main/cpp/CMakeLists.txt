@@ -53,8 +53,9 @@ if(EXISTS "${MUPEN64PLUS_CORE_SOURCE_DIR}/src/asm_defines/asm_defines.c")
         M64P_PARALLEL
         NOCRYPT
         NOUNCRYPT
-        # Android uses 64-bit off_t; bionic exposes fopen/ftello/fseeko,
-        # not the glibc-specific *64 entry points used by legacy Minizip.
+        # Bionic hides ftello/fseeko unless large-file feature declarations
+        # are enabled before stdio.h is included by the bundled Minizip.
+        _LARGEFILE_SOURCE=1
         MINIZIP_FOPEN_NO_64)
 
     target_compile_options(mupen64plus PRIVATE
