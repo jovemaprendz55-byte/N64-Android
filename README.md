@@ -48,6 +48,7 @@ A estrutura Gradle/Kotlin/CMake/JNI já foi criada. A tela inicial apenas confir
 - [Auditoria de licenças](docs/LICENSING.md)
 - [Inventário SDL e ciclo de vida Android](docs/ANDROID-SDL-PORT.md)
 - [Auditoria de dependências do Core para Android](docs/CORE-ANDROID-DEPENDENCIES.md)
+- [Versões fixadas das dependências Android](docs/ANDROID-DEPENDENCIES.md)
 
 ## Referências
 
