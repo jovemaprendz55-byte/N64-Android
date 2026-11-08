@@ -24,6 +24,7 @@ class MainActivity : Activity() {
     private external fun nativeShutdown(): String
     private external fun nativeStartCore(configPath: String, dataPath: String): String
     private external fun nativeRegisterAndroidVideo(): String
+    private external fun nativeLoadGfxPlugin(pluginPath: String): String
     private external fun nativeTestVideoOverrideAbi(): String
     private external fun nativeVerifyEglContext(): String
     private external fun nativeTestGlOperations(): String
@@ -391,11 +392,18 @@ class MainActivity : Activity() {
                     }
                     val videoStatus = if (registerVideoExtension) {
                         try {
-                            nativeRegisterAndroidVideo()
+                            val registration = nativeRegisterAndroidVideo()
+                            if (!registration.startsWith("Video Extension Android registrada no Core")) {
+                                registration
+                            } else {
+                                val pluginPath = File(applicationInfo.nativeLibraryDir,
+                                    "libmupen64plus-video-android.so").absolutePath
+                                registration + "\\n\\n" + nativeLoadGfxPlugin(pluginPath)
+                            }
                         } catch (error: LinkageError) {
-                            "Falha JNI ao registrar Video Extension Android: " + error.message
+                            "Falha JNI ao registrar/carregar plugin GFX Android: " + error.message
                         } catch (error: Exception) {
-                            "Erro ao registrar Video Extension Android: " + error.message
+                            "Erro ao registrar/carregar plugin GFX Android: " + error.message
                         }
                     } else {
                         ""
