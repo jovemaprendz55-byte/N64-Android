@@ -35,9 +35,26 @@ jobs:
           ref: a04081ad6a966a9413bea63a55f502e0dc98bb18
           path: third_party/GLideN64
 
-      - name: Apply documented Android GLES profile patch to GLideN64
+      - name: Apply guarded Android GLES profile patch to GLideN64
         run: |
-          git -C third_party/GLideN64 apply "$GITHUB_WORKSPACE/patches/gliden64/android-gles-profile.patch"
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("third_party/GLideN64/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp")
+          source = path.read_text()
+          old = (
+              "FunctionWrapper::CoreVideo_GL_SetAttribute(M64P_GL_CONTEXT_PROFILE_MASK, M64P_GL_CONTEXT_PROFILE_CORE);\\n"
+              "\\tFunctionWrapper::CoreVideo_GL_SetAttribute(M64P_GL_CONTEXT_MAJOR_VERSION, 3);\\n"
+              "\\tFunctionWrapper::CoreVideo_GL_SetAttribute(M64P_GL_CONTEXT_MINOR_VERSION, 3);"
+          )
+          new = (
+              "FunctionWrapper::CoreVideo_GL_SetAttribute(M64P_GL_CONTEXT_PROFILE_MASK, M64P_GL_CONTEXT_PROFILE_ES);\\n"
+              "\\tFunctionWrapper::CoreVideo_GL_SetAttribute(M64P_GL_CONTEXT_MAJOR_VERSION, 3);\\n"
+              "\\tFunctionWrapper::CoreVideo_GL_SetAttribute(M64P_GL_CONTEXT_MINOR_VERSION, 0);"
+          )
+          if source.count(old) != 1:
+              raise SystemExit("Expected GLideN64 context-attribute block exactly once; upstream drift detected")
+          path.write_text(source.replace(old, new, 1))
+          PY
           git -C third_party/GLideN64 diff --check
           grep -F "M64P_GL_CONTEXT_PROFILE_ES" third_party/GLideN64/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp
           grep -F "M64P_GL_CONTEXT_MINOR_VERSION, 0" third_party/GLideN64/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp
