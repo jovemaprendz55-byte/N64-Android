@@ -193,6 +193,9 @@ void* g_gfxPluginHandle = nullptr;
 bool g_gfxPluginStarted = false;
 bool g_romOpen = false;
 bool g_gfxAttached = false;
+bool g_rspAttached = false;
+bool g_audioAttached = false;
+bool g_inputAttached = false;
 std::atomic<bool> g_coreExecuting{false};
 const char* const kRequiredGfxSymbols[] = {
     "PluginGetVersion", "PluginStartup", "PluginShutdown", "ChangeWindow",
@@ -743,13 +746,15 @@ Java_com_jsr_n64android_MainActivity_nativeExecuteCore(JNIEnv* env, jobject /* t
         // emulation loop. This frontend currently attaches only GLideN64.
         // Do not call M64CMD_EXECUTE until RSP, audio and input are attached;
         // incomplete plugin state can crash inside the native Core.
-        __android_log_print(ANDROID_LOG_WARN, "N64AndroidFlow",
-                            "M64CMD_EXECUTE bloqueado: plugins RSP, audio e input ainda nao foram anexados.");
-        return makeString(env,
-            "Execucao bloqueada por seguranca.\\n"
-            "Plugin GFX: anexado.\\n"
-            "Plugins RSP, audio e controle: ainda nao anexados.\\n"
-            "O Core nao foi iniciado para evitar novo fechamento do aplicativo.");
+        if (!g_rspAttached || !g_audioAttached || !g_inputAttached) {
+            __android_log_print(ANDROID_LOG_WARN, "N64AndroidFlow",
+                                "M64CMD_EXECUTE bloqueado: plugins RSP, audio e input ainda nao foram anexados.");
+            return makeString(env,
+                "Execucao bloqueada por seguranca.\\n"
+                "Plugin GFX: anexado.\\n"
+                "Plugins RSP, audio e controle: ainda nao anexados.\\n"
+                "O Core nao foi iniciado para evitar novo fechamento do aplicativo.");
+        }
         if (!androidVideoContextReady())
             return makeString(env, "Execucao recusada: contexto EGL nao esta atual na thread GL.");
         if (g_coreExecuting.load())
