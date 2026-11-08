@@ -23,6 +23,7 @@ class MainActivity : Activity() {
     private external fun nativeInitialize(configPath: String, dataPath: String): String
     private external fun nativeShutdown(): String
     private external fun nativeStartCore(configPath: String, dataPath: String): String
+    private external fun nativeRegisterAndroidVideo(): String
     private external fun nativeTestVideoOverrideAbi(): String
     private external fun nativeVerifyEglContext(): String
     private external fun nativeTestGlOperations(): String
@@ -259,6 +260,10 @@ class MainActivity : Activity() {
                     })
                 }
             })
+            addView(Button(this@MainActivity).apply {
+                text = "Iniciar integracao grafica"
+                setOnClickListener { startAndroidVideoIntegration() }
+            })
             addView(TextView(this@MainActivity).apply {
                 text = "Jogos e carregamento de ROMs ainda estao em desenvolvimento."
                 textSize = 14f
@@ -284,6 +289,48 @@ class MainActivity : Activity() {
             }
         }
 
+
+    private fun startAndroidVideoIntegration() {
+        statusView.text = "N64 Android\\n\\nPreparando Core e camada grafica Android..."
+        try {
+            loadNativeLibrary()
+            if (!nativeCoreLoaded) {
+                val loaded = nativeInitialize(
+                    configDirectory.absolutePath,
+                    dataDirectory.absolutePath
+                )
+                nativeCoreLoaded = loaded.startsWith("Core Mupen64Plus carregado com sucesso")
+                if (!nativeCoreLoaded) {
+                    statusView.text = "N64 Android\\n\\n" + loaded
+                    return
+                }
+            }
+            if (!nativeCoreInitialized) {
+                val started = nativeStartCore(
+                    configDirectory.absolutePath,
+                    dataDirectory.absolutePath
+                )
+                nativeCoreInitialized = started.startsWith("CoreStartup concluido com sucesso")
+                if (!nativeCoreInitialized) {
+                    statusView.text = "N64 Android\\n\\n" + started
+                    return
+                }
+            }
+            diagnosticScreenVisible = true
+            setContentView(ScrollView(this).apply {
+                isFillViewport = true
+                addView(rootLayout)
+            })
+            graphicsGroup.visibility = ViewGroup.VISIBLE
+            statusView.text = "N64 Android\\n\\nCore inicializado. Criando contexto EGL para registrar a camada de video Android..."
+            showOpenGlTest(registerVideoExtension = true)
+        } catch (error: Exception) {
+            statusView.text = "N64 Android\\n\\nFalha ao iniciar integracao grafica: ${error.message}"
+        } catch (error: LinkageError) {
+            statusView.text = "N64 Android\\n\\nFalha JNI na integracao grafica: ${error.message}"
+        }
+    }
+
     private fun showHomeScreen() {
         diagnosticScreenVisible = false
         glView?.let {
@@ -303,7 +350,7 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun showOpenGlTest(drawTriangle: Boolean = false) {
+    private fun showOpenGlTest(drawTriangle: Boolean = false, registerVideoExtension: Boolean = false) {
         loadNativeLibrary()
         glSurfaceReady = false
         glView?.let {
@@ -342,8 +389,21 @@ class MainActivity : Activity() {
                     } catch (error: LinkageError) {
                         "Falha ao verificar contexto EGL: " + error.message
                     }
+                    val videoStatus = if (registerVideoExtension) {
+                        try {
+                            nativeRegisterAndroidVideo()
+                        } catch (error: LinkageError) {
+                            "Falha JNI ao registrar Video Extension Android: " + error.message
+                        } catch (error: Exception) {
+                            "Erro ao registrar Video Extension Android: " + error.message
+                        }
+                    } else {
+                        ""
+                    }
                     runOnUiThread {
-                        val visualStatus = if (!drawTriangle) {
+                        val visualStatus = if (registerVideoExtension) {
+                            "Integracao grafica Android registrada no Core."
+                        } else if (!drawTriangle) {
                             "Teste de superficie OpenGL pronto."
                         } else if (triangleProgram != 0) {
                             "Programa GLES compilado. Triangulo colorido sendo desenhado."
@@ -357,7 +417,8 @@ class MainActivity : Activity() {
                         }
                         statusView.text = "N64 Android\\n\\n" + visualStatus + "\\n" +
                             lifecycleStatus + "\\n\\n" + eglStatus +
-                            "\\n\\nNenhuma ROM ou plugin foi iniciado."
+                            (if (videoStatus.isNotEmpty()) "\\n\\n" + videoStatus else "") +
+                            "\\n\\nNenhuma ROM foi carregada; plugin GFX ainda nao foi iniciado."
                     }
                 }
 
