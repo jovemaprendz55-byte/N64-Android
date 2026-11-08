@@ -18,7 +18,7 @@ class MainActivity : Activity() {
     private lateinit var configDirectory: File
     private lateinit var dataDirectory: File
     private var nativeLibraryLoaded = false
-    private var nativeCoreStarted = false
+    private var nativeCoreLoaded = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,18 +29,18 @@ class MainActivity : Activity() {
         dataDirectory.mkdirs()
 
         statusView = TextView(this).apply {
-            text = "N64 Android\n\nInterface iniciada.\nBiblioteca nativa ainda nao foi carregada."
+            text = "N64 Android\\n\\nInterface iniciada.\\nBiblioteca nativa ainda nao foi carregada."
             textSize = 16f
             gravity = Gravity.CENTER
             setPadding(28, 28, 28, 28)
         }
 
         val loadButton = Button(this).apply {
-            text = "1 - Carregar biblioteca"
+            text = "1 - Carregar biblioteca JNI"
             setOnClickListener {
-                statusView.text = "N64 Android\n\n" + try {
+                statusView.text = "N64 Android\\n\\n" + try {
                     loadNativeLibrary()
-                    "Biblioteca n64bridge carregada. Nenhuma funcao JNI foi chamada."
+                    "Biblioteca n64bridge carregada."
                 } catch (error: LinkageError) {
                     "Falha ao carregar biblioteca: ${error.message}"
                 } catch (error: Exception) {
@@ -50,14 +50,11 @@ class MainActivity : Activity() {
         }
 
         val jniButton = Button(this).apply {
-            text = "2 - Testar JNI"
+            text = "2 - Testar JNI e SDL2"
             setOnClickListener {
-                statusView.text = "N64 Android\n\n" + try {
-                    if (!nativeLibraryLoaded) {
-                        "Carregue a biblioteca primeiro."
-                    } else {
-                        nativeGetStatus()
-                    }
+                statusView.text = "N64 Android\\n\\n" + try {
+                    if (!nativeLibraryLoaded) "Carregue a biblioteca primeiro."
+                    else nativeGetStatus()
                 } catch (error: LinkageError) {
                     "Falha na chamada JNI: ${error.message}"
                 } catch (error: Exception) {
@@ -67,35 +64,35 @@ class MainActivity : Activity() {
         }
 
         val initializeButton = Button(this).apply {
-            text = "3 - Inicializar Core"
+            text = "3 - Carregar Core (teste isolado)"
             setOnClickListener {
-                statusView.text = "N64 Android\n\n" + try {
+                statusView.text = "N64 Android\\n\\n" + try {
                     loadNativeLibrary()
                     val result = nativeInitialize(
                         configDirectory.absolutePath,
                         dataDirectory.absolutePath
                     )
-                    nativeCoreStarted = result.startsWith("CoreStartup concluido com sucesso")
+                    nativeCoreLoaded = result.startsWith("Core Mupen64Plus carregado com sucesso")
                     result
                 } catch (error: LinkageError) {
-                    "Falha nativa durante inicializacao: ${error.message}"
+                    "Falha ao carregar Core: ${error.message}"
                 } catch (error: Exception) {
-                    "Erro durante inicializacao: ${error.message}"
+                    "Erro ao carregar Core: ${error.message}"
                 }
             }
         }
 
         val shutdownButton = Button(this).apply {
-            text = "Encerrar Core"
+            text = "4 - Descarregar Core"
             setOnClickListener {
-                statusView.text = "N64 Android\n\n" + try {
-                    if (nativeCoreStarted) {
-                        nativeShutdown().also { nativeCoreStarted = false }
+                statusView.text = "N64 Android\\n\\n" + try {
+                    if (nativeCoreLoaded) {
+                        nativeShutdown().also { nativeCoreLoaded = false }
                     } else {
-                        "Core nao foi inicializado."
+                        "Biblioteca do Core nao foi carregada."
                     }
                 } catch (error: LinkageError) {
-                    "Falha ao encerrar Core: ${error.message}"
+                    "Falha ao descarregar Core: ${error.message}"
                 }
             }
         }
@@ -122,11 +119,11 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
-        if (nativeCoreStarted) {
+        if (nativeCoreLoaded) {
             try {
                 nativeShutdown()
             } catch (_: LinkageError) {
-                // Shutdown is attempted only after a confirmed successful startup.
+                // Descarrega apenas se o carregamento isolado foi confirmado.
             }
         }
         super.onDestroy()
