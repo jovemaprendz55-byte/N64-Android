@@ -36,6 +36,93 @@ void coreStateCallback(void*, int param, int value) {
                         "Core state callback: parametro=%d valor=%d", param, value);
 }
 
+#ifdef N64_HAS_MUPEN64PLUS_HEADERS
+namespace {
+int g_androidVideoWidth = 640;
+int g_androidVideoHeight = 480;
+int g_androidVideoAttributes[14] = {};
+
+bool androidVideoContextReady() {
+    return eglGetCurrentContext() != EGL_NO_CONTEXT &&
+           eglGetCurrentDisplay() != EGL_NO_DISPLAY &&
+           eglGetCurrentSurface(EGL_DRAW) != EGL_NO_SURFACE &&
+           glGetString(GL_VERSION) != nullptr;
+}
+m64p_error androidVideoInit() {
+    return androidVideoContextReady() ? M64ERR_SUCCESS : M64ERR_INVALID_STATE;
+}
+m64p_error androidVideoQuit() { return M64ERR_SUCCESS; }
+m64p_error androidVideoListModes(m64p_2d_size* sizes, int* count) {
+    if (count == nullptr) return M64ERR_INPUT_ASSERT;
+    if (sizes == nullptr || *count < 1) { *count = 1; return M64ERR_SUCCESS; }
+    sizes[0].uiWidth = static_cast<unsigned int>(g_androidVideoWidth);
+    sizes[0].uiHeight = static_cast<unsigned int>(g_androidVideoHeight);
+    *count = 1;
+    return M64ERR_SUCCESS;
+}
+m64p_error androidVideoListRates(m64p_2d_size, int* rates, int* count) {
+    if (count == nullptr) return M64ERR_INPUT_ASSERT;
+    if (rates == nullptr || *count < 1) { *count = 1; return M64ERR_SUCCESS; }
+    rates[0] = 60;
+    *count = 1;
+    return M64ERR_SUCCESS;
+}
+m64p_error androidVideoSetMode(int width, int height, int, int, int) {
+    if (!androidVideoContextReady()) return M64ERR_INVALID_STATE;
+    if (width <= 0 || height <= 0) return M64ERR_INPUT_INVALID;
+    g_androidVideoWidth = width;
+    g_androidVideoHeight = height;
+    return M64ERR_SUCCESS;
+}
+m64p_error androidVideoSetModeRate(int width, int height, int bits, int mode, int flags, int) {
+    return androidVideoSetMode(width, height, bits, mode, flags);
+}
+m64p_function androidVideoGetProc(const char* name) {
+    if (name == nullptr || !androidVideoContextReady()) return nullptr;
+    auto proc = eglGetProcAddress(name);
+    if (proc != nullptr) return reinterpret_cast<m64p_function>(proc);
+    return reinterpret_cast<m64p_function>(dlsym(RTLD_DEFAULT, name));
+}
+m64p_error androidVideoSetAttr(m64p_GLattr attr, int value) {
+    const int index = static_cast<int>(attr);
+    if (index < 1 || index >= 14) return M64ERR_INPUT_INVALID;
+    g_androidVideoAttributes[index] = value;
+    return M64ERR_SUCCESS;
+}
+m64p_error androidVideoGetAttr(m64p_GLattr attr, int* value) {
+    const int index = static_cast<int>(attr);
+    if (value == nullptr) return M64ERR_INPUT_ASSERT;
+    if (index < 1 || index >= 14) return M64ERR_INPUT_INVALID;
+    *value = g_androidVideoAttributes[index];
+    return M64ERR_SUCCESS;
+}
+m64p_error androidVideoSwapBuffers() {
+    // GLSurfaceView owns EGL buffer swapping; the Core must not swap it again.
+    return androidVideoContextReady() ? M64ERR_SUCCESS : M64ERR_INVALID_STATE;
+}
+m64p_error androidVideoSetCaption(const char*) { return M64ERR_SUCCESS; }
+m64p_error androidVideoToggleFullscreen() { return M64ERR_SUCCESS; }
+m64p_error androidVideoResize(int width, int height) {
+    if (width <= 0 || height <= 0) return M64ERR_INPUT_INVALID;
+    g_androidVideoWidth = width;
+    g_androidVideoHeight = height;
+    return M64ERR_SUCCESS;
+}
+uint32_t androidVideoDefaultFramebuffer() {
+    if (!androidVideoContextReady()) return 0;
+    GLint framebuffer = 0;
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &framebuffer);
+    return static_cast<uint32_t>(framebuffer);
+}
+m64p_error androidVideoInitRenderMode(m64p_render_mode mode) {
+    return mode == M64P_RENDER_OPENGL && androidVideoContextReady()
+        ? M64ERR_SUCCESS : M64ERR_UNSUPPORTED;
+}
+m64p_error androidVideoVkSurface(void**, void*) { return M64ERR_UNSUPPORTED; }
+m64p_error androidVideoVkExtensions(const char**[], uint32_t*) { return M64ERR_UNSUPPORTED; }
+}
+#endif
+
 jstring makeString(JNIEnv* env, const char* value) {
     return env->NewStringUTF(value);
 }
@@ -290,6 +377,59 @@ Java_com_jsr_n64android_MainActivity_nativeTestVideoOverrideAbi(JNIEnv* env, job
         "ABI de video validada: 17 callbacks aceitos pelo Core.\n"
         "Tabela de teste desativada imediatamente.\n"
         "Nenhuma janela, plugin GFX ou ROM foi iniciada.");
+#endif
+}
+
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_jsr_n64android_MainActivity_nativeRegisterAndroidVideo(JNIEnv* env, jobject /* thiz */) {
+#ifndef N64_HAS_MUPEN64PLUS_HEADERS
+    return makeString(env, "Headers oficiais do Core nao estao disponiveis nesta compilacao.");
+#else
+    std::lock_guard<std::mutex> lock(g_coreMutex);
+    if (g_coreHandle == nullptr || !g_coreStarted)
+        return makeString(env, "Inicialize o Core antes de registrar o video Android.");
+    if (!androidVideoContextReady())
+        return makeString(env, "Registro cancelado: contexto EGL/GLES nao esta atual na thread GL.");
+    auto overrideVideo = reinterpret_cast<ptr_CoreOverrideVidExt>(
+        dlsym(g_coreHandle, "CoreOverrideVidExt"));
+    if (overrideVideo == nullptr)
+        return makeString(env, "CoreOverrideVidExt nao encontrado no Core.");
+    m64p_video_extension_functions video{};
+    video.Functions = 17;
+    video.VidExtFuncInit = androidVideoInit;
+    video.VidExtFuncQuit = androidVideoQuit;
+    video.VidExtFuncListModes = androidVideoListModes;
+    video.VidExtFuncListRates = androidVideoListRates;
+    video.VidExtFuncSetMode = androidVideoSetMode;
+    video.VidExtFuncSetModeWithRate = androidVideoSetModeRate;
+    video.VidExtFuncGLGetProc = androidVideoGetProc;
+    video.VidExtFuncGLSetAttr = androidVideoSetAttr;
+    video.VidExtFuncGLGetAttr = androidVideoGetAttr;
+    video.VidExtFuncGLSwapBuf = androidVideoSwapBuffers;
+    video.VidExtFuncSetCaption = androidVideoSetCaption;
+    video.VidExtFuncToggleFS = androidVideoToggleFullscreen;
+    video.VidExtFuncResizeWindow = androidVideoResize;
+    video.VidExtFuncGLGetDefaultFramebuffer = androidVideoDefaultFramebuffer;
+    video.VidExtFuncInitWithRenderMode = androidVideoInitRenderMode;
+    video.VidExtFuncVKGetSurface = androidVideoVkSurface;
+    video.VidExtFuncVKGetInstanceExtensions = androidVideoVkExtensions;
+    const m64p_error result = overrideVideo(&video);
+    if (result != M64ERR_SUCCESS) {
+        char status[192];
+        std::snprintf(status, sizeof(status),
+                      "CoreOverrideVidExt falhou ao registrar video Android: codigo %d.",
+                      static_cast<int>(result));
+        return makeString(env, status);
+    }
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidVideo",
+                        "Video Extension Android registrada na thread GL.");
+    return makeString(env,
+        "Video Extension Android registrada no Core.\n"
+        "Callbacks EGL/GLES ativos na thread GL.\n"
+        "A troca de buffers continua sob controle do GLSurfaceView.\n"
+        "Plugin GFX e carregamento de ROM ainda nao foram iniciados.");
 #endif
 }
 
