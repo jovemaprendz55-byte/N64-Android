@@ -3,10 +3,7 @@
 
 #include <cstdio>
 #include <mutex>
-
-#ifdef N64_HAS_SDL2
-#include <SDL.h>
-#endif
+#include <dlfcn.h>
 
 #ifdef N64_HAS_MUPEN64PLUS
 #define M64P_CORE_PROTOTYPES
@@ -45,19 +42,45 @@ jstring makeString(JNIEnv* env, const char* value) {
 extern "C"
 JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_MainActivity_nativeGetStatus(JNIEnv* env, jobject /* thiz */) {
-#ifdef N64_HAS_SDL2
-    SDL_version version{};
-    SDL_GetVersion(&version);
-    char status[160];
+    // Load SDL2 only after JNI itself has been confirmed to work.
+    // This removes libSDL2.so from n64bridge's DT_NEEDED dependencies.
+    void* sdl = dlopen("libSDL2.so", RTLD_NOW | RTLD_LOCAL);
+    if (sdl == nullptr) {
+        const char* error = dlerror();
+        char status[512];
+        std::snprintf(status, sizeof(status),
+                      "JNI OK, mas dlopen(SDL2) falhou: %s",
+                      error != nullptr ? error : "erro desconhecido");
+        return makeString(env, status);
+    }
+
+    struct SDLVersion {
+        unsigned char major;
+        unsigned char minor;
+        unsigned char patch;
+    };
+    using SDLGetVersionFn = void (*)(SDLVersion*);
+    auto getVersion = reinterpret_cast<SDLGetVersionFn>(
+        dlsym(sdl, "SDL_GetVersion"));
+    if (getVersion == nullptr) {
+        const char* error = dlerror();
+        char status[512];
+        std::snprintf(status, sizeof(status),
+                      "SDL2 abriu, mas SDL_GetVersion nao foi encontrado: %s",
+                      error != nullptr ? error : "simbolo ausente");
+        dlclose(sdl);
+        return makeString(env, status);
+    }
+
+    SDLVersion version{};
+    getVersion(&version);
+    char status[192];
     std::snprintf(status, sizeof(status),
-                  "JNI chamada com sucesso. SDL2 carregada: %u.%u.%u.\n"
+                  "JNI OK. SDL2 carregada dinamicamente: %u.%u.%u.\\n"
                   "Core Mupen64Plus ainda nao foi incluido.",
                   version.major, version.minor, version.patch);
+    dlclose(sdl);
     return makeString(env, status);
-#else
-    return makeString(env,
-        "JNI bridge carregada e chamada com sucesso. SDL2 nao incluida.");
-#endif
 }
 
 extern "C"
