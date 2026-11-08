@@ -17,9 +17,23 @@ if(NOT DEFINED OUTPUT_DIR)
     message(FATAL_ERROR "OUTPUT_DIR must be set")
 endif()
 
-file(STRINGS "${INPUT_OBJECT}" _asm_lines REGEX "@ASM_DEFINE")
-set(_definitions)
+# The records are embedded in struct bytes, not ordinary text lines.
+# Match the pinned upstream script's binary-safe grep -a extraction.
+execute_process(
+    COMMAND grep -a -o -E
+        "@ASM_DEFINE[[:space:]]+offsetof_struct_[A-Za-z0-9_]+[[:space:]]+0x[0-9a-fA-F]+"
+        "${INPUT_OBJECT}"
+    RESULT_VARIABLE _grep_result
+    OUTPUT_VARIABLE _asm_records
+    ERROR_VARIABLE _grep_error
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+if(NOT _grep_result EQUAL 0 AND NOT _grep_result EQUAL 1)
+    message(FATAL_ERROR "Could not scan binary object ${INPUT_OBJECT}: ${_grep_error}")
+endif()
 
+set(_definitions)
+string(REPLACE "\n" ";" _asm_lines "${_asm_records}")
 foreach(_line IN LISTS _asm_lines)
     string(REGEX MATCH
         "@ASM_DEFINE[ \t]+(offsetof_struct_[A-Za-z0-9_]+)[ \t]+(0x[0-9a-fA-F]+)"
