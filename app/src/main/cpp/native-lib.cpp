@@ -738,7 +738,18 @@ Java_com_jsr_n64android_MainActivity_nativeExecuteCore(JNIEnv* env, jobject /* t
         if (g_coreHandle == nullptr || !g_coreStarted)
             return makeString(env, "Inicialize o Core antes de executar.");
         if (!g_romOpen || !g_gfxAttached)
-            return makeString(env, "Abra a ROM e anexe o plugin GFX antes de executar.");
+            return makeString(env, "Execucao bloqueada: abra a ROM e anexe o plugin GFX antes de continuar.");
+        // Mupen64Plus requires all four plugin classes before starting the
+        // emulation loop. This frontend currently attaches only GLideN64.
+        // Do not call M64CMD_EXECUTE until RSP, audio and input are attached;
+        // incomplete plugin state can crash inside the native Core.
+        __android_log_print(ANDROID_LOG_WARN, "N64AndroidFlow",
+                            "M64CMD_EXECUTE bloqueado: plugins RSP, audio e input ainda nao foram anexados.");
+        return makeString(env,
+            "Execucao bloqueada por seguranca.\\n"
+            "Plugin GFX: anexado.\\n"
+            "Plugins RSP, audio e controle: ainda nao anexados.\\n"
+            "O Core nao foi iniciado para evitar novo fechamento do aplicativo.");
         if (!androidVideoContextReady())
             return makeString(env, "Execucao recusada: contexto EGL nao esta atual na thread GL.");
         if (g_coreExecuting.load())
