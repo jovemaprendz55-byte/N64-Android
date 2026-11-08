@@ -51,23 +51,23 @@ Java_com_jsr_n64android_MainActivity_nativeGetStatus(JNIEnv* env, jobject /* thi
         (&CoreDoCommand != nullptr) &&
         (&CoreShutdown != nullptr);
     std::snprintf(details, sizeof(details),
-                  "Bridge JNI carregada.\\n"
-                  "SDL2: %u.%u.%u\\n"
-                  "Core Mupen64Plus linkado: sim\\n"
-                  "API frontend exportada: %s\\n"
-                  "Inicializacao do Core: aguardando comando\\n"
+                  "Bridge JNI carregada.\n"
+                  "SDL2: %u.%u.%u\n"
+                  "Core Mupen64Plus linkado: sim\n"
+                  "API frontend exportada: %s\n"
+                  "Inicializacao do Core: aguardando comando\n"
                   "Plugins e execucao de ROM ainda pendentes.",
                   version.major, version.minor, version.patch,
                   coreApiAvailable ? "sim" : "nao");
 #else
     std::snprintf(details, sizeof(details),
-                  "Bridge JNI carregada.\\nSDL2: %u.%u.%u\\n"
+                  "Bridge JNI carregada.\nSDL2: %u.%u.%u\n"
                   "Core Mupen64Plus nao esta linkado.",
                   version.major, version.minor, version.patch);
 #endif
 #else
     std::snprintf(details, sizeof(details),
-                  "Bridge JNI carregada.\\nSDL2 ainda nao vinculada.");
+                  "Bridge JNI carregada.\nSDL2 ainda nao vinculada.");
 #endif
     return makeString(env, details);
 }
@@ -108,7 +108,7 @@ Java_com_jsr_n64android_MainActivity_nativeInitialize(
     if (result == M64ERR_SUCCESS) {
         g_coreStarted = true;
         return makeString(env,
-            "CoreStartup concluido com sucesso.\\n"
+            "CoreStartup concluido com sucesso.\n"
             "Nenhuma ROM foi aberta. Plugins ainda precisam ser integrados.");
     }
 
