@@ -124,6 +124,7 @@ m64p_error androidVideoVkExtensions(const char**[], uint32_t*) { return M64ERR_U
 #endif
 
 void* g_gfxPluginHandle = nullptr;
+bool g_gfxPluginStarted = false;
 const char* const kRequiredGfxSymbols[] = {
     "PluginGetVersion", "PluginStartup", "PluginShutdown", "ChangeWindow",
     "InitiateGFX", "MoveScreen", "ProcessDList", "ProcessRDPList",
@@ -499,13 +500,30 @@ Java_com_jsr_n64android_MainActivity_nativeLoadGfxPlugin(
         return makeString(env, status);
     }
 
+    using GfxPluginStartup = int (*)(void*, void*, void (*)(void*, int, const char*));
+    auto startup = reinterpret_cast<GfxPluginStartup>(dlsym(plugin, "PluginStartup"));
+    if (startup == nullptr) {
+        dlclose(plugin);
+        return makeString(env, "PluginStartup nao encontrado apos validacao dos simbolos.");
+    }
+    const int startupResult = startup(g_coreHandle, nullptr, coreDebugCallback);
+    if (startupResult != 0) {
+        char startupStatus[256];
+        std::snprintf(startupStatus, sizeof(startupStatus),
+                      "PluginStartup falhou: codigo %d. Plugin nao foi mantido carregado.",
+                      startupResult);
+        dlclose(plugin);
+        return makeString(env, startupStatus);
+    }
+
     g_gfxPluginHandle = plugin;
+    g_gfxPluginStarted = true;
     char status[768];
     std::snprintf(status, sizeof(status),
                   "Plugin GFX Android carregado e validado.\n"
                   "Nome: %s\nVersao: %d.%d.%d | API: 0x%06X\n"
                   "Simbolos obrigatorios: %zu/%zu.\n"
-                  "Ainda nao foi iniciado nem anexado ao Core; nenhuma ROM foi aberta.",
+                  "PluginStartup executado. Ainda nao anexado ao Core; nenhuma ROM foi aberta.",
                   name != nullptr ? name : "(sem nome)",
                   (pluginVersion >> 16) & 0xff, (pluginVersion >> 8) & 0xff,
                   pluginVersion & 0xff, apiVersion,
@@ -523,6 +541,22 @@ Java_com_jsr_n64android_MainActivity_nativeShutdown(JNIEnv* env, jobject /* thiz
         return makeString(env, "Biblioteca do Core nao estava carregada.");
     }
     if (g_gfxPluginHandle != nullptr) {
+        if (g_gfxPluginStarted) {
+            using GfxPluginShutdown = int (*)();
+            auto pluginShutdown = reinterpret_cast<GfxPluginShutdown>(
+                dlsym(g_gfxPluginHandle, "PluginShutdown"));
+            if (pluginShutdown == nullptr)
+                return makeString(env, "PluginShutdown nao encontrado; bibliotecas mantidas carregadas.");
+            const int pluginResult = pluginShutdown();
+            if (pluginResult != 0) {
+                char status[256];
+                std::snprintf(status, sizeof(status),
+                              "PluginShutdown falhou: codigo %d. Bibliotecas mantidas carregadas.",
+                              pluginResult);
+                return makeString(env, status);
+            }
+            g_gfxPluginStarted = false;
+        }
         dlclose(g_gfxPluginHandle);
         g_gfxPluginHandle = nullptr;
     }
