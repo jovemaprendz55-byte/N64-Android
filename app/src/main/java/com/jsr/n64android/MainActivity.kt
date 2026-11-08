@@ -20,6 +20,7 @@ class MainActivity : Activity() {
     private external fun nativeShutdown(): String
     private external fun nativeStartCore(configPath: String, dataPath: String): String
     private external fun nativeTestVideoOverrideAbi(): String
+    private external fun nativeVerifyEglContext(): String
 
     private lateinit var statusView: TextView
     private lateinit var rootLayout: LinearLayout
@@ -175,6 +176,7 @@ class MainActivity : Activity() {
     }
 
     private fun showOpenGlTest() {
+        loadNativeLibrary()
         glView?.let {
             rootLayout.removeView(it)
             it.onPause()
@@ -186,8 +188,13 @@ class MainActivity : Activity() {
             setRenderer(object : GLSurfaceView.Renderer {
                 override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
                     GLES20.glClearColor(0.08f, 0.18f, 0.32f, 1.0f)
+                    val eglStatus = try {
+                        nativeVerifyEglContext()
+                    } catch (error: LinkageError) {
+                        "Falha ao verificar contexto EGL: " + error.message
+                    }
                     runOnUiThread {
-                        statusView.text = "N64 Android\\n\\nOpenGL ES 2.0 inicializado.\\nSuperficie grafica Android criada com sucesso.\\nNenhuma ROM foi carregada."
+                        statusView.text = "N64 Android\\n\\nOpenGL ES 2.0 inicializado.\\nSuperficie grafica Android criada.\\n\\n" + eglStatus + "\\n\\nNenhuma ROM foi carregada."
                     }
                 }
 
