@@ -241,3 +241,13 @@ Nenhuma ROM ou plugin foi iniciado.
 ### Próxima etapa segura
 
 Antes de ligar o Core à superfície, implementar testes de ciclo de vida do renderer: pausa e retomada da Activity, destruição/recriação da superfície e recriação dos recursos GLES no novo contexto. Garantir que shaders/programas antigos não sejam reutilizados após perda do contexto. Depois, projetar a ponte de callbacks de vídeo para a thread GL. Manter ROM_OPEN, CoreAttachPlugin(GFX) e EXECUTE bloqueados até que o ciclo de vida e os callbacks reais estejam validados.
+
+
+## Organização da interface de diagnóstico (2026-11-08)
+
+A tela inicial permanece simples, com o acesso "Diagnóstico e testes". Dentro do diagnóstico, os testes foram separados em três grupos recolhíveis:
+- Biblioteca e JNI: carregar a biblioteca e testar JNI/SDL2.
+- Core Mupen64Plus: carregar, inicializar/encerrar o Core e verificar ABI de vídeo.
+- Gráficos e OpenGL: superfície GLES, desenho do triângulo, ponte JNI na thread GL e operações GLES pela JNI.
+
+Os grupos começam recolhidos para reduzir a ocupação vertical. A tela de diagnóstico usa rolagem para aparelhos menores. O teste OpenGL é inserido dentro do grupo Gráficos e OpenGL. Esta alteração reorganiza somente a interface; não muda a integração do Core, não carrega ROM e não habilita renderização de jogos.
