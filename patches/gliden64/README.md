@@ -17,7 +17,7 @@ The patch intentionally does not claim that rendering works. It only makes the r
 
 The Android workflow must:
 1. Check out the exact upstream revision above.
-2. Apply this patch with `git apply` and run `git diff --check`.
+- Apply the equivalent context-attribute change using a guarded exact-block replacement (the original upstream block must occur exactly once), then run `git diff --check`. The unified diff in this directory is the reviewable patch record; the guard fails closed if upstream source drifts.
 3. Build the plugin for `arm64-v8a` using the Android NDK and EGL backend.
 4. Package the resulting `libmupen64plus-video-GLideN64.so` in the APK without linking it as a startup dependency of `libn64bridge.so`.
 5. Verify its required Mupen64Plus GFX ABI exports.
