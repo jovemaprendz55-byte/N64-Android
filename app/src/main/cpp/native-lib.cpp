@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <string>
 #include <mutex>
+#include <atomic>
 #include <dlfcn.h>
 #include <cstdint>
 #include <EGL/egl.h>
@@ -192,6 +193,7 @@ void* g_gfxPluginHandle = nullptr;
 bool g_gfxPluginStarted = false;
 bool g_romOpen = false;
 bool g_gfxAttached = false;
+std::atomic<bool> g_coreExecuting{false};
 const char* const kRequiredGfxSymbols[] = {
     "PluginGetVersion", "PluginStartup", "PluginShutdown", "ChangeWindow",
     "InitiateGFX", "MoveScreen", "ProcessDList", "ProcessRDPList",
@@ -724,8 +726,79 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
 
 extern "C"
 JNIEXPORT jstring JNICALL
+Java_com_jsr_n64android_MainActivity_nativeExecuteCore(JNIEnv* env, jobject /* thiz */) {
+#ifndef N64_HAS_MUPEN64PLUS_HEADERS
+    return makeString(env, "Headers oficiais do Core nao estao disponiveis nesta compilacao.");
+#else
+    void* core = nullptr;
+    CoreDoCommandSymbol doCommand = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(g_coreMutex);
+        if (g_coreHandle == nullptr || !g_coreStarted)
+            return makeString(env, "Inicialize o Core antes de executar.");
+        if (!g_romOpen || !g_gfxAttached)
+            return makeString(env, "Abra a ROM e anexe o plugin GFX antes de executar.");
+        if (!androidVideoContextReady())
+            return makeString(env, "Execucao recusada: contexto EGL nao esta atual na thread GL.");
+        if (g_coreExecuting.load())
+            return makeString(env, "O Core ja esta em execucao.");
+        core = g_coreHandle;
+        doCommand = reinterpret_cast<CoreDoCommandSymbol>(dlsym(core, "CoreDoCommand"));
+        if (doCommand == nullptr)
+            return makeString(env, "CoreDoCommand nao encontrado.");
+        g_coreExecuting.store(true);
+    }
+
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
+                        "M64CMD_EXECUTE iniciado na thread GL; TID=%ld",
+                        static_cast<long>(syscall(SYS_gettid)));
+    const m64p_error result = doCommand(M64CMD_EXECUTE, 0, nullptr);
+    g_coreExecuting.store(false);
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
+                        "M64CMD_EXECUTE retornou codigo=%d TID=%ld",
+                        static_cast<int>(result), static_cast<long>(syscall(SYS_gettid)));
+    char status[384];
+    std::snprintf(status, sizeof(status),
+                  "M64CMD_EXECUTE retornou ao frontend. Codigo: %d.\n"
+                  "Thread GL: %ld. O Core nao esta mais executando.",
+                  static_cast<int>(result), static_cast<long>(syscall(SYS_gettid)));
+    return makeString(env, status);
+#endif
+}
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_jsr_n64android_MainActivity_nativeStopCore(JNIEnv* env, jobject /* thiz */) {
+#ifndef N64_HAS_MUPEN64PLUS_HEADERS
+    return makeString(env, "Headers oficiais do Core nao estao disponiveis nesta compilacao.");
+#else
+    std::lock_guard<std::mutex> lock(g_coreMutex);
+    if (g_coreHandle == nullptr || !g_coreStarted)
+        return makeString(env, "Core nao esta inicializado.");
+    if (!g_coreExecuting.load())
+        return makeString(env, "Nenhuma execucao do Core esta ativa.");
+    using CoreDoCommandSymbol = m64p_error (*)(m64p_command, int, void*);
+    auto doCommand = reinterpret_cast<CoreDoCommandSymbol>(dlsym(g_coreHandle, "CoreDoCommand"));
+    if (doCommand == nullptr)
+        return makeString(env, "CoreDoCommand nao encontrado para solicitar parada.");
+    // M64CMD_STOP is asynchronous in the Mupen64Plus frontend API.
+    const m64p_error result = doCommand(M64CMD_STOP, 0, nullptr);
+    if (result != M64ERR_SUCCESS) {
+        char status[256];
+        std::snprintf(status, sizeof(status), "M64CMD_STOP falhou: codigo %d.",
+                      static_cast<int>(result));
+        return makeString(env, status);
+    }
+    return makeString(env, "Pedido de parada enviado ao Core. Aguardando M64CMD_EXECUTE retornar na thread GL.");
+#endif
+}
+
+extern "C"
+JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_MainActivity_nativeShutdown(JNIEnv* env, jobject /* thiz */) {
     std::lock_guard<std::mutex> lock(g_coreMutex);
+    if (g_coreExecuting.load())
+        return makeString(env, "Encerramento recusado: pare o Core e aguarde a execucao retornar antes de descarregar bibliotecas.");
     if (g_coreHandle == nullptr) {
         return makeString(env, "Biblioteca do Core nao estava carregada.");
     }
