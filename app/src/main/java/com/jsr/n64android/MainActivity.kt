@@ -29,6 +29,7 @@ class MainActivity : Activity() {
     private lateinit var statusView: TextView
     private lateinit var rootLayout: LinearLayout
     private lateinit var homeLayout: LinearLayout
+    private lateinit var graphicsGroup: LinearLayout
     private var diagnosticScreenVisible = false
     private lateinit var configDirectory: File
     private lateinit var dataDirectory: File
@@ -185,23 +186,40 @@ class MainActivity : Activity() {
             setOnClickListener { showHomeScreen() }
         }
 
+        val jniGroup = createDiagnosticGroup().apply {
+            addView(loadButton)
+            addView(jniButton)
+        }
+        val coreGroup = createDiagnosticGroup().apply {
+            addView(initializeButton)
+            addView(startCoreButton)
+            addView(unloadButton)
+            addView(videoAbiButton)
+        }
+        val graphicsGroup = createDiagnosticGroup().apply {
+            addView(glButton)
+            addView(glDrawButton)
+            addView(glThreadButton)
+            addView(glOperationsButton)
+        }
+
         rootLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(20, 20, 20, 20)
             addView(backButton)
-            addView(glDrawButton)
             addView(statusView)
-            addView(loadButton)
-            addView(jniButton)
-            addView(initializeButton)
-            addView(startCoreButton)
-            addView(unloadButton)
-            addView(glButton)
-            addView(videoAbiButton)
-            addView(glThreadButton)
-            addView(glOperationsButton)
+            addView(categoryButton("Biblioteca e JNI", jniGroup))
+            addView(jniGroup)
+            addView(categoryButton("Core Mupen64Plus", coreGroup))
+            addView(coreGroup)
+            addView(categoryButton("Gráficos e OpenGL", graphicsGroup))
+            addView(graphicsGroup)
         }
+        jniGroup.visibility = ViewGroup.GONE
+        coreGroup.visibility = ViewGroup.GONE
+        graphicsGroup.visibility = ViewGroup.GONE
+        this.graphicsGroup = graphicsGroup
 
         homeLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -237,10 +255,24 @@ class MainActivity : Activity() {
         setContentView(homeLayout)
     }
 
+    private fun createDiagnosticGroup(): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        gravity = Gravity.CENTER_HORIZONTAL
+        setPadding(0, 8, 0, 8)
+    }
+
+    private fun categoryButton(label: String, group: LinearLayout): Button =
+        Button(this).apply {
+            text = label
+            setOnClickListener {
+                group.visibility = if (group.visibility == ViewGroup.VISIBLE) ViewGroup.GONE else ViewGroup.VISIBLE
+            }
+        }
+
     private fun showHomeScreen() {
         diagnosticScreenVisible = false
         glView?.let {
-            rootLayout.removeView(it)
+            graphicsGroup.removeView(it)
             it.onPause()
         }
         glSurfaceReady = false
@@ -321,9 +353,8 @@ class MainActivity : Activity() {
         }
 
         glView = surface
-        rootLayout.addView(
+        graphicsGroup.addView(
             surface,
-            rootLayout.indexOfChild(rootLayout.getChildAt(rootLayout.childCount - 1)),
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 (180 * resources.displayMetrics.density).toInt()
