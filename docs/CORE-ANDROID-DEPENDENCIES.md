@@ -130,3 +130,20 @@ generated assembly requirements. Do not import its modified Core snapshot,
 frontend code, SDL stub, or Android.mk into this project. Keep the Core source
 of record pinned to the official upstream revision documented in
 `docs/LICENSING.md`, then port and validate each required adaptation here.
+
+## Explicit Core source manifest (implementation groundwork)
+
+Added `cmake/Mupen64PlusCoreSources.cmake` for the pinned upstream revision
+`a9ca8ec0b7decd17390c76c6341cf423d5d79321`. It transcribes the required
+Core source selection from that revision's `projects/unix/Makefile`, adds
+the ARM64 `NEW_DYNAREC` implementation and linkage assembly, and lists the
+bundled MD5/minizip sources separately. It deliberately uses explicit paths
+and fails configuration if a pinned source file is absent; it does not use
+recursive globbing.
+
+This is source-manifest groundwork, **not yet a Core build**. The manifest
+intentionally leaves out `src/osal/files_unix.c`: Android needs a dedicated
+storage/path implementation rather than inheriting desktop Unix assumptions.
+The Android SDL2 lifecycle, dependency targets (SDL2, libpng, zlib), and
+generated ARM64 assembly-definition headers also remain to be integrated.
+The existing APK workflow still does not compile this manifest or the Core.
