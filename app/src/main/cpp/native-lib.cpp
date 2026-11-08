@@ -357,3 +357,48 @@ Java_com_jsr_n64android_MainActivity_nativeVerifyEglContext(JNIEnv* env, jobject
     __android_log_print(ANDROID_LOG_INFO, "N64AndroidEGL", "%s", status);
     return makeString(env, status);
 }
+
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_jsr_n64android_MainActivity_nativeTestGlOperations(JNIEnv* env, jobject /* thiz */) {
+    const EGLContext context = eglGetCurrentContext();
+    const EGLDisplay display = eglGetCurrentDisplay();
+    const EGLSurface surface = eglGetCurrentSurface(EGL_DRAW);
+    const GLubyte* version = glGetString(GL_VERSION);
+    if (context == EGL_NO_CONTEXT || display == EGL_NO_DISPLAY ||
+        surface == EGL_NO_SURFACE || version == nullptr) {
+        const EGLint error = eglGetError();
+        char status[256];
+        std::snprintf(status, sizeof(status),
+                      "Operacoes GLES canceladas: contexto EGL ausente. EGL error=0x%04X",
+                      static_cast<unsigned int>(error));
+        return makeString(env, status);
+    }
+
+    GLint viewport[4] = {0, 0, 0, 0};
+    glGetIntegerv(GL_VIEWPORT, viewport);
+    const GLenum beforeError = glGetError();
+
+    // Exercise real GLES calls only on the current GLSurfaceView render thread.
+    glClearColor(0.08f, 0.18f, 0.32f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glFlush();
+    const GLenum afterError = glGetError();
+
+    char status[768];
+    std::snprintf(status, sizeof(status),
+                  "Operacoes GLES executadas pela JNI.\\n"
+                  "OpenGL ES: %s\\n"
+                  "Viewport: %d x %d (origem %d,%d)\\n"
+                  "Erro GLES antes: 0x%04X | depois: 0x%04X\\n"
+                  "Thread Linux: %ld\\n"
+                  "Contexto EGL valido; nenhuma ROM/plugin foi iniciada.",
+                  reinterpret_cast<const char*>(version),
+                  viewport[2], viewport[3], viewport[0], viewport[1],
+                  static_cast<unsigned int>(beforeError),
+                  static_cast<unsigned int>(afterError),
+                  static_cast<long>(syscall(SYS_gettid)));
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidGLES", "%s", status);
+    return makeString(env, status);
+}
