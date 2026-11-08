@@ -2,6 +2,7 @@
 #include <android/log.h>
 
 #include <cstdio>
+#include <cstring>
 #include <mutex>
 #include <dlfcn.h>
 #include <cstdint>
@@ -48,6 +49,18 @@ bool androidVideoContextReady() {
            eglGetCurrentSurface(EGL_DRAW) != EGL_NO_SURFACE &&
            glGetString(GL_VERSION) != nullptr;
 }
+bool androidVideoGetGlesVersion(int* major, int* minor) {
+    if (major == nullptr || minor == nullptr || !androidVideoContextReady()) return false;
+    const char* version = reinterpret_cast<const char*>(glGetString(GL_VERSION));
+    const char* marker = version != nullptr ? std::strstr(version, "OpenGL ES ") : nullptr;
+    if (marker == nullptr) return false;
+    int parsedMajor = 0;
+    int parsedMinor = 0;
+    if (std::sscanf(marker + 10, "%d.%d", &parsedMajor, &parsedMinor) != 2) return false;
+    *major = parsedMajor;
+    *minor = parsedMinor;
+    return true;
+}
 m64p_error androidVideoInit() {
     return androidVideoContextReady() ? M64ERR_SUCCESS : M64ERR_INVALID_STATE;
 }
@@ -86,6 +99,30 @@ m64p_function androidVideoGetProc(const char* name) {
 m64p_error androidVideoSetAttr(m64p_GLattr attr, int value) {
     const int index = static_cast<int>(attr);
     if (index < 1 || index >= 14) return M64ERR_INPUT_INVALID;
+    if (!androidVideoContextReady()) return M64ERR_INVALID_STATE;
+
+    if (attr == M64P_GL_CONTEXT_PROFILE_MASK &&
+        value != M64P_GL_CONTEXT_PROFILE_ES) {
+        return M64ERR_UNSUPPORTED;
+    }
+
+    if (attr == M64P_GL_CONTEXT_MAJOR_VERSION ||
+        attr == M64P_GL_CONTEXT_MINOR_VERSION) {
+        int actualMajor = 0;
+        int actualMinor = 0;
+        if (!androidVideoGetGlesVersion(&actualMajor, &actualMinor))
+            return M64ERR_INVALID_STATE;
+        const int requestedMajor = attr == M64P_GL_CONTEXT_MAJOR_VERSION
+            ? value : g_androidVideoAttributes[M64P_GL_CONTEXT_MAJOR_VERSION];
+        const int requestedMinor = attr == M64P_GL_CONTEXT_MINOR_VERSION
+            ? value : g_androidVideoAttributes[M64P_GL_CONTEXT_MINOR_VERSION];
+        if (requestedMajor < 2 || requestedMinor < 0 ||
+            requestedMajor > actualMajor ||
+            (requestedMajor == actualMajor && requestedMinor > actualMinor)) {
+            return M64ERR_UNSUPPORTED;
+        }
+    }
+
     g_androidVideoAttributes[index] = value;
     return M64ERR_SUCCESS;
 }
@@ -93,6 +130,19 @@ m64p_error androidVideoGetAttr(m64p_GLattr attr, int* value) {
     const int index = static_cast<int>(attr);
     if (value == nullptr) return M64ERR_INPUT_ASSERT;
     if (index < 1 || index >= 14) return M64ERR_INPUT_INVALID;
+    if (attr == M64P_GL_CONTEXT_PROFILE_MASK) {
+        *value = M64P_GL_CONTEXT_PROFILE_ES;
+        return M64ERR_SUCCESS;
+    }
+    if (attr == M64P_GL_CONTEXT_MAJOR_VERSION ||
+        attr == M64P_GL_CONTEXT_MINOR_VERSION) {
+        int actualMajor = 0;
+        int actualMinor = 0;
+        if (androidVideoGetGlesVersion(&actualMajor, &actualMinor)) {
+            *value = attr == M64P_GL_CONTEXT_MAJOR_VERSION ? actualMajor : actualMinor;
+            return M64ERR_SUCCESS;
+        }
+    }
     *value = g_androidVideoAttributes[index];
     return M64ERR_SUCCESS;
 }
