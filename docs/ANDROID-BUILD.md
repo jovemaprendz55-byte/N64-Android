@@ -1,20 +1,43 @@
-# Android + NDK + JNI — primeira estrutura
+# Android + NDK + JNI — estado do build
 
-## Estado
+## Estado verificado em 2026-11-08
 
-Esta etapa cria um aplicativo Android mínimo e uma biblioteca nativa JNI. Ela **não contém nem executa ainda o Mupen64Plus Core**.
+O APK ARM64 agora inclui quatro componentes nativos separados:
+- `libn64bridge.so`: frontend JNI de diagnóstico;
+- `libSDL2.so`: SDL2 Android compilada pelo NDK;
+- `libmupen64plus.so`: Mupen64Plus Core compilado para ARM64;
+- `libmupen64plus-video-GLideN64.so`: plugin gráfico GLideN64 compilado para Android/EGL;
+- também permanece `libmupen64plus-video-android.so`, o plugin inicial de diagnóstico ABI.
 
-O aplicativo exibe uma mensagem nativa para provar, quando o CI compilar e o APK for instalado, que a biblioteca JNI foi carregada. A mensagem não representa emulação.
+### CI e artefato
 
-## Estrutura
+- Branch: `main`
+- Commit validado: `2542d80a348db6e04918cb2c5427cc414d5e0d47`
+- Workflow: [Android Core isolated diagnostic build](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42504515807)
+- Resultado: **success** (todas as etapas, incluindo verificação do APK e upload).
+- Artefato: `n64-android-core-isolated-diagnostic`
+- Artifact ID: `13627215848`
+- Tamanho: 3.067.855 bytes
+- SHA-256: `0570e5ac834c6acf216323c7f963f7e34fcf985d4975288a9d82c01924584be8`
+- Download do artefato: [GitHub Actions artifact](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42504515807)
 
-- `settings.gradle.kts`: projeto Gradle e módulo `:app`.
-- `app/build.gradle.kts`: Android Gradle Plugin, Kotlin, SDK e CMake.
-- `app/src/main/AndroidManifest.xml`: Activity inicial.
-- `MainActivity.kt`: tela mínima e chamada JNI.
-- `app/src/main/cpp/CMakeLists.txt`: build nativo.
-- `native-lib.cpp`: função JNI de diagnóstico.
-- `.github/workflows/android.yml`: build automático do APK de depuração.
+### O que o CI comprovou
+
+1. Compilou o Core upstream fixado em `a9ca8ec0b7decd17390c76c6341cf423d5d79321` para `arm64-v8a`.
+2. Compilou SDL2 upstream fixada em `5d249570393f7a37e037abf22cd6012a4cc56a71`.
+3. Compilou GLideN64 upstream fixado em `a04081ad6a966a9413bea63a55f502e0dc98bb18`, com o patch Android GLES documentado em `patches/gliden64/`.
+4. Verificou no APK os símbolos ABI GFX exigidos, incluindo `PluginGetVersion`, `PluginStartup`, `InitiateGFX`, `ProcessDList` e `ProcessRDPList`.
+5. Verificou `CoreStartup` e `CoreShutdown` no Core.
+6. Confirmou que a bridge JNI não possui dependência de inicialização em SDL2/Core; o Core depende de `libSDL2.so`.
+7. O plugin GLideN64 depende somente de bibliotecas do sistema Android observadas no ELF: EGL, log, math, dl e libc.
+
+Isso comprova compilação, arquitetura, exports e empacotamento. **Não comprova ainda que GLideN64 inicialize/renderize no aparelho ou que algum jogo execute.**
+
+## Falha anterior e correção
+
+A execução `42489433984` falhou em `CRC32_ARMV8.cpp`: os intrínsecos `__crc32d/__crc32w/__crc32h/__crc32b` exigiam a feature ARM `crc`, que não estava habilitada no alvo Android genérico. O build Android seleciona o caminho NEON; o workflow passou a configurar `CRC_ARMV8=OFF`, evitando instruções CRC não garantidas. As execuções posteriores compilaram o plugin até 100%.
+
+O patch de perfil GLES também é aplicado por uma substituição estrita do bloco upstream: o bloco antigo precisa existir exatamente uma vez, e `git diff --check` valida o resultado. Isso evita aplicar silenciosamente a adaptação sobre uma versão upstream diferente.
 
 ## Configuração fixada
 
@@ -24,29 +47,17 @@ O aplicativo exibe uma mensagem nativa para provar, quando o CI compilar e o APK
 - JDK: 17
 - compileSdk / targetSdk: 35
 - minSdk: 23
-- ABI nativa inicial: `arm64-v8a` (alvo do primeiro aparelho; outras ABIs serão adicionadas quando houver necessidade e testes).
+- ABI: `arm64-v8a`
 - NDK: 27.0.12077973
 - CMake: 3.22.1
 
-## Como validar
+## Próximo passo obrigatório no Poco C85
 
-O workflow GitHub Actions executa `gradle assembleDebug` e publica o APK como artefato se a compilação terminar com sucesso. A validação seguinte é instalar o APK no aparelho e confirmar que a tela informa que a bridge JNI foi carregada.
+O botão **Iniciar integração gráfica** agora tenta carregar o GLideN64 real e executar `PluginStartup`, após inicializar o Core e registrar a extensão de vídeo Android. Instalar o artefato acima e conferir o resultado dessa etapa no aparelho.
 
-## Próxima integração
+Ainda ficam bloqueados:
+- `InitiateGFX` e `CoreAttachPlugin`;
+- `M64CMD_ROM_OPEN` e `M64CMD_EXECUTE`;
+- qualquer alegação de renderização ou jogo executando.
 
-Antes de incorporar o Core, mapear e resolver dependências SDL, sistema operacional, carregamento de bibliotecas, threads e armazenamento. O código upstream deve continuar fixado no commit registrado em `CORE-ANALYSIS.md`; cada alteração será rastreável e manterá os avisos/licenças originais.
-
-
-## Verificação CI mais recente — 2026-11-08
-
-- Commit: `c3eb7bb5169fe58447351b23bdc19aa4c9f703d1`
-- Workflow: [Android build #31](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42432094799)
-- Resultado: **success**.
-- O CMake agora habilita C e C++, compila o helper oficial `src/asm_defines/asm_defines.c` do Core fixado, gera os headers GAS/NASM ARM64 e conclui `assembleDebug`.
-- Artefato: `n64-android-debug` (812.507 bytes).
-
-Esta verificação confirma a geração dos offsets dentro do build Android e a produção do APK. **Ela ainda não compila as fontes do Core**: `libn64bridge.so` continua sendo apenas a bridge JNI de diagnóstico.
-
-## Próxima etapa técnica
-
-Antes de criar o target `libmupen64plus.so`, fechar a seleção e o pin das dependências Android (SDL2, libpng e zlib), decidir explicitamente a política Vulkan/GLES e separar o backend de vídeo do ciclo de vida SDL. Depois disso, o Core será adicionado como target CMake independente, mantendo o APK de diagnóstico funcional enquanto o novo target é validado.
+O bloqueio técnico seguinte é a propriedade do contexto EGL: o contexto atual pertence à thread de renderização do `GLSurfaceView`, enquanto o GLideN64 Android tem modo threaded habilitado por padrão. Precisamos definir e testar a estratégia de thread/contexto antes de iniciar o plugin gráfico. Depois disso, avançar para abertura de ROM e ciclo de vida seguro.
