@@ -59,13 +59,13 @@ jobs:
           # The app's EGL context belongs to GLSurfaceView's render thread.
           thread_path = Path("third_party/GLideN64/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp")
           thread_source = thread_path.read_text()
-          thread_old = "\\tFunctionWrapper::setThreadedMode(config.video.threadedVideo);"
+          thread_old = "\tFunctionWrapper::setThreadedMode(config.video.threadedVideo);"
           thread_new = (
-              "#if defined(OS_ANDROID)\\n"
-              "\\t// Android EGL is owned by GLSurfaceView's render thread.\\n"
-              "\\tFunctionWrapper::setThreadedMode(0);\\n"
-              "#else\\n"
-              "\\tFunctionWrapper::setThreadedMode(config.video.threadedVideo);\\n"
+              "#if defined(OS_ANDROID)\n"
+              "\t// Android EGL is owned by GLSurfaceView's render thread.\n"
+              "\tFunctionWrapper::setThreadedMode(0);\n"
+              "#else\n"
+              "\tFunctionWrapper::setThreadedMode(config.video.threadedVideo);\n"
               "#endif"
           )
           if thread_source.count(thread_old) != 1:
