@@ -13,6 +13,7 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         val status = try {
+            System.loadLibrary("n64bridge")
             nativeGetStatus()
         } catch (error: UnsatisfiedLinkError) {
             "Biblioteca nativa não carregada: ${error.message}"
@@ -26,11 +27,5 @@ class MainActivity : Activity() {
         }
 
         setContentView(message)
-    }
-
-    companion object {
-        init {
-            System.loadLibrary("n64bridge")
-        }
     }
 }
