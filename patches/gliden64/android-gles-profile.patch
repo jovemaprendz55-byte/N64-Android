@@ -7,3 +7,14 @@ diff --git a/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cp
  	FunctionWrapper::CoreVideo_GL_SetAttribute(M64P_GL_CONTEXT_MAJOR_VERSION, 3);
 -	FunctionWrapper::CoreVideo_GL_SetAttribute(M64P_GL_CONTEXT_MINOR_VERSION, 3);
 +	FunctionWrapper::CoreVideo_GL_SetAttribute(M64P_GL_CONTEXT_MINOR_VERSION, 0);
+@@ -87,7 +87,11 @@ bool DisplayWindowMupen64plus::_start()
+ {
+-	FunctionWrapper::setThreadedMode(config.video.threadedVideo);
++#if defined(OS_ANDROID)
++	// Android's EGL context is owned by GLSurfaceView's render thread.
++	// Do not dispatch GL commands to GLideN64's private command thread.
++	FunctionWrapper::setThreadedMode(0);
++#else
++	FunctionWrapper::setThreadedMode(config.video.threadedVideo);
++#endif
+ 	auto returnValue = FunctionWrapper::CoreVideo_Init();
