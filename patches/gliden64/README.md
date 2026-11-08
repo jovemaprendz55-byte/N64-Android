@@ -22,4 +22,4 @@ The Android workflow must:
 4. Package the resulting `libmupen64plus-video-GLideN64.so` in the APK without linking it as a startup dependency of `libn64bridge.so`.
 5. Verify its required Mupen64Plus GFX ABI exports.
 
-The plugin is only loaded for `PluginStartup`/ABI validation in this milestone. `InitiateGFX`, `CoreAttachPlugin`, `M64CMD_ROM_OPEN`, and `M64CMD_EXECUTE` remain blocked until EGL context ownership and the GLideN64 threaded-video behavior are resolved and tested on the device.
+The app is configured to load the plugin only for `PluginStartup`/ABI validation in this milestone; that runtime test still needs to be performed on the Poco C85. `InitiateGFX`, `CoreAttachPlugin`, `M64CMD_ROM_OPEN`, and `M64CMD_EXECUTE` remain blocked until EGL context ownership and the GLideN64 threaded-video behavior are resolved and tested on the device.
