@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22.1)
-project(n64bridge LANGUAGES C CXX)
+project(n64bridge LANGUAGES C CXX ASM)
 
 add_library(n64bridge SHARED native-lib.cpp)
 
