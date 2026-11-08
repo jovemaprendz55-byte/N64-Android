@@ -654,3 +654,26 @@ o resultado exibido deve ser lido da mensagem retornada pelo carregamento do plu
 Este teste prova a posse do contexto no instante de entrada de PluginStartup, mas nao
 prova que o GLideN64 criou recursos, recebeu GFX_INFO via InitiateGFX, ou desenhou frames.
 ROM_OPEN, CoreAttachPlugin e EXECUTE continuam bloqueados.
+
+
+## Correção do diagnóstico após o primeiro teste de EXECUTE (2026-11-08)
+
+O usuário informou que o aplicativo fechou sozinho imediatamente após a mensagem
+"Solicitando M64CMD_EXECUTE na thread GL". O primeiro bloqueio de segurança
+foi inicialmente descrito como ausência de plugins externos RSP/áudio/input.
+Essa justificativa foi corrigida: a auditoria do loader do Core confirma que
+existem plugins dummy internos para essas três classes, portanto eles não são,
+por si só, pré-requisito para chamar EXECUTE.
+
+O frontend agora mantém EXECUTE temporariamente bloqueado após o crash, mas
+com a razão correta: a falha nativa ainda não foi diagnosticada. Não executar
+novamente até revisar o caminho de execução e instrumentar os callbacks de
+frame/GLideN64. O próximo trabalho é verificar a ordem real de inicialização
+da ROM, o estado de vídeo e os callbacks que podem ocorrer dentro de
+M64CMD_EXECUTE; acrescentar logs antes/depois de cada fronteira nativa e
+confirmar como o Core é parado sem bloquear ou destruir a GL thread.
+
+**Estado:** o carregamento/PluginStartup/attach GFX e EGL swap de diagnóstico
+foram testados separadamente pelo usuário. A chamada EXECUTE fechou o app.
+Nenhum frame de jogo foi confirmado. O bloqueio atual é intencional e não
+significa que RSP/áudio/input externos precisem ser adicionados antes.
