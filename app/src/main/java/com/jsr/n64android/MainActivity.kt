@@ -13,12 +13,14 @@ class MainActivity : Activity() {
     private external fun nativeGetStatus(): String
     private external fun nativeInitialize(configPath: String, dataPath: String): String
     private external fun nativeShutdown(): String
+    private external fun nativeStartCore(configPath: String, dataPath: String): String
 
     private lateinit var statusView: TextView
     private lateinit var configDirectory: File
     private lateinit var dataDirectory: File
     private var nativeLibraryLoaded = false
     private var nativeCoreLoaded = false
+    private var nativeCoreInitialized = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,16 +85,44 @@ class MainActivity : Activity() {
         }
 
         val shutdownButton = Button(this).apply {
-            text = "4 - Descarregar Core"
+            text = "4 - Inicializar Core (sem ROM)"
             setOnClickListener {
                 statusView.text = "N64 Android\\n\\n" + try {
-                    if (nativeCoreLoaded) {
-                        nativeShutdown().also { nativeCoreLoaded = false }
+                    if (!nativeCoreLoaded) {
+                        "Carregue o Core primeiro no botao 3."
+                    } else if (nativeCoreInitialized) {
+                        "Core ja inicializado. Use o botao 5 para encerrar."
                     } else {
-                        "Biblioteca do Core nao foi carregada."
+                        nativeStartCore(
+                            configDirectory.absolutePath,
+                            dataDirectory.absolutePath
+                        ).also {
+                            nativeCoreInitialized = it.startsWith("CoreStartup concluido com sucesso")
+                        }
                     }
                 } catch (error: LinkageError) {
                     "Falha ao descarregar Core: ${error.message}"
+                }
+            }
+        }
+
+
+        val unloadButton = Button(this).apply {
+            text = "5 - Encerrar Core e descarregar biblioteca"
+            setOnClickListener {
+                statusView.text = "N64 Android\\n\\n" + try {
+                    if (nativeCoreLoaded) {
+                        nativeShutdown().also {
+                            if (it.startsWith("Biblioteca do Core descarregada corretamente")) {
+                                nativeCoreLoaded = false
+                                nativeCoreInitialized = false
+                            }
+                        }
+                    } else {
+                        "Core nao esta carregado."
+                    }
+                } catch (error: LinkageError) {
+                    "Falha ao encerrar Core: ${error.message}"
                 }
             }
         }
@@ -106,6 +136,7 @@ class MainActivity : Activity() {
             addView(jniButton)
             addView(initializeButton)
             addView(shutdownButton)
+            addView(unloadButton)
         }
 
         setContentView(layout)
