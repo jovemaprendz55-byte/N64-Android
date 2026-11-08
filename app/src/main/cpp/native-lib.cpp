@@ -8,12 +8,24 @@
 namespace {
 std::mutex g_coreMutex;
 void* g_coreHandle = nullptr;
+bool g_coreStarted = false;
 using CoreStartupSymbol = int (*)(int, const char*, const char*, void*,
                                   void (*)(void*, int, const char*), void*,
                                   void (*)(void*, int, int));
 using CoreShutdownSymbol = int (*)();
+using CoreErrorMessageSymbol = const char* (*)(int);
 using CoreGetAPIVersionsSymbol = int (*)(int*, int*, int*, int*);
 using PluginGetVersionSymbol = int (*)(int*, int*, int*, const char**, int*);
+
+void coreDebugCallback(void*, int level, const char* message) {
+    __android_log_print(level <= 1 ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO,
+                        "N64AndroidCore", "%s", message != nullptr ? message : "(sem mensagem)");
+}
+
+void coreStateCallback(void*, int param, int value) {
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidCore",
+                        "Core state callback: parametro=%d valor=%d", param, value);
+}
 
 jstring makeString(JNIEnv* env, const char* value) {
     return env->NewStringUTF(value);
@@ -154,12 +166,70 @@ Java_com_jsr_n64android_MainActivity_nativeInitialize(
     return makeString(env, status);
 }
 
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_jsr_n64android_MainActivity_nativeStartCore(
+        JNIEnv* env, jobject /* thiz */, jstring configPath, jstring dataPath) {
+    std::lock_guard<std::mutex> lock(g_coreMutex);
+    if (g_coreHandle == nullptr) return makeString(env, "Carregue e verifique o Core antes de inicializar.");
+    if (g_coreStarted) return makeString(env, "Core ja esta inicializado.");
+
+    dlerror();
+    auto startup = reinterpret_cast<CoreStartupSymbol>(dlsym(g_coreHandle, "CoreStartup"));
+    const char* lookupError = dlerror();
+    if (startup == nullptr || lookupError != nullptr) return makeString(env, "CoreStartup nao encontrado.");
+
+    const char* config = env->GetStringUTFChars(configPath, nullptr);
+    if (config == nullptr) return makeString(env, "Falha ao obter caminho de configuracao.");
+    const char* data = env->GetStringUTFChars(dataPath, nullptr);
+    if (data == nullptr) {
+        env->ReleaseStringUTFChars(configPath, config);
+        return makeString(env, "Falha ao obter caminho de dados.");
+    }
+
+    // FRONTEND_API_VERSION da revisao fixada em version.h.
+    const int result = startup(0x020106, config, data, nullptr,
+                               coreDebugCallback, nullptr, coreStateCallback);
+    env->ReleaseStringUTFChars(configPath, config);
+    env->ReleaseStringUTFChars(dataPath, data);
+
+    if (result != 0) {
+        dlerror();
+        auto errorMessage = reinterpret_cast<CoreErrorMessageSymbol>(dlsym(g_coreHandle, "CoreErrorMessage"));
+        const char* error = errorMessage != nullptr ? errorMessage(result) : nullptr;
+        char status[768];
+        std::snprintf(status, sizeof(status),
+                      "CoreStartup falhou: codigo %d (%s). Core continua apenas carregado.",
+                      result, error != nullptr ? error : "descricao indisponivel");
+        __android_log_print(ANDROID_LOG_ERROR, "N64AndroidCore", "%s", status);
+        return makeString(env, status);
+    }
+    g_coreStarted = true;
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidCore", "CoreStartup concluido sem ROM.");
+    return makeString(env, "CoreStartup concluido com sucesso.\nCore inicializado, sem ROM carregada.\nNenhum jogo foi executado.");
+}
+
 extern "C"
 JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_MainActivity_nativeShutdown(JNIEnv* env, jobject /* thiz */) {
     std::lock_guard<std::mutex> lock(g_coreMutex);
     if (g_coreHandle == nullptr) {
         return makeString(env, "Biblioteca do Core nao estava carregada.");
+    }
+    if (g_coreStarted) {
+        dlerror();
+        auto shutdown = reinterpret_cast<CoreShutdownSymbol>(dlsym(g_coreHandle, "CoreShutdown"));
+        const char* lookupError = dlerror();
+        if (shutdown == nullptr || lookupError != nullptr)
+            return makeString(env, "CoreShutdown nao encontrado; biblioteca mantida carregada.");
+        const int result = shutdown();
+        if (result != 0) {
+            char status[256];
+            std::snprintf(status, sizeof(status), "CoreShutdown falhou: codigo %d. Biblioteca mantida carregada.", result);
+            return makeString(env, status);
+        }
+        g_coreStarted = false;
     }
     if (dlclose(g_coreHandle) != 0) {
         const char* error = dlerror();
