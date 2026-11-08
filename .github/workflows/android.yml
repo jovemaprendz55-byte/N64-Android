@@ -79,7 +79,7 @@ jobs:
             -DMUPENPLUSAPI=ON \
             -DNO_OSD=ON \
             -DNOHQ=ON \
-            -DCRC_ARMV8=ON \
+            -DCRC_ARMV8=OFF \
             -DUSE_IPO=OFF \
             -DCMAKE_BUILD_TYPE=Release
           cmake --build build/gliden64-arm64 --parallel 2
