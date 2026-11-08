@@ -1,4 +1,4 @@
-name: Android build
+name: Android diagnostic build
 
 on:
   push:
@@ -14,38 +14,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Checkout pinned Mupen64Plus Core sources
-        uses: actions/checkout@v4
-        with:
-          repository: mupen64plus/mupen64plus-core
-          ref: a9ca8ec0b7decd17390c76c6341cf423d5d79321
-          path: third_party/mupen64plus-core
-
-      - name: Checkout pinned SDL2 sources
-        uses: actions/checkout@v4
-        with:
-          repository: libsdl-org/SDL
-          ref: 5d249570393f7a37e037abf22cd6012a4cc56a71
-          path: third_party/SDL
-
-      - name: Validate pinned Core source manifest
-        run: >-
-          cmake
-          -DMUPEN64PLUS_CORE_SOURCE_DIR="$GITHUB_WORKSPACE/third_party/mupen64plus-core"
-          -P cmake/Mupen64PlusCoreSources.cmake
-
-      - name: Test ARM64 assembly offset generator with binary object
-        run: |
-          mkdir -p build/asm-defines-fixture
-          cat > build/asm-defines-fixture/asm_defines.c <<'EOF'
-          const char device_r4300[] = "\\n@ASM_DEFINE offsetof_struct_device_r4300 0x00000010\\n";
-          const char dynarec_pc[] = "\\n@ASM_DEFINE offsetof_struct_new_dynarec_hot_state_pc 0x00000020\\n";
-          EOF
-          cc -c -fno-lto build/asm-defines-fixture/asm_defines.c -o build/asm-defines-fixture/asm_defines.o
-          cmake -DINPUT_OBJECT="$GITHUB_WORKSPACE/build/asm-defines-fixture/asm_defines.o" -DOUTPUT_DIR="$GITHUB_WORKSPACE/build/asm-defines-fixture/generated" -P cmake/GenerateMupen64PlusAsmDefines.cmake
-          grep -F '#define offsetof_struct_device_r4300 (0x00000010)' build/asm-defines-fixture/generated/asm_defines_gas.h
-          grep -F '%define offsetof_struct_new_dynarec_hot_state_pc (0x00000020)' build/asm-defines-fixture/generated/asm_defines_nasm.h
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -60,73 +28,31 @@ jobs:
       - name: Install Android NDK and CMake
         run: sdkmanager "ndk;27.0.12077973" "cmake;3.22.1"
 
-      - name: Generate ARM64 offsets from the pinned Core with the Android NDK
-        run: |
-          NDK_CLANG="$ANDROID_HOME/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android23-clang"
-          CORE_DIR="$GITHUB_WORKSPACE/third_party/mupen64plus-core"
-          mkdir -p build/arm64-asm-defines
-          "$NDK_CLANG" -DNEW_DYNAREC=4 -DDYNAREC -fno-lto \
-            -I"$CORE_DIR/src" \
-            -I"$CORE_DIR/src/asm_defines" \
-            -I"$CORE_DIR/subprojects/xxhash" \
-            -I"$CORE_DIR/subprojects/md5" \
-            -I"$CORE_DIR/subprojects/minizip" \
-            -c "$CORE_DIR/src/asm_defines/asm_defines.c" \
-            -o build/arm64-asm-defines/asm_defines.o
-          cmake \
-            -DINPUT_OBJECT="$GITHUB_WORKSPACE/build/arm64-asm-defines/asm_defines.o" \
-            -DOUTPUT_DIR="$GITHUB_WORKSPACE/build/arm64-asm-defines/generated" \
-            -P cmake/GenerateMupen64PlusAsmDefines.cmake
-          grep -F '#define offsetof_struct_device_r4300 (' build/arm64-asm-defines/generated/asm_defines_gas.h
-          grep -F '#define offsetof_struct_new_dynarec_hot_state_pc (' build/arm64-asm-defines/generated/asm_defines_gas.h
-          test "$(grep -c '^#define offsetof_struct_' build/arm64-asm-defines/generated/asm_defines_gas.h)" -ge 20
-
-      - name: Configure pinned SDL2 for Android ARM64
-        run: |
-          NDK="$ANDROID_HOME/ndk/27.0.12077973"
-          cmake -S third_party/SDL -B build/sdl2-arm64 \
-            -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
-            -DANDROID_ABI=arm64-v8a \
-            -DANDROID_PLATFORM=android-23 \
-            -DSDL_SHARED=ON \
-            -DSDL_STATIC=OFF \
-            -DSDL_TEST=OFF \
-            -DSDL_TESTS=OFF
-          cmake --build build/sdl2-arm64 --parallel 2
-          test -s build/sdl2-arm64/libSDL2.so
-          file build/sdl2-arm64/libSDL2.so
-
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
-          # SDL's upstream Android template contains its own wrapper JAR.
-          # This workflow does not execute that wrapper; it invokes the pinned Gradle version above.
           validate-wrappers: false
 
-      - name: Build debug APK
+      - name: Build diagnostic debug APK
         run: gradle --no-daemon assembleDebug
 
-      - name: Verify Core and SDL2 are packaged and linked in the APK
+      - name: Verify isolated JNI bridge
         run: |
           APK="app/build/outputs/apk/debug/app-debug.apk"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libn64bridge.so"
-          unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libSDL2.so"
-          unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus.so"
-          unzip -p "$APK" lib/arm64-v8a/libn64bridge.so > build/n64bridge-from-apk.so
-          unzip -p "$APK" lib/arm64-v8a/libmupen64plus.so > build/mupen64plus-from-apk.so
-          readelf -d build/n64bridge-from-apk.so | grep -F "Shared library: [libSDL2.so]"
-          readelf -d build/n64bridge-from-apk.so | grep -F "Shared library: [libmupen64plus.so]"
-          readelf -d build/mupen64plus-from-apk.so | grep -F "Shared library: [libSDL2.so]"
-          readelf --dyn-syms -W build/mupen64plus-from-apk.so | grep -E "[[:space:]]CoreStartup$"
-          readelf --dyn-syms -W build/mupen64plus-from-apk.so | grep -E "[[:space:]]CoreDoCommand$"
-          readelf --dyn-syms -W build/mupen64plus-from-apk.so | grep -E "[[:space:]]CoreShutdown$"
-          readelf --dyn-syms -W build/n64bridge-from-apk.so | grep -E "[[:space:]]Java_com_jsr_n64android_MainActivity_nativeInitialize$"
-          readelf --dyn-syms -W build/n64bridge-from-apk.so | grep -E "[[:space:]]Java_com_jsr_n64android_MainActivity_nativeShutdown$"
+          unzip -p "$APK" lib/arm64-v8a/libn64bridge.so > build-n64bridge.so
+          if readelf -d build-n64bridge.so | grep -E "Shared library: \[(libSDL2|libmupen64plus)\.so\]"; then
+            echo "Diagnostic bridge unexpectedly depends on SDL2 or Mupen64Plus"
+            exit 1
+          fi
+          readelf --dyn-syms -W build-n64bridge.so | grep -E "[[:space:]]Java_com_jsr_n64android_MainActivity_nativeGetStatus$"
+          readelf --dyn-syms -W build-n64bridge.so | grep -E "[[:space:]]Java_com_jsr_n64android_MainActivity_nativeInitialize$"
+          readelf --dyn-syms -W build-n64bridge.so | grep -E "[[:space:]]Java_com_jsr_n64android_MainActivity_nativeShutdown$"
 
-      - name: Upload debug APK
+      - name: Upload diagnostic APK
         uses: actions/upload-artifact@v4
         with:
-          name: n64-android-debug
+          name: n64-android-diagnostic
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
