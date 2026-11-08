@@ -74,3 +74,25 @@ O código de entrada do Core (`src/main/main.c`) inclui SDL, enquanto o Makefile
 - Preservar arquivos de licença, créditos e cabeçalhos.
 - Manter o upstream como submódulo ou referência com commit imutável.
 - Cada adaptação terá patch identificável e documentação.
+
+
+## Auditoria inicial de dependências para Android (2026-11-08)
+
+A leitura direta do README e dos arquivos do commit fixado confirmou os seguintes pontos:
+
+- O README upstream lista SDL2, libpng, FreeType 2 e zlib como dependências do pacote; a compilação de fontes também requer toolchain C/C++, make e NASM.
+- `src/main/main.c` inclui `SDL.h`. Portanto, não basta compilar os arquivos do Core com CMake: é necessário mapear cada uso de SDL e decidir quais serviços serão fornecidos por SDL2-Android ou por uma camada Android própria.
+- `src/osal/dynamiclib_unix.c` usa `dlopen`/ `dlsym`. O Android tem carregador dinâmico POSIX/Bionic, mas o caminho e o link devem ser validados no NDK; não assumir que o backend Unix inteiro é portável sem ajustes.
+- O Makefile upstream detecta o host com `uname`, depende de `pkg-config` e contém regras de SO desktop. Ele não deve ser chamado diretamente como se fosse um build Android cross-compilado.
+- O header `m64p_frontend.h` confirma que `CoreOverrideVidExt` substitui a tabela de funções de vídeo SDL em runtime. Isso não remove, por si só, a dependência SDL de compilação do restante do Core.
+
+### Decisão de integração
+
+Não importar ainda todo o Core nem adicionar bibliotecas aleatórias ao Gradle. Primeiro será criado um build Android controlado, com dependências versionadas e auditadas. O primeiro alvo é `arm64-v8a`; a compilação deve produzir uma biblioteca nativa ARM64 antes de avançarmos para plugins e abertura de ROM.
+
+### Próxima investigação técnica
+
+1. Enumerar os símbolos SDL realmente usados no Core e separar temporização/eventos/vídeo.
+2. Verificar quais dependências são efetivamente necessárias para compilar o Core (não apenas para o pacote desktop).
+3. Definir quais bibliotecas serão compiladas via CMake/NDK e quais chamadas de plataforma serão substituídas.
+4. Só então importar os arquivos upstream, preservando os cabeçalhos GPL-2.0 e registrando o commit de origem.
