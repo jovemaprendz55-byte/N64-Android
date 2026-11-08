@@ -320,3 +320,64 @@ ordem e responsabilidade de `PluginStartup`, `M64CMD_ROM_OPEN` e
 associação com tratamento de erro e encerramento seguro. Manter a abertura de
 ROM e execução bloqueadas até existir um renderer que realmente interprete
 listas RSP/RDP e respeite a thread proprietária do contexto EGL.
+
+
+## Validacao real do carregamento e inicializacao do plugin GFX (2026-11-08)
+
+O usuario instalou a compilacao 124 no Poco C85 (Android 16) e executou
+"Iniciar integracao grafica". O resultado exibido no aparelho foi:
+
+```
+Integracao grafica Android registrada no Core.
+Contexto EGL valido na thread GL. OpenGL ES: OpenGL ES 3.2
+Video Extension Android registrada no Core.
+Callbacks EGL/GLES ativos na thread GL.
+Plugin GFX Android carregado e validado.
+Nome: N64 Android GLES Graphics Plugin (initial ABI)
+Versao: 0.1.0 | API: 0x020000
+Simbolos obrigatorios: 19/19.
+PluginStartup executado. Ainda nao anexado ao Core; nenhuma ROM foi aberta.
+```
+
+**Resultado confirmado em aparelho:** o modulo foi aberto por `dlopen`, os 19
+simbolos exigidos foram encontrados, `PluginGetVersion` passou pela validacao
+de tipo/API e `PluginStartup` retornou sucesso. O aplicativo permaneceu aberto.
+A compilacao 124 (run `42488246030`) terminou com sucesso.
+
+A compilacao 125 (run `42488890198`, commit
+`505ef76748c5a4cb47a6cea42b590ad91f595b13`) corrigiu a mensagem de estado
+na interface para distinguir plugin inicializado de plugin anexado. O workflow
+`assemble` terminou com sucesso e gerou o artefato
+`n64-android-core-isolated-diagnostic` (artifact ID `13621106119`).
+Essa compilacao nao altera a logica de inicializacao do plugin.
+
+### Responsabilidades de inicializacao confirmadas no Core pinned
+
+A revisao de `src/plugin/plugin.c` e `src/api/frontend.c` confirmou:
+
+- O frontend chama `PluginStartup(coreHandle, ...)` uma vez para iniciar
+  a biblioteca carregada; o resultado deve ser acompanhado por
+  `PluginShutdown()` antes de descarregar o modulo.
+- `CoreAttachPlugin(M64PLUGIN_GFX, pluginHandle)` conecta os simbolos do
+  plugin e valida sua ABI; depois chama `plugin_start_gfx()`.
+- `plugin_start_gfx()` monta `GFX_INFO` com os ponteiros internos do Core e
+  chama `InitiateGFX(GFX_INFO)`. Portanto, nao se deve chamar
+  `InitiateGFX` manualmente no frontend nem repetir `PluginStartup` durante
+  o attach.
+- `CoreAttachPlugin` so aceita o attach quando uma ROM ou disco ja esta
+  aberto e o emulador nao esta em execucao.
+
+### Limite atual e proximo marco
+
+O teste acima **nao** anexou o plugin ao Core, nao chamou `InitiateGFX`,
+nao abriu ROM e nao executou o emulador. O modulo atual ainda e apenas um
+esqueleto ABI: `ProcessDList` e `ProcessRDPList` nao interpretam comandos
+RSP/RDP nem geram framebuffer de jogo.
+
+Antes de liberar ROM, a proxima etapa grafica e implementar um caminho de
+renderizacao real: interpretar comandos de display list/RDP, converter estado
+e primitivas N64 em chamadas GLES, e apresentar o framebuffer na superficie
+Android. Em paralelo, a integracao precisa garantir que chamadas GLES do
+plugin ocorram na thread que possui o contexto EGL. Abertura de ROM,
+`CoreAttachPlugin` e `M64CMD_EXECUTE` permanecem bloqueados ate esses
+requisitos estarem implementados e validados.
