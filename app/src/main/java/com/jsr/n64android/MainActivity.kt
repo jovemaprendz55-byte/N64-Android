@@ -35,6 +35,7 @@ class MainActivity : Activity() {
     private external fun nativeTestVideoOverrideAbi(): String
     private external fun nativeVerifyEglContext(): String
     private external fun nativeTestGlOperations(): String
+    private external fun nativeTestEglSwap(): String
 
     private lateinit var statusView: TextView
     private lateinit var rootLayout: LinearLayout
@@ -288,6 +289,26 @@ class MainActivity : Activity() {
             })
             addView(Button(this@MainActivity).apply { text = "Selecionar ROM"; setOnClickListener { openRomPicker() } })
             addView(Button(this@MainActivity).apply { text = "Abrir ROM no Core e anexar vídeo"; setOnClickListener { openSelectedRomInCore() } })
+            addView(Button(this@MainActivity).apply {
+                text = "Testar troca EGL (diagnóstico)"
+                setOnClickListener {
+                    val surface = glView
+                    if (surface == null || !glSurfaceReady) {
+                        integrationStatusView.text = "Aguarde a superfície EGL ficar pronta."
+                    } else {
+                        integrationStatusView.text = "Testando eglSwapBuffers na thread GL..."
+                        surface.queueEvent {
+                            val result = try {
+                                nativeTestEglSwap()
+                            } catch (error: Throwable) {
+                                "Falha no teste EGL: ${error.message}"
+                            }
+                            runOnUiThread { integrationStatusView.text = result }
+                        }
+                        surface.requestRender()
+                    }
+                }
+            })
             addView(integrationStatusView)
         }
 
