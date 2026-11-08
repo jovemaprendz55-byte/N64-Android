@@ -107,13 +107,17 @@ jobs:
       - name: Build debug APK
         run: gradle --no-daemon assembleDebug
 
-      - name: Verify SDL2 is packaged and linked in the APK
+      - name: Verify Core and SDL2 are packaged and linked in the APK
         run: |
           APK="app/build/outputs/apk/debug/app-debug.apk"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libn64bridge.so"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libSDL2.so"
+          unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus.so"
           unzip -p "$APK" lib/arm64-v8a/libn64bridge.so > build/n64bridge-from-apk.so
+          unzip -p "$APK" lib/arm64-v8a/libmupen64plus.so > build/mupen64plus-from-apk.so
           readelf -d build/n64bridge-from-apk.so | grep -F "Shared library: [libSDL2.so]"
+          readelf -d build/n64bridge-from-apk.so | grep -F "Shared library: [libmupen64plus.so]"
+          readelf -d build/mupen64plus-from-apk.so | grep -F "Shared library: [libSDL2.so]"
           strings build/n64bridge-from-apk.so | grep -F "SDL2 carregada"
 
       - name: Upload debug APK
