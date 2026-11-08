@@ -53,6 +53,27 @@ jobs:
       - name: Install Android NDK and CMake
         run: sdkmanager "ndk;27.0.12077973" "cmake;3.22.1"
 
+      - name: Generate ARM64 offsets from the pinned Core with the Android NDK
+        run: |
+          NDK_CLANG="$ANDROID_HOME/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android23-clang"
+          CORE_DIR="$GITHUB_WORKSPACE/third_party/mupen64plus-core"
+          mkdir -p build/arm64-asm-defines
+          "$NDK_CLANG" -DNEW_DYNAREC=4 -DDYNAREC -fno-lto \
+            -I"$CORE_DIR/src" \
+            -I"$CORE_DIR/src/asm_defines" \
+            -I"$CORE_DIR/subprojects/xxhash" \
+            -I"$CORE_DIR/subprojects/md5" \
+            -I"$CORE_DIR/subprojects/minizip" \
+            -c "$CORE_DIR/src/asm_defines/asm_defines.c" \
+            -o build/arm64-asm-defines/asm_defines.o
+          cmake \
+            -DINPUT_OBJECT="$GITHUB_WORKSPACE/build/arm64-asm-defines/asm_defines.o" \
+            -DOUTPUT_DIR="$GITHUB_WORKSPACE/build/arm64-asm-defines/generated" \
+            -P cmake/GenerateMupen64PlusAsmDefines.cmake
+          grep -F '#define offsetof_struct_device_r4300 (' build/arm64-asm-defines/generated/asm_defines_gas.h
+          grep -F '#define offsetof_struct_new_dynarec_hot_state_pc (' build/arm64-asm-defines/generated/asm_defines_gas.h
+          test "$(grep -c '^#define offsetof_struct_' build/arm64-asm-defines/generated/asm_defines_gas.h)" -ge 20
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
