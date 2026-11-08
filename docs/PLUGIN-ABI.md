@@ -251,3 +251,25 @@ A tela inicial permanece simples, com o acesso "Diagnóstico e testes". Dentro d
 - Gráficos e OpenGL: superfície GLES, desenho do triângulo, ponte JNI na thread GL e operações GLES pela JNI.
 
 Os grupos começam recolhidos para reduzir a ocupação vertical. A tela de diagnóstico usa rolagem para aparelhos menores. O teste OpenGL é inserido dentro do grupo Gráficos e OpenGL. Esta alteração reorganiza somente a interface; não muda a integração do Core, não carrega ROM e não habilita renderização de jogos.
+
+
+## Resultado do teste 11 — ciclo de vida EGL no Poco C85 (2026-11-08)
+
+O usuário instalou a compilação do commit `2fdf275451f7cbde52164e4d454c75d12ab426dc` e executou o teste 11 de pausa/retomada. Resultado informado:
+
+```
+Programa GLES compilado. Triangulo colorido sendo desenhado.
+Superficie EGL criada: 2 vez(es).
+Contexto EGL valido na thread GL. OpenGL ES: OpenGL ES 3.2
+Thread Linux: 6046
+Contexto e Surface EGL validos.
+Nenhuma ROM ou plugin foi iniciado.
+```
+
+**Interpretação:** o callback `onSurfaceCreated` ocorreu duas vezes durante o teste. Na verificação posterior, a JNI encontrou contexto EGL, superfície de desenho e versão GLES válidos na thread GL. O programa GLES do triângulo foi compilado no callback de criação da superfície.
+
+**O que foi validado:** o frontend conseguiu passar pelo ciclo de pausa/retomada observado, receber duas criações de superfície e voltar a executar o teste gráfico com contexto EGL válido.
+
+**Limites:** o contador não prova, sozinho, que o contexto EGL foi destruído entre as duas criações; para afirmar perda/recriação do contexto é necessário comparar identificadores antes e depois e registrar `onSurfaceCreated` e `onSurfaceChanged` em cada ciclo. Também não valida callbacks do Core, plugin GFX, framebuffer N64 ou execução de ROM.
+
+**Próxima etapa:** instrumentar o ciclo EGL com registro dos identificadores de contexto/surface e estado de compilação dos recursos em cada `onSurfaceCreated`. Em seguida, construir a ponte de vídeo Android com callbacks reais, garantindo que operações GL ocorram exclusivamente na thread que possui o contexto. Manter ROM_OPEN, CoreAttachPlugin(GFX) e EXECUTE bloqueados.
