@@ -58,3 +58,34 @@ Essas estruturas contêm ponteiros para memória e registradores internos do Cor
 ## Limite atual
 
 Este documento não significa que plugins estejam implementados, que o Core esteja compilado, ou que alguma ROM esteja executando.
+
+## Auditoria do loader e caminho de vídeo (revisão fixada)
+
+Auditoria adicional em `src/plugin/plugin.c`, `src/api/m64p_frontend.h`, `src/api/m64p_plugin.h`, `src/api/m64p_vidext.h` e `src/api/m64p_types.h`, todos na revisão `a9ca8ec0b7decd17390c76c6341cf423d5d79321`.
+
+### O que o loader confirma
+
+- O Core mantém implementações dummy internas para GFX, áudio, input e RSP. Isso permite inicializar o Core sem plugins externos, mas não fornece renderização real de jogos.
+- O plugin GFX real precisa exportar, no mínimo, `PluginGetVersion`, `ChangeWindow`, `InitiateGFX`, `MoveScreen`, `ProcessDList`, `ProcessRDPList`, `RomClosed`, `RomOpen`, `ShowCFB`, `UpdateScreen`, `ViStatusChanged`, `ViWidthChanged`, `ReadScreen2`, `SetRenderingCallback`, `FBRead`, `FBWrite` e `FBGetFrameBufferInfo`. `ResizeVideoOutput` é opcional.
+- O loader verifica que o tipo retornado seja `M64PLUGIN_GFX` e que a versão principal da API GFX corresponda à esperada pelo Core. Não basta exportar funções com os nomes corretos.
+- A estrutura `GFX_INFO` é preenchida pelo próprio Core em `plugin_start_gfx`; seus campos contêm ponteiros para RDRAM, DMEM/IMEM e registradores internos. Portanto, um plugin gráfico deve ser nativo C/C++ e usar exatamente os headers da revisão fixada.
+- Áudio, input e RSP também possuem listas obrigatórias de símbolos e validação de tipo/API. O Core tem dummies para esses módulos, mas o uso de dummies não deve ser confundido com áudio ou controles Android funcionais.
+
+### Consequência para Android
+
+- Não tentar abrir uma ROM só porque `CoreStartup` funcionou. A ROM precisa de um caminho gráfico compatível; o plugin gráfico é a primeira integração real necessária para exibir imagem.
+- O frontend pode fornecer uma implementação própria de extensão de vídeo por `CoreOverrideVidExt`, em vez de depender das funções de janela SDL/OpenGL desktop. O contrato inclui inicialização/encerramento de vídeo, criação de modo, atributos e troca de buffers; a superfície Android e o contexto GLES precisam ser controlados pela Activity/View e pela thread de renderização.
+- A ordem segura a implementar é: manter Core inicializado; preparar superfície/contexto Android; registrar callbacks de extensão de vídeo; carregar e validar o plugin GFX Android; anexá-lo ao Core; só então abrir ROM e executar. Em falha, desfazer em ordem inversa antes de descarregar bibliotecas.
+
+### Comandos de ROM identificados
+
+Em `m64p_types.h`, os comandos são enumeração sequencial: `M64CMD_ROM_OPEN = 1`, `M64CMD_ROM_CLOSE = 2` e `M64CMD_EXECUTE = 5`. A API de frontend declara `CoreDoCommand(m64p_command, int, void*)`. Estes números foram confirmados no header, mas o payload/tamanho exato de ROM_OPEN e o tratamento de ciclo de vida ainda devem ser conferidos no código de implementação antes de qualquer chamada JNI. Não usar valores numéricos sem os headers oficiais.
+
+### Próximo marco de implementação
+
+1. Auditar o corpo de `CoreOverrideVidExt` e as chamadas feitas pelo backend SDL do Core.
+2. Definir uma View Android com superfície GLES e ciclo de vida explícito, sem criar contexto OpenGL em thread errada.
+3. Construir primeiro um plugin GFX mínimo de diagnóstico para Android, validando ABI e callbacks sem abrir ROM.
+4. Só depois integrar seleção de arquivo ROM, validar cabeçalho/formato e chamar `M64CMD_ROM_OPEN` com o payload oficial confirmado.
+
+**Estado:** análise de ABI/loader documentada; nenhum plugin gráfico Android foi implementado nesta etapa e nenhuma ROM foi aberta.
