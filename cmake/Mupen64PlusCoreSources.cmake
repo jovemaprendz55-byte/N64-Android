@@ -78,7 +78,6 @@ set(M64P_CORE_UPSTREAM_SOURCES
     src/main/rom.c
     src/main/savestates.c
     src/main/sdl_key_converter.c
-    app/src/main/cpp/android_screenshot_stub.c
     src/main/workqueue.c
     src/plugin/plugin.c
     src/plugin/dummy_video.c
