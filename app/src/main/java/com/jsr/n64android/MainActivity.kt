@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.os.Bundle
@@ -22,6 +23,7 @@ import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
 class MainActivity : Activity() {
+    private val romPickerRequestCode = 4201
 
     private external fun nativeGetStatus(): String
     private external fun nativeInitialize(configPath: String, dataPath: String): String
@@ -283,6 +285,7 @@ class MainActivity : Activity() {
                 text = "Voltar ao início"
                 setOnClickListener { showHomeScreen() }
             })
+            addView(Button(this@MainActivity).apply { text = "Selecionar ROM"; setOnClickListener { openRomPicker() } })
             addView(integrationStatusView)
         }
 
@@ -410,6 +413,11 @@ class MainActivity : Activity() {
             integrationStatusView.text = "Falha JNI na integração gráfica: ${error.message}"
         }
     }
+
+    private fun openRomPicker() { val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "*/*" }; startActivityForResult(i, romPickerRequestCode) }
+
+    @Deprecated("Compatibilidade")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) { super.onActivityResult(requestCode, resultCode, data); if (requestCode != romPickerRequestCode || resultCode != RESULT_OK) return; val uri = data?.data ?: return; integrationStatusView.text = "Arquivo selecionado: " + uri.lastPathSegment + ". A validacao sera adicionada antes de abrir no Core." }
 
     private fun showHomeScreen() {
         diagnosticScreenVisible = false
