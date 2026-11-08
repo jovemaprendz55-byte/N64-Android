@@ -677,3 +677,39 @@ confirmar como o Core é parado sem bloquear ou destruir a GL thread.
 foram testados separadamente pelo usuário. A chamada EXECUTE fechou o app.
 Nenhum frame de jogo foi confirmado. O bloqueio atual é intencional e não
 significa que RSP/áudio/input externos precisem ser adicionados antes.
+
+
+## Diagnóstico EGL sem troca manual de buffers (2026-11-08)
+
+O usuário relatou que o aplicativo fechava após tocar em **Teste controlado**,
+mesmo quando a mensagem mostrava `eglSwapBuffers: SUCESSO`.
+
+A revisão do caminho Kotlin/C++ confirmou que o teste chamava
+`eglSwapBuffers(display, surface)` manualmente dentro de
+`GLSurfaceView.queueEvent`. O próprio `GLSurfaceView` controla a apresentação
+do buffer ao final do ciclo de desenho. Fazer uma troca manual adicional dentro
+do evento de diagnóstico pode interferir nesse ciclo e não é necessário para
+comprovar que o contexto está atual.
+
+### Correção aplicada
+
+- Removida a chamada manual a `eglSwapBuffers` do diagnóstico JNI.
+- O teste agora valida o contexto EGL, executa `glFlush()` e consulta os erros
+  EGL/GLES, sem apresentar/trocar buffers manualmente.
+- O botão foi renomeado para **Verificar EGL (sem troca manual)**.
+- O ciclo normal de apresentação continua sob responsabilidade do GLSurfaceView.
+
+### Evidência de compilação
+
+- Commit nativo: `eef3bda359c621b82bc02d4aaee5dc2b0f120694`
+- Workflow: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42535511963
+- Resultado: success.
+- Commit da interface: `cbd563b6e288e7e33789b247fc8eddeac5aac71d`
+- Workflow: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42535516013
+- Resultado: success.
+
+**Limite:** a compilação confirma que a alteração foi construída, não que o
+fechamento no aparelho foi resolvido. A próxima validação no dispositivo deve
+usar o novo botão de verificação EGL, sem iniciar a ROM. O botão de execução
+permanece bloqueado até o ciclo de vídeo do Core ser auditado. Nenhum frame de
+jogo foi confirmado.
