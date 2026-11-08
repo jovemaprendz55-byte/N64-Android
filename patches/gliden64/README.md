@@ -23,3 +23,19 @@ The Android workflow must:
 5. Verify its required Mupen64Plus GFX ABI exports.
 
 The app is configured to load the plugin only for `PluginStartup`/ABI validation in this milestone; that runtime test still needs to be performed on the Poco C85. `InitiateGFX`, `CoreAttachPlugin`, `M64CMD_ROM_OPEN`, and `M64CMD_EXECUTE` remain blocked until EGL context ownership and the GLideN64 threaded-video behavior are resolved and tested on the device.
+
+## Android GL thread ownership
+
+The patch also changes the Mupen64Plus display backend's FunctionWrapper
+setup on Android to call setThreadedMode(0). Upstream GLideN64 defaults
+ThreadedVideo=1 under OS_ANDROID, which creates a private command
+execution thread. That thread does not own the EGL context created by the
+app's GLSurfaceView; sending GL calls there would violate EGL context
+thread affinity.
+
+This is intentionally Android-only. Other platforms continue to use the
+configured ThreadedVideo value. The CI applies the change as a guarded
+exact-once replacement and compiles the ARM64 plugin. This proves the
+adaptation compiles, not that GLideN64 has been initialized on the device.
+The frontend must still schedule every Core/plugin graphics operation on
+the GLSurfaceView render thread and handle EGL context recreation.
