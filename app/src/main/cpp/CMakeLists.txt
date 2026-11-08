@@ -88,6 +88,9 @@ if(EXISTS "${MUPEN64PLUS_CORE_SOURCE_DIR}/src/asm_defines/asm_defines.c")
         mupen64plus)
 
     # Keep the Core in the APK as a dependency of the JNI bridge.
+    target_include_directories(n64bridge PRIVATE
+        "${MUPEN64PLUS_CORE_SOURCE_DIR}/src/api")
+
     target_link_libraries(n64bridge PRIVATE mupen64plus)
     target_compile_definitions(n64bridge PRIVATE N64_HAS_MUPEN64PLUS=1)
     message(STATUS "Pinned Mupen64Plus Core ARM64 target enabled")
