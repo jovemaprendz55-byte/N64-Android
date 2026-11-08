@@ -416,8 +416,43 @@ class MainActivity : Activity() {
 
     private fun openRomPicker() { val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "*/*" }; startActivityForResult(i, romPickerRequestCode) }
 
-    @Deprecated("Compatibilidade")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) { super.onActivityResult(requestCode, resultCode, data); if (requestCode != romPickerRequestCode || resultCode != RESULT_OK) return; val uri = data?.data ?: return; integrationStatusView.text = "Arquivo selecionado: " + uri.lastPathSegment + ". A validacao sera adicionada antes de abrir no Core." }
+    @Deprecated("Compatibilidade com a Activity atual")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != romPickerRequestCode || resultCode != RESULT_OK) return
+        val uri = data?.data ?: return
+        integrationStatusView.text = "Lendo e validando a ROM..."
+        Thread {
+            val result = try {
+                val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    ?: throw IllegalStateException("Nao foi possivel abrir o arquivo.")
+                when {
+                    bytes.size < 4096 -> "Arquivo recusado: menor que 4 KB."
+                    bytes.size > 64 * 1024 * 1024 -> "Arquivo recusado: maior que 64 MB."
+                    bytes.size % 4 != 0 -> "Arquivo recusado: tamanho nao multiplo de 4 bytes."
+                    else -> {
+                        val signature = bytes.take(4).joinToString(" ") { "%02X".format(it.toInt() and 0xff) }
+                        val valid = signature == "80 37 12 40" || signature == "37 80 40 12" || signature == "40 12 37 80"
+                        if (!valid) {
+                            "Arquivo nao reconhecido como ROM N64. Assinatura: " + signature
+                        } else {
+                            val romDirectory = File(filesDir, "roms")
+                            if (!romDirectory.exists() && !romDirectory.mkdirs()) throw IllegalStateException("Nao foi possivel criar a pasta de ROMs.")
+                            val romFile = File(romDirectory, "selected.n64")
+                            romFile.writeBytes(bytes)
+                            "ROM N64 reconhecida e copiada para o armazenamento interno.\n" +
+                                "Tamanho: " + bytes.size + " bytes\nAssinatura: " + signature +
+                                "\nArquivo interno: " + romFile.name +
+                                "\n\nAinda falta abrir a ROM no Core e anexar o plugin grafico."
+                        }
+                    }
+                }
+            } catch (error: Exception) {
+                "Falha ao validar/copiar ROM: " + error.message
+            }
+            runOnUiThread { integrationStatusView.text = result }
+        }.start()
+    }
 
     private fun showHomeScreen() {
         diagnosticScreenVisible = false
