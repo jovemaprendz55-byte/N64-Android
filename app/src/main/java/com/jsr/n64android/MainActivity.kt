@@ -10,6 +10,9 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import java.io.File
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.nio.FloatBuffer
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
@@ -162,6 +165,11 @@ class MainActivity : Activity() {
             setOnClickListener { showOpenGlTest() }
         }
 
+        val glDrawButton = Button(this).apply {
+            text = "10 - Testar desenho OpenGL"
+            setOnClickListener { showOpenGlTest(drawTriangle = true) }
+        }
+
         val glThreadButton = Button(this).apply {
             text = "8 - Testar chamada JNI na thread GL"
             setOnClickListener { testGlThreadBridge() }
@@ -182,6 +190,7 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(20, 20, 20, 20)
             addView(backButton)
+            addView(glDrawButton)
             addView(statusView)
             addView(loadButton)
             addView(jniButton)
@@ -247,7 +256,7 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun showOpenGlTest() {
+    private fun showOpenGlTest(drawTriangle: Boolean = false) {
         loadNativeLibrary()
         glSurfaceReady = false
         glView?.let {
@@ -259,16 +268,41 @@ class MainActivity : Activity() {
             setEGLContextClientVersion(2)
             preserveEGLContextOnPause = true
             setRenderer(object : GLSurfaceView.Renderer {
+                private var triangleProgram = 0
+                private var triangleVertices: FloatBuffer? = null
+
                 override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
                     glSurfaceReady = true
-                    GLES20.glClearColor(0.08f, 0.18f, 0.32f, 1.0f)
+                    GLES20.glClearColor(0.04f, 0.05f, 0.08f, 1.0f)
+                    if (drawTriangle) {
+                        triangleProgram = createTriangleProgram()
+                        triangleVertices = ByteBuffer.allocateDirect(15 * 4)
+                            .order(ByteOrder.nativeOrder())
+                            .asFloatBuffer()
+                            .apply {
+                                put(floatArrayOf(
+                                    -0.72f, -0.62f, 1.0f, 0.2f, 0.2f,
+                                     0.72f, -0.62f, 0.2f, 1.0f, 0.3f,
+                                     0.00f,  0.72f, 0.2f, 0.5f, 1.0f
+                                ))
+                                position(0)
+                            }
+                    }
                     val eglStatus = try {
                         nativeVerifyEglContext()
                     } catch (error: LinkageError) {
                         "Falha ao verificar contexto EGL: " + error.message
                     }
                     runOnUiThread {
-                        statusView.text = "N64 Android\\n\\nOpenGL ES 2.0 inicializado.\\nSuperficie grafica Android criada.\\n\\n" + eglStatus + "\\n\\nNenhuma ROM foi carregada."
+                        val visualStatus = if (!drawTriangle) {
+                            "Teste de superficie OpenGL pronto."
+                        } else if (triangleProgram != 0) {
+                            "Programa GLES compilado. Triangulo colorido sendo desenhado."
+                        } else {
+                            "Falha ao criar o programa de desenho OpenGL. Consulte o log."
+                        }
+                        statusView.text = "N64 Android\\n\\n" + visualStatus + "\\n\\n" +
+                            eglStatus + "\\n\\nNenhuma ROM ou plugin foi iniciado."
                     }
                 }
 
@@ -278,6 +312,9 @@ class MainActivity : Activity() {
 
                 override fun onDrawFrame(gl: GL10?) {
                     GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+                    if (drawTriangle && triangleProgram != 0) {
+                        drawColoredTriangle(triangleProgram, triangleVertices)
+                    }
                 }
             })
             renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
@@ -294,6 +331,77 @@ class MainActivity : Activity() {
         )
         surface.onResume()
         surface.requestRender()
+    }
+
+    private fun createTriangleProgram(): Int {
+        val vertexSource = """
+            attribute vec2 aPosition;
+            attribute vec3 aColor;
+            varying vec3 vColor;
+            void main() {
+                gl_Position = vec4(aPosition, 0.0, 1.0);
+                vColor = aColor;
+            }
+        """.trimIndent()
+        val fragmentSource = """
+            precision mediump float;
+            varying vec3 vColor;
+            void main() {
+                gl_FragColor = vec4(vColor, 1.0);
+            }
+        """.trimIndent()
+
+        val vertexShader = compileTriangleShader(GLES20.GL_VERTEX_SHADER, vertexSource)
+        val fragmentShader = compileTriangleShader(GLES20.GL_FRAGMENT_SHADER, fragmentSource)
+        if (vertexShader == 0 || fragmentShader == 0) return 0
+
+        val program = GLES20.glCreateProgram()
+        if (program == 0) return 0
+        GLES20.glAttachShader(program, vertexShader)
+        GLES20.glAttachShader(program, fragmentShader)
+        GLES20.glBindAttribLocation(program, 0, "aPosition")
+        GLES20.glBindAttribLocation(program, 1, "aColor")
+        GLES20.glLinkProgram(program)
+        val linkStatus = IntArray(1)
+        GLES20.glGetProgramiv(program, GLES20.GL_LINK_STATUS, linkStatus, 0)
+        GLES20.glDeleteShader(vertexShader)
+        GLES20.glDeleteShader(fragmentShader)
+        if (linkStatus[0] == 0) {
+            android.util.Log.e("N64AndroidGLES", "Falha no link do shader: " + GLES20.glGetProgramInfoLog(program))
+            GLES20.glDeleteProgram(program)
+            return 0
+        }
+        return program
+    }
+
+    private fun compileTriangleShader(type: Int, source: String): Int {
+        val shader = GLES20.glCreateShader(type)
+        if (shader == 0) return 0
+        GLES20.glShaderSource(shader, source)
+        GLES20.glCompileShader(shader)
+        val compiled = IntArray(1)
+        GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compiled, 0)
+        if (compiled[0] == 0) {
+            android.util.Log.e("N64AndroidGLES", "Falha ao compilar shader: " + GLES20.glGetShaderInfoLog(shader))
+            GLES20.glDeleteShader(shader)
+            return 0
+        }
+        return shader
+    }
+
+    private fun drawColoredTriangle(program: Int, vertices: FloatBuffer?) {
+        if (vertices == null) return
+        GLES20.glUseProgram(program)
+        vertices.position(0)
+        GLES20.glVertexAttribPointer(0, 2, GLES20.GL_FLOAT, false, 20, vertices)
+        GLES20.glEnableVertexAttribArray(0)
+        vertices.position(2)
+        GLES20.glVertexAttribPointer(1, 3, GLES20.GL_FLOAT, false, 20, vertices)
+        GLES20.glEnableVertexAttribArray(1)
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 3)
+        GLES20.glDisableVertexAttribArray(0)
+        GLES20.glDisableVertexAttribArray(1)
+        GLES20.glUseProgram(0)
     }
 
     private fun testGlThreadBridge() {
