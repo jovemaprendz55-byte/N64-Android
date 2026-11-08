@@ -21,6 +21,13 @@ jobs:
           ref: a9ca8ec0b7decd17390c76c6341cf423d5d79321
           path: third_party/mupen64plus-core
 
+      - name: Checkout pinned SDL2 sources
+        uses: actions/checkout@v4
+        with:
+          repository: libsdl-org/SDL
+          ref: 5d249570393f7a37e037abf22cd6012a4cc56a71
+          path: third_party/SDL
+
       - name: Validate pinned Core source manifest
         run: >-
           cmake
@@ -73,6 +80,21 @@ jobs:
           grep -F '#define offsetof_struct_device_r4300 (' build/arm64-asm-defines/generated/asm_defines_gas.h
           grep -F '#define offsetof_struct_new_dynarec_hot_state_pc (' build/arm64-asm-defines/generated/asm_defines_gas.h
           test "$(grep -c '^#define offsetof_struct_' build/arm64-asm-defines/generated/asm_defines_gas.h)" -ge 20
+
+      - name: Configure pinned SDL2 for Android ARM64
+        run: |
+          NDK="$ANDROID_HOME/ndk/27.0.12077973"
+          cmake -S third_party/SDL -B build/sdl2-arm64 \
+            -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-23 \
+            -DSDL_SHARED=ON \
+            -DSDL_STATIC=OFF \
+            -DSDL_TEST=OFF \
+            -DSDL_TESTS=OFF
+          cmake --build build/sdl2-arm64 --parallel 2
+          test -s build/sdl2-arm64/libSDL2.so
+          file build/sdl2-arm64/libSDL2.so
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
