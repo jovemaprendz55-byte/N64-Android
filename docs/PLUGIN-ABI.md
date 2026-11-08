@@ -273,3 +273,21 @@ Nenhuma ROM ou plugin foi iniciado.
 **Limites:** o contador não prova, sozinho, que o contexto EGL foi destruído entre as duas criações; para afirmar perda/recriação do contexto é necessário comparar identificadores antes e depois e registrar `onSurfaceCreated` e `onSurfaceChanged` em cada ciclo. Também não valida callbacks do Core, plugin GFX, framebuffer N64 ou execução de ROM.
 
 **Próxima etapa:** instrumentar o ciclo EGL com registro dos identificadores de contexto/surface e estado de compilação dos recursos em cada `onSurfaceCreated`. Em seguida, construir a ponte de vídeo Android com callbacks reais, garantindo que operações GL ocorram exclusivamente na thread que possui o contexto. Manter ROM_OPEN, CoreAttachPlugin(GFX) e EXECUTE bloqueados.
+
+
+## Primeiro modulo do plugin GFX Android (2026-11-08)
+
+Foi criado `app/src/main/cpp/android_gfx_plugin.cpp` e o alvo CMake
+`n64android_gfx`, empacotado como `libmupen64plus-video-android.so`.
+O modulo exporta `PluginGetVersion`, `PluginStartup`, `PluginShutdown`,
+`InitiateGFX`, `RomOpen`, `RomClosed` e os callbacks de vídeo/framebuffer
+exigidos pelo ABI legado do plugin GFX. `InitiateGFX` guarda o `GFX_INFO`
+fornecido pelo Core e recusa inicialização sem contexto EGL/GLES atual.
+
+**Limite funcional importante:** este é o primeiro esqueleto ABI compilável,
+não um renderer N64. `ProcessDList` e `ProcessRDPList` ainda não interpretam
+comandos RSP/RDP, não há rasterização, texturas, framebuffer N64 nem imagem de
+jogo. O plugin ainda não é carregado/associado via `CoreAttachPlugin`, e ROM
+continua desabilitada. O próximo passo é adicionar carregamento dinâmico e
+validar `PluginGetVersion`/símbolos do módulo antes de conectar sua inicialização
+ao Core; só depois implementar o interpretador gráfico real.
