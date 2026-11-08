@@ -101,3 +101,32 @@ as though Android were ordinary desktop Linux.
 No Core source has been imported by this documentation change. The current
 APK workflow still validates only `libn64bridge.so`; a separate CI milestone
 will be required to prove that `libmupen64plus.so` actually compiles.
+
+## Historical Android port examined (reference only)
+
+A historical Android build recipe was located in the Mupen64Plus AE repository:
+- Repository: `https://github.com/mupen64plus-ae/mupen64plus-ae`
+- Inspected repository revision: `33bf7021549d7873e976884370fbd1a8e7333bc7`
+- Files inspected: `mupen64plus-core/Android.mk`,
+  `mupen64plus-core/mupen64plus-core.mk`,
+  `mupen64plus-core/Application.mk`, and
+  `mupen64plus-core/upstream/.gitrepo`.
+- Its embedded Core provenance points to
+  `mupen64plus-ae/mupen64plus-core` commit
+  `3c4182f7473ba77e4fa1145f4de0eae098b12972`, not the pinned upstream
+  revision used by this project.
+
+The old recipe is useful as evidence that an Android NDK port has previously
+been attempted, and it confirms some practical Android-specific choices:
+`arm64-v8a` selects `NEW_DYNAREC=4` and
+`src/device/r4300/new_dynarec/arm64/linkage_arm64.S`; it also uses
+`api_export.ver` and generates architecture-specific assembly definition
+headers. However, it is an old ndk-build recipe, not a drop-in CMake solution.
+It contains a legacy SDL stub approach, different source selection, and
+Android-specific flags whose assumptions must not be copied blindly.
+
+**Decision:** use this recipe only as a cross-check for ARM64 dynarec and
+generated assembly requirements. Do not import its modified Core snapshot,
+frontend code, SDL stub, or Android.mk into this project. Keep the Core source
+of record pinned to the official upstream revision documented in
+`docs/LICENSING.md`, then port and validate each required adaptation here.
