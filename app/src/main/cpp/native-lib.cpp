@@ -149,8 +149,21 @@ m64p_error androidVideoGetAttr(m64p_GLattr attr, int* value) {
     return M64ERR_SUCCESS;
 }
 m64p_error androidVideoSwapBuffers() {
-    // GLSurfaceView owns EGL buffer swapping; the Core must not swap it again.
-    return androidVideoContextReady() ? M64ERR_SUCCESS : M64ERR_INVALID_STATE;
+    // M64CMD_EXECUTE will occupy the GLSurfaceView GL thread. In that mode,
+    // GLSurfaceView cannot reach its normal post-onDrawFrame swap until the
+    // Core returns, so the video extension must present each completed frame.
+    if (!androidVideoContextReady()) return M64ERR_INVALID_STATE;
+
+    const EGLDisplay display = eglGetCurrentDisplay();
+    const EGLSurface surface = eglGetCurrentSurface(EGL_DRAW);
+    if (eglSwapBuffers(display, surface) == EGL_TRUE) return M64ERR_SUCCESS;
+
+    const EGLint error = eglGetError();
+    __android_log_print(ANDROID_LOG_ERROR, "N64AndroidVideo",
+                        "eglSwapBuffers falhou no callback de video: EGL error=0x%04X TID=%ld",
+                        static_cast<unsigned int>(error),
+                        static_cast<long>(syscall(SYS_gettid)));
+    return M64ERR_INVALID_STATE;
 }
 m64p_error androidVideoSetCaption(const char*) { return M64ERR_SUCCESS; }
 m64p_error androidVideoToggleFullscreen() { return M64ERR_SUCCESS; }
