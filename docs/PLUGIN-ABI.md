@@ -113,3 +113,17 @@ A implementação em `src/api/frontend.c` remove a ambiguidade identificada acim
 5. Chamar `M64CMD_ROM_OPEN` com buffer e tamanho confirmados; só depois solicitar `M64CMD_EXECUTE`. Fechar com `M64CMD_ROM_CLOSE` antes de desligar plugins/Core.
 
 **Correção de planejamento:** não anexar plugin via `CoreAttachPlugin` antes de abrir ROM; a API explicitamente retorna estado inválido nesse cenário. Ainda não foi implementada abertura de ROM nem renderização.
+
+## Resultado do teste ABI no dispositivo Android (2026-11-08)
+
+O usuário executou no Poco C85 o botão 7 após carregar e inicializar o Core. Resultado informado:
+
+```
+ABI de video validada: 17 callbacks aceitos pelo Core.
+Tabela de teste desativada imediatamente.
+Nenhuma janela, plugin GFX ou ROM foi iniciada.
+```
+
+A auditoria do header upstream `src/api/m64p_vidext.h` na revisão fixada confirmou os tipos das 17 funções/campos da tabela. A implementação em `src/api/vidext.c` confirma que `Functions >= 17` é obrigatório e que qualquer ponteiro nulo limpa a tabela externa e desativa o override retornando `M64ERR_SUCCESS`; portanto, a segunda chamada com a tabela zerada é o mecanismo correto para remover o probe.
+
+**Interpretação:** o Core aceitou a tabela ABI de diagnóstico em execução no aparelho e o probe foi desativado. Isso não valida ainda callbacks Android funcionais, criação de contexto GLES pelo Core, plugin GFX, renderização ou execução de ROM. O próximo marco é implementar callbacks reais ligados à superfície/contexto Android, respeitando a thread proprietária do contexto e o ciclo de vida da Activity; manter a abertura de ROM bloqueada até o caminho gráfico real estar pronto.
