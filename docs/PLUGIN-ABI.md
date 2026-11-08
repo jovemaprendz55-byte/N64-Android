@@ -640,3 +640,17 @@ que possui o EGL atual, inclusive apos onPause/onResume recriar o contexto.
 O proximo marco continua sendo validar PluginStartup e, depois, desenhar
 uma chamada controlada de inicializacao grafica na GL thread. ROM_OPEN,
 CoreAttachPlugin e EXECUTE permanecem bloqueados.
+
+## Marco seguinte — validar PluginStartup na thread EGL
+
+O frontend chama nativeLoadGfxPlugin a partir de GLSurfaceView.Renderer.onSurfaceCreated.
+O JNI agora verifica EGLContext, EGLDisplay, EGL_DRAW surface e glGetString(GL_VERSION)
+imediatamente antes de PluginStartup. Se qualquer elemento estiver ausente, o plugin
+e descarregado sem chamar PluginStartup. Em sucesso, o log Android registra GLES, TID
+e o identificador do EGLContext usados nessa chamada.
+
+A interface também deixou de afirmar incondicionalmente que PluginStartup foi concluido;
+o resultado exibido deve ser lido da mensagem retornada pelo carregamento do plugin.
+Este teste prova a posse do contexto no instante de entrada de PluginStartup, mas nao
+prova que o GLideN64 criou recursos, recebeu GFX_INFO via InitiateGFX, ou desenhou frames.
+ROM_OPEN, CoreAttachPlugin e EXECUTE continuam bloqueados.
