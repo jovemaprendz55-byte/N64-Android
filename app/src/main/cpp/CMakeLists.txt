@@ -39,7 +39,8 @@ if(EXISTS "${MUPEN64PLUS_CORE_SOURCE_DIR}/src/asm_defines/asm_defines.c")
     # remain disabled; ARM64 uses the upstream NEW_DYNAREC=4 backend.
     add_library(mupen64plus SHARED
         ${M64P_CORE_UPSTREAM_SOURCES}
-        ${M64P_CORE_BUNDLED_SOURCES})
+        ${M64P_CORE_BUNDLED_SOURCES}
+        android_screenshot_stub.c)
 
     target_include_directories(mupen64plus PRIVATE
         ${M64P_CORE_INCLUDE_DIRS}
