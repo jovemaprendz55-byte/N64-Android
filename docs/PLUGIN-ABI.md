@@ -127,3 +127,25 @@ Nenhuma janela, plugin GFX ou ROM foi iniciada.
 A auditoria do header upstream `src/api/m64p_vidext.h` na revisão fixada confirmou os tipos das 17 funções/campos da tabela. A implementação em `src/api/vidext.c` confirma que `Functions >= 17` é obrigatório e que qualquer ponteiro nulo limpa a tabela externa e desativa o override retornando `M64ERR_SUCCESS`; portanto, a segunda chamada com a tabela zerada é o mecanismo correto para remover o probe.
 
 **Interpretação:** o Core aceitou a tabela ABI de diagnóstico em execução no aparelho e o probe foi desativado. Isso não valida ainda callbacks Android funcionais, criação de contexto GLES pelo Core, plugin GFX, renderização ou execução de ROM. O próximo marco é implementar callbacks reais ligados à superfície/contexto Android, respeitando a thread proprietária do contexto e o ciclo de vida da Activity; manter a abertura de ROM bloqueada até o caminho gráfico real estar pronto.
+
+## Auditoria final da ordem de inicialização GFX e thread Android (2026-11-08)
+
+Fonte upstream revisada: `src/api/frontend.c`, `src/main/rom.c` e `src/plugin/plugin.c`, no mesmo commit fixado.
+
+### Ordem real confirmada
+
+1. `CoreStartup` define `l_CoreInit=1`; só depois disso `CoreOverrideVidExt` deixa de retornar `M64ERR_NOT_INIT`. O botão 7 já validou esse momento.
+2. `CoreDoCommand(M64CMD_ROM_OPEN, tamanho, buffer)` valida e copia a ROM para a memória interna, mas **não inicia o plugin GFX**.
+3. Depois de ROM aberta, `CoreAttachPlugin(M64PLUGIN_GFX, handle)` conecta o módulo e chama `plugin_start(M64PLUGIN_GFX)`.
+4. `plugin_start_gfx()` preenche `GFX_INFO` com os ponteiros do Core e chama `InitiateGFX(GFX_INFO)`. Essa é a chamada que inicia o caminho gráfico do plugin.
+5. `CoreDoCommand(M64CMD_EXECUTE)` chama `main_run()` e bloqueia até o jogo terminar/parar. Não chamar essa função na thread da interface Android.
+
+### Consequência para a superfície GLES
+
+- A superfície e o contexto GLES precisam existir antes do attach/início do plugin GFX.
+- A tabela de callbacks de vídeo deve estar registrada após `CoreStartup` e antes de `InitiateGFX`.
+- Os callbacks que usam GLES só podem operar enquanto o contexto correto estiver atual e na thread proprietária dele. Não basta que uma `GLSurfaceView` exista na tela.
+- A integração deve coordenar o ciclo de vida `onPause/onResume/onDestroy`, perda/recriação do contexto EGL e parada do Core antes de destruir a superfície.
+- A chamada bloqueante `M64CMD_EXECUTE` precisa rodar fora da thread UI; a estratégia de execução deve preservar a propriedade do contexto EGL. Não implementar uma chamada JNI direta na UI nem presumir que `runOnUiThread` resolve a afinidade de contexto.
+
+**Decisão de implementação:** antes de abrir ROM, criar uma ponte Android que prove a posse/validade do contexto EGL na thread que executará as chamadas nativas. Em seguida implementar callbacks reais e um plugin GFX Android mínimo; só então liberar a sequência ROM_OPEN → CoreAttachPlugin(GFX) → EXECUTE. Até lá, o app permanece em modo diagnóstico sem jogos.
