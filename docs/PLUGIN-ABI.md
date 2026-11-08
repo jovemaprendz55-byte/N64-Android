@@ -291,3 +291,32 @@ jogo. O plugin ainda não é carregado/associado via `CoreAttachPlugin`, e ROM
 continua desabilitada. O próximo passo é adicionar carregamento dinâmico e
 validar `PluginGetVersion`/símbolos do módulo antes de conectar sua inicialização
 ao Core; só depois implementar o interpretador gráfico real.
+
+## Carregamento dinâmico do plugin GFX no fluxo Android (2026-11-08)
+
+O commit `e29a483bc271f6af7323640dd8b61fddeebfc0ea` conecta o carregador
+JNI do plugin à etapa "Iniciar integração gráfica". Depois de registrar a
+Video Extension Android com sucesso em `GLSurfaceView.Renderer.onSurfaceCreated`,
+o frontend monta o caminho de
+`libmupen64plus-video-android.so` em `applicationInfo.nativeLibraryDir`
+e chama `nativeLoadGfxPlugin(path)` na thread GL, com contexto EGL atual.
+
+A JNI abre o módulo com `dlopen(RTLD_NOW | RTLD_LOCAL)`, resolve os 19
+símbolos GFX obrigatórios, consulta `PluginGetVersion` e valida tipo
+`M64PLUGIN_GFX` e major da API 2. O handle permanece guardado para a etapa
+seguinte. A compilação Android Actions run `42486286940` (run 119) terminou
+`completed / success`, job `assemble`.
+
+**Limite desta etapa:** carregar e validar a biblioteca não chama
+`PluginStartup`, não executa `CoreAttachPlugin`, não abre ROM e não executa
+`CoreDoCommand(M64CMD_EXECUTE)`. Portanto, ainda não há plugin GFX conectado
+ao Core nem renderização de jogos. O módulo atual continua sendo um esqueleto:
+`ProcessDList` e `ProcessRDPList` não interpretam comandos RSP/RDP nem
+produzem framebuffer N64.
+
+**Próxima sequência técnica:** confirmar no código-fonte do Core pinned a
+ordem e responsabilidade de `PluginStartup`, `M64CMD_ROM_OPEN` e
+`CoreAttachPlugin(M64PLUGIN_GFX)`; só então implementar a inicialização e
+associação com tratamento de erro e encerramento seguro. Manter a abertura de
+ROM e execução bloqueadas até existir um renderer que realmente interprete
+listas RSP/RDP e respeite a thread proprietária do contexto EGL.
