@@ -414,7 +414,7 @@ class MainActivity : Activity() {
         loadNativeLibrary()
         glSurfaceReady = false
         glView?.let {
-            graphicsGroup.removeView(it)
+            (it.parent as? ViewGroup)?.removeView(it)
             it.onPause()
         }
 
