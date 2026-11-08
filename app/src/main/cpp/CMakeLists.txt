@@ -52,7 +52,10 @@ if(EXISTS "${MUPEN64PLUS_CORE_SOURCE_DIR}/src/asm_defines/asm_defines.c")
         NEW_DYNAREC=4
         M64P_PARALLEL
         NOCRYPT
-        NOUNCRYPT)
+        NOUNCRYPT
+        # Android uses 64-bit off_t; bionic exposes fopen/ftello/fseeko,
+        # not the glibc-specific *64 entry points used by legacy Minizip.
+        MINIZIP_FOPEN_NO_64)
 
     target_compile_options(mupen64plus PRIVATE
         -fvisibility=hidden
