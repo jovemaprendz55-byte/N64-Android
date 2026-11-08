@@ -730,6 +730,7 @@ Java_com_jsr_n64android_MainActivity_nativeExecuteCore(JNIEnv* env, jobject /* t
 #ifndef N64_HAS_MUPEN64PLUS_HEADERS
     return makeString(env, "Headers oficiais do Core nao estao disponiveis nesta compilacao.");
 #else
+    using CoreDoCommandSymbol = m64p_error (*)(m64p_command, int, void*);
     void* core = nullptr;
     CoreDoCommandSymbol doCommand = nullptr;
     {
