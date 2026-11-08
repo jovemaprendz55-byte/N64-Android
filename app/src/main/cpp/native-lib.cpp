@@ -45,35 +45,11 @@ jstring makeString(JNIEnv* env, const char* value) {
 extern "C"
 JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_MainActivity_nativeGetStatus(JNIEnv* env, jobject /* thiz */) {
-    char details[384];
-#ifdef N64_HAS_SDL2
-    SDL_version version{};
-    SDL_GetVersion(&version);
-#ifdef N64_HAS_MUPEN64PLUS
-    const bool coreApiAvailable =
-        (&CoreStartup != nullptr) &&
-        (&CoreDoCommand != nullptr) &&
-        (&CoreShutdown != nullptr);
-    std::snprintf(details, sizeof(details),
-                  "Bridge JNI carregada.\n"
-                  "SDL2: %u.%u.%u\n"
-                  "Core Mupen64Plus linkado: sim\n"
-                  "API frontend exportada: %s\n"
-                  "Inicializacao do Core: aguardando comando\n"
-                  "Plugins e execucao de ROM ainda pendentes.",
-                  version.major, version.minor, version.patch,
-                  coreApiAvailable ? "sim" : "nao");
-#else
-    std::snprintf(details, sizeof(details),
-                  "Bridge JNI carregada.\nSDL2: %u.%u.%u\n"
-                  "Core Mupen64Plus nao esta linkado.",
-                  version.major, version.minor, version.patch);
-#endif
-#else
-    std::snprintf(details, sizeof(details),
-                  "Bridge JNI carregada.\nSDL2 ainda nao vinculada.");
-#endif
-    return makeString(env, details);
+    // Diagnostic isolation: avoid calling SDL or Core symbols here.
+    // This confirms JNI entry-point execution independently from native dependencies.
+    return makeString(env,
+        "JNI bridge carregada e chamada com sucesso.\n"
+        "Teste isolado: SDL2 e Core ainda nao foram consultados.");
 }
 
 extern "C"
