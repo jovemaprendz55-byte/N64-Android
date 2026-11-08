@@ -6,8 +6,8 @@
 # ARM64 NEW_DYNAREC sources selected explicitly for Android arm64-v8a.
 #
 # This file intentionally does not create a target yet. Android still needs a
-# dedicated storage backend and a validated SDL2/dependency configuration.
-# Do not substitute files_unix.c: its filesystem assumptions are desktop Unix.
+# validated SDL2/dependency configuration. files_unix.c is the POSIX OSAL
+# backend; the Android frontend must set HOME to app-private storage first.
 
 include_guard(GLOBAL)
 
