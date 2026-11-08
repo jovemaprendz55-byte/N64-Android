@@ -817,6 +817,38 @@ Java_com_jsr_n64android_MainActivity_nativeVerifyEglContext(JNIEnv* env, jobject
 }
 
 
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_jsr_n64android_MainActivity_nativeTestEglSwap(JNIEnv* env, jobject /* thiz */) {
+    const EGLContext context = eglGetCurrentContext();
+    const EGLDisplay display = eglGetCurrentDisplay();
+    const EGLSurface surface = eglGetCurrentSurface(EGL_DRAW);
+    if (context == EGL_NO_CONTEXT || display == EGL_NO_DISPLAY ||
+        surface == EGL_NO_SURFACE || glGetString(GL_VERSION) == nullptr) {
+        const EGLint error = eglGetError();
+        char status[256];
+        std::snprintf(status, sizeof(status),
+                      "Teste de swap cancelado: EGL nao esta atual na thread GL. Erro=0x%04X",
+                      static_cast<unsigned int>(error));
+        return makeString(env, status);
+    }
+
+    const EGLBoolean swapped = eglSwapBuffers(display, surface);
+    const EGLint error = swapped == EGL_TRUE ? EGL_SUCCESS : eglGetError();
+    char status[512];
+    std::snprintf(status, sizeof(status),
+                  "Teste controlado de eglSwapBuffers: %s.\n"
+                  "EGL error: 0x%04X | Thread Linux: %ld.\n"
+                  "Este teste nao inicia a emulacao nem altera o estado da ROM.",
+                  swapped == EGL_TRUE ? "SUCESSO" : "FALHOU",
+                  static_cast<unsigned int>(error),
+                  static_cast<long>(syscall(SYS_gettid)));
+    __android_log_print(swapped == EGL_TRUE ? ANDROID_LOG_INFO : ANDROID_LOG_ERROR,
+                        "N64AndroidEGL", "%s", status);
+    return makeString(env, status);
+}
+
 extern "C"
 JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_MainActivity_nativeTestGlOperations(JNIEnv* env, jobject /* thiz */) {
