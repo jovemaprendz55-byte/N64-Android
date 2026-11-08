@@ -32,6 +32,8 @@ class MainActivity : Activity() {
     private lateinit var statusView: TextView
     private lateinit var rootLayout: LinearLayout
     private lateinit var homeLayout: LinearLayout
+    private lateinit var integrationLayout: LinearLayout
+    private lateinit var integrationStatusView: TextView
     private lateinit var graphicsGroup: LinearLayout
     private var diagnosticScreenVisible = false
     private lateinit var configDirectory: File
@@ -57,6 +59,18 @@ class MainActivity : Activity() {
             textSize = 16f
             gravity = Gravity.CENTER
             setPadding(28, 28, 28, 28)
+        }
+
+        integrationStatusView = TextView(this).apply {
+            text = "A integração gráfica ainda não foi iniciada."
+            textSize = 15f
+            gravity = Gravity.CENTER
+            setPadding(20, 20, 20, 20)
+        }
+
+        val crashLogButton = Button(this).apply {
+            text = "Consultar log do último travamento"
+            setOnClickListener { showRecentCrashLog() }
         }
 
         val loadButton = Button(this).apply {
@@ -223,6 +237,7 @@ class MainActivity : Activity() {
             setPadding(20, 20, 20, 20)
             addView(backButton)
             addView(statusView)
+            addView(crashLogButton)
             addView(categoryButton("Biblioteca e JNI", jniGroup))
             addView(jniGroup)
             addView(categoryButton("Core Mupen64Plus", coreGroup))
@@ -234,6 +249,23 @@ class MainActivity : Activity() {
         coreGroup.visibility = ViewGroup.GONE
         graphicsGroup.visibility = ViewGroup.GONE
         this.graphicsGroup = graphicsGroup
+
+        integrationLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(20, 20, 20, 20)
+            addView(TextView(this@MainActivity).apply {
+                text = "Integração gráfica"
+                textSize = 23f
+                gravity = Gravity.CENTER
+                setPadding(12, 16, 12, 8)
+            })
+            addView(Button(this@MainActivity).apply {
+                text = "Voltar ao início"
+                setOnClickListener { showHomeScreen() }
+            })
+            addView(integrationStatusView)
+        }
 
         homeLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -252,7 +284,7 @@ class MainActivity : Activity() {
                 setPadding(12, 8, 12, 28)
             })
             addView(Button(this@MainActivity).apply {
-                text = "Diagnostico e testes"
+                text = "Diagnóstico e testes"
                 setOnClickListener {
                     diagnosticScreenVisible = true
                     setContentView(ScrollView(this@MainActivity).apply {
@@ -262,12 +294,8 @@ class MainActivity : Activity() {
                 }
             })
             addView(Button(this@MainActivity).apply {
-                text = "Iniciar integracao grafica"
+                text = "Integração gráfica"
                 setOnClickListener { startAndroidVideoIntegration() }
-            })
-            addView(Button(this@MainActivity).apply {
-                text = "Consultar log do ultimo travamento"
-                setOnClickListener { showRecentCrashLog() }
             })
             addView(TextView(this@MainActivity).apply {
                 text = "Jogos e carregamento de ROMs ainda estao em desenvolvimento."
@@ -327,7 +355,9 @@ class MainActivity : Activity() {
 
     private fun startAndroidVideoIntegration() {
         android.util.Log.i("N64AndroidFlow", "Etapa 1: inicio da integracao grafica")
-        statusView.text = "N64 Android\\n\\nPreparando Core e camada grafica Android..."
+        diagnosticScreenVisible = true
+        setContentView(integrationLayout)
+        integrationStatusView.text = "Preparando Core e camada gráfica Android..."
         try {
             loadNativeLibrary()
             if (!nativeCoreLoaded) {
@@ -337,7 +367,7 @@ class MainActivity : Activity() {
                 )
                 nativeCoreLoaded = loaded.startsWith("Core Mupen64Plus carregado com sucesso")
                 if (!nativeCoreLoaded) {
-                    statusView.text = "N64 Android\\n\\n" + loaded
+                    integrationStatusView.text = loaded
                     return
                 }
             }
@@ -348,29 +378,23 @@ class MainActivity : Activity() {
                 )
                 nativeCoreInitialized = started.startsWith("CoreStartup concluido com sucesso")
                 if (!nativeCoreInitialized) {
-                    statusView.text = "N64 Android\\n\\n" + started
+                    integrationStatusView.text = started
                     return
                 }
             }
-            diagnosticScreenVisible = true
-            setContentView(ScrollView(this).apply {
-                isFillViewport = true
-                addView(rootLayout)
-            })
-            graphicsGroup.visibility = ViewGroup.VISIBLE
-            statusView.text = "N64 Android\\n\\nCore inicializado. Criando contexto EGL para registrar a camada de video Android..."
+            integrationStatusView.text = "Core inicializado. Criando contexto EGL para registrar o vídeo Android..."
             showOpenGlTest(registerVideoExtension = true)
         } catch (error: Exception) {
-            statusView.text = "N64 Android\\n\\nFalha ao iniciar integracao grafica: ${error.message}"
+            integrationStatusView.text = "Falha ao iniciar integração gráfica: ${error.message}"
         } catch (error: LinkageError) {
-            statusView.text = "N64 Android\\n\\nFalha JNI na integracao grafica: ${error.message}"
+            integrationStatusView.text = "Falha JNI na integração gráfica: ${error.message}"
         }
     }
 
     private fun showHomeScreen() {
         diagnosticScreenVisible = false
         glView?.let {
-            graphicsGroup.removeView(it)
+            (it.parent as? ViewGroup)?.removeView(it)
             it.onPause()
         }
         glSurfaceReady = false
@@ -449,6 +473,7 @@ class MainActivity : Activity() {
                         ""
                     }
                     runOnUiThread {
+                        val targetStatusView = if (registerVideoExtension) integrationStatusView else statusView
                         val visualStatus = if (registerVideoExtension) {
                             "Integracao grafica Android registrada no Core."
                         } else if (!drawTriangle) {
@@ -463,7 +488,7 @@ class MainActivity : Activity() {
                         } else {
                             ""
                         }
-                        statusView.text = "N64 Android\\n\\n" + visualStatus + "\\n" +
+                        targetStatusView.text = (if (registerVideoExtension) "" else "N64 Android\\n\\n") + visualStatus + "\\n" +
                             lifecycleStatus + "\\n\\n" + eglStatus +
                             (if (videoStatus.isNotEmpty()) "\\n\\n" + videoStatus else "") +
                             "\\n\\nNenhuma ROM foi carregada. Confirme acima o resultado do carregamento e do PluginStartup; o plugin ainda nao foi anexado ao Core e InitiateGFX nao foi chamado."
@@ -485,7 +510,8 @@ class MainActivity : Activity() {
         }
 
         glView = surface
-        graphicsGroup.addView(
+        val surfaceContainer = if (registerVideoExtension) integrationLayout else graphicsGroup
+        surfaceContainer.addView(
             surface,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
