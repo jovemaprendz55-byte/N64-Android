@@ -190,3 +190,30 @@ Nenhuma ROM foi carregada.
 **Interpretação:** a tarefa enviada por `GLSurfaceView.queueEvent` executou a JNI em uma thread com contexto EGL atual e superfície de desenho válida. Isso confirma a ponte de despacho para a thread GL neste teste real no aparelho. O TID `6890` é o identificador observado nessa execução; ele pode mudar entre execuções e não deve ser fixado como constante.
 
 **Limites:** a validação ainda não chama funções do Core Mupen64Plus nem callbacks de plugin GFX, não testa pause/resume ou perda/recriação do contexto e não renderiza ROM. O próximo trabalho é implementar e testar o ciclo de vida da ponte nativa e callbacks de vídeo mínimos na thread GL, mantendo ROM_OPEN e EXECUTE bloqueados até que esses testes estejam concluídos.
+
+
+## Resultado do teste 9 — operações GLES pela JNI no Poco C85 (2026-11-08)
+
+O usuário instalou a compilação do commit `c6d0990549221c7dbde05a4d5bec48ae4763e45f` e executou o botão 9. Resultado informado:
+
+```
+Teste 9 - Operacoes GLES na thread GL
+Operacoes GLES executadas pela JNI.
+OpenGL ES: OpenGL ES 3.2 v1.r49p1-03bet0.19498e0ae1d5dac2233c39a2e58f04
+Viewport: 680 x 360 (origem 0,0)
+Erro GLES antes: 0x0000 | depois: 0x0000
+Thread Linux: 12399
+Contexto EGL valido; nenhuma ROM/plugin foi iniciada.
+
+Nenhuma ROM foi carregada.
+```
+
+**Interpretação:** na thread GL, a JNI consultou o viewport e executou `glClearColor`, `glClear(GL_COLOR_BUFFER_BIT)`, `glFlush` e `glGetError`. O viewport reportado foi 680 × 360, origem (0,0), e não houve erro GLES nem antes nem depois das operações. O contexto EGL permaneceu válido durante a chamada. O TID 12399 é apenas o identificador observado nessa execução.
+
+**O que foi validado:** operações OpenGL ES reais podem ser chamadas pela ponte JNI enquanto a tarefa é despachada pela `GLSurfaceView.queueEvent` para a thread que possui o contexto EGL.
+
+**Limites:** isto ainda não valida callbacks de vídeo do Mupen64Plus, integração do Core com a GL thread, plugin GFX, ciclo de vida pause/resume, framebuffer do emulador, abertura de ROM ou execução de jogo. Nenhuma ROM/plugin foi iniciada.
+
+### Próximo marco
+
+Projetar um teste visual nativo isolado na GL thread (sem Core, plugin ou ROM), com recursos GLES mínimos e descarte correto ao perder/recriar o contexto. Em paralelo, auditar a estrutura de callbacks de vídeo Android e o ciclo de vida da superfície antes de conectá-los ao Core. Não liberar ROM_OPEN nem EXECUTE até que o caminho de vídeo real esteja implementado e validado.
