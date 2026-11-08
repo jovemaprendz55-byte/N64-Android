@@ -31,6 +31,7 @@ class MainActivity : Activity() {
     private external fun nativeStartCore(configPath: String, dataPath: String): String
     private external fun nativeRegisterAndroidVideo(): String
     private external fun nativeLoadGfxPlugin(pluginPath: String): String
+    private external fun nativeOpenRomAndAttachGfx(romBytes: ByteArray): String
     private external fun nativeTestVideoOverrideAbi(): String
     private external fun nativeVerifyEglContext(): String
     private external fun nativeTestGlOperations(): String
@@ -286,6 +287,7 @@ class MainActivity : Activity() {
                 setOnClickListener { showHomeScreen() }
             })
             addView(Button(this@MainActivity).apply { text = "Selecionar ROM"; setOnClickListener { openRomPicker() } })
+            addView(Button(this@MainActivity).apply { text = "Abrir ROM no Core e anexar vídeo"; setOnClickListener { openSelectedRomInCore() } })
             addView(integrationStatusView)
         }
 
@@ -412,6 +414,47 @@ class MainActivity : Activity() {
         } catch (error: LinkageError) {
             integrationStatusView.text = "Falha JNI na integração gráfica: ${error.message}"
         }
+    }
+
+
+    private fun openSelectedRomInCore() {
+        val surface = glView
+        if (surface == null || !glSurfaceReady) {
+            integrationStatusView.text = "Abra a integração gráfica e aguarde o contexto EGL e o plugin GFX ficarem prontos."
+            return
+        }
+        val romFile = File(File(filesDir, "roms"), "selected.n64")
+        if (!romFile.isFile) {
+            integrationStatusView.text = "Selecione uma ROM N64 primeiro."
+            return
+        }
+        integrationStatusView.text = "Lendo ROM e preparando abertura no Core..."
+        Thread {
+            val bytes = try {
+                romFile.readBytes()
+            } catch (error: Exception) {
+                runOnUiThread { integrationStatusView.text = "Falha ao ler ROM: " + error.message }
+                return@Thread
+            }
+            runOnUiThread {
+                val activeSurface = glView
+                if (activeSurface == null || !glSurfaceReady) {
+                    integrationStatusView.text = "Contexto GL deixou de estar disponível. Abra novamente a integração."
+                    return@runOnUiThread
+                }
+                integrationStatusView.text = "Enviando ROM ao Mupen64Plus Core na thread GL..."
+                activeSurface.queueEvent {
+                    val result = try {
+                        nativeOpenRomAndAttachGfx(bytes)
+                    } catch (error: LinkageError) {
+                        "Falha JNI ao abrir ROM/anexar vídeo: " + error.message
+                    } catch (error: Exception) {
+                        "Erro ao abrir ROM/anexar vídeo: " + error.message
+                    }
+                    runOnUiThread { integrationStatusView.text = result }
+                }
+            }
+        }.start()
     }
 
     private fun openRomPicker() { val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "*/*" }; startActivityForResult(i, romPickerRequestCode) }
