@@ -550,6 +550,19 @@ Java_com_jsr_n64android_MainActivity_nativeLoadGfxPlugin(
         return makeString(env, status);
     }
 
+    // PluginStartup is reached from GLSurfaceView.Renderer.onSurfaceCreated.
+    // Refuse initialization unless this thread owns a live EGL context.
+    const EGLContext startupContext = eglGetCurrentContext();
+    const EGLDisplay startupDisplay = eglGetCurrentDisplay();
+    const EGLSurface startupSurface = eglGetCurrentSurface(EGL_DRAW);
+    const GLubyte* startupGlVersion = glGetString(GL_VERSION);
+    if (startupContext == EGL_NO_CONTEXT || startupDisplay == EGL_NO_DISPLAY ||
+        startupSurface == EGL_NO_SURFACE || startupGlVersion == nullptr) {
+        dlclose(plugin);
+        return makeString(env,
+            "PluginStartup cancelado: contexto EGL/GLES nao esta atual nesta thread GL.");
+    }
+
     using GfxPluginStartup = int (*)(void*, void*, void (*)(void*, int, const char*));
     auto startup = reinterpret_cast<GfxPluginStartup>(dlsym(plugin, "PluginStartup"));
     if (startup == nullptr) {
@@ -568,6 +581,11 @@ Java_com_jsr_n64android_MainActivity_nativeLoadGfxPlugin(
 
     g_gfxPluginHandle = plugin;
     g_gfxPluginStarted = true;
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidGFX",
+                        "PluginStartup executado com EGL atual. GLES=%s TID=%ld EGLContext=%p",
+                        reinterpret_cast<const char*>(startupGlVersion),
+                        static_cast<long>(syscall(SYS_gettid)),
+                        reinterpret_cast<void*>(startupContext));
     char status[768];
     std::snprintf(status, sizeof(status),
                   "Plugin GFX Android carregado e validado.\n"
