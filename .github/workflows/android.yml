@@ -49,6 +49,8 @@ jobs:
           cmake --build build/sdl2-arm64 --parallel 2
           test -s build/sdl2-arm64/libSDL2.so
           file build/sdl2-arm64/libSDL2.so
+          mkdir -p app/src/main/jniLibs/arm64-v8a
+          cp build/sdl2-arm64/libSDL2.so app/src/main/jniLibs/arm64-v8a/libSDL2.so
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -69,8 +71,12 @@ jobs:
             exit 1
           fi
           unzip -p "$APK" lib/arm64-v8a/libn64bridge.so > build-n64bridge.so
-          readelf -d build-n64bridge.so | grep -F "Shared library: [libSDL2.so]"
-          readelf --dyn-syms -W build-n64bridge.so | grep -E "[[:space:]]SDL_GetVersion$"
+          if readelf -d build-n64bridge.so | grep -Fq "Shared library: [libSDL2.so]"; then
+            echo "n64bridge must not load SDL2 as a startup dependency"
+            exit 1
+          fi
+          readelf --dyn-syms -W build-n64bridge.so | grep -E "[[:space:]]dlopen$"
+          readelf --dyn-syms -W build-n64bridge.so | grep -E "[[:space:]]dlsym$"
           readelf --dyn-syms -W build-n64bridge.so | grep -E "[[:space:]]Java_com_jsr_n64android_MainActivity_nativeGetStatus$"
           readelf --dyn-syms -W build-n64bridge.so | grep -E "[[:space:]]Java_com_jsr_n64android_MainActivity_nativeInitialize$"
           readelf --dyn-syms -W build-n64bridge.so | grep -E "[[:space:]]Java_com_jsr_n64android_MainActivity_nativeShutdown$"
