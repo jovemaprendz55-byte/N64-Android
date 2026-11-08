@@ -1,6 +1,9 @@
 package com.jsr.n64android
 
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.os.Bundle
@@ -10,6 +13,7 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -38,6 +42,7 @@ class MainActivity : Activity() {
     private var diagnosticScreenVisible = false
     private lateinit var configDirectory: File
     private lateinit var dataDirectory: File
+    private var latestCrashLog = ""
     private var nativeLibraryLoaded = false
     private var nativeCoreLoaded = false
     private var nativeCoreInitialized = false
@@ -71,6 +76,19 @@ class MainActivity : Activity() {
         val crashLogButton = Button(this).apply {
             text = "Consultar log do último travamento"
             setOnClickListener { showRecentCrashLog() }
+        }
+
+        val copyCrashLogButton = Button(this).apply {
+            text = "Copiar logs"
+            setOnClickListener {
+                if (latestCrashLog.isBlank()) {
+                    Toast.makeText(this@MainActivity, "Consulte o log do travamento primeiro.", Toast.LENGTH_SHORT).show()
+                } else {
+                    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("Log N64 Android", latestCrashLog))
+                    Toast.makeText(this@MainActivity, "Logs copiados. Cole aqui na conversa.", Toast.LENGTH_LONG).show()
+                }
+            }
         }
 
         val loadButton = Button(this).apply {
@@ -238,6 +256,7 @@ class MainActivity : Activity() {
             addView(backButton)
             addView(statusView)
             addView(crashLogButton)
+            addView(copyCrashLogButton)
             addView(categoryButton("Biblioteca e JNI", jniGroup))
             addView(jniGroup)
             addView(categoryButton("Core Mupen64Plus", coreGroup))
@@ -348,7 +367,8 @@ class MainActivity : Activity() {
                 "Nao foi possivel consultar logcat: ${error.message}"
             }
             runOnUiThread {
-                statusView.text = "N64 Android\\n\\nLOG DO ULTIMO TESTE\\n\\n" + result
+                latestCrashLog = result
+                statusView.text = "N64 Android\\n\\nLOG DO ULTIMO TESTE\\n\\n" + result + "\\n\\nToque em Copiar logs para enviar o texto."
             }
         }.start()
     }
