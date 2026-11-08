@@ -524,3 +524,57 @@ Arquivos do frontend revisados em `app/src/main/cpp/native-lib.cpp` e `app/src/m
 ### Decisão
 
 A ponte existente é uma base real e já foi registrada no Core no aparelho, mas ainda é uma camada de validação/diagnóstico, não uma implementação completa de janela/vídeo para GLideN64. Próxima tarefa de código: mapear os valores de `m64p_GLattr` do header fixado e as solicitações efetivas do GLideN64, então implementar validação explícita dos atributos e sincronização de viewport/superfície, sem alterar a propriedade do EGL. Manter ROM_OPEN, CoreAttachPlugin e EXECUTE bloqueados até esse trabalho e a integração do renderer serem validados.
+
+
+## Auditoria dos atributos GL solicitados pelo GLideN64 (2026-11-08)
+
+Fontes fixadas e comparadas:
+- Core: `src/api/m64p_types.h`, commit `a9ca8ec0b7decd17390c76c6341cf423d5d79321`.
+- GLideN64: `src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp`, commit `a04081ad6a966a9413bea63a55f502e0dc98bb18`.
+
+### Enum oficial confirmado
+
+O enum `m64p_GLattr` do Core define:
+- 1 `M64P_GL_DOUBLEBUFFER`
+- 2 `M64P_GL_BUFFER_SIZE`
+- 3 `M64P_GL_DEPTH_SIZE`
+- 4 `M64P_GL_RED_SIZE`
+- 5 `M64P_GL_GREEN_SIZE`
+- 6 `M64P_GL_BLUE_SIZE`
+- 7 `M64P_GL_ALPHA_SIZE`
+- 8 `M64P_GL_SWAP_CONTROL`
+- 9 `M64P_GL_MULTISAMPLEBUFFERS`
+- 10 `M64P_GL_MULTISAMPLESAMPLES`
+- 11 `M64P_GL_CONTEXT_MAJOR_VERSION`
+- 12 `M64P_GL_CONTEXT_MINOR_VERSION`
+- 13 `M64P_GL_CONTEXT_PROFILE_MASK`
+
+O enum de perfil define `M64P_GL_CONTEXT_PROFILE_CORE=0`, `COMPATIBILITY=1` e `ES=2`.
+
+### Conflito concreto encontrado
+
+No código upstream GLideN64, `DisplayWindowMupen64plus::_setAttributes()` solicita explicitamente:
+- perfil `CORE`;
+- OpenGL major 3, minor 3;
+- double buffering;
+- swap control configurado;
+- buffer total 32 bits;
+- depth 16 bits;
+- multisampling opcional.
+
+O Poco C85 fornece um contexto **OpenGL ES 3.2**, não um contexto desktop OpenGL 3.3. O callback Android atual apenas armazena os atributos e retorna sucesso; isso mascara o conflito e pode fazer o renderer acreditar que recebeu um perfil desktop que não existe.
+
+### Decisão técnica
+
+Não aceitar silenciosamente o perfil CORE nem declarar que o contexto é OpenGL 3.3. A integração Android precisa de uma adaptação pequena e explícita no backend GLideN64:
+1. Solicitar `M64P_GL_CONTEXT_PROFILE_ES` em vez de `CORE`.
+2. Solicitar versão mínima GLES compatível com o backend GLES selecionado, sem exceder a capacidade observada do aparelho.
+3. Tratar buffer/depth/multisample como propriedades do contexto/surface já criado: validar o que foi realmente fornecido, sem tentar recriar EGL nem prometer valores não garantidos.
+4. Tratar swap control como no-op gerenciado pelo Android/GLSurfaceView.
+5. Consultar atributos de volta a partir das capacidades reais do contexto quando o plugin precisar deles.
+
+A adaptação deve ser feita no fork/patched source do GLideN64 e compilada junto do plugin Android; não basta alterar somente o callback da aplicação, porque a solicitação CORE/3.3 está codificada no próprio backend upstream.
+
+### Estado e próximo marco
+
+A ponte do aplicativo continua sendo diagnóstico e não foi alterada nesta etapa. A compilação 132, que validou a documentação anterior, terminou com sucesso. Próximo trabalho: localizar o ponto mínimo de patch no backend GLideN64, ajustar perfil/versionamento para GLES e definir a leitura das capacidades reais antes de empacotar ou ativar o plugin. Nenhuma ROM foi aberta; não instalar build apenas por este resultado.
