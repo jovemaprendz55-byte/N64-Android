@@ -24,6 +24,7 @@ O aplicativo exibe uma mensagem nativa para provar, quando o CI compilar e o APK
 - JDK: 17
 - compileSdk / targetSdk: 35
 - minSdk: 23
+- ABI nativa inicial: `arm64-v8a` (alvo do primeiro aparelho; outras ABIs serão adicionadas quando houver necessidade e testes).
 - NDK: 27.0.12077973
 - CMake: 3.22.1
 
