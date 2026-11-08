@@ -57,6 +57,9 @@ if(EXISTS "${MUPEN64PLUS_CORE_SOURCE_DIR}/src/asm_defines/asm_defines.c")
         ${M64P_CORE_BUNDLED_SOURCES}
         android_screenshot_stub.c)
 
+    target_include_directories(n64bridge PRIVATE "${MUPEN64PLUS_CORE_SOURCE_DIR}/src/api")
+    target_compile_definitions(n64bridge PRIVATE N64_HAS_MUPEN64PLUS_HEADERS=1)
+
     target_include_directories(mupen64plus PRIVATE
         ${M64P_CORE_INCLUDE_DIRS}
         "${N64_SDL2_INCLUDE}"
