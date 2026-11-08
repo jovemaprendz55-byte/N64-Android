@@ -54,10 +54,28 @@ jobs:
           if source.count(old) != 1:
               raise SystemExit("Expected GLideN64 context-attribute block exactly once; upstream drift detected")
           path.write_text(source.replace(old, new, 1))
+
+          # GLideN64 enables its private GL command thread by default on Android.
+          # The app's EGL context belongs to GLSurfaceView's render thread.
+          thread_path = Path("third_party/GLideN64/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp")
+          thread_source = thread_path.read_text()
+          thread_old = "\\tFunctionWrapper::setThreadedMode(config.video.threadedVideo);"
+          thread_new = (
+              "#if defined(OS_ANDROID)\\n"
+              "\\t// Android EGL is owned by GLSurfaceView's render thread.\\n"
+              "\\tFunctionWrapper::setThreadedMode(0);\\n"
+              "#else\\n"
+              "\\tFunctionWrapper::setThreadedMode(config.video.threadedVideo);\\n"
+              "#endif"
+          )
+          if thread_source.count(thread_old) != 1:
+              raise SystemExit("Expected GLideN64 threaded-mode call exactly once; upstream drift detected")
+          thread_path.write_text(thread_source.replace(thread_old, thread_new, 1))
           PY
           git -C third_party/GLideN64 diff --check
           grep -F "M64P_GL_CONTEXT_PROFILE_ES" third_party/GLideN64/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp
           grep -F "M64P_GL_CONTEXT_MINOR_VERSION, 0" third_party/GLideN64/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp
+          grep -F "FunctionWrapper::setThreadedMode(0)" third_party/GLideN64/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp
 
       - name: Validate pinned Core source manifest
         run: >-
