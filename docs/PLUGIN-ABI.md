@@ -713,3 +713,43 @@ fechamento no aparelho foi resolvido. A próxima validação no dispositivo deve
 usar o novo botão de verificação EGL, sem iniciar a ROM. O botão de execução
 permanece bloqueado até o ciclo de vídeo do Core ser auditado. Nenhum frame de
 jogo foi confirmado.
+
+
+## Resultado do teste EGL sem troca manual e instrumentação do callback (2026-11-08)
+
+O usuário executou a nova verificação no Poco C85 e informou:
+
+```
+Contexto EGL validado; nenhuma troca manual de buffers foi feita.
+EGL error: 0x3000
+GLES error: 0x0000
+Thread Linux: 5209
+O GLSurfaceView continua responsavel por apresentar o frame.
+```
+
+Interpretação: `0x3000` é `EGL_SUCCESS`; `0x0000` é `GL_NO_ERROR`.
+O contexto EGL estava atual e as chamadas GLES de diagnóstico não reportaram
+erro. Esse resultado valida o teste isolado, não a apresentação de frames do
+GLideN64 nem a execução de uma ROM.
+
+### Próxima instrumentação
+
+O callback real `androidVideoSwapBuffers` da Video Extension foi instrumentado
+separadamente do botão de diagnóstico:
+
+- Conta tentativas de apresentação solicitadas pelo Core.
+- Registra a primeira chamada e depois uma amostra a cada 120 chamadas.
+- Registra thread, EGLContext e EGLSurface usados no callback.
+- Registra erro EGL e número da chamada se `eglSwapBuffers` falhar.
+- Registra explicitamente quando o callback é chamado sem contexto EGL válido.
+
+A troca dentro desse callback é distinta da troca manual do teste removida
+anteriormente: durante o loop síncrono de `M64CMD_EXECUTE`, a thread do
+GLSurfaceView fica ocupada e não consegue chegar ao swap normal após
+`onDrawFrame`. O callback da extensão de vídeo precisa apresentar os frames
+do Core nesse período, sempre na thread que possui o contexto EGL.
+
+**Estado:** instrumentação adicionada no commit
+`deb3a59d6b6ed86627177b7f494b2141aa21aa5a`. A compilação ainda precisa ser
+confirmada. `M64CMD_EXECUTE` permanece bloqueado; não solicitar novo teste de
+emulação até revisar e validar esse caminho.
