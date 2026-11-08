@@ -1,12 +1,17 @@
 package com.jsr.n64android
 
 import android.app.Activity
+import android.opengl.GLES20
+import android.opengl.GLSurfaceView
 import android.os.Bundle
 import android.view.Gravity
+import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import java.io.File
+import javax.microedition.khronos.egl.EGLConfig
+import javax.microedition.khronos.opengles.GL10
 
 class MainActivity : Activity() {
 
@@ -16,11 +21,13 @@ class MainActivity : Activity() {
     private external fun nativeStartCore(configPath: String, dataPath: String): String
 
     private lateinit var statusView: TextView
+    private lateinit var rootLayout: LinearLayout
     private lateinit var configDirectory: File
     private lateinit var dataDirectory: File
     private var nativeLibraryLoaded = false
     private var nativeCoreLoaded = false
     private var nativeCoreInitialized = false
+    private var glView: GLSurfaceView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -84,7 +91,7 @@ class MainActivity : Activity() {
             }
         }
 
-        val shutdownButton = Button(this).apply {
+        val startCoreButton = Button(this).apply {
             text = "4 - Inicializar Core (sem ROM)"
             setOnClickListener {
                 statusView.text = "N64 Android\\n\\n" + try {
@@ -101,11 +108,12 @@ class MainActivity : Activity() {
                         }
                     }
                 } catch (error: LinkageError) {
-                    "Falha ao descarregar Core: ${error.message}"
+                    "Falha ao inicializar Core: ${error.message}"
+                } catch (error: Exception) {
+                    "Erro ao inicializar Core: ${error.message}"
                 }
             }
         }
-
 
         val unloadButton = Button(this).apply {
             text = "5 - Encerrar Core e descarregar biblioteca"
@@ -123,23 +131,72 @@ class MainActivity : Activity() {
                     }
                 } catch (error: LinkageError) {
                     "Falha ao encerrar Core: ${error.message}"
+                } catch (error: Exception) {
+                    "Erro ao encerrar Core: ${error.message}"
                 }
             }
         }
 
-        val layout = LinearLayout(this).apply {
+        val glButton = Button(this).apply {
+            text = "6 - Testar tela OpenGL ES 2.0"
+            setOnClickListener { showOpenGlTest() }
+        }
+
+        rootLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
+            gravity = Gravity.CENTER_HORIZONTAL
             setPadding(20, 20, 20, 20)
             addView(statusView)
             addView(loadButton)
             addView(jniButton)
             addView(initializeButton)
-            addView(shutdownButton)
+            addView(startCoreButton)
             addView(unloadButton)
+            addView(glButton)
         }
 
-        setContentView(layout)
+        setContentView(rootLayout)
+    }
+
+    private fun showOpenGlTest() {
+        glView?.let {
+            rootLayout.removeView(it)
+            it.onPause()
+        }
+
+        val surface = GLSurfaceView(this).apply {
+            setEGLContextClientVersion(2)
+            preserveEGLContextOnPause = true
+            setRenderer(object : GLSurfaceView.Renderer {
+                override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
+                    GLES20.glClearColor(0.08f, 0.18f, 0.32f, 1.0f)
+                    runOnUiThread {
+                        statusView.text = "N64 Android\\n\\nOpenGL ES 2.0 inicializado.\\nSuperficie grafica Android criada com sucesso.\\nNenhuma ROM foi carregada."
+                    }
+                }
+
+                override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
+                    GLES20.glViewport(0, 0, width, height)
+                }
+
+                override fun onDrawFrame(gl: GL10?) {
+                    GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+                }
+            })
+            renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
+        }
+
+        glView = surface
+        rootLayout.addView(
+            surface,
+            rootLayout.indexOfChild(rootLayout.getChildAt(rootLayout.childCount - 1)),
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                (180 * resources.displayMetrics.density).toInt()
+            )
+        )
+        surface.onResume()
+        surface.requestRender()
     }
 
     private fun loadNativeLibrary() {
@@ -149,12 +206,23 @@ class MainActivity : Activity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        glView?.onResume()
+    }
+
+    override fun onPause() {
+        glView?.onPause()
+        super.onPause()
+    }
+
     override fun onDestroy() {
+        glView?.onPause()
         if (nativeCoreLoaded) {
             try {
                 nativeShutdown()
             } catch (_: LinkageError) {
-                // Descarrega apenas se o carregamento isolado foi confirmado.
+                // Mantem o encerramento nativo protegido contra falhas JNI.
             }
         }
         super.onDestroy()
