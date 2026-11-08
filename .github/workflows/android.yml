@@ -118,6 +118,9 @@ jobs:
           readelf -d build/n64bridge-from-apk.so | grep -F "Shared library: [libSDL2.so]"
           readelf -d build/n64bridge-from-apk.so | grep -F "Shared library: [libmupen64plus.so]"
           readelf -d build/mupen64plus-from-apk.so | grep -F "Shared library: [libSDL2.so]"
+          readelf --dyn-syms -W build/mupen64plus-from-apk.so | grep -E "[[:space:]]CoreStartup$"
+          readelf --dyn-syms -W build/mupen64plus-from-apk.so | grep -E "[[:space:]]CoreDoCommand$"
+          readelf --dyn-syms -W build/mupen64plus-from-apk.so | grep -E "[[:space:]]CoreShutdown$"
           strings build/n64bridge-from-apk.so | grep -F "SDL2 carregada"
 
       - name: Upload debug APK
