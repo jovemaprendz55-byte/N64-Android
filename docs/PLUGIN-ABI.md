@@ -573,11 +573,11 @@ Não aceitar silenciosamente o perfil CORE nem declarar que o contexto é OpenGL
 4. Tratar swap control como no-op gerenciado pelo Android/GLSurfaceView.
 5. Consultar atributos de volta a partir das capacidades reais do contexto quando o plugin precisar deles.
 
-A adaptação deve ser feita no fork/patched source do GLideN64 e compilada junto do plugin Android; não basta alterar somente o callback da aplicação, porque a solicitação CORE/3.3 está codificada no próprio backend upstream.
+A adaptação precisava ser feita no backend GLideN64 upstream, e não apenas no callback do frontend. Essa adaptação agora existe como patch separado e rastreável em `patches/gliden64/android-gles-profile.patch`; o CI aplica a alteração com uma verificação estrita do bloco original e compila o plugin ARM64.
 
-### Estado e próximo marco
+### Estado histórico da auditoria inicial
 
-A ponte do aplicativo continua sendo diagnóstico e não foi alterada nesta etapa. A compilação 132, que validou a documentação anterior, terminou com sucesso. Próximo trabalho: localizar o ponto mínimo de patch no backend GLideN64, ajustar perfil/versionamento para GLES e definir a leitura das capacidades reais antes de empacotar ou ativar o plugin. Nenhuma ROM foi aberta; não instalar build apenas por este resultado.
+Quando esta auditoria foi escrita, o patch ainda não existia e o plugin real ainda não estava empacotado. Esse estado foi superado pela seção **GLideN64 real compilado e empacotado no Android** abaixo. A etapa atual comprova build/ABI/empacotamento; ainda falta o teste de `PluginStartup` no Poco C85. Nenhuma ROM foi aberta.
 
 
 ## GLideN64 real compilado e empacotado no Android (2026-11-08)
