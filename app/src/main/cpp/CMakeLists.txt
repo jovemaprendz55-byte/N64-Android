@@ -34,9 +34,24 @@ if(EXISTS "${MUPEN64PLUS_CORE_SOURCE_DIR}/src/asm_defines/asm_defines.c")
     include("${N64_PROJECT_ROOT}/cmake/Mupen64PlusCoreSources.cmake")
     include("${N64_PROJECT_ROOT}/cmake/Mupen64PlusAsmDefines.cmake")
 
-    # Compile the exact, pinned upstream Core source manifest as an Android
-    # shared library. Optional Unix-only features (OSD, netplay, debugger)
-    # remain disabled; ARM64 uses the upstream NEW_DYNAREC=4 backend.
+    # Minizip's POSIX ftello/fseeko declarations are hidden by Android
+    # Bionic's stdio headers. This target is ARM64-only, where long is 64-bit,
+    # so use the equivalent ftell/fseek APIs in the pinned Minizip source.
+    set(MINIZIP_IOAPI_C "${MUPEN64PLUS_CORE_SOURCE_DIR}/subprojects/minizip/ioapi.c")
+    file(READ "${MINIZIP_IOAPI_C}" MINIZIP_IOAPI_CONTENT)
+    string(REPLACE
+        "#define FTELLO_FUNC(stream) ftello(stream)"
+        "#define FTELLO_FUNC(stream) ftell(stream)"
+        MINIZIP_IOAPI_CONTENT "${MINIZIP_IOAPI_CONTENT}")
+    string(REPLACE
+        "#define FSEEKO_FUNC(stream, offset, origin) fseeko(stream, offset, origin)"
+        "#define FSEEKO_FUNC(stream, offset, origin) fseek(stream, (long)(offset), origin)"
+        MINIZIP_IOAPI_CONTENT "${MINIZIP_IOAPI_CONTENT}")
+    file(WRITE "${MINIZIP_IOAPI_C}" "${MINIZIP_IOAPI_CONTENT}")
+
+    # Compile the pinned Core source manifest as an Android shared library.
+    # Optional Unix-only features (OSD, netplay, debugger) remain disabled;
+    # ARM64 uses the upstream NEW_DYNAREC=4 backend.
     add_library(mupen64plus SHARED
         ${M64P_CORE_UPSTREAM_SOURCES}
         ${M64P_CORE_BUNDLED_SOURCES}
@@ -53,9 +68,6 @@ if(EXISTS "${MUPEN64PLUS_CORE_SOURCE_DIR}/src/asm_defines/asm_defines.c")
         M64P_PARALLEL
         NOCRYPT
         NOUNCRYPT
-        # Bionic hides ftello/fseeko unless large-file feature declarations
-        # are enabled before stdio.h is included by the bundled Minizip.
-        _LARGEFILE_SOURCE=1
         MINIZIP_FOPEN_NO_64)
 
     target_compile_options(mupen64plus PRIVATE
