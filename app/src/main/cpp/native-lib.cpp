@@ -5,68 +5,38 @@
 #include <mutex>
 #include <dlfcn.h>
 
-#ifdef N64_HAS_MUPEN64PLUS
-#define M64P_CORE_PROTOTYPES
-#include "m64p_frontend.h"
-#endif
-
 namespace {
-
-#ifdef N64_HAS_MUPEN64PLUS
-constexpr int kFrontendApiVersion = 0x020000;
 std::mutex g_coreMutex;
-bool g_coreStarted = false;
-
-void coreDebugCallback(void* context, int level, const char* message) {
-    (void) context;
-    const int priority = level <= 1 ? ANDROID_LOG_ERROR :
-                         level == 2 ? ANDROID_LOG_WARN : ANDROID_LOG_INFO;
-    __android_log_print(priority, "N64AndroidCore", "%s",
-                        message != nullptr ? message : "(mensagem vazia)");
-}
-
-void coreStateCallback(void* context, m64p_core_param param, int value) {
-    (void) context;
-    __android_log_print(ANDROID_LOG_INFO, "N64AndroidCore",
-                        "Core state: parametro=%d valor=%d",
-                        static_cast<int>(param), value);
-}
-#endif
+void* g_coreHandle = nullptr;
+using CoreStartupSymbol = int (*)(int, const char*, const char*, void*,
+                                  void (*)(void*, int, const char*), void*,
+                                  void (*)(void*, int, int));
+using CoreShutdownSymbol = int (*)();
 
 jstring makeString(JNIEnv* env, const char* value) {
     return env->NewStringUTF(value);
 }
-
 } // namespace
 
 extern "C"
 JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_MainActivity_nativeGetStatus(JNIEnv* env, jobject /* thiz */) {
-    // Load SDL2 only after JNI itself has been confirmed to work.
-    // This removes libSDL2.so from n64bridge's DT_NEEDED dependencies.
     void* sdl = dlopen("libSDL2.so", RTLD_NOW | RTLD_LOCAL);
     if (sdl == nullptr) {
         const char* error = dlerror();
         char status[512];
-        std::snprintf(status, sizeof(status),
-                      "JNI OK, mas dlopen(SDL2) falhou: %s",
+        std::snprintf(status, sizeof(status), "JNI OK, mas dlopen(SDL2) falhou: %s",
                       error != nullptr ? error : "erro desconhecido");
         return makeString(env, status);
     }
 
-    struct SDLVersion {
-        unsigned char major;
-        unsigned char minor;
-        unsigned char patch;
-    };
+    struct SDLVersion { unsigned char major, minor, patch; };
     using SDLGetVersionFn = void (*)(SDLVersion*);
-    auto getVersion = reinterpret_cast<SDLGetVersionFn>(
-        dlsym(sdl, "SDL_GetVersion"));
+    auto getVersion = reinterpret_cast<SDLGetVersionFn>(dlsym(sdl, "SDL_GetVersion"));
     if (getVersion == nullptr) {
         const char* error = dlerror();
         char status[512];
-        std::snprintf(status, sizeof(status),
-                      "SDL2 abriu, mas SDL_GetVersion nao foi encontrado: %s",
+        std::snprintf(status, sizeof(status), "SDL2 abriu, mas SDL_GetVersion falhou: %s",
                       error != nullptr ? error : "simbolo ausente");
         dlclose(sdl);
         return makeString(env, status);
@@ -77,7 +47,7 @@ Java_com_jsr_n64android_MainActivity_nativeGetStatus(JNIEnv* env, jobject /* thi
     char status[192];
     std::snprintf(status, sizeof(status),
                   "JNI OK. SDL2 carregada dinamicamente: %u.%u.%u.\\n"
-                  "Core Mupen64Plus ainda nao foi incluido.",
+                  "Core ainda sera testado separadamente.",
                   version.major, version.minor, version.patch);
     dlclose(sdl);
     return makeString(env, status);
@@ -87,78 +57,65 @@ extern "C"
 JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_MainActivity_nativeInitialize(
         JNIEnv* env, jobject /* thiz */, jstring configPath, jstring dataPath) {
-#ifdef N64_HAS_MUPEN64PLUS
-    if (configPath == nullptr || dataPath == nullptr) {
-        return makeString(env, "Falha: diretorios de configuracao/dados ausentes.");
-    }
-
-    const char* config = env->GetStringUTFChars(configPath, nullptr);
-    const char* data = env->GetStringUTFChars(dataPath, nullptr);
-    if (config == nullptr || data == nullptr) {
-        if (config != nullptr) env->ReleaseStringUTFChars(configPath, config);
-        if (data != nullptr) env->ReleaseStringUTFChars(dataPath, data);
-        return makeString(env, "Falha: nao foi possivel ler os caminhos Android.");
-    }
-
-    std::lock_guard<std::mutex> lock(g_coreMutex);
-    if (g_coreStarted) {
-        env->ReleaseStringUTFChars(configPath, config);
-        env->ReleaseStringUTFChars(dataPath, data);
-        return makeString(env, "Core ja esta inicializado.");
-    }
-
-    // CoreStartup's fourth parameter is the frontend context pointer,
-    // not a core-name string. No frontend context is needed yet.
-    __android_log_print(ANDROID_LOG_INFO, "N64AndroidCore", "Iniciando CoreStartup");
-    const m64p_error result = CoreStartup(
-        kFrontendApiVersion, config, data, nullptr,
-        coreDebugCallback, nullptr, coreStateCallback);
-
-    env->ReleaseStringUTFChars(configPath, config);
-    env->ReleaseStringUTFChars(dataPath, data);
-
-    if (result == M64ERR_SUCCESS) {
-        g_coreStarted = true;
-        __android_log_print(ANDROID_LOG_INFO, "N64AndroidCore", "CoreStartup concluido: sucesso");
-        return makeString(env,
-            "CoreStartup concluido com sucesso.\n"
-            "Nenhuma ROM foi aberta. Plugins ainda precisam ser integrados.");
-    }
-
-    __android_log_print(ANDROID_LOG_ERROR, "N64AndroidCore",
-                        "CoreStartup falhou: codigo=%d", static_cast<int>(result));
-    char error[128];
-    std::snprintf(error, sizeof(error),
-                  "CoreStartup falhou. Codigo Mupen64Plus: %d", (int) result);
-    return makeString(env, error);
-#else
     (void) configPath;
     (void) dataPath;
-    return makeString(env, "Core Mupen64Plus nao esta disponivel neste build.");
-#endif
+    std::lock_guard<std::mutex> lock(g_coreMutex);
+    if (g_coreHandle != nullptr) {
+        return makeString(env, "Biblioteca do Core ja esta carregada.");
+    }
+
+    dlerror();
+    void* core = dlopen("libmupen64plus.so", RTLD_NOW | RTLD_LOCAL);
+    if (core == nullptr) {
+        const char* error = dlerror();
+        char status[768];
+        std::snprintf(status, sizeof(status), "Falha ao carregar libmupen64plus.so: %s",
+                      error != nullptr ? error : "erro desconhecido");
+        __android_log_print(ANDROID_LOG_ERROR, "N64AndroidCore", "%s", status);
+        return makeString(env, status);
+    }
+
+    dlerror();
+    auto startup = reinterpret_cast<CoreStartupSymbol>(dlsym(core, "CoreStartup"));
+    const char* startupError = dlerror();
+    dlerror();
+    auto shutdown = reinterpret_cast<CoreShutdownSymbol>(dlsym(core, "CoreShutdown"));
+    const char* shutdownError = dlerror();
+    if (startup == nullptr || shutdown == nullptr ||
+        startupError != nullptr || shutdownError != nullptr) {
+        char status[768];
+        std::snprintf(status, sizeof(status),
+                      "Core carregou, mas faltou simbolo: CoreStartup=%s; CoreShutdown=%s",
+                      startupError != nullptr ? startupError : (startup ? "OK" : "ausente"),
+                      shutdownError != nullptr ? shutdownError : (shutdown ? "OK" : "ausente"));
+        dlclose(core);
+        __android_log_print(ANDROID_LOG_ERROR, "N64AndroidCore", "%s", status);
+        return makeString(env, status);
+    }
+
+    g_coreHandle = core;
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidCore",
+                        "Core Mupen64Plus carregado; CoreStartup e CoreShutdown encontrados.");
+    return makeString(env,
+        "Core Mupen64Plus carregado com sucesso.\\n"
+        "CoreStartup e CoreShutdown encontrados.\\n"
+        "A inicializacao do emulador ainda nao foi executada.");
 }
 
 extern "C"
 JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_MainActivity_nativeShutdown(JNIEnv* env, jobject /* thiz */) {
-#ifdef N64_HAS_MUPEN64PLUS
     std::lock_guard<std::mutex> lock(g_coreMutex);
-    if (!g_coreStarted) {
-        return makeString(env, "Core nao estava inicializado.");
+    if (g_coreHandle == nullptr) {
+        return makeString(env, "Biblioteca do Core nao estava carregada.");
     }
-
-    __android_log_print(ANDROID_LOG_INFO, "N64AndroidCore", "Iniciando CoreShutdown");
-    const m64p_error result = CoreShutdown();
-    if (result == M64ERR_SUCCESS) {
-        g_coreStarted = false;
-        return makeString(env, "Core encerrado corretamente.");
+    if (dlclose(g_coreHandle) != 0) {
+        const char* error = dlerror();
+        char status[512];
+        std::snprintf(status, sizeof(status), "Falha ao descarregar Core: %s",
+                      error != nullptr ? error : "erro desconhecido");
+        return makeString(env, status);
     }
-
-    char error[128];
-    std::snprintf(error, sizeof(error),
-                  "CoreShutdown retornou codigo: %d", (int) result);
-    return makeString(env, error);
-#else
-    return makeString(env, "Core Mupen64Plus nao esta disponivel neste build.");
-#endif
+    g_coreHandle = nullptr;
+    return makeString(env, "Biblioteca do Core descarregada corretamente.");
 }
