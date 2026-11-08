@@ -149,3 +149,27 @@ Fonte upstream revisada: `src/api/frontend.c`, `src/main/rom.c` e `src/plugin/pl
 - A chamada bloqueante `M64CMD_EXECUTE` precisa rodar fora da thread UI; a estratégia de execução deve preservar a propriedade do contexto EGL. Não implementar uma chamada JNI direta na UI nem presumir que `runOnUiThread` resolve a afinidade de contexto.
 
 **Decisão de implementação:** antes de abrir ROM, criar uma ponte Android que prove a posse/validade do contexto EGL na thread que executará as chamadas nativas. Em seguida implementar callbacks reais e um plugin GFX Android mínimo; só então liberar a sequência ROM_OPEN → CoreAttachPlugin(GFX) → EXECUTE. Até lá, o app permanece em modo diagnóstico sem jogos.
+
+
+## Resultado do teste EGL no Poco C85 (2026-11-08)
+
+O usuário instalou a compilação de diagnóstico e executou o botão 6. Resultado informado:
+
+```
+OpenGL ES 2.0 inicializado.
+Superficie grafica Android criada.
+
+Contexto EGL valido na thread GL. OpenGL ES: OpenGL ES 3.2 V1.r49p1-03bet0.19498e0ae1d5dac2233 83c39a2e58f04
+Thread Linux: 31878
+Contexto: 0xB400007468B8AD00 | Surface: 0xB400007468B8C410
+
+Nenhuma ROM foi carregada.
+```
+
+**Interpretação confirmada no aparelho:** dentro de `GLSurfaceView.Renderer.onSurfaceCreated`, a JNI conseguiu consultar um contexto EGL atual, uma superfície de desenho atual e a string de versão GLES. O driver reportou OpenGL ES 3.2, embora a View tenha solicitado contexto versão 2; isso é compatível com a solicitação mínima de GLES 2.0 e não significa que o frontend já use recursos GLES 3.x.
+
+**Limite do teste:** a evidência prova que o contexto EGL está atual na thread GL durante a chamada JNI de diagnóstico. Ainda não prova que chamadas do Core/plugin GFX ocorrerão nessa mesma thread, que o contexto sobreviverá a pause/resume, ou que existe renderização N64.
+
+### Próxima etapa segura
+
+Antes de implementar um plugin GFX, criar um teste isolado de passagem de chamada nativa pela thread GL: a View deve enviar uma tarefa para a GL thread, a JNI deve validar contexto/surface e registrar o TID da chamada; a resposta deve voltar à UI sem executar operações GLES na UI. Depois, desenhar a estratégia de ciclo de vida e de execução do Core. Manter ROM_OPEN e EXECUTE bloqueados até que a ponte de thread e os callbacks reais estejam validados.
