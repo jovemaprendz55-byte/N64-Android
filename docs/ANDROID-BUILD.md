@@ -35,3 +35,18 @@ O workflow GitHub Actions executa `gradle assembleDebug` e publica o APK como ar
 ## Próxima integração
 
 Antes de incorporar o Core, mapear e resolver dependências SDL, sistema operacional, carregamento de bibliotecas, threads e armazenamento. O código upstream deve continuar fixado no commit registrado em `CORE-ANALYSIS.md`; cada alteração será rastreável e manterá os avisos/licenças originais.
+
+
+## Verificação CI mais recente — 2026-11-08
+
+- Commit: `c3eb7bb5169fe58447351b23bdc19aa4c9f703d1`
+- Workflow: [Android build #31](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42432094799)
+- Resultado: **success**.
+- O CMake agora habilita C e C++, compila o helper oficial `src/asm_defines/asm_defines.c` do Core fixado, gera os headers GAS/NASM ARM64 e conclui `assembleDebug`.
+- Artefato: `n64-android-debug` (812.507 bytes).
+
+Esta verificação confirma a geração dos offsets dentro do build Android e a produção do APK. **Ela ainda não compila as fontes do Core**: `libn64bridge.so` continua sendo apenas a bridge JNI de diagnóstico.
+
+## Próxima etapa técnica
+
+Antes de criar o target `libmupen64plus.so`, fechar a seleção e o pin das dependências Android (SDL2, libpng e zlib), decidir explicitamente a política Vulkan/GLES e separar o backend de vídeo do ciclo de vida SDL. Depois disso, o Core será adicionado como target CMake independente, mantendo o APK de diagnóstico funcional enquanto o novo target é validado.
