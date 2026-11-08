@@ -96,8 +96,10 @@ Java_com_jsr_n64android_MainActivity_nativeInitialize(
         return makeString(env, "Core ja esta inicializado.");
     }
 
+    // CoreStartup's fourth parameter is the frontend context pointer,
+    // not a core-name string. No frontend context is needed yet.
     const m64p_error result = CoreStartup(
-        kFrontendApiVersion, config, data, "Core",
+        kFrontendApiVersion, config, data, nullptr,
         coreDebugCallback, nullptr, coreStateCallback);
 
     env->ReleaseStringUTFChars(configPath, config);
