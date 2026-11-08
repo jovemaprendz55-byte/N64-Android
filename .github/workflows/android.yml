@@ -100,6 +100,9 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
+          # SDL's upstream Android template contains its own wrapper JAR.
+          # This workflow does not execute that wrapper; it invokes the pinned Gradle version above.
+          validate-wrappers: false
 
       - name: Build debug APK
         run: gradle --no-daemon assembleDebug
