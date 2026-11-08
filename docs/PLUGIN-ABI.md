@@ -381,3 +381,61 @@ Android. Em paralelo, a integracao precisa garantir que chamadas GLES do
 plugin ocorram na thread que possui o contexto EGL. Abertura de ROM,
 `CoreAttachPlugin` e `M64CMD_EXECUTE` permanecem bloqueados ate esses
 requisitos estarem implementados e validados.
+
+
+## Auditoria de renderer existente para Android ARM64 (2026-11-08)
+
+Foi feita uma comparacao inicial de implementacoes existentes antes de escrever
+um rasterizador RDP proprio ou copiar codigo sem verificar a licenca.
+
+### Candidato principal: GLideN64
+
+- Repositorio: https://github.com/gonetz/GLideN64
+- Revisao consultada: `a04081ad6a966a9413bea63a55f502e0dc98bb18`
+- O arquivo `LICENSE` declara GNU GPL versao 2.
+- O CMake do projeto oferece explicitamente `ANDROID=ON`, seleciona
+  `MUPENPLUSAPI=ON` para a ABI Mupen64Plus, adiciona fontes EGL/Android e
+  produz o modulo `libmupen64plus-video-GLideN64.so`.
+- A documentacao de build informa suporte ao alvo Android e otimizações ARM
+  NEON/ARMv8. O plugin implementa processamento de display lists, RSP/RDP,
+  framebuffer e renderizacao OpenGL.
+
+**Conclusao:** e o candidato mais promissor para adaptar, por combinar GPL-2.0,
+ABI Mupen64Plus e caminho Android declarado pelo proprio projeto. Isso ainda
+nao significa que compila neste app nem que funciona com a superficie atual.
+
+### Alternativa: Mupen64Plus Video-Rice
+
+- Repositorio: https://github.com/mupen64plus/mupen64plus-video-rice
+- O arquivo `LICENSES` declara GNU GPL versao 2.
+- O historico/documentacao upstream registra suporte OpenGL ES 2.0.
+- E um plugin HLE mais antigo e pode servir como alternativa caso a integracao
+  do GLideN64 exija uma adaptacao excessiva.
+
+### Pontos que precisam ser resolvidos antes da integracao
+
+1. O GLideN64 usa a Video Extension do Core (`CoreVideo_Init`,
+   `CoreVideo_SetVideoMode`, `CoreVideo_GL_SwapBuffers`). A extensao Android
+   existente precisa fornecer esses callbacks usando a superficie EGL que o
+   `GLSurfaceView` ja possui, sem criar uma segunda janela ou contexto.
+2. O codigo Mupen64Plus do GLideN64 solicita perfil OpenGL core 3.3. O aparelho
+   reportou OpenGL ES 3.2; e necessario verificar as chamadas de atributo e o
+   backend GLES do plugin, sem presumir compatibilidade entre desktop GL 3.3 e
+   OpenGL ES 3.2.
+3. O plugin tem modo de renderizacao em thread separada. Para a primeira
+   integracao, desativar esse modo e garantir que callbacks de desenho e troca
+   de buffers sejam executados na thread proprietaria do EGL context.
+4. Verificar todos os subcomponentes/licencas, fontes Android, dependencias,
+   simbolos ABI, leitura/escrita de framebuffer e encerramento de contexto.
+5. Fazer primeiro uma compilacao ARM64 isolada no CI e validar os simbolos do
+   modulo. So depois integrar o plugin ao carregador JNI e testar a inicializacao
+   sem abrir ROM. A abertura de ROM e a execucao continuam bloqueadas ate a
+   validacao do ciclo grafico real.
+
+### Decisao desta auditoria
+
+Nao foi copiado nem integrado codigo de renderer nesta etapa. O proximo trabalho
+sera uma compilacao isolada e uma adaptacao de GLideN64 para reutilizar o EGL e a
+Video Extension Android existentes. Se o requisito de OpenGL desktop 3.3 nao
+puder ser atendido pelo backend Android/GLES, interromper essa via e avaliar o
+Video-Rice antes de alterar o ciclo do Core.
