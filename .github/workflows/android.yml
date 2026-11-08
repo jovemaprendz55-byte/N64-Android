@@ -27,13 +27,14 @@ jobs:
           -DMUPEN64PLUS_CORE_SOURCE_DIR="$GITHUB_WORKSPACE/third_party/mupen64plus-core"
           -P cmake/Mupen64PlusCoreSources.cmake
 
-      - name: Test ARM64 assembly offset generator
+      - name: Test ARM64 assembly offset generator with binary object
         run: |
           mkdir -p build/asm-defines-fixture
-          cat > build/asm-defines-fixture/asm_defines.o <<'EOF'
-          @ASM_DEFINE offsetof_struct_device_r4300 0x00000010
-          @ASM_DEFINE offsetof_struct_new_dynarec_hot_state_pc 0x00000020
+          cat > build/asm-defines-fixture/asm_defines.c <<'EOF'
+          const char device_r4300[] = "\\n@ASM_DEFINE offsetof_struct_device_r4300 0x00000010\\n";
+          const char dynarec_pc[] = "\\n@ASM_DEFINE offsetof_struct_new_dynarec_hot_state_pc 0x00000020\\n";
           EOF
+          cc -c -fno-lto build/asm-defines-fixture/asm_defines.c -o build/asm-defines-fixture/asm_defines.o
           cmake -DINPUT_OBJECT="$GITHUB_WORKSPACE/build/asm-defines-fixture/asm_defines.o" -DOUTPUT_DIR="$GITHUB_WORKSPACE/build/asm-defines-fixture/generated" -P cmake/GenerateMupen64PlusAsmDefines.cmake
           grep -F '#define offsetof_struct_device_r4300 (0x00000010)' build/asm-defines-fixture/generated/asm_defines_gas.h
           grep -F '%define offsetof_struct_new_dynarec_hot_state_pc (0x00000020)' build/asm-defines-fixture/generated/asm_defines_nasm.h
