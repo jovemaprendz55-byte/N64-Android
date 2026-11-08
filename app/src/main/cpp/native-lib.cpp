@@ -149,11 +149,28 @@ m64p_error androidVideoGetAttr(m64p_GLattr attr, int* value) {
     *value = g_androidVideoAttributes[index];
     return M64ERR_SUCCESS;
 }
+std::atomic<uint64_t> g_androidVideoSwapCount{0};
+
 m64p_error androidVideoSwapBuffers() {
-    // M64CMD_EXECUTE will occupy the GLSurfaceView GL thread. In that mode,
-    // GLSurfaceView cannot reach its normal post-onDrawFrame swap until the
-    // Core returns, so the video extension must present each completed frame.
-    if (!androidVideoContextReady()) return M64ERR_INVALID_STATE;
+    // M64CMD_EXECUTE occupies the GLSurfaceView GL thread. While the Core's
+    // synchronous loop is active, GLSurfaceView cannot reach its normal
+    // post-onDrawFrame swap, so the video extension presents completed frames.
+    if (!androidVideoContextReady()) {
+        __android_log_print(ANDROID_LOG_ERROR, "N64AndroidVideo",
+                            "Swap de video recusado: contexto EGL ausente. TID=%ld",
+                            static_cast<long>(syscall(SYS_gettid)));
+        return M64ERR_INVALID_STATE;
+    }
+
+    const uint64_t frame = g_androidVideoSwapCount.fetch_add(1) + 1;
+    if (frame == 1 || (frame % 120) == 0) {
+        __android_log_print(ANDROID_LOG_INFO, "N64AndroidVideo",
+                            "Callback de apresentacao #%llu na thread GL. Contexto=%p Surface=%p TID=%ld",
+                            static_cast<unsigned long long>(frame),
+                            reinterpret_cast<void*>(eglGetCurrentContext()),
+                            reinterpret_cast<void*>(eglGetCurrentSurface(EGL_DRAW)),
+                            static_cast<long>(syscall(SYS_gettid)));
+    }
 
     const EGLDisplay display = eglGetCurrentDisplay();
     const EGLSurface surface = eglGetCurrentSurface(EGL_DRAW);
@@ -161,7 +178,8 @@ m64p_error androidVideoSwapBuffers() {
 
     const EGLint error = eglGetError();
     __android_log_print(ANDROID_LOG_ERROR, "N64AndroidVideo",
-                        "eglSwapBuffers falhou no callback de video: EGL error=0x%04X TID=%ld",
+                        "eglSwapBuffers falhou no callback #%llu: EGL error=0x%04X TID=%ld",
+                        static_cast<unsigned long long>(frame),
                         static_cast<unsigned int>(error),
                         static_cast<long>(syscall(SYS_gettid)));
     return M64ERR_INVALID_STATE;
