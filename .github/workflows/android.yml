@@ -28,6 +28,13 @@ jobs:
           ref: 5d249570393f7a37e037abf22cd6012a4cc56a71
           path: third_party/SDL
 
+      - name: Checkout pinned GLideN64 renderer source
+        uses: actions/checkout@v4
+        with:
+          repository: gonetz/GLideN64
+          ref: a04081ad6a966a9413bea63a55f502e0dc98bb18
+          path: third_party/GLideN64
+
       - name: Validate pinned Core source manifest
         run: >-
           cmake
@@ -59,6 +66,31 @@ jobs:
 
       - name: Install Android NDK and CMake
         run: sdkmanager "ndk;27.0.12077973" "cmake;3.22.1"
+
+      - name: Build GLideN64 renderer independently for Android ARM64
+        run: |
+          NDK="$ANDROID_HOME/ndk/27.0.12077973"
+          cmake -S third_party/GLideN64/src -B build/gliden64-arm64 \
+            -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-23 \
+            -DANDROID=ON \
+            -DEGL=ON \
+            -DMUPENPLUSAPI=ON \
+            -DNO_OSD=ON \
+            -DNOHQ=ON \
+            -DCRC_ARMV8=ON \
+            -DUSE_IPO=OFF \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/gliden64-arm64 --parallel 2
+          PLUGIN="build/gliden64-arm64/plugin/Release/libmupen64plus-video-GLideN64.so"
+          test -s "$PLUGIN"
+          readelf --dyn-syms -W "$PLUGIN" | grep -E "[[:space:]]PluginGetVersion$"
+          readelf --dyn-syms -W "$PLUGIN" | grep -E "[[:space:]]PluginStartup$"
+          readelf --dyn-syms -W "$PLUGIN" | grep -E "[[:space:]]InitiateGFX$"
+          readelf --dyn-syms -W "$PLUGIN" | grep -E "[[:space:]]ProcessDList$"
+          readelf --dyn-syms -W "$PLUGIN" | grep -E "[[:space:]]ProcessRDPList$"
+          file "$PLUGIN"
 
       - name: Generate ARM64 offsets from the pinned Core with the Android NDK
         run: |
