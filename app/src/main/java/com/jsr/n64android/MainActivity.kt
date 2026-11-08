@@ -306,7 +306,7 @@ class MainActivity : Activity() {
                 }
             })
             addView(Button(this@MainActivity).apply {
-                text = "Testar troca EGL (diagnóstico)"
+                text = "Verificar EGL (sem troca manual)"
                 setOnClickListener {
                     val surface = glView
                     if (surface == null || !glSurfaceReady) {
