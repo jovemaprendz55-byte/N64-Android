@@ -58,6 +58,10 @@ if(EXISTS "${MUPEN64PLUS_CORE_SOURCE_DIR}/src/asm_defines/asm_defines.c")
     target_compile_features(n64android_gfx PRIVATE cxx_std_17)
     target_compile_options(n64android_gfx PRIVATE -Wall -Wextra -Werror)
     target_link_libraries(n64android_gfx PRIVATE log EGL GLESv2)
+    # Make the plugin a packaged shared-library dependency of the JNI bridge.
+    # Runtime still opens it explicitly with dlopen(nativeLibraryDir path),
+    # but Android Gradle now includes it in lib/arm64-v8a in the APK.
+    target_link_libraries(n64bridge PRIVATE n64android_gfx)
     set_target_properties(n64android_gfx PROPERTIES
         OUTPUT_NAME "mupen64plus-video-android")
 
