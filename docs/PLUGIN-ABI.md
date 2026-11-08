@@ -439,3 +439,27 @@ sera uma compilacao isolada e uma adaptacao de GLideN64 para reutilizar o EGL e 
 Video Extension Android existentes. Se o requisito de OpenGL desktop 3.3 nao
 puder ser atendido pelo backend Android/GLES, interromper essa via e avaliar o
 Video-Rice antes de alterar o ciclo do Core.
+
+
+### Resultado da compilacao isolada do GLideN64 (2026-11-08)
+
+A compilacao ARM64 isolada do GLideN64 terminou com sucesso no workflow
+129 (run `42489620919`, commit `9860264e4f1878bcf2228ff02c0bc53810c48ca7`).
+A configuracao `CRC_ARMV8=OFF` evitou a falha anterior de intrinseco CRC
+ARMv8 nao habilitado no alvo; o build selecionou `CRC_OPT_NEON.cpp`.
+
+Validacoes observadas no log do CI:
+
+- O alvo `libmupen64plus-video-GLideN64` chegou a 100% e foi linkado.
+- O arquivo produzido e ELF compartilhado ARM64/AArch64 para Android API 23,
+  compilado com NDK r27.
+- Os simbolos dinamicos `PluginGetVersion`, `PluginStartup`,
+  `InitiateGFX`, `ProcessDList` e `ProcessRDPList` foram verificados.
+- O APK gerado nesse workflow continua empacotando apenas
+  `libmupen64plus-video-android.so` (plugin GLES inicial proprio). O GLideN64
+  ainda **nao** foi copiado para o APK, carregado pelo JNI ou anexado ao Core.
+
+**Proximo marco:** estudar e adaptar a integracao Video Extension do GLideN64
+para a superficie EGL/GLSurfaceView existente. Antes de adicionar o .so ao APK,
+resolver a compatibilidade do backend grafico com OpenGL ES 3.2 e a afinidade de
+thread do contexto EGL. Nenhuma ROM deve ser aberta nesta fase.
