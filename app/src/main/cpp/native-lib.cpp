@@ -177,6 +177,8 @@ m64p_error androidVideoVkExtensions(const char**[], uint32_t*) { return M64ERR_U
 
 void* g_gfxPluginHandle = nullptr;
 bool g_gfxPluginStarted = false;
+bool g_romOpen = false;
+bool g_gfxAttached = false;
 const char* const kRequiredGfxSymbols[] = {
     "PluginGetVersion", "PluginStartup", "PluginShutdown", "ChangeWindow",
     "InitiateGFX", "MoveScreen", "ProcessDList", "ProcessRDPList",
@@ -641,12 +643,100 @@ Java_com_jsr_n64android_MainActivity_nativeLoadGfxPlugin(
     return makeString(env, status);
 }
 
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
+        JNIEnv* env, jobject /* thiz */, jbyteArray romBytes) {
+#ifndef N64_HAS_MUPEN64PLUS_HEADERS
+    return makeString(env, "Headers oficiais do Core nao estao disponiveis nesta compilacao.");
+#else
+    std::lock_guard<std::mutex> lock(g_coreMutex);
+    if (g_coreHandle == nullptr || !g_coreStarted)
+        return makeString(env, "Inicialize o Core antes de abrir uma ROM.");
+    if (g_gfxPluginHandle == nullptr || !g_gfxPluginStarted)
+        return makeString(env, "Carregue e inicialize o plugin GFX antes de abrir a ROM.");
+    if (!androidVideoContextReady())
+        return makeString(env, "Operacao cancelada: contexto EGL/GLES nao esta atual na thread GL.");
+
+    using CoreDoCommandSymbol = m64p_error (*)(m64p_command, int, void*);
+    using CoreAttachPluginSymbol = m64p_error (*)(m64p_plugin_type, m64p_dynlib_handle);
+    auto doCommand = reinterpret_cast<CoreDoCommandSymbol>(dlsym(g_coreHandle, "CoreDoCommand"));
+    auto attachPlugin = reinterpret_cast<CoreAttachPluginSymbol>(dlsym(g_coreHandle, "CoreAttachPlugin"));
+    if (doCommand == nullptr || attachPlugin == nullptr)
+        return makeString(env, "CoreDoCommand ou CoreAttachPlugin nao encontrado.");
+
+    if (!g_romOpen) {
+        if (romBytes == nullptr) return makeString(env, "Nenhuma ROM foi fornecida.");
+        const jsize length = env->GetArrayLength(romBytes);
+        if (length < 4096 || length > 64 * 1024 * 1024 || (length % 4) != 0)
+            return makeString(env, "Tamanho da ROM invalido para o Core.");
+        jbyte* bytes = env->GetByteArrayElements(romBytes, nullptr);
+        if (bytes == nullptr) return makeString(env, "Nao foi possivel acessar os bytes da ROM.");
+        __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow", "Abrindo ROM no Core: %d bytes.", length);
+        const m64p_error openResult = doCommand(M64CMD_ROM_OPEN, static_cast<int>(length),
+                                                reinterpret_cast<void*>(bytes));
+        env->ReleaseByteArrayElements(romBytes, bytes, JNI_ABORT);
+        if (openResult != M64ERR_SUCCESS) {
+            char status[256];
+            std::snprintf(status, sizeof(status), "M64CMD_ROM_OPEN falhou: codigo %d.",
+                          static_cast<int>(openResult));
+            return makeString(env, status);
+        }
+        g_romOpen = true;
+        __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow", "M64CMD_ROM_OPEN concluido.");
+    }
+
+    if (!g_gfxAttached) {
+        const m64p_error attachResult = attachPlugin(
+            M64PLUGIN_GFX, reinterpret_cast<m64p_dynlib_handle>(g_gfxPluginHandle));
+        if (attachResult != M64ERR_SUCCESS) {
+            char status[320];
+            std::snprintf(status, sizeof(status),
+                "ROM aberta no Core, mas CoreAttachPlugin(GFX) falhou: codigo %d. A ROM permanece aberta para nova tentativa.",
+                static_cast<int>(attachResult));
+            return makeString(env, status);
+        }
+        g_gfxAttached = true;
+        __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
+                            "CoreAttachPlugin(GFX) concluido; InitiateGFX solicitado pelo Core.");
+    }
+    return makeString(env,
+        "ROM aberta com sucesso no Mupen64Plus Core.\\n"
+        "Plugin grafico anexado ao Core.\\n"
+        "CoreAttachPlugin executado na thread GL com contexto EGL atual.\\n"
+        "A emulacao ainda NAO foi iniciada.");
+#endif
+}
+
 extern "C"
 JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_MainActivity_nativeShutdown(JNIEnv* env, jobject /* thiz */) {
     std::lock_guard<std::mutex> lock(g_coreMutex);
     if (g_coreHandle == nullptr) {
         return makeString(env, "Biblioteca do Core nao estava carregada.");
+    }
+    if (g_gfxAttached) {
+        using CoreDetachPluginSymbol = m64p_error (*)(m64p_plugin_type);
+        auto detachPlugin = reinterpret_cast<CoreDetachPluginSymbol>(dlsym(g_coreHandle, "CoreDetachPlugin"));
+        if (detachPlugin == nullptr) return makeString(env, "CoreDetachPlugin nao encontrado; bibliotecas mantidas carregadas.");
+        const m64p_error result = detachPlugin(M64PLUGIN_GFX);
+        if (result != M64ERR_SUCCESS) {
+            char status[256]; std::snprintf(status, sizeof(status), "CoreDetachPlugin falhou: codigo %d.", static_cast<int>(result));
+            return makeString(env, status);
+        }
+        g_gfxAttached = false;
+    }
+    if (g_romOpen) {
+        using CoreDoCommandSymbol = m64p_error (*)(m64p_command, int, void*);
+        auto doCommand = reinterpret_cast<CoreDoCommandSymbol>(dlsym(g_coreHandle, "CoreDoCommand"));
+        if (doCommand == nullptr) return makeString(env, "CoreDoCommand nao encontrado para fechar ROM.");
+        const m64p_error result = doCommand(M64CMD_ROM_CLOSE, 0, nullptr);
+        if (result != M64ERR_SUCCESS) {
+            char status[256]; std::snprintf(status, sizeof(status), "M64CMD_ROM_CLOSE falhou: codigo %d.", static_cast<int>(result));
+            return makeString(env, status);
+        }
+        g_romOpen = false;
     }
     if (g_gfxPluginHandle != nullptr) {
         if (g_gfxPluginStarted) {
