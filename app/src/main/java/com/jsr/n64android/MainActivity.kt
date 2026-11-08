@@ -265,6 +265,10 @@ class MainActivity : Activity() {
                 text = "Iniciar integracao grafica"
                 setOnClickListener { startAndroidVideoIntegration() }
             })
+            addView(Button(this@MainActivity).apply {
+                text = "Consultar log do ultimo travamento"
+                setOnClickListener { showRecentCrashLog() }
+            })
             addView(TextView(this@MainActivity).apply {
                 text = "Jogos e carregamento de ROMs ainda estao em desenvolvimento."
                 textSize = 14f
@@ -291,7 +295,38 @@ class MainActivity : Activity() {
         }
 
 
+    private fun showRecentCrashLog() {
+        statusView.text = "N64 Android\\n\\nConsultando registros recentes do Android..."
+        Thread {
+            val result = try {
+                val process = ProcessBuilder("logcat", "-d", "-t", "800")
+                    .redirectErrorStream(true)
+                    .start()
+                val allLines = process.inputStream.bufferedReader().use { it.readLines() }
+                process.waitFor()
+                val markers = listOf(
+                    "N64AndroidFlow", "N64AndroidGFX", "N64AndroidVideo",
+                    "N64AndroidCore", "AndroidRuntime", "libc", "DEBUG",
+                    "FATAL", "signal", "tombstone", "crash"
+                )
+                val relevant = allLines.filter { line ->
+                    markers.any { marker -> line.contains(marker, ignoreCase = true) }
+                }.takeLast(140)
+                val output = if (relevant.isNotEmpty()) relevant.joinToString("\\n")
+                    else allLines.takeLast(100).joinToString("\\n")
+                if (output.isBlank()) "Nenhum registro retornado pelo logcat."
+                else output
+            } catch (error: Exception) {
+                "Nao foi possivel consultar logcat: ${error.message}"
+            }
+            runOnUiThread {
+                statusView.text = "N64 Android\\n\\nLOG DO ULTIMO TESTE\\n\\n" + result
+            }
+        }.start()
+    }
+
     private fun startAndroidVideoIntegration() {
+        android.util.Log.i("N64AndroidFlow", "Etapa 1: inicio da integracao grafica")
         statusView.text = "N64 Android\\n\\nPreparando Core e camada grafica Android..."
         try {
             loadNativeLibrary()
@@ -392,13 +427,18 @@ class MainActivity : Activity() {
                     }
                     val videoStatus = if (registerVideoExtension) {
                         try {
+                            android.util.Log.i("N64AndroidFlow", "Etapa 2: chamando nativeRegisterAndroidVideo")
                             val registration = nativeRegisterAndroidVideo()
+                            android.util.Log.i("N64AndroidFlow", "Etapa 2 resultado: " + registration)
                             if (!registration.startsWith("Video Extension Android registrada no Core")) {
                                 registration
                             } else {
                                 val pluginPath = File(applicationInfo.nativeLibraryDir,
                                     "libmupen64plus-video-GLideN64.so").absolutePath
-                                registration + "\\n\\n" + nativeLoadGfxPlugin(pluginPath)
+                                android.util.Log.i("N64AndroidFlow", "Etapa 3: chamando nativeLoadGfxPlugin")
+                                val pluginResult = nativeLoadGfxPlugin(pluginPath)
+                                android.util.Log.i("N64AndroidFlow", "Etapa 3 resultado: " + pluginResult)
+                                registration + "\\n\\n" + pluginResult
                             }
                         } catch (error: LinkageError) {
                             "Falha JNI ao registrar/carregar plugin GFX Android: " + error.message
