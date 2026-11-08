@@ -77,8 +77,8 @@ set(M64P_CORE_UPSTREAM_SOURCES
     src/main/eventloop.c
     src/main/rom.c
     src/main/savestates.c
-    src/main/screenshot.c
     src/main/sdl_key_converter.c
+    app/src/main/cpp/android_screenshot_stub.c
     src/main/workqueue.c
     src/plugin/plugin.c
     src/plugin/dummy_video.c
@@ -104,6 +104,7 @@ set(M64P_CORE_INCLUDE_DIRS
     "${MUPEN64PLUS_CORE_SOURCE_DIR}/src"
     "${MUPEN64PLUS_CORE_SOURCE_DIR}/src/asm_defines"
     "${MUPEN64PLUS_CORE_SOURCE_DIR}/subprojects/md5"
+    "${MUPEN64PLUS_CORE_SOURCE_DIR}/subprojects"
     "${MUPEN64PLUS_CORE_SOURCE_DIR}/subprojects/minizip"
     "${MUPEN64PLUS_CORE_SOURCE_DIR}/subprojects/xxhash"
 )
