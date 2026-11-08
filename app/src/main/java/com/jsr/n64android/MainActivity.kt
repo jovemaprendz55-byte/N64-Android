@@ -21,6 +21,7 @@ class MainActivity : Activity() {
     private external fun nativeStartCore(configPath: String, dataPath: String): String
     private external fun nativeTestVideoOverrideAbi(): String
     private external fun nativeVerifyEglContext(): String
+    private external fun nativeTestGlOperations(): String
 
     private lateinit var statusView: TextView
     private lateinit var rootLayout: LinearLayout
@@ -164,6 +165,11 @@ class MainActivity : Activity() {
             setOnClickListener { testGlThreadBridge() }
         }
 
+        val glOperationsButton = Button(this).apply {
+            text = "9 - Testar operacoes OpenGL pela JNI"
+            setOnClickListener { testGlOperationsOnGlThread() }
+        }
+
         rootLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
@@ -177,6 +183,7 @@ class MainActivity : Activity() {
             addView(glButton)
             addView(videoAbiButton)
             addView(glThreadButton)
+            addView(glOperationsButton)
         }
 
         setContentView(rootLayout)
@@ -252,6 +259,30 @@ class MainActivity : Activity() {
                     "\\n\\nNenhuma ROM foi carregada."
             }
         }
+    }
+
+    private fun testGlOperationsOnGlThread() {
+        val surface = glView
+        if (surface == null || !glSurfaceReady) {
+            statusView.text = "N64 Android\\n\\nAbra primeiro o teste 6 e aguarde o contexto EGL ficar valido."
+            return
+        }
+
+        statusView.text = "N64 Android\\n\\nExecutando operacoes GLES pela JNI na thread GL..."
+        surface.queueEvent {
+            val result = try {
+                nativeTestGlOperations()
+            } catch (error: LinkageError) {
+                "Falha na operacao GLES pela JNI: " + error.message
+            } catch (error: Exception) {
+                "Erro na operacao GLES pela JNI: " + error.message
+            }
+            runOnUiThread {
+                statusView.text = "N64 Android\\n\\nTeste 9 - Operacoes GLES na thread GL\\n" +
+                    result + "\\n\\nNenhuma ROM foi carregada."
+            }
+        }
+        surface.requestRender()
     }
 
     private fun loadNativeLibrary() {
