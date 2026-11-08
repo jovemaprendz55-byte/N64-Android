@@ -34,7 +34,7 @@ class MainActivity : Activity() {
         }
 
         statusView = TextView(this).apply {
-            text = "N64 Android\\n\\n$initialStatus"
+            text = "N64 Android\n\n$initialStatus"
             textSize = 16f
             gravity = Gravity.CENTER
             setPadding(28, 28, 28, 28)
@@ -43,7 +43,7 @@ class MainActivity : Activity() {
         val initializeButton = Button(this).apply {
             text = "Inicializar Core"
             setOnClickListener {
-                statusView.text = "N64 Android\\n\\n" +
+                statusView.text = "N64 Android\n\n" +
                     nativeInitialize(configDirectory.absolutePath, dataDirectory.absolutePath)
             }
         }
@@ -51,7 +51,7 @@ class MainActivity : Activity() {
         val shutdownButton = Button(this).apply {
             text = "Encerrar Core"
             setOnClickListener {
-                statusView.text = "N64 Android\\n\\n" + nativeShutdown()
+                statusView.text = "N64 Android\n\n" + nativeShutdown()
             }
         }
 
