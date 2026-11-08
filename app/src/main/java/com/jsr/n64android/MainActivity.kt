@@ -426,7 +426,7 @@ class MainActivity : Activity() {
                         statusView.text = "N64 Android\\n\\n" + visualStatus + "\\n" +
                             lifecycleStatus + "\\n\\n" + eglStatus +
                             (if (videoStatus.isNotEmpty()) "\\n\\n" + videoStatus else "") +
-                            "\\n\\nNenhuma ROM foi carregada. Plugin GFX validado e PluginStartup concluido; ainda falta anexar o plugin ao Core e iniciar InitiateGFX."
+                            "\\n\\nNenhuma ROM foi carregada. Confirme acima o resultado do carregamento e do PluginStartup; o plugin ainda nao foi anexado ao Core e InitiateGFX nao foi chamado."
                     }
                 }
 
