@@ -463,3 +463,36 @@ Validacoes observadas no log do CI:
 para a superficie EGL/GLSurfaceView existente. Antes de adicionar o .so ao APK,
 resolver a compatibilidade do backend grafico com OpenGL ES 3.2 e a afinidade de
 thread do contexto EGL. Nenhuma ROM deve ser aberta nesta fase.
+
+
+### Auditoria complementar do backend GLideN64 versus EGL/GLES (2026-11-08)
+
+A leitura do codigo upstream fixado em `a04081ad6a966a9413bea63a55f502e0dc98bb18`
+refinou a avaliacao de compatibilidade:
+
+- `opengl_GLInfo.cpp` identifica explicitamente drivers cujo `GL_VERSION`
+  contem `OpenGL ES`, diferencia GLES2 de GLES3+ e possui caminhos de recursos
+  para GLES. Portanto, nao e correto concluir que GLideN64 exige exclusivamente
+  desktop OpenGL 3.3.
+- O backend Mupen64Plus `mupen64plus_DisplayWindow.cpp` chama
+  `CoreVideo_GL_SetAttribute` solicitando perfil CORE, major 3, minor 3,
+  double-buffer e outros atributos antes de `CoreVideo_Init/SetVideoMode`.
+  Esse pedido e um ponto de adaptacao: a extensao Android nao deve tentar criar
+  outro contexto nem exigir desktop GL 3.3; deve mapear/ignorar atributos
+  incompatíveis e reutilizar o EGL context ES 3.2 ja corrente.
+- `_start()` executa `CoreVideo_Init`, configura atributos, chama
+  `CoreVideo_SetVideoMode` e depois `_swapBuffers()` usa
+  `CoreVideo_GL_SwapBuffers`. Na integracao Android, esses callbacks precisam
+  ser implementados como ponte para a superficie existente, sem trocar o
+  contexto nem fazer swap duplicado fora do GLSurfaceView.
+- A configuracao `ThreadedVideo` e encaminhada para
+  `FunctionWrapper::setThreadedMode`; para a primeira integracao sera
+  obrigatorio desativar renderizacao em thread separada e manter chamadas GL
+  na thread dona do EGL context.
+
+**Decisao tecnica atualizada:** manter GLideN64 como candidato principal. O
+proximo passo de codigo e auditar a Video Extension do Core e a implementacao
+Android atual para mapear os callbacks `CoreVideo_*` a EGL/GLSurfaceView,
+começando por atributos e modo de video. Ainda nao integrar o .so nem habilitar
+ROM; primeiro produzir uma camada de compatibilidade sem criar contexto ou
+surface próprios e compilar/testar o carregamento sem executar emulacao.
