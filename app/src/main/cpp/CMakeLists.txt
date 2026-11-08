@@ -18,7 +18,7 @@ if(EXISTS "${N64_SDL2_LIBRARY}" AND EXISTS "${N64_SDL2_INCLUDE}/SDL.h")
     set_target_properties(SDL2 PROPERTIES
         IMPORTED_LOCATION "${N64_SDL2_LIBRARY}"
         INTERFACE_INCLUDE_DIRECTORIES "${N64_SDL2_INCLUDE}")
-    target_link_libraries(n64bridge PRIVATE SDL2)
+    target_link_libraries(n64bridge PRIVATE SDL2 log)
     target_compile_definitions(n64bridge PRIVATE N64_HAS_SDL2=1)
     message(STATUS "Pinned SDL2 shared library linked into n64bridge")
 else()
