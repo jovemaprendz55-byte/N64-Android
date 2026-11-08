@@ -3,6 +3,8 @@
 
 #include <cstdio>
 #include <cstring>
+#include <cstdlib>
+#include <string>
 #include <mutex>
 #include <dlfcn.h>
 #include <cstdint>
@@ -336,19 +338,44 @@ Java_com_jsr_n64android_MainActivity_nativeStartCore(
     const char* lookupError = dlerror();
     if (startup == nullptr || lookupError != nullptr) return makeString(env, "CoreStartup nao encontrado.");
 
-    const char* config = env->GetStringUTFChars(configPath, nullptr);
-    if (config == nullptr) return makeString(env, "Falha ao obter caminho de configuracao.");
-    const char* data = env->GetStringUTFChars(dataPath, nullptr);
-    if (data == nullptr) {
-        env->ReleaseStringUTFChars(configPath, config);
+    const char* configChars = env->GetStringUTFChars(configPath, nullptr);
+    if (configChars == nullptr) return makeString(env, "Falha ao obter caminho de configuracao.");
+    const char* dataChars = env->GetStringUTFChars(dataPath, nullptr);
+    if (dataChars == nullptr) {
+        env->ReleaseStringUTFChars(configPath, configChars);
         return makeString(env, "Falha ao obter caminho de dados.");
     }
 
+    // Android nao define HOME por padrao. O Core e o GLideN64 consultam
+    // esse diretorio para localizar dados do usuario e configuracoes.
+    const std::string configDirectory(configChars);
+    const std::string dataDirectory(dataChars);
+    std::string homeDirectory = configDirectory;
+    const size_t configSeparator = homeDirectory.find_last_of('/');
+    if (configSeparator != std::string::npos) {
+        homeDirectory.resize(configSeparator);
+        const size_t mupenSeparator = homeDirectory.find_last_of('/');
+        if (mupenSeparator != std::string::npos)
+            homeDirectory.resize(mupenSeparator);
+    }
+    const bool homeReady = !homeDirectory.empty() &&
+        setenv("HOME", homeDirectory.c_str(), 1) == 0;
+    const bool xdgReady =
+        setenv("XDG_CONFIG_HOME", configDirectory.c_str(), 1) == 0 &&
+        setenv("XDG_DATA_HOME", dataDirectory.c_str(), 1) == 0 &&
+        setenv("XDG_CACHE_HOME", dataDirectory.c_str(), 1) == 0;
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidCore",
+        "Diretorios Android: HOME=%s | XDG_CONFIG_HOME=%s | XDG_DATA_HOME=%s",
+        homeReady ? homeDirectory.c_str() : "(falha)",
+        configDirectory.c_str(), dataDirectory.c_str());
+    env->ReleaseStringUTFChars(configPath, configChars);
+    env->ReleaseStringUTFChars(dataPath, dataChars);
+    if (!homeReady || !xdgReady)
+        return makeString(env, "Falha ao configurar HOME/XDG para o Core e o plugin grafico.");
+
     // FRONTEND_API_VERSION da revisao fixada em version.h.
-    const int result = startup(0x020106, config, data, nullptr,
-                               coreDebugCallback, nullptr, coreStateCallback);
-    env->ReleaseStringUTFChars(configPath, config);
-    env->ReleaseStringUTFChars(dataPath, data);
+    const int result = startup(0x020106, configDirectory.c_str(), dataDirectory.c_str(),
+                               nullptr, coreDebugCallback, nullptr, coreStateCallback);
 
     if (result != 0) {
         dlerror();
