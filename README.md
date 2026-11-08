@@ -31,14 +31,19 @@ Consulte [docs/LICENSING.md](docs/LICENSING.md) antes de adicionar código exter
 - [x] Estratégia inicial documentada.
 - [x] Fixar a versão/commit do Mupen64Plus Core para análise.
 - [ ] Auditar dependências e licenças dos plugins.
-- [ ] Criar esqueleto Android + NDK + JNI (próxima etapa).
+- [x] Criar esqueleto Android + NDK + JNI (bridge de diagnóstico; sem Core integrado).
 - [ ] Integrar e validar inicialização do Core.
 - [ ] Integrar vídeo, áudio e entrada.
 - [ ] Executar testes no Poco C85.
 
+## Aplicativo Android inicial
+
+A estrutura Gradle/Kotlin/CMake/JNI já foi criada. A tela inicial apenas confirma a carga da biblioteca nativa; ainda não é um emulador e não executa ROMs. O workflow do GitHub Actions compila o APK de depuração e publica o artefato quando o build passar.
+
 ## Documentação técnica
 
 - [Análise inicial do Core](docs/CORE-ANALYSIS.md)
+- [Estrutura Android, NDK e JNI](docs/ANDROID-BUILD.md)
 - [API pública e plano de integração Android](docs/API-PORTING.md)
 - [Auditoria de licenças](docs/LICENSING.md)
 
