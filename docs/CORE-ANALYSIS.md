@@ -51,6 +51,12 @@ Plano de portabilidade:
 5. Exportar a API nativa por JNI sem bloquear a thread de UI.
 6. Validar carregamento do Core antes de integrar vídeo e áudio.
 
+## Resultado da análise da API pública
+
+A primeira leitura dos headers e do código confirmou que o frontend deve controlar o motor pela API C pública (`CoreStartup`, `CoreShutdown`, `CoreAttachPlugin`, `CoreDetachPlugin`, `CoreDoCommand` e `CoreOverrideVidExt`). Os tipos, enums e erros precisam vir dos headers da mesma versão fixada. A sequência de inicialização, os requisitos de ROM/plugins e os bloqueios de portabilidade estão registrados em [docs/API-PORTING.md](API-PORTING.md).
+
+O código de entrada do Core (`src/main/main.c`) inclui SDL, enquanto o Makefile Unix configura plataformas desktop e não constitui um build NDK Android pronto. Portanto, ainda não afirmamos que o Core compile para Android.
+
 ## Ordem de engenharia reversa
 
 1. API pública e ciclo de vida: startup, attach plugins, ROM open/close e shutdown.
