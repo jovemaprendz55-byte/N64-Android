@@ -5,7 +5,7 @@
 - Repository: `gonetz/GLideN64`
 - Pinned revision: `a04081ad6a966a9413bea63a55f502e0dc98bb18`
 - Upstream license: GNU GPL version 2 (see upstream `LICENSE` and `licenses/`).
-- The CI checks out the original upstream tree at the immutable revision and applies only the patch files in this directory. It does not rewrite or vendor the upstream source tree into this repository.
+- The CI checks out the original upstream tree at the immutable revision and applies the documented context change through a guarded exact-block replacement. The unified diff in this directory is the reviewable patch record; the workflow fails if the original block is missing or appears more than once. It does not rewrite or vendor the upstream source tree into this repository.
 
 ## android-gles-profile.patch
 
