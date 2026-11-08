@@ -39,6 +39,8 @@ class MainActivity : Activity() {
     private var nativeCoreInitialized = false
     private var glView: GLSurfaceView? = null
     @Volatile private var glSurfaceReady = false
+    @Volatile private var glSurfaceCreatedCount = 0
+    @Volatile private var lifecycleTestEnabled = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -182,6 +184,14 @@ class MainActivity : Activity() {
             setOnClickListener { testGlOperationsOnGlThread() }
         }
 
+        val glLifecycleButton = Button(this).apply {
+            text = "11 - Testar pausa e retomada GL"
+            setOnClickListener {
+                lifecycleTestEnabled = true
+                showOpenGlTest(drawTriangle = true)
+            }
+        }
+
         val backButton = Button(this).apply {
             text = "Voltar ao inicio"
             setOnClickListener { showHomeScreen() }
@@ -202,6 +212,7 @@ class MainActivity : Activity() {
             addView(glDrawButton)
             addView(glThreadButton)
             addView(glOperationsButton)
+            addView(glLifecycleButton)
         }
 
         rootLayout = LinearLayout(this).apply {
@@ -296,7 +307,7 @@ class MainActivity : Activity() {
         loadNativeLibrary()
         glSurfaceReady = false
         glView?.let {
-            rootLayout.removeView(it)
+            graphicsGroup.removeView(it)
             it.onPause()
         }
 
@@ -309,6 +320,8 @@ class MainActivity : Activity() {
 
                 override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
                     glSurfaceReady = true
+                    glSurfaceCreatedCount += 1
+                    val createdCount = glSurfaceCreatedCount
                     GLES20.glClearColor(0.04f, 0.05f, 0.08f, 1.0f)
                     if (drawTriangle) {
                         triangleProgram = createTriangleProgram()
@@ -337,8 +350,14 @@ class MainActivity : Activity() {
                         } else {
                             "Falha ao criar o programa de desenho OpenGL. Consulte o log."
                         }
-                        statusView.text = "N64 Android\\n\\n" + visualStatus + "\\n\\n" +
-                            eglStatus + "\\n\\nNenhuma ROM ou plugin foi iniciado."
+                        val lifecycleStatus = if (lifecycleTestEnabled) {
+                            "Superficie EGL criada: $createdCount vez(es)."
+                        } else {
+                            ""
+                        }
+                        statusView.text = "N64 Android\\n\\n" + visualStatus + "\\n" +
+                            lifecycleStatus + "\\n\\n" + eglStatus +
+                            "\\n\\nNenhuma ROM ou plugin foi iniciado."
                     }
                 }
 
@@ -495,7 +514,26 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        glView?.onResume()
+        glView?.let { surface ->
+            surface.onResume()
+            if (lifecycleTestEnabled) {
+                surface.queueEvent {
+                    val eglStatus = try {
+                        nativeVerifyEglContext()
+                    } catch (error: LinkageError) {
+                        "Falha ao verificar EGL depois da retomada: " + error.message
+                    } catch (error: Exception) {
+                        "Erro ao verificar EGL depois da retomada: " + error.message
+                    }
+                    val createdCount = glSurfaceCreatedCount
+                    runOnUiThread {
+                        statusView.text = "N64 Android\\n\\nTeste de ciclo de vida GL\\n" +
+                            "Activity retomada. Superficie criada: $createdCount vez(es).\\n\\n" +
+                            eglStatus + "\\n\\nO teste nao iniciou ROM nem plugin."
+                    }
+                }
+            }
+        }
     }
 
     override fun onPause() {
