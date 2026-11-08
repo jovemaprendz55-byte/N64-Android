@@ -8,6 +8,7 @@ import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import java.io.File
 import java.nio.ByteBuffer
@@ -241,7 +242,10 @@ class MainActivity : Activity() {
                 text = "Diagnostico e testes"
                 setOnClickListener {
                     diagnosticScreenVisible = true
-                    setContentView(rootLayout)
+                    setContentView(ScrollView(this@MainActivity).apply {
+                        isFillViewport = true
+                        addView(rootLayout)
+                    })
                 }
             })
             addView(TextView(this@MainActivity).apply {
