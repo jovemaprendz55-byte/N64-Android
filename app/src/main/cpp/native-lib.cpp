@@ -4,6 +4,11 @@
 #include <cstdio>
 #include <mutex>
 #include <dlfcn.h>
+#include <cstdint>
+#include <EGL/egl.h>
+#include <GLES2/gl2.h>
+#include <sys/syscall.h>
+#include <unistd.h>
 #ifdef N64_HAS_MUPEN64PLUS_HEADERS
 #include "m64p_types.h"
 #include "m64p_frontend.h"
@@ -318,4 +323,37 @@ Java_com_jsr_n64android_MainActivity_nativeShutdown(JNIEnv* env, jobject /* thiz
     }
     g_coreHandle = nullptr;
     return makeString(env, "Biblioteca do Core descarregada corretamente.");
+}
+
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_jsr_n64android_MainActivity_nativeVerifyEglContext(JNIEnv* env, jobject /* thiz */) {
+    const EGLContext context = eglGetCurrentContext();
+    const EGLDisplay display = eglGetCurrentDisplay();
+    const EGLSurface surface = eglGetCurrentSurface(EGL_DRAW);
+    const GLubyte* version = glGetString(GL_VERSION);
+
+    if (context == EGL_NO_CONTEXT || display == EGL_NO_DISPLAY ||
+        surface == EGL_NO_SURFACE || version == nullptr) {
+        const EGLint error = eglGetError();
+        char status[256];
+        std::snprintf(status, sizeof(status),
+                      "Contexto EGL/GLES nao esta atual nesta thread. EGL error=0x%04X",
+                      static_cast<unsigned int>(error));
+        return makeString(env, status);
+    }
+
+    char status[512];
+    std::snprintf(status, sizeof(status),
+                  "Contexto EGL valido na thread GL.\n"
+                  "OpenGL ES: %s\n"
+                  "Thread Linux: %ld\n"
+                  "Contexto: 0x%llX | Surface: 0x%llX",
+                  reinterpret_cast<const char*>(version),
+                  static_cast<long>(syscall(SYS_gettid)),
+                  static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(context)),
+                  static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(surface)));
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidEGL", "%s", status);
+    return makeString(env, status);
 }
