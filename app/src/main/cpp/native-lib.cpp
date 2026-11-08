@@ -123,6 +123,15 @@ m64p_error androidVideoVkExtensions(const char**[], uint32_t*) { return M64ERR_U
 }
 #endif
 
+void* g_gfxPluginHandle = nullptr;
+const char* const kRequiredGfxSymbols[] = {
+    "PluginGetVersion", "PluginStartup", "PluginShutdown", "ChangeWindow",
+    "InitiateGFX", "MoveScreen", "ProcessDList", "ProcessRDPList",
+    "RomClosed", "RomOpen", "ShowCFB", "UpdateScreen", "ViStatusChanged",
+    "ViWidthChanged", "ReadScreen2", "SetRenderingCallback", "FBRead",
+    "FBWrite", "FBGetFrameBufferInfo"
+};
+
 jstring makeString(JNIEnv* env, const char* value) {
     return env->NewStringUTF(value);
 }
@@ -435,10 +444,87 @@ Java_com_jsr_n64android_MainActivity_nativeRegisterAndroidVideo(JNIEnv* env, job
 
 extern "C"
 JNIEXPORT jstring JNICALL
+Java_com_jsr_n64android_MainActivity_nativeLoadGfxPlugin(
+        JNIEnv* env, jobject /* thiz */, jstring pluginPath) {
+    std::lock_guard<std::mutex> lock(g_coreMutex);
+    if (g_coreHandle == nullptr || !g_coreStarted)
+        return makeString(env, "Inicialize o Core antes de carregar o plugin GFX.");
+    if (g_gfxPluginHandle != nullptr)
+        return makeString(env, "Plugin GFX Android ja esta carregado e validado.");
+
+    const char* path = env->GetStringUTFChars(pluginPath, nullptr);
+    if (path == nullptr) return makeString(env, "Nao foi possivel obter o caminho do plugin.");
+    dlerror();
+    void* plugin = dlopen(path, RTLD_NOW | RTLD_LOCAL);
+    env->ReleaseStringUTFChars(pluginPath, path);
+    if (plugin == nullptr) {
+        const char* error = dlerror();
+        char status[768];
+        std::snprintf(status, sizeof(status), "Falha ao carregar plugin GFX Android: %s",
+                      error != nullptr ? error : "erro desconhecido");
+        return makeString(env, status);
+    }
+
+    char missing[512] = {};
+    size_t used = 0;
+    for (const char* symbol : kRequiredGfxSymbols) {
+        dlerror();
+        void* address = dlsym(plugin, symbol);
+        const char* error = dlerror();
+        if (address == nullptr || error != nullptr) {
+            const int written = std::snprintf(missing + used, sizeof(missing) - used,
+                                              "%s%s", used == 0 ? "" : ", ", symbol);
+            if (written > 0) used += static_cast<size_t>(written);
+            if (used >= sizeof(missing)) break;
+        }
+    }
+    if (used != 0) {
+        char status[768];
+        std::snprintf(status, sizeof(status), "Plugin carregado, mas faltam simbolos GFX: %s", missing);
+        dlclose(plugin);
+        return makeString(env, status);
+    }
+
+    using GfxPluginGetVersion = int (*)(int*, int*, int*, const char**, int*);
+    auto getVersion = reinterpret_cast<GfxPluginGetVersion>(dlsym(plugin, "PluginGetVersion"));
+    int type = 0, pluginVersion = 0, apiVersion = 0, caps = 0;
+    const char* name = nullptr;
+    const int result = getVersion(&type, &pluginVersion, &apiVersion, &name, &caps);
+    if (result != 0 || type != 2 || (apiVersion & 0xffff0000) != 0x00020000) {
+        char status[768];
+        std::snprintf(status, sizeof(status),
+                      "Plugin GFX incompatível: retorno=%d tipo=%d API=0x%06X.",
+                      result, type, apiVersion);
+        dlclose(plugin);
+        return makeString(env, status);
+    }
+
+    g_gfxPluginHandle = plugin;
+    char status[768];
+    std::snprintf(status, sizeof(status),
+                  "Plugin GFX Android carregado e validado.\n"
+                  "Nome: %s\nVersao: %d.%d.%d | API: 0x%06X\n"
+                  "Simbolos obrigatorios: %zu/%zu.\n"
+                  "Ainda nao foi iniciado nem anexado ao Core; nenhuma ROM foi aberta.",
+                  name != nullptr ? name : "(sem nome)",
+                  (pluginVersion >> 16) & 0xff, (pluginVersion >> 8) & 0xff,
+                  pluginVersion & 0xff, apiVersion,
+                  sizeof(kRequiredGfxSymbols) / sizeof(kRequiredGfxSymbols[0]),
+                  sizeof(kRequiredGfxSymbols) / sizeof(kRequiredGfxSymbols[0]));
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidGFX", "%s", status);
+    return makeString(env, status);
+}
+
+extern "C"
+JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_MainActivity_nativeShutdown(JNIEnv* env, jobject /* thiz */) {
     std::lock_guard<std::mutex> lock(g_coreMutex);
     if (g_coreHandle == nullptr) {
         return makeString(env, "Biblioteca do Core nao estava carregada.");
+    }
+    if (g_gfxPluginHandle != nullptr) {
+        dlclose(g_gfxPluginHandle);
+        g_gfxPluginHandle = nullptr;
     }
     if (g_coreStarted) {
         dlerror();
