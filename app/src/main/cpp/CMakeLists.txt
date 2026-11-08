@@ -49,6 +49,18 @@ if(EXISTS "${MUPEN64PLUS_CORE_SOURCE_DIR}/src/asm_defines/asm_defines.c")
         MINIZIP_IOAPI_CONTENT "${MINIZIP_IOAPI_CONTENT}")
     file(WRITE "${MINIZIP_IOAPI_C}" "${MINIZIP_IOAPI_CONTENT}")
 
+    # Build the first Android GLES graphics-plugin ABI module separately.
+    # It receives GFX_INFO and validates the current EGL/GLES context; the
+    # RDP command interpreter and framebuffer renderer are intentionally pending.
+    add_library(n64android_gfx SHARED android_gfx_plugin.cpp)
+    target_include_directories(n64android_gfx PRIVATE
+        "${MUPEN64PLUS_CORE_SOURCE_DIR}/src/api")
+    target_compile_features(n64android_gfx PRIVATE cxx_std_17)
+    target_compile_options(n64android_gfx PRIVATE -Wall -Wextra -Werror)
+    target_link_libraries(n64android_gfx PRIVATE log EGL GLESv2)
+    set_target_properties(n64android_gfx PROPERTIES
+        OUTPUT_NAME "mupen64plus-video-android")
+
     # Compile the pinned Core source manifest as an Android shared library.
     # Optional Unix-only features (OSD, netplay, debugger) remain disabled;
     # ARM64 uses the upstream NEW_DYNAREC=4 backend.
