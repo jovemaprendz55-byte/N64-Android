@@ -496,3 +496,31 @@ Android atual para mapear os callbacks `CoreVideo_*` a EGL/GLSurfaceView,
 começando por atributos e modo de video. Ainda nao integrar o .so nem habilitar
 ROM; primeiro produzir uma camada de compatibilidade sem criar contexto ou
 surface próprios e compilar/testar o carregamento sem executar emulacao.
+
+
+## Auditoria da ponte Android já existente (2026-11-08)
+
+Arquivos do frontend revisados em `app/src/main/cpp/native-lib.cpp` e `app/src/main/java/com/jsr/n64android/MainActivity.kt`.
+
+### Fluxo atualmente implementado
+
+- A Activity cria uma `GLSurfaceView` e, dentro de `Renderer.onSurfaceCreated`, chama `nativeVerifyEglContext()`.
+- No mesmo callback da GL thread, quando o fluxo de integração gráfica é selecionado, chama `nativeRegisterAndroidVideo()` e, após registrar a tabela, chama `nativeLoadGfxPlugin()`. Portanto, o registro e o carregamento inicial do módulo acontecem no callback de criação da superfície, não na thread UI.
+- `nativeRegisterAndroidVideo()` exige Core inicializado e contexto EGL/GLES atual, preenche os 17 callbacks e registra a tabela com `CoreOverrideVidExt`.
+- `androidVideoInit()`, `androidVideoSetMode()`, `androidVideoGetProc()`, `androidVideoSwapBuffers()` e `androidVideoDefaultFramebuffer()` verificam a existência do contexto atual antes de prosseguir quando aplicável.
+- `androidVideoSetMode()` atualmente só valida dimensões e guarda largura/altura. `androidVideoSetAttr()` apenas guarda valores em uma tabela; ainda não interpreta nem valida os atributos solicitados pelo renderer.
+- `androidVideoSwapBuffers()` não chama EGL swap, corretamente evitando uma segunda troca de buffers fora do controle do `GLSurfaceView`.
+- `androidVideoDefaultFramebuffer()` consulta `GL_FRAMEBUFFER_BINDING` no contexto corrente.
+- `androidVideoGetProc()` tenta `eglGetProcAddress` e depois `dlsym(RTLD_DEFAULT, ...)`.
+
+### Lacunas antes de considerar a ponte pronta para GLideN64
+
+1. O callback de atributo precisa de uma política explícita para atributos compatíveis com EGL/GLES e atributos desktop que não podem ser aplicados ao contexto já criado. Retornar sucesso e apenas guardar qualquer valor pode fazer o plugin acreditar que recebeu um perfil/contexto que Android não oferece.
+2. O callback de modo de vídeo precisa garantir que dimensões e viewport estejam sincronizados com a superfície real. Não deve criar janela, EGL context, EGL surface nem chamar `eglMakeCurrent`.
+3. O callback de swap precisa continuar sem executar `eglSwapBuffers`; a apresentação deve permanecer sob o ciclo de renderização do `GLSurfaceView`. É necessário confirmar como o renderer GLideN64 sinaliza o fim de frame e como o frontend solicita/agenda o próximo frame.
+4. Todos os callbacks que consultam GLES devem ser executados na GL thread que possui o contexto. A checagem de contexto atual é uma proteção, não um mecanismo de despacho entre threads.
+5. O ciclo `onPause/onResume` pode destruir/recriar o contexto. A tabela de callbacks pode permanecer registrada, mas nenhum recurso GL do plugin poderá ser presumido válido após recriação; o plugin precisará receber o ciclo de vida correto antes de qualquer ROM.
+
+### Decisão
+
+A ponte existente é uma base real e já foi registrada no Core no aparelho, mas ainda é uma camada de validação/diagnóstico, não uma implementação completa de janela/vídeo para GLideN64. Próxima tarefa de código: mapear os valores de `m64p_GLattr` do header fixado e as solicitações efetivas do GLideN64, então implementar validação explícita dos atributos e sincronização de viewport/superfície, sem alterar a propriedade do EGL. Manter ROM_OPEN, CoreAttachPlugin e EXECUTE bloqueados até esse trabalho e a integração do renderer serem validados.
