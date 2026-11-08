@@ -447,6 +447,7 @@ Java_com_jsr_n64android_MainActivity_nativeRegisterAndroidVideo(JNIEnv* env, job
 #ifndef N64_HAS_MUPEN64PLUS_HEADERS
     return makeString(env, "Headers oficiais do Core nao estao disponiveis nesta compilacao.");
 #else
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow", "nativeRegisterAndroidVideo: entrada");
     std::lock_guard<std::mutex> lock(g_coreMutex);
     if (g_coreHandle == nullptr || !g_coreStarted)
         return makeString(env, "Inicialize o Core antes de registrar o video Android.");
@@ -483,6 +484,7 @@ Java_com_jsr_n64android_MainActivity_nativeRegisterAndroidVideo(JNIEnv* env, job
                       static_cast<int>(result));
         return makeString(env, status);
     }
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow", "nativeRegisterAndroidVideo: CoreOverrideVidExt concluido");
     __android_log_print(ANDROID_LOG_INFO, "N64AndroidVideo",
                         "Video Extension Android registrada na thread GL.");
     return makeString(env,
@@ -497,6 +499,7 @@ extern "C"
 JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_MainActivity_nativeLoadGfxPlugin(
         JNIEnv* env, jobject /* thiz */, jstring pluginPath) {
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow", "nativeLoadGfxPlugin: entrada");
     std::lock_guard<std::mutex> lock(g_coreMutex);
     if (g_coreHandle == nullptr || !g_coreStarted)
         return makeString(env, "Inicialize o Core antes de carregar o plugin GFX.");
@@ -540,7 +543,11 @@ Java_com_jsr_n64android_MainActivity_nativeLoadGfxPlugin(
     auto getVersion = reinterpret_cast<GfxPluginGetVersion>(dlsym(plugin, "PluginGetVersion"));
     int type = 0, pluginVersion = 0, apiVersion = 0, caps = 0;
     const char* name = nullptr;
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow", "nativeLoadGfxPlugin: dlopen concluido; validando versao");
     const int result = getVersion(&type, &pluginVersion, &apiVersion, &name, &caps);
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
+                        "nativeLoadGfxPlugin: PluginGetVersion retorno=%d tipo=%d API=0x%06X",
+                        result, type, apiVersion);
     if (result != 0 || type != 2 || (apiVersion & 0xffff0000) != 0x00020000) {
         char status[768];
         std::snprintf(status, sizeof(status),
@@ -569,7 +576,13 @@ Java_com_jsr_n64android_MainActivity_nativeLoadGfxPlugin(
         dlclose(plugin);
         return makeString(env, "PluginStartup nao encontrado apos validacao dos simbolos.");
     }
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
+                        "nativeLoadGfxPlugin: chamando PluginStartup; EGLContext=%p GLES=%s",
+                        reinterpret_cast<void*>(startupContext),
+                        reinterpret_cast<const char*>(startupGlVersion));
     const int startupResult = startup(g_coreHandle, nullptr, coreDebugCallback);
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
+                        "nativeLoadGfxPlugin: PluginStartup retornou codigo=%d", startupResult);
     if (startupResult != 0) {
         char startupStatus[256];
         std::snprintf(startupStatus, sizeof(startupStatus),
