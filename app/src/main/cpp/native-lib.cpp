@@ -45,11 +45,19 @@ jstring makeString(JNIEnv* env, const char* value) {
 extern "C"
 JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_MainActivity_nativeGetStatus(JNIEnv* env, jobject /* thiz */) {
-    // Diagnostic isolation: avoid calling SDL or Core symbols here.
-    // This confirms JNI entry-point execution independently from native dependencies.
+#ifdef N64_HAS_SDL2
+    SDL_version version{};
+    SDL_GetVersion(&version);
+    char status[160];
+    std::snprintf(status, sizeof(status),
+                  "JNI chamada com sucesso. SDL2 carregada: %u.%u.%u.\n"
+                  "Core Mupen64Plus ainda nao foi incluido.",
+                  version.major, version.minor, version.patch);
+    return makeString(env, status);
+#else
     return makeString(env,
-        "JNI bridge carregada e chamada com sucesso.\n"
-        "Teste isolado: SDL2 e Core ainda nao foram consultados.");
+        "JNI bridge carregada e chamada com sucesso. SDL2 nao incluida.");
+#endif
 }
 
 extern "C"
