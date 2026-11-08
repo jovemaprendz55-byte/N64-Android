@@ -35,6 +35,13 @@ jobs:
           ref: a04081ad6a966a9413bea63a55f502e0dc98bb18
           path: third_party/GLideN64
 
+      - name: Apply documented Android GLES profile patch to GLideN64
+        run: |
+          git -C third_party/GLideN64 apply "$GITHUB_WORKSPACE/patches/gliden64/android-gles-profile.patch"
+          git -C third_party/GLideN64 diff --check
+          grep -F "M64P_GL_CONTEXT_PROFILE_ES" third_party/GLideN64/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp
+          grep -F "M64P_GL_CONTEXT_MINOR_VERSION, 0" third_party/GLideN64/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp
+
       - name: Validate pinned Core source manifest
         run: >-
           cmake
@@ -90,7 +97,13 @@ jobs:
           readelf --dyn-syms -W "$PLUGIN" | grep -E "[[:space:]]InitiateGFX$"
           readelf --dyn-syms -W "$PLUGIN" | grep -E "[[:space:]]ProcessDList$"
           readelf --dyn-syms -W "$PLUGIN" | grep -E "[[:space:]]ProcessRDPList$"
+          for symbol in PluginShutdown ChangeWindow MoveScreen RomClosed RomOpen ShowCFB UpdateScreen ViStatusChanged ViWidthChanged ReadScreen2 SetRenderingCallback FBRead FBWrite FBGetFrameBufferInfo; do
+            readelf --dyn-syms -W "$PLUGIN" | grep -E "[[:space:]]${symbol}$"
+          done
           file "$PLUGIN"
+          mkdir -p build/native-libs/arm64-v8a
+          cp "$PLUGIN" build/native-libs/arm64-v8a/libmupen64plus-video-GLideN64.so
+          test -s build/native-libs/arm64-v8a/libmupen64plus-video-GLideN64.so
 
       - name: Generate ARM64 offsets from the pinned Core with the Android NDK
         run: |
@@ -146,6 +159,12 @@ jobs:
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libSDL2.so"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus.so"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus-video-android.so"
+          unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus-video-GLideN64.so"
+          unzip -p "$APK" lib/arm64-v8a/libmupen64plus-video-GLideN64.so > build/gliden64-from-apk.so
+          for symbol in PluginGetVersion PluginStartup PluginShutdown ChangeWindow InitiateGFX MoveScreen ProcessDList ProcessRDPList RomClosed RomOpen ShowCFB UpdateScreen ViStatusChanged ViWidthChanged ReadScreen2 SetRenderingCallback FBRead FBWrite FBGetFrameBufferInfo; do
+            readelf --dyn-syms -W build/gliden64-from-apk.so | grep -E "[[:space:]]${symbol}$"
+          done
+          readelf -d build/gliden64-from-apk.so
           unzip -p "$APK" lib/arm64-v8a/libn64bridge.so > build/n64bridge-from-apk.so
           unzip -p "$APK" lib/arm64-v8a/libmupen64plus.so > build/mupen64plus-from-apk.so
           unzip -p "$APK" lib/arm64-v8a/libmupen64plus-video-android.so > build/gfx-plugin-from-apk.so
