@@ -86,6 +86,7 @@ set(M64P_CORE_UPSTREAM_SOURCES
     src/plugin/dummy_input.c
     src/plugin/dummy_rsp.c
     src/osal/dynamiclib_unix.c
+    src/osal/files_unix.c
     src/device/r4300/new_dynarec/new_dynarec.c
     src/device/r4300/new_dynarec/arm64/linkage_arm64.S
 )
