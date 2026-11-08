@@ -217,3 +217,27 @@ Nenhuma ROM foi carregada.
 ### Próximo marco
 
 Projetar um teste visual nativo isolado na GL thread (sem Core, plugin ou ROM), com recursos GLES mínimos e descarte correto ao perder/recriar o contexto. Em paralelo, auditar a estrutura de callbacks de vídeo Android e o ciclo de vida da superfície antes de conectá-los ao Core. Não liberar ROM_OPEN nem EXECUTE até que o caminho de vídeo real esteja implementado e validado.
+
+
+## Resultado do teste 10 — desenho OpenGL na GL thread no Poco C85 (2026-11-08)
+
+O usuário instalou a compilação do commit `59d362ff0578a869b45e981e9af1c94bdd767c9c` e executou o botão 10. Resultado informado:
+
+```
+Programa GLES compilado. Triangulo colorido sendo desenhado.
+
+Contexto EGL valido na thread GL. OpenGL ES: OpenGL ES 3.2
+Thread Linux: 28257
+Contexto EGL e Surface validos.
+Nenhuma ROM ou plugin foi iniciado.
+```
+
+**Interpretação:** os shaders GLES foram compilados e vinculados com sucesso, e o renderer executou o desenho de um triângulo com cores interpoladas na superfície Android. A validação EGL ocorreu na thread GL e confirmou contexto e superfície atuais. O TID é apenas o valor observado nessa execução.
+
+**O que foi validado:** o aplicativo consegue compilar shaders GLES 2.0 e emitir uma chamada real de desenho (`glDrawArrays(GL_TRIANGLES)`) no renderer da `GLSurfaceView`, sem iniciar o Core, plugin GFX ou ROM.
+
+**Limites:** o triângulo é um teste gráfico próprio do frontend Android, não usa o Mupen64Plus nem dados de jogo. Ainda não comprova callbacks gráficos do Core, framebuffer N64, textura, sincronização com o emulador, ciclo de vida pause/resume ou renderização de ROM.
+
+### Próxima etapa segura
+
+Antes de ligar o Core à superfície, implementar testes de ciclo de vida do renderer: pausa e retomada da Activity, destruição/recriação da superfície e recriação dos recursos GLES no novo contexto. Garantir que shaders/programas antigos não sejam reutilizados após perda do contexto. Depois, projetar a ponte de callbacks de vídeo para a thread GL. Manter ROM_OPEN, CoreAttachPlugin(GFX) e EXECUTE bloqueados até que o ciclo de vida e os callbacks reais estejam validados.
