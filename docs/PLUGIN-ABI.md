@@ -89,3 +89,27 @@ Em `m64p_types.h`, os comandos são enumeração sequencial: `M64CMD_ROM_OPEN = 
 4. Só depois integrar seleção de arquivo ROM, validar cabeçalho/formato e chamar `M64CMD_ROM_OPEN` com o payload oficial confirmado.
 
 **Estado:** análise de ABI/loader documentada; nenhum plugin gráfico Android foi implementado nesta etapa e nenhuma ROM foi aberta.
+
+## Auditoria das funções de vídeo e abertura de ROM
+
+A revisão do código de `src/api/vidext.c` confirma que `CoreOverrideVidExt` encaminha para `OverrideVideoFunctions`. Quando o override está ativo, o Core encaminha as operações `VidExt_Init`, `VidExt_InitWithRenderMode`, `VidExt_Quit`, `VidExt_SetVideoMode`, resize, caption, fullscreen, atributos OpenGL e swap buffers para os callbacks do frontend. A implementação Android deve fornecer uma tabela `m64p_video_extension_functions` coerente com o header; uma tabela incompleta pode desativar o override e voltar ao backend SDL padrão. Não registrar ponteiros JNI/Kotlin como se fossem callbacks C sem uma camada nativa estável.
+
+### Payload exato de ROM_OPEN
+
+A implementação em `src/api/frontend.c` remove a ambiguidade identificada acima:
+
+- `CoreDoCommand(M64CMD_ROM_OPEN, ParamInt, ParamPtr)` recebe `ParamPtr` apontando para os bytes da ROM em memória e `ParamInt` como tamanho em bytes.
+- O Core rejeita ponteiro nulo, tamanho inferior a 4096 bytes ou superior a `CART_ROM_MAX_SIZE`; o comentário do Core exige que o tamanho seja divisível por 4 para evitar leitura fora dos limites ao trocar bytes em formatos V64/N64.
+- `M64CMD_ROM_CLOSE` requer ROM aberta e emulador parado.
+- `M64CMD_EXECUTE` é comando separado; abrir a ROM não inicia o jogo por si só.
+- `CoreAttachPlugin` só aceita anexar plugin quando o Core está inicializado e já existe ROM ou disco aberto; por isso o plano anterior de anexar GFX antes de abrir ROM precisa ser ajustado. O plugin GFX precisa estar pronto para o ciclo de abertura/execução de ROM conforme a sequência real do Core, e o frontend deve tratar falha de abertura/attach sem deixar estado parcialmente inicializado.
+
+### Ordem revisada para implementação
+
+1. Terminar e testar a ponte de vídeo Android (`CoreOverrideVidExt` + tabela de callbacks) antes de abrir ROM.
+2. Preparar o plugin GFX Android e validar todos os símbolos obrigatórios, tipo e API version.
+3. Auditar a sequência interna de `open_rom`/plugin start para definir precisamente quando anexar o plugin GFX e quando iniciar a superfície GLES.
+4. Ler a ROM escolhida via Storage Access Framework, validar magic/ordem de bytes/tamanho e manter buffer nativo válido durante o uso.
+5. Chamar `M64CMD_ROM_OPEN` com buffer e tamanho confirmados; só depois solicitar `M64CMD_EXECUTE`. Fechar com `M64CMD_ROM_CLOSE` antes de desligar plugins/Core.
+
+**Correção de planejamento:** não anexar plugin via `CoreAttachPlugin` antes de abrir ROM; a API explicitamente retorna estado inválido nesse cenário. Ainda não foi implementada abertura de ROM nem renderização.
