@@ -121,7 +121,8 @@ jobs:
           readelf --dyn-syms -W build/mupen64plus-from-apk.so | grep -E "[[:space:]]CoreStartup$"
           readelf --dyn-syms -W build/mupen64plus-from-apk.so | grep -E "[[:space:]]CoreDoCommand$"
           readelf --dyn-syms -W build/mupen64plus-from-apk.so | grep -E "[[:space:]]CoreShutdown$"
-          strings build/n64bridge-from-apk.so | grep -F "SDL2 carregada"
+          readelf --dyn-syms -W build/n64bridge-from-apk.so | grep -E "[[:space:]]Java_com_jsr_n64android_MainActivity_nativeInitialize$"
+          readelf --dyn-syms -W build/n64bridge-from-apk.so | grep -E "[[:space:]]Java_com_jsr_n64android_MainActivity_nativeShutdown$"
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
