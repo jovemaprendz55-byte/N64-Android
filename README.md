@@ -29,12 +29,18 @@ Consulte [docs/LICENSING.md](docs/LICENSING.md) antes de adicionar código exter
 
 - [x] Repositório novo criado.
 - [x] Estratégia inicial documentada.
-- [ ] Fixar uma versão/commit do Mupen64Plus Core.
+- [x] Fixar a versão/commit do Mupen64Plus Core para análise.
 - [ ] Auditar dependências e licenças dos plugins.
-- [ ] Criar esqueleto Android + NDK + JNI.
+- [ ] Criar esqueleto Android + NDK + JNI (próxima etapa).
 - [ ] Integrar e validar inicialização do Core.
 - [ ] Integrar vídeo, áudio e entrada.
 - [ ] Executar testes no Poco C85.
+
+## Documentação técnica
+
+- [Análise inicial do Core](docs/CORE-ANALYSIS.md)
+- [API pública e plano de integração Android](docs/API-PORTING.md)
+- [Auditoria de licenças](docs/LICENSING.md)
 
 ## Referências
 
