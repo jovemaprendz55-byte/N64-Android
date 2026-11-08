@@ -19,6 +19,7 @@ class MainActivity : Activity() {
     private external fun nativeInitialize(configPath: String, dataPath: String): String
     private external fun nativeShutdown(): String
     private external fun nativeStartCore(configPath: String, dataPath: String): String
+    private external fun nativeTestVideoOverrideAbi(): String
 
     private lateinit var statusView: TextView
     private lateinit var rootLayout: LinearLayout
@@ -137,6 +138,20 @@ class MainActivity : Activity() {
             }
         }
 
+        val videoAbiButton = Button(this).apply {
+            text = "7 - Testar ABI de vídeo (sem ativar)"
+            setOnClickListener {
+                statusView.text = "N64 Android\\n\\n" + try {
+                    if (!nativeCoreInitialized) "Inicialize o Core primeiro no botao 4."
+                    else nativeTestVideoOverrideAbi()
+                } catch (error: LinkageError) {
+                    "Falha no teste ABI de video: ${error.message}"
+                } catch (error: Exception) {
+                    "Erro no teste ABI de video: ${error.message}"
+                }
+            }
+        }
+
         val glButton = Button(this).apply {
             text = "6 - Testar tela OpenGL ES 2.0"
             setOnClickListener { showOpenGlTest() }
@@ -153,6 +168,7 @@ class MainActivity : Activity() {
             addView(startCoreButton)
             addView(unloadButton)
             addView(glButton)
+            addView(videoAbiButton)
         }
 
         setContentView(rootLayout)
