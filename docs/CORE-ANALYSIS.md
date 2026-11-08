@@ -96,3 +96,21 @@ Não importar ainda todo o Core nem adicionar bibliotecas aleatórias ao Gradle.
 2. Verificar quais dependências são efetivamente necessárias para compilar o Core (não apenas para o pacote desktop).
 3. Definir quais bibliotecas serão compiladas via CMake/NDK e quais chamadas de plataforma serão substituídas.
 4. Só então importar os arquivos upstream, preservando os cabeçalhos GPL-2.0 e registrando o commit de origem.
+
+
+## Build real do Core ARM64 validado no CI (2026-11-08)
+
+A análise inicial acima foi superada por uma etapa de compilação real. O workflow Android agora compila a lista explícita de fontes da revisão upstream fixada e produz `libmupen64plus.so` para `arm64-v8a`, além de empacotá-la no APK junto com SDL2.
+
+Evidência:
+- Commit: `2542d80a348db6e04918cb2c5427cc414d5e0d47`
+- CI: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42504515807
+- Resultado: success.
+- O APK contém `libmupen64plus.so`; `readelf` confirmou os exports `CoreStartup` e `CoreShutdown`.
+- `libmupen64plus.so` declara `libSDL2.so` como dependência; a bridge JNI continua sem dependência direta de Core/SDL2.
+
+O mesmo APK empacota o plugin GLideN64 Android/EGL, compilado separadamente e verificado por seus símbolos ABI. O plugin ainda não foi iniciado no aparelho nesta evidência. O resultado do CI não comprova abertura de ROM nem execução de jogo.
+
+### Próxima etapa
+
+Validar no Poco C85 o carregamento do GLideN64 real e seu `PluginStartup`. Manter `InitiateGFX`, attach, ROM_OPEN e EXECUTE bloqueados até resolver a propriedade do contexto EGL e a thread de renderização do GLideN64.
