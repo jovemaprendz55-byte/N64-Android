@@ -30,6 +30,7 @@ class MainActivity : Activity() {
     private var nativeCoreLoaded = false
     private var nativeCoreInitialized = false
     private var glView: GLSurfaceView? = null
+    @Volatile private var glSurfaceReady = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -158,6 +159,11 @@ class MainActivity : Activity() {
             setOnClickListener { showOpenGlTest() }
         }
 
+        val glThreadButton = Button(this).apply {
+            text = "8 - Testar chamada JNI na thread GL"
+            setOnClickListener { testGlThreadBridge() }
+        }
+
         rootLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
@@ -170,6 +176,7 @@ class MainActivity : Activity() {
             addView(unloadButton)
             addView(glButton)
             addView(videoAbiButton)
+            addView(glThreadButton)
         }
 
         setContentView(rootLayout)
@@ -177,6 +184,7 @@ class MainActivity : Activity() {
 
     private fun showOpenGlTest() {
         loadNativeLibrary()
+        glSurfaceReady = false
         glView?.let {
             rootLayout.removeView(it)
             it.onPause()
@@ -187,6 +195,7 @@ class MainActivity : Activity() {
             preserveEGLContextOnPause = true
             setRenderer(object : GLSurfaceView.Renderer {
                 override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
+                    glSurfaceReady = true
                     GLES20.glClearColor(0.08f, 0.18f, 0.32f, 1.0f)
                     val eglStatus = try {
                         nativeVerifyEglContext()
@@ -220,6 +229,29 @@ class MainActivity : Activity() {
         )
         surface.onResume()
         surface.requestRender()
+    }
+
+    private fun testGlThreadBridge() {
+        val surface = glView
+        if (surface == null || !glSurfaceReady) {
+            statusView.text = "N64 Android\\n\\nAbra primeiro o teste 6 e aguarde o contexto EGL ficar valido."
+            return
+        }
+
+        statusView.text = "N64 Android\\n\\nEnviando chamada JNI para a thread GL..."
+        surface.queueEvent {
+            val result = try {
+                nativeVerifyEglContext()
+            } catch (error: LinkageError) {
+                "Falha na chamada JNI da thread GL: " + error.message
+            } catch (error: Exception) {
+                "Erro na chamada JNI da thread GL: " + error.message
+            }
+            runOnUiThread {
+                statusView.text = "N64 Android\\n\\nPonte JNI via GLSurfaceView.queueEvent\\n" + result +
+                    "\\n\\nNenhuma ROM foi carregada."
+            }
+        }
     }
 
     private fun loadNativeLibrary() {
