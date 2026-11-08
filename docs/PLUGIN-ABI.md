@@ -608,3 +608,35 @@ O GLideN64 Android ativa `threadedVideo` por padrão e sua camada `FunctionWrapp
 ### Próximo passo
 
 Instalar o APK do CI no Poco C85 e verificar se o carregamento do plugin real e `PluginStartup` terminam com sucesso. Depois desenhar/testar a ponte de contexto e thread; só então liberar o início gráfico e o ciclo ROM_OPEN → attach GFX → EXECUTE.
+
+## Afinidade da thread GL no GLideN64 Android (2026-11-08)
+
+Auditoria da revisao upstream fixada a04081ad6a966a9413bea63a55f502e0dc98bb18:
+
+- src/Config.cpp define video.threadedVideo = 1 para OS_ANDROID.
+- mupen64plus_DisplayWindow.cpp::_start() passa esse valor a
+  FunctionWrapper::setThreadedMode.
+- opengl_Wrapper.cpp confirma que o modo threaded cria
+  m_commandExecutionThread; as funcoes wr* enviam comandos a essa
+  thread e aguardam a execucao.
+- O contexto EGL do frontend pertence a thread GL do GLSurfaceView.
+  Portanto, o modo threaded upstream pode executar chamadas GLES numa thread
+  que nao possui esse contexto.
+
+### Alteracao pequena e verificavel
+
+O patch local patches/gliden64/android-gles-profile.patch agora força
+FunctionWrapper::setThreadedMode(0) apenas sob OS_ANDROID. Nas demais
+plataformas, o valor configurado continua sendo respeitado. O workflow aplica
+a alteracao somente se a chamada upstream esperada aparecer exatamente uma
+vez e verifica o resultado antes de compilar o plugin ARM64.
+
+### Limites e proxima validacao
+
+Isso remove a thread GL privada do GLideN64, mas nao implementa por si so o
+despacho do Core para a thread do GLSurfaceView. O frontend ainda precisa
+executar InitiateGFX, callbacks de frame e qualquer chamada GLES na thread
+que possui o EGL atual, inclusive apos onPause/onResume recriar o contexto.
+O proximo marco continua sendo validar PluginStartup e, depois, desenhar
+uma chamada controlada de inicializacao grafica na GL thread. ROM_OPEN,
+CoreAttachPlugin e EXECUTE permanecem bloqueados.
