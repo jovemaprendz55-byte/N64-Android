@@ -60,5 +60,7 @@ originais de cada projeto ao importar ou empacotar os componentes.
 - libpng release e avisos de segurança: https://www.libpng.org/pub/png/libpng.html
 - zlib release: https://www.zlib.net/
 
-**Status:** pins registrados; nenhum desses três componentes foi ainda
-importado, compilado ou testado neste repositório.
+**Status:** pins registrados. O workflow agora faz checkout do SDL2 no commit
+fixado e tenta compilar libSDL2.so para Android ARM64; aguardar o resultado
+do Actions antes de considerar a biblioteca validada. libpng e zlib ainda não
+foram importados ou compilados.
