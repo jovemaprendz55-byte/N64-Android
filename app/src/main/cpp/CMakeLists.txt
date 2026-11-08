@@ -4,6 +4,7 @@ project(n64bridge LANGUAGES C CXX ASM)
 add_library(n64bridge SHARED native-lib.cpp)
 
 target_compile_features(n64bridge PRIVATE cxx_std_17)
+target_link_libraries(n64bridge PRIVATE log dl EGL GLESv2)
 target_compile_options(n64bridge PRIVATE -Wall -Wextra -Werror)
 
 # The CI builds the pinned SDL2 shared library before Gradle configures this
@@ -19,7 +20,6 @@ if(EXISTS "${N64_SDL2_LIBRARY}" AND EXISTS "${N64_SDL2_INCLUDE}/SDL.h")
         IMPORTED_LOCATION "${N64_SDL2_LIBRARY}"
         INTERFACE_INCLUDE_DIRECTORIES "${N64_SDL2_INCLUDE}")
     # Keep SDL2 out of n64bridge DT_NEEDED; Core links SDL2 separately below.
-    target_link_libraries(n64bridge PRIVATE log dl)
     message(STATUS "Pinned SDL2 available for Core; JNI bridge remains isolated")
 else()
     message(STATUS "Pinned SDL2 build not found; building JNI bridge only")
