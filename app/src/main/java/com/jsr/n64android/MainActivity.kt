@@ -397,7 +397,7 @@ class MainActivity : Activity() {
                                 registration
                             } else {
                                 val pluginPath = File(applicationInfo.nativeLibraryDir,
-                                    "libmupen64plus-video-android.so").absolutePath
+                                    "libmupen64plus-video-GLideN64.so").absolutePath
                                 registration + "\\n\\n" + nativeLoadGfxPlugin(pluginPath)
                             }
                         } catch (error: LinkageError) {
