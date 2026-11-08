@@ -578,3 +578,33 @@ A adaptação deve ser feita no fork/patched source do GLideN64 e compilada junt
 ### Estado e próximo marco
 
 A ponte do aplicativo continua sendo diagnóstico e não foi alterada nesta etapa. A compilação 132, que validou a documentação anterior, terminou com sucesso. Próximo trabalho: localizar o ponto mínimo de patch no backend GLideN64, ajustar perfil/versionamento para GLES e definir a leitura das capacidades reais antes de empacotar ou ativar o plugin. Nenhuma ROM foi aberta; não instalar build apenas por este resultado.
+
+
+## GLideN64 real compilado e empacotado no Android (2026-11-08)
+
+O CI passou a compilar o plugin upstream GLideN64 na revisão fixada `a04081ad6a966a9413bea63a55f502e0dc98bb18`, com licença GPL-2.0 preservada na árvore upstream e uma adaptação local pequena em `patches/gliden64/android-gles-profile.patch`.
+
+### Adaptação de contexto
+
+O backend upstream solicitava OpenGL desktop 3.3 CORE. O Poco C85 reporta OpenGL ES 3.2. O patch solicita perfil ES e versão mínima 3.0. A ponte Android também passou a rejeitar perfil desktop e versões acima do contexto GLES atual, em vez de aceitar atributos que não correspondem ao EGL real.
+
+### Evidência CI
+
+- Commit: `2542d80a348db6e04918cb2c5427cc414d5e0d47`
+- Workflow: https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42504515807
+- Resultado: success.
+- `libmupen64plus-video-GLideN64.so` foi compilada como ELF AArch64 para Android 23 e incluída no APK.
+- O CI verificou os exports obrigatórios do plugin GFX e as dependências ELF do sistema Android.
+- O frontend Android agora aponta para esse plugin real quando chama `nativeLoadGfxPlugin`.
+
+### Limite desta etapa
+
+O CI só prova compilação, exports e empacotamento. O botão **Iniciar integração gráfica** no aparelho será o primeiro teste de `PluginStartup` do GLideN64 real. Ainda não chamamos `InitiateGFX`, não anexamos o plugin com `CoreAttachPlugin`, não abrimos ROM e não executamos jogo.
+
+### Bloqueio de thread/contexto
+
+O GLideN64 Android ativa `threadedVideo` por padrão e sua camada `FunctionWrapper` pode executar chamadas GL em uma thread de comandos própria. O EGL atualmente validado pertence à thread GL do `GLSurfaceView`. Antes de `InitiateGFX`, precisamos definir como o contexto será tornado atual na thread que efetivamente executará as chamadas GL e como o loop bloqueante `M64CMD_EXECUTE` coexistirá com a troca de buffers do Android. Não desativar threadedVideo nem mover o contexto sem um teste explícito de afinidade.
+
+### Próximo passo
+
+Instalar o APK do CI no Poco C85 e verificar se o carregamento do plugin real e `PluginStartup` terminam com sucesso. Depois desenhar/testar a ponte de contexto e thread; só então liberar o início gráfico e o ciclo ROM_OPEN → attach GFX → EXECUTE.
