@@ -25,6 +25,8 @@ class MainActivity : Activity() {
 
     private lateinit var statusView: TextView
     private lateinit var rootLayout: LinearLayout
+    private lateinit var homeLayout: LinearLayout
+    private var diagnosticScreenVisible = false
     private lateinit var configDirectory: File
     private lateinit var dataDirectory: File
     private var nativeLibraryLoaded = false
@@ -170,10 +172,16 @@ class MainActivity : Activity() {
             setOnClickListener { testGlOperationsOnGlThread() }
         }
 
+        val backButton = Button(this).apply {
+            text = "Voltar ao inicio"
+            setOnClickListener { showHomeScreen() }
+        }
+
         rootLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(20, 20, 20, 20)
+            addView(backButton)
             addView(statusView)
             addView(loadButton)
             addView(jniButton)
@@ -186,7 +194,57 @@ class MainActivity : Activity() {
             addView(glOperationsButton)
         }
 
-        setContentView(rootLayout)
+        homeLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(32, 32, 32, 32)
+            addView(TextView(this@MainActivity).apply {
+                text = "N64 Android"
+                textSize = 30f
+                gravity = Gravity.CENTER
+                setPadding(12, 24, 12, 12)
+            })
+            addView(TextView(this@MainActivity).apply {
+                text = "Emulador Nintendo 64 para Android"
+                textSize = 16f
+                gravity = Gravity.CENTER
+                setPadding(12, 8, 12, 28)
+            })
+            addView(Button(this@MainActivity).apply {
+                text = "Diagnostico e testes"
+                setOnClickListener {
+                    diagnosticScreenVisible = true
+                    setContentView(rootLayout)
+                }
+            })
+            addView(TextView(this@MainActivity).apply {
+                text = "Jogos e carregamento de ROMs ainda estao em desenvolvimento."
+                textSize = 14f
+                gravity = Gravity.CENTER
+                setPadding(16, 28, 16, 12)
+            })
+        }
+
+        setContentView(homeLayout)
+    }
+
+    private fun showHomeScreen() {
+        diagnosticScreenVisible = false
+        glView?.let {
+            rootLayout.removeView(it)
+            it.onPause()
+        }
+        glSurfaceReady = false
+        setContentView(homeLayout)
+    }
+
+    @Suppress("DEPRECATION")
+    override fun onBackPressed() {
+        if (diagnosticScreenVisible) {
+            showHomeScreen()
+        } else {
+            super.onBackPressed()
+        }
     }
 
     private fun showOpenGlTest() {
