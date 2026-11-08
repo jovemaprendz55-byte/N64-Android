@@ -113,8 +113,12 @@ jobs:
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libn64bridge.so"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libSDL2.so"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus.so"
+          unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus-video-android.so"
           unzip -p "$APK" lib/arm64-v8a/libn64bridge.so > build/n64bridge-from-apk.so
           unzip -p "$APK" lib/arm64-v8a/libmupen64plus.so > build/mupen64plus-from-apk.so
+          unzip -p "$APK" lib/arm64-v8a/libmupen64plus-video-android.so > build/gfx-plugin-from-apk.so
+          readelf --dyn-syms -W build/gfx-plugin-from-apk.so | grep -E "[[:space:]]PluginGetVersion$"
+          readelf --dyn-syms -W build/gfx-plugin-from-apk.so | grep -E "[[:space:]]PluginStartup$"
           if readelf -d build/n64bridge-from-apk.so | grep -Eq "Shared library: \\[(libSDL2|libmupen64plus)\\.so\\]"; then
             echo "JNI bridge must not load SDL2 or Core as startup dependencies"
             exit 1
