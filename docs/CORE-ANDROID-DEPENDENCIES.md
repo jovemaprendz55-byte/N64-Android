@@ -57,3 +57,47 @@ Before adding third-party source files, decide and pin exact Android dependency 
 - These runs compile the current diagnostic bridge only.
 - Mupen64Plus Core / third-party Android dependencies: not yet imported or built.
 - GoldenEye 007 execution: not tested and not claimed.
+
+## Build-system findings confirmed against the pinned Makefile
+
+A second pass over the complete source-selection and link sections of
+`projects/unix/Makefile` found several details that must be carried into the
+Android port:
+
+- The upstream source list is explicit. It includes the API/frontend,
+  backends, device/RCP/R4300 implementation, main loop, plugin loader,
+  dummy plugins, Unix OS abstraction, and bundled MD5/minizip sources.
+  A CMake port must mirror this list deliberately; recursively globbing all
+  source files would incorrectly include platform-specific and optional code.
+- The Makefile recognizes `aarch64` and selects the ARM64 dynamic recompiler
+  path when `NEW_DYNAREC=1`. It also emits an "not officially supported"
+  warning for ARM64. This is not proof of Android compatibility: the
+  generated ARM64 assembly, NDK toolchain flags, and runtime behavior still
+  require build/device validation.
+- Vulkan is enabled by default on non-macOS builds unless `VULKAN=0`.
+  The first Android Core-only build must explicitly decide this option rather
+  than accidentally inheriting the Unix default.
+- `USE_GLES=1` defines `USE_GLES`, links GLESv2, and forces `OSD=0`.
+  It does not provide a video plugin or a complete Android EGL/context
+  lifecycle.
+- `OSD=0` removes the FreeType/OGLFT/OpenGL OSD source and link requirements.
+  `NETPLAY` is also off unless explicitly enabled, so SDL2_net and netplay
+  sources are not needed for the first local-ROM milestone.
+- The Makefile's Linux branch selects `dynamiclib_unix.c` and
+  `files_unix.c`, and links `-ldl`. Android uses Bionic rather than glibc;
+  the availability of similarly named APIs does not establish that the
+  Unix file-storage behavior or plugin search paths are suitable on Android.
+
+## First Android build profile (derived, still unvalidated)
+
+The initial CMake port should target only `arm64-v8a`, use the NDK's Clang
+toolchain, disable netplay and OSD, and explicitly set the Vulkan policy.
+It must use Android-built SDL2, libpng, and zlib targets, plus the pinned
+upstream minizip fallback with its notices retained. The Core source list
+should be transcribed from the pinned Makefile and reviewed file-by-file.
+The Android build must not invoke the Unix Makefile's host compiler detection
+as though Android were ordinary desktop Linux.
+
+No Core source has been imported by this documentation change. The current
+APK workflow still validates only `libn64bridge.so`; a separate CI milestone
+will be required to prove that `libmupen64plus.so` actually compiles.
