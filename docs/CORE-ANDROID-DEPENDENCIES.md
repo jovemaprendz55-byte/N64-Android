@@ -144,6 +144,14 @@ recursive globbing.
 This is source-manifest groundwork, **not yet a Core build**. The manifest
 intentionally leaves out `src/osal/files_unix.c`: Android needs a dedicated
 storage/path implementation rather than inheriting desktop Unix assumptions.
+The manifest now selects upstream `src/osal/files_unix.c` as well as
+`dynamiclib_unix.c`. Android's Bionic libc provides the POSIX file and `dlopen`
+interfaces used by these backends. Before `CoreStartup`, the Android frontend
+must set `HOME` to the app's private files directory (and may set the XDG
+variables there too); this gives the existing OSAL a writable, app-scoped
+configuration/data/cache root. This is a deliberate reuse of upstream code,
+not a claim that Android storage permissions or SAF document URIs are handled.
+
 The Android SDL2 lifecycle, dependency targets (SDL2, libpng, zlib), and
 generated ARM64 assembly-definition headers also remain to be integrated.
 The existing APK workflow still does not compile this manifest or the Core.
