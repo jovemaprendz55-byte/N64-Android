@@ -75,8 +75,8 @@ jobs:
             echo "n64bridge must not load SDL2 as a startup dependency"
             exit 1
           fi
-          readelf --dyn-syms -W build-n64bridge.so | grep -E "[[:space:]]dlopen$"
-          readelf --dyn-syms -W build-n64bridge.so | grep -E "[[:space:]]dlsym$"
+          readelf --dyn-syms -W build-n64bridge.so | grep -E "[[:space:]]dlopen(@|$)"
+          readelf --dyn-syms -W build-n64bridge.so | grep -E "[[:space:]]dlsym(@|$)"
           readelf --dyn-syms -W build-n64bridge.so | grep -E "[[:space:]]Java_com_jsr_n64android_MainActivity_nativeGetStatus$"
           readelf --dyn-syms -W build-n64bridge.so | grep -E "[[:space:]]Java_com_jsr_n64android_MainActivity_nativeInitialize$"
           readelf --dyn-syms -W build-n64bridge.so | grep -E "[[:space:]]Java_com_jsr_n64android_MainActivity_nativeShutdown$"
