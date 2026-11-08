@@ -936,18 +936,21 @@ Java_com_jsr_n64android_MainActivity_nativeTestEglSwap(JNIEnv* env, jobject /* t
         return makeString(env, status);
     }
 
-    const EGLBoolean swapped = eglSwapBuffers(display, surface);
-    const EGLint error = swapped == EGL_TRUE ? EGL_SUCCESS : eglGetError();
+    // GLSurfaceView owns the EGL buffer swap at the end of its render callback.
+    // Calling eglSwapBuffers manually here can conflict with that lifecycle.
+    glFlush();
+    const GLenum glError = glGetError();
+    const EGLint eglError = eglGetError();
     char status[512];
     std::snprintf(status, sizeof(status),
-                  "Teste controlado de eglSwapBuffers: %s.\n"
-                  "EGL error: 0x%04X | Thread Linux: %ld.\n"
-                  "Este teste nao inicia a emulacao nem altera o estado da ROM.",
-                  swapped == EGL_TRUE ? "SUCESSO" : "FALHOU",
-                  static_cast<unsigned int>(error),
+                  "Contexto EGL validado; nenhuma troca manual de buffers foi feita.\n"
+                  "EGL error: 0x%04X | GLES error: 0x%04X | Thread Linux: %ld.\n"
+                  "O GLSurfaceView continua responsavel por apresentar o frame.\n"
+                  "Este teste nao inicia a emulacao nem altera a ROM.",
+                  static_cast<unsigned int>(eglError),
+                  static_cast<unsigned int>(glError),
                   static_cast<long>(syscall(SYS_gettid)));
-    __android_log_print(swapped == EGL_TRUE ? ANDROID_LOG_INFO : ANDROID_LOG_ERROR,
-                        "N64AndroidEGL", "%s", status);
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidEGL", "%s", status);
     return makeString(env, status);
 }
 
