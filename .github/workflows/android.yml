@@ -1,4 +1,4 @@
-name: Android diagnostic build
+name: Android SDL2 diagnostic build
 
 on:
   push:
@@ -14,6 +14,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Checkout pinned SDL2 sources
+        uses: actions/checkout@v4
+        with:
+          repository: libsdl-org/SDL
+          ref: 5d249570393f7a37e037abf22cd6012a4cc56a71
+          path: third_party/SDL
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -28,31 +35,49 @@ jobs:
       - name: Install Android NDK and CMake
         run: sdkmanager "ndk;27.0.12077973" "cmake;3.22.1"
 
+      - name: Configure pinned SDL2 for Android ARM64
+        run: |
+          NDK="$ANDROID_HOME/ndk/27.0.12077973"
+          cmake -S third_party/SDL -B build/sdl2-arm64 \
+            -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-23 \
+            -DSDL_SHARED=ON \
+            -DSDL_STATIC=OFF \
+            -DSDL_TEST=OFF \
+            -DSDL_TESTS=OFF
+          cmake --build build/sdl2-arm64 --parallel 2
+          test -s build/sdl2-arm64/libSDL2.so
+          file build/sdl2-arm64/libSDL2.so
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
           validate-wrappers: false
 
-      - name: Build diagnostic debug APK
+      - name: Build SDL2 diagnostic APK
         run: gradle --no-daemon assembleDebug
 
-      - name: Verify isolated JNI bridge
+      - name: Verify SDL2-only JNI bridge
         run: |
           APK="app/build/outputs/apk/debug/app-debug.apk"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libn64bridge.so"
-          unzip -p "$APK" lib/arm64-v8a/libn64bridge.so > build-n64bridge.so
-          if readelf -d build-n64bridge.so | grep -E "Shared library: \[(libSDL2|libmupen64plus)\.so\]"; then
-            echo "Diagnostic bridge unexpectedly depends on SDL2 or Mupen64Plus"
+          unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libSDL2.so"
+          if unzip -Z1 "$APK" | grep -q "lib/arm64-v8a/libmupen64plus.so"; then
+            echo "Mupen64Plus Core must remain excluded in the SDL2 diagnostic build"
             exit 1
           fi
+          unzip -p "$APK" lib/arm64-v8a/libn64bridge.so > build-n64bridge.so
+          readelf -d build-n64bridge.so | grep -F "Shared library: [libSDL2.so]"
+          readelf --dyn-syms -W build-n64bridge.so | grep -E "[[:space:]]SDL_GetVersion$"
           readelf --dyn-syms -W build-n64bridge.so | grep -E "[[:space:]]Java_com_jsr_n64android_MainActivity_nativeGetStatus$"
           readelf --dyn-syms -W build-n64bridge.so | grep -E "[[:space:]]Java_com_jsr_n64android_MainActivity_nativeInitialize$"
           readelf --dyn-syms -W build-n64bridge.so | grep -E "[[:space:]]Java_com_jsr_n64android_MainActivity_nativeShutdown$"
 
-      - name: Upload diagnostic APK
+      - name: Upload SDL2 diagnostic APK
         uses: actions/upload-artifact@v4
         with:
-          name: n64-android-diagnostic
+          name: n64-android-sdl2-diagnostic
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
