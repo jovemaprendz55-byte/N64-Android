@@ -104,7 +104,7 @@ set(M64P_CORE_INCLUDE_DIRS
     "${MUPEN64PLUS_CORE_SOURCE_DIR}/src/asm_defines"
     "${MUPEN64PLUS_CORE_SOURCE_DIR}/subprojects/md5"
     "${MUPEN64PLUS_CORE_SOURCE_DIR}/subprojects/minizip"
-    "${MUPEN64PLUS_CORE_SOURCE_DIR}/subprojects/xxhash
+    "${MUPEN64PLUS_CORE_SOURCE_DIR}/subprojects/xxhash"
 )
 
 # Resolve paths without globbing so missing or renamed upstream files fail
