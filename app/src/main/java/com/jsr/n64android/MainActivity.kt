@@ -32,6 +32,8 @@ class MainActivity : Activity() {
     private external fun nativeRegisterAndroidVideo(): String
     private external fun nativeLoadGfxPlugin(pluginPath: String): String
     private external fun nativeOpenRomAndAttachGfx(romBytes: ByteArray): String
+    private external fun nativeExecuteCore(): String
+    private external fun nativeStopCore(): String
     private external fun nativeTestVideoOverrideAbi(): String
     private external fun nativeVerifyEglContext(): String
     private external fun nativeTestGlOperations(): String
@@ -290,6 +292,20 @@ class MainActivity : Activity() {
             addView(Button(this@MainActivity).apply { text = "Selecionar ROM"; setOnClickListener { openRomPicker() } })
             addView(Button(this@MainActivity).apply { text = "Abrir ROM no Core e anexar vídeo"; setOnClickListener { openSelectedRomInCore() } })
             addView(Button(this@MainActivity).apply {
+                text = "Iniciar emulação (teste controlado)"
+                setOnClickListener { executeCoreOnGlThread() }
+            })
+            addView(Button(this@MainActivity).apply {
+                text = "Parar emulação"
+                setOnClickListener {
+                    integrationStatusView.text = try {
+                        nativeStopCore()
+                    } catch (error: Throwable) {
+                        "Falha ao solicitar parada: ${error.message}"
+                    }
+                }
+            })
+            addView(Button(this@MainActivity).apply {
                 text = "Testar troca EGL (diagnóstico)"
                 setOnClickListener {
                     val surface = glView
@@ -476,6 +492,23 @@ class MainActivity : Activity() {
                 }
             }
         }.start()
+    }
+
+    private fun executeCoreOnGlThread() {
+        val surface = glView
+        if (surface == null || !glSurfaceReady) {
+            integrationStatusView.text = "Contexto EGL nao esta pronto."
+            return
+        }
+        integrationStatusView.text = "Solicitando M64CMD_EXECUTE na thread GL. Use Parar emulacao para interromper."
+        surface.queueEvent {
+            val result = try {
+                nativeExecuteCore()
+            } catch (error: Throwable) {
+                "Falha durante M64CMD_EXECUTE: ${error.message}"
+            }
+            runOnUiThread { integrationStatusView.text = result }
+        }
     }
 
     private fun openRomPicker() { val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "*/*" }; startActivityForResult(i, romPickerRequestCode) }
