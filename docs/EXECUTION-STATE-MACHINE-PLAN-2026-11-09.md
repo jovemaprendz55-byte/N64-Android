@@ -90,3 +90,16 @@ Revisão posterior do código atual confirmou detalhes que precisam ser tratados
 ### Decisão de implementação
 
 Não foi alterado o código nativo nesta etapa: criar um enum sem resolver a vida útil concorrente do ponteiro `CoreDoCommand` daria uma falsa impressão de segurança. A próxima alteração de código deve introduzir primeiro o protocolo de lease/chamadas ativas e testes de concorrência; só então adicionar as transições completas e o coordenador Kotlin. O gate `M64CMD_EXECUTE` permanece fechado.
+
+
+## Atualização após protótipo isolado e auditoria Android — 2026-11-09
+
+- Foi adicionado `CoreCallGate` em `app/src/main/cpp/core_call_gate.h`, com leases RAII e separação entre `beginShutdown()` (fecha admissão) e `waitForDrain()` (espera chamadas ativas).
+- O teste nativo cobre EXECUTE ativo, recusa de novas operações, admissão de STOP após fechamento, e espera até que ambos os leases EXECUTE e STOP sejam liberados.
+- O gate ainda não está conectado ao runtime. O teste não valida ponteiros dinâmicos, `g_coreMutex`, chamadas reais do Core, EGL nem ciclo de vida Android.
+- A auditoria complementar em `docs/ANDROID-LIFECYCLE-FOLLOWUP-AUDIT-2026-11-09.md` confirma que `onPause()` pausa a GLSurfaceView imediatamente, enquanto `onDestroy()` pode aguardar apenas 1500 ms por um evento enfileirado na thread GL.
+- A integração deve começar com um coordenador de chamadas que obtenha leases e capture handles/funções de forma atômica sob sincronização, sem manter `g_coreMutex` durante EXECUTE e sem permitir `dlclose` até todos os leases terminarem.
+- O coordenador deve fechar admissão, obter lease STOP, enviar `M64CMD_STOP`, liberar o lease STOP após o retorno do comando e só então esperar o drain completo. Não chamar `waitForDrain()` mantendo um mutex necessário para STOP.
+- O lifecycle Kotlin deve solicitar STOP fora da thread GL ocupada e só pausar/remover a superfície ou executar shutdown gráfico após confirmação real de retorno do EXECUTE. Timeout mantém bibliotecas protegidas.
+
+**Estado atual inalterado:** `M64CMD_EXECUTE` permanece bloqueado; ROM aberta e plugins anexados não demonstram que uma tarefa gráfica ou frame de jogo foi processado.
