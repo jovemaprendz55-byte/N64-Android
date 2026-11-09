@@ -748,55 +748,17 @@ Java_com_jsr_n64android_MainActivity_nativeExecuteCore(JNIEnv* env, jobject /* t
 #ifndef N64_HAS_MUPEN64PLUS_HEADERS
     return makeString(env, "Headers oficiais do Core nao estao disponiveis nesta compilacao.");
 #else
-    using CoreDoCommandSymbol = m64p_error (*)(m64p_command, int, void*);
-    void* core = nullptr;
-    CoreDoCommandSymbol doCommand = nullptr;
-    {
-        std::lock_guard<std::mutex> lock(g_coreMutex);
-        if (g_coreHandle == nullptr || !g_coreStarted)
-            return makeString(env, "Inicialize o Core antes de executar.");
-        if (!g_romOpen || !g_gfxAttached)
-            return makeString(env, "Execucao bloqueada: abra a ROM e anexe o plugin GFX antes de continuar.");
-        // Mupen64Plus requires all four plugin classes before starting the
-        // emulation loop. This frontend currently attaches only GLideN64.
-        // Do not call M64CMD_EXECUTE until RSP, audio and input are attached;
-        // incomplete plugin state can crash inside the native Core.
-        // Keep the execute loop disabled after the device crash. The pinned
-        // Core provides internal dummy RSP/audio/input plugins, so those are
-        // not prerequisites for this diagnostic gate. First collect native
-        // crash diagnostics and validate the GLideN64/Core frame lifecycle.
-        __android_log_print(ANDROID_LOG_WARN, "N64AndroidFlow",
-                            "M64CMD_EXECUTE temporariamente bloqueado: diagnostico da falha nativa pendente.");
-        return makeString(env,
-            "Execucao temporariamente bloqueada por seguranca.\\n"
-            "O Core e o plugin GFX foram carregados/anexados, mas o primeiro teste fechou o app.\\n"
-            "O Core possui plugins internos de compatibilidade para RSP/audio/input.\\n"
-            "Estamos investigando a falha nativa antes de liberar novo teste.");
-        if (!androidVideoContextReady())
-            return makeString(env, "Execucao recusada: contexto EGL nao esta atual na thread GL.");
-        if (g_coreExecuting.load())
-            return makeString(env, "O Core ja esta em execucao.");
-        core = g_coreHandle;
-        doCommand = reinterpret_cast<CoreDoCommandSymbol>(dlsym(core, "CoreDoCommand"));
-        if (doCommand == nullptr)
-            return makeString(env, "CoreDoCommand nao encontrado.");
-        g_coreExecuting.store(true);
-    }
-
-    __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
-                        "M64CMD_EXECUTE iniciado na thread GL; TID=%ld",
-                        static_cast<long>(syscall(SYS_gettid)));
-    const m64p_error result = doCommand(M64CMD_EXECUTE, 0, nullptr);
-    g_coreExecuting.store(false);
-    __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
-                        "M64CMD_EXECUTE retornou codigo=%d TID=%ld",
-                        static_cast<int>(result), static_cast<long>(syscall(SYS_gettid)));
-    char status[384];
-    std::snprintf(status, sizeof(status),
-                  "M64CMD_EXECUTE retornou ao frontend. Codigo: %d.\n"
-                  "Thread GL: %ld. O Core nao esta mais executando.",
-                  static_cast<int>(result), static_cast<long>(syscall(SYS_gettid)));
-    return makeString(env, status);
+    // Safety gate: keep native execution disabled until the Core/GFX frame
+    // lifecycle is diagnosed. The previous device attempt closed the process.
+    // Do not leave an unreachable M64CMD_EXECUTE implementation below this
+    // return: it could be mistaken for an enabled or validated execution path.
+    __android_log_print(ANDROID_LOG_WARN, "N64AndroidFlow",
+                        "M64CMD_EXECUTE temporariamente bloqueado: diagnostico da falha nativa pendente.");
+    return makeString(env,
+        "Execucao temporariamente bloqueada por seguranca.\\n"
+        "O Core e o plugin GFX foram carregados/anexados, mas a execucao ainda nao foi validada.\\n"
+        "O Core possui plugins internos de compatibilidade para RSP/audio/input.\\n"
+        "Estamos investigando a falha nativa antes de liberar novo teste.");
 #endif
 }
 
