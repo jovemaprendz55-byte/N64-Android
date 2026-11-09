@@ -1,6 +1,7 @@
 #pragma once
 
 #include <condition_variable>
+#include <chrono>
 #include <cstddef>
 #include <mutex>
 #include <utility>
@@ -68,6 +69,18 @@ public:
         if (!shutdownRequested_) return;
         drained_.wait(lock, [this] { return activeCalls_ == 0; });
         shutdownComplete_ = true;
+    }
+
+    // Bounded drain for Android lifecycle callbacks. A timeout does not
+    // mark shutdown complete, so callers must preserve all Core handles.
+    template <typename Rep, typename Period>
+    bool waitForDrainFor(const std::chrono::duration<Rep, Period>& timeout) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        if (!shutdownRequested_) return false;
+        if (!drained_.wait_for(lock, timeout, [this] { return activeCalls_ == 0; }))
+            return false;
+        shutdownComplete_ = true;
+        return true;
     }
 
     void beginShutdownAndWait() {
