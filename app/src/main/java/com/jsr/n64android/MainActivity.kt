@@ -320,16 +320,27 @@ class MainActivity : Activity() {
                 isEnabled = false
                 contentDescription = "M64CMD_EXECUTE permanece bloqueado até a auditoria do ciclo de execução e parada."
             })
-            addView(Button(this@MainActivity).apply {
+            val stopButton = Button(this@MainActivity).apply {
                 text = "Parar emulação"
                 setOnClickListener {
-                    integrationStatusView.text = try {
-                        nativeStopCore()
-                    } catch (error: Throwable) {
-                        "Falha ao solicitar parada: ${error.message}"
-                    }
+                    // nativeStopCore may wait for the R4300 readiness marker.
+                    // Keep that wait off Android's main/UI thread.
+                    isEnabled = false
+                    integrationStatusView.text = "Solicitando parada em segundo plano..."
+                    Thread({
+                        val result = try {
+                            nativeStopCore()
+                        } catch (error: Throwable) {
+                            "Falha ao solicitar parada: ${error.message}"
+                        }
+                        runOnUiThread {
+                            integrationStatusView.text = result
+                            isEnabled = true
+                        }
+                    }, "N64-Stop-Request").start()
                 }
-            })
+            }
+            addView(stopButton)
             addView(Button(this@MainActivity).apply {
                 text = "Verificar EGL (sem troca manual)"
                 setOnClickListener {
