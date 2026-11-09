@@ -114,5 +114,36 @@ int main() {
     assert(reservedRuntime.phase() == Phase::Drained);
     assert(reservedRuntime.markShutdownComplete());
     assert(reservedRuntime.resetAfterShutdown());
+
+    // Concurrent lifecycle callers may both wait for the same Execute drain.
+    // Both waiters must observe Drained without either claiming GL teardown.
+    Coordinator concurrentDrainRuntime;
+    assert(concurrentDrainRuntime.markCoreInitialized());
+    assert(concurrentDrainRuntime.markRomOpen());
+    assert(concurrentDrainRuntime.markPluginsAttached());
+    auto concurrentExecute = concurrentDrainRuntime.tryAcquire(Operation::Execute);
+    assert(concurrentExecute);
+    assert(concurrentDrainRuntime.markExecuting());
+    assert(concurrentDrainRuntime.beginShutdown());
+
+    bool firstWaiterDrained = false;
+    bool secondWaiterDrained = false;
+    std::thread firstWaiter([&] {
+        firstWaiterDrained =
+            concurrentDrainRuntime.waitForDrainFor(std::chrono::milliseconds(500));
+    });
+    std::thread secondWaiter([&] {
+        secondWaiterDrained =
+            concurrentDrainRuntime.waitForDrainFor(std::chrono::milliseconds(500));
+    });
+
+    concurrentExecute.release();
+    firstWaiter.join();
+    secondWaiter.join();
+    assert(firstWaiterDrained);
+    assert(secondWaiterDrained);
+    assert(concurrentDrainRuntime.phase() == Phase::Drained);
+    assert(concurrentDrainRuntime.markShutdownComplete());
+
     return 0;
 }
