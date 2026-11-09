@@ -13,6 +13,7 @@
 #include <GLES2/gl2.h>
 #include <sys/syscall.h>
 #include <unistd.h>
+#include "core_runtime_coordinator.h"
 #ifdef N64_HAS_MUPEN64PLUS_HEADERS
 #include "m64p_types.h"
 #include "m64p_frontend.h"
@@ -20,6 +21,7 @@
 
 namespace {
 std::mutex g_coreMutex;
+CoreRuntimeCoordinator g_coreRuntime;
 void* g_coreHandle = nullptr;
 bool g_coreStarted = false;
 using CoreStartupSymbol = int (*)(int, const char*, const char*, void*,
@@ -273,6 +275,11 @@ Java_com_jsr_n64android_MainActivity_nativeInitialize(
         JNIEnv* env, jobject /* thiz */, jstring configPath, jstring dataPath) {
     (void) configPath;
     (void) dataPath;
+    if (g_coreRuntime.phase() == CoreRuntimeCoordinator::Phase::ShutdownComplete)
+        g_coreRuntime.resetAfterShutdown();
+    auto runtimeLease = g_coreRuntime.tryAcquire(CoreRuntimeCoordinator::Operation::Other);
+    if (!runtimeLease)
+        return makeString(env, "Inicializacao recusada: ciclo do Core em encerramento.");
     std::lock_guard<std::mutex> lock(g_coreMutex);
     if (g_coreHandle != nullptr) {
         return makeString(env, "Biblioteca do Core ja esta carregada.");
@@ -371,6 +378,9 @@ extern "C"
 JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_MainActivity_nativeStartCore(
         JNIEnv* env, jobject /* thiz */, jstring configPath, jstring dataPath) {
+    auto runtimeLease = g_coreRuntime.tryAcquire(CoreRuntimeCoordinator::Operation::Other);
+    if (!runtimeLease)
+        return makeString(env, "CoreStartup recusado: ciclo do Core em encerramento.");
     std::lock_guard<std::mutex> lock(g_coreMutex);
     if (g_coreHandle == nullptr) return makeString(env, "Carregue e verifique o Core antes de inicializar.");
     if (g_coreStarted) return makeString(env, "Core ja esta inicializado.");
@@ -461,6 +471,9 @@ Java_com_jsr_n64android_MainActivity_nativeTestVideoOverrideAbi(JNIEnv* env, job
 #ifndef N64_HAS_MUPEN64PLUS_HEADERS
     return makeString(env, "Headers oficiais do Core nao estao disponiveis nesta compilacao.");
 #else
+    auto runtimeLease = g_coreRuntime.tryAcquire(CoreRuntimeCoordinator::Operation::Other);
+    if (!runtimeLease)
+        return makeString(env, "Teste de Video Extension recusado durante encerramento.");
     std::lock_guard<std::mutex> lock(g_coreMutex);
     if (g_coreHandle == nullptr || !g_coreStarted)
         return makeString(env, "Inicialize o Core no botao 4 antes deste teste.");
@@ -517,6 +530,9 @@ Java_com_jsr_n64android_MainActivity_nativeRegisterAndroidVideo(JNIEnv* env, job
     return makeString(env, "Headers oficiais do Core nao estao disponiveis nesta compilacao.");
 #else
     __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow", "nativeRegisterAndroidVideo: entrada");
+    auto runtimeLease = g_coreRuntime.tryAcquire(CoreRuntimeCoordinator::Operation::Other);
+    if (!runtimeLease)
+        return makeString(env, "Registro de video recusado durante encerramento.");
     std::lock_guard<std::mutex> lock(g_coreMutex);
     if (g_coreHandle == nullptr || !g_coreStarted)
         return makeString(env, "Inicialize o Core antes de registrar o video Android.");
@@ -569,6 +585,9 @@ JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_MainActivity_nativeLoadGfxPlugin(
         JNIEnv* env, jobject /* thiz */, jstring pluginPath) {
     __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow", "nativeLoadGfxPlugin: entrada");
+    auto runtimeLease = g_coreRuntime.tryAcquire(CoreRuntimeCoordinator::Operation::Other);
+    if (!runtimeLease)
+        return makeString(env, "Carga GFX recusada durante encerramento.");
     std::lock_guard<std::mutex> lock(g_coreMutex);
     if (g_coreHandle == nullptr || !g_coreStarted)
         return makeString(env, "Inicialize o Core antes de carregar o plugin GFX.");
@@ -702,6 +721,9 @@ Java_com_jsr_n64android_MainActivity_nativeLoadRspPlugin(
 #ifndef N64_HAS_MUPEN64PLUS_HEADERS
     return makeString(env, "Headers oficiais do Core nao estao disponiveis nesta compilacao.");
 #else
+    auto runtimeLease = g_coreRuntime.tryAcquire(CoreRuntimeCoordinator::Operation::Other);
+    if (!runtimeLease)
+        return makeString(env, "Carga RSP recusada durante encerramento.");
     std::lock_guard<std::mutex> lock(g_coreMutex);
     if (g_coreHandle == nullptr || !g_coreStarted)
         return makeString(env, "Inicialize o Core antes de carregar o plugin RSP.");
@@ -788,6 +810,9 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
 #ifndef N64_HAS_MUPEN64PLUS_HEADERS
     return makeString(env, "Headers oficiais do Core nao estao disponiveis nesta compilacao.");
 #else
+    auto runtimeLease = g_coreRuntime.tryAcquire(CoreRuntimeCoordinator::Operation::Other);
+    if (!runtimeLease)
+        return makeString(env, "Abertura/anexo da ROM recusados durante encerramento.");
     std::lock_guard<std::mutex> lock(g_coreMutex);
     if (g_coreHandle == nullptr || !g_coreStarted)
         return makeString(env, "Inicialize o Core antes de abrir uma ROM.");
