@@ -251,6 +251,9 @@ jobs:
           # This workflow does not execute that wrapper; it invokes the pinned Gradle version above.
           validate-wrappers: false
 
+      - name: Run Kotlin JVM unit tests
+        run: gradle --no-daemon testDebugUnitTest
+
       - name: Build debug APK
         run: gradle --no-daemon assembleDebug
 
