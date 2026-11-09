@@ -1,11 +1,52 @@
 package com.jsr.n64android
 
 import org.junit.Assert.assertEquals
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CoreLifecycleStateMachineTest {
+    @Test
+    fun concurrentStopRequestsJoinOneGeneration() {
+        val machine = CoreLifecycleStateMachine()
+        val threadCount = 32
+        val ready = CountDownLatch(threadCount)
+        val start = CountDownLatch(1)
+        val pool = Executors.newFixedThreadPool(threadCount)
+
+        try {
+            val results = (0 until threadCount).map { index ->
+                pool.submit<CoreLifecycleStateMachine.Snapshot> {
+                    ready.countDown()
+                    check(start.await(2, TimeUnit.SECONDS))
+                    machine.begin(
+                        if (index % 2 == 0) {
+                            CoreLifecycleStateMachine.Request.MANUAL_STOP
+                        } else {
+                            CoreLifecycleStateMachine.Request.ACTIVITY_PAUSE
+                        }
+                    )
+                }
+            }
+
+            assertTrue("All workers should be ready", ready.await(2, TimeUnit.SECONDS))
+            start.countDown()
+            val snapshots = results.map { it.get(2, TimeUnit.SECONDS) }
+
+            assertEquals(1, snapshots.map { it.generation }.distinct().size)
+            assertTrue(snapshots.all {
+                it.phase == CoreLifecycleStateMachine.Phase.STOP_REQUESTED
+            })
+            assertEquals(CoreLifecycleStateMachine.Phase.STOP_REQUESTED, machine.snapshot().phase)
+        } finally {
+            start.countDown()
+            pool.shutdownNow()
+        }
+    }
+
     @Test
     fun repeatedStopRequestsJoinOneGeneration() {
         val machine = CoreLifecycleStateMachine()
