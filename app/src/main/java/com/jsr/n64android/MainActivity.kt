@@ -626,7 +626,9 @@ class MainActivity : Activity() {
     }
 
     private fun showOpenGlTest(drawTriangle: Boolean = false, registerVideoExtension: Boolean = false) {
-        if (!shutdownCoreBeforeSurfaceChange()) return
+        // On first integration startup there is no previous GLSurfaceView to replace.
+        // Shutting down here would tear down the Core that startAndroidVideoIntegration just initialized.
+        if (glView != null && !shutdownCoreBeforeSurfaceChange()) return
         loadNativeLibrary()
         glSurfaceReady = false
         glView?.let {
