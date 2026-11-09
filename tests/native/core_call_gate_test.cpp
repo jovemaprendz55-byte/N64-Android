@@ -2,10 +2,7 @@
 
 #include <atomic>
 #include <cassert>
-#include <chrono>
 #include <thread>
-
-using namespace std::chrono_literals;
 
 int main() {
     CoreCallGate gate;
