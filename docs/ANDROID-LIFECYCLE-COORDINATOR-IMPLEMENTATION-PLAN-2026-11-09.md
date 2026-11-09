@@ -107,3 +107,14 @@ Esta etapa registra o contrato de concorrencia e o plano de testes. Nao altera r
 - Criado `CoreStopCoordinatorTest.kt`: cobre STOP aceito, STOP já enviado, STOP recusado e timeout negativo limitado a zero.
 - O coordenador ainda não está conectado à Activity. A integração fica para depois da migração da propriedade JNI para um objeto de vida útil estável e da auditoria de todos os símbolos JNI.
 - Não alterar lifecycle Android, não mover `nativeShutdown()` para worker, não habilitar `M64CMD_EXECUTE`.
+
+
+## Atualização após smoke test da ponte JNI no Poco C85 — 2026-11-09
+
+- O usuário instalou o APK e pressionou **Parar emulação** com Core/ROM abertos, mas sem iniciar Execute.
+- Resposta observada: `Parada recusada: nao existe Execute ativo ou o ciclo ja foi encerrado.`
+- A confirmação seguinte foi `Aguardagem nao iniciada: o STOP nao foi confirmado como enviado.`
+- Isso confirma que o símbolo JNI de `CoreNativeBridge.nativeStopCore()` foi resolvido no aparelho e que o coordenador não iniciou espera indevida após STOP recusado.
+- **Limite:** o teste não chamou `nativeAwaitExecuteReturned()`, não percorreu STOP aceito e não provou execução ou renderização.
+- Registro detalhado: [CORE-NATIVE-BRIDGE-DEVICE-SMOKE-TEST-2026-11-09.md](CORE-NATIVE-BRIDGE-DEVICE-SMOKE-TEST-2026-11-09.md).
+- Próximo passo: avançar para a coordenação serial do lifecycle com testes JVM, sem ainda alterar `onPause()`/`onDestroy()` nem habilitar `M64CMD_EXECUTE`.
