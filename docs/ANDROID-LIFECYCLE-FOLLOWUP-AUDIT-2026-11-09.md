@@ -79,3 +79,13 @@ Não alterar o botão nem iniciar ROM no loop. Primeiro, implementar e testar um
 ### Próxima mudança autorizada para implementação
 
 Antes de modificar `onPause()`/ `onDestroy()`, desenhar um coordenador Kotlin serial com executor de lifecycle e geração de operação, sem referência forte à Activity. Os testes devem cobrir STOP repetido, sobreposição botão/onPause/onDestroy, timeout, retorno natural do Execute, seletor de ROM e callback tardio. O worker pode solicitar STOP e aguardar retorno, mas nunca chamar `nativeShutdown()`; o teardown permanece exclusivo da GL thread enquanto EGL estiver atual. Se Android destruir a superfície antes da confirmação, o estado deve permanecer não confirmado e os handles nativos devem ser preservados. Não liberar o botão EXECUTE nesta etapa.
+
+## Auditoria da ponte JNI e coordenador serial — 2026-11-09
+
+- CI do commit `6a1f8ab1d21d96e412abb439d4931dfb68bc6a9d` aprovado: [run 42697754975](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42697754975), job `assemble` concluído com sucesso.
+- Os endpoints JNI de STOP e espera usam nomes da classe `CoreNativeBridge`; os parâmetros `jobject` são ignorados e o estado do Core é mantido em objetos globais de processo. Isso reduz o acoplamento funcional à Activity, mas ainda é necessário confirmar o lifetime do objeto Kotlin que invoca os métodos.
+- `nativeStopCore()` adquire um lease `Stop`, aguarda o handshake R4300/retorno por até 1500 ms, verifica o handle sob `g_coreMutex`, e usa `g_stopCommandIssued.exchange(true)` para evitar comando STOP duplicado. Depois chama `CoreDoCommand(M64CMD_STOP)` fora do mutex de handles.
+- `nativeAwaitExecuteReturned()` verifica a fase do runtime e aguarda o handshake por timeout limitado; não faz shutdown, detach, descarregamento nem EGL.
+- A separação de responsabilidades no contrato JNI está correta: STOP/drain não deve fazer teardown. Porém, a espera JNI ainda não foi exercitada em um Execute real no Poco C85.
+- O próximo risco é o reset/reuso: o coordenador Kotlin mantém a operação aceita latched para evitar STOP duplicado, enquanto o runtime nativo permite novo ciclo somente após `ShutdownComplete` e `resetAfterShutdown()`. A integração precisa liberar a geração Kotlin apenas após confirmação explícita de teardown completo e reinicialização válida — nunca apenas após retorno de Execute.
+- Nenhuma alteração nos callbacks Android ou no caminho de execução foi feita nesta auditoria. `M64CMD_EXECUTE` continua bloqueado.
