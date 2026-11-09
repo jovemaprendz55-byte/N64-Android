@@ -26,7 +26,6 @@ int main() {
     assert(runtime.phase() == Phase::StopRequested);
     assert(!runtime.tryAcquire(Operation::Execute));
     assert(!runtime.tryAcquire(Operation::Other));
-    assert(!runtime.tryAcquire(Operation::Stop)); // only after shutdown request
     auto stop = runtime.tryAcquire(Operation::Stop);
     assert(stop);
     assert(runtime.activeCalls() == 2);
