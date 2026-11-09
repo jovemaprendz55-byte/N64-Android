@@ -137,3 +137,25 @@ for a gameplay test yet. The next engineering task is to integrate and validate
 a compatible ARM64 Mupen64Plus HLE RSP plugin, then verify its attachment and
 RSP task callbacks before a guarded execution test. Audio and input can remain
 stubbed for the first video-only proof, but RSP cannot.
+
+
+## HLE RSP ARM64 build integration (2026-11-09)
+
+The official `mupen64plus-rsp-hle` source was selected as the first RSP
+implementation candidate. Its source identifies the plugin API exports
+`PluginGetVersion`, `PluginStartup`, `PluginShutdown`, `InitiateRSP`,
+`DoRspCycles`, and `RomClosed`. Its upstream Unix Makefile supports
+AArch64 and builds a shared library using the Mupen64Plus Core API headers.
+
+The Android workflow now checks out the immutable upstream revision
+`dd09c7dcdc6d2cff584aacb9d519600d47d61039`, builds it with the Android NDK
+ARM64 API 23 compiler, verifies the required exported symbols, and packages
+`libmupen64plus-rsp-hle.so` in the APK. Workflow change commit:
+`70f478c4b9bbdc19ff0394d44f42a6ef8dffe242`.
+
+This is build/package integration only. The JNI frontend does not yet load
+the RSP library, call its `PluginStartup`, or attach it through
+`CoreAttachPlugin(M64PLUGIN_RSP)`. No RSP task execution or game frame is
+claimed. Keep `M64CMD_EXECUTE` blocked until runtime attachment, correct plugin
+ordering, task callback behavior, and a safe stop/shutdown path are implemented
+and verified.
