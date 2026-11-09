@@ -18,6 +18,7 @@ int main() {
     assert(runtime.markCoreInitialized());
     assert(runtime.markRomOpen());
     assert(runtime.markPluginsAttached());
+    assert(!runtime.tryAcquire(Operation::Stop));
 
     auto execute = runtime.tryAcquire(Operation::Execute);
     assert(execute);
@@ -60,6 +61,7 @@ int main() {
     // Repeated shutdown attempts may safely observe an already-drained gate.
     assert(runtime.waitForDrainFor(std::chrono::milliseconds(1)));
     assert(!runtime.tryAcquire(Operation::Other));
+    assert(!runtime.tryAcquire(Operation::Stop));
     assert(runtime.markShutdownComplete());
     assert(runtime.phase() == Phase::ShutdownComplete);
     assert(!runtime.beginShutdown());
