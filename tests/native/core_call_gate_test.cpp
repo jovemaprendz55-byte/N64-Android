@@ -15,18 +15,11 @@ int main() {
     assert(execute);
     assert(gate.activeCalls() == 1);
 
-    std::atomic<bool> shutdownReturned{false};
-    std::thread shutdown([&] {
-        gate.beginShutdownAndWait();
-        shutdownReturned.store(true);
-    });
-
-    const auto deadline = std::chrono::steady_clock::now() + 2s;
-    while (!gate.shutdownRequested() &&
-           std::chrono::steady_clock::now() < deadline) {
-        std::this_thread::yield();
-    }
+    // The coordinator closes admission first, then obtains a STOP lease
+    // before waiting. This is the ordering required by native shutdown.
+    gate.beginShutdown();
     assert(gate.shutdownRequested());
+    std::atomic<bool> shutdownReturned{false};
 
     // Shutdown blocks new execution/ordinary calls but admits STOP so the
     // caller can interrupt the synchronous Core loop.
@@ -39,6 +32,11 @@ int main() {
     assert(stop);
     assert(gate.activeCalls() == 2);
     assert(!shutdownReturned.load());
+
+    std::thread shutdown([&] {
+        gate.waitForDrain();
+        shutdownReturned.store(true);
+    });
 
     // The drain must wait for both the synchronous EXECUTE call and the
     // concurrent STOP command to return before teardown can proceed.
