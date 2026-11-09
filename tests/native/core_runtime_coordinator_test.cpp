@@ -27,6 +27,10 @@ int main() {
     assert(!runtime.tryAcquire(Operation::Execute));
     assert(runtime.markExecuting());
     assert(!runtime.tryAcquire(Operation::Other));
+    // A user-initiated STOP is also protected while Execute is active.
+    auto userStop = runtime.tryAcquire(Operation::Stop);
+    assert(userStop);
+    userStop.release();
     // Shutdown closes ordinary admission while Execute is still in flight.
     assert(runtime.beginShutdown());
     assert(runtime.phase() == Phase::StopRequested);
