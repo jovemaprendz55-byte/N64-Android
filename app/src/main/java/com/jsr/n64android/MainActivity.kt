@@ -19,6 +19,8 @@ import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
@@ -837,14 +839,47 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
-        glView?.onPause()
-        if (nativeCoreLoaded) {
+        // Give the GL thread one last chance to detach/shutdown GLideN64 while
+        // its EGL context is current. Do this before pausing GLSurfaceView.
+        val surface = glView
+        if (nativeCoreLoaded && surface != null && glSurfaceReady) {
+            val finished = CountDownLatch(1)
+            val result = arrayOf<String?>(null)
             try {
-                nativeShutdown()
-            } catch (_: LinkageError) {
-                // Mantem o encerramento nativo protegido contra falhas JNI.
+                surface.queueEvent {
+                    try {
+                        result[0] = nativeShutdown()
+                    } catch (error: Throwable) {
+                        result[0] = "Falha no encerramento pela thread GL: ${error.message}"
+                    } finally {
+                        finished.countDown()
+                    }
+                }
+                if (finished.await(1500, TimeUnit.MILLISECONDS)) {
+                    android.util.Log.i("N64AndroidFlow",
+                        "Encerramento pela thread GL: ${result[0]}")
+                    if (result[0]?.startsWith("Biblioteca do Core descarregada corretamente") == true) {
+                        nativeCoreLoaded = false
+                        nativeCoreInitialized = false
+                    }
+                } else {
+                    android.util.Log.w("N64AndroidFlow",
+                        "Tempo esgotado aguardando encerramento GL; bibliotecas permanecem protegidas.")
+                }
+            } catch (error: Throwable) {
+                android.util.Log.e("N64AndroidFlow",
+                    "Nao foi possivel agendar encerramento na thread GL.", error)
+            }
+        } else if (nativeCoreLoaded) {
+            // The native EGL guard refuses unsafe graphics shutdown here.
+            try {
+                val result = nativeShutdown()
+                android.util.Log.i("N64AndroidFlow", result)
+            } catch (error: Throwable) {
+                android.util.Log.e("N64AndroidFlow", "Falha no encerramento protegido.", error)
             }
         }
+        surface?.onPause()
         super.onDestroy()
     }
 }
