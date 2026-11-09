@@ -97,8 +97,8 @@ public:
             (phase_ != Phase::StopRequested || !stopRequired_))
             return {};
         if (operation == Operation::Other &&
-            (phase_ == Phase::StopRequested || phase_ == Phase::Drained ||
-             phase_ == Phase::ShutdownComplete))
+            phase_ != Phase::CoreInitialized && phase_ != Phase::RomOpen &&
+            phase_ != Phase::PluginsAttached)
             return {};
 
         const auto kind = operation == Operation::Execute
