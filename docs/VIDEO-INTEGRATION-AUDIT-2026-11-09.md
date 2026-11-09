@@ -203,3 +203,44 @@ while the Core is initialized and not executing, before their
 audited end-to-end for both GFX and RSP detach ordering. Do not enable
 `M64CMD_EXECUTE` until attach failure rollback, stop, ROM close, detach,
 plugin shutdown, and EGL-thread ownership are made consistent and verified.
+
+
+## HLE RSP runtime integration build and package audit (2026-11-09)
+
+The runtime integration changes compiled successfully in both GitHub Actions
+runs:
+
+- Native C++ bridge: run `42565838206`, commit
+  `12bc87ecc17e4785b366f68687db0ab08aa79976`.
+- Android/Kotlin flow: run `42565841963`, commit
+  `02dc92f2c6c17734b64dac4b7b550647f72fa7c8`.
+
+The Kotlin run artifact `13650923166` was downloaded and inspected.
+Its APK contains the ARM64 libraries:
+
+- `libmupen64plus-rsp-hle.so`
+- `libmupen64plus-video-GLideN64.so`
+- `libmupen64plus.so`
+- `libSDL2.so`
+- `libn64bridge.so`
+
+APK SHA-256:
+`9ff8284a5e2f24601816a5e1f74ef761b065cde0b88d0d2e7b880ddaf8a52b41`.
+
+Static review confirms the intended runtime sequence is present in the
+frontend: initialize the Core, load/validate/start GLideN64, load/validate/start
+RSP-HLE, open the ROM, attach GFX, then attach RSP. The Kotlin integration
+path invokes RSP loading from the GL renderer callback. The bridge checks
+the current EGL context before ROM open/attach.
+
+The shutdown path now attempts RSP detach before GFX detach, closes the ROM,
+shuts down/unloads RSP and GFX, then shuts down/unloads the Core. It refuses
+shutdown while the Core execution flag is active and refuses graphics
+shutdown without a current EGL context. This is a static code review only;
+the detach and shutdown callbacks have not yet been exercised on-device.
+
+**Device validation is still pending.** The successful build and APK inspection
+do not prove that RSP-HLE's PluginStartup or CoreAttachPlugin(RSP) succeeds
+on the Poco C85. The user must first install this exact artifact and report
+the diagnostic output. Keep `M64CMD_EXECUTE` blocked: no emulation, RSP task
+processing, display-list processing, or game frame is yet confirmed.
