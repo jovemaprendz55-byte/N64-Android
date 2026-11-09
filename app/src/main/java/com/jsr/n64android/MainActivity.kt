@@ -997,6 +997,7 @@ class MainActivity : Activity() {
         // Give the GL thread one last chance to detach/shutdown GLideN64 while
         // its EGL context is current. Do this before pausing GLSurfaceView.
         val surface = glView
+        var mayPauseGlSurface = !nativeCoreLoaded
         if (nativeCoreLoaded && surface != null && glSurfaceReady) {
             val finished = CountDownLatch(1)
             val result = arrayOf<String?>(null)
@@ -1013,7 +1014,11 @@ class MainActivity : Activity() {
                 if (finished.await(3000, TimeUnit.MILLISECONDS)) {
                     android.util.Log.i("N64AndroidFlow",
                         "Encerramento pela thread GL: ${result[0]}")
-                    if (result[0]?.startsWith("Biblioteca do Core descarregada corretamente") == true) {
+                    mayPauseGlSurface =
+                        result[0]?.startsWith("Biblioteca do Core descarregada corretamente") == true ||
+                        result[0]?.startsWith("Biblioteca do Core nao estava carregada") == true ||
+                        result[0]?.startsWith("Core ja foi encerrado e descarregado") == true
+                    if (mayPauseGlSurface) {
                         nativeCoreLoaded = false
                         nativeCoreInitialized = false
                     }
@@ -1030,11 +1035,24 @@ class MainActivity : Activity() {
             try {
                 val result = nativeShutdown()
                 android.util.Log.i("N64AndroidFlow", result)
+                mayPauseGlSurface =
+                    result.startsWith("Biblioteca do Core descarregada corretamente") ||
+                    result.startsWith("Biblioteca do Core nao estava carregada") ||
+                    result.startsWith("Core ja foi encerrado e descarregado")
+                if (mayPauseGlSurface) {
+                    nativeCoreLoaded = false
+                    nativeCoreInitialized = false
+                }
             } catch (error: Throwable) {
                 android.util.Log.e("N64AndroidFlow", "Falha no encerramento protegido.", error)
             }
         }
-        surface?.onPause()
+        if (mayPauseGlSurface) {
+            surface?.onPause()
+        } else {
+            android.util.Log.w("N64AndroidFlow",
+                "onDestroy: pausa explicita da GLSurfaceView omitida porque shutdown nao foi confirmado. A destruicao da janela ainda pode encerrar a superficie EGL.")
+        }
         super.onDestroy()
     }
 }
