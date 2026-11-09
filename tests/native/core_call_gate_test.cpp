@@ -38,11 +38,13 @@ int main() {
     auto stop = gate.tryAcquire(CoreCallGate::Kind::Stop);
     assert(stop);
     assert(gate.activeCalls() == 2);
-    stop.release();
     assert(!shutdownReturned.load());
 
-    // The shutdown drain must not finish until EXECUTE really returns.
+    // The drain must wait for both the synchronous EXECUTE call and the
+    // concurrent STOP command to return before teardown can proceed.
     execute.release();
+    assert(!shutdownReturned.load());
+    stop.release();
     shutdown.join();
     assert(shutdownReturned.load());
     assert(gate.activeCalls() == 0);
