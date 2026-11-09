@@ -943,14 +943,17 @@ Java_com_jsr_n64android_MainActivity_nativeExecuteCore(JNIEnv* env, jobject /* t
         g_coreRuntime.markExecuteNotStarted();
         return makeString(env, "EXECUTE recusado: CoreDoCommand nao encontrado.");
     }
+    // Clear any readiness marker left by an earlier completed run before
+    // publishing the Executing phase. Shutdown cannot issue STOP while the
+    // coordinator is still in ExecuteReserved.
+    g_runLoopHandshake.reset();
     if (!g_coreRuntime.markExecuting()) {
         g_coreRuntime.markExecuteNotStarted();
+        g_runLoopHandshake.markExecuteReturned();
         return makeString(env, "EXECUTE cancelado: shutdown venceu a reserva.");
     }
 
-    // Reset the handshake before entering the synchronous Core command.
-    // A concurrent STOP waits until the patched R4300 clears its stop flag.
-    g_runLoopHandshake.reset();
+    // A concurrent STOP now waits for this run's post-reset R4300 marker.
     g_stopCommandIssued.store(false);
     g_coreExecuting.store(true);
     __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
@@ -1052,26 +1055,26 @@ Java_com_jsr_n64android_MainActivity_nativeShutdown(JNIEnv* env, jobject /* thiz
             if (!stopLease)
                 return makeString(env, "STOP recusado: nao foi possivel proteger a vida util do Core.");
             if (!g_stopCommandIssued.exchange(true)) {
-            using CoreDoCommandSymbol = m64p_error (*)(m64p_command, int, void*);
-            CoreDoCommandSymbol doCommand = nullptr;
-            {
-                std::lock_guard<std::mutex> handleLock(g_coreMutex);
-                if (g_coreHandle != nullptr)
-                    doCommand = reinterpret_cast<CoreDoCommandSymbol>(
-                        dlsym(g_coreHandle, "CoreDoCommand"));
-            }
-            if (doCommand == nullptr) {
-                g_stopCommandIssued.store(false);
-                return makeString(env, "CoreDoCommand nao encontrado; handles preservados.");
-            }
-            const m64p_error stopResult = doCommand(M64CMD_STOP, 0, nullptr);
-            if (stopResult != M64ERR_SUCCESS) {
-                g_stopCommandIssued.store(false);
-                char status[256];
-                std::snprintf(status, sizeof(status), "M64CMD_STOP falhou: codigo %d. Handles preservados.",
-                              static_cast<int>(stopResult));
-                return makeString(env, status);
-            }
+                using CoreDoCommandSymbol = m64p_error (*)(m64p_command, int, void*);
+                CoreDoCommandSymbol doCommand = nullptr;
+                {
+                    std::lock_guard<std::mutex> handleLock(g_coreMutex);
+                    if (g_coreHandle != nullptr)
+                        doCommand = reinterpret_cast<CoreDoCommandSymbol>(
+                            dlsym(g_coreHandle, "CoreDoCommand"));
+                }
+                if (doCommand == nullptr) {
+                    g_stopCommandIssued.store(false);
+                    return makeString(env, "CoreDoCommand nao encontrado; handles preservados.");
+                }
+                const m64p_error stopResult = doCommand(M64CMD_STOP, 0, nullptr);
+                if (stopResult != M64ERR_SUCCESS) {
+                    g_stopCommandIssued.store(false);
+                    char status[256];
+                    std::snprintf(status, sizeof(status), "M64CMD_STOP falhou: codigo %d. Handles preservados.",
+                                  static_cast<int>(stopResult));
+                    return makeString(env, status);
+                }
             }
             stopLease.release();
         }
