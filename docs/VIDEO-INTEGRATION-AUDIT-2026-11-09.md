@@ -120,3 +120,20 @@ a separate instrumented callback trace from inside GLideN64.
 This still does not confirm `M64CMD_EXECUTE`, RSP task execution,
 `ProcessDList`/`ProcessRDPList`, buffer swaps during gameplay, or a rendered
 frame. Keep the execution safety gate closed pending the next isolated audit.
+
+## RSP execution dependency audit (2026-11-09)
+
+A source-manifest audit found that the current Android Core build compiles
+upstream `src/plugin/dummy_rsp.c` as part of the Core. The pinned dummy RSP
+implementation identifies itself as `Mupen64Plus-NoRSP`; its
+`dummyrsp_DoRspCycles` only returns the requested cycle count and its
+`dummyrsp_InitiateRSP` is empty. No separate HLE RSP plugin is currently
+checked out, built, packaged, or attached by the Android workflow.
+
+This is a concrete blocker for meaningful N64 game execution: successful
+GFX initialization alone does not provide the RSP microcode processing needed
+to generate display-list work for GLideN64. Do not unlock `M64CMD_EXECUTE`
+for a gameplay test yet. The next engineering task is to integrate and validate
+a compatible ARM64 Mupen64Plus HLE RSP plugin, then verify its attachment and
+RSP task callbacks before a guarded execution test. Audio and input can remain
+stubbed for the first video-only proof, but RSP cannot.
