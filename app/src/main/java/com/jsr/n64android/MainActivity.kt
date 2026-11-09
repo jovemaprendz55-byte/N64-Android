@@ -555,7 +555,58 @@ class MainActivity : Activity() {
         }.start()
     }
 
+    // A GLideN64 instance owns resources tied to the current EGL context.
+    // Never remove/replace its GLSurfaceView until native teardown has
+    // completed on that surface's GL thread.
+    private fun shutdownCoreBeforeSurfaceChange(): Boolean {
+        if (!nativeCoreLoaded) return true
+
+        val surface = glView
+        val result: String? = if (surface != null && glSurfaceReady) {
+            val finished = CountDownLatch(1)
+            val output = arrayOfNulls<String>(1)
+            try {
+                surface.queueEvent {
+                    try {
+                        output[0] = nativeShutdown()
+                    } catch (error: Throwable) {
+                        output[0] = "Falha no encerramento pela thread GL: ${error.message}"
+                    } finally {
+                        finished.countDown()
+                    }
+                }
+                if (!finished.await(3000, TimeUnit.MILLISECONDS)) {
+                    statusView.text = "Troca de tela cancelada: o encerramento nativo ainda nao terminou. Bibliotecas preservadas."
+                    return false
+                }
+                output[0]
+            } catch (error: Throwable) {
+                "Falha ao agendar encerramento na thread GL: ${error.message}"
+            }
+        } else {
+            try {
+                nativeShutdown()
+            } catch (error: Throwable) {
+                "Falha ao encerrar Core sem surface GL: ${error.message}"
+            }
+        }
+
+        val completed = result?.startsWith("Biblioteca do Core descarregada corretamente") == true ||
+            result?.startsWith("Biblioteca do Core nao estava carregada") == true ||
+            result?.startsWith("Core ja foi encerrado e descarregado") == true
+        if (completed) {
+            nativeCoreLoaded = false
+            nativeCoreInitialized = false
+            return true
+        }
+
+        statusView.text = "Troca de tela cancelada para proteger EGL/Core.\n\n" +
+            (result ?: "O encerramento nao retornou resultado.")
+        return false
+    }
+
     private fun showHomeScreen() {
+        if (!shutdownCoreBeforeSurfaceChange()) return
         diagnosticScreenVisible = false
         glView?.let {
             (it.parent as? ViewGroup)?.removeView(it)
@@ -575,6 +626,7 @@ class MainActivity : Activity() {
     }
 
     private fun showOpenGlTest(drawTriangle: Boolean = false, registerVideoExtension: Boolean = false) {
+        if (!shutdownCoreBeforeSurfaceChange()) return
         loadNativeLibrary()
         glSurfaceReady = false
         glView?.let {
