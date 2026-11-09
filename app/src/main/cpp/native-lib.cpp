@@ -916,6 +916,62 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
 
 extern "C"
 JNIEXPORT jstring JNICALL
+Java_com_jsr_n64android_MainActivity_nativeGetExecutionReadiness(JNIEnv* env, jobject /* thiz */) {
+    const auto phase = g_coreRuntime.phase();
+    const char* phaseName = "Unknown";
+    switch (phase) {
+        case CoreRuntimeCoordinator::Phase::Empty: phaseName = "Empty"; break;
+        case CoreRuntimeCoordinator::Phase::CoreInitialized: phaseName = "CoreInitialized"; break;
+        case CoreRuntimeCoordinator::Phase::RomOpen: phaseName = "RomOpen"; break;
+        case CoreRuntimeCoordinator::Phase::PluginsAttached: phaseName = "PluginsAttached"; break;
+        case CoreRuntimeCoordinator::Phase::ExecuteReserved: phaseName = "ExecuteReserved"; break;
+        case CoreRuntimeCoordinator::Phase::Executing: phaseName = "Executing"; break;
+        case CoreRuntimeCoordinator::Phase::StopRequested: phaseName = "StopRequested"; break;
+        case CoreRuntimeCoordinator::Phase::Drained: phaseName = "Drained"; break;
+        case CoreRuntimeCoordinator::Phase::ShutdownComplete: phaseName = "ShutdownComplete"; break;
+    }
+    bool coreLoaded = false, coreStarted = false, romOpen = false;
+    bool gfxLoaded = false, gfxStarted = false, gfxAttached = false;
+    bool rspLoaded = false, rspStarted = false, rspAttached = false;
+    {
+        std::lock_guard<std::mutex> lock(g_coreMutex);
+        coreLoaded = g_coreHandle != nullptr;
+        coreStarted = g_coreStarted;
+        romOpen = g_romOpen;
+        gfxLoaded = g_gfxPluginHandle != nullptr;
+        gfxStarted = g_gfxPluginStarted;
+        gfxAttached = g_gfxAttached;
+        rspLoaded = g_rspPluginHandle != nullptr;
+        rspStarted = g_rspPluginStarted;
+        rspAttached = g_rspAttached;
+    }
+    char status[1024];
+    std::snprintf(status, sizeof(status),
+        "DIAGNOSTICO SEGURO — nenhuma emulacao iniciada.\\n"
+        "Lifecycle: %s | chamadas ativas: %zu\\n"
+        "Core: carregado=%s iniciado=%s\\n"
+        "ROM aberta=%s\\n"
+        "GFX: carregado=%s iniciado=%s anexado=%s\\n"
+        "RSP: carregado=%s iniciado=%s anexado=%s\\n"
+        "EGL atual nesta thread=%s | marcador R4300=%s\\n"
+        "EXECUTE elegivel=%s",
+        phaseName, g_coreRuntime.activeCalls(),
+        coreLoaded ? "sim" : "nao", coreStarted ? "sim" : "nao",
+        romOpen ? "sim" : "nao",
+        gfxLoaded ? "sim" : "nao", gfxStarted ? "sim" : "nao",
+        gfxAttached ? "sim" : "nao",
+        rspLoaded ? "sim" : "nao", rspStarted ? "sim" : "nao",
+        rspAttached ? "sim" : "nao",
+        androidVideoContextReady() ? "sim" : "nao",
+        g_runLoopHandshake.ready() ? "sim" : "nao",
+        (phase == CoreRuntimeCoordinator::Phase::PluginsAttached &&
+         coreLoaded && coreStarted && romOpen && gfxAttached && rspAttached &&
+         androidVideoContextReady()) ? "sim (pre-checagem)" : "nao");
+    return makeString(env, status);
+}
+
+extern "C"
+JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_MainActivity_nativeExecuteCore(JNIEnv* env, jobject /* thiz */) {
 #ifndef N64_HAS_MUPEN64PLUS_HEADERS
     return makeString(env, "Headers oficiais do Core nao estao disponiveis nesta compilacao.");
