@@ -76,3 +76,16 @@ The APK was downloaded and inspected: it contains the ARM64
 `libn64bridge.so`. The JNI bridge binary contains the new explicit
 GLES 3.0 startup guard message. This confirms packaging and compilation
 of the guard, but does not replace on-device testing of PluginStartup.
+
+## Poco C85 GLES 3.2 plugin startup test (2026-11-09)
+
+The user tested the GLES 3 build on-device and reported:
+
+- Android video extension registered in the Core.
+- EGL context valid on the GL thread; device reports OpenGL ES 3.2.
+- EGL/GLES video callbacks active on the GL thread.
+- GLideN64 GFX plugin loaded and validated; the status confirms PluginStartup.
+- No ROM was loaded and the plugin was not yet attached to the Core.
+- InitiateGFX has not yet been called; this is expected before the ROM-open/attach step.
+
+This confirms the GLES 3.2 context and GLideN64 PluginStartup stage on the Poco C85. It does not confirm CoreAttachPlugin, InitiateGFX, display-list processing, or a rendered game frame. The next device test is limited to selecting a legally obtained N64 ROM and using “Abrir ROM no Core e anexar vídeo”. Do not press “Iniciar emulação” while the M64CMD_EXECUTE safety gate remains active.
