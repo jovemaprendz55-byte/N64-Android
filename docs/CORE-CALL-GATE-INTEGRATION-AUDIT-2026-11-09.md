@@ -38,3 +38,19 @@ Não integrar o gate parcialmente e não habilitar `M64CMD_EXECUTE` enquanto ope
 ## Próxima implementação recomendada
 
 Projetar e testar um coordenador de runtime que combine admissão de leases e proteção da vida útil dos handles. Primeiro criar testes concorrentes independentes (Execute vs STOP vs shutdown, chamadas Other vs fechamento de admissão, timeout sem unload e falha de teardown); depois integrar cada ponto JNI sob esse protocolo. Manter a execução bloqueada até que a integração e os testes ARM64/Android estejam concluídos.
+
+## Achados adicionais da revisão de código — 2026-11-09
+
+A inspeção detalhada de native-lib.cpp e MainActivity.kt confirmou outros pontos que precisam entrar no desenho do coordenador:
+
+10. nativeStartCore() mantém g_coreMutex enquanto chama CoreStartup. A chamada externa ao Core não deve ficar protegida por um mutex que também seja necessário ao STOP ou à finalização; a lease precisa proteger o handle enquanto o lock de estado é liberado.
+11. nativeRegisterAndroidVideo(), nativeLoadGfxPlugin(), nativeLoadRspPlugin() e nativeOpenRomAndAttachGfx() também mantêm o mutex global enquanto chamam APIs externas do Core ou dos plugins. Todas precisam de lease Other (e validação de estado) antes de liberar o mutex em torno das chamadas externas.
+12. nativeOpenRomAndAttachGfx() executa M64CMD_ROM_OPEN e CoreAttachPlugin enquanto mantém o mutex. A ordem parcial (ROM aberta, GFX anexado, RSP ainda não anexado) precisa ser representada explicitamente para permitir retry seguro sem duplicar operações.
+13. showHomeScreen() remove a GLSurfaceView da hierarquia e chama onPause() sem primeiro encerrar/desanexar o GLideN64 ou limpar a Video Extension. O mesmo padrão aparece quando showOpenGlTest() substitui uma superfície existente. Isso pode deixar o plugin dependente de um contexto EGL que já não está mais ativo.
+14. onDestroy() agenda nativeShutdown() na thread GL e aguarda 1500 ms, mas não pede STOP antes. Como Execute está atualmente bloqueado, isso não provoca o bloqueio hoje; quando Execute for habilitado, o ciclo de vida precisará primeiro solicitar STOP e esperar o retorno real do Execute antes de agendar teardown gráfico.
+15. executeCoreOnGlThread() usa queueEvent e chama nativeExecuteCore() de forma síncrona na GL thread. Se a execução real bloquear nessa thread, callbacks posteriores enfileirados nela (incluindo teardown) não poderão executar até o Core retornar. O mecanismo STOP deve, portanto, ser chamado por uma rota concorrente que não dependa da GL thread bloqueada, mas mantendo lease e handle vivos.
+16. showHomeScreen() e a substituição da superfície são caminhos de saída adicionais além de onPause()/onDestroy(). Devem compartilhar uma rotina de transição de estado; não podem simplesmente destruir ou pausar a superfície enquanto o plugin gráfico ainda está ativo.
+
+### Consequência para a integração
+
+A próxima etapa não é apenas adicionar CoreCallGate a nativeExecuteCore() e nativeStopCore(). É necessário um coordenador de runtime que controle o estado e a vida útil dos handles, com operações externas executadas fora do mutex de estado sob leases, além de uma única rotina Android para parar, drenar, desmontar plugins e só então pausar/remover a superfície EGL. A implementação deve começar com testes concorrentes do coordenador e só depois substituir os caminhos JNI atuais.
