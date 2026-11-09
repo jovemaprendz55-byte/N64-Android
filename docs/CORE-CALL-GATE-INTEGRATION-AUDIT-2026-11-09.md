@@ -66,3 +66,27 @@ Este ajuste continua sendo um protótipo independente. Ainda não protege os pon
 ## Restrição adicional de chamadas concorrentes
 
 A admissão `Other` agora fica limitada às fases `CoreInitialized`, `RomOpen` e `PluginsAttached`. Ela é recusada durante `ExecuteReserved` e `Executing`, evitando que uma chamada JNI de controle entre no Core enquanto o loop síncrono de emulação está ativo. Os testes cobrem a recusa nas duas fases. A integração JNI ainda deverá mapear cada função concreta para a operação apropriada e manter leases até o último uso do handle.
+
+
+## Integração JNI — primeiro estágio (2026-11-09)
+
+O CoreRuntimeCoordinator deixou de ser apenas um protótipo de teste: native-lib.cpp agora mantém uma instância global e adquire leases Other antes de entrar no mutex/usar o Core nas rotinas de inicialização da biblioteca, CoreStartup, teste/registro da Video Extension, carregamento/inicialização dos plugins GFX e RSP e abertura/anexação da ROM.
+
+As transições são atualizadas após sucesso:
+- CoreStartup -> CoreInitialized
+- M64CMD_ROM_OPEN -> RomOpen
+- GFX e RSP anexados -> PluginsAttached
+
+O encerramento agora fecha a admissão, emite STOP protegido se existir uma fase Executing, espera o drain por até 1500 ms e só então adquire g_coreMutex para detach/ROM close/PluginShutdown/CoreShutdown/dlclose. Timeout mantém todos os handles e bibliotecas. Se uma etapa do teardown falhar após o drain, a fase Drained permite repetir o encerramento sem tentar reabrir operações normais. Depois do teardown integral, resetAfterShutdown() permite um novo ciclo.
+
+nativeStopCore agora usa uma lease STOP e não mantém g_coreMutex durante a chamada assíncrona ao Core. Um atomic g_stopCommandIssued evita duplicar o pedido entre o botão Parar e o caminho de shutdown.
+
+A camada Kotlin também passou a exigir que showHomeScreen() e showOpenGlTest() concluam o shutdown na thread GL antes de remover/substituir uma superfície que pode pertencer ao GLideN64. Se não for possível confirmar o teardown, a troca de tela é cancelada e a superfície atual é preservada.
+
+### Limites que permanecem
+
+- nativeExecuteCore() continua bloqueado por safety gate; nenhum código de execução foi liberado.
+- Como Execute continua bloqueado, ainda não existe teste real no dispositivo de Execute/STOP simultâneos, drain do loop síncrono ou retorno de M64CMD_EXECUTE.
+- O callback onPause() ainda precisa de uma política explícita de pausa/retomada para o caso de execução real.
+- Não há plugin real de áudio/input e não se deve declarar o emulador funcional.
+- A aprovação do CI valida compilação/testes automatizados, não a renderização de frames no Poco C85.
