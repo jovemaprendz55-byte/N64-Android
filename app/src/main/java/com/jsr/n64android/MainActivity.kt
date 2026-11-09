@@ -581,7 +581,7 @@ class MainActivity : Activity() {
         }
 
         val surface = GLSurfaceView(this).apply {
-            setEGLContextClientVersion(2)
+            setEGLContextClientVersion(3)
             preserveEGLContextOnPause = true
             setRenderer(object : GLSurfaceView.Renderer {
                 private var triangleProgram = 0
