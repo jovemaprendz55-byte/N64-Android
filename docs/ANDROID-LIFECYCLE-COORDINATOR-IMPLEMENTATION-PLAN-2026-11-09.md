@@ -167,3 +167,12 @@ Esta etapa registra o contrato de concorrencia e o plano de testes. Nao altera r
 - Commit `e0269e50e8edb7a53995e668cdaa6fbd8ba293fc` adiciona teste que tenta enfileirar teardown enquanto a espera por retorno do Execute ainda está bloqueada; a tentativa deve ser recusada.
 - CI do commit de testes concluiu com sucesso: [run 42700215174](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42700215174). Testes JVM, build do APK debug, verificação do pacote e upload do artefato concluíram com sucesso.
 - Isso valida o contrato Kotlin isolado. Ainda não prova teardown real na GL thread nem permite conectar callbacks Android. O próximo passo continua sendo desenhar e testar o dono process-scoped da operação GL, com Surface/EGL e callback tardio explicitamente modelados.
+
+## Migração do endpoint JNI de shutdown para a ponte process-scoped — 2026-11-09
+
+- A auditoria do Manifest confirmou que o app ainda não declara uma classe `Application` própria. A ponte `CoreNativeBridge` já é um singleton Kotlin de processo para STOP/drain.
+- Commit `f4b1adcbe32704e1b4862816faeaa1f49fdd828f` moveu a declaração externa `nativeShutdown()` da `MainActivity` para `CoreNativeBridge`, renomeou o símbolo JNI correspondente em `native-lib.cpp` e atualizou os seis pontos de chamada da Activity para usar a ponte.
+- As chamadas mantêm seus locais e suas threads atuais; esta mudança não move teardown para worker, não altera `onPause()`/`onDestroy()` e não muda a política EGL.
+- A revisão confirmou que não restou declaração nem símbolo JNI `MainActivity_nativeShutdown`; o novo símbolo é `CoreNativeBridge_nativeShutdown`.
+- CI [42700836490](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42700836490) concluiu com sucesso, incluindo testes JVM, build do APK debug, verificação do empacotamento e upload do artefato.
+- Limite: CI confirma compilação/empacotamento, não resolução JNI em aparelho. O próximo smoke test deve abrir o Core/ROM e acionar o fluxo de encerramento seguro sem Execute, confirmando que o endpoint novo responde sem `UnsatisfiedLinkError`. Não iniciar emulação.
