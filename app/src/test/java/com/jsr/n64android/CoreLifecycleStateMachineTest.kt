@@ -97,6 +97,39 @@ class CoreLifecycleStateMachineTest {
     }
 
     @Test
+    fun moreRestrictiveLifecycleIntentJoinsAndUpgradesExistingGeneration() {
+        val machine = CoreLifecycleStateMachine()
+        val manual = machine.begin(CoreLifecycleStateMachine.Request.MANUAL_STOP)
+        val pause = machine.begin(CoreLifecycleStateMachine.Request.ACTIVITY_PAUSE)
+        val destroy = machine.begin(CoreLifecycleStateMachine.Request.ACTIVITY_DESTROY)
+
+        assertEquals(manual.generation, pause.generation)
+        assertEquals(manual.generation, destroy.generation)
+        assertEquals(CoreLifecycleStateMachine.Phase.STOP_REQUESTED, destroy.phase)
+        assertEquals(
+            CoreLifecycleStateMachine.Request.ACTIVITY_DESTROY,
+            destroy.request
+        )
+        assertEquals(
+            CoreLifecycleStateMachine.Request.ACTIVITY_DESTROY,
+            machine.snapshot().request
+        )
+    }
+
+    @Test
+    fun lessRestrictiveRequestCannotDowngradeDestroyIntent() {
+        val machine = CoreLifecycleStateMachine()
+        val destroy = machine.begin(CoreLifecycleStateMachine.Request.ACTIVITY_DESTROY)
+        val manual = machine.begin(CoreLifecycleStateMachine.Request.MANUAL_STOP)
+
+        assertEquals(destroy.generation, manual.generation)
+        assertEquals(
+            CoreLifecycleStateMachine.Request.ACTIVITY_DESTROY,
+            manual.request
+        )
+    }
+
+    @Test
     fun executeTimeoutCannotProceedToGlTeardown() {
         val machine = CoreLifecycleStateMachine()
         val request = machine.begin(CoreLifecycleStateMachine.Request.ACTIVITY_PAUSE)

@@ -118,3 +118,13 @@ Esta etapa registra o contrato de concorrencia e o plano de testes. Nao altera r
 - **Limite:** o teste não chamou `nativeAwaitExecuteReturned()`, não percorreu STOP aceito e não provou execução ou renderização.
 - Registro detalhado: [CORE-NATIVE-BRIDGE-DEVICE-SMOKE-TEST-2026-11-09.md](CORE-NATIVE-BRIDGE-DEVICE-SMOKE-TEST-2026-11-09.md).
 - Próximo passo: avançar para a coordenação serial do lifecycle com testes JVM, sem ainda alterar `onPause()`/`onDestroy()` nem habilitar `M64CMD_EXECUTE`.
+
+
+## Atualização: intenção de lifecycle mais restritiva — 2026-11-09
+
+- A máquina de estados agora reúne pedidos simultâneos na mesma geração e atualiza a intenção registrada para a mais restritiva.
+- Prioridade: `ACTIVITY_DESTROY` > `ACTIVITY_PAUSE` > `SCREEN_CHANGE` > `ROM_REPLACEMENT` > `MANUAL_STOP`.
+- Um pedido manual seguido de pausa/destruição não cria outra geração nem perde a intenção de encerramento.
+- Um pedido menos restritivo não pode rebaixar uma intenção de destruição já registrada.
+- Testes JVM adicionados para upgrade e não-downgrade da intenção.
+- Isso altera somente o modelo Kotlin puro; não liga os callbacks Android, não envia JNI, não chama shutdown e não habilita Execute.

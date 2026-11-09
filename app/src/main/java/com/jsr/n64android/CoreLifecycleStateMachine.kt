@@ -43,7 +43,11 @@ internal class CoreLifecycleStateMachine {
      * A new generation starts only after the previous request reached a terminal state.
      */
     fun begin(request: Request): Snapshot = synchronized(lock) {
-        if (isInFlight(phase)) return@synchronized snapshotLocked()
+        if (isInFlight(phase)) {
+            // Preserve one operation, but retain the most restrictive lifecycle intent.
+            this.request = mergeRequest(this.request, request)
+            return@synchronized snapshotLocked()
+        }
         generation += 1
         this.request = request
         phase = Phase.STOP_REQUESTED
@@ -86,6 +90,19 @@ internal class CoreLifecycleStateMachine {
         }
 
     private fun snapshotLocked() = Snapshot(generation, phase, request)
+
+    private fun mergeRequest(current: Request?, incoming: Request): Request {
+        if (current == null) return incoming
+        return if (requestPriority(incoming) > requestPriority(current)) incoming else current
+    }
+
+    private fun requestPriority(value: Request): Int = when (value) {
+        Request.MANUAL_STOP -> 1
+        Request.ROM_REPLACEMENT -> 2
+        Request.SCREEN_CHANGE -> 3
+        Request.ACTIVITY_PAUSE -> 4
+        Request.ACTIVITY_DESTROY -> 5
+    }
 
     private fun isInFlight(value: Phase): Boolean = when (value) {
         Phase.STOP_REQUESTED,
