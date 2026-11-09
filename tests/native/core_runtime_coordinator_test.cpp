@@ -48,5 +48,26 @@ int main() {
     assert(runtime.phase() == Phase::ShutdownComplete);
     assert(!runtime.beginShutdown());
     assert(!runtime.markCoreInitialized());
+
+    // A bounded timeout leaves the coordinator in StopRequested and keeps
+    // outstanding ownership visible; no caller may mark teardown complete.
+    Coordinator timeoutRuntime;
+    assert(timeoutRuntime.markCoreInitialized());
+    assert(timeoutRuntime.markRomOpen());
+    assert(timeoutRuntime.markPluginsAttached());
+    auto heldOther = timeoutRuntime.tryAcquire(Operation::Other);
+    assert(heldOther);
+    assert(timeoutRuntime.beginShutdown());
+    auto timeoutStop = timeoutRuntime.tryAcquire(Operation::Stop);
+    assert(timeoutStop);
+    timeoutStop.release();
+    assert(!timeoutRuntime.waitForDrainFor(std::chrono::milliseconds(2)));
+    assert(timeoutRuntime.phase() == Phase::StopRequested);
+    assert(timeoutRuntime.activeCalls() == 1);
+    assert(!timeoutRuntime.markShutdownComplete());
+    heldOther.release();
+    assert(timeoutRuntime.waitForDrainFor(std::chrono::milliseconds(100)));
+    assert(timeoutRuntime.phase() == Phase::Drained);
+    assert(timeoutRuntime.markShutdownComplete());
     return 0;
 }
