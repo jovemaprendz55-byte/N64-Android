@@ -953,6 +953,11 @@ class MainActivity : Activity() {
     }
 
     override fun onPause() {
+        // Do not suspend GLSurfaceView if native shutdown has not been confirmed.
+        // A synchronous M64CMD_EXECUTE can occupy the GL thread; pausing that
+        // thread after a timeout could strand the Core while it still owns EGL.
+        var mayPauseGlSurface = true
+
         // First close Core admission and request STOP from the Activity thread.
         // This is essential because M64CMD_EXECUTE occupies the GL thread; a
         // shutdown event queued only to that thread could never interrupt it.
@@ -965,12 +970,12 @@ class MainActivity : Activity() {
             android.util.Log.i("N64AndroidFlow",
                 "Preparacao do Core antes de pausar EGL: $drainResult")
 
-            // If GL resources remain, finish their teardown on the GL thread
-            // while its EGL context is still current. The native shutdown is
-            // retryable after a successful drain and preserves handles on timeout.
+            // Finish graphics teardown on the GL thread while EGL is current.
+            // A timeout/failure is not permission to pause the GL thread.
             if (nativeCoreLoaded && !shutdownCoreBeforeSurfaceChange()) {
+                mayPauseGlSurface = false
                 android.util.Log.w("N64AndroidFlow",
-                    "Pausa prosseguira com recursos nativos preservados; encerramento GL nao foi confirmado.")
+                    "GLSurfaceView mantida ativa: parada/encerramento nao foi confirmado; handles nativos preservados.")
             }
         }
 
@@ -978,7 +983,13 @@ class MainActivity : Activity() {
             android.util.Log.i("N64AndroidFlow",
                 "Pausa temporaria do seletor de ROM: Core preservado.")
         }
-        glView?.onPause()
+
+        if (mayPauseGlSurface) {
+            glView?.onPause()
+        } else {
+            android.util.Log.w("N64AndroidFlow",
+                "onPause: pulando GLSurfaceView.onPause() para nao interromper uma possivel chamada Core ainda ativa.")
+        }
         super.onPause()
     }
 
