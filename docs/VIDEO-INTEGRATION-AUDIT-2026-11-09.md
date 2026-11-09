@@ -244,3 +244,27 @@ do not prove that RSP-HLE's PluginStartup or CoreAttachPlugin(RSP) succeeds
 on the Poco C85. The user must first install this exact artifact and report
 the diagnostic output. Keep `M64CMD_EXECUTE` blocked: no emulation, RSP task
 processing, display-list processing, or game frame is yet confirmed.
+
+## Poco C85 runtime RSP attachment confirmed (2026-11-09)
+
+The user installed and tested the runtime-integration APK on the Poco C85.
+The on-device status reported:
+
+- ROM opened successfully in the Mupen64Plus Core.
+- GLideN64 graphics plugin attached to the Core.
+- HLE RSP plugin attached to the Core.
+- `InitiateGFX` and `InitiateRSP` completed by the Core.
+- `CoreAttachPlugin` ran on the GL thread with the current EGL context.
+- Emulation had not yet been started.
+
+This is the first device-reported confirmation of the complete ROM-open,
+GFX-attach, and RSP-attach initialization sequence. It validates the runtime
+plugin startup/attach path through `InitiateRSP` on this device. It does NOT
+confirm that `M64CMD_EXECUTE` ran, that the RSP processed a task, that
+GLideN64 received or processed a display list, that a gameplay buffer swap
+occurred, or that a game frame was rendered.
+
+Keep the execution safety gate closed. Next audit the exact Core execute/stop
+and Android GL-thread lifecycle paths, including failure rollback and
+shutdown behavior, before designing a separately guarded execution test.
+Do not ask the user to press the emulation button until that audit is complete.
