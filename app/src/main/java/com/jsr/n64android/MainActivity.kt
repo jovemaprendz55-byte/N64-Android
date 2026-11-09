@@ -62,6 +62,7 @@ class MainActivity : Activity() {
     @Volatile private var glSurfaceReady = false
     @Volatile private var glSurfaceCreatedCount = 0
     @Volatile private var lifecycleTestEnabled = false
+    @Volatile private var activityDestroyed = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -336,15 +337,24 @@ class MainActivity : Activity() {
                         } catch (error: Throwable) {
                             "Falha ao solicitar parada: ${error.message}"
                         }
-                        val waitResult = try {
-                            nativeAwaitExecuteReturned(3000)
-                        } catch (error: Throwable) {
-                            "Falha ao aguardar retorno de EXECUTE: ${error.message}"
+                        val stopWasAccepted =
+                            stopResult.startsWith("Pedido de parada enviado ao Core") ||
+                            stopResult.startsWith("Pedido M64CMD_STOP ja foi enviado")
+                        val waitResult = if (stopWasAccepted) {
+                            try {
+                                nativeAwaitExecuteReturned(3000)
+                            } catch (error: Throwable) {
+                                "Falha ao aguardar retorno de EXECUTE: ${error.message}"
+                            }
+                        } else {
+                            "Aguardagem nao iniciada: o STOP nao foi confirmado como enviado."
                         }
                         val combined = "Pedido de parada:\n$stopResult\n\nConfirmação de retorno:\n$waitResult"
                         runOnUiThread {
-                            integrationStatusView.text = combined
-                            isEnabled = true
+                            if (!activityDestroyed) {
+                                integrationStatusView.text = combined
+                                isEnabled = true
+                            }
                         }
                     }, "N64-Stop-And-Wait").start()
                 }
@@ -1003,7 +1013,7 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
-        // Give the GL thread one last chance to detach/shutdown GLideN64 while
+        // Invalidate late worker callbacks before Android tears down this Activity.\n        activityDestroyed = true\n        // Give the GL thread one last chance to detach/shutdown GLideN64 while
         // its EGL context is current. Do this before pausing GLSurfaceView.
         val surface = glView
         var mayPauseGlSurface = !nativeCoreLoaded
