@@ -97,8 +97,8 @@ public:
             (phase_ != Phase::StopRequested || !stopRequired_))
             return {};
         if (operation == Operation::Other &&
-            phase_ != Phase::CoreInitialized && phase_ != Phase::RomOpen &&
-            phase_ != Phase::PluginsAttached)
+            phase_ != Phase::Empty && phase_ != Phase::CoreInitialized &&
+            phase_ != Phase::RomOpen && phase_ != Phase::PluginsAttached)
             return {};
 
         const auto kind = operation == Operation::Execute
@@ -126,10 +126,26 @@ public:
 
     template <typename Rep, typename Period>
     bool waitForDrainFor(const std::chrono::duration<Rep, Period>& timeout) {
+        {
+            std::lock_guard<std::mutex> lock(stateMutex_);
+            if (phase_ == Phase::Drained) return true;
+            if (phase_ != Phase::StopRequested) return false;
+        }
         if (!gate_.waitForDrainFor(timeout)) return false;
         std::lock_guard<std::mutex> lock(stateMutex_);
-        if (phase_ != Phase::StopRequested) return false;
+        if (phase_ != Phase::StopRequested) return phase_ == Phase::Drained;
         phase_ = Phase::Drained;
+        return true;
+    }
+
+    // After a fully successful teardown, allow a fresh CoreStartup lifecycle.
+    // This is not a recovery path for partially completed teardown.
+    bool resetAfterShutdown() {
+        std::lock_guard<std::mutex> lock(stateMutex_);
+        if (phase_ != Phase::ShutdownComplete || !gate_.reopenAfterFailedShutdown())
+            return false;
+        stopRequired_ = false;
+        phase_ = Phase::Empty;
         return true;
     }
 
