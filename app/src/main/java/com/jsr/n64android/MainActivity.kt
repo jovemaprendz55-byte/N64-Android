@@ -341,7 +341,7 @@ class MainActivity : Activity() {
                         } catch (error: Throwable) {
                             "Falha ao aguardar retorno de EXECUTE: ${error.message}"
                         }
-                        val combined = "Pedido de parada:\\n$stopResult\\n\\nConfirmação de retorno:\\n$waitResult"
+                        val combined = "Pedido de parada:\n$stopResult\n\nConfirmação de retorno:\n$waitResult"
                         runOnUiThread {
                             integrationStatusView.text = combined
                             isEnabled = true
