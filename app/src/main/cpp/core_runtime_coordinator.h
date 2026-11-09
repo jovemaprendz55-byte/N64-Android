@@ -94,7 +94,8 @@ public:
         if (operation == Operation::Execute && phase_ != Phase::PluginsAttached)
             return {};
         if (operation == Operation::Stop &&
-            (phase_ != Phase::StopRequested || !stopRequired_))
+            phase_ != Phase::Executing &&
+            !(phase_ == Phase::StopRequested && stopRequired_))
             return {};
         if (operation == Operation::Other &&
             phase_ != Phase::Empty && phase_ != Phase::CoreInitialized &&
