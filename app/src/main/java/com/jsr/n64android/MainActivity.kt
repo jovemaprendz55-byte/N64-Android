@@ -897,6 +897,27 @@ class MainActivity : Activity() {
     }
 
     override fun onPause() {
+        // First close Core admission and request STOP from the Activity thread.
+        // This is essential because M64CMD_EXECUTE occupies the GL thread; a
+        // shutdown event queued only to that thread could never interrupt it.
+        if (nativeCoreLoaded) {
+            val drainResult = try {
+                nativeShutdown()
+            } catch (error: Throwable) {
+                "Falha ao solicitar parada/drenagem do Core: ${error.message}"
+            }
+            android.util.Log.i("N64AndroidFlow",
+                "Preparacao do Core antes de pausar EGL: $drainResult")
+
+            // If GL resources remain, finish their teardown on the GL thread
+            // while its EGL context is still current. The native shutdown is
+            // retryable after a successful drain and preserves handles on timeout.
+            if (nativeCoreLoaded && !shutdownCoreBeforeSurfaceChange()) {
+                android.util.Log.w("N64AndroidFlow",
+                    "Pausa prosseguira com recursos nativos preservados; encerramento GL nao foi confirmado.")
+            }
+        }
+
         glView?.onPause()
         super.onPause()
     }
