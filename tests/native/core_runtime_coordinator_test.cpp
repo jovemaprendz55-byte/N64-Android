@@ -84,6 +84,7 @@ int main() {
     auto reservation = reservedRuntime.tryAcquire(Operation::Execute);
     assert(reservation);
     assert(reservedRuntime.beginShutdown());
+    assert(!reservedRuntime.markExecuting());
     assert(!reservedRuntime.requiresStopCommand());
     assert(!reservedRuntime.tryAcquire(Operation::Stop));
     assert(reservedRuntime.markExecuteNotStarted());
