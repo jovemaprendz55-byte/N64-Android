@@ -170,7 +170,6 @@ class CoreSerialLifecycleCoordinatorTest {
             coordinator.snapshot().phase
         )
     }
-}
 
     @Test
     fun newGenerationIsAllowedOnlyAfterConfirmedGlTeardown() {
@@ -246,4 +245,4 @@ class CoreSerialLifecycleCoordinatorTest {
             coordinator.snapshot().phase
         )
     }
-
+}
