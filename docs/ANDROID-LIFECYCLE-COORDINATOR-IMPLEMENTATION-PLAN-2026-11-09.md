@@ -138,3 +138,13 @@ Esta etapa registra o contrato de concorrencia e o plano de testes. Nao altera r
 - CI [42686138623](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42686138623) concluiu com sucesso; job `assemble` verde.
 - O resultado valida os testes JVM e a compilação do APK de debug. Não valida STOP aceito no dispositivo, retorno de Execute, teardown GL/EGL ou renderização.
 - Próxima etapa permanece a criação e teste isolado do coordenador serial; callbacks `onPause()`/`onDestroy()` continuam sem alteração e `M64CMD_EXECUTE` permanece bloqueado.
+
+## Atualização: coordenador serial single-flight — 2026-11-09
+
+- Commit `a431d4b58be7339287779742089c0bf3bffcd345`: introduziu `CoreSerialLifecycleCoordinator`, com um único future compartilhado entre pedidos concorrentes e worker dedicado para STOP/drain. CI [42691107127](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42691107127) aprovado.
+- Revisão encontrou um risco no primeiro desenho: após STOP aceito e retorno de Execute, limpar o future permitiria que uma chamada repetida enviasse um segundo STOP na mesma geração.
+- Commit `6a1f8ab1d21d96e412abb439d4931dfb68bc6a9d` corrige isso: o future continua latched após STOP aceito, timeout ou falha incerta. Somente rejeição explícita do STOP libera uma nova tentativa.
+- Novo teste `completedExecuteReturnRemainsSingleFlightAndDoesNotSendSecondStop` confirma que chamadas posteriores recebem o mesmo future e não enviam STOP duplicado.
+- CI [42697754975](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42697754975) concluiu com sucesso; job `assemble` aprovado.
+- Limite importante: a classe ainda não está conectada aos callbacks Android; não valida JNI de espera, STOP aceito em Execute real, lifecycle Activity, EGL ou renderização.
+- Próxima etapa: definir o proprietário process-scoped da ponte JNI e uma estratégia explícita de recuperação/reset de geração. Não ligar `onPause()`/`onDestroy()`, não executar teardown no worker e manter `M64CMD_EXECUTE` bloqueado até os testes de integração.
