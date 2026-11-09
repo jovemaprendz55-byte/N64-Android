@@ -63,6 +63,27 @@ Saidas de falha devem ser explicitas e terminais para aquela tentativa:
 - Nenhum `dlclose` enquanto houver lease/callback nativo ativo.
 - Logs reais de `DoRspCycles`, tarefa grafica HLE, `ProcessDList` e swap de frame antes de afirmar renderizacao.
 
+## Atualizacao apos o teste concorrente — commit 3100dfb
+
+- Workflow [42678007828](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42678007828) concluiu com sucesso.
+- O job executou `Run Kotlin JVM unit tests` e `Build debug APK`, ambos com sucesso.
+- O conjunto agora inclui um teste com 32 workers sincronizados por latch, alternando pedidos MANUAL_STOP e ACTIVITY_PAUSE. Todos devem aderir a uma unica geracao.
+- Isso valida a exclusao mutua do modelo puro sob concorrencia; nao valida JNI, Core real, Activity, EGL ou destruicao de Surface.
+
+## Revisao adicional do ponto de integracao
+
+A leitura atual de `MainActivity.kt` confirma que os metodos JNI continuam declarados como metodos externos de instancia da Activity. O worker manual STOP captura implicitamente a Activity para chamar `nativeStopCore()` e `nativeAwaitExecuteReturned()`. Portanto, mover esse worker para um executor global sem alterar a propriedade da ponte JNI criaria risco de lifetime e retencao de Activity.
+
+Tambem permanece o problema mais urgente: `onPause()` chama `nativeShutdown()` sincronicamente na thread principal antes de agendar o encerramento grafico. Isso pode bloquear a UI e mistura pedido de STOP/drain com teardown. `onDestroy()` ainda espera sincronicamente pelo evento GL. Nao alterar esses callbacks isoladamente antes de definir o dono de lifetime da ponte nativa e a politica para perda da Surface.
+
+## Proxima unidade de trabalho segura
+
+1. Extrair uma interface Kotlin pequena para as operacoes JNI usadas pelo lifecycle, sem mudar as assinaturas JNI ainda.
+2. Criar fake deterministico e testes de concorrencia para STOP, retorno de EXECUTE, timeout e callbacks tardios.
+3. Decidir e implementar um proprietario estavel da ponte JNI que nao seja a Activity. Auditar nomes JNI e assinaturas C++ antes de alterar.
+4. So entao ligar o coordenador a um executor serial e a um callback GL com validacao de geracao e EGL.
+5. Nao mudar `onPause()` / `onDestroy()` e nao habilitar EXECUTE ate os testes de integracao cobrirem a perda real da Surface.
+
 ## Decisao desta etapa
 
 Esta etapa registra o contrato de concorrencia e o plano de testes. Nao altera runtime nem habilita `M64CMD_EXECUTE`. A implementacao deve comecar pela classe Kotlin pura e seus testes, sem modificar `onPause()`/ `onDestroy()` ate que o modelo seja exercitado isoladamente.
