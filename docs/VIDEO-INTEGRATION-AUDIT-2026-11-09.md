@@ -295,3 +295,66 @@ These are source changes; a new APK build and device installation are still
 pending. Do not treat the commits as a new tested APK. The next engineering
 step is a deeper audit of Core execution threading, asynchronous stop,
 plugin callbacks, and failure-safe shutdown before any execution test.
+
+## Core execute/stop source audit (2026-11-09)
+
+Audited the exact pinned Mupen64Plus Core revision
+`a9ca8ec0b7decd17390c76c6341cf423d5d79321` against the Android JNI bridge.
+
+### Confirmed upstream behavior
+
+- `CoreDoCommand(M64CMD_EXECUTE)` validates that a ROM/disk is open and the
+  emulator is not already running, calls `plugin_check()`, then calls
+  `main_run()` synchronously. The call does not return until the emulation
+  loop exits.
+- `M64CMD_STOP` is explicitly asynchronous. It sets the Core emulation state
+  to stopped; upstream `main_stop()` is documented as callable from a thread
+  other than the emulator thread and may return before emulation has fully
+  stopped.
+- `main_run()` sets `g_EmulatorRunning`, powers on the N64 device, runs the
+  device loop, then calls `RomClosed` on RSP/input/audio/GFX and clears the
+  running state before returning.
+- The Core's `plugin_check()` warns when audio or input plugins are not
+  attached. This Android integration currently attaches GLideN64 and RSP-HLE
+  only; audio and input are still Core dummy plugins. A first picture, if
+  achieved, would not imply sound or controller support.
+- The current Android bridge still has an unconditional return in
+  `nativeExecuteCore()`; it does not issue `M64CMD_EXECUTE`. Therefore
+  `g_coreExecuting` is not yet set by an active execution path, and the
+  existing stop function is not a tested stop implementation.
+
+### Required invariants before enabling execution
+
+1. Invoke synchronous `M64CMD_EXECUTE` only from the GLSurfaceView GL thread,
+   while the EGL context/surface are current. The Android video extension's
+   swap callback is the presentation path while the Core loop occupies that
+   thread.
+2. Never hold `g_coreMutex` across `M64CMD_EXECUTE`. The UI thread must be
+   able to acquire the mutex and send asynchronous `M64CMD_STOP` while the GL
+   thread is inside `main_run()`.
+3. Set `g_coreExecuting` before entering the synchronous Core call and clear
+   it only after `CoreDoCommand(M64CMD_EXECUTE)` has returned. Use a
+   failure-safe scope/cleanup path so exceptions or early returns cannot leave
+   the flag stuck.
+4. Keep all plugin handles, Core handles, ROM state, and EGL surface alive
+   until the execute call has returned. `nativeShutdown()`, detach, ROM close,
+   and `dlclose` must refuse to run while execution is active.
+5. Do not queue the stop request onto the GL thread: that thread is occupied by
+   `M64CMD_EXECUTE`. Send `M64CMD_STOP` from the UI thread through the
+   documented asynchronous Core command, then wait for the GL-thread execute
+   call to return before cleanup.
+6. Treat the Core state callback and the execute-call return as separate
+   signals. A STOP request being accepted is not proof that the loop has
+   finished.
+7. The current source does not yet implement these invariants as an active
+   execution path. Keep the execute UI disabled until the implementation and
+   lifecycle tests are added.
+
+### Audit result
+
+The upstream API supports the intended architecture: synchronous execution
+on the GL thread plus asynchronous stop from the UI thread. This is a source
+audit only, not an Android runtime test. No emulation was started and no game
+frame has been confirmed. Next work is to implement the guarded execute
+worker/state transitions and test stop/return/cleanup independently before
+enabling a user-facing run button.
