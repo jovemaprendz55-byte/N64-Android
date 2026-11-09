@@ -15,6 +15,7 @@ public:
         CoreInitialized,
         RomOpen,
         PluginsAttached,
+        ExecuteReserved,
         Executing,
         StopRequested,
         Drained,
@@ -51,12 +52,32 @@ public:
         return transition(Phase::RomOpen, Phase::PluginsAttached);
     }
 
+    // Execute admission reserves the single execution slot before JNI calls
+    // into the Core. This prevents two callers from acquiring Execute leases
+    // while both still observe PluginsAttached.
     bool markExecuting() {
         std::lock_guard<std::mutex> lock(stateMutex_);
-        if (phase_ != Phase::PluginsAttached || gate_.shutdownRequested())
+        if (phase_ != Phase::ExecuteReserved || gate_.shutdownRequested())
             return false;
         phase_ = Phase::Executing;
         return true;
+    }
+
+    // Release a reservation if the caller could not enter M64CMD_EXECUTE.
+    // If shutdown won the race, preserve StopRequested and do not request
+    // M64CMD_STOP for an execution loop that never started.
+    bool markExecuteNotStarted() {
+        std::lock_guard<std::mutex> lock(stateMutex_);
+        if (phase_ == Phase::ExecuteReserved) {
+            phase_ = Phase::PluginsAttached;
+            return true;
+        }
+        return phase_ == Phase::StopRequested && !stopRequired_;
+    }
+
+    bool requiresStopCommand() const {
+        std::lock_guard<std::mutex> lock(stateMutex_);
+        return phase_ == Phase::StopRequested && stopRequired_;
     }
 
     // Called after synchronous M64CMD_EXECUTE has returned.
@@ -72,7 +93,8 @@ public:
         std::lock_guard<std::mutex> lock(stateMutex_);
         if (operation == Operation::Execute && phase_ != Phase::PluginsAttached)
             return {};
-        if (operation == Operation::Stop && phase_ != Phase::StopRequested)
+        if (operation == Operation::Stop &&
+            (phase_ != Phase::StopRequested || !stopRequired_))
             return {};
         if (operation == Operation::Other &&
             (phase_ == Phase::StopRequested || phase_ == Phase::Drained ||
@@ -84,7 +106,9 @@ public:
             : operation == Operation::Stop
                 ? CoreCallGate::Kind::Stop
                 : CoreCallGate::Kind::Other;
-        return Lease(gate_.tryAcquire(kind));
+        Lease lease(gate_.tryAcquire(kind));
+        if (operation == Operation::Execute && lease) phase_ = Phase::ExecuteReserved;
+        return lease;
     }
 
     // Closes normal admission. The caller must then acquire a Stop lease,
@@ -94,6 +118,7 @@ public:
         if (phase_ == Phase::Drained || phase_ == Phase::ShutdownComplete ||
             phase_ == Phase::StopRequested)
             return false;
+        stopRequired_ = phase_ == Phase::Executing;
         phase_ = Phase::StopRequested;
         gate_.beginShutdown();
         return true;
@@ -133,4 +158,5 @@ private:
     mutable std::mutex stateMutex_;
     CoreCallGate gate_;
     Phase phase_ = Phase::Empty;
+    bool stopRequired_ = false;
 };
