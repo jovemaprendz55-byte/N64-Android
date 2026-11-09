@@ -14,6 +14,7 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 #include "core_runtime_coordinator.h"
+#include "core_run_loop_handshake.h"
 #ifdef N64_HAS_MUPEN64PLUS_HEADERS
 #include "m64p_types.h"
 #include "m64p_frontend.h"
@@ -32,7 +33,16 @@ using CoreErrorMessageSymbol = const char* (*)(int);
 using CoreGetAPIVersionsSymbol = int (*)(int*, int*, int*, int*);
 using PluginGetVersionSymbol = int (*)(int*, int*, int*, const char**, int*);
 
+CoreRunLoopHandshake g_runLoopHandshake;
+constexpr char kRunLoopReadyMarker[] = "N64ANDROID_R4300_READY_20261109";
+
 void coreDebugCallback(void*, int level, const char* message) {
+    if (message != nullptr && std::strstr(message, kRunLoopReadyMarker) != nullptr) {
+        g_runLoopHandshake.markReady();
+        __android_log_print(ANDROID_LOG_INFO, "N64AndroidCore",
+                            "Handshake: R4300 passou pelo reset da flag STOP; STOP agora pode ser considerado.");
+        return;
+    }
     __android_log_print(level <= 1 ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO,
                         "N64AndroidCore", "%s", message != nullptr ? message : "(sem mensagem)");
 }
