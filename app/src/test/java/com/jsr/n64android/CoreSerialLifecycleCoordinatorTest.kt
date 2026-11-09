@@ -66,6 +66,8 @@ class CoreSerialLifecycleCoordinatorTest {
                 Thread.yield()
             }
             assertEquals(1, bridge.waitCalls.get())
+            // Teardown cannot be queued until the Execute-return wait has completed.
+            assertFalse(coordinator.markGlTeardownQueued(coordinator.snapshot().generation))
             bridge.allowWait.countDown()
 
             val result = first.get(2, TimeUnit.SECONDS)
