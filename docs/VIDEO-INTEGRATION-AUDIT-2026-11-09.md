@@ -358,3 +358,37 @@ audit only, not an Android runtime test. No emulation was started and no game
 frame has been confirmed. Next work is to implement the guarded execute
 worker/state transitions and test stop/return/cleanup independently before
 enabling a user-facing run button.
+
+## HLE RSP task-to-renderer source audit (2026-11-09)
+
+Audited the pinned HLE RSP source at
+`mupen64plus-rsp-hle/dd09c7dcdc6d2cff584aacb9d519600d47d61039`.
+
+- Its exported `DoRspCycles(Cycles)` calls `hle_execute(&g_hle)`; this is
+  the actual HLE task-dispatch entry point that has not yet been exercised on
+  the Android device.
+- `InitiateRSP` stores the Core-provided `ProcessDlistList`,
+  `ProcessAlistList`, `ProcessRdpList`, and `ShowCFB` callbacks in the HLE
+  state.
+- For a recognized graphics task, HLE's `send_dlist_to_gfx_plugin()` calls
+  `HleProcessDlistList()`, which forwards to the Core-provided
+  `ProcessDlistList` callback. The Core builds this callback from the
+  attached GFX plugin's `ProcessDList` function pointer.
+- For audio tasks, HLE forwards to `HleProcessAlistList()`; the Android app
+  has not attached a real audio plugin, so sound remains unsupported.
+- `DoRspCycles` returning from the function or `InitiateRSP` succeeding does
+  not prove that a ROM generated a recognized RSP task, that the graphics
+  callback ran, or that GLideN64 presented a frame.
+
+### First-frame evidence required
+
+During a future controlled execution, capture independent counters/logs for:
+1. First `DoRspCycles` invocation (RSP task processing began).
+2. First HLE graphics task dispatched to `ProcessDlistList`.
+3. First GLideN64 `ProcessDList` callback.
+4. First Android video-extension `eglSwapBuffers` callback returning success.
+
+Only the final successful presentation, together with a visible non-clear game
+image on the device, should be treated as first-frame confirmation. Keep the
+execution gate closed until the execute/stop lifecycle implementation is
+reviewed and tested.
