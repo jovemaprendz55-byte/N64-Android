@@ -33,6 +33,7 @@ class MainActivity : Activity() {
     private external fun nativeStartCore(configPath: String, dataPath: String): String
     private external fun nativeRegisterAndroidVideo(): String
     private external fun nativeLoadGfxPlugin(pluginPath: String): String
+    private external fun nativeLoadRspPlugin(pluginPath: String): String
     private external fun nativeOpenRomAndAttachGfx(romBytes: ByteArray): String
     private external fun nativeExecuteCore(): String
     private external fun nativeStopCore(): String
@@ -624,7 +625,16 @@ class MainActivity : Activity() {
                                 android.util.Log.i("N64AndroidFlow", "Etapa 3: chamando nativeLoadGfxPlugin")
                                 val pluginResult = nativeLoadGfxPlugin(pluginPath)
                                 android.util.Log.i("N64AndroidFlow", "Etapa 3 resultado: " + pluginResult)
-                                registration + "\\n\\n" + pluginResult
+                                if (!pluginResult.startsWith("Plugin GFX Android carregado e validado")) {
+                                    registration + "\\n\\n" + pluginResult
+                                } else {
+                                    val rspPath = File(applicationInfo.nativeLibraryDir,
+                                        "libmupen64plus-rsp-hle.so").absolutePath
+                                    android.util.Log.i("N64AndroidFlow", "Etapa 4: chamando nativeLoadRspPlugin")
+                                    val rspResult = nativeLoadRspPlugin(rspPath)
+                                    android.util.Log.i("N64AndroidFlow", "Etapa 4 resultado: " + rspResult)
+                                    registration + "\\n\\n" + pluginResult + "\\n\\n" + rspResult
+                                }
                             }
                         } catch (error: LinkageError) {
                             "Falha JNI ao registrar/carregar plugin GFX Android: " + error.message
