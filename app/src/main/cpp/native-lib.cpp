@@ -910,10 +910,16 @@ Java_com_jsr_n64android_MainActivity_nativeExecuteCore(JNIEnv* env, jobject /* t
 #ifndef N64_HAS_MUPEN64PLUS_HEADERS
     return makeString(env, "Headers oficiais do Core nao estao disponiveis nesta compilacao.");
 #else
-    // Safety gate: keep native execution disabled until the Core/GFX frame
-    // lifecycle is diagnosed. The previous device attempt closed the process.
-    // Do not leave an unreachable M64CMD_EXECUTE implementation below this
-    // return: it could be mistaken for an enabled or validated execution path.
+    // SAFETY GATE — do not remove until all of these are implemented and
+    // device-tested together:
+    // 1) acquire the unique Execute lease before touching Core/plugin handles;
+    // 2) markExecuting(), then set g_coreExecuting and clear stop-issued state;
+    // 3) call synchronous M64CMD_EXECUTE on the GL thread with current EGL;
+    // 4) on every return path clear g_coreExecuting, markExecuteReturned(),
+    //    and release the Execute lease only after Core callbacks have stopped;
+    // 5) prove STOP can run concurrently without g_coreMutex and shutdown
+    //    drains before detach/dlclose. The previous device attempt closed the
+    //    process, so the gate remains until the complete path is validated.
     __android_log_print(ANDROID_LOG_WARN, "N64AndroidFlow",
                         "M64CMD_EXECUTE temporariamente bloqueado: diagnostico da falha nativa pendente.");
     return makeString(env,
