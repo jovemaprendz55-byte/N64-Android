@@ -26,6 +26,22 @@ int main() {
         assert(handshake.waitForReadyOrReturn(1ms) ==
                CoreRunLoopHandshake::WaitResult::ExecuteReturned);
         assert(!handshake.ready());
+        assert(handshake.waitForExecuteReturned(1ms));
+    }
+
+    // Waiting specifically for EXECUTE return must not finish on the R4300
+    // readiness marker alone; STOP eligibility and loop completion differ.
+    {
+        CoreRunLoopHandshake handshake;
+        handshake.reset();
+        handshake.markReady();
+        assert(!handshake.waitForExecuteReturned(1ms));
+        std::thread core([&handshake] {
+            std::this_thread::sleep_for(2ms);
+            handshake.markExecuteReturned();
+        });
+        assert(handshake.waitForExecuteReturned(100ms));
+        core.join();
     }
 
     // STOP becomes eligible immediately after the marker.
