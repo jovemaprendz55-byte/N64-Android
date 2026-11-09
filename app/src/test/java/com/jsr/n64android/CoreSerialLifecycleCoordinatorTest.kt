@@ -171,3 +171,79 @@ class CoreSerialLifecycleCoordinatorTest {
         )
     }
 }
+
+    @Test
+    fun newGenerationIsAllowedOnlyAfterConfirmedGlTeardown() {
+        val stopCalls = AtomicInteger()
+        val bridge = object : CoreLifecycleBridge {
+            override fun requestStop(): String {
+                return if (stopCalls.incrementAndGet() == 1) {
+                    "Pedido de parada enviado ao Core"
+                } else {
+                    "Parada recusada: nao existe Execute ativo."
+                }
+            }
+            override fun awaitExecuteReturned(timeoutMs: Int): String =
+                "M64CMD_EXECUTE retornou. Nenhum teardown foi executado."
+        }
+        val coordinator = CoreSerialLifecycleCoordinator(bridge, Executor { it.run() })
+        val first = coordinator.requestStopAndAwait(
+            CoreLifecycleStateMachine.Request.MANUAL_STOP, 1000
+        )
+        val firstResult = first.join()
+
+        assertFalse(coordinator.markShutdownComplete(firstResult.generation))
+        assertSame(
+            first,
+            coordinator.requestStopAndAwait(
+                CoreLifecycleStateMachine.Request.ACTIVITY_PAUSE, 1000
+            )
+        )
+        assertEquals(1, stopCalls.get())
+
+        assertTrue(coordinator.markGlTeardownQueued(firstResult.generation))
+        assertFalse(coordinator.markShutdownComplete(firstResult.generation - 1))
+        assertTrue(coordinator.markShutdownComplete(firstResult.generation))
+        assertEquals(
+            CoreLifecycleStateMachine.Phase.SHUTDOWN_COMPLETE,
+            coordinator.snapshot().phase
+        )
+
+        val secondResult = coordinator.requestStopAndAwait(
+            CoreLifecycleStateMachine.Request.MANUAL_STOP, 1000
+        ).join()
+        assertTrue(secondResult.generation > firstResult.generation)
+        assertFalse(secondResult.stopAccepted)
+        assertEquals(2, stopCalls.get())
+    }
+
+    @Test
+    fun teardownTimeoutKeepsAcceptedOperationLatched() {
+        val stopCalls = AtomicInteger()
+        val bridge = object : CoreLifecycleBridge {
+            override fun requestStop(): String {
+                stopCalls.incrementAndGet()
+                return "Pedido de parada enviado ao Core"
+            }
+            override fun awaitExecuteReturned(timeoutMs: Int): String =
+                "M64CMD_EXECUTE retornou. Nenhum teardown foi executado."
+        }
+        val coordinator = CoreSerialLifecycleCoordinator(bridge, Executor { it.run() })
+        val first = coordinator.requestStopAndAwait(
+            CoreLifecycleStateMachine.Request.ACTIVITY_DESTROY, 1000
+        )
+        val generation = first.join().generation
+
+        assertTrue(coordinator.markGlTeardownQueued(generation))
+        assertTrue(coordinator.markGlTeardownTimeout(generation))
+        val repeated = coordinator.requestStopAndAwait(
+            CoreLifecycleStateMachine.Request.MANUAL_STOP, 1000
+        )
+        assertSame(first, repeated)
+        assertEquals(1, stopCalls.get())
+        assertEquals(
+            CoreLifecycleStateMachine.Phase.GL_TEARDOWN_TIMEOUT,
+            coordinator.snapshot().phase
+        )
+    }
+
