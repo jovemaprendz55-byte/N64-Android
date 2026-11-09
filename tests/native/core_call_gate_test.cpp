@@ -1,11 +1,26 @@
 #include "core_call_gate.h"
 
 #include <atomic>
+#include <chrono>
 #include <cassert>
 #include <thread>
 #include <utility>
 
 int main() {
+    // A bounded wait that expires must not authorize teardown or reopen.
+    CoreCallGate timeoutGate;
+    auto held = timeoutGate.tryAcquire(CoreCallGate::Kind::Execute);
+    assert(held);
+    timeoutGate.beginShutdown();
+    assert(!timeoutGate.waitForDrainFor(std::chrono::milliseconds(5)));
+    assert(timeoutGate.activeCalls() == 1);
+    assert(!timeoutGate.reopenAfterFailedShutdown());
+    assert(!timeoutGate.tryAcquire(CoreCallGate::Kind::Other));
+    held.release();
+    assert(timeoutGate.waitForDrainFor(std::chrono::milliseconds(50)));
+    assert(timeoutGate.activeCalls() == 0);
+    assert(timeoutGate.reopenAfterFailedShutdown());
+
     CoreCallGate gate;
 
     // A running EXECUTE lease remains alive while STOP is admitted.
