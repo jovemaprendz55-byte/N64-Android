@@ -98,3 +98,12 @@ Esta etapa registra o contrato de concorrencia e o plano de testes. Nao altera r
 - **Ainda não conectado à MainActivity nem ao JNI.** Isso é intencional: os métodos JNI ainda são exports de instância `MainActivity`; migrar só a interface sem migrar corretamente a propriedade/lifetime do objeto nativo manteria a captura da Activity.
 - Auditoria encontrou 16 exports JNI nomeados `Java_com_jsr_n64android_MainActivity_*`. Uma futura migração precisa decidir se move todos para uma classe bridge estável ou se cria uma ponte JNI separada apenas para operações de lifecycle, atualizando e verificando os símbolos C++ e as declarações Kotlin em conjunto.
 - Não alterar `onPause()`, `onDestroy()`, shutdown GL ou habilitar Execute nesta etapa.
+
+
+## Atualizacao: política de STOP isolada e testável
+
+- CI dos commits `1f5af681` e `0ab79d0f` concluiu com sucesso: contrato da ponte e fake determinístico compilam/testam.
+- Criado `CoreStopCoordinator.kt`: aplica a política de STOP aceito → aguardar retorno do Execute; STOP recusado → não aguardar. Não executa shutdown, detach de plugins ou operações EGL.
+- Criado `CoreStopCoordinatorTest.kt`: cobre STOP aceito, STOP já enviado, STOP recusado e timeout negativo limitado a zero.
+- O coordenador ainda não está conectado à Activity. A integração fica para depois da migração da propriedade JNI para um objeto de vida útil estável e da auditoria de todos os símbolos JNI.
+- Não alterar lifecycle Android, não mover `nativeShutdown()` para worker, não habilitar `M64CMD_EXECUTE`.
