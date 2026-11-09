@@ -918,7 +918,7 @@ class MainActivity : Activity() {
                         finished.countDown()
                     }
                 }
-                if (finished.await(1500, TimeUnit.MILLISECONDS)) {
+                if (finished.await(3000, TimeUnit.MILLISECONDS)) {
                     android.util.Log.i("N64AndroidFlow",
                         "Encerramento pela thread GL: ${result[0]}")
                     if (result[0]?.startsWith("Biblioteca do Core descarregada corretamente") == true) {
