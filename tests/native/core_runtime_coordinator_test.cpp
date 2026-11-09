@@ -39,6 +39,7 @@ int main() {
     // When synchronous Execute finally returns, it must not reopen admission.
     assert(runtime.markExecuteReturned());
     assert(runtime.phase() == Phase::StopRequested);
+    assert(!runtime.requiresStopCommand());
     assert(!runtime.tryAcquire(Operation::Execute));
     assert(!runtime.tryAcquire(Operation::Other));
     auto stop = runtime.tryAcquire(Operation::Stop);
