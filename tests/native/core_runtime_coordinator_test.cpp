@@ -18,10 +18,14 @@ int main() {
 
     auto execute = runtime.tryAcquire(Operation::Execute);
     assert(execute);
+    assert(runtime.phase() == Phase::ExecuteReserved);
+    // Only one synchronous Core execution may be admitted at a time.
+    assert(!runtime.tryAcquire(Operation::Execute));
     assert(runtime.markExecuting());
     // Shutdown closes ordinary admission while Execute is still in flight.
     assert(runtime.beginShutdown());
     assert(runtime.phase() == Phase::StopRequested);
+    assert(runtime.requiresStopCommand());
     // When synchronous Execute finally returns, it must not reopen admission.
     assert(runtime.markExecuteReturned());
     assert(runtime.phase() == Phase::StopRequested);
@@ -70,5 +74,22 @@ int main() {
     assert(timeoutRuntime.waitForDrainFor(std::chrono::milliseconds(100)));
     assert(timeoutRuntime.phase() == Phase::Drained);
     assert(timeoutRuntime.markShutdownComplete());
+
+    // If shutdown wins after reservation but before entering Execute, do not
+    // issue STOP for a loop that never started; the reservation still drains.
+    Coordinator reservedRuntime;
+    assert(reservedRuntime.markCoreInitialized());
+    assert(reservedRuntime.markRomOpen());
+    assert(reservedRuntime.markPluginsAttached());
+    auto reservation = reservedRuntime.tryAcquire(Operation::Execute);
+    assert(reservation);
+    assert(reservedRuntime.beginShutdown());
+    assert(!reservedRuntime.requiresStopCommand());
+    assert(!reservedRuntime.tryAcquire(Operation::Stop));
+    assert(reservedRuntime.markExecuteNotStarted());
+    reservation.release();
+    assert(reservedRuntime.waitForDrainFor(std::chrono::milliseconds(100)));
+    assert(reservedRuntime.phase() == Phase::Drained);
+    assert(reservedRuntime.markShutdownComplete());
     return 0;
 }
