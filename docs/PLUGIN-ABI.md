@@ -815,3 +815,22 @@ frontend ainda precisa encaminhar o encerramento normal para a GL thread e
 tratar Activity/surface destruídas. O guard não confirma que o crash anterior
 foi causado por esse caminho. `M64CMD_EXECUTE` continua bloqueado até a
 coordenação de lifecycle ser concluída e testada.
+
+
+### Encerramento agendado na thread GL (2026-11-09)
+
+Commit `0779f938ee53758d79cf7f4eb347e32b23fbdbd9` altera
+`MainActivity.onDestroy()`: quando a GLSurfaceView ainda está pronta, agenda
+`nativeShutdown()` com `queueEvent` e aguarda até 1,5 segundo antes de
+pausar a superfície. Assim, detach do plugin e liberação GLES podem ocorrer
+na thread que possui o contexto EGL atual.
+
+Se não houver superfície pronta, o guard nativo de EGL continua impedindo
+encerramento gráfico inseguro. Se o evento não terminar no prazo, a Activity
+registra timeout e não tenta executar um segundo shutdown concorrente na
+thread da interface. O processo Android encerrará os recursos restantes.
+
+Limites: esta alteração ainda precisa compilar e ser testada no aparelho.
+Ela cobre o caminho de destruição da Activity; não prova por si só que a
+recriação da superfície EGL preserva o estado do plugin. `M64CMD_EXECUTE`
+permanece bloqueado.
