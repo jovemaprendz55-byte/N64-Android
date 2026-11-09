@@ -1040,7 +1040,7 @@ Java_com_jsr_n64android_MainActivity_nativeExecuteCore(JNIEnv* env, jobject /* t
 
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_com_jsr_n64android_MainActivity_nativeStopCore(JNIEnv* env, jobject /* thiz */) {
+Java_com_jsr_n64android_CoreNativeBridge_nativeStopCore(JNIEnv* env, jobject /* thiz */) {
 #ifndef N64_HAS_MUPEN64PLUS_HEADERS
     return makeString(env, "Headers oficiais do Core nao estao disponiveis nesta compilacao.");
 #else
@@ -1082,7 +1082,7 @@ Java_com_jsr_n64android_MainActivity_nativeStopCore(JNIEnv* env, jobject /* thiz
 
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_com_jsr_n64android_MainActivity_nativeAwaitExecuteReturned(
+Java_com_jsr_n64android_CoreNativeBridge_nativeAwaitExecuteReturned(
     JNIEnv* env, jobject /* thiz */, jint timeoutMs) {
     using RuntimePhase = CoreRuntimeCoordinator::Phase;
     const RuntimePhase phase = g_coreRuntime.phase();
