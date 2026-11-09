@@ -1105,7 +1105,7 @@ Java_com_jsr_n64android_CoreNativeBridge_nativeAwaitExecuteReturned(
 
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_com_jsr_n64android_MainActivity_nativeShutdown(JNIEnv* env, jobject /* thiz */) {
+Java_com_jsr_n64android_CoreNativeBridge_nativeShutdown(JNIEnv* env, jobject /* thiz */) {
     using RuntimePhase = CoreRuntimeCoordinator::Phase;
     using RuntimeOperation = CoreRuntimeCoordinator::Operation;
 

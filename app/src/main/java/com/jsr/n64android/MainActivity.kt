@@ -30,7 +30,6 @@ class MainActivity : Activity() {
 
     private external fun nativeGetStatus(): String
     private external fun nativeInitialize(configPath: String, dataPath: String): String
-    private external fun nativeShutdown(): String
     private external fun nativeStartCore(configPath: String, dataPath: String): String
     private external fun nativeRegisterAndroidVideo(): String
     private external fun nativeLoadGfxPlugin(pluginPath: String): String
@@ -178,7 +177,7 @@ class MainActivity : Activity() {
             setOnClickListener {
                 statusView.text = "N64 Android\\n\\n" + try {
                     if (nativeCoreLoaded) {
-                        nativeShutdown().also {
+                        CoreNativeBridge.nativeShutdown().also {
                             if (it.startsWith("Biblioteca do Core descarregada corretamente")) {
                                 nativeCoreLoaded = false
                                 nativeCoreInitialized = false
@@ -636,7 +635,7 @@ class MainActivity : Activity() {
             try {
                 surface.queueEvent {
                     try {
-                        output[0] = nativeShutdown()
+                        output[0] = CoreNativeBridge.nativeShutdown()
                     } catch (error: Throwable) {
                         output[0] = "Falha no encerramento pela thread GL: ${error.message}"
                     } finally {
@@ -653,7 +652,7 @@ class MainActivity : Activity() {
             }
         } else {
             try {
-                nativeShutdown()
+                CoreNativeBridge.nativeShutdown()
             } catch (error: Throwable) {
                 "Falha ao encerrar Core sem surface GL: ${error.message}"
             }
@@ -977,7 +976,7 @@ class MainActivity : Activity() {
         // shutdown event queued only to that thread could never interrupt it.
         if (nativeCoreLoaded && !romPickerActive) {
             val drainResult = try {
-                nativeShutdown()
+                CoreNativeBridge.nativeShutdown()
             } catch (error: Throwable) {
                 "Falha ao solicitar parada/drenagem do Core: ${error.message}"
             }
@@ -1020,7 +1019,7 @@ class MainActivity : Activity() {
             try {
                 surface.queueEvent {
                     try {
-                        result[0] = nativeShutdown()
+                        result[0] = CoreNativeBridge.nativeShutdown()
                     } catch (error: Throwable) {
                         result[0] = "Falha no encerramento pela thread GL: ${error.message}"
                     } finally {
@@ -1049,7 +1048,7 @@ class MainActivity : Activity() {
         } else if (nativeCoreLoaded) {
             // The native EGL guard refuses unsafe graphics shutdown here.
             try {
-                val result = nativeShutdown()
+                val result = CoreNativeBridge.nativeShutdown()
                 android.util.Log.i("N64AndroidFlow", result)
                 mayPauseGlSurface =
                     result.startsWith("Biblioteca do Core descarregada corretamente") ||

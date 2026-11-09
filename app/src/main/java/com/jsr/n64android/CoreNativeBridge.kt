@@ -10,6 +10,7 @@ package com.jsr.n64android
 internal object CoreNativeBridge : CoreLifecycleBridge {
     external fun nativeStopCore(): String
     external fun nativeAwaitExecuteReturned(timeoutMs: Int): String
+    external fun nativeShutdown(): String
 
     override fun requestStop(): String = nativeStopCore()
 
