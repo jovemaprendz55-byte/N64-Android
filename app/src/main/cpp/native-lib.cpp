@@ -920,23 +920,62 @@ Java_com_jsr_n64android_MainActivity_nativeExecuteCore(JNIEnv* env, jobject /* t
 #ifndef N64_HAS_MUPEN64PLUS_HEADERS
     return makeString(env, "Headers oficiais do Core nao estao disponiveis nesta compilacao.");
 #else
-    // SAFETY GATE — do not remove until all of these are implemented and
-    // device-tested together:
-    // 1) acquire the unique Execute lease before touching Core/plugin handles;
-    // 2) markExecuting(), then set g_coreExecuting and clear stop-issued state;
-    // 3) call synchronous M64CMD_EXECUTE on the GL thread with current EGL;
-    // 4) on every return path clear g_coreExecuting, markExecuteReturned(),
-    //    and release the Execute lease only after Core callbacks have stopped;
-    // 5) prove STOP can run concurrently without g_coreMutex and shutdown
-    //    drains before detach/dlclose. The previous device attempt closed the
-    //    process, so the gate remains until the complete path is validated.
-    __android_log_print(ANDROID_LOG_WARN, "N64AndroidFlow",
-                        "M64CMD_EXECUTE temporariamente bloqueado: diagnostico da falha nativa pendente.");
-    return makeString(env,
-        "Execucao temporariamente bloqueada por seguranca.\\n"
-        "ROM, GLideN64 e RSP-HLE foram inicializados/anexados, mas a execucao ainda nao foi validada.\\n"
-        "Nenhuma tarefa RSP, lista grafica ou frame de jogo foi confirmado.\\n"
-        "A protecao permanece ativa enquanto auditamos o ciclo de execucao e parada.");
+    if (!androidVideoContextReady())
+        return makeString(env, "EXECUTE recusado: contexto EGL/GLES nao esta atual na thread GL.");
+
+    auto executeLease = g_coreRuntime.tryAcquire(CoreRuntimeCoordinator::Operation::Execute);
+    if (!executeLease)
+        return makeString(env, "EXECUTE recusado: Core nao esta em PluginsAttached ou o shutdown ja comecou.");
+
+    using CoreDoCommandSymbol = m64p_error (*)(m64p_command, int, void*);
+    CoreDoCommandSymbol doCommand = nullptr;
+    {
+        std::lock_guard<std::mutex> handleLock(g_coreMutex);
+        if (g_coreHandle == nullptr || !g_coreStarted || !g_romOpen ||
+            !g_gfxAttached || !g_rspAttached) {
+            g_coreRuntime.markExecuteNotStarted();
+            return makeString(env, "EXECUTE recusado: Core, ROM ou plugins nao estao prontos.");
+        }
+        doCommand = reinterpret_cast<CoreDoCommandSymbol>(
+            dlsym(g_coreHandle, "CoreDoCommand"));
+    }
+    if (doCommand == nullptr) {
+        g_coreRuntime.markExecuteNotStarted();
+        return makeString(env, "EXECUTE recusado: CoreDoCommand nao encontrado.");
+    }
+    if (!g_coreRuntime.markExecuting()) {
+        g_coreRuntime.markExecuteNotStarted();
+        return makeString(env, "EXECUTE cancelado: shutdown venceu a reserva.");
+    }
+
+    // Reset the handshake before entering the synchronous Core command.
+    // A concurrent STOP waits until the patched R4300 clears its stop flag.
+    g_runLoopHandshake.reset();
+    g_stopCommandIssued.store(false);
+    g_coreExecuting.store(true);
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
+                        "Entrando em M64CMD_EXECUTE na thread GL. TID=%ld",
+                        static_cast<long>(syscall(SYS_gettid)));
+
+    const m64p_error result = doCommand(M64CMD_EXECUTE, 0, nullptr);
+
+    // CoreDoCommand is synchronous: after it returns, callbacks from the
+    // emulation loop have ceased and the Execute lease can safely drain.
+    g_coreExecuting.store(false);
+    g_runLoopHandshake.markExecuteReturned();
+    const bool lifecycleReturned = g_coreRuntime.markExecuteReturned();
+    executeLease.release();
+
+    char status[512];
+    std::snprintf(status, sizeof(status),
+                  "M64CMD_EXECUTE retornou. Codigo=%d. Lifecycle=%s.\n"
+                  "Marcador R4300 recebido=%s. Nenhuma imagem de jogo e presumida.",
+                  static_cast<int>(result),
+                  lifecycleReturned ? "coerente" : "inconsistente",
+                  g_runLoopHandshake.ready() ? "sim" : "nao");
+    __android_log_print(result == M64ERR_SUCCESS ? ANDROID_LOG_INFO : ANDROID_LOG_ERROR,
+                        "N64AndroidFlow", "%s", status);
+    return makeString(env, status);
 #endif
 }
 
@@ -949,8 +988,12 @@ Java_com_jsr_n64android_MainActivity_nativeStopCore(JNIEnv* env, jobject /* thiz
     auto stopLease = g_coreRuntime.tryAcquire(CoreRuntimeCoordinator::Operation::Stop);
     if (!stopLease)
         return makeString(env, "Parada recusada: nao existe Execute ativo ou o ciclo ja foi encerrado.");
-    if (!g_coreExecuting.load())
-        return makeString(env, "Nenhuma execucao do Core esta ativa.");
+    const auto readiness = g_runLoopHandshake.waitForReadyOrReturn(std::chrono::milliseconds(1500));
+    if (readiness == CoreRunLoopHandshake::WaitResult::Timeout)
+        return makeString(env, "STOP aguardando marcador R4300; timeout sem enviar comando. Handles preservados.");
+    if (readiness == CoreRunLoopHandshake::WaitResult::ExecuteReturned ||
+        !g_coreExecuting.load())
+        return makeString(env, "EXECUTE retornou antes do STOP; nenhum comando de parada foi enviado.");
     using CoreDoCommandSymbol = m64p_error (*)(m64p_command, int, void*);
     CoreDoCommandSymbol doCommand = nullptr;
     {
@@ -997,10 +1040,18 @@ Java_com_jsr_n64android_MainActivity_nativeShutdown(JNIEnv* env, jobject /* thiz
     }
 
     if (g_coreRuntime.requiresStopCommand()) {
-        auto stopLease = g_coreRuntime.tryAcquire(RuntimeOperation::Stop);
-        if (!stopLease)
-            return makeString(env, "STOP recusado: nao foi possivel proteger a vida util do Core.");
-        if (!g_stopCommandIssued.exchange(true)) {
+        const auto readiness = g_runLoopHandshake.waitForReadyOrReturn(std::chrono::milliseconds(1500));
+        if (readiness == CoreRunLoopHandshake::WaitResult::Timeout)
+            return makeString(env, "Shutdown aguardando marcador R4300. Timeout: Core e plugins permanecem carregados.");
+        if (readiness == CoreRunLoopHandshake::WaitResult::ExecuteReturned ||
+            !g_coreRuntime.requiresStopCommand() || !g_coreExecuting.load()) {
+            // EXECUTE returned before the marker or while shutdown was waiting.
+            // No STOP is needed; the Execute lease will drain naturally.
+        } else {
+            auto stopLease = g_coreRuntime.tryAcquire(RuntimeOperation::Stop);
+            if (!stopLease)
+                return makeString(env, "STOP recusado: nao foi possivel proteger a vida util do Core.");
+            if (!g_stopCommandIssued.exchange(true)) {
             using CoreDoCommandSymbol = m64p_error (*)(m64p_command, int, void*);
             CoreDoCommandSymbol doCommand = nullptr;
             {
@@ -1021,8 +1072,9 @@ Java_com_jsr_n64android_MainActivity_nativeShutdown(JNIEnv* env, jobject /* thiz
                               static_cast<int>(stopResult));
                 return makeString(env, status);
             }
+            }
+            stopLease.release();
         }
-        stopLease.release();
     }
 
     if (!g_coreRuntime.waitForDrainFor(std::chrono::milliseconds(1500)))
