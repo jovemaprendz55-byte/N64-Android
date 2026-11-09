@@ -268,3 +268,30 @@ Keep the execution safety gate closed. Next audit the exact Core execute/stop
 and Android GL-thread lifecycle paths, including failure rollback and
 shutdown behavior, before designing a separately guarded execution test.
 Do not ask the user to press the emulation button until that audit is complete.
+
+## Execute gate and UI safety review (2026-11-09)
+
+After the Poco C85 confirmed ROM open, GLideN64 attach, RSP-HLE attach,
+`InitiateGFX`, and `InitiateRSP`, the execute path was reviewed again.
+
+The native `nativeExecuteCore()` still returns before issuing
+`M64CMD_EXECUTE`; there is no active execution-loop implementation below the
+safety gate. The stop function therefore cannot stop a game loop that has not
+started. The Android integration screen previously displayed an enabled
+"Iniciar emulação" button even though the native gate rejected execution.
+
+Two safety/clarity changes were committed:
+
+- Native status now accurately says ROM, GLideN64, and RSP-HLE are attached,
+  while RSP tasks, graphics display lists, and game frames remain unconfirmed.
+- The Android "Iniciar emulação" button is disabled and labeled as blocked
+  until the execution/stop lifecycle audit is complete.
+
+Code commits:
+- Native status: `909b6bfa33d391be2ae7cd93bc194fa84af3d239`
+- Disabled UI button: `ec74057a1b733324fcb55945c527f6f400613e0b`
+
+These are source changes; a new APK build and device installation are still
+pending. Do not treat the commits as a new tested APK. The next engineering
+step is a deeper audit of Core execution threading, asynchronous stop,
+plugin callbacks, and failure-safe shutdown before any execution test.
