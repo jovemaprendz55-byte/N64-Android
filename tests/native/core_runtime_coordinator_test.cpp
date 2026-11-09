@@ -36,16 +36,17 @@ int main() {
     assert(runtime.beginShutdown());
     assert(runtime.phase() == Phase::StopRequested);
     assert(runtime.requiresStopCommand());
-    // When synchronous Execute finally returns, it must not reopen admission.
+    // A shutdown STOP lease may already be active while Execute returns.
+    auto stop = runtime.tryAcquire(Operation::Stop);
+    assert(stop);
+    // Natural Execute return cancels a not-yet-issued STOP, without reopening admission.
     assert(runtime.markExecuteReturned());
     assert(runtime.phase() == Phase::StopRequested);
     assert(!runtime.requiresStopCommand());
     assert(!runtime.tryAcquire(Operation::Execute));
     assert(!runtime.tryAcquire(Operation::Other));
-    auto stop = runtime.tryAcquire(Operation::Stop);
-    assert(stop);
-    assert(runtime.activeCalls() == 2);
     assert(!runtime.markShutdownComplete());
+    assert(runtime.activeCalls() == 2);
 
     bool drained = false;
     std::thread waiter([&] {
