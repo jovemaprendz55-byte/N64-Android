@@ -113,3 +113,18 @@ A revisão do `MainActivity.onResume()` confirma que ele retoma a `GLSurfaceView
 Portanto, o fluxo atual de `onPause()` é uma política de encerramento seguro, não uma pausa/retomada de jogo: quando o shutdown conclui, voltar ao aplicativo não restaura automaticamente a sessão anterior. A interface deve exigir novo carregamento/inicialização antes de qualquer uso do Core. Não habilitar Execute com a expectativa de que o jogo continuará de onde parou após alternar de aplicativo.
 
 Antes de oferecer retomada real, implementar e testar um estado persistente de sessão (ROM selecionada e configuração), reabrir Core/plugins/ROM em ordem válida após `onResume()`, validar EGL na thread GL e só então permitir nova execução. Não tentar preservar ponteiros ou handles do Core entre um shutdown completo e novo ciclo.
+
+
+## Nova corrida identificada antes de habilitar Execute — 2026-11-09
+
+A revisão do coordenador e do futuro caminho JNI encontrou uma janela entre `markExecuting()` e a entrada efetiva em `CoreDoCommand(M64CMD_EXECUTE)`:
+
+1. A thread GL pode mudar a fase de `ExecuteReserved` para `Executing`.
+2. Antes de chamar `M64CMD_EXECUTE`, a thread Activity pode iniciar shutdown.
+3. O shutdown observa `Executing` e envia `M64CMD_STOP`.
+4. Se o Core processar STOP antes de o loop síncrono EXECUTE começar, ainda não foi demonstrado que esse pedido interromperá a execução que começa logo depois.
+5. O shutdown pode então aguardar indefinidamente até o timeout, ou a execução pode iniciar depois do pedido de parada.
+
+O `CoreRuntimeCoordinator` atual testa a reserva interrompida antes de `markExecuting()`, mas não prova a ordenação entre `markExecuting()`, o envio de STOP e a entrada real em `M64CMD_EXECUTE`. Portanto, os testes unitários atuais não fecham esta corrida.
+
+**Bloqueio:** não implementar/liberar Execute ainda. Antes, definir e testar um protocolo de início/parada que prove que STOP nunca pode ser consumido antes de EXECUTE entrar no loop. A prova deve incluir teste concorrente determinístico do coordenador e validação no Core real; um mutex mantido durante a chamada síncrona EXECUTE não é solução, pois impediria STOP de interromper o loop.
