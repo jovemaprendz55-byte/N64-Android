@@ -104,3 +104,12 @@ Essa ordem também fecha a corrida ExecuteReserved/Executing: se shutdown fechar
 Se qualquer espera expirar, o código registra a falha e mantém handles/bibliotecas protegidos pelo native shutdown; a Activity ainda precisa prosseguir com seu ciclo de vida Android. `preserveEGLContextOnPause` continua habilitado na GLSurfaceView.
 
 **Limite de validação:** `nativeExecuteCore()` permanece bloqueado. Portanto, este caminho foi integrado ao lifecycle, mas ainda não foi exercitado com um loop real de emulação, STOP concorrente ou pausa durante um jogo. A aprovação de CI não substitui esse teste no dispositivo.
+
+
+## Consequência do shutdown em onPause — retomada ainda não implementada
+
+A revisão do `MainActivity.onResume()` confirma que ele retoma a `GLSurfaceView` e, quando o teste de lifecycle está ativo, verifica o contexto EGL. Ele **não** reinicializa o Core, recarrega os plugins, reabre a ROM nem restaura a execução.
+
+Portanto, o fluxo atual de `onPause()` é uma política de encerramento seguro, não uma pausa/retomada de jogo: quando o shutdown conclui, voltar ao aplicativo não restaura automaticamente a sessão anterior. A interface deve exigir novo carregamento/inicialização antes de qualquer uso do Core. Não habilitar Execute com a expectativa de que o jogo continuará de onde parou após alternar de aplicativo.
+
+Antes de oferecer retomada real, implementar e testar um estado persistente de sessão (ROM selecionada e configuração), reabrir Core/plugins/ROM em ordem válida após `onResume()`, validar EGL na thread GL e só então permitir nova execução. Não tentar preservar ponteiros ou handles do Core entre um shutdown completo e novo ciclo.
