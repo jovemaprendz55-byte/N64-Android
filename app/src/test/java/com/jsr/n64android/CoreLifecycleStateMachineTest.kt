@@ -48,6 +48,32 @@ class CoreLifecycleStateMachineTest {
     }
 
     @Test
+    fun timeoutKeepsGenerationLatchedUntilRecovery() {
+        val machine = CoreLifecycleStateMachine()
+        val first = machine.begin(CoreLifecycleStateMachine.Request.ACTIVITY_PAUSE)
+
+        assertTrue(machine.markExecuteReturnTimeout(first.generation))
+        val second = machine.begin(CoreLifecycleStateMachine.Request.MANUAL_STOP)
+
+        assertEquals(first.generation, second.generation)
+        assertEquals(CoreLifecycleStateMachine.Phase.EXECUTE_RETURN_TIMEOUT, second.phase)
+        assertFalse(machine.markGlTeardownQueued(first.generation))
+    }
+
+    @Test
+    fun glTeardownTimeoutAlsoPreventsNewGeneration() {
+        val machine = CoreLifecycleStateMachine()
+        val first = machine.begin(CoreLifecycleStateMachine.Request.ACTIVITY_DESTROY)
+        assertTrue(machine.markExecuteReturned(first.generation))
+        assertTrue(machine.markGlTeardownQueued(first.generation))
+        assertTrue(machine.markGlTeardownTimeout(first.generation))
+
+        val second = machine.begin(CoreLifecycleStateMachine.Request.SCREEN_CHANGE)
+        assertEquals(first.generation, second.generation)
+        assertEquals(CoreLifecycleStateMachine.Phase.GL_TEARDOWN_TIMEOUT, second.phase)
+    }
+
+    @Test
     fun repeatedStopRequestsJoinOneGeneration() {
         val machine = CoreLifecycleStateMachine()
         val first = machine.begin(CoreLifecycleStateMachine.Request.MANUAL_STOP)
