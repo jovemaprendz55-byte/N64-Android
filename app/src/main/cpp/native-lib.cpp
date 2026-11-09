@@ -1082,6 +1082,29 @@ Java_com_jsr_n64android_MainActivity_nativeStopCore(JNIEnv* env, jobject /* thiz
 
 extern "C"
 JNIEXPORT jstring JNICALL
+Java_com_jsr_n64android_MainActivity_nativeAwaitExecuteReturned(
+    JNIEnv* env, jobject /* thiz */, jint timeoutMs) {
+    using RuntimePhase = CoreRuntimeCoordinator::Phase;
+    const RuntimePhase phase = g_coreRuntime.phase();
+    if (phase != RuntimePhase::Executing && phase != RuntimePhase::StopRequested) {
+        return makeString(env,
+            "Nenhum EXECUTE ativo aguardando retorno. Nenhum teardown foi executado.");
+    }
+    const int boundedTimeoutMs = timeoutMs < 0 ? 0 : timeoutMs;
+    const bool returned = g_runLoopHandshake.waitForExecuteReturned(
+        std::chrono::milliseconds(boundedTimeoutMs));
+    if (!returned) {
+        return makeString(env,
+            "Timeout aguardando retorno de M64CMD_EXECUTE. Handles e plugins preservados.");
+    }
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
+                        "JNI confirmou retorno de M64CMD_EXECUTE; aguardando teardown separado.");
+    return makeString(env,
+        "M64CMD_EXECUTE retornou. Esta API apenas confirma o retorno; nenhum plugin, handle ou EGL foi encerrado.");
+}
+
+extern "C"
+JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_MainActivity_nativeShutdown(JNIEnv* env, jobject /* thiz */) {
     using RuntimePhase = CoreRuntimeCoordinator::Phase;
     using RuntimeOperation = CoreRuntimeCoordinator::Operation;
