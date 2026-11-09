@@ -1013,7 +1013,9 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
-        // Invalidate late worker callbacks before Android tears down this Activity.\n        activityDestroyed = true\n        // Give the GL thread one last chance to detach/shutdown GLideN64 while
+        // Invalidate late worker callbacks before Android tears down this Activity.
+        activityDestroyed = true
+        // Give the GL thread one last chance to detach/shutdown GLideN64 while
         // its EGL context is current. Do this before pausing GLSurfaceView.
         val surface = glView
         var mayPauseGlSurface = !nativeCoreLoaded
