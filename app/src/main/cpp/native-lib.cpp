@@ -217,6 +217,7 @@ bool g_rspAttached = false;
 bool g_romOpen = false;
 bool g_gfxAttached = false;
 std::atomic<bool> g_coreExecuting{false};
+std::atomic<bool> g_stopCommandIssued{false};
 const char* const kRequiredGfxSymbols[] = {
     "PluginGetVersion", "PluginStartup", "PluginShutdown", "ChangeWindow",
     "InitiateGFX", "MoveScreen", "ProcessDList", "ProcessRDPList",
@@ -929,18 +930,29 @@ Java_com_jsr_n64android_MainActivity_nativeStopCore(JNIEnv* env, jobject /* thiz
 #ifndef N64_HAS_MUPEN64PLUS_HEADERS
     return makeString(env, "Headers oficiais do Core nao estao disponiveis nesta compilacao.");
 #else
-    std::lock_guard<std::mutex> lock(g_coreMutex);
-    if (g_coreHandle == nullptr || !g_coreStarted)
-        return makeString(env, "Core nao esta inicializado.");
+    auto stopLease = g_coreRuntime.tryAcquire(CoreRuntimeCoordinator::Operation::Stop);
+    if (!stopLease)
+        return makeString(env, "Parada recusada: nao existe Execute ativo ou o ciclo ja foi encerrado.");
     if (!g_coreExecuting.load())
         return makeString(env, "Nenhuma execucao do Core esta ativa.");
     using CoreDoCommandSymbol = m64p_error (*)(m64p_command, int, void*);
-    auto doCommand = reinterpret_cast<CoreDoCommandSymbol>(dlsym(g_coreHandle, "CoreDoCommand"));
+    CoreDoCommandSymbol doCommand = nullptr;
+    {
+        std::lock_guard<std::mutex> handleLock(g_coreMutex);
+        if (g_coreHandle == nullptr || !g_coreStarted)
+            return makeString(env, "Core nao esta inicializado.");
+        doCommand = reinterpret_cast<CoreDoCommandSymbol>(
+            dlsym(g_coreHandle, "CoreDoCommand"));
+    }
     if (doCommand == nullptr)
         return makeString(env, "CoreDoCommand nao encontrado para solicitar parada.");
-    // M64CMD_STOP is asynchronous in the Mupen64Plus frontend API.
+    // Serialize user STOP with the shutdown STOP; duplicate async commands
+    // are unnecessary and can race the Core's stop callback.
+    if (g_stopCommandIssued.exchange(true))
+        return makeString(env, "Pedido M64CMD_STOP ja foi enviado; aguardando Execute retornar.");
     const m64p_error result = doCommand(M64CMD_STOP, 0, nullptr);
     if (result != M64ERR_SUCCESS) {
+        g_stopCommandIssued.store(false);
         char status[256];
         std::snprintf(status, sizeof(status), "M64CMD_STOP falhou: codigo %d.",
                       static_cast<int>(result));
@@ -972,22 +984,27 @@ Java_com_jsr_n64android_MainActivity_nativeShutdown(JNIEnv* env, jobject /* thiz
         auto stopLease = g_coreRuntime.tryAcquire(RuntimeOperation::Stop);
         if (!stopLease)
             return makeString(env, "STOP recusado: nao foi possivel proteger a vida util do Core.");
-        using CoreDoCommandSymbol = m64p_error (*)(m64p_command, int, void*);
-        CoreDoCommandSymbol doCommand = nullptr;
-        {
-            std::lock_guard<std::mutex> handleLock(g_coreMutex);
-            if (g_coreHandle != nullptr)
-                doCommand = reinterpret_cast<CoreDoCommandSymbol>(
-                    dlsym(g_coreHandle, "CoreDoCommand"));
-        }
-        if (doCommand == nullptr)
-            return makeString(env, "CoreDoCommand nao encontrado; handles preservados.");
-        const m64p_error stopResult = doCommand(M64CMD_STOP, 0, nullptr);
-        if (stopResult != M64ERR_SUCCESS) {
-            char status[256];
-            std::snprintf(status, sizeof(status), "M64CMD_STOP falhou: codigo %d. Handles preservados.",
-                          static_cast<int>(stopResult));
-            return makeString(env, status);
+        if (!g_stopCommandIssued.exchange(true)) {
+            using CoreDoCommandSymbol = m64p_error (*)(m64p_command, int, void*);
+            CoreDoCommandSymbol doCommand = nullptr;
+            {
+                std::lock_guard<std::mutex> handleLock(g_coreMutex);
+                if (g_coreHandle != nullptr)
+                    doCommand = reinterpret_cast<CoreDoCommandSymbol>(
+                        dlsym(g_coreHandle, "CoreDoCommand"));
+            }
+            if (doCommand == nullptr) {
+                g_stopCommandIssued.store(false);
+                return makeString(env, "CoreDoCommand nao encontrado; handles preservados.");
+            }
+            const m64p_error stopResult = doCommand(M64CMD_STOP, 0, nullptr);
+            if (stopResult != M64ERR_SUCCESS) {
+                g_stopCommandIssued.store(false);
+                char status[256];
+                std::snprintf(status, sizeof(status), "M64CMD_STOP falhou: codigo %d. Handles preservados.",
+                              static_cast<int>(stopResult));
+                return makeString(env, status);
+            }
         }
         stopLease.release();
     }
@@ -1109,6 +1126,7 @@ Java_com_jsr_n64android_MainActivity_nativeShutdown(JNIEnv* env, jobject /* thiz
         return makeString(env, status);
     }
     g_coreHandle = nullptr;
+    g_stopCommandIssued.store(false);
     if (!g_coreRuntime.markShutdownComplete())
         return makeString(env, "Core descarregado, mas estado do coordenador nao confirmou ShutdownComplete.");
     return makeString(env, "Biblioteca do Core descarregada corretamente.");
