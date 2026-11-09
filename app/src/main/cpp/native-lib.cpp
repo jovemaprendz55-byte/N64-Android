@@ -552,7 +552,7 @@ Java_com_jsr_n64android_MainActivity_nativeRegisterAndroidVideo(JNIEnv* env, job
     return makeString(env,
         "Video Extension Android registrada no Core.\n"
         "Callbacks EGL/GLES ativos na thread GL.\n"
-        "A troca de buffers continua sob controle do GLSurfaceView.\n"
+        "O callback de video apresenta os frames com eglSwapBuffers na thread GL.\n"
         "Plugin GFX e carregamento de ROM ainda nao foram iniciados.");
 #endif
 }
