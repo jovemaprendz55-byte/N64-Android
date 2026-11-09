@@ -128,3 +128,13 @@ Esta etapa registra o contrato de concorrencia e o plano de testes. Nao altera r
 - Um pedido menos restritivo não pode rebaixar uma intenção de destruição já registrada.
 - Testes JVM adicionados para upgrade e não-downgrade da intenção.
 - Isso altera somente o modelo Kotlin puro; não liga os callbacks Android, não envia JNI, não chama shutdown e não habilita Execute.
+
+
+## Verificação da correção da expectativa de prioridade — 2026-11-09
+
+- O CI do commit `c5cb211` falhou em `CoreLifecycleStateMachineTest.lifecycleRequestsJoinManualStopAlreadyInFlight`: o teste ainda esperava `MANUAL_STOP` depois de um pedido `ACTIVITY_DESTROY`.
+- A implementação já aplicava corretamente a regra documentada de prioridade; a expectativa antiga do teste estava incorreta.
+- Corrigida somente a asserção para esperar `ACTIVITY_DESTROY`, sem alterar runtime: commit `200abaf29ca41f1f16d251ddf6e25fc692cba214`.
+- CI [42686138623](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42686138623) concluiu com sucesso; job `assemble` verde.
+- O resultado valida os testes JVM e a compilação do APK de debug. Não valida STOP aceito no dispositivo, retorno de Execute, teardown GL/EGL ou renderização.
+- Próxima etapa permanece a criação e teste isolado do coordenador serial; callbacks `onPause()`/`onDestroy()` continuam sem alteração e `M64CMD_EXECUTE` permanece bloqueado.
