@@ -89,3 +89,14 @@ The user tested the GLES 3 build on-device and reported:
 - InitiateGFX has not yet been called; this is expected before the ROM-open/attach step.
 
 This confirms the GLES 3.2 context and GLideN64 PluginStartup stage on the Poco C85. It does not confirm CoreAttachPlugin, InitiateGFX, display-list processing, or a rendered game frame. The next device test is limited to selecting a legally obtained N64 ROM and using “Abrir ROM no Core e anexar vídeo”. Do not press “Iniciar emulação” while the M64CMD_EXECUTE safety gate remains active.
+
+## On-device ROM open and GFX attach (2026-11-09)
+
+The user tested the next integration step on the Poco C85 and reported:
+
+- ROM opened successfully in the Mupen64Plus Core.
+- Graphics plugin attached to the Core.
+- CoreAttachPlugin executed on the GL thread with the current EGL context.
+- Core emulation was not started.
+
+This advances the device-verified state through ROM open and GFX attachment. It does not establish that M64CMD_EXECUTE ran, that display lists were processed, or that a game frame was rendered. Keep the M64CMD_EXECUTE safety gate closed. Next, audit the pinned Core/GLideN64 InitiateGFX and ROM lifecycle callbacks and prepare a separate guarded execution test; do not ask the user to press the emulation button yet.
