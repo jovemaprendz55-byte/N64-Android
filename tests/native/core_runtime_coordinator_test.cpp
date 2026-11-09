@@ -57,6 +57,8 @@ int main() {
     assert(drained);
     assert(runtime.activeCalls() == 0);
     assert(runtime.phase() == Phase::Drained);
+    // Repeated shutdown attempts may safely observe an already-drained gate.
+    assert(runtime.waitForDrainFor(std::chrono::milliseconds(1)));
     assert(!runtime.tryAcquire(Operation::Other));
     assert(runtime.markShutdownComplete());
     assert(runtime.phase() == Phase::ShutdownComplete);
@@ -88,6 +90,7 @@ int main() {
     auto afterReset = timeoutRuntime.tryAcquire(Operation::Other);
     assert(afterReset);
     afterReset.release();
+    assert(timeoutRuntime.markCoreInitialized());
 
     // If shutdown wins after reservation but before entering Execute, do not
     // issue STOP for a loop that never started; the reservation still drains.
