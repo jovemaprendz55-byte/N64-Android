@@ -19,9 +19,11 @@ int main() {
     auto execute = runtime.tryAcquire(Operation::Execute);
     assert(execute);
     assert(runtime.phase() == Phase::ExecuteReserved);
+    assert(!runtime.tryAcquire(Operation::Other));
     // Only one synchronous Core execution may be admitted at a time.
     assert(!runtime.tryAcquire(Operation::Execute));
     assert(runtime.markExecuting());
+    assert(!runtime.tryAcquire(Operation::Other));
     // Shutdown closes ordinary admission while Execute is still in flight.
     assert(runtime.beginShutdown());
     assert(runtime.phase() == Phase::StopRequested);
