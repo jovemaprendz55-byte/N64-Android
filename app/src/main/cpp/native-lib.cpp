@@ -957,8 +957,13 @@ Java_com_jsr_n64android_MainActivity_nativeShutdown(JNIEnv* env, jobject /* thiz
     using RuntimeOperation = CoreRuntimeCoordinator::Operation;
 
     RuntimePhase phase = g_coreRuntime.phase();
-    if (phase != RuntimePhase::Drained && phase != RuntimePhase::ShutdownComplete &&
-        phase != RuntimePhase::StopRequested) {
+    if (phase == RuntimePhase::ShutdownComplete) {
+        std::lock_guard<std::mutex> handleLock(g_coreMutex);
+        return makeString(env, g_coreHandle == nullptr
+            ? "Core ja foi encerrado e descarregado."
+            : "Estado inconsistente: ShutdownComplete com handle ainda carregado.");
+    }
+    if (phase != RuntimePhase::Drained && phase != RuntimePhase::StopRequested) {
         if (!g_coreRuntime.beginShutdown())
             return makeString(env, "Encerramento recusado: transicao de shutdown nao foi aceita.");
     }
