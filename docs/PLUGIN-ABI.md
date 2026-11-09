@@ -801,3 +801,17 @@ a GL thread e o ciclo de vida do EGL; não basta mover a chamada para
 resolver o encerramento com EGL/contexto válido e revisar o estado do plugin
 quando a surface é recriada após `onPause/onResume`. Não pedir ao usuário que
 teste execução da ROM nesta etapa. Nenhum frame de jogo foi confirmado.
+
+
+### Proteção inicial do encerramento nativo (2026-11-09)
+
+Commit `7ddb97c1450a5ffd8641cf777c3efc164c73a5d4` adiciona uma barreira em
+`nativeShutdown()`: se o GLideN64 foi iniciado e não há contexto EGL atual
+na thread chamadora, o frontend recusa o detach/shutdown e mantém as bibliotecas
+carregadas. Isso evita executar a liberação gráfica sem contexto EGL.
+
+Esta é uma proteção defensiva, não a solução completa do ciclo de vida: o
+frontend ainda precisa encaminhar o encerramento normal para a GL thread e
+tratar Activity/surface destruídas. O guard não confirma que o crash anterior
+foi causado por esse caminho. `M64CMD_EXECUTE` continua bloqueado até a
+coordenação de lifecycle ser concluída e testada.
