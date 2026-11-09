@@ -19,7 +19,10 @@ int main() {
     auto execute = runtime.tryAcquire(Operation::Execute);
     assert(execute);
     assert(runtime.markExecuting());
-    assert(!runtime.markExecuteReturned());
+    // Execute may return after shutdown has entered StopRequested; preserve
+    // that phase rather than reopening ordinary Core admission.
+    assert(runtime.markExecuteReturned());
+    assert(runtime.phase() == Phase::StopRequested);
 
     // Shutdown closes ordinary admission but must still admit the STOP lease.
     assert(runtime.beginShutdown());
