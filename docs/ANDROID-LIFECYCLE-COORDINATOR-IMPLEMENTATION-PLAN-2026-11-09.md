@@ -148,3 +148,13 @@ Esta etapa registra o contrato de concorrencia e o plano de testes. Nao altera r
 - CI [42697754975](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42697754975) concluiu com sucesso; job `assemble` aprovado.
 - Limite importante: a classe ainda não está conectada aos callbacks Android; não valida JNI de espera, STOP aceito em Execute real, lifecycle Activity, EGL ou renderização.
 - Próxima etapa: definir o proprietário process-scoped da ponte JNI e uma estratégia explícita de recuperação/reset de geração. Não ligar `onPause()`/`onDestroy()`, não executar teardown no worker e manter `M64CMD_EXECUTE` bloqueado até os testes de integração.
+
+## Atualização: liberação explícita da geração após teardown GL — 2026-11-09
+
+- Revisão identificou que o future single-flight ficava retido até mesmo após a máquina de estados chegar a `SHUTDOWN_COMPLETE`. Sem uma API explícita de liberação, uma próxima solicitação poderia receber o resultado antigo em vez de iniciar uma nova geração.
+- Commit `4536f4182cf7673b41533b8afe03e7565881645a` adiciona `markGlTeardownQueued(generation)` e `markShutdownComplete(generation)` ao coordenador.
+- A operação só é liberada se a geração corresponder, a fase for `GL_TEARDOWN_QUEUED`, e a transição para `SHUTDOWN_COMPLETE` for aceita. O simples retorno síncrono de Execute não libera o future.
+- Timeout de teardown continua latched. A intenção é impedir um STOP duplicado e impedir nova geração enquanto handles/plugins podem continuar vivos.
+- Commit `db01be63184ea8ec89ab77ba4fac7e4c16c8afa8` acrescenta testes para: bloqueio antes do teardown, rejeição de geração antiga, abertura de nova geração somente após confirmação de teardown e retenção após timeout.
+- CI dos commits `4536f41` e `db01be6` está em andamento nos runs [42699056399](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42699056399) e [42699092989](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42699092989). Não considerar aprovado até ambos concluírem.
+- A API ainda é isolada: não chama `nativeShutdown()`, não controla EGL, não altera callbacks Android e não habilita `M64CMD_EXECUTE`.
