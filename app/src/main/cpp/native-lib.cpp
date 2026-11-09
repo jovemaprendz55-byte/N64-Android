@@ -209,6 +209,9 @@ m64p_error androidVideoVkExtensions(const char**[], uint32_t*) { return M64ERR_U
 
 void* g_gfxPluginHandle = nullptr;
 bool g_gfxPluginStarted = false;
+void* g_rspPluginHandle = nullptr;
+bool g_rspPluginStarted = false;
+bool g_rspAttached = false;
 bool g_romOpen = false;
 bool g_gfxAttached = false;
 std::atomic<bool> g_coreExecuting{false};
@@ -218,6 +221,10 @@ const char* const kRequiredGfxSymbols[] = {
     "RomClosed", "RomOpen", "ShowCFB", "UpdateScreen", "ViStatusChanged",
     "ViWidthChanged", "ReadScreen2", "SetRenderingCallback", "FBRead",
     "FBWrite", "FBGetFrameBufferInfo"
+};
+const char* const kRequiredRspSymbols[] = {
+    "PluginGetVersion", "PluginStartup", "PluginShutdown",
+    "InitiateRSP", "DoRspCycles", "RomClosed"
 };
 
 jstring makeString(JNIEnv* env, const char* value) {
@@ -690,6 +697,92 @@ Java_com_jsr_n64android_MainActivity_nativeLoadGfxPlugin(
 
 extern "C"
 JNIEXPORT jstring JNICALL
+Java_com_jsr_n64android_MainActivity_nativeLoadRspPlugin(
+        JNIEnv* env, jobject /* thiz */, jstring pluginPath) {
+#ifndef N64_HAS_MUPEN64PLUS_HEADERS
+    return makeString(env, "Headers oficiais do Core nao estao disponiveis nesta compilacao.");
+#else
+    std::lock_guard<std::mutex> lock(g_coreMutex);
+    if (g_coreHandle == nullptr || !g_coreStarted)
+        return makeString(env, "Inicialize o Core antes de carregar o plugin RSP.");
+    if (g_rspPluginHandle != nullptr)
+        return makeString(env, "Plugin RSP-HLE ja esta carregado e validado.");
+
+    const char* path = env->GetStringUTFChars(pluginPath, nullptr);
+    if (path == nullptr) return makeString(env, "Nao foi possivel obter o caminho do plugin RSP.");
+    dlerror();
+    void* plugin = dlopen(path, RTLD_NOW | RTLD_LOCAL);
+    env->ReleaseStringUTFChars(pluginPath, path);
+    if (plugin == nullptr) {
+        const char* error = dlerror();
+        char status[768];
+        std::snprintf(status, sizeof(status), "Falha ao carregar RSP-HLE: %s",
+                      error != nullptr ? error : "erro desconhecido");
+        return makeString(env, status);
+    }
+
+    char missing[512] = {};
+    for (const char* symbol : kRequiredRspSymbols) {
+        dlerror();
+        void* address = dlsym(plugin, symbol);
+        const char* error = dlerror();
+        if (address == nullptr || error != nullptr) {
+            if (missing[0] != '\0') std::strncat(missing, ", ", sizeof(missing) - std::strlen(missing) - 1);
+            std::strncat(missing, symbol, sizeof(missing) - std::strlen(missing) - 1);
+        }
+    }
+    if (missing[0] != '\0') {
+        char status[768];
+        std::snprintf(status, sizeof(status), "RSP-HLE sem simbolos obrigatorios: %s", missing);
+        dlclose(plugin);
+        return makeString(env, status);
+    }
+
+    auto getVersion = reinterpret_cast<PluginGetVersionSymbol>(dlsym(plugin, "PluginGetVersion"));
+    int type = 0, pluginVersion = 0, apiVersion = 0, caps = 0;
+    const char* name = nullptr;
+    const int versionResult = getVersion(&type, &pluginVersion, &apiVersion, &name, &caps);
+    if (versionResult != M64ERR_SUCCESS || type != M64PLUGIN_RSP ||
+        (apiVersion & 0xffff0000) != 0x00020000) {
+        char status[512];
+        std::snprintf(status, sizeof(status),
+                      "RSP-HLE incompatível: retorno=%d tipo=%d API=0x%06X.",
+                      versionResult, type, apiVersion);
+        dlclose(plugin);
+        return makeString(env, status);
+    }
+
+    using RspPluginStartup = int (*)(void*, void*, void (*)(void*, int, const char*));
+    auto startup = reinterpret_cast<RspPluginStartup>(dlsym(plugin, "PluginStartup"));
+    const int startupResult = startup(g_coreHandle, nullptr, coreDebugCallback);
+    if (startupResult != M64ERR_SUCCESS) {
+        char status[320];
+        std::snprintf(status, sizeof(status),
+                      "PluginStartup do RSP-HLE falhou: codigo %d.", startupResult);
+        dlclose(plugin);
+        return makeString(env, status);
+    }
+
+    g_rspPluginHandle = plugin;
+    g_rspPluginStarted = true;
+    char status[768];
+    std::snprintf(status, sizeof(status),
+                  "Plugin RSP-HLE carregado e inicializado.\nNome: %s\n"
+                  "Versao: %d.%d.%d | API: 0x%06X\n"
+                  "Simbolos obrigatorios: %zu/%zu.\n"
+                  "Ainda nao anexado ao Core; nenhuma tarefa RSP foi executada.",
+                  name != nullptr ? name : "(sem nome)",
+                  (pluginVersion >> 16) & 0xff, (pluginVersion >> 8) & 0xff,
+                  pluginVersion & 0xff, apiVersion,
+                  sizeof(kRequiredRspSymbols) / sizeof(kRequiredRspSymbols[0]),
+                  sizeof(kRequiredRspSymbols) / sizeof(kRequiredRspSymbols[0]));
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidRSP", "%s", status);
+    return makeString(env, status);
+#endif
+}
+
+extern "C"
+JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
         JNIEnv* env, jobject /* thiz */, jbyteArray romBytes) {
 #ifndef N64_HAS_MUPEN64PLUS_HEADERS
@@ -700,6 +793,8 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
         return makeString(env, "Inicialize o Core antes de abrir uma ROM.");
     if (g_gfxPluginHandle == nullptr || !g_gfxPluginStarted)
         return makeString(env, "Carregue e inicialize o plugin GFX antes de abrir a ROM.");
+    if (g_rspPluginHandle == nullptr || !g_rspPluginStarted)
+        return makeString(env, "Carregue e inicialize o plugin RSP-HLE antes de abrir a ROM.");
     if (!androidVideoContextReady())
         return makeString(env, "Operacao cancelada: contexto EGL/GLES nao esta atual na thread GL.");
 
@@ -745,11 +840,26 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
         __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
                             "CoreAttachPlugin(GFX) retornou M64ERR_SUCCESS; InitiateGFX concluido pelo Core.");
     }
+    if (!g_rspAttached) {
+        const m64p_error rspAttachResult = attachPlugin(
+            M64PLUGIN_RSP, reinterpret_cast<m64p_dynlib_handle>(g_rspPluginHandle));
+        if (rspAttachResult != M64ERR_SUCCESS) {
+            char status[384];
+            std::snprintf(status, sizeof(status),
+                "ROM aberta e GFX anexado, mas CoreAttachPlugin(RSP) falhou: codigo %d. RSP permanece carregado para nova tentativa.",
+                static_cast<int>(rspAttachResult));
+            return makeString(env, status);
+        }
+        g_rspAttached = true;
+        __android_log_print(ANDROID_LOG_INFO, "N64AndroidRSP",
+                            "CoreAttachPlugin(RSP) retornou M64ERR_SUCCESS; InitiateRSP concluido pelo Core.");
+    }
     return makeString(env,
         "ROM aberta com sucesso no Mupen64Plus Core.\\n"
-        "Plugin grafico anexado ao Core.\\n"
+        "Plugin grafico GLideN64 anexado ao Core.\\n"
+        "Plugin RSP-HLE anexado ao Core.\\n"
+        "InitiateGFX e InitiateRSP concluidos pelo Core.\\n"
         "CoreAttachPlugin executado na thread GL com contexto EGL atual.\\n"
-        "InitiateGFX concluido pelo Core (anexo retornou M64ERR_SUCCESS).\\n"
         "A emulacao ainda NAO foi iniciada.");
 #endif
 }
@@ -822,13 +932,24 @@ Java_com_jsr_n64android_MainActivity_nativeShutdown(JNIEnv* env, jobject /* thiz
             "O contexto EGL nao esta atual nesta thread.\n"
             "Core e plugin foram mantidos carregados; tente encerrar pela thread GL.");
     }
+    using CoreDetachPluginSymbol = m64p_error (*)(m64p_plugin_type);
+    auto detachPlugin = reinterpret_cast<CoreDetachPluginSymbol>(dlsym(g_coreHandle, "CoreDetachPlugin"));
+    if ((g_rspAttached || g_gfxAttached) && detachPlugin == nullptr)
+        return makeString(env, "CoreDetachPlugin nao encontrado; bibliotecas mantidas carregadas.");
+    if (g_rspAttached) {
+        const m64p_error result = detachPlugin(M64PLUGIN_RSP);
+        if (result != M64ERR_SUCCESS) {
+            char status[256];
+            std::snprintf(status, sizeof(status), "CoreDetachPlugin(RSP) falhou: codigo %d.", static_cast<int>(result));
+            return makeString(env, status);
+        }
+        g_rspAttached = false;
+    }
     if (g_gfxAttached) {
-        using CoreDetachPluginSymbol = m64p_error (*)(m64p_plugin_type);
-        auto detachPlugin = reinterpret_cast<CoreDetachPluginSymbol>(dlsym(g_coreHandle, "CoreDetachPlugin"));
-        if (detachPlugin == nullptr) return makeString(env, "CoreDetachPlugin nao encontrado; bibliotecas mantidas carregadas.");
         const m64p_error result = detachPlugin(M64PLUGIN_GFX);
         if (result != M64ERR_SUCCESS) {
-            char status[256]; std::snprintf(status, sizeof(status), "CoreDetachPlugin falhou: codigo %d.", static_cast<int>(result));
+            char status[256];
+            std::snprintf(status, sizeof(status), "CoreDetachPlugin(GFX) falhou: codigo %d.", static_cast<int>(result));
             return makeString(env, status);
         }
         g_gfxAttached = false;
@@ -843,6 +964,26 @@ Java_com_jsr_n64android_MainActivity_nativeShutdown(JNIEnv* env, jobject /* thiz
             return makeString(env, status);
         }
         g_romOpen = false;
+    }
+    if (g_rspPluginHandle != nullptr) {
+        if (g_rspPluginStarted) {
+            using RspPluginShutdown = int (*)();
+            auto pluginShutdown = reinterpret_cast<RspPluginShutdown>(
+                dlsym(g_rspPluginHandle, "PluginShutdown"));
+            if (pluginShutdown == nullptr)
+                return makeString(env, "PluginShutdown do RSP-HLE nao encontrado; bibliotecas mantidas carregadas.");
+            const int pluginResult = pluginShutdown();
+            if (pluginResult != M64ERR_SUCCESS) {
+                char status[256];
+                std::snprintf(status, sizeof(status),
+                              "PluginShutdown do RSP-HLE falhou: codigo %d. Bibliotecas mantidas carregadas.",
+                              pluginResult);
+                return makeString(env, status);
+            }
+            g_rspPluginStarted = false;
+        }
+        dlclose(g_rspPluginHandle);
+        g_rspPluginHandle = nullptr;
     }
     if (g_gfxPluginHandle != nullptr) {
         if (g_gfxPluginStarted) {
