@@ -295,8 +295,9 @@ class MainActivity : Activity() {
             addView(Button(this@MainActivity).apply { text = "Selecionar ROM"; setOnClickListener { openRomPicker() } })
             addView(Button(this@MainActivity).apply { text = "Abrir ROM no Core e anexar vídeo"; setOnClickListener { openSelectedRomInCore() } })
             addView(Button(this@MainActivity).apply {
-                text = "Iniciar emulação (teste controlado)"
-                setOnClickListener { executeCoreOnGlThread() }
+                text = "Emulação bloqueada por segurança"
+                isEnabled = false
+                contentDescription = "M64CMD_EXECUTE permanece bloqueado até a auditoria do ciclo de execução e parada."
             })
             addView(Button(this@MainActivity).apply {
                 text = "Parar emulação"
