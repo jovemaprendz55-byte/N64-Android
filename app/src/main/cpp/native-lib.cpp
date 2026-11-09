@@ -878,9 +878,9 @@ Java_com_jsr_n64android_MainActivity_nativeExecuteCore(JNIEnv* env, jobject /* t
                         "M64CMD_EXECUTE temporariamente bloqueado: diagnostico da falha nativa pendente.");
     return makeString(env,
         "Execucao temporariamente bloqueada por seguranca.\\n"
-        "O Core e o plugin GFX foram carregados/anexados, mas a execucao ainda nao foi validada.\\n"
-        "O Core possui plugins internos de compatibilidade para RSP/audio/input.\\n"
-        "Estamos investigando a falha nativa antes de liberar novo teste.");
+        "ROM, GLideN64 e RSP-HLE foram inicializados/anexados, mas a execucao ainda nao foi validada.\\n"
+        "Nenhuma tarefa RSP, lista grafica ou frame de jogo foi confirmado.\\n"
+        "A protecao permanece ativa enquanto auditamos o ciclo de execucao e parada.");
 #endif
 }
 
