@@ -324,21 +324,29 @@ class MainActivity : Activity() {
             val stopButton = Button(this@MainActivity).apply {
                 text = "Parar emulação"
                 setOnClickListener {
-                    // nativeStopCore may wait for the R4300 readiness marker.
-                    // Keep that wait off Android's main/UI thread.
+                    // STOP may wait for the R4300 marker. Then wait separately
+                    // for synchronous M64CMD_EXECUTE to return. Neither wait
+                    // blocks the UI, and this flow deliberately does not tear
+                    // down plugins or touch EGL.
                     isEnabled = false
-                    integrationStatusView.text = "Solicitando parada em segundo plano..."
+                    integrationStatusView.text = "Solicitando parada e aguardando retorno do Core..."
                     Thread({
-                        val result = try {
+                        val stopResult = try {
                             nativeStopCore()
                         } catch (error: Throwable) {
                             "Falha ao solicitar parada: ${error.message}"
                         }
+                        val waitResult = try {
+                            nativeAwaitExecuteReturned(3000)
+                        } catch (error: Throwable) {
+                            "Falha ao aguardar retorno de EXECUTE: ${error.message}"
+                        }
+                        val combined = "Pedido de parada:\\n$stopResult\\n\\nConfirmação de retorno:\\n$waitResult"
                         runOnUiThread {
-                            integrationStatusView.text = result
+                            integrationStatusView.text = combined
                             isEnabled = true
                         }
-                    }, "N64-Stop-Request").start()
+                    }, "N64-Stop-And-Wait").start()
                 }
             }
             addView(stopButton)
