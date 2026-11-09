@@ -64,29 +64,29 @@ internal class CoreSerialLifecycleCoordinator(
                             stateMachine.markExecuteReturnTimeout(snapshot.generation)
                         }
 
-                        operation.complete(
+                        val result = synchronized(lock) {
                             OperationResult(
                                 generation = snapshot.generation,
                                 request = stateMachine.snapshot().request,
                                 stopResult = stop,
                                 waitResult = wait,
                                 stopAccepted = accepted
-                            )
-                        )
+                            ).also {
+                                // Only a confirmed STOP rejection permits a fresh attempt.
+                                // Accepted STOP, timeout, and uncertain failures remain latched.
+                                if (!accepted && active === operation) active = null
+                            }
+                        }
+                        operation.complete(result)
                     } catch (failure: Throwable) {
                         stateMachine.markExecuteReturnTimeout(snapshot.generation)
                         operation.completeExceptionally(failure)
-                    } finally {
-                        synchronized(lock) {
-                            if (active === operation) active = null
-                        }
                     }
                 }
             } catch (failure: Throwable) {
                 stateMachine.markExecuteReturnTimeout(snapshot.generation)
-                synchronized(lock) {
-                    if (active === operation) active = null
-                }
+                // Keep the failed future latched: the native state is uncertain and
+                // a second STOP must not be issued without an explicit recovery path.
                 operation.completeExceptionally(failure)
             }
         }

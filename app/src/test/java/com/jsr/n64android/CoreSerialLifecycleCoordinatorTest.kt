@@ -87,6 +87,39 @@ class CoreSerialLifecycleCoordinatorTest {
         }
     }
 
+
+    @Test
+    fun completedExecuteReturnRemainsSingleFlightAndDoesNotSendSecondStop() {
+        val stopCalls = AtomicInteger()
+        val waitCalls = AtomicInteger()
+        val bridge = object : CoreLifecycleBridge {
+            override fun requestStop(): String {
+                stopCalls.incrementAndGet()
+                return "Pedido de parada enviado ao Core"
+            }
+            override fun awaitExecuteReturned(timeoutMs: Int): String {
+                waitCalls.incrementAndGet()
+                return "M64CMD_EXECUTE retornou. Nenhum teardown foi executado."
+            }
+        }
+        val coordinator = CoreSerialLifecycleCoordinator(bridge, Executor { it.run() })
+        val first = coordinator.requestStopAndAwait(
+            CoreLifecycleStateMachine.Request.MANUAL_STOP, 1000
+        )
+        val second = coordinator.requestStopAndAwait(
+            CoreLifecycleStateMachine.Request.ACTIVITY_DESTROY, 1000
+        )
+
+        assertSame(first, second)
+        assertTrue(first.join().stopAccepted)
+        assertEquals(1, stopCalls.get())
+        assertEquals(1, waitCalls.get())
+        assertEquals(
+            CoreLifecycleStateMachine.Request.ACTIVITY_DESTROY,
+            coordinator.snapshot().request
+        )
+    }
+
     @Test
     fun rejectedStopIsNotWaitedAndCanBeRetriedAfterCompletion() {
         val calls = AtomicInteger()
@@ -127,6 +160,11 @@ class CoreSerialLifecycleCoordinatorTest {
         )
 
         assertTrue(future.isCompletedExceptionally)
+
+        val retry = coordinator.requestStopAndAwait(
+            CoreLifecycleStateMachine.Request.ACTIVITY_DESTROY, 1000
+        )
+        assertSame(future, retry)
         assertEquals(
             CoreLifecycleStateMachine.Phase.EXECUTE_RETURN_TIMEOUT,
             coordinator.snapshot().phase
