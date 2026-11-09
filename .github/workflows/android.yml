@@ -102,6 +102,14 @@ jobs:
           grep -F '#define offsetof_struct_device_r4300 (0x00000010)' build/asm-defines-fixture/generated/asm_defines_gas.h
           grep -F '%define offsetof_struct_new_dynarec_hot_state_pc (0x00000020)' build/asm-defines-fixture/generated/asm_defines_nasm.h
 
+      - name: Test Core call lease and shutdown drain
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Werror -pthread \
+            -Iapp/src/main/cpp \
+            tests/native/core_call_gate_test.cpp \
+            -o build-core-call-gate-test
+          ./build-core-call-gate-test
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
