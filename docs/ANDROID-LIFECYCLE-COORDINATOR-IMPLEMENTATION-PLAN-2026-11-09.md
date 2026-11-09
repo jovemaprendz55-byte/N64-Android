@@ -87,3 +87,14 @@ Tambem permanece o problema mais urgente: `onPause()` chama `nativeShutdown()` s
 ## Decisao desta etapa
 
 Esta etapa registra o contrato de concorrencia e o plano de testes. Nao altera runtime nem habilita `M64CMD_EXECUTE`. A implementacao deve comecar pela classe Kotlin pura e seus testes, sem modificar `onPause()`/ `onDestroy()` ate que o modelo seja exercitado isoladamente.
+
+
+## Atualizacao: contrato isolado da ponte de lifecycle
+
+- CI dos commits `1027b315` e `85dc406a` concluiu com sucesso.
+- A maquina de estados agora mantém a geração bloqueada após timeout de retorno do Execute, perda da superfície e timeout de teardown GL. Isso evita abrir uma nova geração sem recuperação explícita.
+- Criado `CoreLifecycleBridge.kt` com contrato mínimo `requestStop()` / `awaitExecuteReturned(timeoutMs)`.
+- Criado `CoreLifecycleBridgeTest.kt` com fake determinístico para ordem STOP → espera e rejeição de STOP.
+- **Ainda não conectado à MainActivity nem ao JNI.** Isso é intencional: os métodos JNI ainda são exports de instância `MainActivity`; migrar só a interface sem migrar corretamente a propriedade/lifetime do objeto nativo manteria a captura da Activity.
+- Auditoria encontrou 16 exports JNI nomeados `Java_com_jsr_n64android_MainActivity_*`. Uma futura migração precisa decidir se move todos para uma classe bridge estável ou se cria uma ponte JNI separada apenas para operações de lifecycle, atualizando e verificando os símbolos C++ e as declarações Kotlin em conjunto.
+- Não alterar `onPause()`, `onDestroy()`, shutdown GL ou habilitar Execute nesta etapa.
