@@ -37,3 +37,19 @@ O código do frontend Android não deve ser presumido como GPL-2.0 apenas por us
 - Em caso de dúvida sobre compatibilidade, isolar o componente e não incorporá-lo até esclarecer a licença.
 
 Este documento é um registro técnico do projeto, não aconselhamento jurídico.
+
+
+## Mupen64Plus RSP-HLE
+
+Repositório: https://github.com/mupen64plus/mupen64plus-rsp-hle
+
+O plugin oficial RSP-HLE declara GNU GPL versão 2 ou, a critério do usuário,
+qualquer versão posterior. A revisão fixada para a primeira build Android é
+`dd09c7dcdc6d2cff584aacb9d519600d47d61039`. O workflow faz checkout do
+código upstream sem remover seus cabeçalhos e compila a biblioteca ARM64;
+o arquivo upstream `LICENSES` deve ser preservado junto à distribuição.
+
+A integração atual é somente compilação e empacotamento. Antes de distribuir
+o APK, manter o código-fonte correspondente e os scripts de build acessíveis,
+conforme as obrigações da GPL-2.0-or-later. Verificar novamente os avisos e
+licenças dos arquivos individuais antes de qualquer redistribuição.
