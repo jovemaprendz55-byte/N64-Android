@@ -509,7 +509,7 @@ Arquivos do frontend revisados em `app/src/main/cpp/native-lib.cpp` e `app/src/m
 - `nativeRegisterAndroidVideo()` exige Core inicializado e contexto EGL/GLES atual, preenche os 17 callbacks e registra a tabela com `CoreOverrideVidExt`.
 - `androidVideoInit()`, `androidVideoSetMode()`, `androidVideoGetProc()`, `androidVideoSwapBuffers()` e `androidVideoDefaultFramebuffer()` verificam a existência do contexto atual antes de prosseguir quando aplicável.
 - `androidVideoSetMode()` atualmente só valida dimensões e guarda largura/altura. `androidVideoSetAttr()` apenas guarda valores em uma tabela; ainda não interpreta nem valida os atributos solicitados pelo renderer.
-- `androidVideoSwapBuffers()` não chama EGL swap, corretamente evitando uma segunda troca de buffers fora do controle do `GLSurfaceView`.
+- `androidVideoSwapBuffers()` é o callback real de apresentação usado durante o loop síncrono do Core e chama `eglSwapBuffers()` na thread que possui o contexto EGL. Isso é separado do teste diagnóstico, que não faz swap manual.
 - `androidVideoDefaultFramebuffer()` consulta `GL_FRAMEBUFFER_BINDING` no contexto corrente.
 - `androidVideoGetProc()` tenta `eglGetProcAddress` e depois `dlsym(RTLD_DEFAULT, ...)`.
 
@@ -750,6 +750,54 @@ GLSurfaceView fica ocupada e não consegue chegar ao swap normal após
 do Core nesse período, sempre na thread que possui o contexto EGL.
 
 **Estado:** instrumentação adicionada no commit
-`deb3a59d6b6ed86627177b7f494b2141aa21aa5a`. A compilação ainda precisa ser
-confirmada. `M64CMD_EXECUTE` permanece bloqueado; não solicitar novo teste de
-emulação até revisar e validar esse caminho.
+`deb3a59d6b6ed86627177b7f494b2141aa21aa5a`. A compilação ARM64/APK foi
+confirmada com sucesso no workflow `42536348592`; a atualização desta
+ documentação também compilou no workflow `42536360251`. `M64CMD_EXECUTE`
+permanece bloqueado; não solicitar novo teste de emulação até revisar e validar
+essa integração.
+
+
+## Auditoria posterior da apresentação e do encerramento (2026-11-09)
+
+Os workflows dos commits `deb3a59d6b6ed86627177b7f494b2141aa21aa5a` e
+`c9c2a5512b5012669bcee8c358e3d2e972f0559f` terminaram com sucesso. O job
+`assemble` completou a compilação ARM64 do GLideN64, o build do APK debug,
+a verificação do Core separado da ponte JNI e o upload do APK.
+
+### Apresentação real de frames
+
+A leitura atual de `native-lib.cpp` confirma que
+`androidVideoSwapBuffers()` chama `eglSwapBuffers(display, surface)` depois
+de verificar o contexto EGL. O callback registra contador, thread, contexto,
+surface e falhas EGL. Ele é o caminho de apresentação durante uma chamada
+síncrona de `M64CMD_EXECUTE` na GL thread; não deve ser confundido com o
+botão de diagnóstico EGL, que apenas chama `glFlush()` e consulta erros.
+
+A compilação não prova que o Core realmente chamou esse callback, nem que o
+GLideN64 produziu um frame válido. Isso só será demonstrado por logs do
+callback durante uma execução controlada e pela imagem visível no aparelho.
+
+### Risco concreto no encerramento
+
+A auditoria do Kotlin e JNI encontrou um problema de ciclo de vida a resolver
+antes de reabilitar execução:
+
+- `MainActivity.onDestroy()` chama `nativeShutdown()` diretamente na thread
+  da interface depois de `glView.onPause()`.
+- `nativeShutdown()` pode chamar `CoreDetachPlugin(GFX)`, que aciona o
+  encerramento do plugin gráfico, e depois `PluginShutdown()`.
+- Não há garantia de que o EGL context esteja atual na thread da interface
+  nesse momento. A liberação de recursos GLES nessa condição pode falhar ou
+  provocar encerramento nativo.
+
+Isto é um risco identificado pela ordem das chamadas, não uma causa já
+confirmada do crash anterior. A correção precisa coordenar detach/shutdown com
+a GL thread e o ciclo de vida do EGL; não basta mover a chamada para
+`queueEvent` sem tratar o caso em que a surface já foi destruída.
+
+### Estado de segurança
+
+`M64CMD_EXECUTE` continua bloqueado intencionalmente. A próxima alteração deve
+resolver o encerramento com EGL/contexto válido e revisar o estado do plugin
+quando a surface é recriada após `onPause/onResume`. Não pedir ao usuário que
+teste execução da ROM nesta etapa. Nenhum frame de jogo foi confirmado.
