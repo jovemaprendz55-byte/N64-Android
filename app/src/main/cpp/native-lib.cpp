@@ -836,6 +836,18 @@ Java_com_jsr_n64android_MainActivity_nativeShutdown(JNIEnv* env, jobject /* thiz
     if (g_coreHandle == nullptr) {
         return makeString(env, "Biblioteca do Core nao estava carregada.");
     }
+    // GLideN64 shutdown/detach may release GLES resources. Never run those
+    // callbacks from a thread without the EGL context current. Keep every
+    // library loaded so the frontend can retry later from the GL thread.
+    if (g_gfxPluginStarted && !androidVideoContextReady()) {
+        __android_log_print(ANDROID_LOG_ERROR, "N64AndroidGFX",
+                            "Shutdown recusado: EGL context nao esta atual nesta thread. TID=%ld",
+                            static_cast<long>(syscall(SYS_gettid)));
+        return makeString(env,
+            "Encerramento grafico recusado por seguranca.\n"
+            "O contexto EGL nao esta atual nesta thread.\n"
+            "Core e plugin foram mantidos carregados; tente encerrar pela thread GL.");
+    }
     if (g_gfxAttached) {
         using CoreDetachPluginSymbol = m64p_error (*)(m64p_plugin_type);
         auto detachPlugin = reinterpret_cast<CoreDetachPluginSymbol>(dlsym(g_coreHandle, "CoreDetachPlugin"));
