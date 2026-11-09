@@ -64,3 +64,18 @@ Esta seção substitui as afirmações anteriores deste documento que diziam que
 Não alterar o botão nem iniciar ROM no loop. Primeiro, implementar e testar um coordenador Android de lifecycle que represente explicitamente: pedido de parada, retorno síncrono confirmado de EXECUTE, teardown GL com EGL atual e resultado de timeout/falha. O desenho deve tratar a impossibilidade de manter a Activity/superfície indefinidamente viva depois de `onDestroy()`; timeout deve preservar handles e nunca ser reportado como shutdown concluído. Em paralelo, adicionar testes instrumentados ou um harness de integração que valide STOP concorrente com o Core fixado.
 
 **Estado de liberação:** botão permanece desativado; não há evidência no aparelho de `DoRspCycles`, tarefa gráfica HLE, `ProcessDList`, swap de frame de jogo ou imagem visível.
+
+
+## Verificação posterior — commit 33e8094 (09/11/2026)
+
+- Commit atual revisado: `33e8094f3ce88c512a630ecb2ec7715705c4a0e8`.
+- O botão manual "Parar emulação" executa `nativeStopCore()` e, somente quando o texto retornado confirma que STOP foi enviado ou já havia sido enviado, chama `nativeAwaitExecuteReturned(3000)` em worker thread.
+- O callback do botão verifica `activityDestroyed` antes de atualizar a interface. Isso protege a atualização visual tardia, mas não substitui um coordenador serial de lifecycle.
+- CI do commit terminou com `success`: [Actions run 42674893095](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42674893095). Artefato `n64-android-core-isolated-diagnostic`, ID `13699722585`, tamanho 3.141.570 bytes, não expirado.
+- A revisão do arquivo atual confirma que `onPause()` ainda chama `nativeShutdown()` diretamente na thread da Activity e depois pode aguardar até 3000 ms por shutdown na GL thread. Portanto, o bloqueio prolongado da UI permanece possível.
+- `onDestroy()` ainda aguarda até 3000 ms por evento enfileirado na GL thread. Marcar `activityDestroyed` protege o callback do botão STOP, mas não resolve a ordem entre STOP, retorno de EXECUTE, EGL e teardown.
+- Nenhuma alteração de runtime foi feita nesta atualização de auditoria. `M64CMD_EXECUTE` permanece bloqueado na interface.
+
+### Próxima mudança autorizada para implementação
+
+Antes de modificar `onPause()`/ `onDestroy()`, desenhar um coordenador Kotlin serial com executor de lifecycle e geração de operação, sem referência forte à Activity. Os testes devem cobrir STOP repetido, sobreposição botão/onPause/onDestroy, timeout, retorno natural do Execute, seletor de ROM e callback tardio. O worker pode solicitar STOP e aguardar retorno, mas nunca chamar `nativeShutdown()`; o teardown permanece exclusivo da GL thread enquanto EGL estiver atual. Se Android destruir a superfície antes da confirmação, o estado deve permanecer não confirmado e os handles nativos devem ser preservados. Não liberar o botão EXECUTE nesta etapa.
