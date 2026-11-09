@@ -39,6 +39,7 @@ class MainActivity : Activity() {
     private external fun nativeExecuteCore(): String
     private external fun nativeGetExecutionReadiness(): String
     private external fun nativeStopCore(): String
+    private external fun nativeAwaitExecuteReturned(timeoutMs: Int): String
     private external fun nativeTestVideoOverrideAbi(): String
     private external fun nativeVerifyEglContext(): String
     private external fun nativeTestGlOperations(): String
