@@ -743,12 +743,13 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
         }
         g_gfxAttached = true;
         __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
-                            "CoreAttachPlugin(GFX) concluido; InitiateGFX solicitado pelo Core.");
+                            "CoreAttachPlugin(GFX) retornou M64ERR_SUCCESS; InitiateGFX concluido pelo Core.");
     }
     return makeString(env,
         "ROM aberta com sucesso no Mupen64Plus Core.\\n"
         "Plugin grafico anexado ao Core.\\n"
         "CoreAttachPlugin executado na thread GL com contexto EGL atual.\\n"
+        "InitiateGFX concluido pelo Core (anexo retornou M64ERR_SUCCESS).\\n"
         "A emulacao ainda NAO foi iniciada.");
 #endif
 }
