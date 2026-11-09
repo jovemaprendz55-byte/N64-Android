@@ -631,6 +631,17 @@ Java_com_jsr_n64android_MainActivity_nativeLoadGfxPlugin(
         return makeString(env,
             "PluginStartup cancelado: contexto EGL/GLES nao esta atual nesta thread GL.");
     }
+    int actualGlesMajor = 0;
+    int actualGlesMinor = 0;
+    if (!androidVideoGetGlesVersion(&actualGlesMajor, &actualGlesMinor) ||
+        actualGlesMajor < 3) {
+        char status[256];
+        std::snprintf(status, sizeof(status),
+                      "PluginStartup cancelado: GLideN64 requer OpenGL ES 3.0; contexto atual=%d.%d.",
+                      actualGlesMajor, actualGlesMinor);
+        dlclose(plugin);
+        return makeString(env, status);
+    }
 
     using GfxPluginStartup = int (*)(void*, void*, void (*)(void*, int, const char*));
     auto startup = reinterpret_cast<GfxPluginStartup>(dlsym(plugin, "PluginStartup"));
