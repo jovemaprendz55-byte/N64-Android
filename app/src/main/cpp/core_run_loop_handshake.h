@@ -36,6 +36,12 @@ public:
         return ready_ ? WaitResult::Ready : WaitResult::ExecuteReturned;
     }
 
+    template <typename Rep, typename Period>
+    bool waitForExecuteReturned(const std::chrono::duration<Rep, Period>& timeout) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        return changed_.wait_for(lock, timeout, [this] { return returned_; });
+    }
+
     bool ready() const {
         std::lock_guard<std::mutex> lock(mutex_);
         return ready_;
