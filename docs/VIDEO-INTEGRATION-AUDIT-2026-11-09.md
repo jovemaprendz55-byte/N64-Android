@@ -62,3 +62,17 @@ The frontend now explicitly requests an ES 3 context. Before calling
 refuses startup if the actual context is below GLES 3.0. This is a defensive
 compatibility check; it does not enable ROM execution or claim that the
 renderer has produced a frame.
+
+
+## GLES 3 build verification (2026-11-09)
+
+The combined frontend/native change was built successfully by GitHub Actions
+run 42563783008 (commit `fce176803836fcfd821c057781605fa2b329dd2e`).
+The uploaded debug APK artifact is `n64-android-core-isolated-diagnostic`
+(artifact ID 13650293874).
+
+The APK was downloaded and inspected: it contains the ARM64
+`libmupen64plus-video-GLideN64.so`, Mupen64Plus Core, SDL2, and
+`libn64bridge.so`. The JNI bridge binary contains the new explicit
+GLES 3.0 startup guard message. This confirms packaging and compilation
+of the guard, but does not replace on-device testing of PluginStartup.
