@@ -27,8 +27,8 @@ jobs:
           from pathlib import Path
           path = Path("third_party/mupen64plus-core/src/device/r4300/r4300_core.c")
           source = path.read_text()
-          old = "    *r4300_stop(r4300) = 0;\\n    g_rom_pause = 0;"
-          new = old + '\\n    DebugMessage(M64MSG_INFO, "N64ANDROID_R4300_READY_20261109");'
+          old = "    *r4300_stop(r4300) = 0;\n    g_rom_pause = 0;"
+          new = old + '\n    DebugMessage(M64MSG_INFO, "N64ANDROID_R4300_READY_20261109");'
           if source.count(old) != 1:
               raise SystemExit("Expected R4300 stop-reset block exactly once; upstream drift detected")
           path.write_text(source.replace(old, new, 1))
