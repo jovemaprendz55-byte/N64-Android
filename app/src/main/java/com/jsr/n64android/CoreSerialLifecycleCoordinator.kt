@@ -98,10 +98,13 @@ internal class CoreSerialLifecycleCoordinator(
      * This does not release the single-flight operation.
      */
     fun markGlTeardownQueued(generation: Long): Boolean = synchronized(lock) {
+        val operation = active ?: return@synchronized false
+        if (!operation.isDone || operation.isCompletedExceptionally) return@synchronized false
+        val result = operation.getNow(null) ?: return@synchronized false
         val current = stateMachine.snapshot()
-        if (current.generation != generation ||
-            current.phase != CoreLifecycleStateMachine.Phase.EXECUTE_RETURNED ||
-            active == null
+        if (result.generation != generation || !result.stopAccepted ||
+            current.generation != generation ||
+            current.phase != CoreLifecycleStateMachine.Phase.EXECUTE_RETURNED
         ) return@synchronized false
         stateMachine.markGlTeardownQueued(generation)
     }
