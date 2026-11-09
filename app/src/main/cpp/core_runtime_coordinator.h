@@ -83,7 +83,12 @@ public:
     // Called after synchronous M64CMD_EXECUTE has returned.
     bool markExecuteReturned() {
         std::lock_guard<std::mutex> lock(stateMutex_);
-        if (phase_ == Phase::StopRequested) return true;
+        if (phase_ == Phase::StopRequested) {
+            // A natural Execute return means a pending shutdown no longer
+            // needs to send STOP, even if it had observed Executing earlier.
+            stopRequired_ = false;
+            return true;
+        }
         if (phase_ != Phase::Executing) return false;
         phase_ = Phase::PluginsAttached;
         return true;
