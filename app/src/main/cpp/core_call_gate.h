@@ -54,13 +54,25 @@ public:
         return Lease(this);
     }
 
-    // Closes admission to new work, but deliberately permits STOP leases
-    // while existing calls drain. Caller must request Core STOP first.
-    void beginShutdownAndWait() {
-        std::unique_lock<std::mutex> lock(mutex_);
+    // Close admission before issuing STOP. STOP remains admissible so the
+    // shutdown coordinator can interrupt a synchronous EXECUTE call.
+    void beginShutdown() {
+        std::lock_guard<std::mutex> lock(mutex_);
         shutdownRequested_ = true;
+    }
+
+    // Call only after the STOP request has returned. This waits for EXECUTE,
+    // STOP, and every other previously admitted Core call to release its lease.
+    void waitForDrain() {
+        std::unique_lock<std::mutex> lock(mutex_);
+        if (!shutdownRequested_) return;
         drained_.wait(lock, [this] { return activeCalls_ == 0; });
         shutdownComplete_ = true;
+    }
+
+    void beginShutdownAndWait() {
+        beginShutdown();
+        waitForDrain();
     }
 
     // Only call after a failed teardown has been reconciled and no lease is
