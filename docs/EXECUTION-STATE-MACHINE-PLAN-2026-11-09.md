@@ -72,3 +72,21 @@ A máquina de estados e o coordenador Android precisam estar implementados e rev
 ## Próxima tarefa de engenharia
 
 Implementar primeiro a máquina de estados nativa e uma consulta confiável de estado para Kotlin, sem habilitar o botão. Em seguida implementar o coordenador de pausa/destruição Android. Só depois fazer revisão de corrida STARTING/STOP e testes automatizados/instrumentados. Manter o gate de execução fechado até todos os critérios acima serem atendidos.
+
+
+## Auditoria complementar do código em `main` — 2026-11-09
+
+Revisão posterior do código atual confirmou detalhes que precisam ser tratados antes da primeira implementação:
+
+- O estado nativo real ainda é somente `std::atomic<bool> g_coreExecuting{false}`; não existe enum de ciclo de vida nem estado STOP_REQUESTED.
+- `nativeExecuteCore()` retorna pelo safety gate antes de obter `g_coreMutex` ou resolver/chamar `CoreDoCommand`. Portanto não há hoje uma chamada EXECUTE oculta ou ativa.
+- `nativeStopCore()` mantém `g_coreMutex` durante a chamada a `CoreDoCommand(M64CMD_STOP)`. Isso é aceitável apenas no estado atual, em que EXECUTE está bloqueado. Não copiar esse padrão automaticamente para a futura implementação: a chamada STOP precisa ser compatível com o ciclo síncrono EXECUTE e com a proteção de vida útil do handle.
+- `nativeShutdown()` mantém o mesmo mutex durante detach, ROM_CLOSE, PluginShutdown, dlclose e CoreShutdown. Assim, o mutex também funciona hoje como proteção da vida útil dos handles.
+- A solução futura não pode simplesmente liberar o mutex e chamar uma função Core guardada em ponteiro local: shutdown poderia descarregar o handle entre a captura e a chamada. É necessário introduzir um protocolo explícito de chamadas em andamento/lease do Core, ou outro mecanismo equivalente que impeça shutdown/dlclose até todas as chamadas Core terminarem.
+- O protocolo deve permitir STOP concorrente com EXECUTE sem permitir STOP concorrer com CoreShutdown/dlclose. A reserva de chamada STOP precisa ser obtida sob sincronização e liberada depois do retorno do comando.
+- Todas as operações mutáveis precisam rejeitar estados STARTING, RUNNING, STOP_REQUESTED e SHUTTING_DOWN: inicialização, carregamento de GFX/RSP, abertura de ROM, registro de Video Extension quando aplicável, detach, shutdown e descarregamento.
+- A implementação Kotlin atual ainda pausa a GLSurfaceView diretamente em `onPause()`; o coordenador de ciclo de vida não foi implementado. O `onDestroy()` continua usando espera limitada de 1500 ms e não tem confirmação de STOPPED porque EXECUTE permanece bloqueado.
+
+### Decisão de implementação
+
+Não foi alterado o código nativo nesta etapa: criar um enum sem resolver a vida útil concorrente do ponteiro `CoreDoCommand` daria uma falsa impressão de segurança. A próxima alteração de código deve introduzir primeiro o protocolo de lease/chamadas ativas e testes de concorrência; só então adicionar as transições completas e o coordenador Kotlin. O gate `M64CMD_EXECUTE` permanece fechado.
