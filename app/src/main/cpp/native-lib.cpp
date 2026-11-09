@@ -441,6 +441,11 @@ Java_com_jsr_n64android_MainActivity_nativeStartCore(
         return makeString(env, status);
     }
     g_coreStarted = true;
+    if (!g_coreRuntime.markCoreInitialized()) {
+        __android_log_print(ANDROID_LOG_ERROR, "N64AndroidCore",
+                            "CoreStartup concluiu, mas a transicao de lifecycle foi recusada.");
+        return makeString(env, "CoreStartup concluiu, mas o encerramento comecou simultaneamente. O teardown aguardara esta chamada.");
+    }
     __android_log_print(ANDROID_LOG_INFO, "N64AndroidCore", "CoreStartup concluido sem ROM.");
     return makeString(env, "CoreStartup concluido com sucesso.\nCore inicializado, sem ROM carregada.\nNenhum jogo foi executado.");
 }
@@ -848,6 +853,11 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
             return makeString(env, status);
         }
         g_romOpen = true;
+        if (!g_coreRuntime.markRomOpen()) {
+            __android_log_print(ANDROID_LOG_WARN, "N64AndroidFlow",
+                                "ROM abriu, mas lifecycle ja esta em encerramento; teardown fechara a ROM.");
+            return makeString(env, "ROM abriu, mas o encerramento comecou simultaneamente. A ROM sera fechada pelo teardown.");
+        }
         __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow", "M64CMD_ROM_OPEN concluido.");
     }
 
@@ -878,6 +888,10 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
         g_rspAttached = true;
         __android_log_print(ANDROID_LOG_INFO, "N64AndroidRSP",
                             "CoreAttachPlugin(RSP) retornou M64ERR_SUCCESS; InitiateRSP concluido pelo Core.");
+    }
+    if (g_coreRuntime.phase() == CoreRuntimeCoordinator::Phase::RomOpen &&
+        !g_coreRuntime.markPluginsAttached()) {
+        return makeString(env, "Plugins foram anexados, mas o encerramento comecou simultaneamente. O teardown sera concluido com seguranca.");
     }
     return makeString(env,
         "ROM aberta com sucesso no Mupen64Plus Core.\\n"
@@ -939,11 +953,49 @@ Java_com_jsr_n64android_MainActivity_nativeStopCore(JNIEnv* env, jobject /* thiz
 extern "C"
 JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_MainActivity_nativeShutdown(JNIEnv* env, jobject /* thiz */) {
+    using RuntimePhase = CoreRuntimeCoordinator::Phase;
+    using RuntimeOperation = CoreRuntimeCoordinator::Operation;
+
+    RuntimePhase phase = g_coreRuntime.phase();
+    if (phase != RuntimePhase::Drained && phase != RuntimePhase::ShutdownComplete &&
+        phase != RuntimePhase::StopRequested) {
+        if (!g_coreRuntime.beginShutdown())
+            return makeString(env, "Encerramento recusado: transicao de shutdown nao foi aceita.");
+    }
+
+    if (g_coreRuntime.requiresStopCommand()) {
+        auto stopLease = g_coreRuntime.tryAcquire(RuntimeOperation::Stop);
+        if (!stopLease)
+            return makeString(env, "STOP recusado: nao foi possivel proteger a vida util do Core.");
+        using CoreDoCommandSymbol = m64p_error (*)(m64p_command, int, void*);
+        CoreDoCommandSymbol doCommand = nullptr;
+        {
+            std::lock_guard<std::mutex> handleLock(g_coreMutex);
+            if (g_coreHandle != nullptr)
+                doCommand = reinterpret_cast<CoreDoCommandSymbol>(
+                    dlsym(g_coreHandle, "CoreDoCommand"));
+        }
+        if (doCommand == nullptr)
+            return makeString(env, "CoreDoCommand nao encontrado; handles preservados.");
+        const m64p_error stopResult = doCommand(M64CMD_STOP, 0, nullptr);
+        if (stopResult != M64ERR_SUCCESS) {
+            char status[256];
+            std::snprintf(status, sizeof(status), "M64CMD_STOP falhou: codigo %d. Handles preservados.",
+                          static_cast<int>(stopResult));
+            return makeString(env, status);
+        }
+        stopLease.release();
+    }
+
+    if (!g_coreRuntime.waitForDrainFor(std::chrono::milliseconds(1500)))
+        return makeString(env, "Encerramento aguardando chamadas do Core. Timeout: todas as bibliotecas e handles foram preservados.");
+
     std::lock_guard<std::mutex> lock(g_coreMutex);
     if (g_coreExecuting.load())
-        return makeString(env, "Encerramento recusado: pare o Core e aguarde a execucao retornar antes de descarregar bibliotecas.");
+        return makeString(env, "Encerramento recusado: flag de execucao ainda ativa apesar do drain. Handles preservados.");
     if (g_coreHandle == nullptr) {
-        return makeString(env, "Biblioteca do Core nao estava carregada.");
+        g_coreRuntime.markShutdownComplete();
+        return makeString(env, "Biblioteca do Core nao estava carregada; lifecycle encerrado.");
     }
     // GLideN64 shutdown/detach may release GLES resources. Never run those
     // callbacks from a thread without the EGL context current. Keep every
@@ -1052,6 +1104,8 @@ Java_com_jsr_n64android_MainActivity_nativeShutdown(JNIEnv* env, jobject /* thiz
         return makeString(env, status);
     }
     g_coreHandle = nullptr;
+    if (!g_coreRuntime.markShutdownComplete())
+        return makeString(env, "Core descarregado, mas estado do coordenador nao confirmou ShutdownComplete.");
     return makeString(env, "Biblioteca do Core descarregada corretamente.");
 }
 
