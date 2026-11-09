@@ -93,7 +93,7 @@ class CoreLifecycleStateMachineTest {
 
         assertEquals(manual.generation, pause.generation)
         assertEquals(manual.generation, destroy.generation)
-        assertEquals(CoreLifecycleStateMachine.Request.MANUAL_STOP, destroy.request)
+        assertEquals(CoreLifecycleStateMachine.Request.ACTIVITY_DESTROY, destroy.request)
     }
 
     @Test
