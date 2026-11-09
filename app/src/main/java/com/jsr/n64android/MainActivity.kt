@@ -38,8 +38,6 @@ class MainActivity : Activity() {
     private external fun nativeOpenRomAndAttachGfx(romBytes: ByteArray): String
     private external fun nativeExecuteCore(): String
     private external fun nativeGetExecutionReadiness(): String
-    private external fun nativeStopCore(): String
-    private external fun nativeAwaitExecuteReturned(timeoutMs: Int): String
     private external fun nativeTestVideoOverrideAbi(): String
     private external fun nativeVerifyEglContext(): String
     private external fun nativeTestGlOperations(): String
@@ -332,24 +330,21 @@ class MainActivity : Activity() {
                     isEnabled = false
                     integrationStatusView.text = "Solicitando parada e aguardando retorno do Core..."
                     Thread({
-                        val stopResult = try {
-                            nativeStopCore()
+                        val result = try {
+                            CoreStopCoordinator(CoreNativeBridge).requestStopAndAwait(3000)
                         } catch (error: Throwable) {
-                            "Falha ao solicitar parada: ${error.message}"
+                            CoreStopCoordinator.Result(
+                                stopResult = "Falha ao solicitar parada: ${error.message}",
+                                waitResult = null,
+                                stopAccepted = false
+                            )
                         }
-                        val stopWasAccepted =
-                            stopResult.startsWith("Pedido de parada enviado ao Core") ||
-                            stopResult.startsWith("Pedido M64CMD_STOP ja foi enviado")
-                        val waitResult = if (stopWasAccepted) {
-                            try {
-                                nativeAwaitExecuteReturned(3000)
-                            } catch (error: Throwable) {
-                                "Falha ao aguardar retorno de EXECUTE: ${error.message}"
-                            }
-                        } else {
-                            "Aguardagem nao iniciada: o STOP nao foi confirmado como enviado."
+                        val combined = buildString {
+                            append("Pedido de parada:\n")
+                            append(result.stopResult)
+                            append("\n\nConfirmação de retorno:\n")
+                            append(result.waitResult ?: "Aguardagem nao iniciada: o STOP nao foi confirmado como enviado.")
                         }
-                        val combined = "Pedido de parada:\n$stopResult\n\nConfirmação de retorno:\n$waitResult"
                         runOnUiThread {
                             if (!activityDestroyed) {
                                 integrationStatusView.text = combined
