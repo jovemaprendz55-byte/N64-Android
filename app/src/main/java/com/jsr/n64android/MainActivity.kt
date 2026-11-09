@@ -26,6 +26,7 @@ import javax.microedition.khronos.opengles.GL10
 
 class MainActivity : Activity() {
     private val romPickerRequestCode = 4201
+    private var romPickerActive = false
 
     private external fun nativeGetStatus(): String
     private external fun nativeInitialize(configPath: String, dataPath: String): String
@@ -515,13 +516,35 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun openRomPicker() { val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "*/*" }; startActivityForResult(i, romPickerRequestCode) }
+    private fun openRomPicker() {
+        // ACTION_OPEN_DOCUMENT temporarily pauses this Activity. Keep the Core
+        // alive while the system document picker is in the foreground.
+        romPickerActive = true
+        try {
+            val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "*/*"
+            }
+            startActivityForResult(i, romPickerRequestCode)
+        } catch (error: Exception) {
+            romPickerActive = false
+            integrationStatusView.text = "Falha ao abrir seletor de ROM: ${error.message}"
+        }
+    }
 
     @Deprecated("Compatibilidade com a Activity atual")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != romPickerRequestCode || resultCode != RESULT_OK) return
-        val uri = data?.data ?: return
+        if (requestCode != romPickerRequestCode) return
+        romPickerActive = false
+        if (resultCode != RESULT_OK) {
+            integrationStatusView.text = "Selecao de ROM cancelada. Core preservado."
+            return
+        }
+        val uri = data?.data ?: run {
+            integrationStatusView.text = "Nenhum arquivo foi selecionado. Core preservado."
+            return
+        }
         integrationStatusView.text = "Lendo e validando a ROM..."
         Thread {
             val result = try {
@@ -902,7 +925,7 @@ class MainActivity : Activity() {
         // First close Core admission and request STOP from the Activity thread.
         // This is essential because M64CMD_EXECUTE occupies the GL thread; a
         // shutdown event queued only to that thread could never interrupt it.
-        if (nativeCoreLoaded) {
+        if (nativeCoreLoaded && !romPickerActive) {
             val drainResult = try {
                 nativeShutdown()
             } catch (error: Throwable) {
@@ -920,6 +943,10 @@ class MainActivity : Activity() {
             }
         }
 
+        if (romPickerActive) {
+            android.util.Log.i("N64AndroidFlow",
+                "Pausa temporaria do seletor de ROM: Core preservado.")
+        }
         glView?.onPause()
         super.onPause()
     }
