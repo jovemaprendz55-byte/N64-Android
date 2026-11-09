@@ -9,9 +9,9 @@
 ## Contrato testado
 
 1. Uma chamada EXECUTE mantém um lease até a chamada síncrona realmente retornar.
-2. Ao iniciar o drain de shutdown, novas chamadas EXECUTE e OTHER são recusadas.
-3. STOP continua admitido durante o drain para que uma thread externa possa interromper o loop síncrono.
-4. O drain não termina enquanto existir qualquer lease ativo, incluindo a própria chamada STOP que está solicitando a interrupção.
+2. O coordenador fecha primeiro a admissão com `beginShutdown()`, antes de solicitar STOP; novas chamadas EXECUTE e OTHER passam a ser recusadas.
+3. STOP continua admitido depois do fechamento da admissão, permitindo que o próprio coordenador obtenha um lease STOP, envie `M64CMD_STOP` e só então chame `waitForDrain()`.
+4. `waitForDrain()` não termina enquanto existir qualquer lease ativo, incluindo a própria chamada STOP que está solicitando a interrupção.
 5. O teste mantém EXECUTE e STOP ativos ao mesmo tempo: liberar EXECUTE sozinho não conclui o drain; somente a liberação também do lease STOP permite avançar. Depois que o drain termina, até STOP é recusado.
 6. Um teardown que falhou pode reabrir a admissão somente depois do drain completo e sem leases.
 7. O lease é move-only e libera a reserva exatamente uma vez.
