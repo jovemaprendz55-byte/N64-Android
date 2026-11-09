@@ -37,6 +37,7 @@ class MainActivity : Activity() {
     private external fun nativeLoadRspPlugin(pluginPath: String): String
     private external fun nativeOpenRomAndAttachGfx(romBytes: ByteArray): String
     private external fun nativeExecuteCore(): String
+    private external fun nativeGetExecutionReadiness(): String
     private external fun nativeStopCore(): String
     private external fun nativeTestVideoOverrideAbi(): String
     private external fun nativeVerifyEglContext(): String
@@ -295,6 +296,25 @@ class MainActivity : Activity() {
             })
             addView(Button(this@MainActivity).apply { text = "Selecionar ROM"; setOnClickListener { openRomPicker() } })
             addView(Button(this@MainActivity).apply { text = "Abrir ROM no Core e anexar vídeo"; setOnClickListener { openSelectedRomInCore() } })
+            addView(Button(this@MainActivity).apply {
+                text = "Diagnosticar execução (sem iniciar)"
+                setOnClickListener {
+                    val surface = glView
+                    if (surface == null || !glSurfaceReady) {
+                        integrationStatusView.text = "Contexto EGL nao esta pronto para o diagnostico."
+                    } else {
+                        integrationStatusView.text = "Verificando estado do Core na thread GL; EXECUTE nao sera chamado..."
+                        surface.queueEvent {
+                            val result = try {
+                                nativeGetExecutionReadiness()
+                            } catch (error: Throwable) {
+                                "Falha no diagnostico seguro: ${error.message}"
+                            }
+                            runOnUiThread { integrationStatusView.text = result }
+                        }
+                    }
+                }
+            })
             addView(Button(this@MainActivity).apply {
                 text = "Emulação bloqueada por segurança"
                 isEnabled = false
