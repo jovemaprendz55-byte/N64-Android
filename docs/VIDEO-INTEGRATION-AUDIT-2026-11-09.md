@@ -100,3 +100,23 @@ The user tested the next integration step on the Poco C85 and reported:
 - Core emulation was not started.
 
 This advances the device-verified state through ROM open and GFX attachment. It does not establish that M64CMD_EXECUTE ran, that display lists were processed, or that a game frame was rendered. Keep the M64CMD_EXECUTE safety gate closed. Next, audit the pinned Core/GLideN64 InitiateGFX and ROM lifecycle callbacks and prepare a separate guarded execution test; do not ask the user to press the emulation button yet.
+
+## CoreAttachPlugin / InitiateGFX API audit (2026-11-09)
+
+The upstream Mupen64Plus v2.0 Plugin API documents that the video plugin's
+`InitiateGFX(GFX_INFO)` callback is called during `CoreAttachPlugin`. The
+Front-End API also requires the Core and plugin to have completed startup and
+a ROM to be open before `CoreAttachPlugin`; the video plugin is attached
+first in the plugin ordering.
+
+On the Poco C85, the user reported successful ROM open and successful
+`CoreAttachPlugin(GFX)` on the GL thread with the current EGL context. Since
+the native bridge only sets `g_gfxAttached` after `CoreAttachPlugin` returns
+`M64ERR_SUCCESS`, this is strong API-level confirmation that the Core accepted
+the `InitiateGFX` initialization path. The bridge status/log now states this
+explicitly (commit `9eb06cedb5b109584ce15f4b19cc02520181a3ca`). There is not yet
+a separate instrumented callback trace from inside GLideN64.
+
+This still does not confirm `M64CMD_EXECUTE`, RSP task execution,
+`ProcessDList`/`ProcessRDPList`, buffer swaps during gameplay, or a rendered
+frame. Keep the execution safety gate closed pending the next isolated audit.
