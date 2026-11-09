@@ -65,9 +65,9 @@ int main() {
     auto heldOther = timeoutRuntime.tryAcquire(Operation::Other);
     assert(heldOther);
     assert(timeoutRuntime.beginShutdown());
-    auto timeoutStop = timeoutRuntime.tryAcquire(Operation::Stop);
-    assert(timeoutStop);
-    timeoutStop.release();
+    // No Execute loop is active here, so shutdown must not request STOP.
+    assert(!timeoutRuntime.requiresStopCommand());
+    assert(!timeoutRuntime.tryAcquire(Operation::Stop));
     assert(!timeoutRuntime.waitForDrainFor(std::chrono::milliseconds(2)));
     assert(timeoutRuntime.phase() == Phase::StopRequested);
     assert(timeoutRuntime.activeCalls() == 1);
