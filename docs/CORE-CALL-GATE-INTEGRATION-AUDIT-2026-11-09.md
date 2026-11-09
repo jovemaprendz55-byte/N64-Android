@@ -62,3 +62,7 @@ A primeira versão do `CoreRuntimeCoordinator` permitia que duas chamadas `tryAc
 O coordenador agora introduz `ExecuteReserved`: a primeira lease de Execute reserva atomicamente a vaga e chamadas seguintes são recusadas. `markExecuting()` só aceita a reserva enquanto a admissão continua aberta. Se o shutdown vencer antes do início, `markExecuteNotStarted()` preserva `StopRequested`, e `requiresStopCommand()` indica que não se deve enviar `M64CMD_STOP` para um loop que nunca começou. Se Execute já entrou, shutdown registra que STOP é necessário. Os testes cobrem os dois lados dessa corrida.
 
 Este ajuste continua sendo um protótipo independente. Ainda não protege os ponteiros/handles JNI e não foi integrado a `native-lib.cpp`; a execução permanece bloqueada.
+
+## Restrição adicional de chamadas concorrentes
+
+A admissão `Other` agora fica limitada às fases `CoreInitialized`, `RomOpen` e `PluginsAttached`. Ela é recusada durante `ExecuteReserved` e `Executing`, evitando que uma chamada JNI de controle entre no Core enquanto o loop síncrono de emulação está ativo. Os testes cobrem a recusa nas duas fases. A integração JNI ainda deverá mapear cada função concreta para a operação apropriada e manter leases até o último uso do handle.
