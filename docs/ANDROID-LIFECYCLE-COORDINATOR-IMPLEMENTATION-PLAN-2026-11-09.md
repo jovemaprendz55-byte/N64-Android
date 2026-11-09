@@ -160,3 +160,10 @@ Esta etapa registra o contrato de concorrencia e o plano de testes. Nao altera r
 - Commit `fad038c29d07a03e03fa40ed73eda23d79f37a4f` moveu os testes para dentro de `CoreSerialLifecycleCoordinatorTest`.
 - CI do commit corrigido concluiu com sucesso: [run 42699568188](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42699568188). `Run Kotlin JVM unit tests`, `Build debug APK` e verificação do empacotamento foram concluídos com sucesso.
 - A API ainda é isolada: não chama `nativeShutdown()`, não controla EGL, não altera callbacks Android e não habilita `M64CMD_EXECUTE`.
+
+## Verificação adicional: gate de teardown após drain concluído — 2026-11-09
+
+- Commit `527e8ac23fa1aec4fea4d5dbf9047a0977f85aba` reforça `markGlTeardownQueued(generation)`: exige que o future ativo já esteja concluído sem exceção, que o resultado pertença à mesma geração e que STOP tenha sido aceito. A fase ainda precisa ser exatamente `EXECUTE_RETURNED`.
+- Commit `e0269e50e8edb7a53995e668cdaa6fbd8ba293fc` adiciona teste que tenta enfileirar teardown enquanto a espera por retorno do Execute ainda está bloqueada; a tentativa deve ser recusada.
+- CI do commit de testes concluiu com sucesso: [run 42700215174](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42700215174). Testes JVM, build do APK debug, verificação do pacote e upload do artefato concluíram com sucesso.
+- Isso valida o contrato Kotlin isolado. Ainda não prova teardown real na GL thread nem permite conectar callbacks Android. O próximo passo continua sendo desenhar e testar o dono process-scoped da operação GL, com Surface/EGL e callback tardio explicitamente modelados.
