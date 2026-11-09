@@ -12,6 +12,9 @@ int main() {
     Coordinator runtime;
     assert(runtime.phase() == Phase::Empty);
     assert(!runtime.tryAcquire(Operation::Execute));
+    auto preInit = runtime.tryAcquire(Operation::Other);
+    assert(preInit);
+    preInit.release();
     assert(runtime.markCoreInitialized());
     assert(runtime.markRomOpen());
     assert(runtime.markPluginsAttached());
@@ -76,6 +79,11 @@ int main() {
     assert(timeoutRuntime.waitForDrainFor(std::chrono::milliseconds(100)));
     assert(timeoutRuntime.phase() == Phase::Drained);
     assert(timeoutRuntime.markShutdownComplete());
+    assert(timeoutRuntime.resetAfterShutdown());
+    assert(timeoutRuntime.phase() == Phase::Empty);
+    auto afterReset = timeoutRuntime.tryAcquire(Operation::Other);
+    assert(afterReset);
+    afterReset.release();
 
     // If shutdown wins after reservation but before entering Execute, do not
     // issue STOP for a loop that never started; the reservation still drains.
@@ -94,5 +102,6 @@ int main() {
     assert(reservedRuntime.waitForDrainFor(std::chrono::milliseconds(100)));
     assert(reservedRuntime.phase() == Phase::Drained);
     assert(reservedRuntime.markShutdownComplete());
+    assert(reservedRuntime.resetAfterShutdown());
     return 0;
 }
