@@ -128,3 +128,52 @@ A revisão do coordenador e do futuro caminho JNI encontrou uma janela entre `ma
 O `CoreRuntimeCoordinator` atual testa a reserva interrompida antes de `markExecuting()`, mas não prova a ordenação entre `markExecuting()`, o envio de STOP e a entrada real em `M64CMD_EXECUTE`. Portanto, os testes unitários atuais não fecham esta corrida.
 
 **Bloqueio:** não implementar/liberar Execute ainda. Antes, definir e testar um protocolo de início/parada que prove que STOP nunca pode ser consumido antes de EXECUTE entrar no loop. A prova deve incluir teste concorrente determinístico do coordenador e validação no Core real; um mutex mantido durante a chamada síncrona EXECUTE não é solução, pois impediria STOP de interromper o loop.
+
+
+
+## Correção do handshake após inspeção do Core upstream — 2026-11-09
+
+A proposta anterior de usar o callback `M64CORE_EMU_STATE = M64EMU_RUNNING` como autorização para STOP foi rejeitada após inspeção do código-fonte exato do Core fixado no projeto.
+
+Sequência confirmada em `src/main/main.c`:
+1. `g_EmulatorRunning = 1`;
+2. `StateChanged(M64CORE_EMU_STATE, M64EMU_RUNNING)`;
+3. `poweron_device(&g_dev)`;
+4. `pif_bootrom_hle_execute(...)`;
+5. `run_device(&g_dev)`.
+
+Em `src/device/device.c`, `stop_device()` escreve a flag de parada do R4300. Porém, em `src/device/r4300/r4300_core.c`, a entrada em `run_r4300()` zera essa mesma flag antes de iniciar o interpretador/dynarec:
+
+```c
+*r4300_stop(r4300) = 0;
+g_rom_pause = 0;
+```
+
+Consequência: um STOP enviado em resposta ao callback M64EMU_RUNNING ainda pode ser sobrescrito pelo reset acima. Portanto, esse callback é apenas uma notificação de estado administrativo do Core, não prova de que o loop já passou pelo ponto que limpa a flag de parada.
+
+### Handshake corrigido proposto
+
+A confirmação segura deve ser produzida **depois** do reset da flag dentro de `run_r4300()`, antes da execução do processador. A opção mais controlável para este fork Android é aplicar um patch pequeno e verificável ao Core fixado, emitindo um marcador de debug exclusivo imediatamente após:
+
+```c
+*r4300_stop(r4300) = 0;
+g_rom_pause = 0;
+```
+
+O callback de debug já registrado por `CoreStartup` pode reconhecer esse marcador e sinalizar um estado atômico/condição de início seguro. Só depois dessa confirmação uma chamada STOP pode ser enviada. Como não há outro reset da flag entre esse marcador e o loop do R4300, o pedido deixa de poder ser apagado pela inicialização tardia do loop.
+
+Requisitos para implementar:
+- patch aplicado ao checkout fixado no workflow, com verificação de que o bloco de origem aparece exatamente uma vez;
+- callback de debug reconhece somente o marcador reservado, sem interpretar mensagens comuns como confirmação;
+- sinalização de ready e retorno de EXECUTE acordados por condição/estado para não deixar shutdown esperando se Execute falhar antes do marcador;
+- STOP permitido somente depois de ready; se EXECUTE retornar antes de ready, cancelar o pedido sem enviar STOP;
+- lease Execute permanece viva até o retorno síncrono de `M64CMD_EXECUTE`; lease STOP cobre a chamada STOP; handles só podem ser descarregados depois do drain;
+- teste determinístico de STOP antes do marcador, imediatamente após o marcador e concorrente com o retorno de EXECUTE.
+
+### Evidência upstream
+
+- `src/main/main.c`: callback M64EMU_RUNNING é emitido antes de `poweron_device` e `run_device`.
+- `src/device/device.c`: `stop_device` escreve a flag R4300.
+- `src/device/r4300/r4300_core.c`: `run_r4300` zera a flag no início do loop.
+
+**Estado:** Execute continua bloqueado. Não usar M64EMU_RUNNING como handshake e não habilitar STOP/Execute até o marcador pós-reset estar integrado e testado.
