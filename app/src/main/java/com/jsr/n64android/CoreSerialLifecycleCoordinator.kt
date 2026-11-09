@@ -93,5 +93,40 @@ internal class CoreSerialLifecycleCoordinator(
         return operation
     }
 
+    /**
+     * Records that GL teardown has been queued after Execute returned.
+     * This does not release the single-flight operation.
+     */
+    fun markGlTeardownQueued(generation: Long): Boolean = synchronized(lock) {
+        val current = stateMachine.snapshot()
+        if (current.generation != generation ||
+            current.phase != CoreLifecycleStateMachine.Phase.EXECUTE_RETURNED ||
+            active == null
+        ) return@synchronized false
+        stateMachine.markGlTeardownQueued(generation)
+    }
+
+    /**
+     * Releases the completed operation only after the GL thread confirms that
+     * native/plugin teardown completed successfully. Execute return alone is
+     * deliberately insufficient to permit another lifecycle generation.
+     */
+    fun markShutdownComplete(generation: Long): Boolean = synchronized(lock) {
+        val current = stateMachine.snapshot()
+        if (current.generation != generation ||
+            current.phase != CoreLifecycleStateMachine.Phase.GL_TEARDOWN_QUEUED ||
+            active == null
+        ) return@synchronized false
+        if (!stateMachine.markShutdownComplete(generation)) return@synchronized false
+        active = null
+        true
+    }
+
+    fun markSurfaceUnavailable(generation: Long): Boolean =
+        stateMachine.markSurfaceUnavailable(generation)
+
+    fun markGlTeardownTimeout(generation: Long): Boolean =
+        stateMachine.markGlTeardownTimeout(generation)
+
     fun snapshot(): CoreLifecycleStateMachine.Snapshot = stateMachine.snapshot()
 }
