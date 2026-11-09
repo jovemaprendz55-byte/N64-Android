@@ -3,6 +3,7 @@
 #include <atomic>
 #include <cassert>
 #include <thread>
+#include <utility>
 
 int main() {
     CoreCallGate gate;
@@ -29,6 +30,7 @@ int main() {
     assert(stop);
     assert(gate.activeCalls() == 2);
     assert(!shutdownReturned.load());
+    assert(!gate.reopenAfterFailedShutdown());
 
     std::thread shutdown([&] {
         gate.waitForDrain();
