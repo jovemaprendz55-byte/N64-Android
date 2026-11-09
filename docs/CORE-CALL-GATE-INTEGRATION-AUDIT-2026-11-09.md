@@ -90,3 +90,17 @@ A camada Kotlin também passou a exigir que showHomeScreen() e showOpenGlTest() 
 - O callback onPause() ainda precisa de uma política explícita de pausa/retomada para o caso de execução real.
 - Não há plugin real de áudio/input e não se deve declarar o emulador funcional.
 - A aprovação do CI valida compilação/testes automatizados, não a renderização de frames no Poco C85.
+
+## Pausa Android — drenagem antes de EGL onPause (2026-11-09)
+
+A implementação Kotlin agora trata `onPause()` como uma transição em duas fases:
+
+1. Chama `nativeShutdown()` primeiro pela thread da Activity. Essa chamada fecha a admissão do coordenador, solicita `M64CMD_STOP` se Execute já entrou e aguarda a drenagem limitada. Ela não tenta desmontar recursos GL sem contexto EGL atual: o guard nativo recusa esse teardown e preserva as bibliotecas.
+2. Se o Core continuar carregado, reutiliza `shutdownCoreBeforeSurfaceChange()`, que agenda uma segunda chamada de `nativeShutdown()` na thread GL e aguarda até 3000 ms. Depois da drenagem, essa chamada pode desmontar GLideN64 com EGL atual.
+3. Só depois chama `GLSurfaceView.onPause()`.
+
+Essa ordem também fecha a corrida ExecuteReserved/Executing: se shutdown fechar a admissão antes de `markExecuting()`, a reserva não pode entrar no loop; se Execute já estiver ativo, o pedido STOP é enviado fora da thread GL que está ocupada.
+
+Se qualquer espera expirar, o código registra a falha e mantém handles/bibliotecas protegidos pelo native shutdown; a Activity ainda precisa prosseguir com seu ciclo de vida Android. `preserveEGLContextOnPause` continua habilitado na GLSurfaceView.
+
+**Limite de validação:** `nativeExecuteCore()` permanece bloqueado. Portanto, este caminho foi integrado ao lifecycle, mas ainda não foi exercitado com um loop real de emulação, STOP concorrente ou pausa durante um jogo. A aprovação de CI não substitui esse teste no dispositivo.
