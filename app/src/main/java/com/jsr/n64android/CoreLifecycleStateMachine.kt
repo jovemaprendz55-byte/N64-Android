@@ -90,7 +90,12 @@ internal class CoreLifecycleStateMachine {
     private fun isInFlight(value: Phase): Boolean = when (value) {
         Phase.STOP_REQUESTED,
         Phase.EXECUTE_RETURNED,
-        Phase.GL_TEARDOWN_QUEUED -> true
+        Phase.GL_TEARDOWN_QUEUED,
+        // A timeout or lost EGL surface is not proof that native work stopped.
+        // Keep the generation latched until an explicit recovery path is added.
+        Phase.EXECUTE_RETURN_TIMEOUT,
+        Phase.SURFACE_UNAVAILABLE,
+        Phase.GL_TEARDOWN_TIMEOUT -> true
         else -> false
     }
 }
