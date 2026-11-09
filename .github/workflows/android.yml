@@ -35,6 +35,13 @@ jobs:
           ref: a04081ad6a966a9413bea63a55f502e0dc98bb18
           path: third_party/GLideN64
 
+      - name: Checkout pinned Mupen64Plus HLE RSP plugin source
+        uses: actions/checkout@v4
+        with:
+          repository: mupen64plus/mupen64plus-rsp-hle
+          ref: dd09c7dcdc6d2cff584aacb9d519600d47d61039
+          path: third_party/mupen64plus-rsp-hle
+
       - name: Apply guarded Android GLES profile patch to GLideN64
         run: |
           python3 - <<'PY'
@@ -176,6 +183,27 @@ jobs:
           test -s build/sdl2-arm64/libSDL2.so
           file build/sdl2-arm64/libSDL2.so
 
+      - name: Build Mupen64Plus HLE RSP plugin for Android ARM64
+        run: |
+          NDK="$ANDROID_HOME/ndk/27.0.12077973"
+          RSP_DIR="$GITHUB_WORKSPACE/third_party/mupen64plus-rsp-hle"
+          CORE_API="$GITHUB_WORKSPACE/third_party/mupen64plus-core/src/api"
+          RSP_CC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android23-clang"
+          make -C "$RSP_DIR/projects/unix" all \
+            HOST_CPU=aarch64 \
+            CC="$RSP_CC" \
+            APIDIR="$CORE_API" \
+            OPTFLAGS="-O2" \
+            WARNFLAGS="-Wall"
+          RSP_PLUGIN="$RSP_DIR/projects/unix/mupen64plus-rsp-hle.so"
+          test -s "$RSP_PLUGIN"
+          for symbol in PluginGetVersion PluginStartup PluginShutdown InitiateRSP DoRspCycles RomClosed; do
+            readelf --dyn-syms -W "$RSP_PLUGIN" | grep -E "[[:space:]]${symbol}$"
+          done
+          mkdir -p build/native-libs/arm64-v8a
+          cp "$RSP_PLUGIN" build/native-libs/arm64-v8a/libmupen64plus-rsp-hle.so
+          file build/native-libs/arm64-v8a/libmupen64plus-rsp-hle.so
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -195,6 +223,7 @@ jobs:
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus.so"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus-video-android.so"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus-video-GLideN64.so"
+          unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus-rsp-hle.so"
           unzip -p "$APK" lib/arm64-v8a/libmupen64plus-video-GLideN64.so > build/gliden64-from-apk.so
           for symbol in PluginGetVersion PluginStartup PluginShutdown ChangeWindow InitiateGFX MoveScreen ProcessDList ProcessRDPList RomClosed RomOpen ShowCFB UpdateScreen ViStatusChanged ViWidthChanged ReadScreen2 SetRenderingCallback FBRead FBWrite FBGetFrameBufferInfo; do
             readelf --dyn-syms -W build/gliden64-from-apk.so | grep -E "[[:space:]]${symbol}$"
@@ -205,6 +234,10 @@ jobs:
           unzip -p "$APK" lib/arm64-v8a/libmupen64plus-video-android.so > build/gfx-plugin-from-apk.so
           readelf --dyn-syms -W build/gfx-plugin-from-apk.so | grep -E "[[:space:]]PluginGetVersion$"
           readelf --dyn-syms -W build/gfx-plugin-from-apk.so | grep -E "[[:space:]]PluginStartup$"
+          unzip -p "$APK" lib/arm64-v8a/libmupen64plus-rsp-hle.so > build/rsp-hle-from-apk.so
+          for symbol in PluginGetVersion PluginStartup PluginShutdown InitiateRSP DoRspCycles RomClosed; do
+            readelf --dyn-syms -W build/rsp-hle-from-apk.so | grep -E "[[:space:]]${symbol}$"
+          done
           if readelf -d build/n64bridge-from-apk.so | grep -Eq "Shared library: \\[(libSDL2|libmupen64plus)\\.so\\]"; then
             echo "JNI bridge must not load SDL2 or Core as startup dependencies"
             exit 1
