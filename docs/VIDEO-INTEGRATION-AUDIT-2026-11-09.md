@@ -47,3 +47,18 @@ Continue static auditing of the Core/GLideN64 attach and frame callbacks.
 Do not enable `M64CMD_EXECUTE` merely because the APK builds or the EGL
 lifecycle test passes. A separate controlled device test is required before
 the execution gate can be reconsidered.
+
+
+## GLES context version alignment (2026-11-09)
+
+A source audit found that the app requested an OpenGL ES 2 context with
+`GLSurfaceView.setEGLContextClientVersion(2)`, while the pinned GLideN64
+Android adaptation requests an OpenGL ES 3.0 context. The target Poco C85
+reports GLES 3.2, but relying on the driver's context selection to exceed
+the requested client version is unnecessary and fragile.
+
+The frontend now explicitly requests an ES 3 context. Before calling
+`PluginStartup`, the JNI bridge also parses the current `GL_VERSION` and
+refuses startup if the actual context is below GLES 3.0. This is a defensive
+compatibility check; it does not enable ROM execution or claim that the
+renderer has produced a frame.
