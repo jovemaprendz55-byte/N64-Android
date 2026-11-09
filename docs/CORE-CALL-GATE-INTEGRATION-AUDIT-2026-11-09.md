@@ -54,3 +54,11 @@ A inspeção detalhada de native-lib.cpp e MainActivity.kt confirmou outros pont
 ### Consequência para a integração
 
 A próxima etapa não é apenas adicionar CoreCallGate a nativeExecuteCore() e nativeStopCore(). É necessário um coordenador de runtime que controle o estado e a vida útil dos handles, com operações externas executadas fora do mutex de estado sob leases, além de uma única rotina Android para parar, drenar, desmontar plugins e só então pausar/remover a superfície EGL. A implementação deve começar com testes concorrentes do coordenador e só depois substituir os caminhos JNI atuais.
+
+## Achado adicional — admissão duplicada de Execute
+
+A primeira versão do `CoreRuntimeCoordinator` permitia que duas chamadas `tryAcquire(Execute)` obtivessem leases enquanto a fase ainda era `PluginsAttached`, antes de qualquer uma chamar `markExecuting()`. Isso poderia permitir duas tentativas concorrentes de entrar no loop síncrono do Core.
+
+O coordenador agora introduz `ExecuteReserved`: a primeira lease de Execute reserva atomicamente a vaga e chamadas seguintes são recusadas. `markExecuting()` só aceita a reserva enquanto a admissão continua aberta. Se o shutdown vencer antes do início, `markExecuteNotStarted()` preserva `StopRequested`, e `requiresStopCommand()` indica que não se deve enviar `M64CMD_STOP` para um loop que nunca começou. Se Execute já entrou, shutdown registra que STOP é necessário. Os testes cobrem os dois lados dessa corrida.
+
+Este ajuste continua sendo um protótipo independente. Ainda não protege os ponteiros/handles JNI e não foi integrado a `native-lib.cpp`; a execução permanece bloqueada.
