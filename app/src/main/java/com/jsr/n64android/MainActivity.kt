@@ -315,9 +315,9 @@ class MainActivity : Activity() {
                 }
             })
             addView(Button(this@MainActivity).apply {
-                text = "Emulação bloqueada por segurança"
-                isEnabled = false
-                contentDescription = "M64CMD_EXECUTE permanece bloqueado até a auditoria do ciclo de execução e parada."
+                text = "Iniciar jogo (teste experimental)"
+                contentDescription = "Executa a ROM somente depois da pré-checagem do Core, ROM, plugins e EGL."
+                setOnClickListener { executeCoreOnGlThread() }
             })
             val stopButton = Button(this@MainActivity).apply {
                 text = "Parar emulação"
@@ -549,8 +549,26 @@ class MainActivity : Activity() {
             integrationStatusView.text = "Contexto EGL nao esta pronto."
             return
         }
-        integrationStatusView.text = "Solicitando M64CMD_EXECUTE na thread GL. Use Parar emulacao para interromper."
+        integrationStatusView.text = "Verificando Core, ROM, plugins e contexto EGL antes de iniciar..."
         surface.queueEvent {
+            val readiness = try {
+                nativeGetExecutionReadiness()
+            } catch (error: Throwable) {
+                "Falha na pre-checagem: ${error.message}"
+            }
+            if (!readiness.contains("EXECUTE elegivel=sim (pre-checagem)")) {
+                runOnUiThread {
+                    integrationStatusView.text =
+                        "Jogo nao iniciado: a pre-checagem ainda nao foi aprovada.\\n\\n" + readiness
+                }
+                return@queueEvent
+            }
+
+            runOnUiThread {
+                integrationStatusView.text =
+                    "Pre-checagem aprovada. Teste de execucao iniciado na thread GL.\\n" +
+                    "Se a imagem aparecer, use Parar emulacao para encerrar o teste."
+            }
             val result = try {
                 nativeExecuteCore()
             } catch (error: Throwable) {
@@ -558,6 +576,9 @@ class MainActivity : Activity() {
             }
             runOnUiThread { integrationStatusView.text = result }
         }
+        // GLSurfaceView may be using RENDERMODE_WHEN_DIRTY; explicitly wake
+        // its render thread so the queued preflight/execute action is serviced.
+        surface.requestRender()
     }
 
     private fun openRomPicker() {
