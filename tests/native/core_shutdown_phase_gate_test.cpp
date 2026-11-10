@@ -1,7 +1,10 @@
 #include "core_shutdown_phase_gate.h"
 
+#include <atomic>
 #include <cassert>
 #include <iostream>
+#include <thread>
+#include <vector>
 
 int main() {
     CoreShutdownPhaseGate gate;
@@ -9,13 +12,25 @@ int main() {
     assert(token);
     assert(gate.phase() == CoreShutdownPhaseGate::Phase::Preparing);
 
-    // Preparation is single-flight and returns the same generation.
-    auto same = gate.beginPrepare();
-    assert(same.generation == token.generation);
+    // Concurrent prepare requests must join one generation.
+    std::atomic<bool> start{false};
+    std::vector<std::uint64_t> generations(16, 0);
+    std::vector<std::thread> preparers;
+    for (std::size_t i = 0; i < generations.size(); ++i) {
+        preparers.emplace_back([&, i] {
+            while (!start.load()) std::this_thread::yield();
+            generations[i] = gate.beginPrepare().generation;
+        });
+    }
+    start.store(true);
+    for (auto& thread : preparers) thread.join();
+    for (const auto generation : generations)
+        assert(generation == token.generation);
+
     assert(gate.markDrained(token));
     assert(!gate.markDrained(token));
 
-    // Finalization is forbidden until every precondition is explicitly true.
+    // Finalization is forbidden until all preconditions are true.
     assert(!gate.beginFinalize(token, false, true, true));
     assert(!gate.beginFinalize(token, true, false, true));
     assert(!gate.beginFinalize(token, true, true, false));
@@ -24,10 +39,23 @@ int main() {
     assert(gate.beginFinalize(token, true, true, true));
     assert(!gate.resetAfterComplete()); // cannot reset while finalizing
     assert(!gate.beginFinalize(token, true, true, true)); // no parallel finalize
-    assert(gate.finishFinalize(token, false)); // safe retry state
+    assert(gate.finishFinalize(token, false)); // retry state after partial failure
     assert(gate.phase() == CoreShutdownPhaseGate::Phase::Drained);
 
-    assert(gate.beginFinalize(token, true, true, true));
+    // Concurrent finalizers: exactly one may acquire the finalization phase.
+    std::atomic<bool> finalizeStart{false};
+    std::atomic<int> finalizeWinners{0};
+    std::vector<std::thread> finalizers;
+    for (int i = 0; i < 16; ++i) {
+        finalizers.emplace_back([&] {
+            while (!finalizeStart.load()) std::this_thread::yield();
+            if (gate.beginFinalize(token, true, true, true))
+                ++finalizeWinners;
+        });
+    }
+    finalizeStart.store(true);
+    for (auto& thread : finalizers) thread.join();
+    assert(finalizeWinners.load() == 1);
     assert(gate.finishFinalize(token, true));
     assert(gate.phase() == CoreShutdownPhaseGate::Phase::Complete);
     assert(!gate.beginPrepare()); // completed generation cannot be reused
