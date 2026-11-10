@@ -39,3 +39,8 @@ exact-once replacement and compiles the ARM64 plugin. This proves the
 adaptation compiles, not that GLideN64 has been initialized on the device.
 The frontend must still schedule every Core/plugin graphics operation on
 the GLSurfaceView render thread and handle EGL context recreation.
+
+
+## Android surface resolution
+
+The Android display backend now reads the active GLES viewport from the current GLSurfaceView EGL context during GLideN64 display initialization. This replaces the desktop windowed 640x480 defaults with the actual landscape surface dimensions before GLideN64 calculates its internal game viewport and scaling. The change is guarded by OS_ANDROID and leaves desktop/other platform sizing unchanged. It is a resolution integration fix; the final on-device result must still be checked for the selected aspect-ratio mode.
