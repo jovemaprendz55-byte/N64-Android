@@ -33,3 +33,57 @@ Audited `nativeShutdown()`, `nativeStopCore()`, `nativeAwaitExecuteReturned()`, 
 ## Non-claims
 
 No ROM execution, RSP HLE task, GLideN64 display-list processing, game frame, or real frame presentation is verified by this audit. No runtime shutdown behavior was changed.
+
+
+## Follow-up inspection after the prepare-claim CI passed
+
+The current JNI implementation confirms why the new gate must not be connected by a
+small wrapper around the legacy method:
+
+- `nativeStopCore()` obtains a `CoreRuntimeCoordinator::Operation::Stop` lease,
+  waits for the R4300-ready-or-return handshake, and shares
+  `g_stopCommandIssued` with the legacy shutdown path. Its call to
+  `CoreDoCommand(M64CMD_STOP)` is made outside `g_coreMutex`, while the lease
+  protects the Core lifetime.
+- `nativeAwaitExecuteReturned()` waits on the handshake only when the runtime
+  phase is `Executing` or `StopRequested`. It does not itself establish that
+  the runtime call gate has drained; that remains a separate condition.
+- `nativeShutdown()` independently calls `beginShutdown()`, may issue STOP,
+  waits up to 1500 ms for the runtime call gate to drain, and then takes
+  `g_coreMutex` for the entire GL/plugin/ROM/Core teardown sequence.
+- The legacy method's STOP path and `nativeStopCore()` share the atomic
+  `g_stopCommandIssued`, but neither currently claims
+  `CoreShutdownPhaseGate::tryClaimPrepare()`. The new phase gate and teardown
+  journal therefore remain test-only building blocks.
+- The legacy method holds `g_coreMutex` while calling plugin detach/shutdown,
+  ROM close, `CoreShutdown`, and `dlclose`. Moving those operations into a
+  journal-driven finalizer must preserve the existing handle serialization and
+  ensure that a failed step does not clear a handle or flag prematurely.
+
+### Required JNI contract before implementation
+
+1. A prepare request must obtain one generation token and one exclusive prepare
+   claim before it can coordinate STOP/drain. Concurrent requests may join the
+   same token, but only the claim owner may issue or coordinate the operation.
+2. The prepare result must distinguish at least: drained, no active Execute,
+   STOP rejected, readiness timeout, and drain timeout. A timeout/rejection must
+   release the prepare claim only when no STOP/drain operation is still in flight;
+   otherwise ownership must remain latched until that operation has a definitive
+   result.
+3. The finalizer must require the same token, a completed Execute return, zero
+   active Core calls, and a current EGL context. It must acquire exclusive
+   finalization before touching any plugin or library.
+4. The progress journal must be reconciled with the existing native flags and
+   handles at generation start. Each detach/close/shutdown/unload step advances
+   only after the actual operation succeeds. A missing optional resource is
+   marked skipped; an error leaves the current step pending.
+5. A finalization failure must preserve enough state to retry the exact next
+   step. In particular, never repeat a successful detach or shutdown, and never
+   null a handle before its `dlclose` succeeds.
+6. The legacy `nativeShutdown()` must remain the sole production teardown path
+   until the new prepare/finalize pair and every Kotlin caller are migrated
+   together. No parallel independent teardown implementations are acceptable.
+
+No JNI source, Activity lifecycle, or runtime behavior was changed in this
+follow-up. The prepare-claim CI passing validates the host-side ownership gate
+only; it does not validate device shutdown or plugin teardown.
