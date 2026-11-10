@@ -541,61 +541,111 @@ class MainActivity : Activity() {
     }
 
 
-    private fun createVirtualController(): LinearLayout {
-        val panel = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(8, 12, 8, 12)
+    private fun createVirtualController(): FrameLayout {
+        val panel = FrameLayout(this).apply {
+            setPadding(12, 8, 12, 12)
+            setBackgroundColor(0x66000000)
         }
-        val title = TextView(this).apply {
-            text = "Controle virtual N64"
-            textSize = 16f
-            gravity = Gravity.CENTER
-            setPadding(4, 4, 4, 8)
+        val density = resources.displayMetrics.density
+        fun dp(value: Int) = (value * density).toInt()
+
+        fun sendControllerState() {
+            var mask = 0
+            for (pressed in controllerPressed) {
+                if (pressed in 0..13) mask = mask or (1 shl pressed)
+            }
+            val axisX = controllerAxisX
+            val axisY = controllerAxisY
+            try {
+                nativeSetControllerState(mask, axisX, axisY)
+            } catch (error: Throwable) {
+                android.util.Log.e("N64AndroidInput", "Falha ao enviar controle virtual", error)
+            }
         }
-        panel.addView(title)
-        fun addRow(vararg controls: Pair<String, Int>) {
-            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            controls.forEach { (label, code) ->
-                val control = Button(this).apply {
-                    text = label
-                    textSize = 11f
-                    isAllCaps = false
-                    setPadding(2, 2, 2, 2)
-                    setOnTouchListener { _, event ->
-                        when (event.actionMasked) {
-                            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> controllerPressed.add(code)
-                            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP,
-                            MotionEvent.ACTION_CANCEL -> controllerPressed.remove(code)
+
+        fun addButton(label: String, code: Int, size: Int, gravity: Int,
+                      left: Int = 0, top: Int = 0, right: Int = 0, bottom: Int = 0) {
+            val button = TextView(this).apply {
+                text = label
+                textSize = if (size >= 54) 16f else 12f
+                setTextColor(0xFFFFFFFF.toInt())
+                gravity = Gravity.CENTER
+                isClickable = true
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    shape = android.graphics.drawable.GradientDrawable.OVAL
+                    setColor(0xAA263448.toInt())
+                    setStroke(dp(2), 0xFFB8C8DC.toInt())
+                }
+                setOnTouchListener { view, event ->
+                    when (event.actionMasked) {
+                        MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
+                            controllerPressed.add(code)
+                            view.alpha = 0.58f
                         }
-                        var mask = 0
-                        for (pressed in controllerPressed) {
-                            if (pressed in 0..13) mask = mask or (1 shl pressed)
+                        MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP,
+                        MotionEvent.ACTION_CANCEL -> {
+                            controllerPressed.remove(code)
+                            view.alpha = 1f
                         }
-                        val axisX = (if (1003 in controllerPressed) 80 else 0) -
-                            (if (1002 in controllerPressed) 80 else 0)
-                        val axisY = (if (1000 in controllerPressed) 80 else 0) -
-                            (if (1001 in controllerPressed) 80 else 0)
-                        try {
-                            nativeSetControllerState(mask, axisX, axisY)
-                        } catch (error: Throwable) {
-                            android.util.Log.e("N64AndroidInput", "Falha ao enviar controle virtual", error)
-                        }
-                        true
+                    }
+                    sendControllerState()
+                    true
+                }
+            }
+            val params = FrameLayout.LayoutParams(dp(size), dp(size), gravity).apply {
+                setMargins(dp(left), dp(top), dp(right), dp(bottom))
+            }
+            panel.addView(button, params)
+        }
+
+        // Analógico esquerdo: envia valores contínuos ao controle N64.
+        val stick = TextView(this).apply {
+            text = "✥"
+            textSize = 36f
+            setTextColor(0xFFFFFFFF.toInt())
+            gravity = Gravity.CENTER
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.OVAL
+                setColor(0xAA263448.toInt())
+                setStroke(dp(3), 0xFFB8C8DC.toInt())
+            }
+            setOnTouchListener { view, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE,
+                    MotionEvent.ACTION_POINTER_DOWN -> {
+                        val x = ((event.x / view.width) * 2f - 1f).coerceIn(-1f, 1f)
+                        val y = ((event.y / view.height) * 2f - 1f).coerceIn(-1f, 1f)
+                        controllerAxisX = (x * 80).toInt()
+                        controllerAxisY = (-y * 80).toInt()
+                        view.alpha = 0.65f
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP,
+                    MotionEvent.ACTION_CANCEL -> {
+                        controllerAxisX = 0
+                        controllerAxisY = 0
+                        view.alpha = 1f
                     }
                 }
-                row.addView(control, LinearLayout.LayoutParams(0, 48, 1f).apply {
-                    setMargins(3, 2, 3, 2)
-                })
+                sendControllerState()
+                true
             }
-            panel.addView(row)
         }
-        // Button bit order follows BUTTONS in the official Mupen64Plus plugin API.
-        addRow("←" to 1, "↑" to 3, "↓" to 2, "→" to 0)
-        addRow("B" to 6, "A" to 7, "Z" to 5, "START" to 4)
-        addRow("C←" to 9, "C↑" to 11, "C↓" to 10, "C→" to 8)
-        addRow("L" to 13, "R" to 12, "Stick ←" to 1002, "Stick →" to 1003)
-        addRow("Stick ↑" to 1000, "Stick ↓" to 1001)
+        panel.addView(stick, FrameLayout.LayoutParams(dp(104), dp(104),
+            Gravity.START or Gravity.BOTTOM).apply { leftMargin = dp(18); bottomMargin = dp(18) })
+
+        // Botões principais A/B e conjunto C à direita, como no controle N64.
+        addButton("B", 6, 58, Gravity.END or Gravity.BOTTOM, right = 88, bottom = 28)
+        addButton("A", 7, 58, Gravity.END or Gravity.BOTTOM, right = 20, bottom = 68)
+        addButton("C↑", 11, 38, Gravity.END or Gravity.BOTTOM, right = 88, bottom = 112)
+        addButton("C←", 9, 38, Gravity.END or Gravity.BOTTOM, right = 130, bottom = 70)
+        addButton("C→", 8, 38, Gravity.END or Gravity.BOTTOM, right = 46, bottom = 70)
+        addButton("C↓", 10, 38, Gravity.END or Gravity.BOTTOM, right = 88, bottom = 28)
+
+        // Ombros e Start na faixa superior do painel.
+        addButton("L", 13, 42, Gravity.TOP or Gravity.START, left = 18, top = 8)
+        addButton("Z", 5, 42, Gravity.TOP or Gravity.CENTER_HORIZONTAL, left = -30, top = 8)
+        addButton("R", 12, 42, Gravity.TOP or Gravity.END, right = 18, top = 8)
+        addButton("START", 4, 48, Gravity.TOP or Gravity.END, right = 76, top = 8)
         return panel
     }
 
