@@ -390,37 +390,12 @@ class MainActivity : Activity() {
             addView(createVirtualController())
         }
 
-        // Tela de jogo: vídeo ocupa toda a área e os controles ficam sobrepostos.
+        // Gameplay limpa: apenas o vídeo em tela cheia e os controles virtuais.
+        // Mensagens de diagnóstico permanecem na tela inicial, nunca sobre o jogo.
         gameplayLayout = FrameLayout(this).apply {
-            setBackgroundColor(0xFF000000.toInt())
-            addView(TextView(this@MainActivity).apply {
-                text = "N64 Android"
-                textSize = 13f
-                setTextColor(0xFFFFFFFF.toInt())
-                setPadding(12, 8, 12, 8)
-                setBackgroundColor(0x88000000.toInt())
-            }, FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.TOP or Gravity.START
-            ))
-            addView(Button(this@MainActivity).apply {
-                text = "SAIR"
-                setOnClickListener { showHomeScreen() }
-            }, FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.TOP or Gravity.END
-            ))
-            addView(integrationStatusView.apply {
-                setTextColor(0xFFFFFFFF.toInt())
-                setBackgroundColor(0x88000000.toInt())
-                textSize = 12f
-            }, FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            ).apply { topMargin = (48 * resources.displayMetrics.density).toInt() })
+            setBackgroundColor(android.graphics.Color.BLACK)
+            clipChildren = false
+            clipToPadding = false
             addView(createVirtualController().apply {
                 setBackgroundColor(android.graphics.Color.TRANSPARENT)
                 alpha = 1f
@@ -636,22 +611,22 @@ class MainActivity : Activity() {
             Gravity.START or Gravity.BOTTOM).apply { leftMargin = dp(22); bottomMargin = dp(22) })
 
         // Ombros no alto, nos mesmos cantos do exemplo.
-        addButton("L", 13, 96, Gravity.TOP or Gravity.START, left = 28, top = 10, rectangular = true)
-        addButton("R", 12, 96, Gravity.TOP or Gravity.END, right = 28, top = 10, rectangular = true)
-        addButton("Z", 5, 82, Gravity.TOP or Gravity.END, right = 28, top = 82, rectangular = true)
+        addButton("L", 13, 76, Gravity.TOP or Gravity.START, left = 18, top = 8, rectangular = true)
+        addButton("R", 12, 76, Gravity.TOP or Gravity.END, right = 18, top = 8, rectangular = true)
+        addButton("Z", 5, 68, Gravity.TOP or Gravity.END, right = 18, top = 66, rectangular = true)
 
         // C-direcional no centro-direita.
-        addButton("▲", 11, 52, Gravity.CENTER or Gravity.END, right = 320, top = -105)
-        addButton("◀", 9, 52, Gravity.CENTER or Gravity.END, right = 385, top = -40)
-        addButton("▶", 8, 52, Gravity.CENTER or Gravity.END, right = 255, top = -40)
-        addButton("▼", 10, 52, Gravity.CENTER or Gravity.END, right = 320, top = 25)
+        addButton("▲", 11, 44, Gravity.CENTER or Gravity.END, right = 270, top = -88)
+        addButton("◀", 9, 44, Gravity.CENTER or Gravity.END, right = 326, top = -34)
+        addButton("▶", 8, 44, Gravity.CENTER or Gravity.END, right = 214, top = -34)
+        addButton("▼", 10, 44, Gravity.CENTER or Gravity.END, right = 270, top = 22)
 
         // A e B no lado direito, abaixo do Z.
-        addButton("A", 7, 64, Gravity.CENTER or Gravity.END, right = 165, top = 75)
-        addButton("B", 6, 64, Gravity.CENTER or Gravity.END, right = 250, top = 165)
+        addButton("A", 7, 54, Gravity.CENTER or Gravity.END, right = 138, top = 62)
+        addButton("B", 6, 54, Gravity.CENTER or Gravity.END, right = 210, top = 138)
 
         // Start discreto na borda inferior, como no exemplo de referência.
-        addButton("START", 4, 82, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL, bottom = 12)
+        addButton("START", 4, 68, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL, bottom = 10)
         return panel
     }
 
@@ -1099,7 +1074,7 @@ class MainActivity : Activity() {
                     GLES20.glViewport(0, 0, width, height)
                     try {
                         // Atualiza a extensão de vídeo com o tamanho REAL da surface
-                        // em retrato; não deixa o GLideN64 escolher o modo fixo 640x480.
+                        // em paisagem; não deixa o backend manter dimensões antigas após a rotação.
                         nativeSetVideoSurfaceSize(width, height)
                     } catch (error: Throwable) {
                         android.util.Log.e("N64AndroidVideo", "Falha ao informar tamanho da surface EGL", error)
