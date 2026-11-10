@@ -99,7 +99,10 @@ if(EXISTS "${MUPEN64PLUS_CORE_SOURCE_DIR}/src/asm_defines/asm_defines.c")
         NOUNCRYPT
         MINIZIP_FOPEN_NO_64)
 
+    # Gradle's debug APK defaults native C/C++ code to -O0. The emulator
+    # Core is CPU-intensive, so keep the Core optimized even in diagnostic APKs.
     target_compile_options(mupen64plus PRIVATE
+        -O2
         -fvisibility=hidden
         -fPIC
         -Wall)
