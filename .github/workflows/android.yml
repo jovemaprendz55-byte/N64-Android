@@ -117,6 +117,14 @@ jobs:
           grep -F '#define offsetof_struct_device_r4300 (0x00000010)' build/asm-defines-fixture/generated/asm_defines_gas.h
           grep -F '%define offsetof_struct_new_dynarec_hot_state_pc (0x00000020)' build/asm-defines-fixture/generated/asm_defines_nasm.h
 
+      - name: Test native shutdown EGL requirement policy
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Werror \
+            -Iapp/src/main/cpp \
+            tests/native/core_shutdown_teardown_policy_test.cpp \
+            -o build-core-shutdown-teardown-policy-test
+          ./build-core-shutdown-teardown-policy-test
+
       - name: Test Core call lease and shutdown drain
         run: |
           c++ -std=c++17 -Wall -Wextra -Werror -pthread \

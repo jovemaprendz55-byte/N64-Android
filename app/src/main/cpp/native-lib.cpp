@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include "core_runtime_coordinator.h"
 #include "core_run_loop_handshake.h"
+#include "core_shutdown_teardown_policy.h"
 #ifdef N64_HAS_MUPEN64PLUS_HEADERS
 #include "m64p_types.h"
 #include "m64p_frontend.h"
@@ -1172,7 +1173,8 @@ Java_com_jsr_n64android_CoreNativeBridge_nativeShutdown(JNIEnv* env, jobject /* 
     // GLideN64 shutdown/detach may release GLES resources. Never run those
     // callbacks from a thread without the EGL context current. Keep every
     // library loaded so the frontend can retry later from the GL thread.
-    if ((g_gfxAttached || g_gfxPluginStarted) && !androidVideoContextReady()) {
+    if (coreShutdownRequiresGraphicsContext(g_gfxAttached, g_gfxPluginStarted) &&
+        !androidVideoContextReady()) {
         __android_log_print(ANDROID_LOG_ERROR, "N64AndroidGFX",
                             "Shutdown recusado: EGL context nao esta atual nesta thread. TID=%ld",
                             static_cast<long>(syscall(SYS_gettid)));
