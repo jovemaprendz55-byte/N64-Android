@@ -228,6 +228,9 @@ bool g_rspAttached = false;
 void* g_inputPluginHandle = nullptr;
 bool g_inputPluginStarted = false;
 bool g_inputAttached = false;
+void* g_audioPluginHandle = nullptr;
+bool g_audioPluginStarted = false;
+bool g_audioAttached = false;
 bool g_romOpen = false;
 bool g_gfxAttached = false;
 std::atomic<bool> g_coreExecuting{false};
@@ -247,6 +250,10 @@ const char* const kRequiredInputSymbols[] = {
     "PluginGetVersion", "PluginStartup", "PluginShutdown",
     "InitiateControllers", "GetKeys", "ControllerCommand", "ReadController", "SDL_KeyDown", "SDL_KeyUp",
     "RomOpen", "RomClosed", "N64AndroidSetControllerState"
+};
+const char* const kRequiredAudioSymbols[] = {
+    "PluginGetVersion", "PluginStartup", "PluginShutdown",
+    "InitiateAudio", "AiDacrateChanged", "AiLenChanged"
 };
 
 jstring makeString(JNIEnv* env, const char* value) {
@@ -965,6 +972,90 @@ Java_com_jsr_n64android_MainActivity_nativeLoadInputPlugin(
 }
 
 extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_jsr_n64android_MainActivity_nativeLoadAudioPlugin(
+        JNIEnv* env, jobject /* thiz */, jstring pluginPath) {
+#ifndef N64_HAS_MUPEN64PLUS_HEADERS
+    return makeString(env, "Headers oficiais do Core nao estao disponiveis nesta compilacao.");
+#else
+    auto runtimeLease = g_coreRuntime.tryAcquire(CoreRuntimeCoordinator::Operation::Other);
+    if (!runtimeLease)
+        return makeString(env, "Carga AUDIO recusada durante encerramento.");
+    std::lock_guard<std::mutex> lock(g_coreMutex);
+    if (g_coreHandle == nullptr || !g_coreStarted)
+        return makeString(env, "Inicialize o Core antes de carregar o plugin AUDIO.");
+    if (g_audioPluginHandle != nullptr)
+        return makeString(env, "Plugin AUDIO SDL ja esta carregado.");
+
+    const char* path = env->GetStringUTFChars(pluginPath, nullptr);
+    if (path == nullptr) return makeString(env, "Nao foi possivel obter o caminho do plugin AUDIO.");
+    dlerror();
+    void* plugin = dlopen(path, RTLD_NOW | RTLD_LOCAL);
+    env->ReleaseStringUTFChars(pluginPath, path);
+    if (plugin == nullptr) {
+        const char* error = dlerror();
+        char status[768];
+        std::snprintf(status, sizeof(status), "Falha ao carregar AUDIO SDL: %s",
+                      error != nullptr ? error : "erro desconhecido");
+        return makeString(env, status);
+    }
+
+    char missing[512] = {};
+    size_t used = 0;
+    for (const char* symbol : kRequiredAudioSymbols) {
+        dlerror();
+        void* address = dlsym(plugin, symbol);
+        const char* error = dlerror();
+        if (address == nullptr || error != nullptr) {
+            const int written = std::snprintf(missing + used, sizeof(missing) - used,
+                                              "%s%s", used == 0 ? "" : ", ", symbol);
+            if (written > 0) used += static_cast<size_t>(written);
+            if (used >= sizeof(missing)) break;
+        }
+    }
+    if (used != 0) {
+        char status[768];
+        std::snprintf(status, sizeof(status), "AUDIO SDL sem simbolos obrigatorios: %s", missing);
+        dlclose(plugin);
+        return makeString(env, status);
+    }
+
+    auto getVersion = reinterpret_cast<PluginGetVersionSymbol>(dlsym(plugin, "PluginGetVersion"));
+    int type = 0, pluginVersion = 0, apiVersion = 0, caps = 0;
+    const char* name = nullptr;
+    const int versionResult = getVersion(&type, &pluginVersion, &apiVersion, &name, &caps);
+    if (versionResult != M64ERR_SUCCESS || type != M64PLUGIN_AUDIO ||
+        (apiVersion & 0xffff0000) != 0x00020000) {
+        char status[512];
+        std::snprintf(status, sizeof(status),
+                      "AUDIO SDL incompativel: retorno=%d tipo=%d API=0x%06X.",
+                      versionResult, type, apiVersion);
+        dlclose(plugin);
+        return makeString(env, status);
+    }
+
+    using AudioPluginStartup = int (*)(void*, void*, void (*)(void*, int, const char*));
+    auto startup = reinterpret_cast<AudioPluginStartup>(dlsym(plugin, "PluginStartup"));
+    const int startupResult = startup(g_coreHandle, nullptr, coreDebugCallback);
+    if (startupResult != M64ERR_SUCCESS) {
+        char status[320];
+        std::snprintf(status, sizeof(status), "PluginStartup do AUDIO SDL falhou: codigo %d.", startupResult);
+        dlclose(plugin);
+        return makeString(env, status);
+    }
+
+    g_audioPluginHandle = plugin;
+    g_audioPluginStarted = true;
+    char status[640];
+    std::snprintf(status, sizeof(status),
+                  "Plugin AUDIO SDL carregado e inicializado. Nome: %s | API: 0x%06X. Ainda nao anexado ao Core.",
+                  name != nullptr ? name : "(sem nome)", apiVersion);
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidAudio", "%s", status);
+    return makeString(env, status);
+#endif
+}
+
+extern "C"
 JNIEXPORT void JNICALL
 Java_com_jsr_n64android_MainActivity_nativeSetControllerState(
         JNIEnv*, jobject /* thiz */, jint buttons, jint axisX, jint axisY) {
@@ -996,6 +1087,8 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
         return makeString(env, "Carregue e inicialize o plugin RSP-HLE antes de abrir a ROM.");
     if (g_inputPluginHandle == nullptr || !g_inputPluginStarted)
         return makeString(env, "Carregue e inicialize o plugin INPUT Android antes de abrir a ROM.");
+    if (g_audioPluginHandle == nullptr || !g_audioPluginStarted)
+        return makeString(env, "Carregue e inicialize o plugin AUDIO SDL antes de abrir a ROM.");
     if (!androidVideoContextReady())
         return makeString(env, "Operacao cancelada: contexto EGL/GLES nao esta atual na thread GL.");
 
@@ -1060,6 +1153,20 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
         __android_log_print(ANDROID_LOG_INFO, "N64AndroidRSP",
                             "CoreAttachPlugin(RSP) retornou M64ERR_SUCCESS; InitiateRSP concluido pelo Core.");
     }
+    if (!g_audioAttached) {
+        const m64p_error audioAttachResult = attachPlugin(
+            M64PLUGIN_AUDIO, reinterpret_cast<m64p_dynlib_handle>(g_audioPluginHandle));
+        if (audioAttachResult != M64ERR_SUCCESS) {
+            char status[384];
+            std::snprintf(status, sizeof(status),
+                "ROM aberta e GFX/RSP anexados, mas CoreAttachPlugin(AUDIO) falhou: codigo %d.",
+                static_cast<int>(audioAttachResult));
+            return makeString(env, status);
+        }
+        g_audioAttached = true;
+        __android_log_print(ANDROID_LOG_INFO, "N64AndroidAudio",
+                            "CoreAttachPlugin(AUDIO) concluido; InitiateAudio chamado pelo Core.");
+    }
     if (!g_inputAttached) {
         const m64p_error inputAttachResult = attachPlugin(
             M64PLUGIN_INPUT, reinterpret_cast<m64p_dynlib_handle>(g_inputPluginHandle));
@@ -1082,8 +1189,9 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
         "ROM aberta com sucesso no Mupen64Plus Core.\\n"
         "Plugin grafico GLideN64 anexado ao Core.\\n"
         "Plugin RSP-HLE anexado ao Core.\\n"
+        "Plugin AUDIO SDL anexado ao Core.\\n"
         "Plugin INPUT Android anexado; controle 1 conectado.\\n"
-        "InitiateGFX, InitiateRSP e InitiateControllers concluidos pelo Core.\\n"
+        "InitiateGFX, InitiateRSP, InitiateAudio e InitiateControllers concluidos pelo Core.\\n"
         "CoreAttachPlugin executado na thread GL com contexto EGL atual.\\n"
         "A emulacao ainda NAO foi iniciada.");
 #endif
@@ -1366,8 +1474,17 @@ Java_com_jsr_n64android_CoreNativeBridge_nativeShutdown(JNIEnv* env, jobject /* 
     }
     using CoreDetachPluginSymbol = m64p_error (*)(m64p_plugin_type);
     auto detachPlugin = reinterpret_cast<CoreDetachPluginSymbol>(dlsym(g_coreHandle, "CoreDetachPlugin"));
-    if ((g_rspAttached || g_gfxAttached) && detachPlugin == nullptr)
+    if ((g_inputAttached || g_audioAttached || g_rspAttached || g_gfxAttached) && detachPlugin == nullptr)
         return makeString(env, "CoreDetachPlugin nao encontrado; bibliotecas mantidas carregadas.");
+    if (g_audioAttached) {
+        const m64p_error result = detachPlugin(M64PLUGIN_AUDIO);
+        if (result != M64ERR_SUCCESS) {
+            char status[256];
+            std::snprintf(status, sizeof(status), "CoreDetachPlugin(AUDIO) falhou: codigo %d.", static_cast<int>(result));
+            return makeString(env, status);
+        }
+        g_audioAttached = false;
+    }
     if (g_inputAttached) {
         const m64p_error result = detachPlugin(M64PLUGIN_INPUT);
         if (result != M64ERR_SUCCESS) {
@@ -1405,6 +1522,30 @@ Java_com_jsr_n64android_CoreNativeBridge_nativeShutdown(JNIEnv* env, jobject /* 
             return makeString(env, status);
         }
         g_romOpen = false;
+    }
+    if (g_audioPluginHandle != nullptr) {
+        if (g_audioPluginStarted) {
+            using AudioPluginShutdown = int (*)();
+            auto pluginShutdown = reinterpret_cast<AudioPluginShutdown>(
+                dlsym(g_audioPluginHandle, "PluginShutdown"));
+            if (pluginShutdown == nullptr)
+                return makeString(env, "PluginShutdown do AUDIO SDL nao encontrado; biblioteca mantida carregada.");
+            const int pluginResult = pluginShutdown();
+            if (pluginResult != M64ERR_SUCCESS) {
+                char status[256];
+                std::snprintf(status, sizeof(status), "PluginShutdown do AUDIO SDL falhou: codigo %d.", pluginResult);
+                return makeString(env, status);
+            }
+            g_audioPluginStarted = false;
+        }
+        if (dlclose(g_audioPluginHandle) != 0) {
+            const char* error = dlerror();
+            char status[512];
+            std::snprintf(status, sizeof(status), "Falha ao descarregar plugin AUDIO SDL: %s.",
+                          error != nullptr ? error : "erro desconhecido");
+            return makeString(env, status);
+        }
+        g_audioPluginHandle = nullptr;
     }
     if (g_inputPluginHandle != nullptr) {
         if (g_inputPluginStarted) {
