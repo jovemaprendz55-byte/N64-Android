@@ -67,3 +67,44 @@ isolated Core library load/unload cycles; they have not exercised a real ROM
 execution, STOP during Execute, Execute drain, GL-thread plugin teardown, or
 frame presentation. Do not describe the renderer as operational until those
 checks are recorded from the target device.
+
+## CI and native-call-site audit (2026-11-10, follow-up)
+
+The stress-test commit `e0c30e18e286698a1cf15ac0a0230ef5c268c1ba`
+completed successfully in workflow run
+`42785655784`:
+
+- Host tests for Core call leases, runtime lifecycle, run-loop handshake,
+  and the two-phase shutdown gate passed.
+- The Android ARM64 GLideN64 renderer, pinned SDL2, and HLE RSP plugin
+  builds passed.
+- Kotlin JVM unit tests and the debug APK build passed.
+- The workflow verified that the Core remains packaged separately from
+  the JNI bridge and uploaded the debug APK.
+
+This is build/CI evidence only. It is not evidence of ROM execution or
+frame presentation on the Poco C85.
+
+The native call-site audit confirms the following migration boundary:
+
+- `nativeExecuteCore()` owns an Execute lease around synchronous
+  `M64CMD_EXECUTE`, marks the return handshake, updates the runtime phase,
+  and releases the lease after the Core call returns.
+- `nativeStopCore()` admits STOP only while Execute is active, waits for
+  the post-reset R4300-ready marker, and uses the shared
+  `g_stopCommandIssued` guard.
+- `nativeAwaitExecuteReturned()` is an observation/wait API only; it does
+  not perform teardown.
+- `nativeShutdown()` still independently performs STOP/drain and then
+  plugin detach, ROM close, plugin shutdown/unload, Core shutdown/unload.
+  It does not acquire a `CoreShutdownPhaseGate` generation token and has
+  no prepare/finalize JNI split yet.
+- `g_coreMutex` serializes handle mutation, but it is not a substitute for
+  a generation-scoped finalization claim or a GL-thread dispatcher.
+
+Therefore the next implementation step remains a native prepare/finalize
+split with explicit generation ownership and idempotent partial teardown.
+The legacy `nativeShutdown()` and Android lifecycle call sites must remain
+unchanged until that split has deterministic host coverage and a verified
+GL-thread integration path. No execution button or ROM path is to be enabled
+as part of this preparatory work.
