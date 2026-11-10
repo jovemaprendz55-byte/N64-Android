@@ -108,3 +108,24 @@ The legacy `nativeShutdown()` and Android lifecycle call sites must remain
 unchanged until that split has deterministic host coverage and a verified
 GL-thread integration path. No execution button or ROM path is to be enabled
 as part of this preparatory work.
+
+
+## Ordered teardown progress journal (follow-up)
+
+A platform-independent `CoreShutdownTeardownProgress` journal now models
+the exact ordered sub-steps required by the future GL-thread finalizer:
+RSP detach, GFX detach, ROM close, RSP shutdown/unload, GFX shutdown/unload,
+and Core shutdown/unload.
+
+The journal is generation-scoped and accepts only the next unresolved step.
+A native operation that fails is deliberately left unresolved, so a retry
+repeats that step without replaying earlier successful operations. Resources
+that were never present must be marked explicitly as skipped. Concurrent
+callbacks cannot commit the same step twice, and stale generation tokens
+cannot mutate a later teardown.
+
+This is still a tested planning primitive, **not yet connected** to
+`nativeShutdown()` or any JNI finalizer. No native teardown behavior has
+changed. The next integration must update each journal step only after its
+corresponding Core/plugin operation succeeds and must retain all handles and
+flags after failures.

@@ -149,6 +149,14 @@ jobs:
             -o build-core-shutdown-phase-gate-test
           ./build-core-shutdown-phase-gate-test
 
+      - name: Test ordered native shutdown teardown progress
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Werror -pthread \
+            -Iapp/src/main/cpp \
+            tests/native/core_shutdown_teardown_progress_test.cpp \
+            -o build-core-shutdown-teardown-progress-test
+          ./build-core-shutdown-teardown-progress-test
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
