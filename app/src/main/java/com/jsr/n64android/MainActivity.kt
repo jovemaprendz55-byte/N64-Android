@@ -740,7 +740,17 @@ class MainActivity : Activity() {
             } catch (error: Exception) {
                 "Falha ao validar/copiar ROM: " + error.message
             }
-            runOnUiThread { integrationStatusView.text = result }
+            runOnUiThread {
+                integrationStatusView.text = result
+                val romReady = result.startsWith("ROM N64 reconhecida e copiada")
+                if (romReady) {
+                    selectedRomView.text = "ROM selecionada e pronta para jogar"
+                    playButton.isEnabled = true
+                } else {
+                    selectedRomView.text = result
+                    playButton.isEnabled = false
+                }
+            }
         }.start()
     }
 
