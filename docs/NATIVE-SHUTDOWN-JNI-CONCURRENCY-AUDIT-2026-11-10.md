@@ -136,3 +136,20 @@ runner with injected step callbacks. Only after its retry/skip behavior passes
 should the JNI finalizer map those callbacks to the real Core/plugin symbols.
 This keeps the first code change independent of EGL and device-only plugin
 behavior.
+
+
+## Host-testable teardown operation executor
+
+Commit adds `core_shutdown_teardown_executor.h`, a callback-injected runner
+that executes exactly one journal step per `runNext()` call. It returns
+explicit success, skip, failure, busy, stale-generation, or complete results.
+Callbacks run without the progress journal mutex held; a failed callback (or
+exception) leaves the current step pending. An executor-local try-lock prevents
+two callers from running callbacks concurrently through the same executor.
+
+Host tests cover RSP detach success followed by GFX detach failure and retry,
+plugin shutdown followed by unload failure, Core shutdown followed by Core
+unload failure, explicit optional-resource skips, callback exceptions, and
+stale-generation rejection. These tests validate the operation runner only;
+the injected callbacks are not connected to JNI or real Core/plugin symbols.
+The legacy `nativeShutdown()` remains the sole production teardown path.
