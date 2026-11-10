@@ -1231,7 +1231,15 @@ Java_com_jsr_n64android_CoreNativeBridge_nativeShutdown(JNIEnv* env, jobject /* 
             }
             g_rspPluginStarted = false;
         }
-        dlclose(g_rspPluginHandle);
+        dlerror();
+        if (dlclose(g_rspPluginHandle) != 0) {
+            const char* error = dlerror();
+            char status[512];
+            std::snprintf(status, sizeof(status),
+                          "Falha ao descarregar plugin RSP-HLE: %s. Handle preservado para nova tentativa.",
+                          error != nullptr ? error : "erro desconhecido");
+            return makeString(env, status);
+        }
         g_rspPluginHandle = nullptr;
     }
     if (g_gfxPluginHandle != nullptr) {
@@ -1251,7 +1259,15 @@ Java_com_jsr_n64android_CoreNativeBridge_nativeShutdown(JNIEnv* env, jobject /* 
             }
             g_gfxPluginStarted = false;
         }
-        dlclose(g_gfxPluginHandle);
+        dlerror();
+        if (dlclose(g_gfxPluginHandle) != 0) {
+            const char* error = dlerror();
+            char status[512];
+            std::snprintf(status, sizeof(status),
+                          "Falha ao descarregar plugin GFX: %s. Handle preservado para nova tentativa.",
+                          error != nullptr ? error : "erro desconhecido");
+            return makeString(env, status);
+        }
         g_gfxPluginHandle = nullptr;
     }
     if (g_coreStarted) {
