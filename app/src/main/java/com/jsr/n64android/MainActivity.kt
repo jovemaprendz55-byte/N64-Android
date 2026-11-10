@@ -34,6 +34,8 @@ class MainActivity : Activity() {
     private external fun nativeRegisterAndroidVideo(): String
     private external fun nativeLoadGfxPlugin(pluginPath: String): String
     private external fun nativeLoadRspPlugin(pluginPath: String): String
+    private external fun nativeLoadInputPlugin(pluginPath: String): String
+    private external fun nativeSetControllerState(buttons: Int, axisX: Int, axisY: Int): String
     private external fun nativeOpenRomAndAttachGfx(romBytes: ByteArray): String
     private external fun nativeExecuteCore(): String
     private external fun nativeGetExecutionReadiness(): String
@@ -776,7 +778,16 @@ class MainActivity : Activity() {
                                     android.util.Log.i("N64AndroidFlow", "Etapa 4: chamando nativeLoadRspPlugin")
                                     val rspResult = nativeLoadRspPlugin(rspPath)
                                     android.util.Log.i("N64AndroidFlow", "Etapa 4 resultado: " + rspResult)
-                                    registration + "\\n\\n" + pluginResult + "\\n\\n" + rspResult
+                                    if (!rspResult.startsWith("Plugin RSP-HLE carregado e inicializado")) {
+                                        registration + "\\n\\n" + pluginResult + "\\n\\n" + rspResult
+                                    } else {
+                                        val inputPath = File(applicationInfo.nativeLibraryDir,
+                                            "libmupen64plus-input-android.so").absolutePath
+                                        val inputResult = nativeLoadInputPlugin(inputPath)
+                                        android.util.Log.i("N64AndroidFlow", "Etapa 5 resultado: " + inputResult)
+                                        registration + "\\n\\n" + pluginResult + "\\n\\n" +
+                                            rspResult + "\\n\\n" + inputResult
+                                    }
                                 }
                             }
                         } catch (error: LinkageError) {
