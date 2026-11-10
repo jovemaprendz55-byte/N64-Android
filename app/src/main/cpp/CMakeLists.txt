@@ -52,6 +52,16 @@ if(EXISTS "${MUPEN64PLUS_CORE_SOURCE_DIR}/src/asm_defines/asm_defines.c")
     # Build the first Android GLES graphics-plugin ABI module separately.
     # It receives GFX_INFO and validates the current EGL/GLES context; the
     # RDP command interpreter and framebuffer renderer are intentionally pending.
+    add_library(n64android_input SHARED android_input_plugin.cpp)
+    target_include_directories(n64android_input PRIVATE
+        "${MUPEN64PLUS_CORE_SOURCE_DIR}/src/api")
+    target_compile_features(n64android_input PRIVATE cxx_std_17)
+    target_compile_options(n64android_input PRIVATE -Wall -Wextra -Werror)
+    target_link_libraries(n64android_input PRIVATE log)
+    target_link_libraries(n64bridge PRIVATE n64android_input)
+    set_target_properties(n64android_input PROPERTIES
+        OUTPUT_NAME "mupen64plus-input-android")
+
     add_library(n64android_gfx SHARED android_gfx_plugin.cpp)
     target_include_directories(n64android_gfx PRIVATE
         "${MUPEN64PLUS_CORE_SOURCE_DIR}/src/api")
