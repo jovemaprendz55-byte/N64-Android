@@ -427,7 +427,7 @@ class MainActivity : Activity() {
             }, FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+                Gravity.FILL
             ))
         }
 
@@ -545,9 +545,12 @@ class MainActivity : Activity() {
 
 
     private fun createVirtualController(): FrameLayout {
+        // Overlay em tela inteira, com posições inspiradas no layout paisagem
+        // do Mupen64Plus AE: analógico à esquerda e botões à direita.
         val panel = FrameLayout(this).apply {
-            setPadding(12, 8, 12, 12)
-            setBackgroundColor(0x66000000)
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            clipChildren = false
+            clipToPadding = false
         }
         val density = resources.displayMetrics.density
         fun dp(value: Int) = (value * density).toInt()
@@ -557,27 +560,28 @@ class MainActivity : Activity() {
             for (pressed in controllerPressed) {
                 if (pressed in 0..13) mask = mask or (1 shl pressed)
             }
-            val axisX = controllerAxisX
-            val axisY = controllerAxisY
             try {
-                nativeSetControllerState(mask, axisX, axisY)
+                nativeSetControllerState(mask, controllerAxisX, controllerAxisY)
             } catch (error: Throwable) {
                 android.util.Log.e("N64AndroidInput", "Falha ao enviar controle virtual", error)
             }
         }
 
-        fun addButton(label: String, code: Int, size: Int, layoutGravity: Int,
-                      left: Int = 0, top: Int = 0, right: Int = 0, bottom: Int = 0) {
+        fun addButton(label: String, code: Int, size: Int, gravity: Int,
+                      left: Int = 0, top: Int = 0, right: Int = 0, bottom: Int = 0,
+                      rectangular: Boolean = false) {
             val button = TextView(this).apply {
                 text = label
-                textSize = if (size >= 54) 16f else 12f
-                setTextColor(0xFFFFFFFF.toInt())
+                textSize = if (label == "START") 11f else 14f
+                setTextColor(0xEFFFFFFF.toInt())
                 gravity = Gravity.CENTER
                 isClickable = true
                 background = android.graphics.drawable.GradientDrawable().apply {
-                    shape = android.graphics.drawable.GradientDrawable.OVAL
-                    setColor(0xAA263448.toInt())
-                    setStroke(dp(2), 0xFFB8C8DC.toInt())
+                    shape = if (rectangular) android.graphics.drawable.GradientDrawable.RECTANGLE
+                        else android.graphics.drawable.GradientDrawable.OVAL
+                    cornerRadius = if (rectangular) dp(18).toFloat() else 0f
+                    setColor(0x55263344)
+                    setStroke(dp(2), 0x889EADBF.toInt())
                 }
                 setOnTouchListener { view, event ->
                     when (event.actionMasked) {
@@ -585,8 +589,7 @@ class MainActivity : Activity() {
                             controllerPressed.add(code)
                             view.alpha = 0.58f
                         }
-                        MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP,
-                        MotionEvent.ACTION_CANCEL -> {
+                        MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_CANCEL -> {
                             controllerPressed.remove(code)
                             view.alpha = 1f
                         }
@@ -595,35 +598,31 @@ class MainActivity : Activity() {
                     true
                 }
             }
-            val params = FrameLayout.LayoutParams(dp(size), dp(size), layoutGravity).apply {
+            panel.addView(button, FrameLayout.LayoutParams(dp(size), dp(if (rectangular) 42 else size), gravity).apply {
                 setMargins(dp(left), dp(top), dp(right), dp(bottom))
-            }
-            panel.addView(button, params)
+            })
         }
 
-        // Analógico esquerdo: envia valores contínuos ao controle N64.
         val stick = TextView(this).apply {
-            text = "✥"
-            textSize = 36f
-            setTextColor(0xFFFFFFFF.toInt())
+            text = "●"
+            textSize = 28f
+            setTextColor(0xDDEFFFFFFF.toInt())
             gravity = Gravity.CENTER
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.OVAL
-                setColor(0xAA263448.toInt())
-                setStroke(dp(3), 0xFFB8C8DC.toInt())
+                setColor(0x33263344)
+                setStroke(dp(3), 0x889EADBF.toInt())
             }
             setOnTouchListener { view, event ->
                 when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE,
-                    MotionEvent.ACTION_POINTER_DOWN -> {
+                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE, MotionEvent.ACTION_POINTER_DOWN -> {
                         val x = ((event.x / view.width) * 2f - 1f).coerceIn(-1f, 1f)
                         val y = ((event.y / view.height) * 2f - 1f).coerceIn(-1f, 1f)
                         controllerAxisX = (x * 80).toInt()
                         controllerAxisY = (-y * 80).toInt()
                         view.alpha = 0.65f
                     }
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP,
-                    MotionEvent.ACTION_CANCEL -> {
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_CANCEL -> {
                         controllerAxisX = 0
                         controllerAxisY = 0
                         view.alpha = 1f
@@ -633,22 +632,26 @@ class MainActivity : Activity() {
                 true
             }
         }
-        panel.addView(stick, FrameLayout.LayoutParams(dp(104), dp(104),
-            Gravity.START or Gravity.BOTTOM).apply { leftMargin = dp(18); bottomMargin = dp(18) })
+        panel.addView(stick, FrameLayout.LayoutParams(dp(174), dp(174),
+            Gravity.START or Gravity.BOTTOM).apply { leftMargin = dp(22); bottomMargin = dp(22) })
 
-        // Botões principais A/B e conjunto C à direita, como no controle N64.
-        addButton("B", 6, 58, Gravity.END or Gravity.BOTTOM, right = 88, bottom = 28)
-        addButton("A", 7, 58, Gravity.END or Gravity.BOTTOM, right = 20, bottom = 68)
-        addButton("C↑", 11, 38, Gravity.END or Gravity.BOTTOM, right = 88, bottom = 112)
-        addButton("C←", 9, 38, Gravity.END or Gravity.BOTTOM, right = 130, bottom = 70)
-        addButton("C→", 8, 38, Gravity.END or Gravity.BOTTOM, right = 46, bottom = 70)
-        addButton("C↓", 10, 38, Gravity.END or Gravity.BOTTOM, right = 130, bottom = 28)
+        // Ombros no alto, nos mesmos cantos do exemplo.
+        addButton("L", 13, 96, Gravity.TOP or Gravity.START, left = 28, top = 10, rectangular = true)
+        addButton("R", 12, 96, Gravity.TOP or Gravity.END, right = 28, top = 10, rectangular = true)
+        addButton("Z", 5, 82, Gravity.TOP or Gravity.END, right = 28, top = 82, rectangular = true)
 
-        // Ombros e Start na faixa superior do painel.
-        addButton("L", 13, 42, Gravity.TOP or Gravity.START, left = 18, top = 8)
-        addButton("Z", 5, 42, Gravity.TOP or Gravity.CENTER_HORIZONTAL, left = -30, top = 8)
-        addButton("R", 12, 42, Gravity.TOP or Gravity.END, right = 18, top = 8)
-        addButton("START", 4, 48, Gravity.TOP or Gravity.END, right = 76, top = 8)
+        // C-direcional no centro-direita.
+        addButton("▲", 11, 52, Gravity.CENTER or Gravity.END, right = 320, top = -105)
+        addButton("◀", 9, 52, Gravity.CENTER or Gravity.END, right = 385, top = -40)
+        addButton("▶", 8, 52, Gravity.CENTER or Gravity.END, right = 255, top = -40)
+        addButton("▼", 10, 52, Gravity.CENTER or Gravity.END, right = 320, top = 25)
+
+        // A e B no lado direito, abaixo do Z.
+        addButton("A", 7, 64, Gravity.CENTER or Gravity.END, right = 165, top = 75)
+        addButton("B", 6, 64, Gravity.CENTER or Gravity.END, right = 250, top = 165)
+
+        // Start discreto na borda inferior, como no exemplo de referência.
+        addButton("START", 4, 82, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL, bottom = 12)
         return panel
     }
 
@@ -673,6 +676,7 @@ class MainActivity : Activity() {
         }
 
         diagnosticScreenVisible = true
+        requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         enterImmersiveGameMode()
         setContentView(gameplayLayout)
         integrationStatusView.text = "Preparando Core e camada gráfica Android..."
@@ -938,6 +942,7 @@ class MainActivity : Activity() {
     private fun showHomeScreen() {
         if (!shutdownCoreBeforeSurfaceChange()) return
         diagnosticScreenVisible = false
+        requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         glView?.let {
             (it.parent as? ViewGroup)?.removeView(it)
             it.onPause()
