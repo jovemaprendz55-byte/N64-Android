@@ -173,6 +173,14 @@ jobs:
             -o build-core-shutdown-teardown-executor-test
           ./build-core-shutdown-teardown-executor-test
 
+      - name: Test persistent native shutdown teardown session
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Werror -pthread \
+            -Iapp/src/main/cpp \
+            tests/native/core_shutdown_teardown_session_test.cpp \
+            -o build-core-shutdown-teardown-session-test
+          ./build-core-shutdown-teardown-session-test
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
