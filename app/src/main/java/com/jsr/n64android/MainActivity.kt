@@ -422,11 +422,11 @@ class MainActivity : Activity() {
                 Gravity.TOP or Gravity.CENTER_HORIZONTAL
             ).apply { topMargin = (48 * resources.displayMetrics.density).toInt() })
             addView(createVirtualController().apply {
-                setBackgroundColor(0x88000000.toInt())
-                alpha = 0.92f
+                setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                alpha = 1f
             }, FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
                 Gravity.FILL
             ))
         }
