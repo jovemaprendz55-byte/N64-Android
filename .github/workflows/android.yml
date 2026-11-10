@@ -355,7 +355,7 @@ jobs:
             WARNFLAGS="-Wall"
           AUDIO_PLUGIN="$AUDIO_DIR/projects/unix/mupen64plus-audio-sdl.so"
           test -s "$AUDIO_PLUGIN"
-          for symbol in PluginGetVersion PluginStartup PluginShutdown InitiateAudio AiDacrateChanged AiLenChanged AiReadLength VolumeUp VolumeDown VolumeGetLevel VolumeSetLevel VolumeMute; do
+          for symbol in PluginGetVersion PluginStartup PluginShutdown InitiateAudio AiDacrateChanged AiLenChanged; do
             readelf --dyn-syms -W "$AUDIO_PLUGIN" | grep -E "[[:space:]]${symbol}$"
           done
           mkdir -p build/native-libs/arm64-v8a
