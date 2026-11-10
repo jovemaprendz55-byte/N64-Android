@@ -1,5 +1,6 @@
 #include "core_shutdown_teardown_executor.h"
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <iostream>
