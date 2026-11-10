@@ -641,7 +641,7 @@ class MainActivity : Activity() {
         addButton("C↑", 11, 38, Gravity.END or Gravity.BOTTOM, right = 88, bottom = 112)
         addButton("C←", 9, 38, Gravity.END or Gravity.BOTTOM, right = 130, bottom = 70)
         addButton("C→", 8, 38, Gravity.END or Gravity.BOTTOM, right = 46, bottom = 70)
-        addButton("C↓", 10, 38, Gravity.END or Gravity.BOTTOM, right = 88, bottom = 28)
+        addButton("C↓", 10, 38, Gravity.END or Gravity.BOTTOM, right = 130, bottom = 28)
 
         // Ombros e Start na faixa superior do painel.
         addButton("L", 13, 42, Gravity.TOP or Gravity.START, left = 18, top = 8)
