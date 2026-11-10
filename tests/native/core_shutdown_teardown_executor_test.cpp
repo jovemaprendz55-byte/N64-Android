@@ -119,9 +119,14 @@ int main() {
         assert(!claimedProgress.beginGeneration(31));
         return Outcome::Succeeded;
     };
+    for (std::size_t i = 1; i < claimedCallbacks.size(); ++i)
+        claimedCallbacks[i] = [] { return Outcome::Skipped; };
     Executor claimedExecutor(claimedProgress, 30, claimedCallbacks);
     assert(claimedExecutor.runNext() == Result::Succeeded);
     assert(replacementAttempts == 1);
+    for (std::size_t i = 1; i < claimedCallbacks.size(); ++i)
+        assert(claimedExecutor.runNext() == Result::Skipped);
+    assert(claimedExecutor.runNext() == Result::Complete);
     assert(claimedProgress.beginGeneration(31));
 
     std::cout << "Core shutdown teardown executor tests passed\n";
