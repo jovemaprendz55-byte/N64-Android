@@ -601,6 +601,24 @@ class MainActivity : Activity() {
 
     private fun startAndroidVideoIntegration() {
         android.util.Log.i("N64AndroidFlow", "Etapa 1: inicio da integracao grafica")
+
+        // Encerrar e remover qualquer superfície de diagnóstico ANTES de
+        // inicializar o Core para a sessão de jogo. Caso contrário,
+        // showOpenGlTest poderia encerrar o Core recém-inicializado.
+        if (glView != null) {
+            if (!shutdownCoreBeforeSurfaceChange()) {
+                integrationStatusView.text =
+                    "Não foi possível preparar a superfície gráfica anterior. Core preservado."
+                return
+            }
+            glView?.let {
+                (it.parent as? ViewGroup)?.removeView(it)
+                it.onPause()
+            }
+            glView = null
+            glSurfaceReady = false
+        }
+
         diagnosticScreenVisible = true
         enterImmersiveGameMode()
         setContentView(gameplayLayout)
