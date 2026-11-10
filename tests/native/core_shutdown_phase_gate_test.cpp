@@ -22,6 +22,7 @@ int main() {
     assert(gate.phase() == CoreShutdownPhaseGate::Phase::Drained);
 
     assert(gate.beginFinalize(token, true, true, true));
+    assert(!gate.resetAfterComplete()); // cannot reset while finalizing
     assert(!gate.beginFinalize(token, true, true, true)); // no parallel finalize
     assert(gate.finishFinalize(token, false)); // safe retry state
     assert(gate.phase() == CoreShutdownPhaseGate::Phase::Drained);
@@ -32,7 +33,6 @@ int main() {
     assert(!gate.beginPrepare()); // completed generation cannot be reused
 
     // Recovery is explicit and only follows a fully completed generation.
-    assert(!gate.resetAfterComplete()); // not applicable before completion
     assert(gate.resetAfterComplete());
     auto next = gate.beginPrepare();
     assert(next);
