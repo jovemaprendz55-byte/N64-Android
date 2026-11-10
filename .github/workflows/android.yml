@@ -66,13 +66,13 @@ jobs:
           # The Android surface dimensions must be queried through EGL here.
           # GLideN64's wrapped GL function pointers are not initialized until later,
           # so calling glGetIntegerv from _getDisplaySize dereferences a null pointer.
-          display_header = "#include <DisplayWindow.h>\\n"
+          display_header = "#include <DisplayWindow.h>\n"
           if source.count(display_header) != 1:
               raise SystemExit("Expected DisplayWindow include exactly once")
           if "#include <EGL/egl.h>" not in source:
               source = source.replace(
                   display_header,
-                  display_header + "#if defined(OS_ANDROID)\\n#include <EGL/egl.h>\\n#endif\\n",
+                  display_header + "#if defined(OS_ANDROID)\n#include <EGL/egl.h>\n#endif\n",
                   1)
           old = (
               "\tFunctionWrapper::CoreVideo_GL_SetAttribute(M64P_GL_CONTEXT_PROFILE_MASK, M64P_GL_CONTEXT_PROFILE_CORE);\n"
