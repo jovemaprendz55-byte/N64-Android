@@ -520,11 +520,11 @@ class MainActivity : Activity() {
             panel.addView(row)
         }
         // Button bit order follows BUTTONS in the official Mupen64Plus plugin API.
-        addRow("←", 1, "↑", 3, "↓", 2, "→", 0)
-        addRow("B", 6, "A", 7, "Z", 5, "START", 4)
-        addRow("C←", 9, "C↑", 11, "C↓", 10, "C→", 8)
-        addRow("L", 13, "R", 12, "Stick ←", 1002, "Stick →", 1003)
-        addRow("Stick ↑", 1000, "Stick ↓", 1001)
+        addRow("←" to 1, "↑" to 3, "↓" to 2, "→" to 0)
+        addRow("B" to 6, "A" to 7, "Z" to 5, "START" to 4)
+        addRow("C←" to 9, "C↑" to 11, "C↓" to 10, "C→" to 8)
+        addRow("L" to 13, "R" to 12, "Stick ←" to 1002, "Stick →" to 1003)
+        addRow("Stick ↑" to 1000, "Stick ↓" to 1001)
         return panel
     }
 
