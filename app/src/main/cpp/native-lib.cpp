@@ -255,6 +255,23 @@ jstring makeString(JNIEnv* env, const char* value) {
 } // namespace
 
 extern "C"
+JNIEXPORT void JNICALL
+Java_com_jsr_n64android_MainActivity_nativeSetVideoSurfaceSize(
+        JNIEnv*, jobject /* thiz */, jint width, jint height) {
+#ifdef N64_HAS_MUPEN64PLUS_HEADERS
+    if (width <= 0 || height <= 0) return;
+    g_androidVideoWidth = width;
+    g_androidVideoHeight = height;
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidVideo",
+                        "Surface EGL informada ao backend de vídeo: %dx%d (orientação atual).",
+                        width, height);
+#else
+    (void) width;
+    (void) height;
+#endif
+}
+
+extern "C"
 JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_MainActivity_nativeGetStatus(JNIEnv* env, jobject /* thiz */) {
     void* sdl = dlopen("libSDL2.so", RTLD_NOW | RTLD_LOCAL);
