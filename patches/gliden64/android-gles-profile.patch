@@ -18,3 +18,21 @@ diff --git a/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cp
 +	FunctionWrapper::setThreadedMode(config.video.threadedVideo);
 +#endif
  	auto returnValue = FunctionWrapper::CoreVideo_Init();
+diff --git a/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp b/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp
+--- a/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp
++++ b/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp
+@@ -232,6 +232,16 @@ void DisplayWindowMupen64plus::_getDisplaySize()
+ 		}
+ 	}
++#elif defined(OS_ANDROID)
++	// GLSurfaceView sets the full EGL surface viewport before GLideN64 starts.
++	// Read it here instead of keeping the desktop 640x480 windowed defaults.
++	GLint viewport[4] = { 0, 0, 0, 0 };
++	glGetIntegerv(GL_VIEWPORT, viewport);
++	if (viewport[2] > 0 && viewport[3] > 0) {
++		m_screenWidth = static_cast<u32>(viewport[2]);
++		m_screenHeight = static_cast<u32>(viewport[3]);
++		LOG(LOG_VERBOSE, "Android EGL surface size %dx%d", m_screenWidth, m_screenHeight);
++	}
+ #endif
+ }
