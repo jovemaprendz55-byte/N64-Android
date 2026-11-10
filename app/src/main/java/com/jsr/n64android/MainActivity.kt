@@ -999,6 +999,22 @@ class MainActivity : Activity() {
                     } catch (error: LinkageError) {
                         "Falha ao verificar contexto EGL: " + error.message
                     }
+                    // Informa a dimensão antes de registrar/iniciar o GLideN64,
+                    // pois o plugin pode consultar a lista de modos durante o startup.
+                    if (registerVideoExtension) {
+                        val initialWidth = glView?.width?.takeIf { it > 0 }
+                            ?: resources.displayMetrics.widthPixels
+                        val initialHeight = glView?.height?.takeIf { it > 0 }
+                            ?: resources.displayMetrics.heightPixels
+                        if (initialWidth > 0 && initialHeight > 0) {
+                            try {
+                                nativeSetVideoSurfaceSize(initialWidth, initialHeight)
+                            } catch (error: Throwable) {
+                                android.util.Log.e("N64AndroidVideo",
+                                    "Falha ao informar dimensão inicial da surface", error)
+                            }
+                        }
+                    }
                     val videoStatus = if (registerVideoExtension) {
                         try {
                             android.util.Log.i("N64AndroidFlow", "Etapa 2: chamando nativeRegisterAndroidVideo")
