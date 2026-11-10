@@ -24,12 +24,36 @@ public:
         ++generation_;
         if (generation_ == 0) ++generation_;
         phase_ = Phase::Preparing;
+        prepareClaimed_ = false;
         return {generation_};
+    }
+
+    // The token is shared by callers joining the same generation. Claiming
+    // preparation is separate and exclusive: only one worker may issue STOP
+    // and wait for the Core drain at a time.
+    bool tryClaimPrepare(Token token) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!matches(token) || phase_ != Phase::Preparing || prepareClaimed_)
+            return false;
+        prepareClaimed_ = true;
+        return true;
+    }
+
+    // A failed preparation may release ownership so a later worker can retry.
+    // This does not advance the phase or change the generation.
+    bool releasePrepareClaim(Token token) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!matches(token) || phase_ != Phase::Preparing || !prepareClaimed_)
+            return false;
+        prepareClaimed_ = false;
+        return true;
     }
 
     bool markDrained(Token token) {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (!matches(token) || phase_ != Phase::Preparing) return false;
+        if (!matches(token) || phase_ != Phase::Preparing || !prepareClaimed_)
+            return false;
+        prepareClaimed_ = false;
         phase_ = Phase::Drained;
         return true;
     }
@@ -60,6 +84,7 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
         if (phase_ != Phase::Complete) return false;
         phase_ = Phase::Idle;
+        prepareClaimed_ = false;
         return true;
     }
 
@@ -81,4 +106,5 @@ private:
     mutable std::mutex mutex_;
     std::uint64_t generation_ = 0;
     Phase phase_ = Phase::Idle;
+    bool prepareClaimed_ = false;
 };

@@ -16,7 +16,7 @@ Audited `nativeShutdown()`, `nativeStopCore()`, `nativeAwaitExecuteReturned()`, 
 ## Integration blockers
 
 1. Preparation and GL finalization are not separate JNI operations. Preparation must own STOP/drain only; finalization must run on the GL thread and validate EGL.
-2. `CoreShutdownPhaseGate::beginPrepare()` returns the same token to concurrent callers while Preparing/Drained/Finalizing. This is idempotent token retrieval, not exclusive ownership. Integration needs a distinct owner/claim result.
+2. `CoreShutdownPhaseGate::beginPrepare()` returns the same token to concurrent callers in the same generation. A separate exclusive `tryClaimPrepare()` reservation is now available for the worker that performs STOP/drain; failed preparation must call `releasePrepareClaim()` before retry. This gate is still not wired to JNI.
 3. Journal steps must be advanced only after each real operation succeeds. Missing resources must be explicitly skipped; failures must leave the current step pending.
 4. Partial progress is spread across global flags. Migration must reconcile those flags with journal state before retrying, preventing repeated detach, ROM close, shutdown, or unload.
 5. Activity has multiple legacy shutdown call sites. They must not be switched independently until a process-scoped lifecycle owner, GL dispatcher completion, timeout handling, and stale-generation rejection exist.

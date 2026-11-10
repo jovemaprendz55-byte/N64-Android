@@ -27,6 +27,28 @@ int main() {
     for (const auto generation : generations)
         assert(generation == token.generation);
 
+    // Joining the generation does not grant ownership. Exactly one worker
+    // may claim the STOP/drain preparation operation.
+    std::atomic<bool> claimStart{false};
+    std::atomic<int> claimWinners{0};
+    std::vector<std::thread> claimers;
+    for (int i = 0; i < 16; ++i) {
+        claimers.emplace_back([&] {
+            while (!claimStart.load()) std::this_thread::yield();
+            if (gate.tryClaimPrepare(token)) ++claimWinners;
+        });
+    }
+    claimStart.store(true);
+    for (auto& thread : claimers) thread.join();
+    assert(claimWinners.load() == 1);
+    assert(!gate.tryClaimPrepare(token));
+
+    // A failed prepare releases its claim without changing the generation,
+    // allowing one later worker to retry safely.
+    assert(gate.releasePrepareClaim(token));
+    assert(!gate.releasePrepareClaim(token));
+    assert(gate.tryClaimPrepare(token));
+    assert(!gate.releasePrepareClaim({token.generation + 1}));
     assert(gate.markDrained(token));
     assert(!gate.markDrained(token));
 
