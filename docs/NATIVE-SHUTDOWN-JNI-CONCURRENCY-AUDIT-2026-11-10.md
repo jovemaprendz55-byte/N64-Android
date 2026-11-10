@@ -87,3 +87,52 @@ small wrapper around the legacy method:
 No JNI source, Activity lifecycle, or runtime behavior was changed in this
 follow-up. The prepare-claim CI passing validates the host-side ownership gate
 only; it does not validate device shutdown or plugin teardown.
+
+
+## Concrete mapping from the current legacy JNI teardown
+
+The current `nativeShutdown()` body was re-read after the prepare-claim tests
+passed. Its operation order maps to the progress journal as follows:
+
+| Journal step | Current native operation | Success state already maintained |
+|---|---|---|
+| DetachRsp | `CoreDetachPlugin(M64PLUGIN_RSP)` | `g_rspAttached = false` |
+| DetachGfx | `CoreDetachPlugin(M64PLUGIN_GFX)` | `g_gfxAttached = false` |
+| CloseRom | `CoreDoCommand(M64CMD_ROM_CLOSE)` | `g_romOpen = false` |
+| ShutdownRsp | RSP `PluginShutdown()` | `g_rspPluginStarted = false` |
+| UnloadRsp | `dlclose(g_rspPluginHandle)` | handle set to null only after success |
+| ShutdownGfx | GFX `PluginShutdown()` | `g_gfxPluginStarted = false` |
+| UnloadGfx | `dlclose(g_gfxPluginHandle)` | handle set to null only after success |
+| ShutdownCore | Core `CoreShutdown()` | `g_coreStarted = false` |
+| UnloadCore | `dlclose(g_coreHandle)` | handle set to null only after success |
+
+The current function already has useful retry properties: flags are cleared
+after successful detach/shutdown calls, and handles are nulled only after a
+successful `dlclose`. The journal integration must preserve this exact
+ordering and update the journal immediately after each corresponding success.
+It must not infer completion merely from a flag being false: at generation
+start, the journal must reconcile flags and handles while holding the same
+native handle-serialization lock.
+
+### Specific hazards to cover in implementation tests
+
+- If RSP detach succeeds and GFX detach fails, retry must start at GFX detach;
+  RSP must not be detached a second time.
+- If plugin shutdown succeeds but `dlclose` fails, retry must skip shutdown
+  and retry only `dlclose`, with the handle still valid.
+- If Core shutdown succeeds but Core `dlclose` fails, retry must not call
+  `CoreShutdown` again.
+- If an optional plugin was never loaded or attached, its corresponding
+  journal steps must be explicitly marked skipped in sequence.
+- A journal step must not be advanced before its native operation returns
+  success. Error paths must leave the current step pending.
+- The existing `g_coreMutex` protects native handles and teardown calls.
+  The future finalizer must preserve this serialization while ensuring that
+  no JNI prepare worker holds the mutex while waiting for R4300 readiness or
+  Execute drain.
+
+The next implementation unit should therefore be a host-testable operation
+runner with injected step callbacks. Only after its retry/skip behavior passes
+should the JNI finalizer map those callbacks to the real Core/plugin symbols.
+This keeps the first code change independent of EGL and device-only plugin
+behavior.
