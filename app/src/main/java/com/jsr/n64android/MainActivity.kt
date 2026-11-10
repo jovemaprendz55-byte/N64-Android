@@ -384,7 +384,6 @@ class MainActivity : Activity() {
                     }
                 }
             })
-            addView(integrationStatusView)
             addView(createVirtualController())
         }
 
@@ -410,6 +409,15 @@ class MainActivity : Activity() {
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 Gravity.TOP or Gravity.END
             ))
+            addView(integrationStatusView.apply {
+                setTextColor(0xFFFFFFFF.toInt())
+                setBackgroundColor(0x88000000.toInt())
+                textSize = 12f
+            }, FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            ).apply { topMargin = (48 * resources.displayMetrics.density).toInt() })
             addView(createVirtualController().apply {
                 setBackgroundColor(0x88000000.toInt())
                 alpha = 0.92f
@@ -864,6 +872,7 @@ class MainActivity : Activity() {
             it.onPause()
         }
         glSurfaceReady = false
+        window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
         window.decorView.systemUiVisibility = 0
         setContentView(homeLayout)
     }
