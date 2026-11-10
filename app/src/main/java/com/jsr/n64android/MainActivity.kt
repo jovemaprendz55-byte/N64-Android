@@ -606,7 +606,7 @@ class MainActivity : Activity() {
         val stick = TextView(this).apply {
             text = "●"
             textSize = 28f
-            setTextColor(0xDDEFFFFFFF.toInt())
+            setTextColor(0xDFFFFFFF.toInt())
             gravity = Gravity.CENTER
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.OVAL
