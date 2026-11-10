@@ -88,6 +88,7 @@ int main() {
     assert(next);
     assert(next.generation != token.generation);
     assert(!gate.markDrained(token)); // stale callback from old generation
+    assert(gate.tryClaimPrepare(next));
     assert(gate.markDrained(next));
 
     std::cout << "Core shutdown phase gate tests passed\n";
