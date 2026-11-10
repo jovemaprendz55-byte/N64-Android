@@ -81,17 +81,17 @@ jobs:
           # Read the actual GLSurfaceView viewport before calculating the game viewport.
           display_path = Path("third_party/GLideN64/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp")
           display_source = display_path.read_text()
-          display_old = "#endif\\n}\\n\\nvoid DisplayWindowMupen64plus::_readScreen2"
+          display_old = "#endif\n}\n\nvoid DisplayWindowMupen64plus::_readScreen2"
           display_new = """#elif defined(OS_ANDROID)
-          \\t// GLSurfaceView sets the full EGL surface viewport before GLideN64 starts.
-          \\t// Read it here instead of keeping the desktop 640x480 windowed defaults.
-          \\tGLint viewport[4] = { 0, 0, 0, 0 };
-          \\tglGetIntegerv(GL_VIEWPORT, viewport);
-          \\tif (viewport[2] > 0 && viewport[3] > 0) {
-          \\t\\tm_screenWidth = static_cast<u32>(viewport[2]);
-          \\t\\tm_screenHeight = static_cast<u32>(viewport[3]);
-          \\t\\tLOG(LOG_VERBOSE, "Android EGL surface size %dx%d", m_screenWidth, m_screenHeight);
-          \\t}
+          \t// GLSurfaceView sets the full EGL surface viewport before GLideN64 starts.
+          \t// Read it here instead of keeping the desktop 640x480 windowed defaults.
+          \tGLint viewport[4] = { 0, 0, 0, 0 };
+          \tglGetIntegerv(GL_VIEWPORT, viewport);
+          \tif (viewport[2] > 0 && viewport[3] > 0) {
+          \t\tm_screenWidth = static_cast<u32>(viewport[2]);
+          \t\tm_screenHeight = static_cast<u32>(viewport[3]);
+          \t\tLOG(LOG_VERBOSE, "Android EGL surface size %dx%d", m_screenWidth, m_screenHeight);
+          \t}
           #endif
           }
 
