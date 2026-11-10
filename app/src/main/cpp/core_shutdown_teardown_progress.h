@@ -135,5 +135,7 @@ private:
     mutable std::mutex mutex_;
     std::array<State, kStepCount> states_{};
     std::uint64_t generation_ = 0;
-    bool active_ = false;\n    bool inFlight_ = false;\n    Step claimedStep_ = Step::Count;
+    bool active_ = false;
+    bool inFlight_ = false;
+    Step claimedStep_ = Step::Count;
 };
