@@ -63,6 +63,17 @@ jobs:
           from pathlib import Path
           path = Path("third_party/GLideN64/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp")
           source = path.read_text()
+          # The Android surface dimensions must be queried through EGL here.
+          # GLideN64's wrapped GL function pointers are not initialized until later,
+          # so calling glGetIntegerv from _getDisplaySize dereferences a null pointer.
+          display_header = "#include <DisplayWindow.h>\\n"
+          if source.count(display_header) != 1:
+              raise SystemExit("Expected DisplayWindow include exactly once")
+          if "#include <EGL/egl.h>" not in source:
+              source = source.replace(
+                  display_header,
+                  display_header + "#if defined(OS_ANDROID)\\n#include <EGL/egl.h>\\n#endif\\n",
+                  1)
           old = (
               "\tFunctionWrapper::CoreVideo_GL_SetAttribute(M64P_GL_CONTEXT_PROFILE_MASK, M64P_GL_CONTEXT_PROFILE_CORE);\n"
               "\tFunctionWrapper::CoreVideo_GL_SetAttribute(M64P_GL_CONTEXT_MAJOR_VERSION, 3);\n"
@@ -83,13 +94,17 @@ jobs:
           display_source = display_path.read_text()
           display_old = "#endif\n}\n\nvoid DisplayWindowMupen64plus::_readScreen2"
           display_new = """#elif defined(OS_ANDROID)
-          \t// GLSurfaceView sets the full EGL surface viewport before GLideN64 starts.
-          \t// Read it here instead of keeping the desktop 640x480 windowed defaults.
-          \tGLint viewport[4] = { 0, 0, 0, 0 };
-          \tglGetIntegerv(GL_VIEWPORT, viewport);
-          \tif (viewport[2] > 0 && viewport[3] > 0) {
-          \t\tm_screenWidth = static_cast<u32>(viewport[2]);
-          \t\tm_screenHeight = static_cast<u32>(viewport[3]);
+          \t// Query EGL directly: GLideN64's wrapped GL entry points are not initialized yet.
+          \tEGLDisplay display = eglGetCurrentDisplay();
+          \tEGLSurface surface = eglGetCurrentSurface(EGL_DRAW);
+          \tEGLint width = 0;
+          \tEGLint height = 0;
+          \tif (display != EGL_NO_DISPLAY && surface != EGL_NO_SURFACE &&
+          \t\teglQuerySurface(display, surface, EGL_WIDTH, &width) == EGL_TRUE &&
+          \t\teglQuerySurface(display, surface, EGL_HEIGHT, &height) == EGL_TRUE &&
+          \t\twidth > 0 && height > 0) {
+          \t\tm_screenWidth = static_cast<u32>(width);
+          \t\tm_screenHeight = static_cast<u32>(height);
           \t\tLOG(LOG_VERBOSE, "Android EGL surface size %dx%d", m_screenWidth, m_screenHeight);
           \t}
           #endif
@@ -121,6 +136,11 @@ jobs:
           grep -F "M64P_GL_CONTEXT_PROFILE_ES" third_party/GLideN64/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp
           grep -F "M64P_GL_CONTEXT_MINOR_VERSION, 0" third_party/GLideN64/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp
           grep -F "FunctionWrapper::setThreadedMode(0)" third_party/GLideN64/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp
+          grep -F "eglQuerySurface(display, surface, EGL_WIDTH" third_party/GLideN64/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp
+          if grep -F "glGetIntegerv(GL_VIEWPORT" third_party/GLideN64/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp; then
+            echo "Do not call wrapped glGetIntegerv before GL function initialization"
+            exit 1
+          fi
 
       - name: Validate pinned Core source manifest
         run: >-
