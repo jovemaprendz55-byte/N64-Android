@@ -9,6 +9,7 @@ import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.os.Bundle
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
@@ -35,7 +36,7 @@ class MainActivity : Activity() {
     private external fun nativeLoadGfxPlugin(pluginPath: String): String
     private external fun nativeLoadRspPlugin(pluginPath: String): String
     private external fun nativeLoadInputPlugin(pluginPath: String): String
-    private external fun nativeSetControllerState(buttons: Int, axisX: Int, axisY: Int): String
+    private external fun nativeSetControllerState(buttons: Int, axisX: Int, axisY: Int)
     private external fun nativeOpenRomAndAttachGfx(romBytes: ByteArray): String
     private external fun nativeExecuteCore(): String
     private external fun nativeGetExecutionReadiness(): String
@@ -57,6 +58,7 @@ class MainActivity : Activity() {
     private var nativeLibraryLoaded = false
     private var nativeCoreLoaded = false
     private var nativeCoreInitialized = false
+    private val controllerPressed = mutableSetOf<Int>()
     private var glView: GLSurfaceView? = null
     @Volatile private var glSurfaceReady = false
     @Volatile private var glSurfaceCreatedCount = 0
@@ -377,6 +379,7 @@ class MainActivity : Activity() {
                 }
             })
             addView(integrationStatusView)
+            addView(createVirtualController())
         }
 
         homeLayout = LinearLayout(this).apply {
@@ -464,6 +467,65 @@ class MainActivity : Activity() {
                 statusView.text = "N64 Android\\n\\nLOG DO ULTIMO TESTE\\n\\n" + result + "\\n\\nToque em Copiar logs para enviar o texto."
             }
         }.start()
+    }
+
+
+    private fun createVirtualController(): LinearLayout {
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(8, 12, 8, 12)
+        }
+        val title = TextView(this).apply {
+            text = "Controle virtual N64"
+            textSize = 16f
+            gravity = Gravity.CENTER
+            setPadding(4, 4, 4, 8)
+        }
+        panel.addView(title)
+        fun addRow(vararg controls: Pair<String, Int>) {
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            controls.forEach { (label, code) ->
+                val control = Button(this).apply {
+                    text = label
+                    textSize = 11f
+                    isAllCaps = false
+                    setPadding(2, 2, 2, 2)
+                    setOnTouchListener { _, event ->
+                        when (event.actionMasked) {
+                            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> controllerPressed.add(code)
+                            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP,
+                            MotionEvent.ACTION_CANCEL -> controllerPressed.remove(code)
+                        }
+                        var mask = 0
+                        for (pressed in controllerPressed) {
+                            if (pressed in 0..13) mask = mask or (1 shl pressed)
+                        }
+                        val axisX = (if (1003 in controllerPressed) 80 else 0) -
+                            (if (1002 in controllerPressed) 80 else 0)
+                        val axisY = (if (1000 in controllerPressed) 80 else 0) -
+                            (if (1001 in controllerPressed) 80 else 0)
+                        try {
+                            nativeSetControllerState(mask, axisX, axisY)
+                        } catch (error: Throwable) {
+                            android.util.Log.e("N64AndroidInput", "Falha ao enviar controle virtual", error)
+                        }
+                        true
+                    }
+                }
+                row.addView(control, LinearLayout.LayoutParams(0, 48, 1f).apply {
+                    setMargins(3, 2, 3, 2)
+                })
+            }
+            panel.addView(row)
+        }
+        // Button bit order follows BUTTONS in the official Mupen64Plus plugin API.
+        addRow("←", 1, "↑", 3, "↓", 2, "→", 0)
+        addRow("B", 6, "A", 7, "Z", 5, "START", 4)
+        addRow("C←", 9, "C↑", 11, "C↓", 10, "C→", 8)
+        addRow("L", 13, "R", 12, "Stick ←", 1002, "Stick →", 1003)
+        addRow("Stick ↑", 1000, "Stick ↓", 1001)
+        return panel
     }
 
     private fun startAndroidVideoIntegration() {
