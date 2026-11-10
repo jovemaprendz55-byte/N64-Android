@@ -28,6 +28,7 @@ import javax.microedition.khronos.opengles.GL10
 class MainActivity : Activity() {
     private val romPickerRequestCode = 4201
     private var romPickerActive = false
+    @Volatile private var autoStartAfterGraphicsReady = false
 
     private external fun nativeGetStatus(): String
     private external fun nativeInitialize(configPath: String, dataPath: String): String
@@ -48,6 +49,8 @@ class MainActivity : Activity() {
     private lateinit var statusView: TextView
     private lateinit var rootLayout: LinearLayout
     private lateinit var homeLayout: LinearLayout
+    private lateinit var selectedRomView: TextView
+    private lateinit var playButton: Button
     private lateinit var integrationLayout: LinearLayout
     private lateinit var integrationStatusView: TextView
     private lateinit var graphicsGroup: LinearLayout
@@ -398,6 +401,31 @@ class MainActivity : Activity() {
                 gravity = Gravity.CENTER
                 setPadding(12, 8, 12, 28)
             })
+            selectedRomView = TextView(this@MainActivity).apply {
+                text = "Nenhuma ROM selecionada"
+                textSize = 14f
+                gravity = Gravity.CENTER
+                setPadding(12, 16, 12, 16)
+            }
+            addView(selectedRomView)
+            addView(Button(this@MainActivity).apply {
+                text = "Selecionar ROM"
+                setOnClickListener { openRomPicker() }
+            })
+            playButton = Button(this@MainActivity).apply {
+                text = "JOGAR"
+                isEnabled = false
+                setOnClickListener {
+                    val romFile = File(File(filesDir, "roms"), "selected.n64")
+                    if (!romFile.isFile) {
+                        selectedRomView.text = "Selecione uma ROM N64 primeiro."
+                    } else {
+                        autoStartAfterGraphicsReady = true
+                        startAndroidVideoIntegration()
+                    }
+                }
+            }
+            addView(playButton)
             addView(Button(this@MainActivity).apply {
                 text = "Diagnóstico e testes"
                 setOnClickListener {
@@ -601,7 +629,16 @@ class MainActivity : Activity() {
                     } catch (error: Exception) {
                         "Erro ao abrir ROM/anexar vídeo: " + error.message
                     }
-                    runOnUiThread { integrationStatusView.text = result }
+                    runOnUiThread {
+                        integrationStatusView.text = result
+                        if (autoStartAfterGraphicsReady && result.startsWith("ROM aberta com sucesso no Mupen64Plus Core")) {
+                            autoStartAfterGraphicsReady = false
+                            executeCoreOnGlThread()
+                        } else if (autoStartAfterGraphicsReady) {
+                            autoStartAfterGraphicsReady = false
+                            integrationStatusView.text = "A ROM não foi aberta; execução automática cancelada.\\n\\n" + result
+                        }
+                    }
                 }
             }
         }.start()
@@ -880,6 +917,17 @@ class MainActivity : Activity() {
                             lifecycleStatus + "\\n\\n" + eglStatus +
                             (if (videoStatus.isNotEmpty()) "\\n\\n" + videoStatus else "") +
                             "\\n\\nNenhuma ROM foi carregada. Confirme acima o resultado do carregamento e do PluginStartup; o plugin ainda nao foi anexado ao Core e InitiateGFX nao foi chamado."
+                        val graphicsReady = videoStatus.contains("Plugin GFX Android carregado e validado") &&
+                            videoStatus.contains("Plugin RSP-HLE carregado e inicializado") &&
+                            videoStatus.contains("Plugin INPUT Android")
+                        if (registerVideoExtension && autoStartAfterGraphicsReady) {
+                            if (graphicsReady) {
+                                openSelectedRomInCore()
+                            } else {
+                                autoStartAfterGraphicsReady = false
+                                integrationStatusView.text = "Falha ao preparar os plugins gráficos.\\n\\n" + videoStatus
+                            }
+                        }
                     }
                 }
 
