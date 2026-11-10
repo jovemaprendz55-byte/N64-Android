@@ -9,8 +9,10 @@ import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.os.Bundle
 import android.view.Gravity
+import android.view.WindowManager
 import android.view.MotionEvent
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -52,6 +54,7 @@ class MainActivity : Activity() {
     private lateinit var selectedRomView: TextView
     private lateinit var playButton: Button
     private lateinit var integrationLayout: LinearLayout
+    private lateinit var gameplayLayout: FrameLayout
     private lateinit var integrationStatusView: TextView
     private lateinit var graphicsGroup: LinearLayout
     private var diagnosticScreenVisible = false
@@ -385,6 +388,38 @@ class MainActivity : Activity() {
             addView(createVirtualController())
         }
 
+        // Tela de jogo: vídeo ocupa toda a área e os controles ficam sobrepostos.
+        gameplayLayout = FrameLayout(this).apply {
+            setBackgroundColor(0xFF000000.toInt())
+            addView(TextView(this@MainActivity).apply {
+                text = "N64 Android"
+                textSize = 13f
+                setTextColor(0xFFFFFFFF.toInt())
+                setPadding(12, 8, 12, 8)
+                setBackgroundColor(0x88000000.toInt())
+            }, FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP or Gravity.START
+            ))
+            addView(Button(this@MainActivity).apply {
+                text = "SAIR"
+                setOnClickListener { showHomeScreen() }
+            }, FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP or Gravity.END
+            ))
+            addView(createVirtualController().apply {
+                setBackgroundColor(0x88000000.toInt())
+                alpha = 0.92f
+            }, FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+            ))
+        }
+
         homeLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
@@ -559,7 +594,8 @@ class MainActivity : Activity() {
     private fun startAndroidVideoIntegration() {
         android.util.Log.i("N64AndroidFlow", "Etapa 1: inicio da integracao grafica")
         diagnosticScreenVisible = true
-        setContentView(integrationLayout)
+        enterImmersiveGameMode()
+        setContentView(gameplayLayout)
         integrationStatusView.text = "Preparando Core e camada gráfica Android..."
         try {
             loadNativeLibrary()
@@ -804,6 +840,22 @@ class MainActivity : Activity() {
         return false
     }
 
+    @Suppress("DEPRECATION")
+    private fun enterImmersiveGameMode() {
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_FULLSCREEN,
+            WindowManager.LayoutParams.FLAG_FULLSCREEN
+        )
+        window.decorView.systemUiVisibility = (
+            android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                or android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
+                or android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                or android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                or android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                or android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            )
+    }
+
     private fun showHomeScreen() {
         if (!shutdownCoreBeforeSurfaceChange()) return
         diagnosticScreenVisible = false
@@ -812,6 +864,7 @@ class MainActivity : Activity() {
             it.onPause()
         }
         glSurfaceReady = false
+        window.decorView.systemUiVisibility = 0
         setContentView(homeLayout)
     }
 
@@ -956,14 +1009,17 @@ class MainActivity : Activity() {
         }
 
         glView = surface
-        val surfaceContainer = if (registerVideoExtension) integrationLayout else graphicsGroup
-        surfaceContainer.addView(
-            surface,
-            LinearLayout.LayoutParams(
+        if (registerVideoExtension) {
+            gameplayLayout.addView(surface, 0, FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            ))
+        } else {
+            graphicsGroup.addView(surface, LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 (180 * resources.displayMetrics.density).toInt()
-            )
-        )
+            ))
+        }
         surface.onResume()
         surface.requestRender()
     }
