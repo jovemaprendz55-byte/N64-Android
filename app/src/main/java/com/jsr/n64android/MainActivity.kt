@@ -40,6 +40,7 @@ class MainActivity : Activity() {
     private external fun nativeLoadGfxPlugin(pluginPath: String): String
     private external fun nativeLoadRspPlugin(pluginPath: String): String
     private external fun nativeLoadInputPlugin(pluginPath: String): String
+    private external fun nativeLoadAudioPlugin(pluginPath: String): String
     private external fun nativeSetControllerState(buttons: Int, axisX: Int, axisY: Int)
     private external fun nativeOpenRomAndAttachGfx(romBytes: ByteArray): String
     private external fun nativeExecuteCore(): String
@@ -1019,12 +1020,22 @@ class MainActivity : Activity() {
                                     if (!rspResult.startsWith("Plugin RSP-HLE carregado e inicializado")) {
                                         registration + "\\n\\n" + pluginResult + "\\n\\n" + rspResult
                                     } else {
-                                        val inputPath = File(applicationInfo.nativeLibraryDir,
-                                            "libmupen64plus-input-android.so").absolutePath
-                                        val inputResult = nativeLoadInputPlugin(inputPath)
-                                        android.util.Log.i("N64AndroidFlow", "Etapa 5 resultado: " + inputResult)
-                                        registration + "\\n\\n" + pluginResult + "\\n\\n" +
-                                            rspResult + "\\n\\n" + inputResult
+                                        val audioPath = File(applicationInfo.nativeLibraryDir,
+                                            "libmupen64plus-audio-sdl.so").absolutePath
+                                        android.util.Log.i("N64AndroidFlow", "Etapa 5: chamando nativeLoadAudioPlugin")
+                                        val audioResult = nativeLoadAudioPlugin(audioPath)
+                                        android.util.Log.i("N64AndroidFlow", "Etapa 5 resultado: " + audioResult)
+                                        if (!audioResult.startsWith("Plugin AUDIO SDL carregado e inicializado")) {
+                                            registration + "\\n\\n" + pluginResult + "\\n\\n" +
+                                                rspResult + "\\n\\n" + audioResult
+                                        } else {
+                                            val inputPath = File(applicationInfo.nativeLibraryDir,
+                                                "libmupen64plus-input-android.so").absolutePath
+                                            val inputResult = nativeLoadInputPlugin(inputPath)
+                                            android.util.Log.i("N64AndroidFlow", "Etapa 6 resultado: " + inputResult)
+                                            registration + "\\n\\n" + pluginResult + "\\n\\n" +
+                                                rspResult + "\\n\\n" + audioResult + "\\n\\n" + inputResult
+                                        }
                                     }
                                 }
                             }
