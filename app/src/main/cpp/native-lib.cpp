@@ -909,19 +909,16 @@ Java_com_jsr_n64android_MainActivity_nativeLoadInputPlugin(
 }
 
 extern "C"
-JNIEXPORT jstring JNICALL
+JNIEXPORT void JNICALL
 Java_com_jsr_n64android_MainActivity_nativeSetControllerState(
-        JNIEnv* env, jobject /* thiz */, jint buttons, jint axisX, jint axisY) {
+        JNIEnv*, jobject /* thiz */, jint buttons, jint axisX, jint axisY) {
     std::lock_guard<std::mutex> lock(g_coreMutex);
-    if (g_inputPluginHandle == nullptr || !g_inputPluginStarted)
-        return makeString(env, "Controle virtual ainda nao foi carregado.");
+    if (g_inputPluginHandle == nullptr || !g_inputPluginStarted) return;
     using SetState = void (*)(unsigned int, int, int);
     auto setState = reinterpret_cast<SetState>(
         dlsym(g_inputPluginHandle, "N64AndroidSetControllerState"));
-    if (setState == nullptr)
-        return makeString(env, "Funcao de estado do controle nao encontrada.");
-    setState(static_cast<unsigned int>(buttons), axisX, axisY);
-    return makeString(env, "Estado do controle virtual atualizado.");
+    if (setState != nullptr)
+        setState(static_cast<unsigned int>(buttons), axisX, axisY);
 }
 
 extern "C"
