@@ -350,6 +350,9 @@ jobs:
           readelf -d build/mupen64plus-from-apk.so | grep -F "Shared library: [libSDL2.so]"
           readelf --dyn-syms -W build/mupen64plus-from-apk.so | grep -E "[[:space:]]CoreStartup$"
           readelf --dyn-syms -W build/mupen64plus-from-apk.so | grep -E "[[:space:]]CoreShutdown$"
+          for symbol in VidExt_Init VidExt_Quit VidExt_ListFullscreenModes VidExt_ListFullscreenRates VidExt_SetVideoMode VidExt_SetVideoModeWithRate VidExt_SetCaption VidExt_ToggleFullScreen VidExt_ResizeWindow VidExt_GL_GetProcAddress VidExt_GL_SetAttribute VidExt_GL_GetAttribute VidExt_GL_SwapBuffers VidExt_GL_GetDefaultFramebuffer; do
+            readelf --dyn-syms -W build/mupen64plus-from-apk.so | grep -E "[[:space:]]${symbol}$"
+          done
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
