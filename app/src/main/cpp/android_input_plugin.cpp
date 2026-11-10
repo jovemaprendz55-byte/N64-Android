@@ -71,6 +71,10 @@ EXPORT void CALL GetKeys(int control, BUTTONS* keys) {
     keys->Y_AXIS = static_cast<signed char>(std::clamp(g_axisY.load(), -80, 80));
 }
 
+// Obrigatorios na ABI INPUT do Mupen64Plus. O frontend Android usa
+// os controles virtuais via N64AndroidSetControllerState, portanto SDL fica vazio.
+EXPORT void CALL SDL_KeyDown(int, int) {}
+EXPORT void CALL SDL_KeyUp(int, int) {}
 EXPORT void CALL ControllerCommand(int, unsigned char*) {}
 EXPORT void CALL ReadController(int, unsigned char*) {}
 EXPORT int CALL RomOpen(void) { return 1; }
