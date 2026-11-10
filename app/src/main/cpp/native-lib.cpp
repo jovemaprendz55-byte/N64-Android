@@ -711,6 +711,45 @@ Java_com_jsr_n64android_MainActivity_nativeLoadGfxPlugin(
         return makeString(env, status);
     }
 
+    // GLideN64 resolves these callbacks directly from the Core handle with dlsym.
+    // CoreOverrideVidExt registers the Android callbacks, but does not replace the
+    // exported VidExt_* entry points that the plugin resolves during PluginStartup.
+    static const char* const requiredVideoSymbols[] = {
+        "VidExt_Init", "VidExt_Quit", "VidExt_ListFullscreenModes",
+        "VidExt_ListFullscreenRates", "VidExt_SetVideoMode",
+        "VidExt_SetVideoModeWithRate", "VidExt_SetCaption",
+        "VidExt_ToggleFullScreen", "VidExt_ResizeWindow",
+        "VidExt_GL_GetProcAddress", "VidExt_GL_SetAttribute",
+        "VidExt_GL_GetAttribute", "VidExt_GL_SwapBuffers",
+        "VidExt_GL_GetDefaultFramebuffer"
+    };
+    char missingVideoSymbols[512] = {};
+    size_t missingVideoUsed = 0;
+    for (const char* symbol : requiredVideoSymbols) {
+        dlerror();
+        void* address = dlsym(g_coreHandle, symbol);
+        const char* lookupError = dlerror();
+        if (address == nullptr || lookupError != nullptr) {
+            const int written = std::snprintf(
+                missingVideoSymbols + missingVideoUsed,
+                sizeof(missingVideoSymbols) - missingVideoUsed,
+                "%s%s", missingVideoUsed == 0 ? "" : ", ", symbol);
+            if (written > 0) missingVideoUsed += static_cast<size_t>(written);
+            if (missingVideoUsed >= sizeof(missingVideoSymbols)) break;
+        }
+    }
+    if (missingVideoUsed != 0) {
+        char status[768];
+        std::snprintf(status, sizeof(status),
+            "GLideN64 nao iniciado: simbolos Video Extension ausentes no Core: %s",
+            missingVideoSymbols);
+        __android_log_print(ANDROID_LOG_ERROR, "N64AndroidGFX", "%s", status);
+        dlclose(plugin);
+        return makeString(env, status);
+    }
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidGFX",
+                        "Todos os 14 simbolos VidExt_* encontrados no Core antes de PluginStartup.");
+
     using GfxPluginStartup = int (*)(void*, void*, void (*)(void*, int, const char*));
     auto startup = reinterpret_cast<GfxPluginStartup>(dlsym(plugin, "PluginStartup"));
     if (startup == nullptr) {
