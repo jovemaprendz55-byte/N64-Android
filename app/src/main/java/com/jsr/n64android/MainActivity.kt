@@ -36,6 +36,7 @@ class MainActivity : Activity() {
     private external fun nativeInitialize(configPath: String, dataPath: String): String
     private external fun nativeStartCore(configPath: String, dataPath: String): String
     private external fun nativeRegisterAndroidVideo(): String
+    private external fun nativeSetVideoSurfaceSize(width: Int, height: Int)
     private external fun nativeLoadGfxPlugin(pluginPath: String): String
     private external fun nativeLoadRspPlugin(pluginPath: String): String
     private external fun nativeLoadInputPlugin(pluginPath: String): String
@@ -1075,6 +1076,13 @@ class MainActivity : Activity() {
 
                 override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
                     GLES20.glViewport(0, 0, width, height)
+                    try {
+                        // Atualiza a extensão de vídeo com o tamanho REAL da surface
+                        // em retrato; não deixa o GLideN64 escolher o modo fixo 640x480.
+                        nativeSetVideoSurfaceSize(width, height)
+                    } catch (error: Throwable) {
+                        android.util.Log.e("N64AndroidVideo", "Falha ao informar tamanho da surface EGL", error)
+                    }
                 }
 
                 override fun onDrawFrame(gl: GL10?) {
