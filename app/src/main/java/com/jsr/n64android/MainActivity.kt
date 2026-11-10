@@ -65,6 +65,8 @@ class MainActivity : Activity() {
     private var nativeCoreLoaded = false
     private var nativeCoreInitialized = false
     private val controllerPressed = mutableSetOf<Int>()
+    @Volatile private var controllerAxisX = 0
+    @Volatile private var controllerAxisY = 0
     private var glView: GLSurfaceView? = null
     @Volatile private var glSurfaceReady = false
     @Volatile private var glSurfaceCreatedCount = 0
