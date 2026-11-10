@@ -245,7 +245,7 @@ const char* const kRequiredRspSymbols[] = {
 };
 const char* const kRequiredInputSymbols[] = {
     "PluginGetVersion", "PluginStartup", "PluginShutdown",
-    "InitiateControllers", "GetKeys", "ControllerCommand", "ReadController",
+    "InitiateControllers", "GetKeys", "ControllerCommand", "ReadController", "SDL_KeyDown", "SDL_KeyUp",
     "RomOpen", "RomClosed", "N64AndroidSetControllerState"
 };
 
