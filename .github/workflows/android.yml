@@ -57,6 +57,13 @@ jobs:
           ref: dd09c7dcdc6d2cff584aacb9d519600d47d61039
           path: third_party/mupen64plus-rsp-hle
 
+      - name: Checkout pinned Mupen64Plus SDL audio plugin source
+        uses: actions/checkout@v4
+        with:
+          repository: mupen64plus/mupen64plus-audio-sdl
+          ref: 6c2c3f8ae10b7f0f6dfe06f45ca7ca598a6b659a
+          path: third_party/mupen64plus-audio-sdl
+
       - name: Apply guarded Android GLES profile patch to GLideN64
         run: |
           python3 - <<'PY'
@@ -326,6 +333,36 @@ jobs:
           cp "$RSP_PLUGIN" build/native-libs/arm64-v8a/libmupen64plus-rsp-hle.so
           file build/native-libs/arm64-v8a/libmupen64plus-rsp-hle.so
 
+      - name: Build Mupen64Plus SDL audio plugin for Android ARM64
+        run: |
+          NDK="$ANDROID_HOME/ndk/27.0.12077973"
+          AUDIO_DIR="$GITHUB_WORKSPACE/third_party/mupen64plus-audio-sdl"
+          CORE_API="$GITHUB_WORKSPACE/third_party/mupen64plus-core/src/api"
+          AUDIO_CC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android23-clang"
+          SDL_INCLUDE="$GITHUB_WORKSPACE/third_party/SDL/include"
+          SDL_LIB="$GITHUB_WORKSPACE/build/sdl2-arm64"
+          make -C "$AUDIO_DIR/projects/unix" all \
+            UNAME=Linux \
+            HOST_CPU=aarch64 \
+            CC="$AUDIO_CC" \
+            APIDIR="$CORE_API" \
+            SDL_CFLAGS="-I$SDL_INCLUDE" \
+            SDL_LDLIBS="-L$SDL_LIB -lSDL2" \
+            NO_SPEEX=1 \
+            NO_SRC=1 \
+            NO_OSS=1 \
+            OPTFLAGS="-O2" \
+            WARNFLAGS="-Wall"
+          AUDIO_PLUGIN="$AUDIO_DIR/projects/unix/mupen64plus-audio-sdl.so"
+          test -s "$AUDIO_PLUGIN"
+          for symbol in PluginGetVersion PluginStartup PluginShutdown InitiateAudio AiDacrateChanged AiLenChanged AiReadLength VolumeUp VolumeDown VolumeGetLevel VolumeSetLevel VolumeMute; do
+            readelf --dyn-syms -W "$AUDIO_PLUGIN" | grep -E "[[:space:]]${symbol}$"
+          done
+          mkdir -p build/native-libs/arm64-v8a
+          cp "$AUDIO_PLUGIN" build/native-libs/arm64-v8a/libmupen64plus-audio-sdl.so
+          readelf -d build/native-libs/arm64-v8a/libmupen64plus-audio-sdl.so
+          file build/native-libs/arm64-v8a/libmupen64plus-audio-sdl.so
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -349,6 +386,7 @@ jobs:
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus-video-android.so"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus-video-GLideN64.so"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus-rsp-hle.so"
+          unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus-audio-sdl.so"
           unzip -p "$APK" lib/arm64-v8a/libmupen64plus-video-GLideN64.so > build/gliden64-from-apk.so
           for symbol in PluginGetVersion PluginStartup PluginShutdown ChangeWindow InitiateGFX MoveScreen ProcessDList ProcessRDPList RomClosed RomOpen ShowCFB UpdateScreen ViStatusChanged ViWidthChanged ReadScreen2 SetRenderingCallback FBRead FBWrite FBGetFrameBufferInfo; do
             readelf --dyn-syms -W build/gliden64-from-apk.so | grep -E "[[:space:]]${symbol}$"
