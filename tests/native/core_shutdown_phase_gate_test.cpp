@@ -31,9 +31,15 @@ int main() {
     assert(gate.phase() == CoreShutdownPhaseGate::Phase::Complete);
     assert(!gate.beginPrepare()); // completed generation cannot be reused
 
-    // Stale callbacks cannot mutate a later generation. A later generation
-    // is only available after an explicit future reset/recovery API exists.
-    assert(!gate.markDrained({token.generation + 1}));
+    // Recovery is explicit and only follows a fully completed generation.
+    assert(!gate.resetAfterComplete()); // not applicable before completion
+    assert(gate.resetAfterComplete());
+    auto next = gate.beginPrepare();
+    assert(next);
+    assert(next.generation != token.generation);
+    assert(!gate.markDrained(token)); // stale callback from old generation
+    assert(gate.markDrained(next));
+
     std::cout << "Core shutdown phase gate tests passed\n";
     return 0;
 }

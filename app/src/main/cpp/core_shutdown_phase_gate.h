@@ -53,6 +53,16 @@ public:
         return true;
     }
 
+    // A new Core lifecycle may start only after the previous generation
+    // reached Complete. Keep the generation counter so stale callbacks from
+    // the old lifecycle cannot mutate the new one.
+    bool resetAfterComplete() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (phase_ != Phase::Complete) return false;
+        phase_ = Phase::Idle;
+        return true;
+    }
+
     Phase phase() const {
         std::lock_guard<std::mutex> lock(mutex_);
         return phase_;
