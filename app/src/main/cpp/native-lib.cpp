@@ -225,6 +225,9 @@ bool g_gfxPluginStarted = false;
 void* g_rspPluginHandle = nullptr;
 bool g_rspPluginStarted = false;
 bool g_rspAttached = false;
+void* g_inputPluginHandle = nullptr;
+bool g_inputPluginStarted = false;
+bool g_inputAttached = false;
 bool g_romOpen = false;
 bool g_gfxAttached = false;
 std::atomic<bool> g_coreExecuting{false};
@@ -239,6 +242,11 @@ const char* const kRequiredGfxSymbols[] = {
 const char* const kRequiredRspSymbols[] = {
     "PluginGetVersion", "PluginStartup", "PluginShutdown",
     "InitiateRSP", "DoRspCycles", "RomClosed"
+};
+const char* const kRequiredInputSymbols[] = {
+    "PluginGetVersion", "PluginStartup", "PluginShutdown",
+    "InitiateControllers", "GetKeys", "ControllerCommand", "ReadController",
+    "RomOpen", "RomClosed", "N64AndroidSetControllerState"
 };
 
 jstring makeString(JNIEnv* env, const char* value) {
@@ -820,6 +828,102 @@ Java_com_jsr_n64android_MainActivity_nativeLoadRspPlugin(
 #endif
 }
 
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_jsr_n64android_MainActivity_nativeLoadInputPlugin(
+        JNIEnv* env, jobject /* thiz */, jstring pluginPath) {
+#ifndef N64_HAS_MUPEN64PLUS_HEADERS
+    return makeString(env, "Headers oficiais do Core nao estao disponiveis nesta compilacao.");
+#else
+    auto runtimeLease = g_coreRuntime.tryAcquire(CoreRuntimeCoordinator::Operation::Other);
+    if (!runtimeLease)
+        return makeString(env, "Carga INPUT recusada durante encerramento.");
+    std::lock_guard<std::mutex> lock(g_coreMutex);
+    if (g_coreHandle == nullptr || !g_coreStarted)
+        return makeString(env, "Inicialize o Core antes de carregar o plugin INPUT.");
+    if (g_inputPluginHandle != nullptr)
+        return makeString(env, "Plugin INPUT Android ja esta carregado.");
+    const char* path = env->GetStringUTFChars(pluginPath, nullptr);
+    if (path == nullptr) return makeString(env, "Nao foi possivel obter o caminho do plugin INPUT.");
+    dlerror();
+    void* plugin = dlopen(path, RTLD_NOW | RTLD_LOCAL);
+    env->ReleaseStringUTFChars(pluginPath, path);
+    if (plugin == nullptr) {
+        const char* error = dlerror();
+        char status[768];
+        std::snprintf(status, sizeof(status), "Falha ao carregar INPUT Android: %s",
+                      error != nullptr ? error : "erro desconhecido");
+        return makeString(env, status);
+    }
+    char missing[512] = {};
+    size_t used = 0;
+    for (const char* symbol : kRequiredInputSymbols) {
+        dlerror();
+        void* address = dlsym(plugin, symbol);
+        const char* error = dlerror();
+        if (address == nullptr || error != nullptr) {
+            const int written = std::snprintf(missing + used, sizeof(missing) - used,
+                                              "%s%s", used == 0 ? "" : ", ", symbol);
+            if (written > 0) used += static_cast<size_t>(written);
+            if (used >= sizeof(missing)) break;
+        }
+    }
+    if (used != 0) {
+        char status[768];
+        std::snprintf(status, sizeof(status), "INPUT sem simbolos obrigatorios: %s", missing);
+        dlclose(plugin);
+        return makeString(env, status);
+    }
+    auto getVersion = reinterpret_cast<PluginGetVersionSymbol>(dlsym(plugin, "PluginGetVersion"));
+    int type = 0, pluginVersion = 0, apiVersion = 0, caps = 0;
+    const char* name = nullptr;
+    const int versionResult = getVersion(&type, &pluginVersion, &apiVersion, &name, &caps);
+    if (versionResult != M64ERR_SUCCESS || type != M64PLUGIN_INPUT ||
+        (apiVersion & 0xffff0000) != 0x00020000) {
+        char status[512];
+        std::snprintf(status, sizeof(status),
+                      "INPUT incompativel: retorno=%d tipo=%d API=0x%06X.",
+                      versionResult, type, apiVersion);
+        dlclose(plugin);
+        return makeString(env, status);
+    }
+    using InputPluginStartup = int (*)(void*, void*, void (*)(void*, int, const char*));
+    auto startup = reinterpret_cast<InputPluginStartup>(dlsym(plugin, "PluginStartup"));
+    const int startupResult = startup(g_coreHandle, nullptr, coreDebugCallback);
+    if (startupResult != M64ERR_SUCCESS) {
+        char status[320];
+        std::snprintf(status, sizeof(status), "PluginStartup do INPUT falhou: codigo %d.", startupResult);
+        dlclose(plugin);
+        return makeString(env, status);
+    }
+    g_inputPluginHandle = plugin;
+    g_inputPluginStarted = true;
+    char status[512];
+    std::snprintf(status, sizeof(status),
+                  "Plugin INPUT Android carregado. Nome: %s | API: 0x%06X. Controle 1 sera anunciado como conectado.",
+                  name != nullptr ? name : "(sem nome)", apiVersion);
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidInput", "%s", status);
+    return makeString(env, status);
+#endif
+}
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_jsr_n64android_MainActivity_nativeSetControllerState(
+        JNIEnv* env, jobject /* thiz */, jint buttons, jint axisX, jint axisY) {
+    std::lock_guard<std::mutex> lock(g_coreMutex);
+    if (g_inputPluginHandle == nullptr || !g_inputPluginStarted)
+        return makeString(env, "Controle virtual ainda nao foi carregado.");
+    using SetState = void (*)(unsigned int, int, int);
+    auto setState = reinterpret_cast<SetState>(
+        dlsym(g_inputPluginHandle, "N64AndroidSetControllerState"));
+    if (setState == nullptr)
+        return makeString(env, "Funcao de estado do controle nao encontrada.");
+    setState(static_cast<unsigned int>(buttons), axisX, axisY);
+    return makeString(env, "Estado do controle virtual atualizado.");
+}
+
 extern "C"
 JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
@@ -837,6 +941,8 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
         return makeString(env, "Carregue e inicialize o plugin GFX antes de abrir a ROM.");
     if (g_rspPluginHandle == nullptr || !g_rspPluginStarted)
         return makeString(env, "Carregue e inicialize o plugin RSP-HLE antes de abrir a ROM.");
+    if (g_inputPluginHandle == nullptr || !g_inputPluginStarted)
+        return makeString(env, "Carregue e inicialize o plugin INPUT Android antes de abrir a ROM.");
     if (!androidVideoContextReady())
         return makeString(env, "Operacao cancelada: contexto EGL/GLES nao esta atual na thread GL.");
 
@@ -901,6 +1007,20 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
         __android_log_print(ANDROID_LOG_INFO, "N64AndroidRSP",
                             "CoreAttachPlugin(RSP) retornou M64ERR_SUCCESS; InitiateRSP concluido pelo Core.");
     }
+    if (!g_inputAttached) {
+        const m64p_error inputAttachResult = attachPlugin(
+            M64PLUGIN_INPUT, reinterpret_cast<m64p_dynlib_handle>(g_inputPluginHandle));
+        if (inputAttachResult != M64ERR_SUCCESS) {
+            char status[384];
+            std::snprintf(status, sizeof(status),
+                "ROM aberta, GFX/RSP anexados, mas CoreAttachPlugin(INPUT) falhou: codigo %d.",
+                static_cast<int>(inputAttachResult));
+            return makeString(env, status);
+        }
+        g_inputAttached = true;
+        __android_log_print(ANDROID_LOG_INFO, "N64AndroidInput",
+                            "CoreAttachPlugin(INPUT) concluido; controle 1 conectado.");
+    }
     if (g_coreRuntime.phase() == CoreRuntimeCoordinator::Phase::RomOpen &&
         !g_coreRuntime.markPluginsAttached()) {
         return makeString(env, "Plugins foram anexados, mas o encerramento comecou simultaneamente. O teardown sera concluido com seguranca.");
@@ -909,7 +1029,8 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
         "ROM aberta com sucesso no Mupen64Plus Core.\\n"
         "Plugin grafico GLideN64 anexado ao Core.\\n"
         "Plugin RSP-HLE anexado ao Core.\\n"
-        "InitiateGFX e InitiateRSP concluidos pelo Core.\\n"
+        "Plugin INPUT Android anexado; controle 1 conectado.\\n"
+        "InitiateGFX, InitiateRSP e InitiateControllers concluidos pelo Core.\\n"
         "CoreAttachPlugin executado na thread GL com contexto EGL atual.\\n"
         "A emulacao ainda NAO foi iniciada.");
 #endif
@@ -934,6 +1055,7 @@ Java_com_jsr_n64android_MainActivity_nativeGetExecutionReadiness(JNIEnv* env, jo
     bool coreLoaded = false, coreStarted = false, romOpen = false;
     bool gfxLoaded = false, gfxStarted = false, gfxAttached = false;
     bool rspLoaded = false, rspStarted = false, rspAttached = false;
+    bool inputLoaded = false, inputStarted = false, inputAttached = false;
     {
         std::lock_guard<std::mutex> lock(g_coreMutex);
         coreLoaded = g_coreHandle != nullptr;
@@ -945,6 +1067,9 @@ Java_com_jsr_n64android_MainActivity_nativeGetExecutionReadiness(JNIEnv* env, jo
         rspLoaded = g_rspPluginHandle != nullptr;
         rspStarted = g_rspPluginStarted;
         rspAttached = g_rspAttached;
+        inputLoaded = g_inputPluginHandle != nullptr;
+        inputStarted = g_inputPluginStarted;
+        inputAttached = g_inputAttached;
     }
     char status[1024];
     std::snprintf(status, sizeof(status),
@@ -954,6 +1079,7 @@ Java_com_jsr_n64android_MainActivity_nativeGetExecutionReadiness(JNIEnv* env, jo
         "ROM aberta=%s\\n"
         "GFX: carregado=%s iniciado=%s anexado=%s\\n"
         "RSP: carregado=%s iniciado=%s anexado=%s\\n"
+        "INPUT: carregado=%s iniciado=%s anexado=%s\\n"
         "EGL atual nesta thread=%s | marcador R4300=%s\\n"
         "EXECUTE elegivel=%s",
         phaseName, g_coreRuntime.activeCalls(),
@@ -963,11 +1089,13 @@ Java_com_jsr_n64android_MainActivity_nativeGetExecutionReadiness(JNIEnv* env, jo
         gfxAttached ? "sim" : "nao",
         rspLoaded ? "sim" : "nao", rspStarted ? "sim" : "nao",
         rspAttached ? "sim" : "nao",
+        inputLoaded ? "sim" : "nao", inputStarted ? "sim" : "nao",
+        inputAttached ? "sim" : "nao",
         androidVideoContextReady() ? "sim" : "nao",
         g_runLoopHandshake.ready() ? "sim" : "nao",
         (phase == CoreRuntimeCoordinator::Phase::PluginsAttached &&
          coreLoaded && coreStarted && romOpen && gfxAttached && rspAttached &&
-         androidVideoContextReady()) ? "sim (pre-checagem)" : "nao");
+         inputAttached && androidVideoContextReady()) ? "sim (pre-checagem)" : "nao");
     return makeString(env, status);
 }
 
@@ -989,7 +1117,7 @@ Java_com_jsr_n64android_MainActivity_nativeExecuteCore(JNIEnv* env, jobject /* t
     {
         std::lock_guard<std::mutex> handleLock(g_coreMutex);
         if (g_coreHandle == nullptr || !g_coreStarted || !g_romOpen ||
-            !g_gfxAttached || !g_rspAttached) {
+            !g_gfxAttached || !g_rspAttached || !g_inputAttached) {
             g_coreRuntime.markExecuteNotStarted();
             return makeString(env, "EXECUTE recusado: Core, ROM ou plugins nao estao prontos.");
         }
@@ -1187,6 +1315,15 @@ Java_com_jsr_n64android_CoreNativeBridge_nativeShutdown(JNIEnv* env, jobject /* 
     auto detachPlugin = reinterpret_cast<CoreDetachPluginSymbol>(dlsym(g_coreHandle, "CoreDetachPlugin"));
     if ((g_rspAttached || g_gfxAttached) && detachPlugin == nullptr)
         return makeString(env, "CoreDetachPlugin nao encontrado; bibliotecas mantidas carregadas.");
+    if (g_inputAttached) {
+        const m64p_error result = detachPlugin(M64PLUGIN_INPUT);
+        if (result != M64ERR_SUCCESS) {
+            char status[256];
+            std::snprintf(status, sizeof(status), "CoreDetachPlugin(INPUT) falhou: codigo %d.", static_cast<int>(result));
+            return makeString(env, status);
+        }
+        g_inputAttached = false;
+    }
     if (g_rspAttached) {
         const m64p_error result = detachPlugin(M64PLUGIN_RSP);
         if (result != M64ERR_SUCCESS) {
@@ -1215,6 +1352,30 @@ Java_com_jsr_n64android_CoreNativeBridge_nativeShutdown(JNIEnv* env, jobject /* 
             return makeString(env, status);
         }
         g_romOpen = false;
+    }
+    if (g_inputPluginHandle != nullptr) {
+        if (g_inputPluginStarted) {
+            using InputPluginShutdown = int (*)();
+            auto pluginShutdown = reinterpret_cast<InputPluginShutdown>(
+                dlsym(g_inputPluginHandle, "PluginShutdown"));
+            if (pluginShutdown == nullptr)
+                return makeString(env, "PluginShutdown do INPUT nao encontrado; bibliotecas mantidas carregadas.");
+            const int pluginResult = pluginShutdown();
+            if (pluginResult != M64ERR_SUCCESS) {
+                char status[256];
+                std::snprintf(status, sizeof(status), "PluginShutdown do INPUT falhou: codigo %d.", pluginResult);
+                return makeString(env, status);
+            }
+            g_inputPluginStarted = false;
+        }
+        if (dlclose(g_inputPluginHandle) != 0) {
+            const char* error = dlerror();
+            char status[512];
+            std::snprintf(status, sizeof(status), "Falha ao descarregar plugin INPUT: %s.",
+                          error != nullptr ? error : "erro desconhecido");
+            return makeString(env, status);
+        }
+        g_inputPluginHandle = nullptr;
     }
     if (g_rspPluginHandle != nullptr) {
         if (g_rspPluginStarted) {
