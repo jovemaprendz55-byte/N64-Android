@@ -565,7 +565,7 @@ class MainActivity : Activity() {
             }
         }
 
-        fun addButton(label: String, code: Int, size: Int, gravity: Int,
+        fun addButton(label: String, code: Int, size: Int, layoutGravity: Int,
                       left: Int = 0, top: Int = 0, right: Int = 0, bottom: Int = 0) {
             val button = TextView(this).apply {
                 text = label
@@ -594,7 +594,7 @@ class MainActivity : Activity() {
                     true
                 }
             }
-            val params = FrameLayout.LayoutParams(dp(size), dp(size), gravity).apply {
+            val params = FrameLayout.LayoutParams(dp(size), dp(size), layoutGravity).apply {
                 setMargins(dp(left), dp(top), dp(right), dp(bottom))
             }
             panel.addView(button, params)
