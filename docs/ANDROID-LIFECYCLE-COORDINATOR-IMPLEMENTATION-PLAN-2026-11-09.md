@@ -176,3 +176,15 @@ Esta etapa registra o contrato de concorrencia e o plano de testes. Nao altera r
 - A revisão confirmou que não restou declaração nem símbolo JNI `MainActivity_nativeShutdown`; o novo símbolo é `CoreNativeBridge_nativeShutdown`.
 - CI [42700836490](https://github.com/jovemaprendz55-byte/N64-Android/actions/runs/42700836490) concluiu com sucesso, incluindo testes JVM, build do APK debug, verificação do empacotamento e upload do artefato.
 - Limite: CI confirma compilação/empacotamento, não resolução JNI em aparelho. O próximo smoke test deve abrir o Core/ROM e acionar o fluxo de encerramento seguro sem Execute, confirmando que o endpoint novo responde sem `UnsatisfiedLinkError`. Não iniciar emulação.
+
+
+## Atualização: orquestração isolada do teardown GL — 2026-11-10
+
+- Criado `CoreGlTeardownCoordinator.kt`, sem ligação aos callbacks Android.
+- O fluxo exige STOP aceito e resposta explícita de retorno de `M64CMD_EXECUTE` antes de solicitar teardown.
+- O teardown só é entregue por uma interface `GlTeardownDispatcher`; a checagem EGL ocorre dentro da ação despachada, na thread GL.
+- Se STOP for recusado, a superfície não aceitar trabalho, EGL não estiver atual ou o shutdown nativo falhar, o coordenador não declara `SHUTDOWN_COMPLETE`.
+- Adicionados testes JVM para ordem STOP/drain → dispatch GL, STOP recusado, EGL ausente, superfície indisponível e falha do shutdown.
+- **Não integrado à MainActivity, onPause(), onDestroy(), seletor de ROM ou botão de execução.** A implementação é um contrato testável para a próxima revisão, não altera o comportamento do APK.
+- A auditoria de `nativeShutdown()` mostra que ele ainda contém STOP/drain e teardown na mesma função JNI. Esta separação Kotlin é preparatória; antes de integrar será necessário separar no C++ a fase de drenagem da fase de teardown e verificar novamente os guards/leases.
+- `M64CMD_EXECUTE` permanece bloqueado.
