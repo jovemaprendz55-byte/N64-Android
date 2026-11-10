@@ -31,7 +31,7 @@ public:
     bool beginGeneration(std::uint64_t generation) {
         std::lock_guard<std::mutex> lock(mutex_);
         if (generation == 0 || generation <= generation_) return false;
-        if (active_ && !completeLocked()) return false;
+        if (inFlight_ || (active_ && !completeLocked())) return false;
         generation_ = generation;
         states_.fill(State::NotStarted);
         active_ = true;
@@ -42,6 +42,37 @@ public:
     Step nextStep() const {
         std::lock_guard<std::mutex> lock(mutex_);
         return nextStepLocked();
+    }
+
+    // Atomically reserve the next step before its callback runs outside the
+    // journal mutex. A generation cannot be replaced while this claim exists.
+    bool tryClaimNextStep(std::uint64_t generation, Step* step) {
+        if (step == nullptr) return false;
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!active_ || inFlight_ || generation != generation_) return false;
+        const Step next = nextStepLocked();
+        if (next == Step::Count) return false;
+        inFlight_ = true;
+        claimedStep_ = next;
+        *step = next;
+        return true;
+    }
+
+    bool finishClaim(std::uint64_t generation, Step step, State state) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!active_ || !inFlight_ || generation != generation_ ||
+            claimedStep_ != step || nextStepLocked() != step) return false;
+        states_[indexOf(step)] = state;
+        inFlight_ = false;
+        return true;
+    }
+
+    bool cancelClaim(std::uint64_t generation, Step step) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!active_ || !inFlight_ || generation != generation_ || claimedStep_ != step)
+            return false;
+        inFlight_ = false;
+        return true;
     }
 
     bool markComplete(std::uint64_t generation, Step step) {
@@ -94,7 +125,7 @@ private:
     bool markResolved(std::uint64_t generation, Step step, State state) {
         std::lock_guard<std::mutex> lock(mutex_);
         const auto index = indexOf(step);
-        if (!active_ || generation != generation_ || index >= kStepCount ||
+        if (!active_ || inFlight_ || generation != generation_ || index >= kStepCount ||
             nextStepLocked() != step)
             return false;
         states_[index] = state;
@@ -104,5 +135,5 @@ private:
     mutable std::mutex mutex_;
     std::array<State, kStepCount> states_{};
     std::uint64_t generation_ = 0;
-    bool active_ = false;
+    bool active_ = false;\n    bool inFlight_ = false;\n    Step claimedStep_ = Step::Count;
 };

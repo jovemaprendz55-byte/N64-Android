@@ -34,28 +34,38 @@ public:
         if (progress_.generation() != generation_)
             return Result::StaleGeneration;
 
-        const Step step = progress_.nextStep();
-        if (step == Step::Count) {
-            return progress_.complete() ? Result::Complete : Result::StaleGeneration;
+        Step step = Step::Count;
+        if (!progress_.tryClaimNextStep(generation_, &step)) {
+            if (progress_.generation() != generation_) return Result::StaleGeneration;
+            return progress_.complete() ? Result::Complete : Result::Busy;
         }
 
         const auto index = static_cast<std::size_t>(step);
-        if (index >= callbacks_.size() || !callbacks_[index])
+        if (index >= callbacks_.size() || !callbacks_[index]) {
+            progress_.cancelClaim(generation_, step);
             return Result::Failed;
+        }
 
         Outcome outcome = Outcome::Failed;
         try {
             outcome = callbacks_[index]();
         } catch (...) {
+            progress_.cancelClaim(generation_, step);
             return Result::Failed;
         }
 
-        if (outcome == Outcome::Failed) return Result::Failed;
+        if (outcome == Outcome::Failed) {
+            progress_.cancelClaim(generation_, step);
+            return Result::Failed;
+        }
 
-        const bool committed = outcome == Outcome::Succeeded
-            ? progress_.markComplete(generation_, step)
-            : progress_.markSkipped(generation_, step);
-        if (!committed) return Result::StaleGeneration;
+        const bool committed = progress_.finishClaim(
+            generation_, step, outcome == Outcome::Succeeded
+                ? Progress::State::Completed : Progress::State::Skipped);
+        if (!committed) {
+            progress_.cancelClaim(generation_, step);
+            return Result::StaleGeneration;
+        }
 
         return outcome == Outcome::Succeeded ? Result::Succeeded : Result::Skipped;
     }

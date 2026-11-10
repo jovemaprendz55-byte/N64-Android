@@ -108,6 +108,22 @@ int main() {
     assert(staleExecutor.runNext() == Result::StaleGeneration);
     assert(staleCalls == 0);
 
+    // A claimed callback runs without the journal mutex, but generation
+    // replacement is rejected until the callback resolves its claim.
+    Progress claimedProgress;
+    assert(claimedProgress.beginGeneration(30));
+    int replacementAttempts = 0;
+    std::array<Executor::Callback, Progress::kStepCount> claimedCallbacks{};
+    claimedCallbacks[0] = [&] {
+        ++replacementAttempts;
+        assert(!claimedProgress.beginGeneration(31));
+        return Outcome::Succeeded;
+    };
+    Executor claimedExecutor(claimedProgress, 30, claimedCallbacks);
+    assert(claimedExecutor.runNext() == Result::Succeeded);
+    assert(replacementAttempts == 1);
+    assert(claimedProgress.beginGeneration(31));
+
     std::cout << "Core shutdown teardown executor tests passed\n";
     return 0;
 }
