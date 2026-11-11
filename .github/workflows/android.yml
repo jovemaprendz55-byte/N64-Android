@@ -280,18 +280,18 @@ jobs:
 
           # Compare wall time with CPU time consumed by the GL thread inside eglSwapBuffers.
           # High wall time with low thread CPU time indicates waiting/blocking or descheduling.
-          chrono_include = "#include <chrono>\\n"
+          chrono_include = "#include <chrono>\n"
           if native_source.count(chrono_include) != 1:
               raise SystemExit("Expected chrono include exactly once")
-          native_source = native_source.replace(chrono_include, chrono_include + "#include <time.h>\\n", 1)
+          native_source = native_source.replace(chrono_include, chrono_include + "#include <time.h>\n", 1)
 
-          counters_old = "    static double swapTotalMs = 0.0;\\n    static double swapMaxMs = 0.0;"
-          counters_new = counters_old + "\\n    static double swapCpuTotalMs = 0.0;\\n    static double swapCpuMaxMs = 0.0;\\n    static uint64_t swapCpuSamples = 0;"
+          counters_old = "    static double swapTotalMs = 0.0;\n    static double swapMaxMs = 0.0;"
+          counters_new = counters_old + "\n    static double swapCpuTotalMs = 0.0;\n    static double swapCpuMaxMs = 0.0;\n    static uint64_t swapCpuSamples = 0;"
           if native_source.count(counters_old) != 1:
               raise SystemExit("Expected swap timing counters exactly once")
           native_source = native_source.replace(counters_old, counters_new, 1)
 
-          swap_old = "    const auto swapStart = PerfClock::now();\\n    const EGLBoolean swapResult = eglSwapBuffers(display, surface);\\n    const auto swapEnd = PerfClock::now();\\n    const double swapMs = std::chrono::duration<double, std::milli>(\\n        swapEnd - swapStart).count();"
+          swap_old = "    const auto swapStart = PerfClock::now();\n    const EGLBoolean swapResult = eglSwapBuffers(display, surface);\n    const auto swapEnd = PerfClock::now();\n    const double swapMs = std::chrono::duration<double, std::milli>(\n        swapEnd - swapStart).count();"
           swap_new = """    timespec swapCpuStart{}, swapCpuEnd{};
               const bool swapCpuStartOk = clock_gettime(CLOCK_THREAD_CPUTIME_ID, &swapCpuStart) == 0;
               const auto swapStart = PerfClock::now();
@@ -312,14 +312,14 @@ jobs:
               raise SystemExit("Expected eglSwapBuffers timing block exactly once")
           native_source = native_source.replace(swap_old, swap_new, 1)
 
-          log_old = "                            \"PERF frame=%llu fps=%.2f work_avg_ms=%.3f work_max_ms=%.3f swap_avg_ms=%.3f swap_max_ms=%.3f work_samples=%llu context=%p surface=%p tid=%ld\",\\n                            static_cast<unsigned long long>(frame), fps,\\n                            workAvgMs, workMaxMs, swapTotalMs / 120.0, swapMaxMs,\\n                            static_cast<unsigned long long>(workSamples),"
-          log_new = "                            \"PERF frame=%llu fps=%.2f work_avg_ms=%.3f work_max_ms=%.3f swap_avg_ms=%.3f swap_max_ms=%.3f swap_cpu_avg_ms=%.3f swap_cpu_max_ms=%.3f cpu_samples=%llu work_samples=%llu context=%p surface=%p tid=%ld\",\\n                            static_cast<unsigned long long>(frame), fps,\\n                            workAvgMs, workMaxMs, swapTotalMs / 120.0, swapMaxMs,\\n                            swapCpuSamples > 0 ? swapCpuTotalMs / static_cast<double>(swapCpuSamples) : 0.0,\\n                            swapCpuMaxMs, static_cast<unsigned long long>(swapCpuSamples),\\n                            static_cast<unsigned long long>(workSamples),"
+          log_old = "                            \"PERF frame=%llu fps=%.2f work_avg_ms=%.3f work_max_ms=%.3f swap_avg_ms=%.3f swap_max_ms=%.3f work_samples=%llu context=%p surface=%p tid=%ld\",\n                            static_cast<unsigned long long>(frame), fps,\n                            workAvgMs, workMaxMs, swapTotalMs / 120.0, swapMaxMs,\n                            static_cast<unsigned long long>(workSamples),"
+          log_new = "                            \"PERF frame=%llu fps=%.2f work_avg_ms=%.3f work_max_ms=%.3f swap_avg_ms=%.3f swap_max_ms=%.3f swap_cpu_avg_ms=%.3f swap_cpu_max_ms=%.3f cpu_samples=%llu work_samples=%llu context=%p surface=%p tid=%ld\",\n                            static_cast<unsigned long long>(frame), fps,\n                            workAvgMs, workMaxMs, swapTotalMs / 120.0, swapMaxMs,\n                            swapCpuSamples > 0 ? swapCpuTotalMs / static_cast<double>(swapCpuSamples) : 0.0,\n                            swapCpuMaxMs, static_cast<unsigned long long>(swapCpuSamples),\n                            static_cast<unsigned long long>(workSamples),"
           if native_source.count(log_old) != 1:
               raise SystemExit("Expected PERF log format exactly once")
           native_source = native_source.replace(log_old, log_new, 1)
 
-          reset_old = "        swapTotalMs = 0.0;\\n        swapMaxMs = 0.0;"
-          reset_new = reset_old + "\\n        swapCpuTotalMs = 0.0;\\n        swapCpuMaxMs = 0.0;\\n        swapCpuSamples = 0;"
+          reset_old = "        swapTotalMs = 0.0;\n        swapMaxMs = 0.0;"
+          reset_new = reset_old + "\n        swapCpuTotalMs = 0.0;\n        swapCpuMaxMs = 0.0;\n        swapCpuSamples = 0;"
           if native_source.count(reset_old) != 1:
               raise SystemExit("Expected PERF window reset exactly once")
           native_source = native_source.replace(reset_old, reset_new, 1)
