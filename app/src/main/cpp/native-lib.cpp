@@ -1125,20 +1125,6 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
     if (doCommand == nullptr || attachPlugin == nullptr)
         return makeString(env, "CoreDoCommand ou CoreAttachPlugin nao encontrado.");
 
-    if (!g_gfxAttached) {
-        const m64p_error attachResult = attachPlugin(
-            M64PLUGIN_GFX, reinterpret_cast<m64p_dynlib_handle>(g_gfxPluginHandle));
-        if (attachResult != M64ERR_SUCCESS) {
-            char status[320];
-            std::snprintf(status, sizeof(status),
-                "ROM aberta no Core, mas CoreAttachPlugin(GFX) falhou: codigo %d. A ROM permanece aberta para nova tentativa.",
-                static_cast<int>(attachResult));
-            return makeString(env, status);
-        }
-        g_gfxAttached = true;
-        __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
-                            "CoreAttachPlugin(GFX) retornou M64ERR_SUCCESS; InitiateGFX concluido pelo Core.");
-    }
     if (!g_rspAttached) {
         const m64p_error rspAttachResult = attachPlugin(
             M64PLUGIN_RSP, reinterpret_cast<m64p_dynlib_handle>(g_rspPluginHandle));
@@ -1152,6 +1138,20 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
         g_rspAttached = true;
         __android_log_print(ANDROID_LOG_INFO, "N64AndroidRSP",
                             "CoreAttachPlugin(RSP) retornou M64ERR_SUCCESS; InitiateRSP concluido pelo Core.");
+    }
+    if (!g_gfxAttached) {
+        const m64p_error attachResult = attachPlugin(
+            M64PLUGIN_GFX, reinterpret_cast<m64p_dynlib_handle>(g_gfxPluginHandle));
+        if (attachResult != M64ERR_SUCCESS) {
+            char status[320];
+            std::snprintf(status, sizeof(status),
+                "ROM aberta no Core, mas CoreAttachPlugin(GFX) falhou: codigo %d. A ROM permanece aberta para nova tentativa.",
+                static_cast<int>(attachResult));
+            return makeString(env, status);
+        }
+        g_gfxAttached = true;
+        __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
+                            "CoreAttachPlugin(GFX) retornou M64ERR_SUCCESS; InitiateGFX concluido pelo Core.");
     }
     if (!g_audioAttached) {
         const m64p_error audioAttachResult = attachPlugin(
