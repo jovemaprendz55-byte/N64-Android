@@ -184,31 +184,61 @@ m64p_error androidVideoSwapBuffers() {
 
     using PerfClock = std::chrono::steady_clock;
     static auto reportStart = PerfClock::now();
+    static auto previousSwapEnd = PerfClock::time_point{};
+    static uint64_t reportFrameStart = 0;
+    static uint64_t workSamples = 0;
+    static double workTotalMs = 0.0;
+    static double workMaxMs = 0.0;
     static double swapTotalMs = 0.0;
     static double swapMaxMs = 0.0;
+    const auto frameStart = PerfClock::now();
     const uint64_t frame = g_androidVideoSwapCount.fetch_add(1) + 1;
+
+    // Time spent between the previous completed EGL swap and this swap call.
+    // This includes emulation, GLideN64 rendering and any work before present.
+    if (previousSwapEnd != PerfClock::time_point{}) {
+        const double workMs = std::chrono::duration<double, std::milli>(
+            frameStart - previousSwapEnd).count();
+        workTotalMs += workMs;
+        if (workMs > workMaxMs) workMaxMs = workMs;
+        ++workSamples;
+    } else {
+        reportFrameStart = frame;
+        reportStart = frameStart;
+    }
 
     const EGLDisplay display = eglGetCurrentDisplay();
     const EGLSurface surface = eglGetCurrentSurface(EGL_DRAW);
     const auto swapStart = PerfClock::now();
     const EGLBoolean swapResult = eglSwapBuffers(display, surface);
+    const auto swapEnd = PerfClock::now();
     const double swapMs = std::chrono::duration<double, std::milli>(
-        PerfClock::now() - swapStart).count();
+        swapEnd - swapStart).count();
+    previousSwapEnd = swapEnd;
     swapTotalMs += swapMs;
     if (swapMs > swapMaxMs) swapMaxMs = swapMs;
 
-    if (frame == 1 || (frame % 120) == 0) {
+    if ((frame % 120) == 0) {
         const double intervalSeconds = std::chrono::duration<double>(
-            PerfClock::now() - reportStart).count();
-        const double fps = intervalSeconds > 0.0 ? 120.0 / intervalSeconds : 0.0;
+            swapEnd - reportStart).count();
+        const uint64_t framesInInterval = frame - reportFrameStart;
+        const double fps = intervalSeconds > 0.0
+            ? static_cast<double>(framesInInterval) / intervalSeconds : 0.0;
+        const double workAvgMs = workSamples > 0
+            ? workTotalMs / static_cast<double>(workSamples) : 0.0;
         __android_log_print(ANDROID_LOG_INFO, "N64AndroidVideo",
-                            "PERF frame=%llu fps=%.2f swap_avg_ms=%.3f swap_max_ms=%.3f context=%p surface=%p tid=%ld",
+                            "PERF frame=%llu fps=%.2f work_avg_ms=%.3f work_max_ms=%.3f swap_avg_ms=%.3f swap_max_ms=%.3f work_samples=%llu context=%p surface=%p tid=%ld",
                             static_cast<unsigned long long>(frame), fps,
-                            swapTotalMs / 120.0, swapMaxMs,
+                            workAvgMs, workMaxMs, swapTotalMs / 120.0, swapMaxMs,
+                            static_cast<unsigned long long>(workSamples),
                             reinterpret_cast<void*>(eglGetCurrentContext()),
                             reinterpret_cast<void*>(eglGetCurrentSurface(EGL_DRAW)),
                             static_cast<long>(syscall(SYS_gettid)));
-        reportStart = PerfClock::now();
+        reportStart = swapEnd;
+        reportFrameStart = frame;
+        workSamples = 0;
+        workTotalMs = 0.0;
+        workMaxMs = 0.0;
         swapTotalMs = 0.0;
         swapMaxMs = 0.0;
     }
