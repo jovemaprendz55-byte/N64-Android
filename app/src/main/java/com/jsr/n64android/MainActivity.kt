@@ -449,6 +449,10 @@ class MainActivity : Activity() {
             }
             addView(playButton)
             addView(Button(this@MainActivity).apply {
+                text = "DIAGNÓSTICO DO ÁUDIO"
+                setOnClickListener { showAudioDiagnostics() }
+            })
+            addView(Button(this@MainActivity).apply {
                 text = "Diagnóstico e testes"
                 setOnClickListener {
                     diagnosticScreenVisible = true
@@ -487,6 +491,82 @@ class MainActivity : Activity() {
             }
         }
 
+
+    private fun showAudioDiagnostics() {
+        diagnosticScreenVisible = true
+        var audioReport = "Ainda não foi feita a leitura. Toque em Atualizar diagnóstico."
+        val reportView = TextView(this).apply {
+            text = "DIAGNÓSTICO DO ÁUDIO\\n\\n" + audioReport
+            textSize = 14f
+            setTextIsSelectable(true)
+            setPadding(20, 20, 20, 20)
+        }
+        fun refreshAudioReport() {
+            reportView.text = "Lendo os registros do áudio do emulador..."
+            Thread {
+                val output = try {
+                    val process = ProcessBuilder("logcat", "-d", "-t", "2000")
+                        .redirectErrorStream(true)
+                        .start()
+                    val lines = process.inputStream.bufferedReader().use { it.readLines() }
+                    process.waitFor()
+                    val markers = listOf("N64AndroidAudio", "N64ANDROID AUDIO:",
+                        "N64AndroidCore", "N64AndroidFlow", "Couldn't open audio",
+                        "SDL_OpenAudio", "SDL_Init", "AiLenChanged")
+                    val matches = lines.filter { line ->
+                        markers.any { marker -> line.contains(marker, ignoreCase = true) }
+                    }.takeLast(100)
+                    if (matches.isEmpty()) {
+                        "Nenhum registro do plugin de áudio foi encontrado.\\n\\n" +
+                            "Confirme que abriu uma ROM e deixou o jogo rodar por 20 a 30 segundos. " +
+                            "Depois volte para esta tela e toque em Atualizar diagnóstico."
+                    } else {
+                        "REGISTROS ENCONTRADOS: ${matches.size}\\n\\n" +
+                            matches.joinToString("\\n")
+                    }
+                } catch (error: Exception) {
+                    "Não foi possível ler os registros do Android: ${error.message}"
+                }
+                runOnUiThread {
+                    audioReport = output
+                    reportView.text = "DIAGNÓSTICO DO ÁUDIO\\n\\n" + output
+                }
+            }.start()
+        }
+        val page = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(16, 16, 16, 16)
+            addView(TextView(this@MainActivity).apply {
+                text = "Diagnóstico do áudio"
+                textSize = 23f
+                gravity = Gravity.CENTER
+                setPadding(12, 16, 12, 16)
+            })
+            addView(Button(this@MainActivity).apply {
+                text = "Atualizar diagnóstico"
+                setOnClickListener { refreshAudioReport() }
+            })
+            addView(Button(this@MainActivity).apply {
+                text = "Copiar diagnóstico"
+                setOnClickListener {
+                    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("Diagnóstico de áudio N64", audioReport))
+                    Toast.makeText(this@MainActivity, "Diagnóstico copiado.", Toast.LENGTH_SHORT).show()
+                }
+            })
+            addView(Button(this@MainActivity).apply {
+                text = "Voltar ao início"
+                setOnClickListener { showHomeScreen() }
+            })
+            addView(reportView)
+        }
+        setContentView(ScrollView(this).apply {
+            isFillViewport = true
+            addView(page)
+        })
+        refreshAudioReport()
+    }
 
     private fun showRecentCrashLog() {
         statusView.text = "N64 Android\\n\\nConsultando registros recentes do Android..."
