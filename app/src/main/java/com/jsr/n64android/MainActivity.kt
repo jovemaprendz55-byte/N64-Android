@@ -74,6 +74,8 @@ class MainActivity : Activity() {
     @Volatile private var glSurfaceCreatedCount = 0
     @Volatile private var lifecycleTestEnabled = false
     @Volatile private var activityDestroyed = false
+    @Volatile private var coreExecuteActive = false
+    private var returnHomeInProgress = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -845,10 +847,13 @@ class MainActivity : Activity() {
                     "Pre-checagem aprovada. Teste de execucao iniciado na thread GL.\\n" +
                     "Se a imagem aparecer, use Parar emulacao para encerrar o teste."
             }
+            coreExecuteActive = true
             val result = try {
                 nativeExecuteCore()
             } catch (error: Throwable) {
                 "Falha durante M64CMD_EXECUTE: ${error.message}"
+            } finally {
+                coreExecuteActive = false
             }
             runOnUiThread { integrationStatusView.text = result }
         }
@@ -997,6 +1002,10 @@ class MainActivity : Activity() {
 
     private fun showHomeScreen() {
         if (!shutdownCoreBeforeSurfaceChange()) return
+        showHomeScreenAfterShutdown()
+    }
+
+    private fun showHomeScreenAfterShutdown() {
         diagnosticScreenVisible = false
         requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         glView?.let {
@@ -1009,9 +1018,96 @@ class MainActivity : Activity() {
         setContentView(homeLayout)
     }
 
+    /**
+     * M64CMD_EXECUTE is synchronous and currently occupies the GL thread.
+     * Request STOP from a worker, wait for Execute to return, then queue the
+     * EGL-dependent shutdown back onto that same GL thread. Do not change the
+     * gameplay view, orientation, immersive flags, or controller overlay
+     * until native teardown has positively completed.
+     */
+    private fun stopExecutionAndReturnHome() {
+        if (returnHomeInProgress) return
+        val surface = glView
+        if (surface == null || !glSurfaceReady) {
+            Toast.makeText(this, "Superfície gráfica indisponível; jogo e Core foram preservados.", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        returnHomeInProgress = true
+        Toast.makeText(this, "Parando o jogo com segurança...", Toast.LENGTH_SHORT).show()
+
+        Thread({
+            val stop = try {
+                CoreStopCoordinator(CoreNativeBridge).requestStopAndAwait(10000)
+            } catch (error: Throwable) {
+                CoreStopCoordinator.Result(
+                    stopResult = "Falha ao solicitar parada: ${error.message}",
+                    waitResult = null,
+                    stopAccepted = false
+                )
+            }
+
+            val executeReturned = stop.waitResult
+                ?.startsWith("M64CMD_EXECUTE retornou.") == true
+            if (!stop.stopAccepted || !executeReturned) {
+                runOnUiThread {
+                    returnHomeInProgress = false
+                    Toast.makeText(
+                        this,
+                        "Não foi possível confirmar a parada. O jogo e a tela cheia foram mantidos.\n${stop.waitResult ?: stop.stopResult}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+                return@Thread
+            }
+
+            try {
+                // Execute has returned, so the GL queue is free again. Keep
+                // shutdown on this queue because GLideN64 teardown needs EGL.
+                surface.queueEvent {
+                    val shutdown = try {
+                        CoreNativeBridge.nativeShutdown()
+                    } catch (error: Throwable) {
+                        "Falha no encerramento pela thread GL: ${error.message}"
+                    }
+                    runOnUiThread {
+                        returnHomeInProgress = false
+                        val completed =
+                            shutdown.startsWith("Biblioteca do Core descarregada corretamente") ||
+                            shutdown.startsWith("Biblioteca do Core nao estava carregada") ||
+                            shutdown.startsWith("Core ja foi encerrado e descarregado")
+                        if (completed) {
+                            nativeCoreLoaded = false
+                            nativeCoreInitialized = false
+                            coreExecuteActive = false
+                            showHomeScreenAfterShutdown()
+                        } else {
+                            Toast.makeText(
+                                this,
+                                "O Core não confirmou o encerramento. A tela cheia foi preservada.\n${shutdown}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                }
+            } catch (error: Throwable) {
+                runOnUiThread {
+                    returnHomeInProgress = false
+                    Toast.makeText(
+                        this,
+                        "Não foi possível agendar o retorno na thread gráfica. Core preservado: ${error.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }, "N64-Stop-And-Return-Home").start()
+    }
+
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
-        if (diagnosticScreenVisible) {
+        if (coreExecuteActive) {
+            stopExecutionAndReturnHome()
+        } else if (diagnosticScreenVisible) {
             showHomeScreen()
         } else {
             super.onBackPressed()
