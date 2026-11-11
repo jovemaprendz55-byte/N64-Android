@@ -91,7 +91,11 @@ jobs:
           backend_path = Path("third_party/mupen64plus-audio-sdl/src/sdl_backend.c")
           backend = backend_path.read_text()
           old_condition = "if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER) < 0)"
-          new_condition = "int n64_sdl_init_result = SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER);\\n        DebugMessage(M64MSG_ERROR, \\"N64ANDROID AUDIO: SDL_Init resultado=%d erro=%s SDL_WasInit=0x%x\\", n64_sdl_init_result, SDL_GetError(), SDL_WasInit(0));\\n        if (n64_sdl_init_result < 0)"
+          new_condition = """int n64_sdl_init_result = SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER);
+                  DebugMessage(M64MSG_ERROR,
+                      "N64ANDROID AUDIO: SDL_Init resultado=%d erro=%s SDL_WasInit=0x%x",
+                      n64_sdl_init_result, SDL_GetError(), SDL_WasInit(0));
+                  if (n64_sdl_init_result < 0)"""
           if backend.count(old_condition) != 1:
               raise SystemExit("Condicao SDL_Init nao encontrada exatamente uma vez")
           backend = backend.replace(old_condition, new_condition, 1)
