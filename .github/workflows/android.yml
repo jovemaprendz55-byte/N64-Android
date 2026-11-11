@@ -101,27 +101,27 @@ jobs:
               raise SystemExit("Trecho SDL_Init nao encontrado")
           text = text.replace(old, new, 1)
           old = """    /* Open the audio device */
-    if (SDL_OpenAudio(&desired, &obtained) < 0)
-    {
-        DebugMessage(M64MSG_ERROR, "Couldn't open audio: %s", SDL_GetError());"""
+              if (SDL_OpenAudio(&desired, &obtained) < 0)
+              {
+                  DebugMessage(M64MSG_ERROR, "Couldn't open audio: %s", SDL_GetError());"""
           new = """    /* Open the audio device */
-    int n64_sdl_open_result = SDL_OpenAudio(&desired, &obtained);
-    DebugMessage(M64MSG_INFO,
-        "N64ANDROID AUDIO: SDL_OpenAudio resultado=%d erro=%s freq=%d canais=%d formato=0x%x samples=%d",
-        n64_sdl_open_result, SDL_GetError(), obtained.freq, obtained.channels,
-        obtained.format, obtained.samples);
-    if (n64_sdl_open_result < 0)
-    {
-        DebugMessage(M64MSG_ERROR, "Couldn't open audio: %s", SDL_GetError());"""
+              int n64_sdl_open_result = SDL_OpenAudio(&desired, &obtained);
+              DebugMessage(M64MSG_INFO,
+                  "N64ANDROID AUDIO: SDL_OpenAudio resultado=%d erro=%s freq=%d canais=%d formato=0x%x samples=%d",
+                  n64_sdl_open_result, SDL_GetError(), obtained.freq, obtained.channels,
+                  obtained.format, obtained.samples);
+              if (n64_sdl_open_result < 0)
+              {
+                  DebugMessage(M64MSG_ERROR, "Couldn't open audio: %s", SDL_GetError());"""
           if text.count(old) != 1:
               raise SystemExit("Trecho SDL_OpenAudio nao encontrado; upstream drift detected")
           text = text.replace(old, new, 1)
           backend.write_text(text)
           PY
           git -C third_party/mupen64plus-audio-sdl diff --check
-
-      - name: Apply guarded Android GLES profile patch to GLideN64
-        run: |
+          
+                - name: Apply guarded Android GLES profile patch to GLideN64
+                  run: |
           python3 - <<'PY'
           from pathlib import Path
           path = Path("third_party/GLideN64/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp")
@@ -150,7 +150,7 @@ jobs:
           if source.count(old) != 1:
               raise SystemExit("Expected GLideN64 context-attribute block exactly once; upstream drift detected")
           path.write_text(source.replace(old, new, 1))
-
+          
           # GLideN64's desktop defaults (640x480) are not the Android surface size.
           # Read the actual GLSurfaceView viewport before calculating the game viewport.
           display_path = Path("third_party/GLideN64/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp")
@@ -172,12 +172,12 @@ jobs:
           \t}
           #endif
           }
-
+          
           void DisplayWindowMupen64plus::_readScreen2"""
           if display_source.count(display_old) != 1:
               raise SystemExit("Expected GLideN64 display-size function ending exactly once; upstream drift detected")
           display_path.write_text(display_source.replace(display_old, display_new, 1))
-
+          
           # GLideN64 enables its private GL command thread by default on Android.
           # The app's EGL context belongs to GLSurfaceView's render thread.
           thread_path = Path("third_party/GLideN64/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp")
@@ -204,15 +204,15 @@ jobs:
             echo "Do not call wrapped glGetIntegerv before GL function initialization"
             exit 1
           fi
-
-      - name: Validate pinned Core source manifest
-        run: >-
+          
+                - name: Validate pinned Core source manifest
+                  run: >-
           cmake
           -DMUPEN64PLUS_CORE_SOURCE_DIR="$GITHUB_WORKSPACE/third_party/mupen64plus-core"
           -P cmake/Mupen64PlusCoreSources.cmake
-
-      - name: Test ARM64 assembly offset generator with binary object
-        run: |
+          
+                - name: Test ARM64 assembly offset generator with binary object
+                  run: |
           mkdir -p build/asm-defines-fixture
           cat > build/asm-defines-fixture/asm_defines.c <<'EOF'
           const char device_r4300[] = "\n@ASM_DEFINE offsetof_struct_device_r4300 0x00000010\n";
@@ -222,87 +222,87 @@ jobs:
           cmake -DINPUT_OBJECT="$GITHUB_WORKSPACE/build/asm-defines-fixture/asm_defines.o" -DOUTPUT_DIR="$GITHUB_WORKSPACE/build/asm-defines-fixture/generated" -P cmake/GenerateMupen64PlusAsmDefines.cmake
           grep -F '#define offsetof_struct_device_r4300 (0x00000010)' build/asm-defines-fixture/generated/asm_defines_gas.h
           grep -F '%define offsetof_struct_new_dynarec_hot_state_pc (0x00000020)' build/asm-defines-fixture/generated/asm_defines_nasm.h
-
-      - name: Test native shutdown EGL requirement policy
-        run: |
+          
+                - name: Test native shutdown EGL requirement policy
+                  run: |
           c++ -std=c++17 -Wall -Wextra -Werror \
             -Iapp/src/main/cpp \
             tests/native/core_shutdown_teardown_policy_test.cpp \
             -o build-core-shutdown-teardown-policy-test
           ./build-core-shutdown-teardown-policy-test
-
-      - name: Test Core call lease and shutdown drain
-        run: |
+          
+                - name: Test Core call lease and shutdown drain
+                  run: |
           c++ -std=c++17 -Wall -Wextra -Werror -pthread \
             -Iapp/src/main/cpp \
             tests/native/core_call_gate_test.cpp \
             -o build-core-call-gate-test
           ./build-core-call-gate-test
-
-      - name: Test Core runtime lifecycle coordinator
-        run: |
+          
+                - name: Test Core runtime lifecycle coordinator
+                  run: |
           c++ -std=c++17 -Wall -Wextra -Werror -pthread \
             -Iapp/src/main/cpp \
             tests/native/core_runtime_coordinator_test.cpp \
             -o build-core-runtime-coordinator-test
           ./build-core-runtime-coordinator-test
-
-      - name: Test Core run-loop readiness handshake
-        run: |
+          
+                - name: Test Core run-loop readiness handshake
+                  run: |
           c++ -std=c++17 -Wall -Wextra -Werror -pthread \
             -Iapp/src/main/cpp \
             tests/native/core_run_loop_handshake_test.cpp \
             -o build-core-run-loop-handshake-test
           ./build-core-run-loop-handshake-test
-
-      - name: Test two-phase Core shutdown gate
-        run: |
+          
+                - name: Test two-phase Core shutdown gate
+                  run: |
           c++ -std=c++17 -Wall -Wextra -Werror -pthread \
             -Iapp/src/main/cpp \
             tests/native/core_shutdown_phase_gate_test.cpp \
             -o build-core-shutdown-phase-gate-test
           ./build-core-shutdown-phase-gate-test
-
-      - name: Test ordered native shutdown teardown progress
-        run: |
+          
+                - name: Test ordered native shutdown teardown progress
+                  run: |
           c++ -std=c++17 -Wall -Wextra -Werror -pthread \
             -Iapp/src/main/cpp \
             tests/native/core_shutdown_teardown_progress_test.cpp \
             -o build-core-shutdown-teardown-progress-test
           ./build-core-shutdown-teardown-progress-test
-
-      - name: Test retry-safe native shutdown teardown executor
-        run: |
+          
+                - name: Test retry-safe native shutdown teardown executor
+                  run: |
           c++ -std=c++17 -Wall -Wextra -Werror -pthread \
             -Iapp/src/main/cpp \
             tests/native/core_shutdown_teardown_executor_test.cpp \
             -o build-core-shutdown-teardown-executor-test
           ./build-core-shutdown-teardown-executor-test
-
-      - name: Test persistent native shutdown teardown session
-        run: |
+          
+                - name: Test persistent native shutdown teardown session
+                  run: |
           c++ -std=c++17 -Wall -Wextra -Werror -pthread \
             -Iapp/src/main/cpp \
             tests/native/core_shutdown_teardown_session_test.cpp \
             -o build-core-shutdown-teardown-session-test
           ./build-core-shutdown-teardown-session-test
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
+          
+                - name: Set up JDK 17
+                  uses: actions/setup-java@v4
+                  with:
           distribution: temurin
           java-version: "17"
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
+          
+                - name: Set up Android SDK
+                  uses: android-actions/setup-android@v3
+                  with:
           packages: ''
-
-      - name: Install Android NDK and CMake
-        run: sdkmanager "ndk;27.0.12077973" "cmake;3.22.1"
-
-      - name: Build GLideN64 renderer independently for Android ARM64
-        run: |
+          
+                - name: Install Android NDK and CMake
+                  run: sdkmanager "ndk;27.0.12077973" "cmake;3.22.1"
+          
+                - name: Build GLideN64 renderer independently for Android ARM64
+                  run: |
           NDK="$ANDROID_HOME/ndk/27.0.12077973"
           cmake -S third_party/GLideN64/src -B build/gliden64-arm64 \
             -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
@@ -331,9 +331,9 @@ jobs:
           mkdir -p build/native-libs/arm64-v8a
           cp "$PLUGIN" build/native-libs/arm64-v8a/libmupen64plus-video-GLideN64.so
           test -s build/native-libs/arm64-v8a/libmupen64plus-video-GLideN64.so
-
-      - name: Generate ARM64 offsets from the pinned Core with the Android NDK
-        run: |
+          
+                - name: Generate ARM64 offsets from the pinned Core with the Android NDK
+                  run: |
           NDK_CLANG="$ANDROID_HOME/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android23-clang"
           CORE_DIR="$GITHUB_WORKSPACE/third_party/mupen64plus-core"
           mkdir -p build/arm64-asm-defines
@@ -352,9 +352,9 @@ jobs:
           grep -F '#define offsetof_struct_device_r4300 (' build/arm64-asm-defines/generated/asm_defines_gas.h
           grep -F '#define offsetof_struct_new_dynarec_hot_state_pc (' build/arm64-asm-defines/generated/asm_defines_gas.h
           test "$(grep -c '^#define offsetof_struct_' build/arm64-asm-defines/generated/asm_defines_gas.h)" -ge 20
-
-      - name: Configure pinned SDL2 for Android ARM64
-        run: |
+          
+                - name: Configure pinned SDL2 for Android ARM64
+                  run: |
           NDK="$ANDROID_HOME/ndk/27.0.12077973"
           cmake -S third_party/SDL -B build/sdl2-arm64 \
             -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
@@ -367,9 +367,9 @@ jobs:
           cmake --build build/sdl2-arm64 --parallel 2
           test -s build/sdl2-arm64/libSDL2.so
           file build/sdl2-arm64/libSDL2.so
-
-      - name: Build Mupen64Plus HLE RSP plugin for Android ARM64
-        run: |
+          
+                - name: Build Mupen64Plus HLE RSP plugin for Android ARM64
+                  run: |
           NDK="$ANDROID_HOME/ndk/27.0.12077973"
           RSP_DIR="$GITHUB_WORKSPACE/third_party/mupen64plus-rsp-hle"
           CORE_API="$GITHUB_WORKSPACE/third_party/mupen64plus-core/src/api"
@@ -388,9 +388,9 @@ jobs:
           mkdir -p build/native-libs/arm64-v8a
           cp "$RSP_PLUGIN" build/native-libs/arm64-v8a/libmupen64plus-rsp-hle.so
           file build/native-libs/arm64-v8a/libmupen64plus-rsp-hle.so
-
-      - name: Build Mupen64Plus SDL audio plugin for Android ARM64
-        run: |
+          
+                - name: Build Mupen64Plus SDL audio plugin for Android ARM64
+                  run: |
           NDK="$ANDROID_HOME/ndk/27.0.12077973"
           AUDIO_DIR="$GITHUB_WORKSPACE/third_party/mupen64plus-audio-sdl"
           CORE_API="$GITHUB_WORKSPACE/third_party/mupen64plus-core/src/api"
@@ -418,23 +418,23 @@ jobs:
           cp "$AUDIO_PLUGIN" build/native-libs/arm64-v8a/libmupen64plus-audio-sdl.so
           readelf -d build/native-libs/arm64-v8a/libmupen64plus-audio-sdl.so
           file build/native-libs/arm64-v8a/libmupen64plus-audio-sdl.so
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
+          
+                - name: Set up Gradle
+                  uses: gradle/actions/setup-gradle@v4
+                  with:
           gradle-version: "8.9"
           # SDL's upstream Android template contains its own wrapper JAR.
           # This workflow does not execute that wrapper; it invokes the pinned Gradle version above.
           validate-wrappers: false
-
-      - name: Run Kotlin JVM unit tests
-        run: gradle --no-daemon testDebugUnitTest
-
-      - name: Build debug APK
-        run: gradle --no-daemon assembleDebug
-
-      - name: Verify Core is packaged separately from the JNI bridge
-        run: |
+          
+                - name: Run Kotlin JVM unit tests
+                  run: gradle --no-daemon testDebugUnitTest
+          
+                - name: Build debug APK
+                  run: gradle --no-daemon assembleDebug
+          
+                - name: Verify Core is packaged separately from the JNI bridge
+                  run: |
           APK="app/build/outputs/apk/debug/app-debug.apk"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libn64bridge.so"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libSDL2.so"
@@ -467,10 +467,11 @@ jobs:
           for symbol in VidExt_Init VidExt_Quit VidExt_ListFullscreenModes VidExt_ListFullscreenRates VidExt_SetVideoMode VidExt_SetVideoModeWithRate VidExt_SetCaption VidExt_ToggleFullScreen VidExt_ResizeWindow VidExt_GL_GetProcAddress VidExt_GL_SetAttribute VidExt_GL_GetAttribute VidExt_GL_SwapBuffers VidExt_GL_GetDefaultFramebuffer; do
             readelf --dyn-syms -W build/mupen64plus-from-apk.so | grep -E "[[:space:]]${symbol}$"
           done
-
-      - name: Upload debug APK
-        uses: actions/upload-artifact@v4
-        with:
+          
+                - name: Upload debug APK
+                  uses: actions/upload-artifact@v4
+                  with:
           name: n64-android-core-isolated-diagnostic
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+          
