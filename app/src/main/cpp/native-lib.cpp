@@ -146,6 +146,24 @@ m64p_error androidVideoSetAttr(m64p_GLattr attr, int value) {
         }
     }
 
+    // Honor GLideN64's swap-control request on the EGL display that owns
+    // the current GLSurfaceView context. Previously this attribute was only
+    // cached, so the renderer's VSync setting never reached EGL.
+    if (attr == M64P_GL_SWAP_CONTROL) {
+        if (value < 0) return M64ERR_INPUT_INVALID;
+        const EGLDisplay display = eglGetCurrentDisplay();
+        if (display == EGL_NO_DISPLAY) return M64ERR_INVALID_STATE;
+        if (eglSwapInterval(display, value) != EGL_TRUE) {
+            const EGLint error = eglGetError();
+            __android_log_print(ANDROID_LOG_WARN, "N64AndroidVideo",
+                                "eglSwapInterval(%d) recusado: EGL error=0x%04X",
+                                value, static_cast<unsigned int>(error));
+            return M64ERR_UNSUPPORTED;
+        }
+        __android_log_print(ANDROID_LOG_INFO, "N64AndroidVideo",
+                            "EGL swap interval aplicado: %d", value);
+    }
+
     g_androidVideoAttributes[index] = value;
     return M64ERR_SUCCESS;
 }
