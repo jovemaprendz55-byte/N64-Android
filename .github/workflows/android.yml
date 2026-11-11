@@ -100,6 +100,22 @@ jobs:
           if old not in text:
               raise SystemExit("Trecho SDL_Init nao encontrado")
           text = text.replace(old, new, 1)
+          old = """    /* Open the audio device */
+              if (SDL_OpenAudio(&desired, &obtained) < 0)
+              {
+                  DebugMessage(M64MSG_ERROR, "Couldn't open audio: %s", SDL_GetError());"""
+          new = """    /* Open the audio device */
+              int n64_sdl_open_result = SDL_OpenAudio(&desired, &obtained);
+              DebugMessage(M64MSG_INFO,
+                  "N64ANDROID AUDIO: SDL_OpenAudio resultado=%d erro=%s freq=%d canais=%d formato=0x%x samples=%d",
+                  n64_sdl_open_result, SDL_GetError(), obtained.freq, obtained.channels,
+                  obtained.format, obtained.samples);
+              if (n64_sdl_open_result < 0)
+              {
+                  DebugMessage(M64MSG_ERROR, "Couldn't open audio: %s", SDL_GetError());"""
+          if text.count(old) != 1:
+              raise SystemExit("Trecho SDL_OpenAudio nao encontrado; upstream drift detected")
+          text = text.replace(old, new, 1)
           backend.write_text(text)
           PY
           git -C third_party/mupen64plus-audio-sdl diff --check
