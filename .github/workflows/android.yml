@@ -318,7 +318,7 @@ jobs:
           new_fb_render = "\t\t\tif (n64AndroidShouldSkipPresent()) {\n\t\t\t\tn64AndroidMarkSkippedPresent();\n\t\t\t} else {\n\t\t\t\tn64AndroidRenderBuffer();\n\t\t\t\tframeBufferList().clearBuffersChanged();\n\t\t\t}"
           if vi_source.count(old_fb_render) != 1:
               raise SystemExit("Expected framebuffer render/clear block exactly once")
-                    vi_source = vi_source.replace(old_fb_render, new_fb_render, 1)
+          vi_source = vi_source.replace(old_fb_render, new_fb_render, 1)
 
           old_plain_need = "bool bNeedRender = false;"
           new_plain_need = "bool bNeedRender = n64AndroidHasPendingPresent();"
@@ -330,7 +330,7 @@ jobs:
           new_plain_render = "\t\tif (bNeedRender) {\n\t\t\tif (n64AndroidShouldSkipPresent())\n\t\t\t\tn64AndroidMarkSkippedPresent();\n\t\t\telse\n\t\t\t\tn64AndroidRenderBuffer();\n\t\t}"
           if vi_source.count(old_plain_render) != 1:
               raise SystemExit("Expected non-framebuffer render block exactly once")
-                    vi_source = vi_source.replace(old_plain_render, new_plain_render, 1)
+          vi_source = vi_source.replace(old_plain_render, new_plain_render, 1)
           vi_path.write_text(vi_source)
           PY
           git -C third_party/GLideN64 diff --check
