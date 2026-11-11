@@ -1125,61 +1125,7 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
     if (doCommand == nullptr || attachPlugin == nullptr)
         return makeString(env, "CoreDoCommand ou CoreAttachPlugin nao encontrado.");
 
-    if (!g_rspAttached) {
-        const m64p_error rspAttachResult = attachPlugin(
-            M64PLUGIN_RSP, reinterpret_cast<m64p_dynlib_handle>(g_rspPluginHandle));
-        if (rspAttachResult != M64ERR_SUCCESS) {
-            char status[384];
-            std::snprintf(status, sizeof(status),
-                "ROM aberta e GFX anexado, mas CoreAttachPlugin(RSP) falhou: codigo %d. RSP permanece carregado para nova tentativa.",
-                static_cast<int>(rspAttachResult));
-            return makeString(env, status);
-        }
-        g_rspAttached = true;
-        __android_log_print(ANDROID_LOG_INFO, "N64AndroidRSP",
-                            "CoreAttachPlugin(RSP) retornou M64ERR_SUCCESS; InitiateRSP concluido pelo Core.");
-    }
-    if (!g_gfxAttached) {
-        const m64p_error attachResult = attachPlugin(
-            M64PLUGIN_GFX, reinterpret_cast<m64p_dynlib_handle>(g_gfxPluginHandle));
-        if (attachResult != M64ERR_SUCCESS) {
-            char status[320];
-            std::snprintf(status, sizeof(status),
-                "ROM aberta no Core, mas CoreAttachPlugin(GFX) falhou: codigo %d. A ROM permanece aberta para nova tentativa.",
-                static_cast<int>(attachResult));
-            return makeString(env, status);
-        }
-        g_gfxAttached = true;
-        __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
-                            "CoreAttachPlugin(GFX) retornou M64ERR_SUCCESS; InitiateGFX concluido pelo Core.");
-    }
-    if (!g_audioAttached) {
-        const m64p_error audioAttachResult = attachPlugin(
-            M64PLUGIN_AUDIO, reinterpret_cast<m64p_dynlib_handle>(g_audioPluginHandle));
-        if (audioAttachResult != M64ERR_SUCCESS) {
-            char status[384];
-            std::snprintf(status, sizeof(status),
-                "ROM aberta e GFX/RSP anexados, mas CoreAttachPlugin(AUDIO) falhou: codigo %d.",
-                static_cast<int>(audioAttachResult));
-            return makeString(env, status);
-        }
-        g_audioAttached = true;
-
-    }
-    if (!g_inputAttached) {
-        const m64p_error inputAttachResult = attachPlugin(
-            M64PLUGIN_INPUT, reinterpret_cast<m64p_dynlib_handle>(g_inputPluginHandle));
-        if (inputAttachResult != M64ERR_SUCCESS) {
-            char status[384];
-            std::snprintf(status, sizeof(status),
-                "ROM aberta, GFX/RSP anexados, mas CoreAttachPlugin(INPUT) falhou: codigo %d.",
-                static_cast<int>(inputAttachResult));
-            return makeString(env, status);
-        }
-        g_inputAttached = true;
-        __android_log_print(ANDROID_LOG_INFO, "N64AndroidInput",
-                            "CoreAttachPlugin(INPUT) concluido; controle 1 conectado.");
-    }
+    // Mupen64Plus exige ROM aberta antes de CoreAttachPlugin e ordem GFX, AUDIO, INPUT, RSP.
     if (!g_romOpen) {
         if (romBytes == nullptr) return makeString(env, "Nenhuma ROM foi fornecida.");
         const jsize length = env->GetArrayLength(romBytes);
@@ -1187,14 +1133,21 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
             return makeString(env, "Tamanho da ROM invalido para o Core.");
         jbyte* bytes = env->GetByteArrayElements(romBytes, nullptr);
         if (bytes == nullptr) return makeString(env, "Nao foi possivel acessar os bytes da ROM.");
-        __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow", "Abrindo ROM no Core: %d bytes.", length);
+        __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
+                            "Abrindo ROM antes de anexar plugins: %d bytes.", length);
         const m64p_error openResult = doCommand(M64CMD_ROM_OPEN, static_cast<int>(length),
                                                 reinterpret_cast<void*>(bytes));
         env->ReleaseByteArrayElements(romBytes, bytes, JNI_ABORT);
         if (openResult != M64ERR_SUCCESS) {
-            char status[256];
-            std::snprintf(status, sizeof(status), "M64CMD_ROM_OPEN falhou: codigo %d.",
-                          static_cast<int>(openResult));
+            using CoreErrorMessageFn = const char* (*)(m64p_error);
+            auto errorMessage = reinterpret_cast<CoreErrorMessageFn>(
+                dlsym(g_coreHandle, "CoreErrorMessage"));
+            const char* detail = errorMessage != nullptr ? errorMessage(openResult) : nullptr;
+            char status[384];
+            std::snprintf(status, sizeof(status), "M64CMD_ROM_OPEN falhou: codigo %d (%s).",
+                          static_cast<int>(openResult),
+                          detail != nullptr ? detail : "descricao indisponivel");
+            __android_log_print(ANDROID_LOG_ERROR, "N64AndroidFlow", "%s", status);
             return makeString(env, status);
         }
         g_romOpen = true;
@@ -1203,9 +1156,69 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
                                 "ROM abriu, mas lifecycle ja esta em encerramento; teardown fechara a ROM.");
             return makeString(env, "ROM abriu, mas o encerramento comecou simultaneamente. A ROM sera fechada pelo teardown.");
         }
-        __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow", "M64CMD_ROM_OPEN concluido.");
+        __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
+                            "M64CMD_ROM_OPEN concluido antes de CoreAttachPlugin.");
     }
 
+    auto attachWithDiagnostic = [&](m64p_plugin_type type, void* handle,
+                                    const char* label) -> m64p_error {
+        const m64p_error result = attachPlugin(
+            type, reinterpret_cast<m64p_dynlib_handle>(handle));
+        __android_log_print(result == M64ERR_SUCCESS ? ANDROID_LOG_INFO : ANDROID_LOG_ERROR,
+                            "N64AndroidFlow", "CoreAttachPlugin(%s): codigo=%d",
+                            label, static_cast<int>(result));
+        return result;
+    };
+
+    if (!g_gfxAttached) {
+        const m64p_error result = attachWithDiagnostic(M64PLUGIN_GFX, g_gfxPluginHandle, "GFX");
+        if (result != M64ERR_SUCCESS) {
+            char status[384];
+            std::snprintf(status, sizeof(status),
+                "ROM aberta, mas CoreAttachPlugin(GFX) falhou: codigo %d.", static_cast<int>(result));
+            return makeString(env, status);
+        }
+        g_gfxAttached = true;
+        __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
+                            "GLideN64 anexado; InitiateGFX concluido.");
+    }
+    if (!g_audioAttached) {
+        const m64p_error result = attachWithDiagnostic(M64PLUGIN_AUDIO, g_audioPluginHandle, "AUDIO");
+        if (result != M64ERR_SUCCESS) {
+            char status[384];
+            std::snprintf(status, sizeof(status),
+                "ROM aberta e GFX anexado, mas CoreAttachPlugin(AUDIO) falhou: codigo %d.",
+                static_cast<int>(result));
+            return makeString(env, status);
+        }
+        g_audioAttached = true;
+    }
+    if (!g_inputAttached) {
+        const m64p_error result = attachWithDiagnostic(M64PLUGIN_INPUT, g_inputPluginHandle, "INPUT");
+        if (result != M64ERR_SUCCESS) {
+            char status[384];
+            std::snprintf(status, sizeof(status),
+                "ROM aberta e GFX/AUDIO anexados, mas CoreAttachPlugin(INPUT) falhou: codigo %d.",
+                static_cast<int>(result));
+            return makeString(env, status);
+        }
+        g_inputAttached = true;
+        __android_log_print(ANDROID_LOG_INFO, "N64AndroidInput",
+                            "INPUT anexado; controle 1 conectado.");
+    }
+    if (!g_rspAttached) {
+        const m64p_error result = attachWithDiagnostic(M64PLUGIN_RSP, g_rspPluginHandle, "RSP");
+        if (result != M64ERR_SUCCESS) {
+            char status[384];
+            std::snprintf(status, sizeof(status),
+                "ROM aberta e GFX/AUDIO/INPUT anexados, mas CoreAttachPlugin(RSP) falhou: codigo %d.",
+                static_cast<int>(result));
+            return makeString(env, status);
+        }
+        g_rspAttached = true;
+        __android_log_print(ANDROID_LOG_INFO, "N64AndroidRSP",
+                            "RSP-HLE anexado; InitiateRSP concluido.");
+    }
 
     if (g_coreRuntime.phase() == CoreRuntimeCoordinator::Phase::RomOpen &&
         !g_coreRuntime.markPluginsAttached()) {
