@@ -87,6 +87,23 @@ jobs:
                   raise SystemExit("Trecho esperado nao encontrado em main.c: " + old[:90])
               text = text.replace(old, new, 1)
           path.write_text(text)
+
+          backend_path = Path("third_party/mupen64plus-audio-sdl/src/sdl_backend.c")
+          backend = backend_path.read_text()
+          old_init = """        if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER) < 0)
+          {
+              DebugMessage(M64MSG_ERROR, "Failed to initialize SDL audio subsystem.");"""
+          new_init = """        int n64_sdl_init_result = SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER);
+              DebugMessage(M64MSG_ERROR,
+                  "N64ANDROID AUDIO: SDL_Init resultado=%d erro=%s SDL_WasInit=0x%x",
+                  n64_sdl_init_result, SDL_GetError(), SDL_WasInit(0));
+              if (n64_sdl_init_result < 0)
+          {
+              DebugMessage(M64MSG_ERROR, "Failed to initialize SDL audio subsystem: %s", SDL_GetError());"""
+          if backend.count(old_init) != 1:
+              raise SystemExit("SDL_Init failure block not found exactly once")
+          backend = backend.replace(old_init, new_init, 1)
+          backend_path.write_text(backend)
           PY
           git -C third_party/mupen64plus-audio-sdl diff --check
 
