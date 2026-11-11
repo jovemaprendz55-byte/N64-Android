@@ -88,19 +88,6 @@ jobs:
                   raise SystemExit("Trecho esperado nao encontrado em main.c: " + old[:90])
               text = text.replace(old, new, 1)
           main.write_text(text)
-          backend = Path("third_party/mupen64plus-audio-sdl/src/sdl_backend.c")
-          text = backend.read_text()
-          old = "    sdl_backend->error = 0;\n\n    if (SDL_WasInit(SDL_INIT_AUDIO|SDL_INIT_TIMER) == (SDL_INIT_AUDIO|SDL_INIT_TIMER) )"
-          new = '    sdl_backend->error = 0;\n    DebugMessage(M64MSG_INFO, "N64ANDROID AUDIO: init device SDL_WasInit=0x%x", SDL_WasInit(0xffffffff));\n\n    if (SDL_WasInit(SDL_INIT_AUDIO|SDL_INIT_TIMER) == (SDL_INIT_AUDIO|SDL_INIT_TIMER) )'
-          if old not in text:
-              raise SystemExit("Trecho esperado nao encontrado em sdl_backend.c")
-          text = text.replace(old, new, 1)
-          old = "        if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER) < 0)\n        {\n            DebugMessage(M64MSG_ERROR, \"Failed to initialize SDL audio subsystem.\");"
-          new = '        int n64_sdl_init_result = SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER);\n        DebugMessage(M64MSG_INFO, "N64ANDROID AUDIO: SDL_Init resultado=%d erro=%s", n64_sdl_init_result, SDL_GetError());\n        if (n64_sdl_init_result < 0)\n        {\n            DebugMessage(M64MSG_ERROR, "Failed to initialize SDL audio subsystem: %s", SDL_GetError());'
-          if old not in text:
-              raise SystemExit("Trecho SDL_Init nao encontrado")
-          text = text.replace(old, new, 1)
-          backend.write_text(text)
           PY
           git -C third_party/mupen64plus-audio-sdl diff --check
           
