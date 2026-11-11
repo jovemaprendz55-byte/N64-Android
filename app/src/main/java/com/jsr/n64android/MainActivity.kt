@@ -713,6 +713,7 @@ class MainActivity : Activity() {
     }
 
     private fun startAndroidVideoIntegration() {
+        android.util.Log.i("N64AndroidFlow", "INTEGRATION_FLOW: inicio; autoStart=$autoStartAfterGraphicsReady; coreLoaded=$nativeCoreLoaded; coreInitialized=$nativeCoreInitialized")
         android.util.Log.i("N64AndroidFlow", "Etapa 1: inicio da integracao grafica")
 
         // Encerrar e remover qualquer superfície de diagnóstico ANTES de
@@ -774,11 +775,13 @@ class MainActivity : Activity() {
     private fun openSelectedRomInCore() {
         val surface = glView
         if (surface == null || !glSurfaceReady) {
+            android.util.Log.e("N64AndroidFlow", "ROM_OPEN_FLOW: abortado antes da leitura; surface=${surface != null}; glSurfaceReady=$glSurfaceReady")
             integrationStatusView.text = "Abra a integração gráfica e aguarde o contexto EGL e o plugin GFX ficarem prontos."
             return
         }
         val romFile = File(File(filesDir, "roms"), "selected.n64")
         if (!romFile.isFile) {
+            android.util.Log.e("N64AndroidFlow", "ROM_OPEN_FLOW: arquivo selected.n64 ausente em ${romFile.absolutePath}")
             integrationStatusView.text = "Selecione uma ROM N64 primeiro."
             return
         }
@@ -1045,6 +1048,7 @@ class MainActivity : Activity() {
                 private var triangleVertices: FloatBuffer? = null
 
                 override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
+                    android.util.Log.i("N64AndroidFlow", "GL_SURFACE_FLOW: onSurfaceCreated; registerVideoExtension=$registerVideoExtension; autoStart=$autoStartAfterGraphicsReady; thread=${Thread.currentThread().name}")
                     glSurfaceReady = true
                     glSurfaceCreatedCount += 1
                     val createdCount = glSurfaceCreatedCount
