@@ -207,6 +207,10 @@ jobs:
           config_source = config_path.read_text()
           config_old = "\tconfig.validate();"
           config_new = """\tconfig.validate();
+          \t// Conservative low-end Android GPU optimization: GLideN64's upstream
+          \t// default enables this scaling filter, which can be slow on weaker GPUs.
+          \t// Leave framebuffer emulation and all accuracy-related options unchanged.
+          \tconfig.generalEmulation.enableHybridFilter = 0;
           \tLOG(LOG_VERBOSE,
           \t    "N64ANDROID GL CONFIG: threaded=%d asyncShader=%d hybridFilter=%d legacyBlend=%d inaccurateTex=%d fbEmulation=%d copyColor=%d bilinear=%d anisotropy=%d msaa=%d vsync=%d",
           \t    config.video.threadedVideo, config.video.asyncShaderCompilation,
