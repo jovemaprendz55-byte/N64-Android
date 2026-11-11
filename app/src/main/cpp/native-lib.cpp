@@ -2,6 +2,7 @@
 #include <android/log.h>
 
 #include <cstdio>
+#include <chrono>
 #include <cstring>
 #include <cstdlib>
 #include <string>
@@ -181,19 +182,38 @@ m64p_error androidVideoSwapBuffers() {
         return M64ERR_INVALID_STATE;
     }
 
+    using PerfClock = std::chrono::steady_clock;
+    static auto reportStart = PerfClock::now();
+    static double swapTotalMs = 0.0;
+    static double swapMaxMs = 0.0;
     const uint64_t frame = g_androidVideoSwapCount.fetch_add(1) + 1;
-    if (frame == 1 || (frame % 120) == 0) {
-        __android_log_print(ANDROID_LOG_INFO, "N64AndroidVideo",
-                            "Callback de apresentacao #%llu na thread GL. Contexto=%p Surface=%p TID=%ld",
-                            static_cast<unsigned long long>(frame),
-                            reinterpret_cast<void*>(eglGetCurrentContext()),
-                            reinterpret_cast<void*>(eglGetCurrentSurface(EGL_DRAW)),
-                            static_cast<long>(syscall(SYS_gettid)));
-    }
 
     const EGLDisplay display = eglGetCurrentDisplay();
     const EGLSurface surface = eglGetCurrentSurface(EGL_DRAW);
-    if (eglSwapBuffers(display, surface) == EGL_TRUE) return M64ERR_SUCCESS;
+    const auto swapStart = PerfClock::now();
+    const EGLBoolean swapResult = eglSwapBuffers(display, surface);
+    const double swapMs = std::chrono::duration<double, std::milli>(
+        PerfClock::now() - swapStart).count();
+    swapTotalMs += swapMs;
+    if (swapMs > swapMaxMs) swapMaxMs = swapMs;
+
+    if (frame == 1 || (frame % 120) == 0) {
+        const double intervalSeconds = std::chrono::duration<double>(
+            PerfClock::now() - reportStart).count();
+        const double fps = intervalSeconds > 0.0 ? 120.0 / intervalSeconds : 0.0;
+        __android_log_print(ANDROID_LOG_INFO, "N64AndroidVideo",
+                            "PERF frame=%llu fps=%.2f swap_avg_ms=%.3f swap_max_ms=%.3f context=%p surface=%p tid=%ld",
+                            static_cast<unsigned long long>(frame), fps,
+                            swapTotalMs / 120.0, swapMaxMs,
+                            reinterpret_cast<void*>(eglGetCurrentContext()),
+                            reinterpret_cast<void*>(eglGetCurrentSurface(EGL_DRAW)),
+                            static_cast<long>(syscall(SYS_gettid)));
+        reportStart = PerfClock::now();
+        swapTotalMs = 0.0;
+        swapMaxMs = 0.0;
+    }
+
+    if (swapResult == EGL_TRUE) return M64ERR_SUCCESS;
 
     const EGLint error = eglGetError();
     __android_log_print(ANDROID_LOG_ERROR, "N64AndroidVideo",
