@@ -104,6 +104,7 @@ jobs:
           if backend.count(old_message) != 1:
               raise SystemExit("Mensagem SDL de falha nao encontrada exatamente uma vez")
           backend = backend.replace(old_message, new_message, 1)
+          backend_path.write_text(backend)
 
           PY
           git -C third_party/mupen64plus-audio-sdl diff --check
