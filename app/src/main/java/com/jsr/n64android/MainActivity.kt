@@ -782,6 +782,7 @@ class MainActivity : Activity() {
             integrationStatusView.text = "Selecione uma ROM N64 primeiro."
             return
         }
+        android.util.Log.i("N64AndroidFlow", "ROM_OPEN_FLOW: entrada; glSurfaceReady=$glSurfaceReady; surface=${surface != null}; autoStart=$autoStartAfterGraphicsReady")
         integrationStatusView.text = "Lendo ROM e preparando abertura no Core..."
         Thread {
             val bytes = try {
@@ -790,14 +791,18 @@ class MainActivity : Activity() {
                 runOnUiThread { integrationStatusView.text = "Falha ao ler ROM: " + error.message }
                 return@Thread
             }
+            android.util.Log.i("N64AndroidFlow", "ROM_OPEN_FLOW: leitura concluida; bytes=${bytes.size}")
             runOnUiThread {
                 val activeSurface = glView
+                android.util.Log.i("N64AndroidFlow", "ROM_OPEN_FLOW: UI callback; glSurfaceReady=$glSurfaceReady; activeSurface=${activeSurface != null}; autoStart=$autoStartAfterGraphicsReady")
                 if (activeSurface == null || !glSurfaceReady) {
                     integrationStatusView.text = "Contexto GL deixou de estar disponível. Abra novamente a integração."
                     return@runOnUiThread
                 }
                 integrationStatusView.text = "Enviando ROM ao Mupen64Plus Core na thread GL..."
+                android.util.Log.i("N64AndroidFlow", "ROM_OPEN_FLOW: enfileirando nativeOpenRomAndAttachGfx na thread GL")
                 activeSurface.queueEvent {
+                    android.util.Log.i("N64AndroidFlow", "ROM_OPEN_FLOW: evento GL iniciado; thread=${Thread.currentThread().name}")
                     val result = try {
                         nativeOpenRomAndAttachGfx(bytes)
                     } catch (error: LinkageError) {
@@ -805,8 +810,10 @@ class MainActivity : Activity() {
                     } catch (error: Exception) {
                         "Erro ao abrir ROM/anexar vídeo: " + error.message
                     }
+                    android.util.Log.i("N64AndroidFlow", "ROM_OPEN_FLOW: nativeOpenRomAndAttachGfx retornou: $result")
                     runOnUiThread {
                         integrationStatusView.text = result
+                        android.util.Log.i("N64AndroidFlow", "ROM_OPEN_FLOW: resultado na UI; autoStart=$autoStartAfterGraphicsReady")
                         if (autoStartAfterGraphicsReady && result.startsWith("ROM aberta com sucesso no Mupen64Plus Core")) {
                             autoStartAfterGraphicsReady = false
                             executeCoreOnGlThread()
@@ -1150,7 +1157,9 @@ class MainActivity : Activity() {
                             "\\n\\nNenhuma ROM foi carregada. Confirme acima o resultado do carregamento e do PluginStartup; o plugin ainda nao foi anexado ao Core e InitiateGFX nao foi chamado."
                         val graphicsReady = videoStatus.contains("Plugin GFX Android carregado e validado") &&
                             videoStatus.contains("Plugin RSP-HLE carregado e inicializado") &&
+                            videoStatus.contains("Plugin AUDIO SDL carregado e inicializado") &&
                             videoStatus.contains("Plugin INPUT Android")
+                        android.util.Log.i("N64AndroidFlow", "ROM_OPEN_FLOW: plugins prontos=$graphicsReady; autoStart=$autoStartAfterGraphicsReady; surfaceReady=$glSurfaceReady")
                         if (registerVideoExtension && autoStartAfterGraphicsReady) {
                             if (graphicsReady) {
                                 openSelectedRomInCore()
@@ -1368,6 +1377,7 @@ class MainActivity : Activity() {
     }
 
     override fun onPause() {
+        android.util.Log.w("N64AndroidFlow", "LIFECYCLE: onPause; coreLoaded=$nativeCoreLoaded; coreInitialized=$nativeCoreInitialized; romPickerActive=$romPickerActive; glSurfaceReady=$glSurfaceReady")
         // Do not suspend GLSurfaceView if native shutdown has not been confirmed.
         // A synchronous M64CMD_EXECUTE can occupy the GL thread; pausing that
         // thread after a timeout could strand the Core while it still owns EGL.
