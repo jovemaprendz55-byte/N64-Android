@@ -270,7 +270,7 @@ jobs:
               g_n64AndroidPresentPending = true;
               ++g_n64AndroidSkippedFrames;
               if ((g_n64AndroidSkippedFrames % 120U) == 1U)
-                  LOG(LOG_VERBOSE, "N64ANDROID_FRAME_SKIP: skipped=%u renderEmaMs=%.2f",
+                  DebugMsg(DEBUG_DETAIL, "N64ANDROID_FRAME_SKIP: skipped=%u renderEmaMs=%.2f",
                       g_n64AndroidSkippedFrames, g_n64AndroidRenderEmaMs);
           }
 
@@ -286,11 +286,11 @@ jobs:
 
               if (!g_n64AndroidAdaptiveSkipEnabled && g_n64AndroidRenderEmaMs >= 14.0) {
                   g_n64AndroidAdaptiveSkipEnabled = true;
-                  LOG(LOG_VERBOSE, "N64ANDROID_FRAME_SKIP: enabled renderEmaMs=%.2f threshold=14.0",
+                  DebugMsg(DEBUG_DETAIL, "N64ANDROID_FRAME_SKIP: enabled renderEmaMs=%.2f threshold=14.0",
                       g_n64AndroidRenderEmaMs);
               } else if (g_n64AndroidAdaptiveSkipEnabled && g_n64AndroidRenderEmaMs <= 9.0) {
                   g_n64AndroidAdaptiveSkipEnabled = false;
-                  LOG(LOG_VERBOSE, "N64ANDROID_FRAME_SKIP: disabled renderEmaMs=%.2f threshold=9.0",
+                  DebugMsg(DEBUG_DETAIL, "N64ANDROID_FRAME_SKIP: disabled renderEmaMs=%.2f threshold=9.0",
                       g_n64AndroidRenderEmaMs);
               }
               g_n64AndroidPresentPending = false;
