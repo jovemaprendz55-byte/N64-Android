@@ -211,6 +211,8 @@ jobs:
           \t// default enables this scaling filter, which can be slow on weaker GPUs.
           \t// Leave framebuffer emulation and all accuracy-related options unchanged.
           \tconfig.generalEmulation.enableHybridFilter = 0;
+          \t// Compile GL shaders asynchronously to reduce stalls when new shaders are created.
+          \tconfig.video.asyncShaderCompilation = 1;
           \t// Diagnostic performance experiment: do not pace EGL swaps to VSync.
           \t// The Android video extension now applies this through eglSwapInterval.
           \tconfig.video.verticalSync = 0;
