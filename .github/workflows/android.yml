@@ -217,14 +217,20 @@ jobs:
           \t// Experimental: avoid GPU-to-RAM framebuffer readbacks on Android.
           \t// Keep framebuffer emulation itself enabled to limit visual regressions.
           \tconfig.frameBufferEmulation.copyToRDRAM = 0;
+          \t// Use GLideN64's native VI-origin-change presentation mode.
+          \t// This avoids rendering the VI buffer on every vertical interrupt,
+          \t// while still executing the N64 Core and audio on every frame.
+          \t// It is a conservative frame-presentation optimization, not Core frame skipping.
+          \tconfig.frameBufferEmulation.bufferSwapMode = Config::bsOnVIOriginChange;
           \tLOG(LOG_VERBOSE,
-          \t    "N64ANDROID GL CONFIG: threaded=%d asyncShader=%d hybridFilter=%d legacyBlend=%d inaccurateTex=%d fbEmulation=%d copyColor=%d bilinear=%d anisotropy=%d msaa=%d vsync=%d",
+          \t    "N64ANDROID GL CONFIG: threaded=%d asyncShader=%d hybridFilter=%d legacyBlend=%d inaccurateTex=%d fbEmulation=%d copyColor=%d bufferSwapMode=%d bilinear=%d anisotropy=%d msaa=%d vsync=%d",
           \t    config.video.threadedVideo, config.video.asyncShaderCompilation,
           \t    config.generalEmulation.enableHybridFilter,
           \t    config.generalEmulation.enableLegacyBlending,
           \t    config.generalEmulation.enableInaccurateTextureCoordinates,
           \t    config.frameBufferEmulation.enable,
           \t    config.frameBufferEmulation.copyToRDRAM,
+          \t    config.frameBufferEmulation.bufferSwapMode,
           \t    config.texture.bilinearMode, config.texture.anisotropy,
           \t    config.video.multisampling, config.video.verticalSync);"""
           if config_source.count(config_old) != 1:
