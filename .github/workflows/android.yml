@@ -43,6 +43,18 @@ jobs:
           ref: 5d249570393f7a37e037abf22cd6012a4cc56a71
           path: third_party/SDL
 
+      - name: Install pinned SDL Android Java glue
+        run: |
+          SDL_JAVA="$GITHUB_WORKSPACE/third_party/SDL/android-project/app/src/main/java/org/libsdl/app"
+          APP_JAVA="$GITHUB_WORKSPACE/app/src/main/java/org/libsdl/app"
+          test -s "$SDL_JAVA/SDL.java"
+          test -s "$SDL_JAVA/SDLActivity.java"
+          test -s "$SDL_JAVA/SDLAudioManager.java"
+          mkdir -p "$APP_JAVA"
+          cp "$SDL_JAVA"/*.java "$APP_JAVA"/
+          test -s "$APP_JAVA/SDLAudioManager.java"
+          test -s "$APP_JAVA/SDLActivity.java"
+
       - name: Checkout pinned GLideN64 renderer source
         uses: actions/checkout@v4
         with:
@@ -90,8 +102,14 @@ jobs:
 
           backend_path = Path("third_party/mupen64plus-audio-sdl/src/sdl_backend.c")
           backend = backend_path.read_text()
+          sdl_include = "#include <SDL.h>\n"
+          if backend.count(sdl_include) != 1:
+              raise SystemExit("Include SDL.h nao encontrado exatamente uma vez")
+          backend = backend.replace(sdl_include, sdl_include + "#include <SDL_main.h>\n", 1)
           old_condition = "if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER) < 0)"
-          new_condition = """int n64_sdl_init_result = SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER);
+          new_condition = """SDL_SetMainReady();
+                  DebugMessage(M64MSG_INFO, "N64ANDROID AUDIO: SDL_SetMainReady chamado antes do SDL_Init.");
+                  int n64_sdl_init_result = SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER);
                   DebugMessage(M64MSG_ERROR,
                       "N64ANDROID AUDIO: SDL_Init resultado=%d erro=%s SDL_WasInit=0x%x",
                       n64_sdl_init_result, SDL_GetError(), SDL_WasInit(0));
@@ -405,6 +423,8 @@ jobs:
           test -s "$AUDIO_PLUGIN"
           # Fail the build unless the diagnostic code is present in the actual shared object.
           strings "$AUDIO_PLUGIN" | grep -F "N64ANDROID AUDIO: SDL_Init resultado="
+          strings "$AUDIO_PLUGIN" | grep -F "N64ANDROID AUDIO: SDL_SetMainReady chamado antes do SDL_Init."
+          readelf --dyn-syms -W "$AUDIO_PLUGIN" | grep -E "[[:space:]]SDL_SetMainReady$"
           strings "$AUDIO_PLUGIN" | grep -F "Failed to initialize SDL audio subsystem: %s"
           for symbol in PluginGetVersion PluginStartup PluginShutdown InitiateAudio AiDacrateChanged AiLenChanged; do
             readelf --dyn-syms -W "$AUDIO_PLUGIN" | grep -E "[[:space:]]${symbol}$"
