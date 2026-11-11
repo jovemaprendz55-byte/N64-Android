@@ -234,12 +234,12 @@ jobs:
           # Adaptive Android frame presentation skip: keep RDP and audio execution intact.
           vi_path = Path("third_party/GLideN64/src/VI.cpp")
           vi_source = vi_path.read_text()
-          include_anchor = "#include <math.h>\\n"
+          include_anchor = "#include <math.h>\n"
           if vi_source.count(include_anchor) != 1:
               raise SystemExit("Expected VI.cpp math include exactly once")
-          vi_source = vi_source.replace(include_anchor, include_anchor + "#include <chrono>\\n", 1)
+          vi_source = vi_source.replace(include_anchor, include_anchor + "#include <chrono>\n", 1)
 
-          helper_anchor = "using namespace std;\\n\\nVIInfo VI;"
+          helper_anchor = "using namespace std;\n\nVIInfo VI;"
           helper_block = """using namespace std;
 
           #if defined(OS_ANDROID)
