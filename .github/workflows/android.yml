@@ -236,6 +236,22 @@ jobs:
           # The previous device log reported interval=1 despite GLideN64 verticalSync=0.
           native_path = Path("app/src/main/cpp/native-lib.cpp")
           native_source = native_path.read_text()
+          old_attr_entry = """m64p_error androidVideoSetAttr(m64p_GLattr attr, int value) {
+              const int index = static_cast<int>(attr);"""
+          new_attr_entry = """m64p_error androidVideoSetAttr(m64p_GLattr attr, int value) {
+              static std::atomic<unsigned int> attrLogCount{0};
+              const unsigned int attrLogIndex = attrLogCount.fetch_add(1) + 1;
+              if (attrLogIndex <= 32) {
+                  __android_log_print(ANDROID_LOG_INFO, "N64AndroidVideo",
+                                      "GL attr callback #%u attr=%d value=%d tid=%ld",
+                                      attrLogIndex, static_cast<int>(attr), value,
+                                      static_cast<long>(syscall(SYS_gettid)));
+              }
+              const int index = static_cast<int>(attr);"""
+          if native_source.count(old_attr_entry) != 1:
+              raise SystemExit("Expected androidVideoSetAttr entry exactly once")
+          native_source = native_source.replace(old_attr_entry, new_attr_entry, 1)
+
           old_swap = """        if (eglSwapInterval(display, value) != EGL_TRUE) {
                       const EGLint error = eglGetError();
                       __android_log_print(ANDROID_LOG_WARN, "N64AndroidVideo",
