@@ -232,6 +232,35 @@ jobs:
           if config_source.count(config_old) != 1:
               raise SystemExit("Expected GLideN64 config validation exactly once")
           config_path.write_text(config_source.replace(config_old, config_new, 1))
+          # Force the Android EGL swap interval to zero for this isolated diagnostic.
+          # The previous device log reported interval=1 despite GLideN64 verticalSync=0.
+          native_path = Path("app/src/main/cpp/native-lib.cpp")
+          native_source = native_path.read_text()
+          old_swap = """        if (eglSwapInterval(display, value) != EGL_TRUE) {
+                      const EGLint error = eglGetError();
+                      __android_log_print(ANDROID_LOG_WARN, "N64AndroidVideo",
+                                          "eglSwapInterval(%d) recusado: EGL error=0x%04X",
+                                          value, static_cast<unsigned int>(error));
+                      return M64ERR_UNSUPPORTED;
+                  }
+                  __android_log_print(ANDROID_LOG_INFO, "N64AndroidVideo",
+                                      "EGL swap interval aplicado: %d", value);"""
+          new_swap = """        const int effectiveValue = 0;
+                  __android_log_print(ANDROID_LOG_INFO, "N64AndroidVideo",
+                                      "EGL swap interval solicitado=%d; forçado=%d",
+                                      value, effectiveValue);
+                  if (eglSwapInterval(display, effectiveValue) != EGL_TRUE) {
+                      const EGLint error = eglGetError();
+                      __android_log_print(ANDROID_LOG_WARN, "N64AndroidVideo",
+                                          "eglSwapInterval(%d) recusado: EGL error=0x%04X",
+                                          effectiveValue, static_cast<unsigned int>(error));
+                      return M64ERR_UNSUPPORTED;
+                  }
+                  __android_log_print(ANDROID_LOG_INFO, "N64AndroidVideo",
+                                      "EGL swap interval aplicado: %d", effectiveValue);"""
+          if native_source.count(old_swap) != 1:
+              raise SystemExit("Expected EGL swap interval block exactly once")
+          native_path.write_text(native_source.replace(old_swap, new_swap, 1))
 
           PY
           git -C third_party/GLideN64 diff --check
