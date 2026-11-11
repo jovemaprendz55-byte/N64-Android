@@ -27,3 +27,5 @@ Procurar:
 Este é um experimento, não uma melhoria comprovada. Pode reduzir a carga da composição final, mas não resolver gargalos em CPU/RSP/RDP. A taxa visual pode cair para aproximadamente 30 quadros apresentados por segundo quando o modo está ativo, embora o jogo e o áudio continuem executando em sua cadência normal. Testar GoldenEye na mesma cena, verificar áudio, controles, imagem e comparar os tempos work_avg_ms e swap_avg_ms.
 
 Não mesclar na versão principal sem validação no aparelho.
+## Nota de compilação
+Os eventos do frame skip são registrados com o mecanismo de diagnóstico DebugMsg(DEBUG_DETAIL) do GLideN64.
