@@ -88,21 +88,23 @@ jobs:
               text = text.replace(old, new, 1)
           path.write_text(text)
 
+          import re
           backend_path = Path("third_party/mupen64plus-audio-sdl/src/sdl_backend.c")
           backend = backend_path.read_text()
-          old_init = """        if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER) < 0)
-          {
-              DebugMessage(M64MSG_ERROR, "Failed to initialize SDL audio subsystem.");"""
-          new_init = """        int n64_sdl_init_result = SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER);
-              DebugMessage(M64MSG_ERROR,
-                  "N64ANDROID AUDIO: SDL_Init resultado=%d erro=%s SDL_WasInit=0x%x",
-                  n64_sdl_init_result, SDL_GetError(), SDL_WasInit(0));
-              if (n64_sdl_init_result < 0)
-          {
-              DebugMessage(M64MSG_ERROR, "Failed to initialize SDL audio subsystem: %s", SDL_GetError());"""
-          if backend.count(old_init) != 1:
-              raise SystemExit("SDL_Init failure block not found exactly once")
-          backend = backend.replace(old_init, new_init, 1)
+          pattern = re.compile(
+              r'(?m)^(?P<indent>[ \\t]*)if \\(SDL_Init\\(SDL_INIT_AUDIO \\| SDL_INIT_TIMER\\) < 0\\)\\s*'
+              r'\\{\\s*DebugMessage\\(M64MSG_ERROR, "Failed to initialize SDL audio subsystem\\."\\);'
+          )
+          new_block = """{indent}int n64_sdl_init_result = SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER);
+          {indent}DebugMessage(M64MSG_ERROR,
+          {indent}    "N64ANDROID AUDIO: SDL_Init resultado=%d erro=%s SDL_WasInit=0x%x",
+          {indent}    n64_sdl_init_result, SDL_GetError(), SDL_WasInit(0));
+          {indent}if (n64_sdl_init_result < 0)
+          {indent}{{
+          {indent}    DebugMessage(M64MSG_ERROR, "Failed to initialize SDL audio subsystem: %s", SDL_GetError());"""
+          backend, count = pattern.subn(lambda m: new_block.format(indent=m.group("indent")), backend, count=1)
+          if count != 1:
+              raise SystemExit("Bloco SDL_Init nao encontrado no formato esperado")
           backend_path.write_text(backend)
           PY
           git -C third_party/mupen64plus-audio-sdl diff --check
