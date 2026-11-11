@@ -1125,32 +1125,6 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
     if (doCommand == nullptr || attachPlugin == nullptr)
         return makeString(env, "CoreDoCommand ou CoreAttachPlugin nao encontrado.");
 
-    if (!g_romOpen) {
-        if (romBytes == nullptr) return makeString(env, "Nenhuma ROM foi fornecida.");
-        const jsize length = env->GetArrayLength(romBytes);
-        if (length < 4096 || length > 64 * 1024 * 1024 || (length % 4) != 0)
-            return makeString(env, "Tamanho da ROM invalido para o Core.");
-        jbyte* bytes = env->GetByteArrayElements(romBytes, nullptr);
-        if (bytes == nullptr) return makeString(env, "Nao foi possivel acessar os bytes da ROM.");
-        __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow", "Abrindo ROM no Core: %d bytes.", length);
-        const m64p_error openResult = doCommand(M64CMD_ROM_OPEN, static_cast<int>(length),
-                                                reinterpret_cast<void*>(bytes));
-        env->ReleaseByteArrayElements(romBytes, bytes, JNI_ABORT);
-        if (openResult != M64ERR_SUCCESS) {
-            char status[256];
-            std::snprintf(status, sizeof(status), "M64CMD_ROM_OPEN falhou: codigo %d.",
-                          static_cast<int>(openResult));
-            return makeString(env, status);
-        }
-        g_romOpen = true;
-        if (!g_coreRuntime.markRomOpen()) {
-            __android_log_print(ANDROID_LOG_WARN, "N64AndroidFlow",
-                                "ROM abriu, mas lifecycle ja esta em encerramento; teardown fechara a ROM.");
-            return makeString(env, "ROM abriu, mas o encerramento comecou simultaneamente. A ROM sera fechada pelo teardown.");
-        }
-        __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow", "M64CMD_ROM_OPEN concluido.");
-    }
-
     if (!g_gfxAttached) {
         const m64p_error attachResult = attachPlugin(
             M64PLUGIN_GFX, reinterpret_cast<m64p_dynlib_handle>(g_gfxPluginHandle));
@@ -1206,6 +1180,33 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
         __android_log_print(ANDROID_LOG_INFO, "N64AndroidInput",
                             "CoreAttachPlugin(INPUT) concluido; controle 1 conectado.");
     }
+    if (!g_romOpen) {
+        if (romBytes == nullptr) return makeString(env, "Nenhuma ROM foi fornecida.");
+        const jsize length = env->GetArrayLength(romBytes);
+        if (length < 4096 || length > 64 * 1024 * 1024 || (length % 4) != 0)
+            return makeString(env, "Tamanho da ROM invalido para o Core.");
+        jbyte* bytes = env->GetByteArrayElements(romBytes, nullptr);
+        if (bytes == nullptr) return makeString(env, "Nao foi possivel acessar os bytes da ROM.");
+        __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow", "Abrindo ROM no Core: %d bytes.", length);
+        const m64p_error openResult = doCommand(M64CMD_ROM_OPEN, static_cast<int>(length),
+                                                reinterpret_cast<void*>(bytes));
+        env->ReleaseByteArrayElements(romBytes, bytes, JNI_ABORT);
+        if (openResult != M64ERR_SUCCESS) {
+            char status[256];
+            std::snprintf(status, sizeof(status), "M64CMD_ROM_OPEN falhou: codigo %d.",
+                          static_cast<int>(openResult));
+            return makeString(env, status);
+        }
+        g_romOpen = true;
+        if (!g_coreRuntime.markRomOpen()) {
+            __android_log_print(ANDROID_LOG_WARN, "N64AndroidFlow",
+                                "ROM abriu, mas lifecycle ja esta em encerramento; teardown fechara a ROM.");
+            return makeString(env, "ROM abriu, mas o encerramento comecou simultaneamente. A ROM sera fechada pelo teardown.");
+        }
+        __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow", "M64CMD_ROM_OPEN concluido.");
+    }
+
+
     if (g_coreRuntime.phase() == CoreRuntimeCoordinator::Phase::RomOpen &&
         !g_coreRuntime.markPluginsAttached()) {
         return makeString(env, "Plugins foram anexados, mas o encerramento comecou simultaneamente. O teardown sera concluido com seguranca.");
