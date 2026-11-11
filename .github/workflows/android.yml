@@ -201,6 +201,25 @@ jobs:
           if thread_source.count(thread_old) != 1:
               raise SystemExit("Expected GLideN64 threaded-mode call exactly once; upstream drift detected")
           thread_path.write_text(thread_source.replace(thread_old, thread_new, 1))
+
+          # Emit the actual GLideN64 settings after loading and validation.
+          config_path = Path("third_party/GLideN64/src/mupenplus/Config_mupenplus.cpp")
+          config_source = config_path.read_text()
+          config_old = "\tconfig.validate();"
+          config_new = """\tconfig.validate();
+          \tLOG(LOG_VERBOSE,
+          \t    "N64ANDROID GL CONFIG: threaded=%d asyncShader=%d hybridFilter=%d legacyBlend=%d inaccurateTex=%d fbEmulation=%d copyColor=%d bilinear=%d anisotropy=%d msaa=%d vsync=%d",
+          \t    config.video.threadedVideo, config.video.asyncShaderCompilation,
+          \t    config.generalEmulation.enableHybridFilter,
+          \t    config.generalEmulation.enableLegacyBlending,
+          \t    config.generalEmulation.enableInaccurateTextureCoordinates,
+          \t    config.frameBufferEmulation.enable,
+          \t    config.frameBufferEmulation.copyToRDRAM,
+          \t    config.texture.bilinearMode, config.texture.anisotropy,
+          \t    config.video.multisampling, config.video.verticalSync);"""
+          if config_source.count(config_old) != 1:
+              raise SystemExit("Expected GLideN64 config validation exactly once")
+          config_path.write_text(config_source.replace(config_old, config_new, 1))
           PY
           git -C third_party/GLideN64 diff --check
           grep -F "M64P_GL_CONTEXT_PROFILE_ES" third_party/GLideN64/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp
