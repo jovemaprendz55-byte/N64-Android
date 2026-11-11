@@ -64,6 +64,7 @@ class MainActivity : Activity() {
     private lateinit var dataDirectory: File
     private var latestCrashLog = ""
     private var nativeLibraryLoaded = false
+    private var sdlAndroidGlueInitialized = false
     private var nativeCoreLoaded = false
     private var nativeCoreInitialized = false
     private val controllerPressed = mutableSetOf<Int>()
@@ -1316,8 +1317,27 @@ class MainActivity : Activity() {
         surface.requestRender()
     }
 
+    private fun initializeSdlAndroidGlue() {
+        if (sdlAndroidGlueInitialized) return
+
+        // Load SDL through the Android VM so SDL's JNI_OnLoad runs before
+        // the Core/plugin loads SDL2 as a native dependency.
+        System.loadLibrary("SDL2")
+
+        // Use the Java glue shipped with the exact SDL revision built by CI.
+        // Reflection keeps local skeleton builds independent of generated SDL sources.
+        val sdlClass = Class.forName("org.libsdl.app.SDL")
+        sdlClass.getMethod("setupJNI").invoke(null)
+        sdlClass.getMethod("initialize").invoke(null)
+        sdlClass.getMethod("setContext", Context::class.java).invoke(null, this)
+
+        sdlAndroidGlueInitialized = true
+        android.util.Log.i("N64AndroidAudio", "SDL Android JNI/audio glue inicializado.")
+    }
+
     private fun loadNativeLibrary() {
         if (!nativeLibraryLoaded) {
+            initializeSdlAndroidGlue()
             System.loadLibrary("n64bridge")
             nativeLibraryLoaded = true
         }
