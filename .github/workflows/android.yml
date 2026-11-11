@@ -214,6 +214,9 @@ jobs:
           \t// Diagnostic performance experiment: do not pace EGL swaps to VSync.
           \t// The Android video extension now applies this through eglSwapInterval.
           \tconfig.video.verticalSync = 0;
+          \t// Experimental: avoid GPU-to-RAM framebuffer readbacks on Android.
+          \t// Keep framebuffer emulation itself enabled to limit visual regressions.
+          \tconfig.frameBufferEmulation.copyToRDRAM = 0;
           \tLOG(LOG_VERBOSE,
           \t    "N64ANDROID GL CONFIG: threaded=%d asyncShader=%d hybridFilter=%d legacyBlend=%d inaccurateTex=%d fbEmulation=%d copyColor=%d bilinear=%d anisotropy=%d msaa=%d vsync=%d",
           \t    config.video.threadedVideo, config.video.asyncShaderCompilation,
