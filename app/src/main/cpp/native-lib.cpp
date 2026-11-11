@@ -1165,25 +1165,6 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
         }
         g_audioAttached = true;
 
-        // This front-end opens the ROM before attaching plugins because the
-        // video plugin requires a current EGL context. CoreAttachPlugin calls
-        // InitiateAudio, but it does not replay RomOpen for a plugin attached
-        // after M64CMD_ROM_OPEN. Start the audio backend explicitly now.
-        using AudioRomOpenSymbol = int (*)();
-        auto audioRomOpen = reinterpret_cast<AudioRomOpenSymbol>(
-            dlsym(g_audioPluginHandle, "RomOpen"));
-        if (audioRomOpen == nullptr) {
-            __android_log_print(ANDROID_LOG_ERROR, "N64AndroidAudio",
-                                "Plugin AUDIO anexado, mas simbolo RomOpen ausente.");
-            return makeString(env, "Plugin AUDIO anexado, mas a funcao RomOpen nao foi encontrada.");
-        }
-        const int audioRomOpenResult = audioRomOpen();
-        __android_log_print(ANDROID_LOG_INFO, "N64AndroidAudio",
-                            "CoreAttachPlugin(AUDIO) concluido; InitiateAudio e RomOpen executados. Resultado RomOpen=%d.",
-                            audioRomOpenResult);
-        if (audioRomOpenResult == 0) {
-            return makeString(env, "Plugin AUDIO anexado, mas RomOpen recusou inicializar o backend de som.");
-        }
     }
     if (!g_inputAttached) {
         const m64p_error inputAttachResult = attachPlugin(
