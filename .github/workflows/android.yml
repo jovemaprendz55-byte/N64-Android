@@ -257,9 +257,9 @@ jobs:
 
           bool n64AndroidShouldSkipPresent()
           {
+              ++g_n64AndroidSkipDecisionCount;
               if (!g_n64AndroidAdaptiveSkipEnabled || g_n64AndroidPresentPending)
                   return false;
-              ++g_n64AndroidSkipDecisionCount;
               return (g_n64AndroidSkipDecisionCount % 2U) == 0U;
           }
 
