@@ -44,8 +44,14 @@ void coreDebugCallback(void*, int level, const char* message) {
                             "Handshake: R4300 passou pelo reset da flag STOP; STOP agora pode ser considerado.");
         return;
     }
+    const char* safeMessage = message != nullptr ? message : "(sem mensagem)";
+    if (std::strstr(safeMessage, "N64ANDROID AUDIO:") != nullptr) {
+        __android_log_print(level <= 1 ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO,
+                            "N64AndroidAudio", "%s", safeMessage);
+        return;
+    }
     __android_log_print(level <= 1 ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO,
-                        "N64AndroidCore", "%s", message != nullptr ? message : "(sem mensagem)");
+                        "N64AndroidCore", "%s", safeMessage);
 }
 
 void coreStateCallback(void*, int param, int value) {
