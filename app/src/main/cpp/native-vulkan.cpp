@@ -2,6 +2,7 @@
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
 #include <android/log.h>
+#define VK_USE_PLATFORM_ANDROID_KHR
 #include <vulkan/vulkan.h>
 
 #include <mutex>
@@ -67,14 +68,16 @@ Java_com_jsr_n64android_VulkanNative_nativeInitialize(
         VK_KHR_SURFACE_EXTENSION_NAME,
         VK_KHR_ANDROID_SURFACE_EXTENSION_NAME
     };
-    VkApplicationInfo appInfo{VK_STRUCTURE_TYPE_APPLICATION_INFO};
+    VkApplicationInfo appInfo{};
+    appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.pApplicationName = "N64 Android";
     appInfo.applicationVersion = 1;
     appInfo.pEngineName = "N64 Vulkan Backend";
     appInfo.engineVersion = 1;
     appInfo.apiVersion = VK_API_VERSION_1_0;
 
-    VkInstanceCreateInfo instanceInfo{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
+    VkInstanceCreateInfo instanceInfo{};
+    instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     instanceInfo.pApplicationInfo = &appInfo;
     instanceInfo.enabledExtensionCount = 2;
     instanceInfo.ppEnabledExtensionNames = extensions;
