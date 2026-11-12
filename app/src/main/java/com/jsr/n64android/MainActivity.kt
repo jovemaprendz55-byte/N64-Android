@@ -1062,7 +1062,7 @@ class MainActivity : Activity() {
                             if (gameSurface != null && gameSurface.isValid) {
                                 gameSurface.setFrameRate(
                                     60f,
-                                    android.view.Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE
+                                    android.view.Surface.FRAME_RATE_COMPATIBILITY_DEFAULT
                                 )
                                 android.util.Log.i(
                                     "N64AndroidVideo",
