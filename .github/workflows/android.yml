@@ -491,7 +491,7 @@ jobs:
           for line in blit_lines:
               indent = line[:len(line) - len(line.lstrip())]
               body = body.replace(line,
-                  indent + "N64ANDROID_FB_MEASURE(\\"copyTexturedRect\\", drawer.copyTexturedRect(blitParams));", 1)
+                  indent + 'N64ANDROID_FB_MEASURE("copyTexturedRect", drawer.copyTexturedRect(blitParams));', 1)
 
           overscan_call = "\tm_overscan.draw(vFullHeight, rdpRes.vi_ispal);"
           if body.count(overscan_call) != 1:
@@ -499,7 +499,7 @@ jobs:
           body = body.replace(overscan_call,
               "\tN64ANDROID_FB_MEASURE(\"overscanDraw\", m_overscan.draw(vFullHeight, rdpRes.vi_ispal));", 1)
 
-          swap_call = "\\twnd.swapBuffers();"
+          swap_call = chr(9) + "wnd.swapBuffers();"
           if body.count(swap_call) != 1:
               raise SystemExit("Expected one normal wnd.swapBuffers call in renderBuffer")
           body = body.replace(swap_call,
