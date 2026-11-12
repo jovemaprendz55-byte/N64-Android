@@ -438,6 +438,73 @@ jobs:
               raise SystemExit("Expected two renderBuffer call sites in VI_UpdateScreen")
           vi = vi.replace(render_call, "\t\t\tN64ANDROID_VI_MEASURE(\"renderBuffer\", frameBufferList().renderBuffer());")
           vi_path.write_text(vi)
+
+          # Split FrameBufferList::renderBuffer into GPU submission and presentation stages.
+          fb_path = Path("third_party/GLideN64/src/FrameBuffer.cpp")
+          fb = fb_path.read_text()
+          if "N64ANDROID_FB_MEASURE" in fb:
+              raise SystemExit("Framebuffer stage instrumentation already present")
+          fb_include = '#include <Graphics/Context.h>\n'
+          if fb.count(fb_include) != 1:
+              raise SystemExit("Expected FrameBuffer.cpp graphics context include exactly once")
+          fb = fb.replace(fb_include, fb_include + """#if defined(OS_ANDROID)
+          #include <chrono>
+          #include <android/log.h>
+          #endif
+          """, 1)
+          fb_helper = r"""
+          #if defined(OS_ANDROID)
+          #define N64ANDROID_FB_MEASURE(label, expression) do { \
+              static unsigned int n64_calls = 0; \
+              static unsigned long long n64_total_ns = 0; \
+              static unsigned long long n64_max_ns = 0; \
+              const auto n64_start = std::chrono::steady_clock::now(); \
+              expression; \
+              const auto n64_elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>( \
+                  std::chrono::steady_clock::now() - n64_start).count(); \
+              const auto n64_ns = static_cast<unsigned long long>(n64_elapsed > 0 ? n64_elapsed : 0); \
+              n64_total_ns += n64_ns; \
+              if (n64_ns > n64_max_ns) n64_max_ns = n64_ns; \
+              if (++n64_calls == 120) { \
+                  __android_log_print(ANDROID_LOG_INFO, "N64AndroidVideo", \
+                      "FB_STAGE stage=%s calls=120 avg_ms=%.3f max_ms=%.3f", label, \
+                      static_cast<double>(n64_total_ns) / 120000000.0, \
+                      static_cast<double>(n64_max_ns) / 1000000.0); \
+                  n64_calls = 0; n64_total_ns = 0; n64_max_ns = 0; \
+              } \
+          } while (0)
+          #else
+          #define N64ANDROID_FB_MEASURE(label, expression) do { expression; } while (0)
+          #endif
+          """
+          fb_anchor = "void FrameBufferList::renderBuffer()\n{"
+          if fb.count(fb_anchor) != 1:
+              raise SystemExit("Expected FrameBufferList::renderBuffer exactly once")
+          fb = fb.replace(fb_anchor, fb_helper + "\n" + fb_anchor, 1)
+          fb_start = fb.index(fb_anchor)
+          fb_end = fb.index("\nvoid FrameBufferList::fillRDRAM", fb_start)
+          body = fb[fb_start:fb_end]
+
+          blit_call = "\t\tdrawer.copyTexturedRect(blitParams);"
+          if body.count(blit_call) != 2:
+              raise SystemExit("Expected two textured blits in renderBuffer")
+          body = body.replace(blit_call,
+              "\t\tN64ANDROID_FB_MEASURE(\"copyTexturedRect\", drawer.copyTexturedRect(blitParams));", 2)
+
+          overscan_call = "\tm_overscan.draw(vFullHeight, rdpRes.vi_ispal);"
+          if body.count(overscan_call) != 1:
+              raise SystemExit("Expected one overscan draw in renderBuffer")
+          body = body.replace(overscan_call,
+              "\tN64ANDROID_FB_MEASURE(\"overscanDraw\", m_overscan.draw(vFullHeight, rdpRes.vi_ispal));", 1)
+
+          swap_call = "\twnd.swapBuffers();"
+          if body.count(swap_call) != 2:
+              raise SystemExit("Expected early and normal swapBuffers calls in renderBuffer")
+          body = body.replace(swap_call,
+              "\tN64ANDROID_FB_MEASURE(\"swapBuffers\", wnd.swapBuffers());", 2)
+
+          fb = fb[:fb_start] + body + fb[fb_end:]
+          fb_path.write_text(fb)
           PY
           git -C third_party/GLideN64 diff --check
           grep -F "GLIDE_TIMING stage=ProcessDList" third_party/GLideN64/src/common/CommonAPIImpl_common.cpp || true
