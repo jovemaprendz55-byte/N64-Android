@@ -17,6 +17,8 @@ import android.os.Looper
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
+private const val EGL_OPENGL_ES3_BIT_KHR = 0x0040
+
 /**
  * Isolated SurfaceView + EGL proof of concept.
  *
@@ -133,7 +135,7 @@ class SurfaceEglTestView @JvmOverloads constructor(
             EGL14.EGL_GREEN_SIZE, 8,
             EGL14.EGL_BLUE_SIZE, 8,
             EGL14.EGL_ALPHA_SIZE, 8,
-            EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
+            EGL14.EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT_KHR,
             EGL14.EGL_SURFACE_TYPE, EGL14.EGL_WINDOW_BIT,
             EGL14.EGL_NONE
         )
@@ -146,7 +148,7 @@ class SurfaceEglTestView @JvmOverloads constructor(
         }
 
         val contextAttributes = intArrayOf(
-            EGL14.EGL_CONTEXT_CLIENT_VERSION, 2,
+            EGL14.EGL_CONTEXT_CLIENT_VERSION, 3,
             EGL14.EGL_NONE
         )
         eglContext = EGL14.eglCreateContext(
