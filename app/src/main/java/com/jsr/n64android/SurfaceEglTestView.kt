@@ -86,6 +86,16 @@ class SurfaceEglTestView @JvmOverloads constructor(
         report("Superfície Android destruída; recursos EGL liberados.")
     }
 
+    override fun onWindowVisibilityChanged(visibility: Int) {
+        super.onWindowVisibilityChanged(visibility)
+        setRenderingEnabled(visibility == VISIBLE)
+    }
+
+    override fun onDetachedFromWindow() {
+        release()
+        super.onDetachedFromWindow()
+    }
+
     fun setRenderingEnabled(enabled: Boolean) {
         renderingEnabled = enabled
         if (enabled && !released) eglHandler.post { scheduleFrame() }
