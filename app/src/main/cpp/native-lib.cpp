@@ -65,6 +65,24 @@ int g_androidVideoWidth = 640;
 int g_androidVideoHeight = 480;
 int g_androidVideoAttributes[14] = {};
 
+void logAndroidVideoEvent(const char* event) {
+    const EGLContext context = eglGetCurrentContext();
+    const EGLDisplay display = eglGetCurrentDisplay();
+    const EGLSurface surface = eglGetCurrentSurface(EGL_DRAW);
+    const char* version = nullptr;
+    if (context != EGL_NO_CONTEXT && display != EGL_NO_DISPLAY &&
+        surface != EGL_NO_SURFACE) {
+        version = reinterpret_cast<const char*>(glGetString(GL_VERSION));
+    }
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidEGLTrace",
+                        "event=%s tid=%ld context=%p display=%p surface=%p gles=%s",
+                        event, static_cast<long>(syscall(SYS_gettid)),
+                        reinterpret_cast<void*>(context),
+                        reinterpret_cast<void*>(display),
+                        reinterpret_cast<void*>(surface),
+                        version != nullptr ? version : "(none)");
+}
+
 bool androidVideoContextReady() {
     return eglGetCurrentContext() != EGL_NO_CONTEXT &&
            eglGetCurrentDisplay() != EGL_NO_DISPLAY &&
@@ -84,9 +102,10 @@ bool androidVideoGetGlesVersion(int* major, int* minor) {
     return true;
 }
 m64p_error androidVideoInit() {
+    logAndroidVideoEvent("VidExt_Init");
     return androidVideoContextReady() ? M64ERR_SUCCESS : M64ERR_INVALID_STATE;
 }
-m64p_error androidVideoQuit() { return M64ERR_SUCCESS; }
+m64p_error androidVideoQuit() { logAndroidVideoEvent("VidExt_Quit"); return M64ERR_SUCCESS; }
 m64p_error androidVideoListModes(m64p_2d_size* sizes, int* count) {
     if (count == nullptr) return M64ERR_INPUT_ASSERT;
     if (sizes == nullptr || *count < 1) { *count = 1; return M64ERR_SUCCESS; }
@@ -103,6 +122,7 @@ m64p_error androidVideoListRates(m64p_2d_size, int* rates, int* count) {
     return M64ERR_SUCCESS;
 }
 m64p_error androidVideoSetMode(int width, int height, int, int, int) {
+    logAndroidVideoEvent("VidExt_SetVideoMode");
     if (!androidVideoContextReady()) return M64ERR_INVALID_STATE;
     if (width <= 0 || height <= 0) return M64ERR_INPUT_INVALID;
     g_androidVideoWidth = width;
@@ -110,9 +130,12 @@ m64p_error androidVideoSetMode(int width, int height, int, int, int) {
     return M64ERR_SUCCESS;
 }
 m64p_error androidVideoSetModeRate(int width, int height, int bits, int mode, int flags, int) {
+    logAndroidVideoEvent("VidExt_SetVideoModeWithRate");
     return androidVideoSetMode(width, height, bits, mode, flags);
 }
 m64p_function androidVideoGetProc(const char* name) {
+    if (name != nullptr && (std::strcmp(name, "glGetString") == 0 || std::strcmp(name, "glBindFramebuffer") == 0))
+        logAndroidVideoEvent("VidExt_GL_GetProcAddress");
     if (name == nullptr || !androidVideoContextReady()) return nullptr;
     auto proc = eglGetProcAddress(name);
     if (proc != nullptr) return reinterpret_cast<m64p_function>(proc);
@@ -769,8 +792,9 @@ Java_com_jsr_n64android_MainActivity_nativeLoadGfxPlugin(
         dlclose(plugin);
         return makeString(env, "PluginStartup nao encontrado apos validacao dos simbolos.");
     }
+    logAndroidVideoEvent("PluginStartup_before");
     __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
-                        "nativeLoadGfxPlugin: chamando PluginStartup; EGLContext=%p GLES=%s",
+                        "nativeLoadGfxPlugin: chamando PluginStartup; EGLContext=%p GLES=%s", 
                         reinterpret_cast<void*>(startupContext),
                         reinterpret_cast<const char*>(startupGlVersion));
     const int startupResult = startup(g_coreHandle, nullptr, coreDebugCallback);
@@ -785,6 +809,7 @@ Java_com_jsr_n64android_MainActivity_nativeLoadGfxPlugin(
         return makeString(env, startupStatus);
     }
 
+    logAndroidVideoEvent("PluginStartup_after");
     g_gfxPluginHandle = plugin;
     g_gfxPluginStarted = true;
     __android_log_print(ANDROID_LOG_INFO, "N64AndroidGFX",
@@ -1611,7 +1636,9 @@ Java_com_jsr_n64android_CoreNativeBridge_nativeShutdown(JNIEnv* env, jobject /* 
                 dlsym(g_gfxPluginHandle, "PluginShutdown"));
             if (pluginShutdown == nullptr)
                 return makeString(env, "PluginShutdown nao encontrado; bibliotecas mantidas carregadas.");
+            logAndroidVideoEvent("PluginShutdown_before");
             const int pluginResult = pluginShutdown();
+            logAndroidVideoEvent("PluginShutdown_after");
             if (pluginResult != 0) {
                 char status[256];
                 std::snprintf(status, sizeof(status),
