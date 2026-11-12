@@ -30,11 +30,12 @@ jobs:
       - name: Install NDK and CMake
         run: sdkmanager "ndk;27.0.12077973" "cmake;3.22.1"
 
-      # The current milestone validates the Android Vulkan surface bridge only.
-      # SDL2 and Mupen64Plus are intentionally deferred until a Vulkan video
-      # backend is integrated; building SDL standalone here caused unresolved
-      # Android glue symbols and did not contribute to this milestone.
-      - name: Build Vulkan bridge APK
+      - name: Install GLSL shader compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y glslang-tools
+
+      - name: Build Vulkan triangle APK
         run: gradle --no-daemon assembleDebug
 
       - name: Verify Vulkan APK has no legacy graphics libraries
