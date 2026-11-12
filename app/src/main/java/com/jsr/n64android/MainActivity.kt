@@ -1331,7 +1331,11 @@ class MainActivity : Activity() {
             sdlActivity.getDeclaredMethod("nativeSetupJNI").invoke(null)
             sdlAudio.getDeclaredMethod("nativeSetupJNI").invoke(null)
             sdlController.getDeclaredMethod("nativeSetupJNI").invoke(null)
+
+            // Match SDL.setupJNI() followed by the relevant parts of SDL.initialize().
+            sdlActivity.getDeclaredMethod("initialize").invoke(null)
             sdlAudio.getDeclaredMethod("initialize").invoke(null)
+            sdlController.getDeclaredMethod("initialize").invoke(null)
             sdlAudio.getDeclaredMethod("setContext", android.content.Context::class.java)
                 .invoke(null, this)
 
