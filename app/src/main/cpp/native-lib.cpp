@@ -1160,33 +1160,36 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
         __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow", "M64CMD_ROM_OPEN concluido.");
     }
 
-    if (!g_gfxAttached) {
-        const m64p_error attachResult = attachPlugin(
-            M64PLUGIN_GFX, reinterpret_cast<m64p_dynlib_handle>(g_gfxPluginHandle));
-        if (attachResult != M64ERR_SUCCESS) {
-            char status[320];
-            std::snprintf(status, sizeof(status),
-                "ROM aberta no Core, mas CoreAttachPlugin(GFX) falhou: codigo %d. A ROM permanece aberta para nova tentativa.",
-                static_cast<int>(attachResult));
-            return makeString(env, status);
-        }
-        g_gfxAttached = true;
-        __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
-                            "CoreAttachPlugin(GFX) retornou M64ERR_SUCCESS; InitiateGFX concluido pelo Core.");
-    }
+    // Mupen64Plus expects the RSP plugin to be attached before GFX.
+    // Attaching GFX first triggers "plugins are attached in wrong order" and
+    // can leave the graphics plugin without a correctly initialized RSP link.
     if (!g_rspAttached) {
         const m64p_error rspAttachResult = attachPlugin(
             M64PLUGIN_RSP, reinterpret_cast<m64p_dynlib_handle>(g_rspPluginHandle));
         if (rspAttachResult != M64ERR_SUCCESS) {
             char status[384];
             std::snprintf(status, sizeof(status),
-                "ROM aberta e GFX anexado, mas CoreAttachPlugin(RSP) falhou: codigo %d. RSP permanece carregado para nova tentativa.",
+                "ROM aberta no Core, mas CoreAttachPlugin(RSP) falhou: codigo %d. RSP permanece carregado para nova tentativa.",
                 static_cast<int>(rspAttachResult));
             return makeString(env, status);
         }
         g_rspAttached = true;
         __android_log_print(ANDROID_LOG_INFO, "N64AndroidRSP",
                             "CoreAttachPlugin(RSP) retornou M64ERR_SUCCESS; InitiateRSP concluido pelo Core.");
+    }
+    if (!g_gfxAttached) {
+        const m64p_error attachResult = attachPlugin(
+            M64PLUGIN_GFX, reinterpret_cast<m64p_dynlib_handle>(g_gfxPluginHandle));
+        if (attachResult != M64ERR_SUCCESS) {
+            char status[320];
+            std::snprintf(status, sizeof(status),
+                "ROM aberta e RSP anexado, mas CoreAttachPlugin(GFX) falhou: codigo %d. A ROM permanece aberta para nova tentativa.",
+                static_cast<int>(attachResult));
+            return makeString(env, status);
+        }
+        g_gfxAttached = true;
+        __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
+                            "CoreAttachPlugin(GFX) retornou M64ERR_SUCCESS; InitiateGFX concluido pelo Core.");
     }
     if (!g_audioAttached) {
         const m64p_error audioAttachResult = attachPlugin(
