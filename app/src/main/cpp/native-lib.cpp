@@ -1332,6 +1332,7 @@ Java_com_jsr_n64android_MainActivity_nativeExecuteCore(JNIEnv* env, jobject /* t
     // A concurrent STOP now waits for this run's post-reset R4300 marker.
     g_stopCommandIssued.store(false);
     g_coreExecuting.store(true);
+    logAndroidVideoEvent("M64CMD_EXECUTE_before");
     __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
                         "Entrando em M64CMD_EXECUTE na thread GL. TID=%ld",
                         static_cast<long>(syscall(SYS_gettid)));
@@ -1340,6 +1341,7 @@ Java_com_jsr_n64android_MainActivity_nativeExecuteCore(JNIEnv* env, jobject /* t
 
     // CoreDoCommand is synchronous: after it returns, callbacks from the
     // emulation loop have ceased and the Execute lease can safely drain.
+    logAndroidVideoEvent("M64CMD_EXECUTE_after");
     g_coreExecuting.store(false);
     g_runLoopHandshake.markExecuteReturned();
     const bool lifecycleReturned = g_coreRuntime.markExecuteReturned();
