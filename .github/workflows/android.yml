@@ -105,6 +105,40 @@ jobs:
               raise SystemExit("Mensagem SDL de falha nao encontrada exatamente uma vez")
           backend = backend.replace(old_message, new_message, 1)
 
+          # A backend allocation is not proof that SDL opened an output device.
+          header_path = Path("third_party/mupen64plus-audio-sdl/src/sdl_backend.h")
+          header = header_path.read_text()
+          declaration = "int sdl_backend_is_ready(const struct sdl_backend* sdl_backend);"
+          if declaration not in header:
+              header = header.replace(
+                  "void release_sdl_backend(struct sdl_backend* sdl_backend);",
+                  "void release_sdl_backend(struct sdl_backend* sdl_backend);\\n" + declaration,
+                  1)
+          header_path.write_text(header)
+
+          ready_function = """int sdl_backend_is_ready(const struct sdl_backend* sdl_backend)
+          {
+              return sdl_backend != NULL && sdl_backend->error == 0;
+          }
+
+          """
+          marker = "void release_sdl_backend(struct sdl_backend* sdl_backend)"
+          if backend.count(marker) != 1:
+              raise SystemExit("Funcao release_sdl_backend nao encontrada exatamente uma vez")
+          backend = backend.replace(marker, ready_function + marker, 1)
+          backend_path.write_text(backend)
+
+          rom_open_success = "    return l_sdl_backend != NULL ? 1 : 0;"
+          rom_open_fixed = """    const int audio_ready = sdl_backend_is_ready(l_sdl_backend);
+              DebugMessage(audio_ready ? M64MSG_INFO : M64MSG_ERROR,
+                  "N64ANDROID AUDIO: RomOpen backend=%p dispositivo_pronto=%d",
+                  (void*) l_sdl_backend, audio_ready);
+              return audio_ready;"""
+          if text.count(rom_open_success) != 1:
+              raise SystemExit("Retorno de RomOpen instrumentado nao encontrado")
+          text = text.replace(rom_open_success, rom_open_fixed, 1)
+          path.write_text(text)
+
           PY
           git -C third_party/mupen64plus-audio-sdl diff --check
 
@@ -406,6 +440,9 @@ jobs:
           cp "$AUDIO_PLUGIN" build/native-libs/arm64-v8a/libmupen64plus-audio-sdl.so
           readelf -d build/native-libs/arm64-v8a/libmupen64plus-audio-sdl.so
           file build/native-libs/arm64-v8a/libmupen64plus-audio-sdl.so
+          strings build/native-libs/arm64-v8a/libmupen64plus-audio-sdl.so | grep -F "SDL_Init resultado="
+          strings build/native-libs/arm64-v8a/libmupen64plus-audio-sdl.so | grep -F "RomOpen backend="
+          strings build/native-libs/arm64-v8a/libmupen64plus-audio-sdl.so | grep -F "dispositivo_pronto="
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
