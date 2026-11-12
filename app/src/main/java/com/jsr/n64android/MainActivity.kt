@@ -69,7 +69,7 @@ class MainActivity : Activity() {
     private val controllerPressed = mutableSetOf<Int>()
     @Volatile private var controllerAxisX = 0
     @Volatile private var controllerAxisY = 0
-    private var glView: GLSurfaceView? = null
+    private var glView: SurfaceEglGameView? = null
     @Volatile private var glSurfaceReady = false
     @Volatile private var glSurfaceCreatedCount = 0
     @Volatile private var lifecycleTestEnabled = false
@@ -1135,7 +1135,7 @@ class MainActivity : Activity() {
             it.onPause()
         }
 
-        val surface = GLSurfaceView(this).apply {
+        val surface = SurfaceEglGameView(this).apply {
             setEGLContextClientVersion(3)
             preserveEGLContextOnPause = true
             setRenderer(object : GLSurfaceView.Renderer {
