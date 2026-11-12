@@ -8,13 +8,7 @@ android {
     compileSdk = 35
     ndkVersion = "27.0.12077973"
 
-    // The CI places the separately built, pinned GLideN64 Android plugin here.
-    // It is packaged as a native library but is not linked into the JNI bridge.
-    sourceSets {
-        getByName("main") {
-            jniLibs.srcDir(rootProject.file("build/native-libs"))
-        }
-    }
+    // Vulkan branch intentionally does not package the legacy GLideN64 plugin.
 
     defaultConfig {
         applicationId = "com.jsr.n64android"
