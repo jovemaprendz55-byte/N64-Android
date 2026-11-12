@@ -112,3 +112,83 @@ Logo, uma migração fiel ao FZ precisa mover em conjunto **a criação/posse do
 7. Só depois dessa prova de conceito considerar ativar o wrapper threaded e comparar os resultados.
 
 **Decisão por enquanto:** não alterar o fluxo Kotlin/C++ de renderização nesta etapa. A investigação provou que copiar apenas a flag do FZ seria inseguro. A próxima implementação deve ser uma migração de ownership EGL planejada, não um ajuste de configuração.
+
+
+## Contrato de threads e máquina de estados (projeto da migração)
+
+A inspeção adicional dos coordenadores Kotlin/C++ confirma que o app já separa duas responsabilidades que não podem ser misturadas na migração:
+
+- 'CoreSerialLifecycleCoordinator' executa STOP/drain no worker e mantém uma única operação ativa.
+- 'CoreGlTeardownCoordinator' só agenda o encerramento nativo depois que 'M64CMD_EXECUTE' retornou; o guard EGL é consultado dentro da ação despachada na thread GL.
+- 'CoreRuntimeCoordinator' fecha a admissão de chamadas, espera o Core drenar e só permite reset depois de teardown concluído.
+
+Esses coordenadores são uma boa base de lifecycle, mas o contrato atual pressupõe que a thread GL seja a do 'GLSurfaceView'. Não se deve reaproveitar o dispatcher atual como se ele já fosse o proprietário EGL da nova arquitetura.
+
+### Estados propostos para o bridge EGL
+
+A implementação deve modelar explicitamente os estados abaixo. São estados-alvo de projeto, não estados já implementados:
+
+| Estado | Significado | Operações permitidas |
+|---|---|---|
+| 'NO_WINDOW' | Nenhuma janela Android retida | Aguardar 'surfaceCreated' |
+| 'WINDOW_AVAILABLE' | 'ANativeWindow' retida, sem EGL atual | Criar/recriar EGL na thread proprietária |
+| 'EGL_READY' | Display, config, context e surface válidos e atuais na thread proprietária | Inicializar plugin de vídeo |
+| 'PLUGIN_READY' | 'PluginStartup' terminou com EGL atual | Anexar plugins e abrir ROM |
+| 'ROM_READY' | ROM aberta e plugins anexados | Reservar/iniciar Execute |
+| 'RUNNING' | Core executando | GL e swap somente pelo caminho de comandos do wrapper |
+| 'QUIESCING' | STOP enviado ou Execute retornando | Drenar comandos; rejeitar novos comandos de jogo |
+| 'PLUGIN_STOPPED' | Core/plugin encerrados com comandos GL drenados | Destruir surface/context |
+| 'EGL_RELEASED' | EGL destruído e janela liberada | Voltar a 'NO_WINDOW' |
+
+Transições inválidas devem falhar de forma explícita; não podem tentar “corrigir” o estado chamando EGL de outra thread.
+
+### Ordem de propriedade e sincronização
+
+1. **Thread proprietária:** escolher uma única thread estável para o EGL. Na arquitetura threaded do GLideN64, a candidata é a thread de execução de comandos do wrapper, mas isso precisa ser comprovado no ponto exato em que 'setThreadedMode(1)' inicia a thread e em que o video extension chama 'SetMode'.
+2. **Inicialização:** reter a janela Android; iniciar/ativar o caminho de comandos; criar EGL e chamar 'eglMakeCurrent' na thread que será proprietária; somente então chamar 'PluginStartup'. Não chamar 'PluginStartup' na UI nem na antiga thread do 'GLSurfaceView'.
+3. **Comandos:** nenhuma chamada GLES direta pode escapar do wrapper. A criação, troca, destruição de surface e swap devem obedecer ao mesmo proprietário EGL. Não pode existir um segundo caminho que chame 'eglMakeCurrent' concorrentemente.
+4. **Janela:** adquirir uma referência de 'ANativeWindow' antes de publicar a janela ao worker. Ao substituir ou destruir a janela, serializar a troca na thread EGL e liberar a referência antiga somente depois que nenhuma operação puder usá-la.
+5. **Locks:** nunca manter o mutex de estado/janela enquanto aguarda sincronamente um comando do wrapper. O callback pode precisar do mesmo mutex no worker; esperar segurando esse lock cria ciclo clássico de deadlock.
+6. **Parada:** fechar admissão de novas operações; solicitar STOP; aguardar 'M64CMD_EXECUTE' retornar; drenar a fila GL e swaps pendentes; executar 'PluginShutdown' com EGL atual; destruir EGL; por último liberar 'ANativeWindow'.
+7. **Perda de surface:** não destruir o contexto enquanto ainda há comandos ou swaps em andamento. Suspender a apresentação, drenar o que for seguro e recriar a EGLSurface na thread proprietária quando uma nova janela chegar. Se o contexto precisar ser recriado, reinicializar o plugin em sequência controlada.
+8. **Timeout:** timeout de STOP, drain ou teardown não prova que a thread terminou. Preservar handles e bloquear uma nova geração do Core até uma recuperação explícita, seguindo a política já usada pelo lifecycle atual.
+
+### Ponto de atenção: ciclo de vida do wrapper
+
+Ainda falta provar, no código upstream efetivamente baixado pelo workflow, a ordem exata entre:
+- criação da thread interna do wrapper;
+- ativação de 'setThreadedMode(1)';
+- chamadas de 'CoreVideo_Init' e 'CoreVideo_SetVideoMode';
+- chamada Android de 'VidExtFuncSetMode';
+- 'PluginStartup' e 'PluginShutdown';
+- destruição/join da thread do wrapper.
+
+Essa ordem é decisiva. Se a thread do wrapper só nascer durante 'PluginStartup', não podemos pressupor que ela já esteja disponível para criar o EGL antes do startup. Se 'SetMode' for chamado sincronicamente durante startup e despachado para a thread recém-criada, o bridge precisa responder sem depender de um recurso que só será criado depois do próprio callback. Esse possível ciclo de inicialização deve ser resolvido no desenho antes de escrever o código.
+
+### Plano de prova de conceito em etapas pequenas
+
+**POC 0 — observabilidade, sem mudar renderização**
+- Logar TID em 'PluginStartup', 'PluginShutdown', 'VidExtFuncSetMode', swap, 'eglMakeCurrent' e no loop do wrapper.
+- Registrar identidade de EGLContext/EGLSurface e transições de surface.
+- Confirmar a ordem real dos callbacks na build Android.
+
+**POC 1 — bridge EGL isolado**
+- Implementar um componente nativo independente do Core que receba uma janela, crie EGL numa thread dedicada e desenhe apenas um frame de teste.
+- Validar criação, resize, pause, destruição e recriação de janela no Poco C85.
+- Ainda sem carregar GLideN64 e sem ativar threaded mode.
+
+**POC 2 — integração de vídeo**
+- Integrar os callbacks 'VidExt_*' ao bridge, mantendo o modo threaded desligado inicialmente.
+- Provar que todos os callbacks e swaps usam o mesmo TID/contexto.
+- Validar shutdown e troca de surface sem ROM.
+
+**POC 3 — wrapper threaded**
+- Ativar 'setThreadedMode(1)' somente depois de comprovar que a thread de comandos é a proprietária EGL e que o startup não tem ciclo de dependência.
+- Adicionar limite de fila/backpressure e métricas de comandos/swap.
+- Testar GoldenEye e comparar várias execuções com a build atual.
+
+**POC 4 — decisão**
+- Só considerar a migração válida se estabilidade, áudio, imagem e tempos de frame forem pelo menos iguais e houver melhoria repetível nos engasgos.
+- Manter a implementação antiga como fallback até a decisão final.
+
+**Próxima ação técnica definida:** executar a POC 0. Ela reduz a incerteza de inicialização sem mexer no caminho de renderização que já funciona. Nenhuma mudança de código de runtime ou APK threaded foi feita nesta atualização.
