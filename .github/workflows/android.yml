@@ -333,7 +333,7 @@ jobs:
                   oldMax, ns, std::memory_order_relaxed)) {}
               const unsigned int count = stats.calls.fetch_add(1, std::memory_order_relaxed) + 1;
               if ((count % 120) == 0) {
-                  const auto total = stats.totalNs.exchange(0, std::memory_order_relaxed) + ns;
+                  const auto total = stats.totalNs.exchange(0, std::memory_order_relaxed);
                   const auto maximum = stats.maxNs.exchange(0, std::memory_order_relaxed);
                   __android_log_print(ANDROID_LOG_INFO, "N64AndroidVideo",
                       "GLIDE_TIMING stage=%s calls=120 avg_ms=%.3f max_ms=%.3f",
