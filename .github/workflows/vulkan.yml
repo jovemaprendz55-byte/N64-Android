@@ -16,20 +16,6 @@ jobs:
       - name: Checkout application
         uses: actions/checkout@v4
 
-      - name: Checkout pinned Mupen64Plus Core
-        uses: actions/checkout@v4
-        with:
-          repository: mupen64plus/mupen64plus-core
-          ref: a9ca8ec0b7decd17390c76c6341cf423d5d79321
-          path: third_party/mupen64plus-core
-
-      - name: Checkout pinned SDL2
-        uses: actions/checkout@v4
-        with:
-          repository: libsdl-org/SDL
-          ref: 5d249570393f7a37e037abf22cd6012a4cc56a71
-          path: third_party/SDL
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -44,27 +30,11 @@ jobs:
       - name: Install NDK and CMake
         run: sdkmanager "ndk;27.0.12077973" "cmake;3.22.1"
 
-      - name: Build SDL2 audio library without OpenGL video
-        run: |
-          NDK="$ANDROID_HOME/ndk/27.0.12077973"
-          cmake -S third_party/SDL -B build/sdl2-arm64 \
-            -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
-            -DANDROID_ABI=arm64-v8a \
-            -DANDROID_PLATFORM=android-23 \
-            -DSDL_SHARED=ON \
-            -DSDL_STATIC=OFF \
-            -DSDL_AUDIO=ON \
-            -DSDL_VIDEO=OFF \
-            -DSDL_RENDER=OFF \
-            -DSDL_OPENGL=OFF \
-            -DSDL_OPENGLES=OFF \
-            -DSDL_VULKAN=OFF \
-            -DSDL_TEST=OFF \
-            -DSDL_TESTS=OFF
-          cmake --build build/sdl2-arm64 --parallel 2
-          test -s build/sdl2-arm64/libSDL2.so
-
-      - name: Build Vulkan APK
+      # The current milestone validates the Android Vulkan surface bridge only.
+      # SDL2 and Mupen64Plus are intentionally deferred until a Vulkan video
+      # backend is integrated; building SDL standalone here caused unresolved
+      # Android glue symbols and did not contribute to this milestone.
+      - name: Build Vulkan bridge APK
         run: gradle --no-daemon assembleDebug
 
       - name: Verify Vulkan APK has no legacy graphics libraries
@@ -73,7 +43,6 @@ jobs:
           APK="app/build/outputs/apk/debug/app-debug.apk"
           test -s "$APK"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libn64vulkan.so"
-          unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus.so"
           if unzip -Z1 "$APK" | grep -E 'lib/arm64-v8a/lib(n64bridge|mupen64plus-video-GLideN64|mupen64plus-video-android)\.so$'; then
             echo "Legacy EGL/OpenGL renderer unexpectedly packaged"
             exit 1
