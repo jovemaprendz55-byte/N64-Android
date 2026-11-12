@@ -95,8 +95,8 @@ Java_com_jsr_n64android_VulkanNative_nativeInitialize(
         return result(env, "vkCreateAndroidSurfaceKHR não foi encontrado.");
     }
 
-    VkAndroidSurfaceCreateInfoKHR surfaceInfo{
-        VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR};
+    VkAndroidSurfaceCreateInfoKHR surfaceInfo{};
+    surfaceInfo.sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
     surfaceInfo.window = g_window;
     status = createSurface(g_instance, &surfaceInfo, nullptr, &g_surface);
     if (status != VK_SUCCESS) {
