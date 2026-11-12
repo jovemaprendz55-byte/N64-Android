@@ -192,3 +192,34 @@ Essa ordem é decisiva. Se a thread do wrapper só nascer durante 'PluginStartup
 - Manter a implementação antiga como fallback até a decisão final.
 
 **Próxima ação técnica definida:** executar a POC 0. Ela reduz a incerteza de inicialização sem mexer no caminho de renderização que já funciona. Nenhuma mudança de código de runtime ou APK threaded foi feita nesta atualização.
+
+
+## POC 0 — instrumentação Android adicionada
+
+Commit de instrumentação: ed2698cad2b259e26018c52f2c867cb231f55baa
+
+O bridge Android agora emite eventos `N64AndroidEGLTrace` com nome do evento, Linux TID, EGLContext, EGLDisplay, EGLSurface e versão GLES quando o contexto está atual.
+
+Eventos cobertos:
+- `VidExt_Init`, `VidExt_Quit`;
+- `VidExt_SetVideoMode`, `VidExt_SetVideoModeWithRate`;
+- amostras de `VidExt_GL_GetProcAddress`;
+- `PluginStartup_before` e `PluginStartup_after`;
+- `PluginShutdown_before` e `PluginShutdown_after`;
+- `M64CMD_EXECUTE_before` e `M64CMD_EXECUTE_after`.
+
+O callback de apresentação já possui contagem e log periódico em `N64AndroidVideo`; o novo trace permite cruzar esse TID/contexto com o restante do ciclo.
+
+### Como validar no aparelho
+
+1. Instalar o APK gerado pelo CI desta PR.
+2. Limpar o Logcat e iniciar o app.
+3. Carregar o Core, iniciar o jogo e deixar rodar por pelo menos 30 segundos.
+4. Parar o jogo e encerrar o Core pelo fluxo normal.
+5. Filtrar por `N64AndroidEGLTrace`, `N64AndroidVideo`, `N64AndroidFlow` e `N64AndroidGFX`.
+
+Esperado no baseline atual: PluginStartup, callbacks VidExt, swap e limites de M64CMD_EXECUTE devem mostrar o mesmo TID GL. EGLContext e EGLSurface devem permanecer iguais durante uma sessão sem recriação de superfície. PluginShutdown deve ocorrer com contexto atual e após o retorno de Execute.
+
+Se algum evento mostrar outro TID ou EGL ausente, registrar a sequência completa; não ativar threaded mode ainda.
+
+**Limite desta POC:** o modo threaded continua forçado a zero no Android. Esta build mede o baseline seguro e não demonstra ainda o comportamento da thread interna do wrapper com threaded mode ativo.
