@@ -510,6 +510,21 @@ class MainActivity : Activity() {
                 }
             })
             addView(status)
+            addView(Button(this@MainActivity).apply {
+                text = "13 - Testar fila EGL + JNI"
+                setOnClickListener {
+                    status.text = "Preparando teste da fila EGL e da chamada JNI..."
+                    try {
+                        loadNativeLibrary()
+                        testView.runQueueDiagnostic(
+                            nativeContextCheck = { nativeVerifyEglContext() },
+                            onComplete = { result -> status.text = result }
+                        )
+                    } catch (error: Throwable) {
+                        status.text = "Falha ao preparar JNI: ${error.javaClass.simpleName}: ${error.message}"
+                    }
+                }
+            })
             addView(testView, LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
             ))
