@@ -74,9 +74,7 @@ void destroySwapchainLocked() {
         auto destroyView = reinterpret_cast<PFN_vkDestroyImageView>(
             vkGetDeviceProcAddr(g_device, "vkDestroyImageView"));
         if (destroyView) {
-            if (!createGraphicsPipeline(error)) return false;
-
-    for (VkImageView view : g_swapchainViews) {
+            for (VkImageView view : g_swapchainViews) {
                 if (view != VK_NULL_HANDLE) destroyView(g_device, view, nullptr);
             }
         }
@@ -331,6 +329,8 @@ bool createRenderResources(std::string& error) {
         return false;
     }
 
+    if (!createGraphicsPipeline(error)) return false;
+
     for (VkImageView view : g_swapchainViews) {
         VkFramebufferCreateInfo framebufferInfo{};
         framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -472,7 +472,7 @@ bool presentTestFrame(std::string& error) {
         return false;
     }
     vkQueueWaitIdle(g_presentQueue);
-    error = "triângulo colorido renderizado e apresentado pela Vulkan."
+    error = "triângulo colorido renderizado e apresentado pela Vulkan.";
     return true;
 }
 
