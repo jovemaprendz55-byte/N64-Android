@@ -1138,6 +1138,9 @@ class MainActivity : Activity() {
         val surface = SurfaceEglGameView(this).apply {
             setEGLContextClientVersion(3)
             preserveEGLContextOnPause = true
+            // GLideN64 presents frames through VidExt_SwapBuffers; do not clear/swap
+            // again from the SurfaceView renderer or it can replace the game image.
+            externalFramePresentation = registerVideoExtension
             setRenderer(object : GLSurfaceView.Renderer {
                 private var triangleProgram = 0
                 private var triangleVertices: FloatBuffer? = null
