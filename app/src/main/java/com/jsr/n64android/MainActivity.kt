@@ -1041,6 +1041,9 @@ class MainActivity : Activity() {
         }
 
         val surface = GLSurfaceView(this).apply {
+            // Publish the view before setRenderer starts the GL thread. This prevents
+            // onSurfaceCreated from observing a null glView during early startup.
+            glView = this
             setEGLContextClientVersion(3)
             preserveEGLContextOnPause = true
             setRenderer(object : GLSurfaceView.Renderer {
