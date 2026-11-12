@@ -54,7 +54,7 @@ class MainActivity : Activity() {
     private lateinit var rootLayout: LinearLayout
     private lateinit var homeLayout: LinearLayout
     private lateinit var selectedRomView: TextView
-    private lateinit var playButton: Button
+    private lateinit var playVulkanButton: Button
     private lateinit var integrationLayout: LinearLayout
     private lateinit var gameplayLayout: FrameLayout
     private lateinit var integrationStatusView: TextView
@@ -436,20 +436,22 @@ class MainActivity : Activity() {
                 text = "Selecionar ROM"
                 setOnClickListener { openRomPicker() }
             })
-            playButton = Button(this@MainActivity).apply {
-                text = "JOGAR"
+            playVulkanButton = Button(this@MainActivity).apply {
+                text = "JOGAR VULKAN"
                 isEnabled = false
                 setOnClickListener {
                     val romFile = File(File(filesDir, "roms"), "selected.n64")
                     if (!romFile.isFile) {
                         selectedRomView.text = "Selecione uma ROM N64 primeiro."
                     } else {
-                        autoStartAfterGraphicsReady = true
-                        startAndroidVideoIntegration()
+                        // Vulkan backend is intentionally not connected yet.
+                        // Never route this button through the existing EGL/OpenGL startup.
+                        selectedRomView.text = "Backend Vulkan ainda não integrado. O jogo não foi iniciado em OpenGL."
+                        Toast.makeText(this@MainActivity, "Vulkan ainda está em integração.", Toast.LENGTH_LONG).show()
                     }
                 }
             }
-            addView(playButton)
+            addView(playVulkanButton)
             addView(Button(this@MainActivity).apply {
                 text = "DIAGNÓSTICO DO ÁUDIO"
                 setOnClickListener { showAudioDiagnostics() }
@@ -927,10 +929,10 @@ class MainActivity : Activity() {
                 val romReady = result.startsWith("ROM N64 reconhecida e copiada")
                 if (romReady) {
                     selectedRomView.text = "ROM selecionada e pronta para jogar"
-                    playButton.isEnabled = true
+                    playVulkanButton.isEnabled = true
                 } else {
                     selectedRomView.text = result
-                    playButton.isEnabled = false
+                    playVulkanButton.isEnabled = false
                 }
             }
         }.start()
