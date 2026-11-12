@@ -468,6 +468,9 @@ jobs:
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus-video-GLideN64.so"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus-rsp-hle.so"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus-audio-sdl.so"
+          unzip -p "$APK" lib/arm64-v8a/libmupen64plus-audio-sdl.so > build/audio-plugin-from-apk.so
+          strings build/audio-plugin-from-apk.so | grep -F "SDL_Init resultado="
+          strings build/audio-plugin-from-apk.so | grep -F "dispositivo_pronto="
           unzip -p "$APK" lib/arm64-v8a/libmupen64plus-video-GLideN64.so > build/gliden64-from-apk.so
           for symbol in PluginGetVersion PluginStartup PluginShutdown ChangeWindow InitiateGFX MoveScreen ProcessDList ProcessRDPList RomClosed RomOpen ShowCFB UpdateScreen ViStatusChanged ViWidthChanged ReadScreen2 SetRenderingCallback FBRead FBWrite FBGetFrameBufferInfo; do
             readelf --dyn-syms -W build/gliden64-from-apk.so | grep -E "[[:space:]]${symbol}$"
