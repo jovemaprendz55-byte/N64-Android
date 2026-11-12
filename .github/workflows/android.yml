@@ -389,53 +389,54 @@ jobs:
           #include <android/log.h>
           #endif
           """, 1)
-          helper = """
+          helper = r"""
           #if defined(OS_ANDROID)
-          // Per-call-site timing: all VI callbacks run on the GL thread in this build.
-          #define N64ANDROID_VI_MEASURE(label, expression) do { \\
-              static unsigned int n64_calls = 0; \\
-              static unsigned long long n64_total_ns = 0; \\
-              static unsigned long long n64_max_ns = 0; \\
-              const auto n64_start = std::chrono::steady_clock::now(); \\
-              expression; \\
-              const auto n64_elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>( \\
-                  std::chrono::steady_clock::now() - n64_start).count(); \\
-              const auto n64_ns = static_cast<unsigned long long>(n64_elapsed > 0 ? n64_elapsed : 0); \\
-              n64_total_ns += n64_ns; \\
-              if (n64_ns > n64_max_ns) n64_max_ns = n64_ns; \\
-              if (++n64_calls == 120) { \\
-                  __android_log_print(ANDROID_LOG_INFO, "N64AndroidVideo", \\
-                      "VI_STAGE stage=%s calls=120 avg_ms=%.3f max_ms=%.3f", label, \\
-                      static_cast<double>(n64_total_ns) / 120000000.0, \\
-                      static_cast<double>(n64_max_ns) / 1000000.0); \\
-                  n64_calls = 0; n64_total_ns = 0; n64_max_ns = 0; \\
-              } \\
+          // Per-call-site timing: VI callbacks run on the GLSurfaceView GL thread.
+          #define N64ANDROID_VI_MEASURE(label, expression) do { \
+              static unsigned int n64_calls = 0; \
+              static unsigned long long n64_total_ns = 0; \
+              static unsigned long long n64_max_ns = 0; \
+              const auto n64_start = std::chrono::steady_clock::now(); \
+              expression; \
+              const auto n64_elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>( \
+                  std::chrono::steady_clock::now() - n64_start).count(); \
+              const auto n64_ns = static_cast<unsigned long long>(n64_elapsed > 0 ? n64_elapsed : 0); \
+              n64_total_ns += n64_ns; \
+              if (n64_ns > n64_max_ns) n64_max_ns = n64_ns; \
+              if (++n64_calls == 120) { \
+                  __android_log_print(ANDROID_LOG_INFO, "N64AndroidVideo", \
+                      "VI_STAGE stage=%s calls=120 avg_ms=%.3f max_ms=%.3f", label, \
+                      static_cast<double>(n64_total_ns) / 120000000.0, \
+                      static_cast<double>(n64_max_ns) / 1000000.0); \
+                  n64_calls = 0; n64_total_ns = 0; n64_max_ns = 0; \
+              } \
           } while (0)
           #else
           #define N64ANDROID_VI_MEASURE(label, expression) do { expression; } while (0)
           #endif
           """
-          vi_anchor = "void VI_UpdateScreen()\\n{"
+          vi_anchor = "void VI_UpdateScreen()\n{"
           if vi.count(vi_anchor) != 1:
               raise SystemExit("Expected VI_UpdateScreen definition exactly once")
-          vi = vi.replace(vi_anchor, helper + "\\n" + vi_anchor, 1)
+          vi = vi.replace(vi_anchor, helper + "\n" + vi_anchor, 1)
 
           replacements = [
               ("FrameBuffer * pBuffer = frameBufferList().findBuffer(*REG.VI_ORIGIN & 0xffffff);",
-               "FrameBuffer * pBuffer = nullptr;\\n\\t\\tN64ANDROID_VI_MEASURE(\\"findBuffer\\", pBuffer = frameBufferList().findBuffer(*REG.VI_ORIGIN & 0xffffff));"),
-              ("\\t\\t\\t\\tpBuffer->copyRdram();",
-               "\\t\\t\\t\\tN64ANDROID_VI_MEASURE(\\"copyRdram\\", pBuffer->copyRdram());"),
-              ("\\t\\t\\t\\tFrameBuffer_CopyFromRDRAM(*REG.VI_ORIGIN & 0xffffff, bCFB);",
-               "\\t\\t\\t\\tN64ANDROID_VI_MEASURE(\\"copyFromRDRAM\\", FrameBuffer_CopyFromRDRAM(*REG.VI_ORIGIN & 0xffffff, bCFB));"),
-              ("\\t\\t\\tframeBufferList().renderBuffer();",
-               "\\t\\t\\tN64ANDROID_VI_MEASURE(\\"renderBuffer_fbEmu\\", frameBufferList().renderBuffer());"),
-              ("\\t\\t\\tframeBufferList().renderBuffer();",
-               "\\t\\t\\tN64ANDROID_VI_MEASURE(\\"renderBuffer_noFbEmu\\", frameBufferList().renderBuffer());")
+               "FrameBuffer * pBuffer = nullptr;\n\t\tN64ANDROID_VI_MEASURE(\"findBuffer\", pBuffer = frameBufferList().findBuffer(*REG.VI_ORIGIN & 0xffffff));"),
+              ("\t\t\t\tpBuffer->copyRdram();",
+               "\t\t\t\tN64ANDROID_VI_MEASURE(\"copyRdram\", pBuffer->copyRdram());"),
+              ("\t\t\t\tFrameBuffer_CopyFromRDRAM(*REG.VI_ORIGIN & 0xffffff, bCFB);",
+               "\t\t\t\tN64ANDROID_VI_MEASURE(\"copyFromRDRAM\", FrameBuffer_CopyFromRDRAM(*REG.VI_ORIGIN & 0xffffff, bCFB));")
           ]
           for old, new in replacements:
               if vi.count(old) != 1:
                   raise SystemExit("Expected VI stage call exactly once: " + old.strip())
               vi = vi.replace(old, new, 1)
+
+          render_call = "\t\t\tframeBufferList().renderBuffer();"
+          if vi.count(render_call) != 2:
+              raise SystemExit("Expected two renderBuffer call sites in VI_UpdateScreen")
+          vi = vi.replace(render_call, "\t\t\tN64ANDROID_VI_MEASURE(\"renderBuffer\", frameBufferList().renderBuffer());")
           vi_path.write_text(vi)
           PY
           git -C third_party/GLideN64 diff --check
