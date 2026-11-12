@@ -86,3 +86,29 @@ Próximas etapas:
 ## Regra desta experiência
 
 Não habilitar threaded video no Android apenas mudando uma flag. Nenhuma mudança deve ser mesclada em `main` sem teste real e autorização explícita.
+
+
+## Mapeamento do ciclo de vida no nosso app
+
+A leitura do código de `main` confirma que a diferença de arquitetura começa antes do primeiro frame:
+
+- `MainActivity.showOpenGlTest()` cria o `GLSurfaceView`, configura GLES 3 e instala o `Renderer`.
+- Em `Renderer.onSurfaceCreated()`, o app verifica o EGL atual e chama a sequência JNI que registra a Video Extension e carrega o GLideN64.
+- `nativeLoadGfxPlugin()` exige `eglGetCurrentContext()`, `eglGetCurrentDisplay()`, `eglGetCurrentSurface(EGL_DRAW)` e `glGetString(GL_VERSION)` válidos; em seguida chama `PluginStartup` nessa mesma thread.
+- A abertura da ROM e o início de `M64CMD_EXECUTE` também são enviados por `GLSurfaceView.queueEvent`. O Core síncrono ocupa a thread GL.
+- O callback de swap Android usa o EGL que já está atual na thread GL; não cria nem compartilha outro contexto.
+- No `onDestroy()`, o app agenda `nativeShutdown()` pela thread GL e só pausa o `GLSurfaceView` depois de confirmar o encerramento. O código nativo também recusa teardown gráfico quando o contexto não está atual na thread chamadora.
+
+Logo, uma migração fiel ao FZ precisa mover em conjunto **a criação/posse do EGL, a inicialização do GLideN64, os callbacks de vídeo, a execução do Core e o teardown**. Mover apenas `M64CMD_EXECUTE` ou apenas as chamadas GLES deixaria partes do plugin usando threads/contextos incompatíveis.
+
+## Arquitetura-alvo proposta (ainda não implementada)
+
+1. Criar um componente nativo de vídeo Android que possua `EGLDisplay`, `EGLConfig`, `EGLContext`, `EGLSurface` e referência retida a `ANativeWindow`.
+2. Definir uma única thread proprietária do contexto. Essa thread executaria as operações de contexto/surface e as chamadas GL encaminhadas pelo wrapper.
+3. Fazer os callbacks `VidExt_*` encaminharem criação, resize, swap e destruição para o proprietário EGL, com sincronização explícita e sem bloquear enquanto segura mutex necessário ao callback.
+4. Reorganizar a inicialização: aguardar uma janela nativa disponível, criar EGL no proprietário, então chamar `PluginStartup` e anexar os plugins; não chamar `PluginStartup` a partir de `GLSurfaceView.onSurfaceCreated`.
+5. Reorganizar execução e parada para que o Core não tente destruir EGL enquanto a thread de renderização ainda possui comandos pendentes.
+6. Lidar com `surfaceDestroyed/surfaceCreated`, pausa, retomada, rotação e encerramento como estados explícitos; nunca manter um `ANativeWindow` depois de liberar sua referência.
+7. Só depois dessa prova de conceito considerar ativar o wrapper threaded e comparar os resultados.
+
+**Decisão por enquanto:** não alterar o fluxo Kotlin/C++ de renderização nesta etapa. A investigação provou que copiar apenas a flag do FZ seria inseguro. A próxima implementação deve ser uma migração de ownership EGL planejada, não um ajuste de configuração.
