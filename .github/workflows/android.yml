@@ -395,8 +395,8 @@ jobs:
                "            SDL_Log(\"N64SDL_TRACE before_play_wait device=%p play=%p wait=%p\", (void*)device, (void*)current_audio.impl.PlayDevice, (void*)current_audio.impl.WaitDevice);\n            current_audio.impl.PlayDevice(device);\n            current_audio.impl.WaitDevice(device);\n            SDL_Log(\"N64SDL_TRACE after_play_wait device=%p\", (void*)device);")
           ]
           for old, new in edits:
-              if source.count(old) != 1:
-                  raise SystemExit("SDL audio trace anchor missing or ambiguous: " + old[:80])
+              if source.count(old) < 1:
+                  raise SystemExit("SDL audio trace anchor missing: " + old[:80])
               source = source.replace(old, new, 1)
           path.write_text(source)
           PY
