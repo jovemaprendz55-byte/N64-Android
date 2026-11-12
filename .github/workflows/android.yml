@@ -291,6 +291,95 @@ jobs:
             exit 1
           fi
 
+      - name: Instrument GLideN64 command processing timings
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("third_party/GLideN64/src/common/CommonAPIImpl_common.cpp")
+          source = path.read_text()
+          if "N64ANDROID_GLIDE_TIMING" in source:
+              raise SystemExit("GLideN64 timing instrumentation already present")
+          include_anchor = "#include <osal_keys.h>\n"
+          include_add = """#include <osal_keys.h>
+          #if defined(OS_ANDROID)
+          #include <atomic>
+          #include <chrono>
+          #include <android/log.h>
+          #endif
+          """
+          if source.count(include_anchor) != 1:
+              raise SystemExit("Expected GLideN64 include anchor exactly once")
+          source = source.replace(include_anchor, include_add, 1)
+          helper = """
+          #if defined(OS_ANDROID)
+          // N64ANDROID_GLIDE_TIMING: low-overhead aggregate timing for plugin command callbacks.
+          namespace {
+          struct AndroidGlideTiming {
+              std::atomic<unsigned int> calls{0};
+              std::atomic<unsigned long long> totalNs{0};
+              std::atomic<unsigned long long> maxNs{0};
+          };
+          static AndroidGlideTiming g_androidDListTiming;
+          static AndroidGlideTiming g_androidRdpTiming;
+          static AndroidGlideTiming g_androidViTiming;
+          static void recordAndroidGlideTiming(AndroidGlideTiming& stats, const char* label,
+                                               std::chrono::steady_clock::time_point start) {
+              const auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                  std::chrono::steady_clock::now() - start).count();
+              const auto ns = static_cast<unsigned long long>(elapsed > 0 ? elapsed : 0);
+              stats.totalNs.fetch_add(ns, std::memory_order_relaxed);
+              auto oldMax = stats.maxNs.load(std::memory_order_relaxed);
+              while (ns > oldMax && !stats.maxNs.compare_exchange_weak(
+                  oldMax, ns, std::memory_order_relaxed)) {}
+              const unsigned int count = stats.calls.fetch_add(1, std::memory_order_relaxed) + 1;
+              if ((count % 120) == 0) {
+                  const auto total = stats.totalNs.exchange(0, std::memory_order_relaxed) + ns;
+                  const auto maximum = stats.maxNs.exchange(0, std::memory_order_relaxed);
+                  __android_log_print(ANDROID_LOG_INFO, "N64AndroidVideo",
+                      "GLIDE_TIMING stage=%s calls=120 avg_ms=%.3f max_ms=%.3f",
+                      label, static_cast<double>(total) / 120000000.0,
+                      static_cast<double>(maximum) / 1000000.0);
+              }
+          }
+          }
+          #endif
+          """
+          anchor = "PluginAPI & PluginAPI::get()\n"
+          if source.count(anchor) != 1:
+              raise SystemExit("Expected PluginAPI singleton anchor exactly once")
+          source = source.replace(anchor, helper + "\n" + anchor, 1)
+
+          def instrument(function, label, stats):
+              nonlocal_source = source_holder[0]
+              start = nonlocal_source.find(function)
+              if start < 0:
+                  raise SystemExit("Function not found: " + function)
+              brace = nonlocal_source.find("{", start)
+              end = nonlocal_source.find("\n}\n", brace)
+              if end < 0:
+                  raise SystemExit("Function end not found: " + function)
+              body = nonlocal_source[brace + 1:end]
+              if "recordAndroidGlideTiming" in body:
+                  raise SystemExit("Function already instrumented: " + function)
+              begin = """
+          #if defined(OS_ANDROID)
+              const auto androidTimingStart = std::chrono::steady_clock::now();
+          #endif
+          """
+              finish = """
+          #if defined(OS_ANDROID)
+              recordAndroidGlideTiming(%s, "%s", androidTimingStart);
+          #endif
+          """ % (stats, label)
+              source_holder[0] = nonlocal_source[:brace + 1] + begin + body + finish + nonlocal_source[end:]
+          source_holder = [source]
+          instrument("void PluginAPI::ProcessDList()", "ProcessDList", "g_androidDListTiming")
+          instrument("void PluginAPI::ProcessRDPList()", "ProcessRDPList", "g_androidRdpTiming")
+          instrument("void PluginAPI::UpdateScreen()", "UpdateScreen", "g_androidViTiming")
+          path.write_text(source_holder[0])
+          PY
+          git -C third_party/GLideN64 diff --check
+          grep -F "GLIDE_TIMING stage=ProcessDList" third_party/GLideN64/src/common/CommonAPIImpl_common.cpp || true
       - name: Validate pinned Core source manifest
         run: >-
           cmake
