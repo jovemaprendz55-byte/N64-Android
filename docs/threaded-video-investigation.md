@@ -1,6 +1,6 @@
 # Investigação: Threaded Video do GLideN64 no Android
 
-## Estado inicial
+## Estado inicial do nosso app
 
 Esta branch experimental parte de `main` e não altera a branch principal.
 
@@ -17,13 +17,32 @@ FunctionWrapper::setThreadedMode(0);
 ```
 A chamada normal `FunctionWrapper::setThreadedMode(config.video.threadedVideo)` é mantida apenas fora do Android. Isso é intencional: o contexto EGL pertence à thread GL do `GLSurfaceView`.
 
-## Por que não basta ativar a opção
+## O que o Mupen64Plus FZ realmente faz
 
-Ativar apenas `config.video.threadedVideo = 1` ou remover o patch acima não reproduz o comportamento do Mupen64Plus FZ. O wrapper threaded do GLideN64 pode executar comandos OpenGL em outra thread; essa thread precisaria possuir um contexto EGL válido e compatível. O contexto atual é gerenciado pelo `GLSurfaceView`, e o callback de apresentação pressupõe que o contexto e a surface estejam atuais na thread que executa o Core.
+Fontes públicas examinadas no repositório `fzurita/mupen64plus-ae`, branch `fz-master`:
+
+- `mupen64plus-video-gliden64/upstream/src/Graphics/OpenGLContext/ThreadedOpenGl/opengl_Wrapper.cpp`
+- `mupen64plus-video-gliden64/upstream/src/Graphics/OpenGLContext/ThreadedOpenGl/opengl_Wrapper.h`
+- `ae-bridge/src/ae_bridge.cpp`
+
+O modelo do FZ é diferente do nosso:
+
+1. `FunctionWrapper::setThreadedMode(1)` cria uma `m_commandExecutionThread` que executa `commandLoop()`.
+2. Chamadas GL são colocadas em `m_commandQueue`; a thread chamadora espera a conclusão de cada comando por `waitOnCommand()`. Portanto, não é correto descrever cada chamada GL como totalmente assíncrona: a execução é transferida para a thread de comandos, mas a chamada normalmente só retorna depois que o comando foi executado.
+3. As chamadas de vídeo do Core também passam pelo wrapper. `CoreVideo_Init`, `CoreVideo_SetVideoMode`, leitura/escrita de atributos e `CoreVideo_GL_SwapBuffers` são executadas como comandos na thread de comandos quando o modo threaded está ativo.
+4. No bridge Android do FZ, `VidExtFuncSetMode` cria o `EGLContext` e a `EGLSurface` e chama `eglMakeCurrent`. Como essa operação é despachada pelo wrapper, a inicialização do contexto acontece na thread de comandos, que passa a executar o GL.
+5. `VidExtFuncGLSwapBuf` usa um mutex (`nativeWindowAccess`) para proteger a janela nativa e a surface; faz a recriação da surface e a troca de contexto quando necessário, e chama `eglSwapBuffers`.
+6. O wrapper conta swaps pendentes (`m_swapBuffersQueued`) e define `MAX_SWAP = 2`; a rotina `WaitForSwapBuffersQueued()` aguarda quando a fila excede esse limite. Os comandos de swap também são enfileirados pelo wrapper.
+
+**Conclusão importante:** o FZ não está simplesmente ativando uma flag dentro de um `GLSurfaceView`. Ele tem um bridge EGL próprio e encaminha inclusive as operações de criação do contexto para a thread de comandos. A thread que possui o contexto é parte fundamental da arquitetura.
+
+## Por que não basta ativar a opção no nosso app
+
+Ativar apenas `config.video.threadedVideo = 1` ou remover o patch acima não reproduz o comportamento do FZ. Nosso contexto atual é criado e gerenciado pelo `GLSurfaceView`; o callback Android de swap pressupõe que o contexto e a surface estejam atuais na thread GL do `GLSurfaceView`. Se o wrapper passar a executar GLES na sua thread privada sem migrar também a propriedade do contexto, haverá chamadas sem contexto atual.
 
 Uma mudança ingênua pode causar:
 - chamadas GLES sem contexto atual;
-- troca de contexto/surface em threads diferentes;
+- `eglMakeCurrent` concorrente ou na thread errada;
 - deadlock entre a thread do Core, fila GL e callback de swap;
 - falhas na recriação da surface ou no pause/resume;
 - shutdown com contexto EGL ausente ou pertencente a outra thread.
@@ -39,16 +58,22 @@ Nos testes recentes de GoldenEye:
 
 Portanto, o alvo da investigação é a fila/apresentação GL e a sincronização com o driver/SurfaceFlinger, sem presumir que threaded video resolverá sozinho todos os engasgos.
 
-## Plano seguro para esta branch
+## Decisão técnica e plano seguro
 
-1. Inspecionar o wrapper threaded do GLideN64 e o backend Android do Mupen64Plus FZ, identificando quem cria, compartilha, torna atual e destrói cada EGLContext/EGLSurface.
-2. Mapear a sincronização da fila: limite de comandos pendentes, barreiras, tratamento de swap e encerramento.
-3. Comparar esse modelo com o contrato atual do `GLSurfaceView`.
-4. Só então escolher uma arquitetura:
-   - manter o contexto do `GLSurfaceView` e testar uma fila de comandos que execute GL na própria thread proprietária; ou
-   - migrar explicitamente para gerenciamento EGL próprio, com contexto compartilhado, transferência de ownership, sincronização e ciclo de vida completos.
-5. Fazer uma alteração mínima e isolada, com opção de retorno ao modo atual.
-6. Compilar e testar no Poco C85/Android 16 antes de considerar qualquer merge.
+A arquitetura do FZ exige gerenciamento explícito de EGL. A opção mais fiel seria substituir a propriedade EGL do `GLSurfaceView` por um bridge Android/EGL próprio, no qual:
+- a thread de comandos do GLideN64 inicializa e possui o contexto EGL;
+- criação/recriação/destruição de surface e `ANativeWindow` são serializadas;
+- pause/resume e shutdown aguardam a thread de GL terminar antes de destruir recursos;
+- os callbacks de swap usam exclusivamente o contexto/surface atuais dessa thread.
+
+Isso é uma mudança arquitetural ampla e não deve ser tentada como patch pequeno. Uma alternativa é manter o `GLSurfaceView` e experimentar uma fila que execute comandos na própria thread proprietária, mas isso **não é a arquitetura threaded do FZ** e não garante redução do tempo de swap.
+
+Próximas etapas:
+1. Mapear os pontos de inicialização e encerramento do Core no nosso código e definir um contrato explícito de propriedade EGL.
+2. Desenhar a transição do `GLSurfaceView` para EGL próprio, incluindo surface lifecycle e sincronização.
+3. Criar testes para criação, pause, resume, recriação da surface e encerramento antes de alterar a renderização.
+4. Implementar primeiro uma prova de conceito mínima em branch isolada, com fallback para o modo atual.
+5. Compilar e testar no Poco C85/Android 16; comparar FPS, tempos de frame, estabilidade e áudio.
 
 ## Critérios para aceitar o experimento
 
