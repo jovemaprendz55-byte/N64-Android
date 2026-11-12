@@ -488,13 +488,18 @@ class MainActivity : Activity() {
     private fun showSurfaceEglTest() {
         diagnosticScreenVisible = true
         val status = TextView(this).apply {
-            text = "Aguardando a superfície Android..."
+            text = "Resultado do teste 13 aparecerá aqui."
             textSize = 14f
             setPadding(16, 12, 16, 12)
             setTextIsSelectable(true)
         }
+        val frameStatus = TextView(this).apply {
+            text = "Aguardando a superfície Android..."
+            textSize = 13f
+            setPadding(16, 8, 16, 8)
+        }
         val testView = SurfaceEglTestView(this).apply {
-            onStatus = { message -> status.text = message }
+            onStatus = { message -> frameStatus.text = message }
         }
         val page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -510,6 +515,7 @@ class MainActivity : Activity() {
                 }
             })
             addView(status)
+            addView(frameStatus)
             addView(Button(this@MainActivity).apply {
                 text = "13 - Testar fila EGL + JNI"
                 setOnClickListener {
