@@ -9,7 +9,6 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.SurfaceHolder
 import android.view.SurfaceView
-import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.Button
@@ -21,7 +20,7 @@ import java.io.File
 
 /**
  * Vulkan-only application shell.
- * EGL/GLSurfaceView gameplay and diagnostics are removed from this Activity.
+ * The previous graphics startup and diagnostics are removed from this Activity.
  * Vulkan is not connected yet; the Play button never starts the legacy GL path.
  */
 class MainActivity : Activity() {
