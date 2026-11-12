@@ -69,11 +69,13 @@ class MainActivity : Activity() {
     private val controllerPressed = mutableSetOf<Int>()
     @Volatile private var controllerAxisX = 0
     @Volatile private var controllerAxisY = 0
-    private var glView: GLSurfaceView? = null
+    private var glView: SurfaceEglGameView? = null
     @Volatile private var glSurfaceReady = false
     @Volatile private var glSurfaceCreatedCount = 0
     @Volatile private var lifecycleTestEnabled = false
     @Volatile private var activityDestroyed = false
+    @Volatile private var coreExecutionActive = false
+    @Volatile private var backExitInProgress = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -250,6 +252,11 @@ class MainActivity : Activity() {
             }
         }
 
+        val surfaceEglButton = Button(this).apply {
+            text = "12 - Testar SurfaceView + EGL próprio"
+            setOnClickListener { showSurfaceEglTest() }
+        }
+
         val backButton = Button(this).apply {
             text = "Voltar ao inicio"
             setOnClickListener { showHomeScreen() }
@@ -271,6 +278,7 @@ class MainActivity : Activity() {
             addView(glThreadButton)
             addView(glOperationsButton)
             addView(glLifecycleButton)
+            addView(surfaceEglButton)
         }
 
         rootLayout = LinearLayout(this).apply {
@@ -475,6 +483,59 @@ class MainActivity : Activity() {
         }
 
         setContentView(homeLayout)
+    }
+
+    private fun showSurfaceEglTest() {
+        diagnosticScreenVisible = true
+        val status = TextView(this).apply {
+            text = "Resultado do teste 13 aparecerá aqui."
+            textSize = 14f
+            setPadding(16, 12, 16, 12)
+            setTextIsSelectable(true)
+        }
+        val frameStatus = TextView(this).apply {
+            text = "Aguardando a superfície Android..."
+            textSize = 13f
+            setPadding(16, 8, 16, 8)
+        }
+        val testView = SurfaceEglTestView(this).apply {
+            onStatus = { message -> frameStatus.text = message }
+        }
+        val page = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(Button(this@MainActivity).apply {
+                text = "Voltar aos diagnósticos"
+                setOnClickListener {
+                    testView.release()
+                    diagnosticScreenVisible = true
+                    setContentView(ScrollView(this@MainActivity).apply {
+                        isFillViewport = true
+                        addView(rootLayout)
+                    })
+                }
+            })
+            addView(status)
+            addView(frameStatus)
+            addView(Button(this@MainActivity).apply {
+                text = "13 - Testar fila EGL + JNI"
+                setOnClickListener {
+                    status.text = "Preparando teste da fila EGL e da chamada JNI..."
+                    try {
+                        loadNativeLibrary()
+                        testView.runQueueDiagnostic(
+                            nativeContextCheck = { nativeVerifyEglContext() },
+                            onComplete = { result -> status.text = result }
+                        )
+                    } catch (error: Throwable) {
+                        status.text = "Falha ao preparar JNI: ${error.javaClass.simpleName}: ${error.message}"
+                    }
+                }
+            })
+            addView(testView, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
+            ))
+        }
+        setContentView(page)
     }
 
     private fun createDiagnosticGroup(): LinearLayout = LinearLayout(this).apply {
@@ -845,10 +906,15 @@ class MainActivity : Activity() {
                     "Pre-checagem aprovada. Teste de execucao iniciado na thread GL.\\n" +
                     "Se a imagem aparecer, use Parar emulacao para encerrar o teste."
             }
+            coreExecutionActive = true
+            android.util.Log.i("N64AndroidFlow", "M64CMD_EXECUTE ativo; botão Voltar poderá solicitar STOP.")
             val result = try {
                 nativeExecuteCore()
             } catch (error: Throwable) {
                 "Falha durante M64CMD_EXECUTE: ${error.message}"
+            } finally {
+                coreExecutionActive = false
+                android.util.Log.i("N64AndroidFlow", "M64CMD_EXECUTE finalizado; thread GL liberada.")
             }
             runOnUiThread { integrationStatusView.text = result }
         }
@@ -1011,11 +1077,51 @@ class MainActivity : Activity() {
 
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
-        if (diagnosticScreenVisible) {
-            showHomeScreen()
-        } else {
+        if (!diagnosticScreenVisible) {
             super.onBackPressed()
+            return
         }
+
+        // M64CMD_EXECUTE occupies the GL thread. Request STOP from a worker
+        // first, wait for Execute to return, and only then let showHomeScreen()
+        // perform the EGL/plugin teardown on the now-free GL thread.
+        if (!coreExecutionActive) {
+            showHomeScreen()
+            return
+        }
+        if (backExitInProgress) return
+
+        backExitInProgress = true
+        Toast.makeText(this, "Encerrando o jogo...", Toast.LENGTH_SHORT).show()
+        Thread({
+            val stop = try {
+                CoreStopCoordinator(CoreNativeBridge).requestStopAndAwait(10000)
+            } catch (error: Throwable) {
+                CoreStopCoordinator.Result(
+                    stopResult = "Falha ao solicitar parada: ${error.message}",
+                    waitResult = null,
+                    stopAccepted = false
+                )
+            }
+            val executeReturned = stop.waitResult?.contains("M64CMD_EXECUTE retornou") == true
+            runOnUiThread {
+                backExitInProgress = false
+                if (activityDestroyed) return@runOnUiThread
+                if (stop.stopAccepted && executeReturned) {
+                    android.util.Log.i("N64AndroidFlow",
+                        "Botão Voltar: STOP confirmado e EXECUTE retornou; iniciando retorno seguro à tela inicial.")
+                    showHomeScreen()
+                } else {
+                    android.util.Log.w("N64AndroidFlow",
+                        "Botão Voltar: parada não confirmada. STOP=${stop.stopResult}; WAIT=${stop.waitResult}")
+                    Toast.makeText(
+                        this,
+                        "Não foi possível encerrar o jogo com segurança. Tente novamente.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }, "N64-Back-Stop").start()
     }
 
     private fun showOpenGlTest(drawTriangle: Boolean = false, registerVideoExtension: Boolean = false) {
@@ -1029,9 +1135,12 @@ class MainActivity : Activity() {
             it.onPause()
         }
 
-        val surface = GLSurfaceView(this).apply {
+        val surface = SurfaceEglGameView(this).apply {
             setEGLContextClientVersion(3)
             preserveEGLContextOnPause = true
+            // GLideN64 presents frames through VidExt_SwapBuffers; do not clear/swap
+            // again from the SurfaceView renderer or it can replace the game image.
+            externalFramePresentation = registerVideoExtension
             setRenderer(object : GLSurfaceView.Renderer {
                 private var triangleProgram = 0
                 private var triangleVertices: FloatBuffer? = null
@@ -1318,6 +1427,29 @@ class MainActivity : Activity() {
 
     private fun loadNativeLibrary() {
         if (!nativeLibraryLoaded) {
+            // SDL is loaded by the VM (not only dlopen) so its JNI_OnLoad registers
+            // the Android Java callbacks before the audio plugin starts SDL.
+            System.loadLibrary("SDL2")
+
+            // Invoke the official SDL Java bootstrap reflectively. This keeps the
+            // custom Activity independent of compile-time references to SDL classes.
+            val sdlActivity = Class.forName("org.libsdl.app.SDLActivity")
+            val sdlAudio = Class.forName("org.libsdl.app.SDLAudioManager")
+            val sdlController = Class.forName("org.libsdl.app.SDLControllerManager")
+
+            sdlActivity.getDeclaredMethod("nativeSetupJNI").invoke(null)
+            sdlAudio.getDeclaredMethod("nativeSetupJNI").invoke(null)
+            sdlController.getDeclaredMethod("nativeSetupJNI").invoke(null)
+
+            // Match SDL.setupJNI() followed by the relevant parts of SDL.initialize().
+            sdlActivity.getDeclaredMethod("initialize").invoke(null)
+            sdlAudio.getDeclaredMethod("initialize").invoke(null)
+            sdlController.getDeclaredMethod("initialize").invoke(null)
+            sdlAudio.getDeclaredMethod("setContext", android.content.Context::class.java)
+                .invoke(null, this)
+
+            android.util.Log.i("N64SDLBootstrap", "SDL2 JNI e SDLAudioManager inicializados antes do Core.")
+
             System.loadLibrary("n64bridge")
             nativeLibraryLoaded = true
         }

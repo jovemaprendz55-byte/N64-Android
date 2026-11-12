@@ -43,6 +43,16 @@ jobs:
           ref: 5d249570393f7a37e037abf22cd6012a4cc56a71
           path: third_party/SDL
 
+      - name: Add SDL Android Java JNI bridge classes
+        run: |
+          SDL_JAVA_DIR="$GITHUB_WORKSPACE/third_party/SDL/android-project/app/src/main/java/org/libsdl/app"
+          test -s "$SDL_JAVA_DIR/SDLActivity.java"
+          test -s "$SDL_JAVA_DIR/SDLAudioManager.java"
+          test -s "$SDL_JAVA_DIR/SDLControllerManager.java"
+          mkdir -p app/src/main/java/org/libsdl
+          cp -R "$SDL_JAVA_DIR" app/src/main/java/org/libsdl/app
+          test -s app/src/main/java/org/libsdl/app/SDLAudioManager.java
+
       - name: Checkout pinned GLideN64 renderer source
         uses: actions/checkout@v4
         with:
@@ -91,7 +101,9 @@ jobs:
           backend_path = Path("third_party/mupen64plus-audio-sdl/src/sdl_backend.c")
           backend = backend_path.read_text()
           old_condition = "if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER) < 0)"
-          new_condition = """int n64_sdl_init_result = SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER);
+          new_condition = """/* This Android app owns its Java/native entry point and does not use SDL_main. */
+                  SDL_SetMainReady();
+                  int n64_sdl_init_result = SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER);
                   DebugMessage(M64MSG_ERROR,
                       "N64ANDROID AUDIO: SDL_Init resultado=%d erro=%s SDL_WasInit=0x%x",
                       n64_sdl_init_result, SDL_GetError(), SDL_WasInit(0));
@@ -104,6 +116,41 @@ jobs:
           if backend.count(old_message) != 1:
               raise SystemExit("Mensagem SDL de falha nao encontrada exatamente uma vez")
           backend = backend.replace(old_message, new_message, 1)
+
+          # A backend allocation is not proof that SDL opened an output device.
+          header_path = Path("third_party/mupen64plus-audio-sdl/src/sdl_backend.h")
+          header = header_path.read_text()
+          declaration = "int sdl_backend_is_ready(const struct sdl_backend* sdl_backend);"
+          if declaration not in header:
+              header = header.replace(
+                  "void release_sdl_backend(struct sdl_backend* sdl_backend);",
+                  "void release_sdl_backend(struct sdl_backend* sdl_backend);\n" + declaration,
+                  1)
+          header_path.write_text(header)
+
+          ready_function = """int sdl_backend_is_ready(const struct sdl_backend* sdl_backend)
+          {
+              return sdl_backend != NULL && sdl_backend->error == 0;
+          }
+
+          """
+          marker = "void release_sdl_backend(struct sdl_backend* sdl_backend)"
+          if backend.count(marker) != 1:
+              raise SystemExit("Funcao release_sdl_backend nao encontrada exatamente uma vez")
+          backend = backend.replace(marker, ready_function + marker, 1)
+          backend_path.write_text(backend)
+
+          rom_open_success = "    return l_sdl_backend != NULL ? 1 : 0;"
+          rom_open_fixed = """    const int audio_ready = sdl_backend_is_ready(l_sdl_backend);
+              DebugMessage(audio_ready ? M64MSG_INFO : M64MSG_WARNING,
+                  "N64ANDROID AUDIO: RomOpen backend=%p dispositivo_pronto=%d",
+                  (void*) l_sdl_backend, audio_ready);
+              /* Audio failure must not prevent the video/Core from running. */
+              return l_sdl_backend != NULL ? 1 : 0;"""
+          if text.count(rom_open_success) != 1:
+              raise SystemExit("Retorno de RomOpen instrumentado nao encontrado")
+          text = text.replace(rom_open_success, rom_open_fixed, 1)
+          path.write_text(text)
 
           PY
           git -C third_party/mupen64plus-audio-sdl diff --check
@@ -406,6 +453,9 @@ jobs:
           cp "$AUDIO_PLUGIN" build/native-libs/arm64-v8a/libmupen64plus-audio-sdl.so
           readelf -d build/native-libs/arm64-v8a/libmupen64plus-audio-sdl.so
           file build/native-libs/arm64-v8a/libmupen64plus-audio-sdl.so
+          strings build/native-libs/arm64-v8a/libmupen64plus-audio-sdl.so | grep -F "SDL_Init resultado="
+          strings build/native-libs/arm64-v8a/libmupen64plus-audio-sdl.so | grep -F "RomOpen backend="
+          strings build/native-libs/arm64-v8a/libmupen64plus-audio-sdl.so | grep -F "dispositivo_pronto="
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -431,6 +481,9 @@ jobs:
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus-video-GLideN64.so"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus-rsp-hle.so"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus-audio-sdl.so"
+          unzip -p "$APK" lib/arm64-v8a/libmupen64plus-audio-sdl.so > build/audio-plugin-from-apk.so
+          strings build/audio-plugin-from-apk.so | grep -F "SDL_Init resultado="
+          strings build/audio-plugin-from-apk.so | grep -F "dispositivo_pronto="
           unzip -p "$APK" lib/arm64-v8a/libmupen64plus-video-GLideN64.so > build/gliden64-from-apk.so
           for symbol in PluginGetVersion PluginStartup PluginShutdown ChangeWindow InitiateGFX MoveScreen ProcessDList ProcessRDPList RomClosed RomOpen ShowCFB UpdateScreen ViStatusChanged ViWidthChanged ReadScreen2 SetRenderingCallback FBRead FBWrite FBGetFrameBufferInfo; do
             readelf --dyn-syms -W build/gliden64-from-apk.so | grep -E "[[:space:]]${symbol}$"

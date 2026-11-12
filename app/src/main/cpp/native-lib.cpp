@@ -65,6 +65,24 @@ int g_androidVideoWidth = 640;
 int g_androidVideoHeight = 480;
 int g_androidVideoAttributes[14] = {};
 
+void logAndroidVideoEvent(const char* event) {
+    const EGLContext context = eglGetCurrentContext();
+    const EGLDisplay display = eglGetCurrentDisplay();
+    const EGLSurface surface = eglGetCurrentSurface(EGL_DRAW);
+    const char* version = nullptr;
+    if (context != EGL_NO_CONTEXT && display != EGL_NO_DISPLAY &&
+        surface != EGL_NO_SURFACE) {
+        version = reinterpret_cast<const char*>(glGetString(GL_VERSION));
+    }
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidEGLTrace",
+                        "event=%s tid=%ld context=%p display=%p surface=%p gles=%s",
+                        event, static_cast<long>(syscall(SYS_gettid)),
+                        reinterpret_cast<void*>(context),
+                        reinterpret_cast<void*>(display),
+                        reinterpret_cast<void*>(surface),
+                        version != nullptr ? version : "(none)");
+}
+
 bool androidVideoContextReady() {
     return eglGetCurrentContext() != EGL_NO_CONTEXT &&
            eglGetCurrentDisplay() != EGL_NO_DISPLAY &&
@@ -84,9 +102,10 @@ bool androidVideoGetGlesVersion(int* major, int* minor) {
     return true;
 }
 m64p_error androidVideoInit() {
+    logAndroidVideoEvent("VidExt_Init");
     return androidVideoContextReady() ? M64ERR_SUCCESS : M64ERR_INVALID_STATE;
 }
-m64p_error androidVideoQuit() { return M64ERR_SUCCESS; }
+m64p_error androidVideoQuit() { logAndroidVideoEvent("VidExt_Quit"); return M64ERR_SUCCESS; }
 m64p_error androidVideoListModes(m64p_2d_size* sizes, int* count) {
     if (count == nullptr) return M64ERR_INPUT_ASSERT;
     if (sizes == nullptr || *count < 1) { *count = 1; return M64ERR_SUCCESS; }
@@ -103,6 +122,7 @@ m64p_error androidVideoListRates(m64p_2d_size, int* rates, int* count) {
     return M64ERR_SUCCESS;
 }
 m64p_error androidVideoSetMode(int width, int height, int, int, int) {
+    logAndroidVideoEvent("VidExt_SetVideoMode");
     if (!androidVideoContextReady()) return M64ERR_INVALID_STATE;
     if (width <= 0 || height <= 0) return M64ERR_INPUT_INVALID;
     g_androidVideoWidth = width;
@@ -110,9 +130,12 @@ m64p_error androidVideoSetMode(int width, int height, int, int, int) {
     return M64ERR_SUCCESS;
 }
 m64p_error androidVideoSetModeRate(int width, int height, int bits, int mode, int flags, int) {
+    logAndroidVideoEvent("VidExt_SetVideoModeWithRate");
     return androidVideoSetMode(width, height, bits, mode, flags);
 }
 m64p_function androidVideoGetProc(const char* name) {
+    if (name != nullptr && (std::strcmp(name, "glGetString") == 0 || std::strcmp(name, "glBindFramebuffer") == 0))
+        logAndroidVideoEvent("VidExt_GL_GetProcAddress");
     if (name == nullptr || !androidVideoContextReady()) return nullptr;
     auto proc = eglGetProcAddress(name);
     if (proc != nullptr) return reinterpret_cast<m64p_function>(proc);
@@ -174,7 +197,13 @@ m64p_error androidVideoSwapBuffers() {
     // M64CMD_EXECUTE occupies the GLSurfaceView GL thread. While the Core's
     // synchronous loop is active, GLSurfaceView cannot reach its normal
     // post-onDrawFrame swap, so the video extension presents completed frames.
-    if (!androidVideoContextReady()) {
+    // This is the hot per-frame path: validate EGL handles directly instead
+    // of calling androidVideoContextReady(), which also performs glGetString().
+    const EGLContext context = eglGetCurrentContext();
+    const EGLDisplay display = eglGetCurrentDisplay();
+    const EGLSurface surface = eglGetCurrentSurface(EGL_DRAW);
+    if (context == EGL_NO_CONTEXT || display == EGL_NO_DISPLAY ||
+        surface == EGL_NO_SURFACE) {
         __android_log_print(ANDROID_LOG_ERROR, "N64AndroidVideo",
                             "Swap de video recusado: contexto EGL ausente. TID=%ld",
                             static_cast<long>(syscall(SYS_gettid)));
@@ -186,13 +215,11 @@ m64p_error androidVideoSwapBuffers() {
         __android_log_print(ANDROID_LOG_INFO, "N64AndroidVideo",
                             "Callback de apresentacao #%llu na thread GL. Contexto=%p Surface=%p TID=%ld",
                             static_cast<unsigned long long>(frame),
-                            reinterpret_cast<void*>(eglGetCurrentContext()),
-                            reinterpret_cast<void*>(eglGetCurrentSurface(EGL_DRAW)),
+                            reinterpret_cast<void*>(context),
+                            reinterpret_cast<void*>(surface),
                             static_cast<long>(syscall(SYS_gettid)));
     }
 
-    const EGLDisplay display = eglGetCurrentDisplay();
-    const EGLSurface surface = eglGetCurrentSurface(EGL_DRAW);
     if (eglSwapBuffers(display, surface) == EGL_TRUE) return M64ERR_SUCCESS;
 
     const EGLint error = eglGetError();
@@ -769,8 +796,9 @@ Java_com_jsr_n64android_MainActivity_nativeLoadGfxPlugin(
         dlclose(plugin);
         return makeString(env, "PluginStartup nao encontrado apos validacao dos simbolos.");
     }
+    logAndroidVideoEvent("PluginStartup_before");
     __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
-                        "nativeLoadGfxPlugin: chamando PluginStartup; EGLContext=%p GLES=%s",
+                        "nativeLoadGfxPlugin: chamando PluginStartup; EGLContext=%p GLES=%s", 
                         reinterpret_cast<void*>(startupContext),
                         reinterpret_cast<const char*>(startupGlVersion));
     const int startupResult = startup(g_coreHandle, nullptr, coreDebugCallback);
@@ -785,6 +813,7 @@ Java_com_jsr_n64android_MainActivity_nativeLoadGfxPlugin(
         return makeString(env, startupStatus);
     }
 
+    logAndroidVideoEvent("PluginStartup_after");
     g_gfxPluginHandle = plugin;
     g_gfxPluginStarted = true;
     __android_log_print(ANDROID_LOG_INFO, "N64AndroidGFX",
@@ -1131,13 +1160,18 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
         __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow", "M64CMD_ROM_OPEN concluido.");
     }
 
+    // Mupen64Plus Core exige a ordem GFX -> AUDIO -> INPUT -> RSP.
+    // plugin_connect() em src/plugin/plugin.c emite o aviso de ordem incorreta
+    // quando GFX vem depois de AUDIO/INPUT/RSP, AUDIO depois de INPUT/RSP,
+    // ou INPUT depois de RSP. O RSP é anexado por último porque recebe os
+    // callbacks do GFX e do AUDIO durante plugin_connect_rsp().
     if (!g_gfxAttached) {
         const m64p_error attachResult = attachPlugin(
             M64PLUGIN_GFX, reinterpret_cast<m64p_dynlib_handle>(g_gfxPluginHandle));
         if (attachResult != M64ERR_SUCCESS) {
             char status[320];
             std::snprintf(status, sizeof(status),
-                "ROM aberta no Core, mas CoreAttachPlugin(GFX) falhou: codigo %d. A ROM permanece aberta para nova tentativa.",
+                "ROM aberta, mas CoreAttachPlugin(GFX) falhou: codigo %d. A ROM permanece aberta para nova tentativa.",
                 static_cast<int>(attachResult));
             return makeString(env, status);
         }
@@ -1145,32 +1179,19 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
         __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
                             "CoreAttachPlugin(GFX) retornou M64ERR_SUCCESS; InitiateGFX concluido pelo Core.");
     }
-    if (!g_rspAttached) {
-        const m64p_error rspAttachResult = attachPlugin(
-            M64PLUGIN_RSP, reinterpret_cast<m64p_dynlib_handle>(g_rspPluginHandle));
-        if (rspAttachResult != M64ERR_SUCCESS) {
-            char status[384];
-            std::snprintf(status, sizeof(status),
-                "ROM aberta e GFX anexado, mas CoreAttachPlugin(RSP) falhou: codigo %d. RSP permanece carregado para nova tentativa.",
-                static_cast<int>(rspAttachResult));
-            return makeString(env, status);
-        }
-        g_rspAttached = true;
-        __android_log_print(ANDROID_LOG_INFO, "N64AndroidRSP",
-                            "CoreAttachPlugin(RSP) retornou M64ERR_SUCCESS; InitiateRSP concluido pelo Core.");
-    }
     if (!g_audioAttached) {
         const m64p_error audioAttachResult = attachPlugin(
             M64PLUGIN_AUDIO, reinterpret_cast<m64p_dynlib_handle>(g_audioPluginHandle));
         if (audioAttachResult != M64ERR_SUCCESS) {
             char status[384];
             std::snprintf(status, sizeof(status),
-                "ROM aberta e GFX/RSP anexados, mas CoreAttachPlugin(AUDIO) falhou: codigo %d.",
+                "ROM aberta e GFX anexado, mas CoreAttachPlugin(AUDIO) falhou: codigo %d.",
                 static_cast<int>(audioAttachResult));
             return makeString(env, status);
         }
         g_audioAttached = true;
-
+        __android_log_print(ANDROID_LOG_INFO, "N64AndroidAudio",
+                            "CoreAttachPlugin(AUDIO) retornou M64ERR_SUCCESS.");
     }
     if (!g_inputAttached) {
         const m64p_error inputAttachResult = attachPlugin(
@@ -1178,13 +1199,27 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
         if (inputAttachResult != M64ERR_SUCCESS) {
             char status[384];
             std::snprintf(status, sizeof(status),
-                "ROM aberta, GFX/RSP anexados, mas CoreAttachPlugin(INPUT) falhou: codigo %d.",
+                "ROM aberta, GFX/AUDIO anexados, mas CoreAttachPlugin(INPUT) falhou: codigo %d.",
                 static_cast<int>(inputAttachResult));
             return makeString(env, status);
         }
         g_inputAttached = true;
         __android_log_print(ANDROID_LOG_INFO, "N64AndroidInput",
                             "CoreAttachPlugin(INPUT) concluido; controle 1 conectado.");
+    }
+    if (!g_rspAttached) {
+        const m64p_error rspAttachResult = attachPlugin(
+            M64PLUGIN_RSP, reinterpret_cast<m64p_dynlib_handle>(g_rspPluginHandle));
+        if (rspAttachResult != M64ERR_SUCCESS) {
+            char status[384];
+            std::snprintf(status, sizeof(status),
+                "ROM aberta e GFX/AUDIO/INPUT anexados, mas CoreAttachPlugin(RSP) falhou: codigo %d. RSP permanece carregado para nova tentativa.",
+                static_cast<int>(rspAttachResult));
+            return makeString(env, status);
+        }
+        g_rspAttached = true;
+        __android_log_print(ANDROID_LOG_INFO, "N64AndroidRSP",
+                            "CoreAttachPlugin(RSP) retornou M64ERR_SUCCESS; InitiateRSP concluido pelo Core.");
     }
     if (g_coreRuntime.phase() == CoreRuntimeCoordinator::Phase::RomOpen &&
         !g_coreRuntime.markPluginsAttached()) {
@@ -1307,6 +1342,7 @@ Java_com_jsr_n64android_MainActivity_nativeExecuteCore(JNIEnv* env, jobject /* t
     // A concurrent STOP now waits for this run's post-reset R4300 marker.
     g_stopCommandIssued.store(false);
     g_coreExecuting.store(true);
+    logAndroidVideoEvent("M64CMD_EXECUTE_before");
     __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow",
                         "Entrando em M64CMD_EXECUTE na thread GL. TID=%ld",
                         static_cast<long>(syscall(SYS_gettid)));
@@ -1315,6 +1351,7 @@ Java_com_jsr_n64android_MainActivity_nativeExecuteCore(JNIEnv* env, jobject /* t
 
     // CoreDoCommand is synchronous: after it returns, callbacks from the
     // emulation loop have ceased and the Execute lease can safely drain.
+    logAndroidVideoEvent("M64CMD_EXECUTE_after");
     g_coreExecuting.store(false);
     g_runLoopHandshake.markExecuteReturned();
     const bool lifecycleReturned = g_coreRuntime.markExecuteReturned();
@@ -1611,7 +1648,9 @@ Java_com_jsr_n64android_CoreNativeBridge_nativeShutdown(JNIEnv* env, jobject /* 
                 dlsym(g_gfxPluginHandle, "PluginShutdown"));
             if (pluginShutdown == nullptr)
                 return makeString(env, "PluginShutdown nao encontrado; bibliotecas mantidas carregadas.");
+            logAndroidVideoEvent("PluginShutdown_before");
             const int pluginResult = pluginShutdown();
+            logAndroidVideoEvent("PluginShutdown_after");
             if (pluginResult != 0) {
                 char status[256];
                 std::snprintf(status, sizeof(status),
