@@ -69,7 +69,7 @@ class MainActivity : Activity() {
     private val controllerPressed = mutableSetOf<Int>()
     @Volatile private var controllerAxisX = 0
     @Volatile private var controllerAxisY = 0
-    private var glView: SurfaceEglGameView? = null
+    private var glView: GLSurfaceView? = null
     @Volatile private var glSurfaceReady = false
     @Volatile private var glSurfaceCreatedCount = 0
     @Volatile private var lifecycleTestEnabled = false
@@ -252,11 +252,6 @@ class MainActivity : Activity() {
             }
         }
 
-        val surfaceEglButton = Button(this).apply {
-            text = "12 - Testar SurfaceView + EGL próprio"
-            setOnClickListener { showSurfaceEglTest() }
-        }
-
         val backButton = Button(this).apply {
             text = "Voltar ao inicio"
             setOnClickListener { showHomeScreen() }
@@ -278,7 +273,6 @@ class MainActivity : Activity() {
             addView(glThreadButton)
             addView(glOperationsButton)
             addView(glLifecycleButton)
-            addView(surfaceEglButton)
         }
 
         rootLayout = LinearLayout(this).apply {
@@ -483,59 +477,6 @@ class MainActivity : Activity() {
         }
 
         setContentView(homeLayout)
-    }
-
-    private fun showSurfaceEglTest() {
-        diagnosticScreenVisible = true
-        val status = TextView(this).apply {
-            text = "Resultado do teste 13 aparecerá aqui."
-            textSize = 14f
-            setPadding(16, 12, 16, 12)
-            setTextIsSelectable(true)
-        }
-        val frameStatus = TextView(this).apply {
-            text = "Aguardando a superfície Android..."
-            textSize = 13f
-            setPadding(16, 8, 16, 8)
-        }
-        val testView = SurfaceEglTestView(this).apply {
-            onStatus = { message -> frameStatus.text = message }
-        }
-        val page = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(Button(this@MainActivity).apply {
-                text = "Voltar aos diagnósticos"
-                setOnClickListener {
-                    testView.release()
-                    diagnosticScreenVisible = true
-                    setContentView(ScrollView(this@MainActivity).apply {
-                        isFillViewport = true
-                        addView(rootLayout)
-                    })
-                }
-            })
-            addView(status)
-            addView(frameStatus)
-            addView(Button(this@MainActivity).apply {
-                text = "13 - Testar fila EGL + JNI"
-                setOnClickListener {
-                    status.text = "Preparando teste da fila EGL e da chamada JNI..."
-                    try {
-                        loadNativeLibrary()
-                        testView.runQueueDiagnostic(
-                            nativeContextCheck = { nativeVerifyEglContext() },
-                            onComplete = { result -> status.text = result }
-                        )
-                    } catch (error: Throwable) {
-                        status.text = "Falha ao preparar JNI: ${error.javaClass.simpleName}: ${error.message}"
-                    }
-                }
-            })
-            addView(testView, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
-            ))
-        }
-        setContentView(page)
     }
 
     private fun createDiagnosticGroup(): LinearLayout = LinearLayout(this).apply {
@@ -1135,12 +1076,9 @@ class MainActivity : Activity() {
             it.onPause()
         }
 
-        val surface = SurfaceEglGameView(this).apply {
+        val surface = GLSurfaceView(this).apply {
             setEGLContextClientVersion(3)
             preserveEGLContextOnPause = true
-            // GLideN64 presents frames through VidExt_SwapBuffers; do not clear/swap
-            // again from the SurfaceView renderer or it can replace the game image.
-            externalFramePresentation = registerVideoExtension
             setRenderer(object : GLSurfaceView.Renderer {
                 private var triangleProgram = 0
                 private var triangleVertices: FloatBuffer? = null
