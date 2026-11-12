@@ -98,6 +98,46 @@ class SurfaceEglTestView @JvmOverloads constructor(
         super.onDetachedFromWindow()
     }
 
+    /**
+     * Runs a diagnostic batch serially on the EGL thread while its context is current.
+     * The callback is always delivered on the main thread.
+     */
+    fun runQueueDiagnostic(
+        nativeContextCheck: () -> String,
+        onComplete: (String) -> Unit
+    ) {
+        if (released) {
+            onComplete("Teste cancelado: Surface/EGL já foi liberado.")
+            return
+        }
+        val accepted = eglHandler.post {
+            val report = try {
+                if (released || !makeCurrent()) {
+                    "Falha: não foi possível tornar o contexto EGL atual na thread de renderização."
+                } else {
+                    val threadName = Thread.currentThread().name
+                    val before = EGL14.eglGetCurrentContext()
+                    val glVersion = GLES20.glGetString(GLES20.GL_VERSION) ?: "desconhecida"
+                    val renderer = GLES20.glGetString(GLES20.GL_RENDERER) ?: "desconhecido"
+                    val nativeResult = nativeContextCheck()
+                    val after = EGL14.eglGetCurrentContext()
+                    val sameContext = before == after && after != EGL14.EGL_NO_CONTEXT
+                    "FILA EGL concluída\n" +
+                        "Thread: $threadName\n" +
+                        "Etapa 1: contexto EGL atual confirmado\n" +
+                        "OpenGL: $glVersion\nGPU: $renderer\n" +
+                        "Etapa 2: verificação JNI\n$nativeResult\n" +
+                        "Etapa 3: contexto preservado após JNI: " +
+                        if (sameContext) "SIM" else "NÃO"
+                }
+            } catch (error: Throwable) {
+                "Falha durante a fila EGL: ${error.javaClass.simpleName}: ${error.message}"
+            }
+            mainHandler.post { if (!released) onComplete(report) }
+        }
+        if (!accepted) onComplete("Falha: a thread EGL não aceitou a tarefa.")
+    }
+
     fun setRenderingEnabled(enabled: Boolean) {
         renderingEnabled = enabled
         if (enabled && !released) eglHandler.post { scheduleFrame() }
