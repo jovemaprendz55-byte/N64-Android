@@ -1321,11 +1321,20 @@ class MainActivity : Activity() {
             // SDL is loaded by the VM (not only dlopen) so its JNI_OnLoad registers
             // the Android Java callbacks before the audio plugin starts SDL.
             System.loadLibrary("SDL2")
-            org.libsdl.app.SDLActivity.nativeSetupJNI()
-            org.libsdl.app.SDLAudioManager.nativeSetupJNI()
-            org.libsdl.app.SDLControllerManager.nativeSetupJNI()
-            org.libsdl.app.SDLAudioManager.initialize()
-            org.libsdl.app.SDLAudioManager.setContext(this)
+
+            // Invoke the official SDL Java bootstrap reflectively. This keeps the
+            // custom Activity independent of compile-time references to SDL classes.
+            val sdlActivity = Class.forName("org.libsdl.app.SDLActivity")
+            val sdlAudio = Class.forName("org.libsdl.app.SDLAudioManager")
+            val sdlController = Class.forName("org.libsdl.app.SDLControllerManager")
+
+            sdlActivity.getDeclaredMethod("nativeSetupJNI").invoke(null)
+            sdlAudio.getDeclaredMethod("nativeSetupJNI").invoke(null)
+            sdlController.getDeclaredMethod("nativeSetupJNI").invoke(null)
+            sdlAudio.getDeclaredMethod("initialize").invoke(null)
+            sdlAudio.getDeclaredMethod("setContext", android.content.Context::class.java)
+                .invoke(null, this)
+
             android.util.Log.i("N64SDLBootstrap", "SDL2 JNI e SDLAudioManager inicializados antes do Core.")
 
             System.loadLibrary("n64bridge")
