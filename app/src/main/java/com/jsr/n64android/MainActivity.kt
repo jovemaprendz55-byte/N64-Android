@@ -7,6 +7,11 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.Gravity
+import android.view.SurfaceHolder
+import android.view.SurfaceView
+import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -48,14 +53,7 @@ class MainActivity : Activity() {
                     selectedRomView.text = "Selecione uma ROM N64 primeiro."
                     isEnabled = false
                 } else {
-                    selectedRomView.text =
-                        "ROM pronta. O renderizador Vulkan ainda está sendo integrado. " +
-                        "O jogo não será iniciado pelo EGL/OpenGL."
-                    Toast.makeText(
-                        this@MainActivity,
-                        "Backend Vulkan ainda em desenvolvimento.",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    showVulkanSurface()
                 }
             }
         }
@@ -96,6 +94,65 @@ class MainActivity : Activity() {
 
     private fun selectedRomFile(): File =
         File(File(filesDir, "roms"), "selected.n64")
+
+    private fun showVulkanSurface() {
+        val status = TextView(this).apply {
+            text = "Aguardando superfície Vulkan..."
+            textSize = 14f
+            setTextColor(android.graphics.Color.WHITE)
+            setPadding(20, 20, 20, 20)
+        }
+        val surfaceView = SurfaceView(this)
+        val container = FrameLayout(this)
+        container.addView(surfaceView, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        ))
+        container.addView(status, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            Gravity.TOP
+        ))
+        container.addView(Button(this).apply {
+            text = "VOLTAR"
+            setOnClickListener {
+                try { VulkanNative.nativeShutdown() } catch (_: Throwable) {}
+                setContentView(homeLayout)
+                refreshSelectedRom()
+            }
+        }, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+        ))
+
+        var initialized = false
+        surfaceView.holder.addCallback(object : SurfaceHolder.Callback {
+            override fun surfaceCreated(holder: SurfaceHolder) {
+                try {
+                    status.text = VulkanNative.nativeInitialize(holder.surface)
+                    initialized = status.text.toString().startsWith("Superfície Vulkan Android criada")
+                } catch (error: Throwable) {
+                    status.text = "Falha ao iniciar Vulkan: ${error.message}"
+                }
+            }
+
+            override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+                status.text = if (initialized) {
+                    "Superfície Vulkan ativa (${width}x${height}). Renderização ainda não conectada."
+                } else {
+                    status.text
+                }
+            }
+
+            override fun surfaceDestroyed(holder: SurfaceHolder) {
+                try { VulkanNative.nativeShutdown() } catch (_: Throwable) {}
+                initialized = false
+            }
+        })
+        setContentView(container)
+    }
+
 
     private fun refreshSelectedRom() {
         val romFile = selectedRomFile()
