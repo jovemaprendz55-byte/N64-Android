@@ -252,6 +252,11 @@ class MainActivity : Activity() {
             }
         }
 
+        val surfaceEglButton = Button(this).apply {
+            text = "12 - Testar SurfaceView + EGL próprio"
+            setOnClickListener { showSurfaceEglTest() }
+        }
+
         val backButton = Button(this).apply {
             text = "Voltar ao inicio"
             setOnClickListener { showHomeScreen() }
@@ -273,6 +278,7 @@ class MainActivity : Activity() {
             addView(glThreadButton)
             addView(glOperationsButton)
             addView(glLifecycleButton)
+            addView(surfaceEglButton)
         }
 
         rootLayout = LinearLayout(this).apply {
@@ -477,6 +483,38 @@ class MainActivity : Activity() {
         }
 
         setContentView(homeLayout)
+    }
+
+    private fun showSurfaceEglTest() {
+        diagnosticScreenVisible = true
+        val status = TextView(this).apply {
+            text = "Aguardando a superfície Android..."
+            textSize = 14f
+            setPadding(16, 12, 16, 12)
+            setTextIsSelectable(true)
+        }
+        val testView = SurfaceEglTestView(this).apply {
+            onStatus = { message -> status.text = message }
+        }
+        val page = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(Button(this@MainActivity).apply {
+                text = "Voltar aos diagnósticos"
+                setOnClickListener {
+                    testView.release()
+                    diagnosticScreenVisible = true
+                    setContentView(ScrollView(this@MainActivity).apply {
+                        isFillViewport = true
+                        addView(rootLayout)
+                    })
+                }
+            })
+            addView(status)
+            addView(testView, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
+            ))
+        }
+        setContentView(page)
     }
 
     private fun createDiagnosticGroup(): LinearLayout = LinearLayout(this).apply {
