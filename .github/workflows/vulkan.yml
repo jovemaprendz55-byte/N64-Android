@@ -2,9 +2,11 @@ name: Android Vulkan branch build
 
 on:
   push:
-    branches: [vulkan]
+    branches:
+      - vulkan
   pull_request:
-    branches: [vulkan]
+    branches:
+      - vulkan
   workflow_dispatch:
 
 jobs:
@@ -34,54 +36,55 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK and NDK
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           packages: ''
-      - name: Install native build tools
+
+      - name: Install NDK and CMake
         run: sdkmanager "ndk;27.0.12077973" "cmake;3.22.1"
 
-      - name: Build SDL2 audio library without legacy GL video backends
+      - name: Build SDL2 audio library without OpenGL video
         run: |
           NDK="$ANDROID_HOME/ndk/27.0.12077973"
-          cmake -S third_party/SDL -B build/sdl2-arm64             -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake"             -DANDROID_ABI=arm64-v8a             -DANDROID_PLATFORM=android-23             -DSDL_SHARED=ON             -DSDL_STATIC=OFF             -DSDL_AUDIO=ON             -DSDL_VIDEO=OFF             -DSDL_RENDER=OFF             -DSDL_OPENGL=OFF             -DSDL_OPENGLES=OFF             -DSDL_VULKAN=OFF             -DSDL_TEST=OFF             -DSDL_TESTS=OFF
+          cmake -S third_party/SDL -B build/sdl2-arm64 \
+            -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-23 \
+            -DSDL_SHARED=ON \
+            -DSDL_STATIC=OFF \
+            -DSDL_AUDIO=ON \
+            -DSDL_VIDEO=OFF \
+            -DSDL_RENDER=OFF \
+            -DSDL_OPENGL=OFF \
+            -DSDL_OPENGLES=OFF \
+            -DSDL_VULKAN=OFF \
+            -DSDL_TEST=OFF \
+            -DSDL_TESTS=OFF
           cmake --build build/sdl2-arm64 --parallel 2
           test -s build/sdl2-arm64/libSDL2.so
 
       - name: Build Vulkan APK
         run: gradle --no-daemon assembleDebug
 
-      - name: Verify APK contains Vulkan and excludes legacy EGL renderer
+      - name: Verify Vulkan APK has no legacy graphics libraries
+        shell: bash
         run: |
           APK="app/build/outputs/apk/debug/app-debug.apk"
           test -s "$APK"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libn64vulkan.so"
-          if unzip -Z1 "$APK" | grep -E 'lib/arm64-v8a/lib(n64bridge|mupen64plus-video-GLideN64|mupen64plus-video-android)\\.so
-      - name: Upload Vulkan debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: n64-android-vulkan-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
-; then
-            echo "Legacy EGL/OpenGL native library unexpectedly packaged"
+          unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus.so"
+          if unzip -Z1 "$APK" | grep -E 'lib/arm64-v8a/lib(n64bridge|mupen64plus-video-GLideN64|mupen64plus-video-android)\.so$'; then
+            echo "Legacy EGL/OpenGL renderer unexpectedly packaged"
             exit 1
           fi
-          unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus.so"
           while IFS= read -r so; do
             unzip -p "$APK" "$so" > build/checked-native-library.so
             if readelf -d build/checked-native-library.so | grep -Eq 'libEGL|libGLES'; then
               echo "Unexpected EGL/GLES dependency in $so"
               exit 1
             fi
-          done < <(unzip -Z1 "$APK" | grep '\\.so
-      - name: Upload Vulkan debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: n64-android-vulkan-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
-)
+          done < <(unzip -Z1 "$APK" | grep '\.so$')
 
       - name: Upload Vulkan debug APK
         uses: actions/upload-artifact@v4
