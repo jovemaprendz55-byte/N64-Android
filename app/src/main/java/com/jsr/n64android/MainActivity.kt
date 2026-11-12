@@ -1066,7 +1066,7 @@ class MainActivity : Activity() {
                                 )
                                 android.util.Log.i(
                                     "N64AndroidVideo",
-                                    "Android Surface frame-rate hint aplicado: 60 FPS (fixed source)"
+                                    "Android Surface frame-rate hint aplicado: 60 FPS (default compatibility)"
                                 )
                             } else {
                                 android.util.Log.w(
