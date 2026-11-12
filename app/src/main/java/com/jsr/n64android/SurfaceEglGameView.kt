@@ -52,6 +52,9 @@ class SurfaceEglGameView @JvmOverloads constructor(
     private var requestedClientVersion = 3
 
     var preserveEGLContextOnPause: Boolean = true
+    /** When true, GLideN64 owns frame drawing and calls the Android video swap callback itself. */
+    @Volatile var externalFramePresentation: Boolean = false
+
     var renderMode: Int = RENDERMODE_WHEN_DIRTY
         set(value) {
             field = value
@@ -222,12 +225,15 @@ class SurfaceEglGameView @JvmOverloads constructor(
     }
 
     private fun requestRenderOnEglThread() {
-        if (released || !resumed || renderQueued || !makeCurrent()) return
+        // In gameplay mode the Core/plugin renders and swaps each completed frame
+        // through VidExt_SwapBuffers. A SurfaceView-side clear/swap here would
+        // overwrite the just-presented GLideN64 frame with the diagnostic background.
+        if (released || !resumed || externalFramePresentation || renderQueued || !makeCurrent()) return
         if (renderMode != RENDERMODE_CONTINUOUSLY && rendererCreated.not()) return
         renderQueued = true
         eglHandler.post {
             renderQueued = false
-            if (released || !resumed || !makeCurrent()) return@post
+            if (released || !resumed || externalFramePresentation || !makeCurrent()) return@post
             val target = renderer ?: return@post
             target.onDrawFrame(null)
             if (!EGL14.eglSwapBuffers(eglDisplay, eglSurface)) {
