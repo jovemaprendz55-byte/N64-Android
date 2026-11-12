@@ -3,7 +3,24 @@ project(n64vulkan LANGUAGES C CXX ASM)
 
 # Vulkan-only Android surface bridge. No EGL or OpenGL libraries are linked
 # into this branch's APK.
-add_library(n64vulkan SHARED native-vulkan.cpp)
+get_filename_component(N64_PROJECT_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../../.." ABSOLUTE)
+find_program(GLSLANG_VALIDATOR glslangValidator REQUIRED)
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+set(SHADER_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated-shaders")
+set(VERTEX_SPV "${SHADER_OUTPUT_DIR}/triangle.vert.spv")
+set(FRAGMENT_SPV "${SHADER_OUTPUT_DIR}/triangle.frag.spv")
+set(SHADER_HEADER "${SHADER_OUTPUT_DIR}/triangle_shaders.h")
+add_custom_command(OUTPUT "${SHADER_HEADER}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${SHADER_OUTPUT_DIR}"
+    COMMAND ${GLSLANG_VALIDATOR} -V "${CMAKE_CURRENT_SOURCE_DIR}/shaders/triangle.vert" -o "${VERTEX_SPV}"
+    COMMAND ${GLSLANG_VALIDATOR} -V "${CMAKE_CURRENT_SOURCE_DIR}/shaders/triangle.frag" -o "${FRAGMENT_SPV}"
+    COMMAND ${Python3_EXECUTABLE} "${N64_PROJECT_ROOT}/tools/embed_spirv.py" "${VERTEX_SPV}" "${FRAGMENT_SPV}" "${SHADER_HEADER}"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/shaders/triangle.vert" "${CMAKE_CURRENT_SOURCE_DIR}/shaders/triangle.frag" "${N64_PROJECT_ROOT}/tools/embed_spirv.py"
+    VERBATIM)
+add_custom_target(n64vulkan_shaders DEPENDS "${SHADER_HEADER}")
+add_library(n64vulkan SHARED native-vulkan.cpp "${SHADER_HEADER}")
+add_dependencies(n64vulkan n64vulkan_shaders)
+target_include_directories(n64vulkan PRIVATE "${SHADER_OUTPUT_DIR}")
 target_compile_features(n64vulkan PRIVATE cxx_std_17)
 target_compile_options(n64vulkan PRIVATE -Wall -Wextra -Werror)
 find_library(ANDROID_LIB android REQUIRED)
@@ -11,8 +28,6 @@ find_library(LOG_LIB log REQUIRED)
 find_library(VULKAN_LIB vulkan REQUIRED)
 target_link_libraries(n64vulkan PRIVATE ${ANDROID_LIB} ${LOG_LIB} ${VULKAN_LIB})
 
-get_filename_component(N64_PROJECT_ROOT
-    "${CMAKE_CURRENT_LIST_DIR}/../../../.." ABSOLUTE)
 set(N64_SDL2_LIBRARY "${N64_PROJECT_ROOT}/build/sdl2-arm64/libSDL2.so")
 set(N64_SDL2_INCLUDE "${N64_PROJECT_ROOT}/third_party/SDL/include")
 
