@@ -43,6 +43,16 @@ jobs:
           ref: 5d249570393f7a37e037abf22cd6012a4cc56a71
           path: third_party/SDL
 
+      - name: Add SDL Android Java JNI bridge classes
+        run: |
+          SDL_JAVA_DIR="$GITHUB_WORKSPACE/third_party/SDL/android-project/app/src/main/java/org/libsdl/app"
+          test -s "$SDL_JAVA_DIR/SDLActivity.java"
+          test -s "$SDL_JAVA_DIR/SDLAudioManager.java"
+          test -s "$SDL_JAVA_DIR/SDLControllerManager.java"
+          mkdir -p app/src/main/java/org/libsdl
+          cp -R "$SDL_JAVA_DIR" app/src/main/java/org/libsdl/app
+          test -s app/src/main/java/org/libsdl/app/SDLAudioManager.java
+
       - name: Checkout pinned GLideN64 renderer source
         uses: actions/checkout@v4
         with:
