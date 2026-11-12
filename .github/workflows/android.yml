@@ -133,7 +133,12 @@ jobs:
               DebugMessage(audio_ready ? M64MSG_INFO : M64MSG_ERROR,
                   "N64ANDROID AUDIO: RomOpen backend=%p dispositivo_pronto=%d",
                   (void*) l_sdl_backend, audio_ready);
-              return audio_ready;"""
+              if (!audio_ready) {
+                  release_sdl_backend(l_sdl_backend);
+                  l_sdl_backend = NULL;
+                  return 0;
+              }
+              return 1;"""
           if text.count(rom_open_success) != 1:
               raise SystemExit("Retorno de RomOpen instrumentado nao encontrado")
           text = text.replace(rom_open_success, rom_open_fixed, 1)
