@@ -197,7 +197,13 @@ m64p_error androidVideoSwapBuffers() {
     // M64CMD_EXECUTE occupies the GLSurfaceView GL thread. While the Core's
     // synchronous loop is active, GLSurfaceView cannot reach its normal
     // post-onDrawFrame swap, so the video extension presents completed frames.
-    if (!androidVideoContextReady()) {
+    // This is the hot per-frame path: validate EGL handles directly instead
+    // of calling androidVideoContextReady(), which also performs glGetString().
+    const EGLContext context = eglGetCurrentContext();
+    const EGLDisplay display = eglGetCurrentDisplay();
+    const EGLSurface surface = eglGetCurrentSurface(EGL_DRAW);
+    if (context == EGL_NO_CONTEXT || display == EGL_NO_DISPLAY ||
+        surface == EGL_NO_SURFACE) {
         __android_log_print(ANDROID_LOG_ERROR, "N64AndroidVideo",
                             "Swap de video recusado: contexto EGL ausente. TID=%ld",
                             static_cast<long>(syscall(SYS_gettid)));
@@ -209,13 +215,11 @@ m64p_error androidVideoSwapBuffers() {
         __android_log_print(ANDROID_LOG_INFO, "N64AndroidVideo",
                             "Callback de apresentacao #%llu na thread GL. Contexto=%p Surface=%p TID=%ld",
                             static_cast<unsigned long long>(frame),
-                            reinterpret_cast<void*>(eglGetCurrentContext()),
-                            reinterpret_cast<void*>(eglGetCurrentSurface(EGL_DRAW)),
+                            reinterpret_cast<void*>(context),
+                            reinterpret_cast<void*>(surface),
                             static_cast<long>(syscall(SYS_gettid)));
     }
 
-    const EGLDisplay display = eglGetCurrentDisplay();
-    const EGLSurface surface = eglGetCurrentSurface(EGL_DRAW);
     if (eglSwapBuffers(display, surface) == EGL_TRUE) return M64ERR_SUCCESS;
 
     const EGLint error = eglGetError();
