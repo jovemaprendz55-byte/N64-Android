@@ -110,32 +110,42 @@ class SurfaceEglTestView @JvmOverloads constructor(
             onComplete("Teste cancelado: Surface/EGL já foi liberado.")
             return
         }
-        val accepted = eglHandler.post {
-            val report = try {
-                if (released || !makeCurrent()) {
-                    "Falha: não foi possível tornar o contexto EGL atual na thread de renderização."
+
+        // Three separate posts prove FIFO execution on the dedicated EGL looper.
+        val results = arrayOfNulls<String>(3)
+        val firstAccepted = eglHandler.post {
+            results[0] = if (!released && makeCurrent()) {
+                "Tarefa 1: contexto EGL atual confirmado na thread ${Thread.currentThread().name}."
+            } else {
+                "Tarefa 1: FALHA ao ativar o contexto EGL."
+            }
+        }
+        val secondAccepted = eglHandler.post {
+            results[1] = try {
+                if (released || !makeCurrent() || results[0] == null ||
+                    results[0]?.contains("FALHA") == true) {
+                    "Tarefa 2: JNI não executada porque a tarefa 1 falhou."
                 } else {
-                    val threadName = Thread.currentThread().name
-                    val before = EGL14.eglGetCurrentContext()
-                    val glVersion = GLES20.glGetString(GLES20.GL_VERSION) ?: "desconhecida"
-                    val renderer = GLES20.glGetString(GLES20.GL_RENDERER) ?: "desconhecido"
-                    val nativeResult = nativeContextCheck()
-                    val after = EGL14.eglGetCurrentContext()
-                    val sameContext = before == after && after != EGL14.EGL_NO_CONTEXT
-                    "FILA EGL concluída\n" +
-                        "Thread: $threadName\n" +
-                        "Etapa 1: contexto EGL atual confirmado\n" +
-                        "OpenGL: $glVersion\nGPU: $renderer\n" +
-                        "Etapa 2: verificação JNI\n$nativeResult\n" +
-                        "Etapa 3: contexto preservado após JNI: " +
-                        if (sameContext) "SIM" else "NÃO"
+                    "Tarefa 2: JNI executada.\n${nativeContextCheck()}"
                 }
             } catch (error: Throwable) {
-                "Falha durante a fila EGL: ${error.javaClass.simpleName}: ${error.message}"
+                "Tarefa 2: FALHA JNI: ${error.javaClass.simpleName}: ${error.message}"
             }
+        }
+        val thirdAccepted = eglHandler.post {
+            val contextPreserved = !released && makeCurrent() &&
+                EGL14.eglGetCurrentContext() != EGL14.EGL_NO_CONTEXT
+            results[2] = "Tarefa 3: contexto EGL após JNI: " +
+                if (contextPreserved) "ATIVO" else "PERDIDO"
+            val report = results.joinToString("\n\n") { it ?: "Tarefa não executada." } +
+                "\n\nFila FIFO: " +
+                if (firstAccepted && secondAccepted && thirdAccepted) "3 tarefas aceitas" else "FALHA ao enfileirar"
             mainHandler.post { if (!released) onComplete(report) }
         }
-        if (!accepted) onComplete("Falha: a thread EGL não aceitou a tarefa.")
+
+        if (!firstAccepted || !secondAccepted || !thirdAccepted) {
+            onComplete("Falha: a thread EGL não aceitou todas as tarefas da fila.")
+        }
     }
 
     fun setRenderingEnabled(enabled: Boolean) {
