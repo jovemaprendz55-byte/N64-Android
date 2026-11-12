@@ -1318,6 +1318,16 @@ class MainActivity : Activity() {
 
     private fun loadNativeLibrary() {
         if (!nativeLibraryLoaded) {
+            // SDL is loaded by the VM (not only dlopen) so its JNI_OnLoad registers
+            // the Android Java callbacks before the audio plugin starts SDL.
+            System.loadLibrary("SDL2")
+            org.libsdl.app.SDLActivity.nativeSetupJNI()
+            org.libsdl.app.SDLAudioManager.nativeSetupJNI()
+            org.libsdl.app.SDLControllerManager.nativeSetupJNI()
+            org.libsdl.app.SDLAudioManager.initialize()
+            org.libsdl.app.SDLAudioManager.setContext(this)
+            android.util.Log.i("N64SDLBootstrap", "SDL2 JNI e SDLAudioManager inicializados antes do Core.")
+
             System.loadLibrary("n64bridge")
             nativeLibraryLoaded = true
         }
