@@ -132,7 +132,8 @@ class SurfaceEglTestView @JvmOverloads constructor(
                 "Tarefa 2: FALHA JNI: ${error.javaClass.simpleName}: ${error.message}"
             }
         }
-        val thirdAccepted = eglHandler.post {
+        var thirdAccepted = false
+        thirdAccepted = eglHandler.post {
             val contextPreserved = !released && makeCurrent() &&
                 EGL14.eglGetCurrentContext() != EGL14.EGL_NO_CONTEXT
             results[2] = "Tarefa 3: contexto EGL após JNI: " +
