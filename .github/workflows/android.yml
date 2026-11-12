@@ -91,7 +91,9 @@ jobs:
           backend_path = Path("third_party/mupen64plus-audio-sdl/src/sdl_backend.c")
           backend = backend_path.read_text()
           old_condition = "if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER) < 0)"
-          new_condition = """int n64_sdl_init_result = SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER);
+          new_condition = """/* This Android app owns its Java/native entry point and does not use SDL_main. */
+                  SDL_SetMainReady();
+                  int n64_sdl_init_result = SDL_Init(SDL_INIT_AUDIO | SDL_INIT_TIMER);
                   DebugMessage(M64MSG_ERROR,
                       "N64ANDROID AUDIO: SDL_Init resultado=%d erro=%s SDL_WasInit=0x%x",
                       n64_sdl_init_result, SDL_GetError(), SDL_WasInit(0));
@@ -130,15 +132,11 @@ jobs:
 
           rom_open_success = "    return l_sdl_backend != NULL ? 1 : 0;"
           rom_open_fixed = """    const int audio_ready = sdl_backend_is_ready(l_sdl_backend);
-              DebugMessage(audio_ready ? M64MSG_INFO : M64MSG_ERROR,
+              DebugMessage(audio_ready ? M64MSG_INFO : M64MSG_WARNING,
                   "N64ANDROID AUDIO: RomOpen backend=%p dispositivo_pronto=%d",
                   (void*) l_sdl_backend, audio_ready);
-              if (!audio_ready) {
-                  release_sdl_backend(l_sdl_backend);
-                  l_sdl_backend = NULL;
-                  return 0;
-              }
-              return 1;"""
+              /* Audio failure must not prevent the video/Core from running. */
+              return l_sdl_backend != NULL ? 1 : 0;"""
           if text.count(rom_open_success) != 1:
               raise SystemExit("Retorno de RomOpen instrumentado nao encontrado")
           text = text.replace(rom_open_success, rom_open_fixed, 1)
