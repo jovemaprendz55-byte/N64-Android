@@ -56,16 +56,32 @@ jobs:
           APK="app/build/outputs/apk/debug/app-debug.apk"
           test -s "$APK"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libn64vulkan.so"
-          if unzip -Z1 "$APK" | grep -E "lib( EGL|GLES|n64bridge|mupen64plus-video-GLideN64|mupen64plus-video-android)"; then
+          if unzip -Z1 "$APK" | grep -E 'lib/arm64-v8a/lib(n64bridge|mupen64plus-video-GLideN64|mupen64plus-video-android)\\.so
+      - name: Upload Vulkan debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: n64-android-vulkan-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+; then
             echo "Legacy EGL/OpenGL native library unexpectedly packaged"
             exit 1
           fi
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus.so"
-          readelf -d app/build/intermediates/merged_native_libs/debug/mergeDebugNativeLibs/out/lib/arm64-v8a/libn64vulkan.so | tee build-vulkan-dynamic.txt
-          if grep -E "libEGL|libGLES" build-vulkan-dynamic.txt; then
-            echo "Vulkan bridge has an EGL/GLES dynamic dependency"
-            exit 1
-          fi
+          while IFS= read -r so; do
+            unzip -p "$APK" "$so" > build/checked-native-library.so
+            if readelf -d build/checked-native-library.so | grep -Eq 'libEGL|libGLES'; then
+              echo "Unexpected EGL/GLES dependency in $so"
+              exit 1
+            fi
+          done < <(unzip -Z1 "$APK" | grep '\\.so
+      - name: Upload Vulkan debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: n64-android-vulkan-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+)
 
       - name: Upload Vulkan debug APK
         uses: actions/upload-artifact@v4
