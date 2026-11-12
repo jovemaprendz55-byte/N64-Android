@@ -503,7 +503,7 @@ jobs:
           if body.count(swap_call) != 1:
               raise SystemExit("Expected one normal wnd.swapBuffers call in renderBuffer")
           body = body.replace(swap_call,
-              "\\tN64ANDROID_FB_MEASURE(\\"swapBuffers\\", wnd.swapBuffers());", 1)
+              '\tN64ANDROID_FB_MEASURE("swapBuffers", wnd.swapBuffers());', 1)
 
           fb = fb[:fb_start] + body + fb[fb_end:]
           fb_path.write_text(fb)
