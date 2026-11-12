@@ -27,6 +27,13 @@ VkSwapchainKHR g_swapchain = VK_NULL_HANDLE;
 VkFormat g_swapchainFormat = VK_FORMAT_UNDEFINED;
 std::vector<VkImage> g_swapchainImages;
 std::vector<VkImageView> g_swapchainViews;
+VkRenderPass g_renderPass = VK_NULL_HANDLE;
+std::vector<VkFramebuffer> g_framebuffers;
+VkCommandPool g_commandPool = VK_NULL_HANDLE;
+std::vector<VkCommandBuffer> g_commandBuffers;
+VkSemaphore g_imageAvailable = VK_NULL_HANDLE;
+VkSemaphore g_renderFinished = VK_NULL_HANDLE;
+VkFence g_frameFence = VK_NULL_HANDLE;
 
 PFN_vkDestroySurfaceKHR pDestroySurface = nullptr;
 PFN_vkGetPhysicalDeviceSurfaceSupportKHR pGetSurfaceSupport = nullptr;
@@ -39,6 +46,24 @@ PFN_vkGetSwapchainImagesKHR pGetSwapchainImages = nullptr;
 
 void destroySwapchainLocked() {
     if (g_device != VK_NULL_HANDLE) {
+        vkDeviceWaitIdle(g_device);
+        for (VkFramebuffer framebuffer : g_framebuffers)
+            if (framebuffer != VK_NULL_HANDLE) vkDestroyFramebuffer(g_device, framebuffer, nullptr);
+        g_framebuffers.clear();
+        if (g_renderPass != VK_NULL_HANDLE) vkDestroyRenderPass(g_device, g_renderPass, nullptr);
+        g_renderPass = VK_NULL_HANDLE;
+        if (g_commandPool != VK_NULL_HANDLE)
+            vkDestroyCommandPool(g_device, g_commandPool, nullptr);
+        g_commandPool = VK_NULL_HANDLE;
+        g_commandBuffers.clear();
+        if (g_imageAvailable != VK_NULL_HANDLE)
+            vkDestroySemaphore(g_device, g_imageAvailable, nullptr);
+        if (g_renderFinished != VK_NULL_HANDLE)
+            vkDestroySemaphore(g_device, g_renderFinished, nullptr);
+        if (g_frameFence != VK_NULL_HANDLE) vkDestroyFence(g_device, g_frameFence, nullptr);
+        g_imageAvailable = VK_NULL_HANDLE;
+        g_renderFinished = VK_NULL_HANDLE;
+        g_frameFence = VK_NULL_HANDLE;
         auto destroyView = reinterpret_cast<PFN_vkDestroyImageView>(
             vkGetDeviceProcAddr(g_device, "vkDestroyImageView"));
         if (destroyView) {
@@ -216,6 +241,186 @@ bool createLogicalDevice(std::string& error) {
     return true;
 }
 
+bool createRenderResources(std::string& error) {
+    VkAttachmentDescription attachment{};
+    attachment.format = g_swapchainFormat;
+    attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    VkAttachmentReference colorReference{};
+    colorReference.attachment = 0;
+    colorReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    VkSubpassDescription subpass{};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &colorReference;
+
+    VkSubpassDependency dependency{};
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass = 0;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+    VkRenderPassCreateInfo renderInfo{};
+    renderInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderInfo.attachmentCount = 1;
+    renderInfo.pAttachments = &attachment;
+    renderInfo.subpassCount = 1;
+    renderInfo.pSubpasses = &subpass;
+    renderInfo.dependencyCount = 1;
+    renderInfo.pDependencies = &dependency;
+    VkResult status = vkCreateRenderPass(g_device, &renderInfo, nullptr, &g_renderPass);
+    if (status != VK_SUCCESS) {
+        error = "vkCreateRenderPass falhou: " + std::to_string(status);
+        return false;
+    }
+
+    for (VkImageView view : g_swapchainViews) {
+        VkFramebufferCreateInfo framebufferInfo{};
+        framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebufferInfo.renderPass = g_renderPass;
+        framebufferInfo.attachmentCount = 1;
+        framebufferInfo.pAttachments = &view;
+        framebufferInfo.width = ANativeWindow_getWidth(g_window);
+        framebufferInfo.height = ANativeWindow_getHeight(g_window);
+        framebufferInfo.layers = 1;
+        VkFramebuffer framebuffer = VK_NULL_HANDLE;
+        status = vkCreateFramebuffer(g_device, &framebufferInfo, nullptr, &framebuffer);
+        if (status != VK_SUCCESS) {
+            error = "vkCreateFramebuffer falhou: " + std::to_string(status);
+            return false;
+        }
+        g_framebuffers.push_back(framebuffer);
+    }
+
+    VkCommandPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    poolInfo.queueFamilyIndex = g_graphicsFamily;
+    status = vkCreateCommandPool(g_device, &poolInfo, nullptr, &g_commandPool);
+    if (status != VK_SUCCESS) {
+        error = "vkCreateCommandPool falhou: " + std::to_string(status);
+        return false;
+    }
+    g_commandBuffers.resize(g_swapchainImages.size());
+    VkCommandBufferAllocateInfo allocateInfo{};
+    allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocateInfo.commandPool = g_commandPool;
+    allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocateInfo.commandBufferCount = static_cast<uint32_t>(g_commandBuffers.size());
+    status = vkAllocateCommandBuffers(g_device, &allocateInfo, g_commandBuffers.data());
+    if (status != VK_SUCCESS) {
+        error = "vkAllocateCommandBuffers falhou: " + std::to_string(status);
+        return false;
+    }
+
+    for (size_t i = 0; i < g_commandBuffers.size(); ++i) {
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+        status = vkBeginCommandBuffer(g_commandBuffers[i], &beginInfo);
+        if (status != VK_SUCCESS) {
+            error = "vkBeginCommandBuffer falhou: " + std::to_string(status);
+            return false;
+        }
+        VkClearValue clear{};
+        clear.color.float32[0] = 0.035f;
+        clear.color.float32[1] = 0.10f;
+        clear.color.float32[2] = 0.22f;
+        clear.color.float32[3] = 1.0f;
+        VkRenderPassBeginInfo passInfo{};
+        passInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        passInfo.renderPass = g_renderPass;
+        passInfo.framebuffer = g_framebuffers[i];
+        passInfo.renderArea.extent.width = ANativeWindow_getWidth(g_window);
+        passInfo.renderArea.extent.height = ANativeWindow_getHeight(g_window);
+        passInfo.clearValueCount = 1;
+        passInfo.pClearValues = &clear;
+        vkCmdBeginRenderPass(g_commandBuffers[i], &passInfo, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdEndRenderPass(g_commandBuffers[i]);
+        status = vkEndCommandBuffer(g_commandBuffers[i]);
+        if (status != VK_SUCCESS) {
+            error = "vkEndCommandBuffer falhou: " + std::to_string(status);
+            return false;
+        }
+    }
+
+    VkSemaphoreCreateInfo semaphoreInfo{};
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    status = vkCreateSemaphore(g_device, &semaphoreInfo, nullptr, &g_imageAvailable);
+    if (status == VK_SUCCESS)
+        status = vkCreateSemaphore(g_device, &semaphoreInfo, nullptr, &g_renderFinished);
+    if (status != VK_SUCCESS) {
+        error = "Criação de semáforo Vulkan falhou: " + std::to_string(status);
+        return false;
+    }
+    VkFenceCreateInfo fenceInfo{};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    status = vkCreateFence(g_device, &fenceInfo, nullptr, &g_frameFence);
+    if (status != VK_SUCCESS) {
+        error = "vkCreateFence falhou: " + std::to_string(status);
+        return false;
+    }
+    return true;
+}
+
+bool presentTestFrame(std::string& error) {
+    VkResult status = vkWaitForFences(g_device, 1, &g_frameFence, VK_TRUE, UINT64_MAX);
+    if (status != VK_SUCCESS) {
+        error = "vkWaitForFences falhou: " + std::to_string(status);
+        return false;
+    }
+    uint32_t imageIndex = 0;
+    status = vkAcquireNextImageKHR(g_device, g_swapchain, UINT64_MAX,
+                                   g_imageAvailable, VK_NULL_HANDLE, &imageIndex);
+    if (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) {
+        error = "vkAcquireNextImageKHR falhou: " + std::to_string(status);
+        return false;
+    }
+    if (imageIndex >= g_commandBuffers.size()) {
+        error = "Índice de imagem Vulkan fora do intervalo.";
+        return false;
+    }
+    vkResetFences(g_device, 1, &g_frameFence);
+    const VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    VkSubmitInfo submit{};
+    submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit.waitSemaphoreCount = 1;
+    submit.pWaitSemaphores = &g_imageAvailable;
+    submit.pWaitDstStageMask = &waitStage;
+    submit.commandBufferCount = 1;
+    submit.pCommandBuffers = &g_commandBuffers[imageIndex];
+    submit.signalSemaphoreCount = 1;
+    submit.pSignalSemaphores = &g_renderFinished;
+    status = vkQueueSubmit(g_graphicsQueue, 1, &submit, g_frameFence);
+    if (status != VK_SUCCESS) {
+        error = "vkQueueSubmit falhou: " + std::to_string(status);
+        return false;
+    }
+    VkPresentInfoKHR present{};
+    present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    present.waitSemaphoreCount = 1;
+    present.pWaitSemaphores = &g_renderFinished;
+    present.swapchainCount = 1;
+    present.pSwapchains = &g_swapchain;
+    present.pImageIndices = &imageIndex;
+    status = vkQueuePresentKHR(g_presentQueue, &present);
+    if (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) {
+        error = "vkQueuePresentKHR falhou: " + std::to_string(status);
+        return false;
+    }
+    vkQueueWaitIdle(g_presentQueue);
+    error = "quadro azul apresentado pela Vulkan.";
+    return true;
+}
+
 bool createSwapchain(std::string& details) {
     VkSurfaceCapabilitiesKHR capabilities{};
     VkResult status = pGetSurfaceCapabilities(g_physicalDevice, g_surface, &capabilities);
@@ -284,6 +489,10 @@ bool createSwapchain(std::string& details) {
     info.imageColorSpace = chosen.colorSpace;
     info.imageExtent = extent;
     info.imageArrayLayers = 1;
+    if ((capabilities.supportedUsageFlags & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) == 0) {
+        details = "A superfície não suporta imagens como color attachment.";
+        return false;
+    }
     info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     if (g_graphicsFamily != g_presentFamily) {
         const uint32_t families[] = {g_graphicsFamily, g_presentFamily};
@@ -346,6 +555,8 @@ bool createSwapchain(std::string& details) {
     g_swapchainFormat = chosen.format;
     details = std::to_string(extent.width) + "x" + std::to_string(extent.height) +
         ", " + std::to_string(g_swapchainImages.size()) + " imagens";
+    if (!createRenderResources(details)) return false;
+    if (!presentTestFrame(details)) return false;
     return true;
 }
 
@@ -405,15 +616,19 @@ Java_com_jsr_n64android_VulkanNative_nativeInitialize(
 
     std::string gpuName;
     std::string error;
-    if (!selectPhysicalDevice(gpuName) || !createLogicalDevice(error) ||
-        !createSwapchain(error)) {
-        const std::string message = !gpuName.empty() && error.empty()
+    if (!selectPhysicalDevice(gpuName)) {
+        const std::string message = gpuName;
+        shutdownLocked();
+        return result(env, message);
+    }
+    if (!createLogicalDevice(error) || !createSwapchain(error)) {
+        const std::string message = error.empty()
             ? "Falha ao inicializar dispositivo Vulkan." : error;
         shutdownLocked();
-        return result(env, message.empty() ? gpuName : message);
+        return result(env, message);
     }
     const std::string message = "Superfície Vulkan Android criada. GPU: " + gpuName +
-        ". Swapchain: " + error + ". Ainda falta implementar comandos de desenho.";
+        ". Teste de apresentação: " + error;
     __android_log_print(ANDROID_LOG_INFO, TAG, "%s", message.c_str());
     return result(env, message);
 }
