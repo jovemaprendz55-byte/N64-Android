@@ -112,7 +112,7 @@ jobs:
           if declaration not in header:
               header = header.replace(
                   "void release_sdl_backend(struct sdl_backend* sdl_backend);",
-                  "void release_sdl_backend(struct sdl_backend* sdl_backend);\\n" + declaration,
+                  "void release_sdl_backend(struct sdl_backend* sdl_backend);\n" + declaration,
                   1)
           header_path.write_text(header)
 
