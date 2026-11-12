@@ -1160,30 +1160,18 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
         __android_log_print(ANDROID_LOG_INFO, "N64AndroidFlow", "M64CMD_ROM_OPEN concluido.");
     }
 
-    // Mupen64Plus expects the RSP plugin to be attached before GFX.
-    // Attaching GFX first triggers "plugins are attached in wrong order" and
-    // can leave the graphics plugin without a correctly initialized RSP link.
-    if (!g_rspAttached) {
-        const m64p_error rspAttachResult = attachPlugin(
-            M64PLUGIN_RSP, reinterpret_cast<m64p_dynlib_handle>(g_rspPluginHandle));
-        if (rspAttachResult != M64ERR_SUCCESS) {
-            char status[384];
-            std::snprintf(status, sizeof(status),
-                "ROM aberta no Core, mas CoreAttachPlugin(RSP) falhou: codigo %d. RSP permanece carregado para nova tentativa.",
-                static_cast<int>(rspAttachResult));
-            return makeString(env, status);
-        }
-        g_rspAttached = true;
-        __android_log_print(ANDROID_LOG_INFO, "N64AndroidRSP",
-                            "CoreAttachPlugin(RSP) retornou M64ERR_SUCCESS; InitiateRSP concluido pelo Core.");
-    }
+    // Mupen64Plus Core exige a ordem GFX -> AUDIO -> INPUT -> RSP.
+    // plugin_connect() em src/plugin/plugin.c emite o aviso de ordem incorreta
+    // quando GFX vem depois de AUDIO/INPUT/RSP, AUDIO depois de INPUT/RSP,
+    // ou INPUT depois de RSP. O RSP é anexado por último porque recebe os
+    // callbacks do GFX e do AUDIO durante plugin_connect_rsp().
     if (!g_gfxAttached) {
         const m64p_error attachResult = attachPlugin(
             M64PLUGIN_GFX, reinterpret_cast<m64p_dynlib_handle>(g_gfxPluginHandle));
         if (attachResult != M64ERR_SUCCESS) {
             char status[320];
             std::snprintf(status, sizeof(status),
-                "ROM aberta e RSP anexado, mas CoreAttachPlugin(GFX) falhou: codigo %d. A ROM permanece aberta para nova tentativa.",
+                "ROM aberta, mas CoreAttachPlugin(GFX) falhou: codigo %d. A ROM permanece aberta para nova tentativa.",
                 static_cast<int>(attachResult));
             return makeString(env, status);
         }
@@ -1197,12 +1185,13 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
         if (audioAttachResult != M64ERR_SUCCESS) {
             char status[384];
             std::snprintf(status, sizeof(status),
-                "ROM aberta e GFX/RSP anexados, mas CoreAttachPlugin(AUDIO) falhou: codigo %d.",
+                "ROM aberta e GFX anexado, mas CoreAttachPlugin(AUDIO) falhou: codigo %d.",
                 static_cast<int>(audioAttachResult));
             return makeString(env, status);
         }
         g_audioAttached = true;
-
+        __android_log_print(ANDROID_LOG_INFO, "N64AndroidAudio",
+                            "CoreAttachPlugin(AUDIO) retornou M64ERR_SUCCESS.");
     }
     if (!g_inputAttached) {
         const m64p_error inputAttachResult = attachPlugin(
@@ -1210,13 +1199,27 @@ Java_com_jsr_n64android_MainActivity_nativeOpenRomAndAttachGfx(
         if (inputAttachResult != M64ERR_SUCCESS) {
             char status[384];
             std::snprintf(status, sizeof(status),
-                "ROM aberta, GFX/RSP anexados, mas CoreAttachPlugin(INPUT) falhou: codigo %d.",
+                "ROM aberta, GFX/AUDIO anexados, mas CoreAttachPlugin(INPUT) falhou: codigo %d.",
                 static_cast<int>(inputAttachResult));
             return makeString(env, status);
         }
         g_inputAttached = true;
         __android_log_print(ANDROID_LOG_INFO, "N64AndroidInput",
                             "CoreAttachPlugin(INPUT) concluido; controle 1 conectado.");
+    }
+    if (!g_rspAttached) {
+        const m64p_error rspAttachResult = attachPlugin(
+            M64PLUGIN_RSP, reinterpret_cast<m64p_dynlib_handle>(g_rspPluginHandle));
+        if (rspAttachResult != M64ERR_SUCCESS) {
+            char status[384];
+            std::snprintf(status, sizeof(status),
+                "ROM aberta e GFX/AUDIO/INPUT anexados, mas CoreAttachPlugin(RSP) falhou: codigo %d. RSP permanece carregado para nova tentativa.",
+                static_cast<int>(rspAttachResult));
+            return makeString(env, status);
+        }
+        g_rspAttached = true;
+        __android_log_print(ANDROID_LOG_INFO, "N64AndroidRSP",
+                            "CoreAttachPlugin(RSP) retornou M64ERR_SUCCESS; InitiateRSP concluido pelo Core.");
     }
     if (g_coreRuntime.phase() == CoreRuntimeCoordinator::Phase::RomOpen &&
         !g_coreRuntime.markPluginsAttached()) {
