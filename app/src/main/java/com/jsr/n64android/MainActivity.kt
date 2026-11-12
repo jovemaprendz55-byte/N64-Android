@@ -5,414 +5,64 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.opengl.GLES20
-import android.opengl.GLSurfaceView
 import android.os.Bundle
 import android.view.Gravity
-import android.view.WindowManager
-import android.view.MotionEvent
-import android.view.ViewGroup
-import android.widget.FrameLayout
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import java.io.File
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
-import java.nio.FloatBuffer
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-import javax.microedition.khronos.egl.EGLConfig
-import javax.microedition.khronos.opengles.GL10
 
+/**
+ * Vulkan-only application shell.
+ * EGL/GLSurfaceView gameplay and diagnostics are removed from this Activity.
+ * Vulkan is not connected yet; the Play button never starts the legacy GL path.
+ */
 class MainActivity : Activity() {
     private val romPickerRequestCode = 4201
-    private var romPickerActive = false
-    @Volatile private var autoStartAfterGraphicsReady = false
-
-    private external fun nativeGetStatus(): String
-    private external fun nativeInitialize(configPath: String, dataPath: String): String
-    private external fun nativeStartCore(configPath: String, dataPath: String): String
-    private external fun nativeRegisterAndroidVideo(): String
-    private external fun nativeSetVideoSurfaceSize(width: Int, height: Int)
-    private external fun nativeLoadGfxPlugin(pluginPath: String): String
-    private external fun nativeLoadRspPlugin(pluginPath: String): String
-    private external fun nativeLoadInputPlugin(pluginPath: String): String
-    private external fun nativeLoadAudioPlugin(pluginPath: String): String
-    private external fun nativeSetControllerState(buttons: Int, axisX: Int, axisY: Int)
-    private external fun nativeOpenRomAndAttachGfx(romBytes: ByteArray): String
-    private external fun nativeExecuteCore(): String
-    private external fun nativeGetExecutionReadiness(): String
-    private external fun nativeTestVideoOverrideAbi(): String
-    private external fun nativeVerifyEglContext(): String
-    private external fun nativeTestGlOperations(): String
-    private external fun nativeTestEglSwap(): String
-
-    private lateinit var statusView: TextView
-    private lateinit var rootLayout: LinearLayout
-    private lateinit var homeLayout: LinearLayout
     private lateinit var selectedRomView: TextView
     private lateinit var playVulkanButton: Button
-    private lateinit var integrationLayout: LinearLayout
-    private lateinit var gameplayLayout: FrameLayout
-    private lateinit var integrationStatusView: TextView
-    private lateinit var graphicsGroup: LinearLayout
-    private var diagnosticScreenVisible = false
-    private lateinit var configDirectory: File
-    private lateinit var dataDirectory: File
-    private var latestCrashLog = ""
-    private var nativeLibraryLoaded = false
-    private var nativeCoreLoaded = false
-    private var nativeCoreInitialized = false
-    private val controllerPressed = mutableSetOf<Int>()
-    @Volatile private var controllerAxisX = 0
-    @Volatile private var controllerAxisY = 0
-    private var glView: GLSurfaceView? = null
-    @Volatile private var glSurfaceReady = false
-    @Volatile private var glSurfaceCreatedCount = 0
-    @Volatile private var lifecycleTestEnabled = false
-    @Volatile private var activityDestroyed = false
-    @Volatile private var coreExecutionActive = false
-    @Volatile private var backExitInProgress = false
+    private lateinit var homeLayout: LinearLayout
+    private var audioReport = "Ainda não foi feita a leitura do diagnóstico."
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        buildHomeScreen()
+        setContentView(homeLayout)
+        refreshSelectedRom()
+    }
 
-        configDirectory = File(filesDir, "mupen64plus/config")
-        dataDirectory = File(filesDir, "mupen64plus/data")
-        configDirectory.mkdirs()
-        dataDirectory.mkdirs()
-
-        statusView = TextView(this).apply {
-            text = "N64 Android\\n\\nInterface iniciada.\\nBiblioteca nativa ainda nao foi carregada."
-            textSize = 16f
+    private fun buildHomeScreen() {
+        selectedRomView = TextView(this).apply {
+            text = "Nenhuma ROM selecionada"
+            textSize = 14f
             gravity = Gravity.CENTER
-            setPadding(28, 28, 28, 28)
+            setPadding(12, 16, 12, 16)
         }
-
-        integrationStatusView = TextView(this).apply {
-            text = "A integração gráfica ainda não foi iniciada."
-            textSize = 15f
-            gravity = Gravity.CENTER
-            setPadding(20, 20, 20, 20)
-        }
-
-        val crashLogButton = Button(this).apply {
-            text = "Consultar log do último travamento"
-            setOnClickListener { showRecentCrashLog() }
-        }
-
-        val copyCrashLogButton = Button(this).apply {
-            text = "Copiar logs"
+        playVulkanButton = Button(this).apply {
+            text = "JOGAR VULKAN"
+            isEnabled = false
             setOnClickListener {
-                if (latestCrashLog.isBlank()) {
-                    Toast.makeText(this@MainActivity, "Consulte o log do travamento primeiro.", Toast.LENGTH_SHORT).show()
-                } else {
-                    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("Log N64 Android", latestCrashLog))
-                    Toast.makeText(this@MainActivity, "Logs copiados. Cole aqui na conversa.", Toast.LENGTH_LONG).show()
-                }
-            }
-        }
-
-        val loadButton = Button(this).apply {
-            text = "1 - Carregar biblioteca JNI"
-            setOnClickListener {
-                statusView.text = "N64 Android\\n\\n" + try {
-                    loadNativeLibrary()
-                    "Biblioteca n64bridge carregada."
-                } catch (error: LinkageError) {
-                    "Falha ao carregar biblioteca: ${error.message}"
-                } catch (error: Exception) {
-                    "Erro ao carregar biblioteca: ${error.message}"
-                }
-            }
-        }
-
-        val jniButton = Button(this).apply {
-            text = "2 - Testar JNI e SDL2"
-            setOnClickListener {
-                statusView.text = "N64 Android\\n\\n" + try {
-                    if (!nativeLibraryLoaded) "Carregue a biblioteca primeiro."
-                    else nativeGetStatus()
-                } catch (error: LinkageError) {
-                    "Falha na chamada JNI: ${error.message}"
-                } catch (error: Exception) {
-                    "Erro na chamada JNI: ${error.message}"
-                }
-            }
-        }
-
-        val initializeButton = Button(this).apply {
-            text = "3 - Carregar Core (teste isolado)"
-            setOnClickListener {
-                statusView.text = "N64 Android\\n\\n" + try {
-                    loadNativeLibrary()
-                    val result = nativeInitialize(
-                        configDirectory.absolutePath,
-                        dataDirectory.absolutePath
-                    )
-                    nativeCoreLoaded = result.startsWith("Core Mupen64Plus carregado com sucesso")
-                    result
-                } catch (error: LinkageError) {
-                    "Falha ao carregar Core: ${error.message}"
-                } catch (error: Exception) {
-                    "Erro ao carregar Core: ${error.message}"
-                }
-            }
-        }
-
-        val startCoreButton = Button(this).apply {
-            text = "4 - Inicializar Core (sem ROM)"
-            setOnClickListener {
-                statusView.text = "N64 Android\\n\\n" + try {
-                    if (!nativeCoreLoaded) {
-                        "Carregue o Core primeiro no botao 3."
-                    } else if (nativeCoreInitialized) {
-                        "Core ja inicializado. Use o botao 5 para encerrar."
-                    } else {
-                        nativeStartCore(
-                            configDirectory.absolutePath,
-                            dataDirectory.absolutePath
-                        ).also {
-                            nativeCoreInitialized = it.startsWith("CoreStartup concluido com sucesso")
-                        }
-                    }
-                } catch (error: LinkageError) {
-                    "Falha ao inicializar Core: ${error.message}"
-                } catch (error: Exception) {
-                    "Erro ao inicializar Core: ${error.message}"
-                }
-            }
-        }
-
-        val unloadButton = Button(this).apply {
-            text = "5 - Encerrar Core e descarregar biblioteca"
-            setOnClickListener {
-                statusView.text = "N64 Android\\n\\n" + try {
-                    if (nativeCoreLoaded) {
-                        CoreNativeBridge.nativeShutdown().also {
-                            if (it.startsWith("Biblioteca do Core descarregada corretamente")) {
-                                nativeCoreLoaded = false
-                                nativeCoreInitialized = false
-                            }
-                        }
-                    } else {
-                        "Core nao esta carregado."
-                    }
-                } catch (error: LinkageError) {
-                    "Falha ao encerrar Core: ${error.message}"
-                } catch (error: Exception) {
-                    "Erro ao encerrar Core: ${error.message}"
-                }
-            }
-        }
-
-        val videoAbiButton = Button(this).apply {
-            text = "7 - Testar ABI de vídeo (sem ativar)"
-            setOnClickListener {
-                statusView.text = "N64 Android\\n\\n" + try {
-                    if (!nativeCoreInitialized) "Inicialize o Core primeiro no botao 4."
-                    else nativeTestVideoOverrideAbi()
-                } catch (error: LinkageError) {
-                    "Falha no teste ABI de video: ${error.message}"
-                } catch (error: Exception) {
-                    "Erro no teste ABI de video: ${error.message}"
-                }
-            }
-        }
-
-        val glButton = Button(this).apply {
-            text = "6 - Testar tela OpenGL ES 2.0"
-            setOnClickListener { showOpenGlTest() }
-        }
-
-        val glDrawButton = Button(this).apply {
-            text = "10 - Testar desenho OpenGL"
-            setOnClickListener { showOpenGlTest(drawTriangle = true) }
-        }
-
-        val glThreadButton = Button(this).apply {
-            text = "8 - Testar chamada JNI na thread GL"
-            setOnClickListener { testGlThreadBridge() }
-        }
-
-        val glOperationsButton = Button(this).apply {
-            text = "9 - Testar operacoes OpenGL pela JNI"
-            setOnClickListener { testGlOperationsOnGlThread() }
-        }
-
-        val glLifecycleButton = Button(this).apply {
-            text = "11 - Testar pausa e retomada GL"
-            setOnClickListener {
-                lifecycleTestEnabled = true
-                showOpenGlTest(drawTriangle = true)
-            }
-        }
-
-        val backButton = Button(this).apply {
-            text = "Voltar ao inicio"
-            setOnClickListener { showHomeScreen() }
-        }
-
-        val jniGroup = createDiagnosticGroup().apply {
-            addView(loadButton)
-            addView(jniButton)
-        }
-        val coreGroup = createDiagnosticGroup().apply {
-            addView(initializeButton)
-            addView(startCoreButton)
-            addView(unloadButton)
-            addView(videoAbiButton)
-        }
-        val graphicsGroup = createDiagnosticGroup().apply {
-            addView(glButton)
-            addView(glDrawButton)
-            addView(glThreadButton)
-            addView(glOperationsButton)
-            addView(glLifecycleButton)
-        }
-
-        rootLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(20, 20, 20, 20)
-            addView(backButton)
-            addView(statusView)
-            addView(crashLogButton)
-            addView(copyCrashLogButton)
-            addView(categoryButton("Biblioteca e JNI", jniGroup))
-            addView(jniGroup)
-            addView(categoryButton("Core Mupen64Plus", coreGroup))
-            addView(coreGroup)
-            addView(categoryButton("Gráficos e OpenGL", graphicsGroup))
-            addView(graphicsGroup)
-        }
-        jniGroup.visibility = ViewGroup.GONE
-        coreGroup.visibility = ViewGroup.GONE
-        graphicsGroup.visibility = ViewGroup.GONE
-        this.graphicsGroup = graphicsGroup
-
-        integrationLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(20, 20, 20, 20)
-            addView(TextView(this@MainActivity).apply {
-                text = "Integração gráfica"
-                textSize = 23f
-                gravity = Gravity.CENTER
-                setPadding(12, 16, 12, 8)
-            })
-            addView(Button(this@MainActivity).apply {
-                text = "Voltar ao início"
-                setOnClickListener { showHomeScreen() }
-            })
-            addView(Button(this@MainActivity).apply { text = "Selecionar ROM"; setOnClickListener { openRomPicker() } })
-            addView(Button(this@MainActivity).apply { text = "Abrir ROM no Core e anexar vídeo"; setOnClickListener { openSelectedRomInCore() } })
-            addView(Button(this@MainActivity).apply {
-                text = "Diagnosticar execução (sem iniciar)"
-                setOnClickListener {
-                    val surface = glView
-                    if (surface == null || !glSurfaceReady) {
-                        integrationStatusView.text = "Contexto EGL nao esta pronto para o diagnostico."
-                    } else {
-                        integrationStatusView.text = "Verificando estado do Core na thread GL; EXECUTE nao sera chamado..."
-                        surface.queueEvent {
-                            val result = try {
-                                nativeGetExecutionReadiness()
-                            } catch (error: Throwable) {
-                                "Falha no diagnostico seguro: ${error.message}"
-                            }
-                            runOnUiThread { integrationStatusView.text = result }
-                        }
-                    }
-                }
-            })
-            addView(Button(this@MainActivity).apply {
-                text = "Iniciar jogo (teste experimental)"
-                contentDescription = "Executa a ROM somente depois da pré-checagem do Core, ROM, plugins e EGL."
-                setOnClickListener { executeCoreOnGlThread() }
-            })
-            val stopButton = Button(this@MainActivity).apply {
-                text = "Parar emulação"
-                setOnClickListener {
-                    // STOP may wait for the R4300 marker. Then wait separately
-                    // for synchronous M64CMD_EXECUTE to return. Neither wait
-                    // blocks the UI, and this flow deliberately does not tear
-                    // down plugins or touch EGL.
+                if (!selectedRomFile().isFile) {
+                    selectedRomView.text = "Selecione uma ROM N64 primeiro."
                     isEnabled = false
-                    integrationStatusView.text = "Solicitando parada e aguardando retorno do Core..."
-                    Thread({
-                        val result = try {
-                            CoreStopCoordinator(CoreNativeBridge).requestStopAndAwait(3000)
-                        } catch (error: Throwable) {
-                            CoreStopCoordinator.Result(
-                                stopResult = "Falha ao solicitar parada: ${error.message}",
-                                waitResult = null,
-                                stopAccepted = false
-                            )
-                        }
-                        val combined = buildString {
-                            append("Pedido de parada:\n")
-                            append(result.stopResult)
-                            append("\n\nConfirmação de retorno:\n")
-                            append(result.waitResult ?: "Aguardagem nao iniciada: o STOP nao foi confirmado como enviado.")
-                        }
-                        runOnUiThread {
-                            if (!activityDestroyed) {
-                                integrationStatusView.text = combined
-                                isEnabled = true
-                            }
-                        }
-                    }, "N64-Stop-And-Wait").start()
+                } else {
+                    selectedRomView.text =
+                        "ROM pronta. O renderizador Vulkan ainda está sendo integrado. " +
+                        "O jogo não será iniciado pelo EGL/OpenGL."
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Backend Vulkan ainda em desenvolvimento.",
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
             }
-            addView(stopButton)
-            addView(Button(this@MainActivity).apply {
-                text = "Verificar EGL (sem troca manual)"
-                setOnClickListener {
-                    val surface = glView
-                    if (surface == null || !glSurfaceReady) {
-                        integrationStatusView.text = "Aguarde a superfície EGL ficar pronta."
-                    } else {
-                        integrationStatusView.text = "Testando eglSwapBuffers na thread GL..."
-                        surface.queueEvent {
-                            val result = try {
-                                nativeTestEglSwap()
-                            } catch (error: Throwable) {
-                                "Falha no teste EGL: ${error.message}"
-                            }
-                            runOnUiThread { integrationStatusView.text = result }
-                        }
-                        surface.requestRender()
-                    }
-                }
-            })
-            addView(createVirtualController())
         }
-
-        // Gameplay limpa: apenas o vídeo em tela cheia e os controles virtuais.
-        // Mensagens de diagnóstico permanecem na tela inicial, nunca sobre o jogo.
-        gameplayLayout = FrameLayout(this).apply {
-            setBackgroundColor(android.graphics.Color.BLACK)
-            clipChildren = false
-            clipToPadding = false
-            addView(createVirtualController().apply {
-                setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                alpha = 1f
-            }, FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                Gravity.FILL
-            ))
-        }
-
         homeLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(32, 32, 32, 32)
+            setPadding(28, 28, 28, 28)
             addView(TextView(this@MainActivity).apply {
                 text = "N64 Android"
                 textSize = 30f
@@ -423,133 +73,145 @@ class MainActivity : Activity() {
                 text = "Emulador Nintendo 64 para Android"
                 textSize = 16f
                 gravity = Gravity.CENTER
-                setPadding(12, 8, 12, 28)
+                setPadding(12, 8, 12, 24)
             })
-            selectedRomView = TextView(this@MainActivity).apply {
-                text = "Nenhuma ROM selecionada"
-                textSize = 14f
-                gravity = Gravity.CENTER
-                setPadding(12, 16, 12, 16)
-            }
             addView(selectedRomView)
             addView(Button(this@MainActivity).apply {
                 text = "Selecionar ROM"
                 setOnClickListener { openRomPicker() }
             })
-            playVulkanButton = Button(this@MainActivity).apply {
-                text = "JOGAR VULKAN"
-                isEnabled = false
-                setOnClickListener {
-                    val romFile = File(File(filesDir, "roms"), "selected.n64")
-                    if (!romFile.isFile) {
-                        selectedRomView.text = "Selecione uma ROM N64 primeiro."
-                    } else {
-                        // Vulkan backend is intentionally not connected yet.
-                        // Never route this button through the existing EGL/OpenGL startup.
-                        selectedRomView.text = "Backend Vulkan ainda não integrado. O jogo não foi iniciado em OpenGL."
-                        Toast.makeText(this@MainActivity, "Vulkan ainda está em integração.", Toast.LENGTH_LONG).show()
-                    }
-                }
-            }
             addView(playVulkanButton)
             addView(Button(this@MainActivity).apply {
                 text = "DIAGNÓSTICO DO ÁUDIO"
                 setOnClickListener { showAudioDiagnostics() }
             })
-            addView(Button(this@MainActivity).apply {
-                text = "Diagnóstico e testes"
-                setOnClickListener {
-                    diagnosticScreenVisible = true
-                    setContentView(ScrollView(this@MainActivity).apply {
-                        isFillViewport = true
-                        addView(rootLayout)
-                    })
-                }
-            })
-            addView(Button(this@MainActivity).apply {
-                text = "Integração gráfica"
-                setOnClickListener { startAndroidVideoIntegration() }
-            })
             addView(TextView(this@MainActivity).apply {
-                text = "Jogos e carregamento de ROMs ainda estao em desenvolvimento."
+                text = "Renderizador Vulkan em desenvolvimento."
                 textSize = 14f
                 gravity = Gravity.CENTER
                 setPadding(16, 28, 16, 12)
             })
         }
-
-        setContentView(homeLayout)
     }
 
-    private fun createDiagnosticGroup(): LinearLayout = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL
-        gravity = Gravity.CENTER_HORIZONTAL
-        setPadding(0, 8, 0, 8)
-    }
+    private fun selectedRomFile(): File =
+        File(File(filesDir, "roms"), "selected.n64")
 
-    private fun categoryButton(label: String, group: LinearLayout): Button =
-        Button(this).apply {
-            text = label
-            setOnClickListener {
-                group.visibility = if (group.visibility == ViewGroup.VISIBLE) ViewGroup.GONE else ViewGroup.VISIBLE
-            }
+    private fun refreshSelectedRom() {
+        val romFile = selectedRomFile()
+        val ready = romFile.isFile && romFile.length() >= 4096
+        selectedRomView.text = if (ready) {
+            "ROM N64 selecionada (${romFile.length()} bytes)"
+        } else {
+            "Nenhuma ROM selecionada"
         }
+        playVulkanButton.isEnabled = ready
+    }
 
+    private fun openRomPicker() {
+        try {
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "*/*"
+            }
+            startActivityForResult(intent, romPickerRequestCode)
+        } catch (error: Exception) {
+            selectedRomView.text = "Falha ao abrir seletor de ROM: ${error.message}"
+        }
+    }
+
+    @Deprecated("Compatibilidade com a Activity atual")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != romPickerRequestCode) return
+        if (resultCode != RESULT_OK) {
+            selectedRomView.text = "Seleção de ROM cancelada."
+            return
+        }
+        val uri = data?.data ?: run {
+            selectedRomView.text = "Nenhum arquivo foi selecionado."
+            return
+        }
+        selectedRomView.text = "Lendo e validando a ROM..."
+        Thread {
+            val result = try {
+                val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    ?: throw IllegalStateException("Não foi possível abrir o arquivo.")
+                when {
+                    bytes.size < 4096 -> throw IllegalArgumentException("Arquivo menor que 4 KB.")
+                    bytes.size > 64 * 1024 * 1024 -> throw IllegalArgumentException("Arquivo maior que 64 MB.")
+                    bytes.size % 4 != 0 -> throw IllegalArgumentException("Tamanho não é múltiplo de 4 bytes.")
+                }
+                val signature = bytes.take(4).joinToString(" ") {
+                    "%02X".format(it.toInt() and 0xff)
+                }
+                val valid = signature == "80 37 12 40" ||
+                    signature == "37 80 40 12" ||
+                    signature == "40 12 37 80"
+                if (!valid) throw IllegalArgumentException(
+                    "Assinatura não reconhecida como ROM N64: $signature"
+                )
+                val directory = File(filesDir, "roms")
+                if (!directory.exists() && !directory.mkdirs()) {
+                    throw IllegalStateException("Não foi possível criar a pasta de ROMs.")
+                }
+                selectedRomFile().writeBytes(bytes)
+                "ROM N64 reconhecida e copiada (${bytes.size} bytes)."
+            } catch (error: Exception) {
+                "Falha ao validar ROM: ${error.message}"
+            }
+            runOnUiThread {
+                selectedRomView.text = result
+                refreshSelectedRom()
+                if (result.startsWith("ROM N64 reconhecida")) selectedRomView.text = result
+            }
+        }.start()
+    }
 
     private fun showAudioDiagnostics() {
-        diagnosticScreenVisible = true
-        var audioReport = "Ainda não foi feita a leitura. Toque em Atualizar diagnóstico."
         val reportView = TextView(this).apply {
-            text = "DIAGNÓSTICO DO ÁUDIO\\n\\n" + audioReport
-            textSize = 14f
+            text = "Lendo registros do áudio..."
+            textSize = 13f
             setTextIsSelectable(true)
-            setPadding(20, 20, 20, 20)
+            setPadding(16, 16, 16, 16)
         }
-        fun refreshAudioReport() {
-            reportView.text = "Lendo os registros do áudio do emulador..."
+        fun refresh() {
+            reportView.text = "Consultando logcat..."
             Thread {
-                val output = try {
+                val result = try {
                     val process = ProcessBuilder("logcat", "-d", "-t", "2000")
-                        .redirectErrorStream(true)
-                        .start()
+                        .redirectErrorStream(true).start()
                     val lines = process.inputStream.bufferedReader().use { it.readLines() }
                     process.waitFor()
-                    val markers = listOf("N64AndroidAudio", "N64ANDROID AUDIO:",
-                        "N64AndroidCore", "N64AndroidFlow", "Couldn't open audio",
-                        "SDL_OpenAudio", "SDL_Init", "AiLenChanged")
-                    val matches = lines.filter { line ->
+                    val markers = listOf(
+                        "N64AndroidAudio", "N64ANDROID AUDIO:", "N64AndroidCore",
+                        "SDL_OpenAudio", "SDL_Init", "AiLenChanged"
+                    )
+                    lines.filter { line ->
                         markers.any { marker -> line.contains(marker, ignoreCase = true) }
-                    }.takeLast(100)
-                    if (matches.isEmpty()) {
-                        "Nenhum registro do plugin de áudio foi encontrado.\\n\\n" +
-                            "Confirme que abriu uma ROM e deixou o jogo rodar por 20 a 30 segundos. " +
-                            "Depois volte para esta tela e toque em Atualizar diagnóstico."
-                    } else {
-                        "REGISTROS ENCONTRADOS: ${matches.size}\\n\\n" +
-                            matches.joinToString("\\n")
+                    }.takeLast(100).joinToString("\n").ifBlank {
+                        "Nenhum registro do plugin de áudio foi encontrado."
                     }
                 } catch (error: Exception) {
-                    "Não foi possível ler os registros do Android: ${error.message}"
+                    "Não foi possível ler o logcat: ${error.message}"
                 }
                 runOnUiThread {
-                    audioReport = output
-                    reportView.text = "DIAGNÓSTICO DO ÁUDIO\\n\\n" + output
+                    audioReport = result
+                    reportView.text = result
                 }
             }.start()
         }
         val page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(16, 16, 16, 16)
             addView(TextView(this@MainActivity).apply {
                 text = "Diagnóstico do áudio"
-                textSize = 23f
+                textSize = 22f
                 gravity = Gravity.CENTER
                 setPadding(12, 16, 12, 16)
             })
             addView(Button(this@MainActivity).apply {
                 text = "Atualizar diagnóstico"
-                setOnClickListener { refreshAudioReport() }
+                setOnClickListener { refresh() }
             })
             addView(Button(this@MainActivity).apply {
                 text = "Copiar diagnóstico"
@@ -561,7 +223,7 @@ class MainActivity : Activity() {
             })
             addView(Button(this@MainActivity).apply {
                 text = "Voltar ao início"
-                setOnClickListener { showHomeScreen() }
+                setOnClickListener { setContentView(homeLayout) }
             })
             addView(reportView)
         }
@@ -569,959 +231,6 @@ class MainActivity : Activity() {
             isFillViewport = true
             addView(page)
         })
-        refreshAudioReport()
-    }
-
-    private fun showRecentCrashLog() {
-        statusView.text = "N64 Android\\n\\nConsultando registros recentes do Android..."
-        Thread {
-            val result = try {
-                val process = ProcessBuilder("logcat", "-d", "-t", "800")
-                    .redirectErrorStream(true)
-                    .start()
-                val allLines = process.inputStream.bufferedReader().use { it.readLines() }
-                process.waitFor()
-                val markers = listOf(
-                    "N64AndroidFlow", "N64AndroidGFX", "N64AndroidVideo",
-                    "N64AndroidCore", "AndroidRuntime", "libc", "DEBUG",
-                    "FATAL", "signal", "tombstone", "crash"
-                )
-                val relevant = allLines.filter { line ->
-                    markers.any { marker -> line.contains(marker, ignoreCase = true) }
-                }.takeLast(140)
-                val output = if (relevant.isNotEmpty()) relevant.joinToString("\\n")
-                    else allLines.takeLast(100).joinToString("\\n")
-                if (output.isBlank()) "Nenhum registro retornado pelo logcat."
-                else output
-            } catch (error: Exception) {
-                "Nao foi possivel consultar logcat: ${error.message}"
-            }
-            runOnUiThread {
-                latestCrashLog = result
-                statusView.text = "N64 Android\\n\\nLOG DO ULTIMO TESTE\\n\\n" + result + "\\n\\nToque em Copiar logs para enviar o texto."
-            }
-        }.start()
-    }
-
-
-    private fun createVirtualController(): FrameLayout {
-        // Overlay em tela inteira, com posições inspiradas no layout paisagem
-        // do Mupen64Plus AE: analógico à esquerda e botões à direita.
-        val panel = FrameLayout(this).apply {
-            setBackgroundColor(android.graphics.Color.TRANSPARENT)
-            clipChildren = false
-            clipToPadding = false
-        }
-        val density = resources.displayMetrics.density
-        fun dp(value: Int) = (value * density).toInt()
-
-        fun sendControllerState() {
-            var mask = 0
-            for (pressed in controllerPressed) {
-                if (pressed in 0..13) mask = mask or (1 shl pressed)
-            }
-            try {
-                nativeSetControllerState(mask, controllerAxisX, controllerAxisY)
-            } catch (error: Throwable) {
-                android.util.Log.e("N64AndroidInput", "Falha ao enviar controle virtual", error)
-            }
-        }
-
-        fun addButton(label: String, code: Int, size: Int, layoutGravity: Int,
-                      left: Int = 0, top: Int = 0, right: Int = 0, bottom: Int = 0,
-                      rectangular: Boolean = false) {
-            val button = TextView(this).apply {
-                text = label
-                textSize = if (label == "START") 11f else 14f
-                setTextColor(0xEFFFFFFF.toInt())
-                gravity = Gravity.CENTER
-                isClickable = true
-                background = android.graphics.drawable.GradientDrawable().apply {
-                    shape = if (rectangular) android.graphics.drawable.GradientDrawable.RECTANGLE
-                        else android.graphics.drawable.GradientDrawable.OVAL
-                    cornerRadius = if (rectangular) dp(18).toFloat() else 0f
-                    setColor(0x55263344)
-                    setStroke(dp(2), 0x889EADBF.toInt())
-                }
-                setOnTouchListener { view, event ->
-                    when (event.actionMasked) {
-                        MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
-                            controllerPressed.add(code)
-                            view.alpha = 0.58f
-                        }
-                        MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_CANCEL -> {
-                            controllerPressed.remove(code)
-                            view.alpha = 1f
-                        }
-                    }
-                    sendControllerState()
-                    true
-                }
-            }
-            panel.addView(button, FrameLayout.LayoutParams(dp(size), dp(if (rectangular) 42 else size), layoutGravity).apply {
-                setMargins(dp(left), dp(top), dp(right), dp(bottom))
-            })
-        }
-
-        val stick = TextView(this).apply {
-            text = "●"
-            textSize = 28f
-            setTextColor(0xDFFFFFFF.toInt())
-            gravity = Gravity.CENTER
-            background = android.graphics.drawable.GradientDrawable().apply {
-                shape = android.graphics.drawable.GradientDrawable.OVAL
-                setColor(0x33263344)
-                setStroke(dp(3), 0x889EADBF.toInt())
-            }
-            setOnTouchListener { view, event ->
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE, MotionEvent.ACTION_POINTER_DOWN -> {
-                        val x = ((event.x / view.width) * 2f - 1f).coerceIn(-1f, 1f)
-                        val y = ((event.y / view.height) * 2f - 1f).coerceIn(-1f, 1f)
-                        controllerAxisX = (x * 80).toInt()
-                        controllerAxisY = (-y * 80).toInt()
-                        view.alpha = 0.65f
-                    }
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_CANCEL -> {
-                        controllerAxisX = 0
-                        controllerAxisY = 0
-                        view.alpha = 1f
-                    }
-                }
-                sendControllerState()
-                true
-            }
-        }
-        panel.addView(stick, FrameLayout.LayoutParams(dp(174), dp(174),
-            Gravity.START or Gravity.BOTTOM).apply { leftMargin = dp(22); bottomMargin = dp(22) })
-
-        // Ombros no alto, nos mesmos cantos do exemplo.
-        addButton("L", 13, 76, Gravity.TOP or Gravity.START, left = 18, top = 8, rectangular = true)
-        addButton("R", 12, 76, Gravity.TOP or Gravity.END, right = 18, top = 8, rectangular = true)
-        addButton("Z", 5, 68, Gravity.TOP or Gravity.END, right = 18, top = 66, rectangular = true)
-
-        // C-direcional no centro-direita.
-        addButton("▲", 11, 44, Gravity.CENTER or Gravity.END, right = 270, top = -88)
-        addButton("◀", 9, 44, Gravity.CENTER or Gravity.END, right = 326, top = -34)
-        addButton("▶", 8, 44, Gravity.CENTER or Gravity.END, right = 214, top = -34)
-        addButton("▼", 10, 44, Gravity.CENTER or Gravity.END, right = 270, top = 22)
-
-        // A e B no lado direito, abaixo do Z.
-        addButton("A", 7, 54, Gravity.CENTER or Gravity.END, right = 138, top = 62)
-        addButton("B", 6, 54, Gravity.CENTER or Gravity.END, right = 210, top = 138)
-
-        // Start discreto na borda inferior, como no exemplo de referência.
-        addButton("START", 4, 68, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL, bottom = 10)
-        return panel
-    }
-
-    private fun startAndroidVideoIntegration() {
-        android.util.Log.i("N64AndroidFlow", "Etapa 1: inicio da integracao grafica")
-
-        // Encerrar e remover qualquer superfície de diagnóstico ANTES de
-        // inicializar o Core para a sessão de jogo. Caso contrário,
-        // showOpenGlTest poderia encerrar o Core recém-inicializado.
-        if (glView != null) {
-            if (!shutdownCoreBeforeSurfaceChange()) {
-                integrationStatusView.text =
-                    "Não foi possível preparar a superfície gráfica anterior. Core preservado."
-                return
-            }
-            glView?.let {
-                (it.parent as? ViewGroup)?.removeView(it)
-                it.onPause()
-            }
-            glView = null
-            glSurfaceReady = false
-        }
-
-        diagnosticScreenVisible = true
-        requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-        enterImmersiveGameMode()
-        setContentView(gameplayLayout)
-        integrationStatusView.text = "Preparando Core e camada gráfica Android..."
-        try {
-            loadNativeLibrary()
-            if (!nativeCoreLoaded) {
-                val loaded = nativeInitialize(
-                    configDirectory.absolutePath,
-                    dataDirectory.absolutePath
-                )
-                nativeCoreLoaded = loaded.startsWith("Core Mupen64Plus carregado com sucesso")
-                if (!nativeCoreLoaded) {
-                    integrationStatusView.text = loaded
-                    return
-                }
-            }
-            if (!nativeCoreInitialized) {
-                val started = nativeStartCore(
-                    configDirectory.absolutePath,
-                    dataDirectory.absolutePath
-                )
-                nativeCoreInitialized = started.startsWith("CoreStartup concluido com sucesso")
-                if (!nativeCoreInitialized) {
-                    integrationStatusView.text = started
-                    return
-                }
-            }
-            integrationStatusView.text = "Core inicializado. Criando contexto EGL para registrar o vídeo Android..."
-            showOpenGlTest(registerVideoExtension = true)
-        } catch (error: Exception) {
-            integrationStatusView.text = "Falha ao iniciar integração gráfica: ${error.message}"
-        } catch (error: LinkageError) {
-            integrationStatusView.text = "Falha JNI na integração gráfica: ${error.message}"
-        }
-    }
-
-
-    private fun openSelectedRomInCore() {
-        val surface = glView
-        if (surface == null || !glSurfaceReady) {
-            integrationStatusView.text = "Abra a integração gráfica e aguarde o contexto EGL e o plugin GFX ficarem prontos."
-            return
-        }
-        val romFile = File(File(filesDir, "roms"), "selected.n64")
-        if (!romFile.isFile) {
-            integrationStatusView.text = "Selecione uma ROM N64 primeiro."
-            return
-        }
-        integrationStatusView.text = "Lendo ROM e preparando abertura no Core..."
-        Thread {
-            val bytes = try {
-                romFile.readBytes()
-            } catch (error: Exception) {
-                runOnUiThread { integrationStatusView.text = "Falha ao ler ROM: " + error.message }
-                return@Thread
-            }
-            runOnUiThread {
-                val activeSurface = glView
-                if (activeSurface == null || !glSurfaceReady) {
-                    integrationStatusView.text = "Contexto GL deixou de estar disponível. Abra novamente a integração."
-                    return@runOnUiThread
-                }
-                integrationStatusView.text = "Enviando ROM ao Mupen64Plus Core na thread GL..."
-                activeSurface.queueEvent {
-                    val result = try {
-                        nativeOpenRomAndAttachGfx(bytes)
-                    } catch (error: LinkageError) {
-                        "Falha JNI ao abrir ROM/anexar vídeo: " + error.message
-                    } catch (error: Exception) {
-                        "Erro ao abrir ROM/anexar vídeo: " + error.message
-                    }
-                    runOnUiThread {
-                        integrationStatusView.text = result
-                        if (autoStartAfterGraphicsReady && result.startsWith("ROM aberta com sucesso no Mupen64Plus Core")) {
-                            autoStartAfterGraphicsReady = false
-                            executeCoreOnGlThread()
-                        } else if (autoStartAfterGraphicsReady) {
-                            autoStartAfterGraphicsReady = false
-                            integrationStatusView.text = "A ROM não foi aberta; execução automática cancelada.\\n\\n" + result
-                        }
-                    }
-                }
-            }
-        }.start()
-    }
-
-    private fun executeCoreOnGlThread() {
-        val surface = glView
-        if (surface == null || !glSurfaceReady) {
-            integrationStatusView.text = "Contexto EGL nao esta pronto."
-            return
-        }
-        integrationStatusView.text = "Verificando Core, ROM, plugins e contexto EGL antes de iniciar..."
-        surface.queueEvent {
-            val readiness = try {
-                nativeGetExecutionReadiness()
-            } catch (error: Throwable) {
-                "Falha na pre-checagem: ${error.message}"
-            }
-            if (!readiness.contains("EXECUTE elegivel=sim (pre-checagem)")) {
-                runOnUiThread {
-                    integrationStatusView.text =
-                        "Jogo nao iniciado: a pre-checagem ainda nao foi aprovada.\\n\\n" + readiness
-                }
-                return@queueEvent
-            }
-
-            runOnUiThread {
-                integrationStatusView.text =
-                    "Pre-checagem aprovada. Teste de execucao iniciado na thread GL.\\n" +
-                    "Se a imagem aparecer, use Parar emulacao para encerrar o teste."
-            }
-            coreExecutionActive = true
-            android.util.Log.i("N64AndroidFlow", "M64CMD_EXECUTE ativo; botão Voltar poderá solicitar STOP.")
-            val result = try {
-                nativeExecuteCore()
-            } catch (error: Throwable) {
-                "Falha durante M64CMD_EXECUTE: ${error.message}"
-            } finally {
-                coreExecutionActive = false
-                android.util.Log.i("N64AndroidFlow", "M64CMD_EXECUTE finalizado; thread GL liberada.")
-            }
-            runOnUiThread { integrationStatusView.text = result }
-        }
-        // GLSurfaceView may be using RENDERMODE_WHEN_DIRTY; explicitly wake
-        // its render thread so the queued preflight/execute action is serviced.
-        surface.requestRender()
-    }
-
-    private fun openRomPicker() {
-        // ACTION_OPEN_DOCUMENT temporarily pauses this Activity. Keep the Core
-        // alive while the system document picker is in the foreground.
-        romPickerActive = true
-        try {
-            val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                addCategory(Intent.CATEGORY_OPENABLE)
-                type = "*/*"
-            }
-            startActivityForResult(i, romPickerRequestCode)
-        } catch (error: Exception) {
-            romPickerActive = false
-            integrationStatusView.text = "Falha ao abrir seletor de ROM: ${error.message}"
-        }
-    }
-
-    @Deprecated("Compatibilidade com a Activity atual")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != romPickerRequestCode) return
-        romPickerActive = false
-        if (resultCode != RESULT_OK) {
-            integrationStatusView.text = "Selecao de ROM cancelada. Core preservado."
-            return
-        }
-        val uri = data?.data ?: run {
-            integrationStatusView.text = "Nenhum arquivo foi selecionado. Core preservado."
-            return
-        }
-        integrationStatusView.text = "Lendo e validando a ROM..."
-        Thread {
-            val result = try {
-                val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                    ?: throw IllegalStateException("Nao foi possivel abrir o arquivo.")
-                when {
-                    bytes.size < 4096 -> "Arquivo recusado: menor que 4 KB."
-                    bytes.size > 64 * 1024 * 1024 -> "Arquivo recusado: maior que 64 MB."
-                    bytes.size % 4 != 0 -> "Arquivo recusado: tamanho nao multiplo de 4 bytes."
-                    else -> {
-                        val signature = bytes.take(4).joinToString(" ") { "%02X".format(it.toInt() and 0xff) }
-                        val valid = signature == "80 37 12 40" || signature == "37 80 40 12" || signature == "40 12 37 80"
-                        if (!valid) {
-                            "Arquivo nao reconhecido como ROM N64. Assinatura: " + signature
-                        } else {
-                            val romDirectory = File(filesDir, "roms")
-                            if (!romDirectory.exists() && !romDirectory.mkdirs()) throw IllegalStateException("Nao foi possivel criar a pasta de ROMs.")
-                            val romFile = File(romDirectory, "selected.n64")
-                            romFile.writeBytes(bytes)
-                            "ROM N64 reconhecida e copiada para o armazenamento interno.\n" +
-                                "Tamanho: " + bytes.size + " bytes\nAssinatura: " + signature +
-                                "\nArquivo interno: " + romFile.name +
-                                "\n\nAinda falta abrir a ROM no Core e anexar o plugin grafico."
-                        }
-                    }
-                }
-            } catch (error: Exception) {
-                "Falha ao validar/copiar ROM: " + error.message
-            }
-            runOnUiThread {
-                integrationStatusView.text = result
-                val romReady = result.startsWith("ROM N64 reconhecida e copiada")
-                if (romReady) {
-                    selectedRomView.text = "ROM selecionada e pronta para jogar"
-                    playVulkanButton.isEnabled = true
-                } else {
-                    selectedRomView.text = result
-                    playVulkanButton.isEnabled = false
-                }
-            }
-        }.start()
-    }
-
-    // A GLideN64 instance owns resources tied to the current EGL context.
-    // Never remove/replace its GLSurfaceView until native teardown has
-    // completed on that surface's GL thread.
-    private fun shutdownCoreBeforeSurfaceChange(): Boolean {
-        if (!nativeCoreLoaded) return true
-
-        val surface = glView
-        val result: String? = if (surface != null && glSurfaceReady) {
-            val finished = CountDownLatch(1)
-            val output = arrayOfNulls<String>(1)
-            try {
-                surface.queueEvent {
-                    try {
-                        output[0] = CoreNativeBridge.nativeShutdown()
-                    } catch (error: Throwable) {
-                        output[0] = "Falha no encerramento pela thread GL: ${error.message}"
-                    } finally {
-                        finished.countDown()
-                    }
-                }
-                if (!finished.await(3000, TimeUnit.MILLISECONDS)) {
-                    statusView.text = "Troca de tela cancelada: o encerramento nativo ainda nao terminou. Bibliotecas preservadas."
-                    return false
-                }
-                output[0]
-            } catch (error: Throwable) {
-                "Falha ao agendar encerramento na thread GL: ${error.message}"
-            }
-        } else {
-            try {
-                CoreNativeBridge.nativeShutdown()
-            } catch (error: Throwable) {
-                "Falha ao encerrar Core sem surface GL: ${error.message}"
-            }
-        }
-
-        val completed = result?.startsWith("Biblioteca do Core descarregada corretamente") == true ||
-            result?.startsWith("Biblioteca do Core nao estava carregada") == true ||
-            result?.startsWith("Core ja foi encerrado e descarregado") == true
-        if (completed) {
-            nativeCoreLoaded = false
-            nativeCoreInitialized = false
-            return true
-        }
-
-        statusView.text = "Troca de tela cancelada para proteger EGL/Core.\n\n" +
-            (result ?: "O encerramento nao retornou resultado.")
-        return false
-    }
-
-    @Suppress("DEPRECATION")
-    private fun enterImmersiveGameMode() {
-        window.setFlags(
-            WindowManager.LayoutParams.FLAG_FULLSCREEN,
-            WindowManager.LayoutParams.FLAG_FULLSCREEN
-        )
-        window.decorView.systemUiVisibility = (
-            android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                or android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
-                or android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                or android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                or android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                or android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-            )
-    }
-
-    private fun showHomeScreen() {
-        if (!shutdownCoreBeforeSurfaceChange()) return
-        diagnosticScreenVisible = false
-        requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        glView?.let {
-            (it.parent as? ViewGroup)?.removeView(it)
-            it.onPause()
-        }
-        glSurfaceReady = false
-        window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
-        window.decorView.systemUiVisibility = 0
-        setContentView(homeLayout)
-    }
-
-    @Suppress("DEPRECATION")
-    override fun onBackPressed() {
-        if (!diagnosticScreenVisible) {
-            super.onBackPressed()
-            return
-        }
-
-        // M64CMD_EXECUTE occupies the GL thread. Request STOP from a worker
-        // first, wait for Execute to return, and only then let showHomeScreen()
-        // perform the EGL/plugin teardown on the now-free GL thread.
-        if (!coreExecutionActive) {
-            showHomeScreen()
-            return
-        }
-        if (backExitInProgress) return
-
-        backExitInProgress = true
-        Toast.makeText(this, "Encerrando o jogo...", Toast.LENGTH_SHORT).show()
-        Thread({
-            val stop = try {
-                CoreStopCoordinator(CoreNativeBridge).requestStopAndAwait(10000)
-            } catch (error: Throwable) {
-                CoreStopCoordinator.Result(
-                    stopResult = "Falha ao solicitar parada: ${error.message}",
-                    waitResult = null,
-                    stopAccepted = false
-                )
-            }
-            val executeReturned = stop.waitResult?.contains("M64CMD_EXECUTE retornou") == true
-            runOnUiThread {
-                backExitInProgress = false
-                if (activityDestroyed) return@runOnUiThread
-                if (stop.stopAccepted && executeReturned) {
-                    android.util.Log.i("N64AndroidFlow",
-                        "Botão Voltar: STOP confirmado e EXECUTE retornou; iniciando retorno seguro à tela inicial.")
-                    showHomeScreen()
-                } else {
-                    android.util.Log.w("N64AndroidFlow",
-                        "Botão Voltar: parada não confirmada. STOP=${stop.stopResult}; WAIT=${stop.waitResult}")
-                    Toast.makeText(
-                        this,
-                        "Não foi possível encerrar o jogo com segurança. Tente novamente.",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-            }
-        }, "N64-Back-Stop").start()
-    }
-
-    private fun showOpenGlTest(drawTriangle: Boolean = false, registerVideoExtension: Boolean = false) {
-        // On first integration startup there is no previous GLSurfaceView to replace.
-        // Shutting down here would tear down the Core that startAndroidVideoIntegration just initialized.
-        if (glView != null && !shutdownCoreBeforeSurfaceChange()) return
-        loadNativeLibrary()
-        glSurfaceReady = false
-        glView?.let {
-            (it.parent as? ViewGroup)?.removeView(it)
-            it.onPause()
-        }
-
-        val surface = GLSurfaceView(this).apply {
-            setEGLContextClientVersion(3)
-            preserveEGLContextOnPause = true
-            setRenderer(object : GLSurfaceView.Renderer {
-                private var triangleProgram = 0
-                private var triangleVertices: FloatBuffer? = null
-
-                override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
-                    glSurfaceReady = true
-                    glSurfaceCreatedCount += 1
-                    val createdCount = glSurfaceCreatedCount
-                    GLES20.glClearColor(0.04f, 0.05f, 0.08f, 1.0f)
-                    if (drawTriangle) {
-                        triangleProgram = createTriangleProgram()
-                        triangleVertices = ByteBuffer.allocateDirect(15 * 4)
-                            .order(ByteOrder.nativeOrder())
-                            .asFloatBuffer()
-                            .apply {
-                                put(floatArrayOf(
-                                    -0.72f, -0.62f, 1.0f, 0.2f, 0.2f,
-                                     0.72f, -0.62f, 0.2f, 1.0f, 0.3f,
-                                     0.00f,  0.72f, 0.2f, 0.5f, 1.0f
-                                ))
-                                position(0)
-                            }
-                    }
-                    val eglStatus = try {
-                        nativeVerifyEglContext()
-                    } catch (error: LinkageError) {
-                        "Falha ao verificar contexto EGL: " + error.message
-                    }
-                    // Informa a dimensão antes de registrar/iniciar o GLideN64,
-                    // pois o plugin pode consultar a lista de modos durante o startup.
-                    if (registerVideoExtension) {
-                        val initialWidth = glView?.width?.takeIf { it > 0 }
-                            ?: resources.displayMetrics.widthPixels
-                        val initialHeight = glView?.height?.takeIf { it > 0 }
-                            ?: resources.displayMetrics.heightPixels
-                        if (initialWidth > 0 && initialHeight > 0) {
-                            try {
-                                nativeSetVideoSurfaceSize(initialWidth, initialHeight)
-                            } catch (error: Throwable) {
-                                android.util.Log.e("N64AndroidVideo",
-                                    "Falha ao informar dimensão inicial da surface", error)
-                            }
-                        }
-                    }
-                    val videoStatus = if (registerVideoExtension) {
-                        try {
-                            android.util.Log.i("N64AndroidFlow", "Etapa 2: chamando nativeRegisterAndroidVideo")
-                            val registration = nativeRegisterAndroidVideo()
-                            android.util.Log.i("N64AndroidFlow", "Etapa 2 resultado: " + registration)
-                            if (!registration.startsWith("Video Extension Android registrada no Core")) {
-                                registration
-                            } else {
-                                val pluginPath = File(applicationInfo.nativeLibraryDir,
-                                    "libmupen64plus-video-GLideN64.so").absolutePath
-                                android.util.Log.i("N64AndroidFlow", "Etapa 3: chamando nativeLoadGfxPlugin")
-                                val pluginResult = nativeLoadGfxPlugin(pluginPath)
-                                android.util.Log.i("N64AndroidFlow", "Etapa 3 resultado: " + pluginResult)
-                                if (!pluginResult.startsWith("Plugin GFX Android carregado e validado")) {
-                                    registration + "\\n\\n" + pluginResult
-                                } else {
-                                    val rspPath = File(applicationInfo.nativeLibraryDir,
-                                        "libmupen64plus-rsp-hle.so").absolutePath
-                                    android.util.Log.i("N64AndroidFlow", "Etapa 4: chamando nativeLoadRspPlugin")
-                                    val rspResult = nativeLoadRspPlugin(rspPath)
-                                    android.util.Log.i("N64AndroidFlow", "Etapa 4 resultado: " + rspResult)
-                                    if (!rspResult.startsWith("Plugin RSP-HLE carregado e inicializado")) {
-                                        registration + "\\n\\n" + pluginResult + "\\n\\n" + rspResult
-                                    } else {
-                                        val audioPath = File(applicationInfo.nativeLibraryDir,
-                                            "libmupen64plus-audio-sdl.so").absolutePath
-                                        android.util.Log.i("N64AndroidFlow", "Etapa 5: chamando nativeLoadAudioPlugin")
-                                        val audioResult = nativeLoadAudioPlugin(audioPath)
-                                        android.util.Log.i("N64AndroidFlow", "Etapa 5 resultado: " + audioResult)
-                                        if (!audioResult.startsWith("Plugin AUDIO SDL carregado e inicializado")) {
-                                            registration + "\\n\\n" + pluginResult + "\\n\\n" +
-                                                rspResult + "\\n\\n" + audioResult
-                                        } else {
-                                            val inputPath = File(applicationInfo.nativeLibraryDir,
-                                                "libmupen64plus-input-android.so").absolutePath
-                                            val inputResult = nativeLoadInputPlugin(inputPath)
-                                            android.util.Log.i("N64AndroidFlow", "Etapa 6 resultado: " + inputResult)
-                                            registration + "\\n\\n" + pluginResult + "\\n\\n" +
-                                                rspResult + "\\n\\n" + audioResult + "\\n\\n" + inputResult
-                                        }
-                                    }
-                                }
-                            }
-                        } catch (error: LinkageError) {
-                            "Falha JNI ao registrar/carregar plugin GFX Android: " + error.message
-                        } catch (error: Exception) {
-                            "Erro ao registrar/carregar plugin GFX Android: " + error.message
-                        }
-                    } else {
-                        ""
-                    }
-                    runOnUiThread {
-                        val targetStatusView = if (registerVideoExtension) integrationStatusView else statusView
-                        val visualStatus = if (registerVideoExtension) {
-                            "Integracao grafica Android registrada no Core."
-                        } else if (!drawTriangle) {
-                            "Teste de superficie OpenGL pronto."
-                        } else if (triangleProgram != 0) {
-                            "Programa GLES compilado. Triangulo colorido sendo desenhado."
-                        } else {
-                            "Falha ao criar o programa de desenho OpenGL. Consulte o log."
-                        }
-                        val lifecycleStatus = if (lifecycleTestEnabled) {
-                            "Superficie EGL criada: $createdCount vez(es)."
-                        } else {
-                            ""
-                        }
-                        targetStatusView.text = (if (registerVideoExtension) "" else "N64 Android\\n\\n") + visualStatus + "\\n" +
-                            lifecycleStatus + "\\n\\n" + eglStatus +
-                            (if (videoStatus.isNotEmpty()) "\\n\\n" + videoStatus else "") +
-                            "\\n\\nNenhuma ROM foi carregada. Confirme acima o resultado do carregamento e do PluginStartup; o plugin ainda nao foi anexado ao Core e InitiateGFX nao foi chamado."
-                        val graphicsReady = videoStatus.contains("Plugin GFX Android carregado e validado") &&
-                            videoStatus.contains("Plugin RSP-HLE carregado e inicializado") &&
-                            videoStatus.contains("Plugin INPUT Android")
-                        if (registerVideoExtension && autoStartAfterGraphicsReady) {
-                            if (graphicsReady) {
-                                openSelectedRomInCore()
-                            } else {
-                                autoStartAfterGraphicsReady = false
-                                integrationStatusView.text = "Falha ao preparar os plugins gráficos.\\n\\n" + videoStatus
-                            }
-                        }
-                    }
-                }
-
-                override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
-                    GLES20.glViewport(0, 0, width, height)
-                    try {
-                        // Atualiza a extensão de vídeo com o tamanho REAL da surface
-                        // em paisagem; não deixa o backend manter dimensões antigas após a rotação.
-                        nativeSetVideoSurfaceSize(width, height)
-                    } catch (error: Throwable) {
-                        android.util.Log.e("N64AndroidVideo", "Falha ao informar tamanho da surface EGL", error)
-                    }
-                }
-
-                override fun onDrawFrame(gl: GL10?) {
-                    GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
-                    if (drawTriangle && triangleProgram != 0) {
-                        drawColoredTriangle(triangleProgram, triangleVertices)
-                    }
-                }
-            })
-            renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
-        }
-
-        glView = surface
-        if (registerVideoExtension) {
-            gameplayLayout.addView(surface, 0, FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            ))
-        } else {
-            graphicsGroup.addView(surface, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                (180 * resources.displayMetrics.density).toInt()
-            ))
-        }
-        surface.onResume()
-        surface.requestRender()
-    }
-
-    private fun createTriangleProgram(): Int {
-        val vertexSource = """
-            attribute vec2 aPosition;
-            attribute vec3 aColor;
-            varying vec3 vColor;
-            void main() {
-                gl_Position = vec4(aPosition, 0.0, 1.0);
-                vColor = aColor;
-            }
-        """.trimIndent()
-        val fragmentSource = """
-            precision mediump float;
-            varying vec3 vColor;
-            void main() {
-                gl_FragColor = vec4(vColor, 1.0);
-            }
-        """.trimIndent()
-
-        val vertexShader = compileTriangleShader(GLES20.GL_VERTEX_SHADER, vertexSource)
-        val fragmentShader = compileTriangleShader(GLES20.GL_FRAGMENT_SHADER, fragmentSource)
-        if (vertexShader == 0 || fragmentShader == 0) return 0
-
-        val program = GLES20.glCreateProgram()
-        if (program == 0) return 0
-        GLES20.glAttachShader(program, vertexShader)
-        GLES20.glAttachShader(program, fragmentShader)
-        GLES20.glBindAttribLocation(program, 0, "aPosition")
-        GLES20.glBindAttribLocation(program, 1, "aColor")
-        GLES20.glLinkProgram(program)
-        val linkStatus = IntArray(1)
-        GLES20.glGetProgramiv(program, GLES20.GL_LINK_STATUS, linkStatus, 0)
-        GLES20.glDeleteShader(vertexShader)
-        GLES20.glDeleteShader(fragmentShader)
-        if (linkStatus[0] == 0) {
-            android.util.Log.e("N64AndroidGLES", "Falha no link do shader: " + GLES20.glGetProgramInfoLog(program))
-            GLES20.glDeleteProgram(program)
-            return 0
-        }
-        return program
-    }
-
-    private fun compileTriangleShader(type: Int, source: String): Int {
-        val shader = GLES20.glCreateShader(type)
-        if (shader == 0) return 0
-        GLES20.glShaderSource(shader, source)
-        GLES20.glCompileShader(shader)
-        val compiled = IntArray(1)
-        GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compiled, 0)
-        if (compiled[0] == 0) {
-            android.util.Log.e("N64AndroidGLES", "Falha ao compilar shader: " + GLES20.glGetShaderInfoLog(shader))
-            GLES20.glDeleteShader(shader)
-            return 0
-        }
-        return shader
-    }
-
-    private fun drawColoredTriangle(program: Int, vertices: FloatBuffer?) {
-        if (vertices == null) return
-        GLES20.glUseProgram(program)
-        vertices.position(0)
-        GLES20.glVertexAttribPointer(0, 2, GLES20.GL_FLOAT, false, 20, vertices)
-        GLES20.glEnableVertexAttribArray(0)
-        vertices.position(2)
-        GLES20.glVertexAttribPointer(1, 3, GLES20.GL_FLOAT, false, 20, vertices)
-        GLES20.glEnableVertexAttribArray(1)
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 3)
-        GLES20.glDisableVertexAttribArray(0)
-        GLES20.glDisableVertexAttribArray(1)
-        GLES20.glUseProgram(0)
-    }
-
-    private fun testGlThreadBridge() {
-        val surface = glView
-        if (surface == null || !glSurfaceReady) {
-            statusView.text = "N64 Android\\n\\nAbra primeiro o teste 6 e aguarde o contexto EGL ficar valido."
-            return
-        }
-
-        statusView.text = "N64 Android\\n\\nEnviando chamada JNI para a thread GL..."
-        surface.queueEvent {
-            val result = try {
-                nativeVerifyEglContext()
-            } catch (error: LinkageError) {
-                "Falha na chamada JNI da thread GL: " + error.message
-            } catch (error: Exception) {
-                "Erro na chamada JNI da thread GL: " + error.message
-            }
-            runOnUiThread {
-                statusView.text = "N64 Android\\n\\nPonte JNI via GLSurfaceView.queueEvent\\n" + result +
-                    "\\n\\nNenhuma ROM foi carregada."
-            }
-        }
-    }
-
-    private fun testGlOperationsOnGlThread() {
-        val surface = glView
-        if (surface == null || !glSurfaceReady) {
-            statusView.text = "N64 Android\\n\\nAbra primeiro o teste 6 e aguarde o contexto EGL ficar valido."
-            return
-        }
-
-        statusView.text = "N64 Android\\n\\nExecutando operacoes GLES pela JNI na thread GL..."
-        surface.queueEvent {
-            val result = try {
-                nativeTestGlOperations()
-            } catch (error: LinkageError) {
-                "Falha na operacao GLES pela JNI: " + error.message
-            } catch (error: Exception) {
-                "Erro na operacao GLES pela JNI: " + error.message
-            }
-            runOnUiThread {
-                statusView.text = "N64 Android\\n\\nTeste 9 - Operacoes GLES na thread GL\\n" +
-                    result + "\\n\\nNenhuma ROM foi carregada."
-            }
-        }
-        surface.requestRender()
-    }
-
-    private fun loadNativeLibrary() {
-        if (!nativeLibraryLoaded) {
-            // SDL is loaded by the VM (not only dlopen) so its JNI_OnLoad registers
-            // the Android Java callbacks before the audio plugin starts SDL.
-            System.loadLibrary("SDL2")
-
-            // Invoke the official SDL Java bootstrap reflectively. This keeps the
-            // custom Activity independent of compile-time references to SDL classes.
-            val sdlActivity = Class.forName("org.libsdl.app.SDLActivity")
-            val sdlAudio = Class.forName("org.libsdl.app.SDLAudioManager")
-            val sdlController = Class.forName("org.libsdl.app.SDLControllerManager")
-
-            sdlActivity.getDeclaredMethod("nativeSetupJNI").invoke(null)
-            sdlAudio.getDeclaredMethod("nativeSetupJNI").invoke(null)
-            sdlController.getDeclaredMethod("nativeSetupJNI").invoke(null)
-
-            // Match SDL.setupJNI() followed by the relevant parts of SDL.initialize().
-            sdlActivity.getDeclaredMethod("initialize").invoke(null)
-            sdlAudio.getDeclaredMethod("initialize").invoke(null)
-            sdlController.getDeclaredMethod("initialize").invoke(null)
-            sdlAudio.getDeclaredMethod("setContext", android.content.Context::class.java)
-                .invoke(null, this)
-
-            android.util.Log.i("N64SDLBootstrap", "SDL2 JNI e SDLAudioManager inicializados antes do Core.")
-
-            System.loadLibrary("n64bridge")
-            nativeLibraryLoaded = true
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        glView?.let { surface ->
-            surface.onResume()
-            if (lifecycleTestEnabled) {
-                surface.queueEvent {
-                    val eglStatus = try {
-                        nativeVerifyEglContext()
-                    } catch (error: LinkageError) {
-                        "Falha ao verificar EGL depois da retomada: " + error.message
-                    } catch (error: Exception) {
-                        "Erro ao verificar EGL depois da retomada: " + error.message
-                    }
-                    val createdCount = glSurfaceCreatedCount
-                    runOnUiThread {
-                        statusView.text = "N64 Android\\n\\nTeste de ciclo de vida GL\\n" +
-                            "Activity retomada. Superficie criada: $createdCount vez(es).\\n\\n" +
-                            eglStatus + "\\n\\nO teste nao iniciou ROM nem plugin."
-                    }
-                }
-            }
-        }
-    }
-
-    override fun onPause() {
-        // Do not suspend GLSurfaceView if native shutdown has not been confirmed.
-        // A synchronous M64CMD_EXECUTE can occupy the GL thread; pausing that
-        // thread after a timeout could strand the Core while it still owns EGL.
-        var mayPauseGlSurface = true
-
-        // First close Core admission and request STOP from the Activity thread.
-        // This is essential because M64CMD_EXECUTE occupies the GL thread; a
-        // shutdown event queued only to that thread could never interrupt it.
-        if (nativeCoreLoaded && !romPickerActive) {
-            val drainResult = try {
-                CoreNativeBridge.nativeShutdown()
-            } catch (error: Throwable) {
-                "Falha ao solicitar parada/drenagem do Core: ${error.message}"
-            }
-            android.util.Log.i("N64AndroidFlow",
-                "Preparacao do Core antes de pausar EGL: $drainResult")
-
-            // Finish graphics teardown on the GL thread while EGL is current.
-            // A timeout/failure is not permission to pause the GL thread.
-            if (nativeCoreLoaded && !shutdownCoreBeforeSurfaceChange()) {
-                mayPauseGlSurface = false
-                android.util.Log.w("N64AndroidFlow",
-                    "GLSurfaceView mantida ativa: parada/encerramento nao foi confirmado; handles nativos preservados.")
-            }
-        }
-
-        if (romPickerActive) {
-            android.util.Log.i("N64AndroidFlow",
-                "Pausa temporaria do seletor de ROM: Core preservado.")
-        }
-
-        if (mayPauseGlSurface) {
-            glView?.onPause()
-        } else {
-            android.util.Log.w("N64AndroidFlow",
-                "onPause: pulando GLSurfaceView.onPause() para nao interromper uma possivel chamada Core ainda ativa.")
-        }
-        super.onPause()
-    }
-
-    override fun onDestroy() {
-        // Invalidate late worker callbacks before Android tears down this Activity.
-        activityDestroyed = true
-        // Give the GL thread one last chance to detach/shutdown GLideN64 while
-        // its EGL context is current. Do this before pausing GLSurfaceView.
-        val surface = glView
-        var mayPauseGlSurface = !nativeCoreLoaded
-        if (nativeCoreLoaded && surface != null && glSurfaceReady) {
-            val finished = CountDownLatch(1)
-            val result = arrayOf<String?>(null)
-            try {
-                surface.queueEvent {
-                    try {
-                        result[0] = CoreNativeBridge.nativeShutdown()
-                    } catch (error: Throwable) {
-                        result[0] = "Falha no encerramento pela thread GL: ${error.message}"
-                    } finally {
-                        finished.countDown()
-                    }
-                }
-                if (finished.await(3000, TimeUnit.MILLISECONDS)) {
-                    android.util.Log.i("N64AndroidFlow",
-                        "Encerramento pela thread GL: ${result[0]}")
-                    mayPauseGlSurface =
-                        result[0]?.startsWith("Biblioteca do Core descarregada corretamente") == true ||
-                        result[0]?.startsWith("Biblioteca do Core nao estava carregada") == true ||
-                        result[0]?.startsWith("Core ja foi encerrado e descarregado") == true
-                    if (mayPauseGlSurface) {
-                        nativeCoreLoaded = false
-                        nativeCoreInitialized = false
-                    }
-                } else {
-                    android.util.Log.w("N64AndroidFlow",
-                        "Tempo esgotado aguardando encerramento GL; bibliotecas permanecem protegidas.")
-                }
-            } catch (error: Throwable) {
-                android.util.Log.e("N64AndroidFlow",
-                    "Nao foi possivel agendar encerramento na thread GL.", error)
-            }
-        } else if (nativeCoreLoaded) {
-            // The native EGL guard refuses unsafe graphics shutdown here.
-            try {
-                val result = CoreNativeBridge.nativeShutdown()
-                android.util.Log.i("N64AndroidFlow", result)
-                mayPauseGlSurface =
-                    result.startsWith("Biblioteca do Core descarregada corretamente") ||
-                    result.startsWith("Biblioteca do Core nao estava carregada") ||
-                    result.startsWith("Core ja foi encerrado e descarregado")
-                if (mayPauseGlSurface) {
-                    nativeCoreLoaded = false
-                    nativeCoreInitialized = false
-                }
-            } catch (error: Throwable) {
-                android.util.Log.e("N64AndroidFlow", "Falha no encerramento protegido.", error)
-            }
-        }
-        if (mayPauseGlSurface) {
-            surface?.onPause()
-        } else {
-            android.util.Log.w("N64AndroidFlow",
-                "onDestroy: pausa explicita da GLSurfaceView omitida porque shutdown nao foi confirmado. A destruicao da janela ainda pode encerrar a superficie EGL.")
-        }
-        super.onDestroy()
+        refresh()
     }
 }
