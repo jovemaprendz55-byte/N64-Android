@@ -74,6 +74,8 @@ class MainActivity : Activity() {
     @Volatile private var glSurfaceCreatedCount = 0
     @Volatile private var lifecycleTestEnabled = false
     @Volatile private var activityDestroyed = false
+    @Volatile private var coreExecutionActive = false
+    @Volatile private var backExitInProgress = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -845,10 +847,15 @@ class MainActivity : Activity() {
                     "Pre-checagem aprovada. Teste de execucao iniciado na thread GL.\\n" +
                     "Se a imagem aparecer, use Parar emulacao para encerrar o teste."
             }
+            coreExecutionActive = true
+            android.util.Log.i("N64AndroidFlow", "M64CMD_EXECUTE ativo; botão Voltar poderá solicitar STOP.")
             val result = try {
                 nativeExecuteCore()
             } catch (error: Throwable) {
                 "Falha durante M64CMD_EXECUTE: ${error.message}"
+            } finally {
+                coreExecutionActive = false
+                android.util.Log.i("N64AndroidFlow", "M64CMD_EXECUTE finalizado; thread GL liberada.")
             }
             runOnUiThread { integrationStatusView.text = result }
         }
@@ -1011,11 +1018,51 @@ class MainActivity : Activity() {
 
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
-        if (diagnosticScreenVisible) {
-            showHomeScreen()
-        } else {
+        if (!diagnosticScreenVisible) {
             super.onBackPressed()
+            return
         }
+
+        // M64CMD_EXECUTE occupies the GL thread. Request STOP from a worker
+        // first, wait for Execute to return, and only then let showHomeScreen()
+        // perform the EGL/plugin teardown on the now-free GL thread.
+        if (!coreExecutionActive) {
+            showHomeScreen()
+            return
+        }
+        if (backExitInProgress) return
+
+        backExitInProgress = true
+        Toast.makeText(this, "Encerrando o jogo...", Toast.LENGTH_SHORT).show()
+        Thread({
+            val stop = try {
+                CoreStopCoordinator(CoreNativeBridge).requestStopAndAwait(10000)
+            } catch (error: Throwable) {
+                CoreStopCoordinator.Result(
+                    stopResult = "Falha ao solicitar parada: ${error.message}",
+                    waitResult = null,
+                    stopAccepted = false
+                )
+            }
+            val executeReturned = stop.waitResult?.contains("M64CMD_EXECUTE retornou") == true
+            runOnUiThread {
+                backExitInProgress = false
+                if (activityDestroyed) return@runOnUiThread
+                if (stop.stopAccepted && executeReturned) {
+                    android.util.Log.i("N64AndroidFlow",
+                        "Botão Voltar: STOP confirmado e EXECUTE retornou; iniciando retorno seguro à tela inicial.")
+                    showHomeScreen()
+                } else {
+                    android.util.Log.w("N64AndroidFlow",
+                        "Botão Voltar: parada não confirmada. STOP=${stop.stopResult}; WAIT=${stop.waitResult}")
+                    Toast.makeText(
+                        this,
+                        "Não foi possível encerrar o jogo com segurança. Tente novamente.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }, "N64-Back-Stop").start()
     }
 
     private fun showOpenGlTest(drawTriangle: Boolean = false, registerVideoExtension: Boolean = false) {
