@@ -4,6 +4,7 @@
 #include <android/log.h>
 #define VK_USE_PLATFORM_ANDROID_KHR
 #include <vulkan/vulkan.h>
+#include "triangle_shaders.h"
 
 #include <algorithm>
 #include <cstring>
@@ -28,6 +29,8 @@ VkFormat g_swapchainFormat = VK_FORMAT_UNDEFINED;
 std::vector<VkImage> g_swapchainImages;
 std::vector<VkImageView> g_swapchainViews;
 VkRenderPass g_renderPass = VK_NULL_HANDLE;
+VkPipelineLayout g_pipelineLayout = VK_NULL_HANDLE;
+VkPipeline g_graphicsPipeline = VK_NULL_HANDLE;
 std::vector<VkFramebuffer> g_framebuffers;
 VkCommandPool g_commandPool = VK_NULL_HANDLE;
 std::vector<VkCommandBuffer> g_commandBuffers;
@@ -50,6 +53,10 @@ void destroySwapchainLocked() {
         for (VkFramebuffer framebuffer : g_framebuffers)
             if (framebuffer != VK_NULL_HANDLE) vkDestroyFramebuffer(g_device, framebuffer, nullptr);
         g_framebuffers.clear();
+        if (g_graphicsPipeline != VK_NULL_HANDLE) vkDestroyPipeline(g_device, g_graphicsPipeline, nullptr);
+        if (g_pipelineLayout != VK_NULL_HANDLE) vkDestroyPipelineLayout(g_device, g_pipelineLayout, nullptr);
+        g_graphicsPipeline = VK_NULL_HANDLE;
+        g_pipelineLayout = VK_NULL_HANDLE;
         if (g_renderPass != VK_NULL_HANDLE) vkDestroyRenderPass(g_device, g_renderPass, nullptr);
         g_renderPass = VK_NULL_HANDLE;
         if (g_commandPool != VK_NULL_HANDLE)
@@ -67,7 +74,9 @@ void destroySwapchainLocked() {
         auto destroyView = reinterpret_cast<PFN_vkDestroyImageView>(
             vkGetDeviceProcAddr(g_device, "vkDestroyImageView"));
         if (destroyView) {
-            for (VkImageView view : g_swapchainViews) {
+            if (!createGraphicsPipeline(error)) return false;
+
+    for (VkImageView view : g_swapchainViews) {
                 if (view != VK_NULL_HANDLE) destroyView(g_device, view, nullptr);
             }
         }
@@ -241,6 +250,47 @@ bool createLogicalDevice(std::string& error) {
     return true;
 }
 
+bool createGraphicsPipeline(std::string& error) {
+    auto makeShader = [](const uint32_t* code, size_t size, VkShaderModule* module) {
+        VkShaderModuleCreateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        info.codeSize = size;
+        info.pCode = code;
+        return vkCreateShaderModule(g_device, &info, nullptr, module);
+    };
+    VkShaderModule vert = VK_NULL_HANDLE, frag = VK_NULL_HANDLE;
+    VkResult status = makeShader(triangle_vertex_spv, sizeof(triangle_vertex_spv), &vert);
+    if (status != VK_SUCCESS) { error = "Vertex shader falhou: " + std::to_string(status); return false; }
+    status = makeShader(triangle_fragment_spv, sizeof(triangle_fragment_spv), &frag);
+    if (status != VK_SUCCESS) { vkDestroyShaderModule(g_device, vert, nullptr); error = "Fragment shader falhou: " + std::to_string(status); return false; }
+    VkPipelineShaderStageCreateInfo stages[2]{};
+    stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = vert; stages[0].pName = "main";
+    stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = frag; stages[1].pName = "main";
+    VkPipelineVertexInputStateCreateInfo vertex{}; vertex.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    VkPipelineInputAssemblyStateCreateInfo assembly{}; assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO; assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    VkPipelineViewportStateCreateInfo viewport{}; viewport.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO; viewport.viewportCount = 1; viewport.scissorCount = 1;
+    VkPipelineRasterizationStateCreateInfo raster{}; raster.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO; raster.polygonMode = VK_POLYGON_MODE_FILL; raster.cullMode = VK_CULL_MODE_NONE; raster.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; raster.lineWidth = 1.0f;
+    VkPipelineMultisampleStateCreateInfo samples{}; samples.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO; samples.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    VkPipelineColorBlendAttachmentState attachment{}; attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    VkPipelineColorBlendStateCreateInfo blend{}; blend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO; blend.attachmentCount = 1; blend.pAttachments = &attachment;
+    const VkDynamicState states[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+    VkPipelineDynamicStateCreateInfo dynamic{}; dynamic.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO; dynamic.dynamicStateCount = 2; dynamic.pDynamicStates = states;
+    VkPipelineLayoutCreateInfo layout{}; layout.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    status = vkCreatePipelineLayout(g_device, &layout, nullptr, &g_pipelineLayout);
+    if (status == VK_SUCCESS) {
+        VkGraphicsPipelineCreateInfo info{}; info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        info.stageCount = 2; info.pStages = stages; info.pVertexInputState = &vertex; info.pInputAssemblyState = &assembly;
+        info.pViewportState = &viewport; info.pRasterizationState = &raster; info.pMultisampleState = &samples;
+        info.pColorBlendState = &blend; info.pDynamicState = &dynamic; info.layout = g_pipelineLayout; info.renderPass = g_renderPass;
+        status = vkCreateGraphicsPipelines(g_device, VK_NULL_HANDLE, 1, &info, nullptr, &g_graphicsPipeline);
+    }
+    vkDestroyShaderModule(g_device, frag, nullptr); vkDestroyShaderModule(g_device, vert, nullptr);
+    if (status != VK_SUCCESS) { error = "Pipeline gráfico falhou: " + std::to_string(status); return false; }
+    return true;
+}
+
 bool createRenderResources(std::string& error) {
     VkAttachmentDescription attachment{};
     attachment.format = g_swapchainFormat;
@@ -343,6 +393,11 @@ bool createRenderResources(std::string& error) {
         passInfo.clearValueCount = 1;
         passInfo.pClearValues = &clear;
         vkCmdBeginRenderPass(g_commandBuffers[i], &passInfo, VK_SUBPASS_CONTENTS_INLINE);
+        VkViewport vp{}; vp.width = static_cast<float>(ANativeWindow_getWidth(g_window)); vp.height = static_cast<float>(ANativeWindow_getHeight(g_window)); vp.maxDepth = 1.0f;
+        VkRect2D sc{}; sc.extent.width = static_cast<uint32_t>(ANativeWindow_getWidth(g_window)); sc.extent.height = static_cast<uint32_t>(ANativeWindow_getHeight(g_window));
+        vkCmdSetViewport(g_commandBuffers[i], 0, 1, &vp); vkCmdSetScissor(g_commandBuffers[i], 0, 1, &sc);
+        vkCmdBindPipeline(g_commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, g_graphicsPipeline);
+        vkCmdDraw(g_commandBuffers[i], 3, 1, 0, 0);
         vkCmdEndRenderPass(g_commandBuffers[i]);
         status = vkEndCommandBuffer(g_commandBuffers[i]);
         if (status != VK_SUCCESS) {
@@ -417,7 +472,7 @@ bool presentTestFrame(std::string& error) {
         return false;
     }
     vkQueueWaitIdle(g_presentQueue);
-    error = "quadro azul apresentado pela Vulkan.";
+    error = "triângulo colorido renderizado e apresentado pela Vulkan."
     return true;
 }
 
