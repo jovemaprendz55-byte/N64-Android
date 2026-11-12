@@ -48,6 +48,10 @@ Do not load the Core or GLideN64 in this stage.
 
 Add a serialized task queue on the EGL thread and prove that native EGL checks and Core diagnostics execute with the expected current context. Verify shutdown and timeout behavior before attaching the graphics plugin.
 
+Current implementation: `SurfaceEglTestView.runQueueDiagnostic()` posts one ordered diagnostic batch to the dedicated EGL `HandlerThread`. It verifies that the context is current, reads the GLES version/renderer, calls the existing JNI `nativeVerifyEglContext()` check on that same thread, and confirms that the current EGL context is unchanged afterward. The diagnostic UI exposes this as button `13 - Testar fila EGL + JNI`. This does not start or shut down Mupen64Plus and does not load GLideN64; Core lifecycle integration remains gated on successful device testing and a separate shutdown/timeout design review.
+
+Device acceptance for this stage: run button 13 repeatedly; confirm the reported thread is `N64-Surface-EGL`, JNI reports a valid current EGL context, and `context preserved after JNI` is `SIM`. Then leave/re-enter the screen and rotate the device, repeating the diagnostic after each lifecycle transition. Any timeout, crash, missing context, or changed context blocks Stage 3.
+
 ### Stage 3 — plugin integration
 
 Only after Stage 2 passes, connect the Core and GLideN64. Keep the existing GLSurfaceView implementation available as a fallback until device tests pass.
