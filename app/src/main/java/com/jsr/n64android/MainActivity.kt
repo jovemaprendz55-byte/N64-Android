@@ -1050,6 +1050,34 @@ class MainActivity : Activity() {
                 override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
                     android.util.Log.i("N64AndroidFlow", "GL_SURFACE_FLOW: onSurfaceCreated; registerVideoExtension=$registerVideoExtension; autoStart=$autoStartAfterGraphicsReady; thread=${Thread.currentThread().name}")
                     glSurfaceReady = true
+                    // Tell Android's compositor that gameplay produces a fixed 60 FPS stream.
+                    // This is a surface hint (not a frame limiter); keep EGL ownership on
+                    // GLSurfaceView's render thread and leave the emulation/audio clocks intact.
+                    if (registerVideoExtension && android.os.Build.VERSION.SDK_INT >= 30) {
+                        try {
+                            val gameSurface = glView?.holder?.surface
+                            if (gameSurface != null && gameSurface.isValid) {
+                                gameSurface.setFrameRate(
+                                    60f,
+                                    android.view.Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE
+                                )
+                                android.util.Log.i(
+                                    "N64AndroidVideo",
+                                    "Android Surface frame-rate hint aplicado: 60 FPS (fixed source)"
+                                )
+                            } else {
+                                android.util.Log.w(
+                                    "N64AndroidVideo",
+                                    "Surface frame-rate hint ignorado: Surface ainda não está válida"
+                                )
+                            }
+                        } catch (error: Throwable) {
+                            android.util.Log.w(
+                                "N64AndroidVideo",
+                                "Não foi possível aplicar frame-rate hint: ${error.message}"
+                            )
+                        }
+                    }
                     glSurfaceCreatedCount += 1
                     val createdCount = glSurfaceCreatedCount
                     GLES20.glClearColor(0.04f, 0.05f, 0.08f, 1.0f)
