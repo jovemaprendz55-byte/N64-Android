@@ -8,5 +8,7 @@ internal object VulkanNative {
     }
 
     external fun nativeInitialize(surface: Surface): String
+    external fun nativePrepareRom(romBytes: ByteArray, configPath: String, dataPath: String): String
+    external fun nativeCloseRom(): String
     external fun nativeShutdown()
 }
