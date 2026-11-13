@@ -1883,7 +1883,9 @@ Java_com_jsr_n64android_VulkanNative_nativeInitialize(
     appInfo.applicationVersion = 1;
     appInfo.pEngineName = "N64 Vulkan Backend";
     appInfo.engineVersion = 1;
-    appInfo.apiVersion = VK_API_VERSION_1_0;
+    // Granite/paraLLEl-RDP requires Vulkan 1.1 semantics for an externally supplied instance.
+    // The target device (Mali-G52, Vulkan 1.3) supports this API level.
+    appInfo.apiVersion = VK_API_VERSION_1_1;
     VkInstanceCreateInfo instanceInfo{};
     instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     instanceInfo.pApplicationInfo = &appInfo;
