@@ -126,21 +126,39 @@ class MainActivity : Activity() {
         ))
 
         var initialized = false
+        var initializedWidth = 0
+        var initializedHeight = 0
         surfaceView.holder.addCallback(object : SurfaceHolder.Callback {
             override fun surfaceCreated(holder: SurfaceHolder) {
                 try {
                     status.text = VulkanNative.nativeInitialize(holder.surface)
                     initialized = status.text.toString().startsWith("Superfície Vulkan Android criada")
+                    if (initialized) {
+                        initializedWidth = surfaceView.width
+                        initializedHeight = surfaceView.height
+                    }
                 } catch (error: Throwable) {
                     status.text = "Falha ao iniciar Vulkan: ${error.message}"
                 }
             }
 
             override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-                status.text = if (initialized) {
-                    "Vulkan ativa (${width}x${height}). Textura CPU de teste exibida; ROM ainda não conectada."
-                } else {
-                    status.text
+                if (initialized && initializedWidth > 0 && initializedHeight > 0 &&
+                    (width != initializedWidth || height != initializedHeight)) {
+                    try {
+                        status.text = "Reconstruindo dispositivo e swapchain Vulkan (${width}x${height})..."
+                        status.text = VulkanNative.nativeInitialize(holder.surface)
+                        initialized = status.text.toString().startsWith("Superfície Vulkan Android criada")
+                        if (initialized) {
+                            initializedWidth = width
+                            initializedHeight = height
+                        }
+                    } catch (error: Throwable) {
+                        initialized = false
+                        status.text = "Falha ao recriar Vulkan após mudança de superfície: ${error.message}"
+                    }
+                } else if (initialized) {
+                    status.text = "Vulkan ativa (${width}x${height}). Textura CPU de teste exibida; ROM ainda não conectada."
                 }
             }
 
