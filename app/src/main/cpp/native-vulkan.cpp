@@ -1545,6 +1545,12 @@ m64p_error installAndroidVideoExtension() {
 
 void stopExecutionLocked() {
     if (g_executionThread.joinable()) {
+        {
+            std::unique_lock<std::mutex> waitLock(g_executionMutex);
+            g_executionCondition.wait_for(waitLock, std::chrono::seconds(10), [] {
+                return g_executionRunning.load() || g_executionFinished.load();
+            });
+        }
         if (g_executionRunning.load()) {
             const m64p_error stopError = CoreDoCommand(M64CMD_STOP, 0, nullptr);
             __android_log_print(stopError == M64ERR_SUCCESS ? ANDROID_LOG_INFO : ANDROID_LOG_WARN,
@@ -1781,31 +1787,22 @@ Java_com_jsr_n64android_VulkanNative_nativeStartEmulation(
 
     g_executionRunning.store(false);
     g_executionFinished.store(false);
-    g_executionThread = std::thread([]() {
-        __android_log_print(ANDROID_LOG_INFO, "N64AndroidCore",
-            "Iniciando M64CMD_EXECUTE em thread nativa.");
-        const m64p_error executeError = CoreDoCommand(M64CMD_EXECUTE, 0, nullptr);
-        __android_log_print(executeError == M64ERR_SUCCESS ? ANDROID_LOG_INFO : ANDROID_LOG_ERROR,
-            "N64AndroidCore", "M64CMD_EXECUTE terminou: %d", executeError);
-        g_executionRunning.store(false);
+    try {
+        g_executionThread = std::thread([]() {
+            __android_log_print(ANDROID_LOG_INFO, "N64AndroidCore",
+                "Iniciando M64CMD_EXECUTE em thread nativa.");
+            const m64p_error executeError = CoreDoCommand(M64CMD_EXECUTE, 0, nullptr);
+            __android_log_print(executeError == M64ERR_SUCCESS ? ANDROID_LOG_INFO : ANDROID_LOG_ERROR,
+                "N64AndroidCore", "M64CMD_EXECUTE terminou: %d", executeError);
+            g_executionRunning.store(false);
+            g_executionFinished.store(true);
+            g_executionCondition.notify_all();
+        });
+    } catch (const std::exception& error) {
         g_executionFinished.store(true);
-        g_executionCondition.notify_all();
-    });
-
-    std::unique_lock<std::mutex> waitLock(g_executionMutex);
-    const bool entered = g_executionCondition.wait_for(waitLock, std::chrono::seconds(10), [] {
-        return g_executionRunning.load() || g_executionFinished.load();
-    });
-    if (!entered) {
-        __android_log_print(ANDROID_LOG_WARN, "N64AndroidCore",
-            "M64CMD_EXECUTE ainda não confirmou estado RUNNING após 10 segundos.");
-        return result(env, "O Core foi acionado, mas ainda não confirmou o início da execução. Consulte o diagnóstico.");
+        return result(env, std::string("Falha ao criar thread de execução: ") + error.what());
     }
-    if (!g_executionRunning.load()) {
-        if (g_executionThread.joinable()) g_executionThread.join();
-        return result(env, "O Core encerrou a execução durante a inicialização. Consulte o diagnóstico.");
-    }
-    return result(env, "Execução da ROM iniciada pelo Mupen64Plus em thread nativa.");
+    return result(env, "Comando de execução enviado ao Core em segundo plano.");
 }
 
 extern "C" JNIEXPORT jstring JNICALL
