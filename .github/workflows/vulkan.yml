@@ -48,6 +48,9 @@ jobs:
           git clone https://github.com/Themaister/parallel-rdp.git third_party/parallel-rdp
           git -C third_party/parallel-rdp checkout 1cecd042b2619bc505c12bfdc713808386f2b54d
           git -C third_party/parallel-rdp submodule update --init angrylion-rdp-plus Granite
+          # paraLLEl-RDP's 2024 sources use Granite's pre-refactor shader API.
+          # Pin the compatible parent of the later Granite submodule update.
+          git -C third_party/parallel-rdp/Granite checkout a75f2064cd2a23084f0638d97a5d222ec55d396e
           git -C third_party/parallel-rdp/Granite submodule update --init \
             third_party/spirv-cross \
             third_party/shaderc \
