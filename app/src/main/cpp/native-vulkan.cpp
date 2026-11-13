@@ -1050,8 +1050,14 @@ extern "C" bool n64VulkanSubmitVideoFrame(const N64VideoFrame* frame) {
     const bool uploaded = uploadVideoFrameLocked(*frame, error);
     if (!uploaded) {
         __android_log_print(ANDROID_LOG_ERROR, TAG, "%s", error.c_str());
+        return false;
     }
-    return uploaded;
+    if (!presentTestFrame(error)) {
+        __android_log_print(ANDROID_LOG_ERROR, TAG,
+            "Quadro enviado, mas apresentação Vulkan falhou: %s", error.c_str());
+        return false;
+    }
+    return true;
 }
 
 // Adapter can be registered directly as an N64VideoFrameCallback.
