@@ -1079,16 +1079,20 @@ bool presentTestFrame(std::string& error) {
     status = vkAcquireNextImageKHR(g_device, g_swapchain, UINT64_MAX,
                                    g_imageAvailable, VK_NULL_HANDLE, &imageIndex);
     if (status == VK_ERROR_OUT_OF_DATE_KHR) {
-        error = "Swapchain Vulkan desatualizada (VK_ERROR_OUT_OF_DATE_KHR); aguardando recriação da superfície Android.";
+        g_rendererFaulted = true;
+        error = "Swapchain Vulkan desatualizada (VK_ERROR_OUT_OF_DATE_KHR); renderer pausado até reinicialização da superfície Android.";
         return false;
     }
     if (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) {
-        error = "vkAcquireNextImageKHR falhou: " + std::to_string(status);
+        g_rendererFaulted = true;
+        error = "vkAcquireNextImageKHR falhou: " + std::to_string(status) +
+            "; renderer pausado até reinicialização Vulkan.";
         return false;
     }
     const bool acquireSuboptimal = status == VK_SUBOPTIMAL_KHR;
     if (imageIndex >= g_commandBuffers.size()) {
-        error = "Índice de imagem Vulkan fora do intervalo.";
+        g_rendererFaulted = true;
+        error = "Índice de imagem Vulkan fora do intervalo; renderer pausado até reinicialização.";
         return false;
     }
     status = vkResetFences(g_device, 1, &g_frameFence);
@@ -1195,17 +1199,22 @@ bool presentTestFrame(std::string& error) {
     present.pImageIndices = &imageIndex;
     status = vkQueuePresentKHR(g_presentQueue, &present);
     if (status == VK_ERROR_OUT_OF_DATE_KHR) {
-        error = "Apresentação Vulkan desatualizada (VK_ERROR_OUT_OF_DATE_KHR); aguardando recriação da superfície Android.";
+        g_rendererFaulted = true;
+        error = "Apresentação Vulkan desatualizada (VK_ERROR_OUT_OF_DATE_KHR); renderer pausado até reinicialização da superfície Android.";
         return false;
     }
     if (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) {
-        error = "vkQueuePresentKHR falhou: " + std::to_string(status);
+        g_rendererFaulted = true;
+        error = "vkQueuePresentKHR falhou: " + std::to_string(status) +
+            "; renderer pausado até reinicialização Vulkan.";
         return false;
     }
     const bool presentSuboptimal = status == VK_SUBOPTIMAL_KHR;
     status = vkQueueWaitIdle(g_presentQueue);
     if (status != VK_SUCCESS) {
-        error = "vkQueueWaitIdle após apresentação falhou: " + std::to_string(status);
+        g_rendererFaulted = true;
+        error = "vkQueueWaitIdle após apresentação falhou: " + std::to_string(status) +
+            "; renderer pausado até reinicialização Vulkan.";
         return false;
     }
     error = (acquireSuboptimal || presentSuboptimal)
