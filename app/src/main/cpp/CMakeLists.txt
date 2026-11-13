@@ -34,6 +34,8 @@ set(PARALLEL_RDP_SOURCE_DIR "${N64_PROJECT_ROOT}/third_party/parallel-rdp")
 if(EXISTS "${PARALLEL_RDP_SOURCE_DIR}/parallel-rdp/rdp_device.hpp")
     set(GRANITE_TOOLS OFF CACHE BOOL "" FORCE)
     set(GRANITE_PLATFORM "headless" CACHE STRING "" FORCE)
+    # The app owns frame pacing and Vulkan presentation; avoid Android Swappy dependency.
+    set(GRANITE_ANDROID_SWAPPY OFF CACHE BOOL "" FORCE)
     set(GRANITE_VULKAN_SYSTEM_HANDLES OFF CACHE BOOL "" FORCE)
     set(GRANITE_RENDERER OFF CACHE BOOL "" FORCE)
     set(GRANITE_VULKAN_SPIRV_CROSS OFF CACHE BOOL "" FORCE)
