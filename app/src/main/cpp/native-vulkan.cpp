@@ -255,7 +255,20 @@ bool selectPhysicalDevice(std::string& details) {
         g_presentFamily = present;
         VkPhysicalDeviceProperties properties{};
         vkGetPhysicalDeviceProperties(candidate, &properties);
-        details = properties.deviceName;
+        const bool has8BitStorage = hasDeviceExtension(candidate, "VK_KHR_8bit_storage");
+        const bool has16BitStorage = hasDeviceExtension(candidate, "VK_KHR_16bit_storage");
+        const bool hasExternalMemoryHost = hasDeviceExtension(candidate, "VK_EXT_external_memory_host");
+        const uint32_t apiMajor = VK_VERSION_MAJOR(properties.apiVersion);
+        const uint32_t apiMinor = VK_VERSION_MINOR(properties.apiVersion);
+        details = properties.deviceName +
+            " | Vulkan " + std::to_string(apiMajor) + "." + std::to_string(apiMinor) +
+            " | RDP 8-bit storage: " + (has8BitStorage ? "SIM" : "NAO") +
+            " | RDP 16-bit storage: " + (has16BitStorage ? "SIM" : "NAO") +
+            " | RDP external host memory: " + (hasExternalMemoryHost ? "SIM" : "NAO");
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "GPU=%s; API Vulkan=%u.%u; VK_KHR_8bit_storage=%d; VK_KHR_16bit_storage=%d; VK_EXT_external_memory_host=%d",
+            properties.deviceName, apiMajor, apiMinor, has8BitStorage,
+            has16BitStorage, hasExternalMemoryHost);
         return true;
     }
     details = "Nenhuma GPU suporta gráficos, apresentação e VK_KHR_swapchain.";
