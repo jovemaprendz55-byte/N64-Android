@@ -1097,7 +1097,26 @@ bool presentTestFrame(std::string& error) {
     submit.pSignalSemaphores = &g_renderFinished;
     status = vkQueueSubmit(g_graphicsQueue, 1, &submit, g_frameFence);
     if (status != VK_SUCCESS) {
+        // A fence was reset immediately before submission. If submission fails,
+        // no queue operation will signal it, so replace it with a signaled fence
+        // to prevent the next frame from waiting forever on an unsignalable fence.
+        VkFence failedFence = g_frameFence;
+        g_frameFence = VK_NULL_HANDLE;
+        if (failedFence != VK_NULL_HANDLE)
+            vkDestroyFence(g_device, failedFence, nullptr);
+
+        VkFenceCreateInfo recoveryInfo{};
+        recoveryInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        recoveryInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        const VkResult recoveryStatus =
+            vkCreateFence(g_device, &recoveryInfo, nullptr, &g_frameFence);
+
         error = "vkQueueSubmit falhou: " + std::to_string(status);
+        if (recoveryStatus != VK_SUCCESS) {
+            g_frameFence = VK_NULL_HANDLE;
+            error += "; recuperação da fence também falhou: " +
+                std::to_string(recoveryStatus);
+        }
         return false;
     }
     VkPresentInfoKHR present{};
