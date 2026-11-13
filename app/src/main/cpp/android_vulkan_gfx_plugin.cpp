@@ -69,8 +69,13 @@ bool initializeRdpBackend() {
     }
 
     g_rdpContext = Vulkan::ContextHandle(new Vulkan::Context());
+
+    // Granite dereferences required_features while creating the Vulkan device.
+    // Pass an explicit zero-initialized feature set when the RDP does not
+    // require any mandatory legacy VkPhysicalDeviceFeatures.
+    const VkPhysicalDeviceFeatures requiredFeatures{};
     if (!g_rdpContext->init_device_from_instance(
-            instance, gpu, VK_NULL_HANDLE, nullptr, 0, nullptr)) {
+            instance, gpu, VK_NULL_HANDLE, nullptr, 0, &requiredFeatures)) {
         __android_log_print(ANDROID_LOG_ERROR, TAG,
             "RDP backend: Granite nao conseguiu criar seu dispositivo Vulkan");
         shutdownRdpBackend();
