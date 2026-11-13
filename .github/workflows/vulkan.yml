@@ -56,14 +56,14 @@ jobs:
             third_party/muFFT \
             third_party/volk \
             third_party/khronos/vulkan-headers
-          # Shaderc uses DEPS-pinned third-party repositories, not Git submodules.
-          SHADERC_THIRD_PARTY="third_party/parallel-rdp/Granite/third_party/shaderc/third_party"
-          git clone https://github.com/KhronosGroup/SPIRV-Headers.git "$SHADERC_THIRD_PARTY/spirv-headers"
-          git -C "$SHADERC_THIRD_PARTY/spirv-headers" checkout 5e3ad389ee56fca27c9705d093ae5387ce404df4
-          git clone https://github.com/KhronosGroup/SPIRV-Tools.git "$SHADERC_THIRD_PARTY/spirv-tools"
-          git -C "$SHADERC_THIRD_PARTY/spirv-tools" checkout dd4b663e13c07fea4fbb3f70c1c91c86731099f7
-          git clone https://github.com/KhronosGroup/glslang.git "$SHADERC_THIRD_PARTY/glslang"
-          git -C "$SHADERC_THIRD_PARTY/glslang" checkout 142052fa30f9eca191aa9dcf65359fcaed09eeec
+          # Granite overrides Shaderc's third-party root to Granite/third_party.
+          GRANITE_THIRD_PARTY="third_party/parallel-rdp/Granite/third_party"
+          git clone https://github.com/KhronosGroup/SPIRV-Headers.git "$GRANITE_THIRD_PARTY/spirv-headers"
+          git -C "$GRANITE_THIRD_PARTY/spirv-headers" checkout 5e3ad389ee56fca27c9705d093ae5387ce404df4
+          git clone https://github.com/KhronosGroup/SPIRV-Tools.git "$GRANITE_THIRD_PARTY/spirv-tools"
+          git -C "$GRANITE_THIRD_PARTY/spirv-tools" checkout dd4b663e13c07fea4fbb3f70c1c91c86731099f7
+          git clone https://github.com/KhronosGroup/glslang.git "$GRANITE_THIRD_PARTY/glslang"
+          git -C "$GRANITE_THIRD_PARTY/glslang" checkout 142052fa30f9eca191aa9dcf65359fcaed09eeec
 
           # Granite's Android WSI path unconditionally requires Google's
           # games-frame-pacing package. This app owns presentation and does
@@ -88,8 +88,8 @@ jobs:
           test -s third_party/parallel-rdp/Granite/third_party/volk/volk.h
           test -s third_party/parallel-rdp/Granite/third_party/meshoptimizer/CMakeLists.txt
           test -s third_party/parallel-rdp/Granite/third_party/muFFT/CMakeLists.txt
-          test -s third_party/parallel-rdp/Granite/third_party/shaderc/third_party/spirv-headers/CMakeLists.txt
-          test -s third_party/parallel-rdp/Granite/third_party/shaderc/third_party/spirv-tools/CMakeLists.txt
+          test -s third_party/parallel-rdp/Granite/third_party/spirv-headers/CMakeLists.txt
+          test -s third_party/parallel-rdp/Granite/third_party/spirv-tools/CMakeLists.txt
 
       - name: Build pinned SDL2 for Android ARM64
         shell: bash
