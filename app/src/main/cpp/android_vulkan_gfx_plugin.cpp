@@ -85,8 +85,17 @@ bool initializeRdpBackend() {
     g_rdpDevice = Vulkan::DeviceHandle(new Vulkan::Device());
     g_rdpDevice->set_context(*g_rdpContext);
 
+    // N64 RDRAM has one hidden bit for each data byte. paraLLEl-RDP
+    // stores those sideband bits in a separate buffer (1/8 of 8 MiB RDRAM).
+    // Passing zero makes Granite's LegionAllocator request zero blocks and
+    // abort during CommandProcessor construction.
+    constexpr size_t rdramSize = 8u * 1024u * 1024u;
+    constexpr size_t hiddenRdramSize = rdramSize / 8u;
+    __android_log_print(ANDROID_LOG_INFO, TAG,
+        "RDP backend memory: RDRAM=%zu bytes; hidden RDRAM=%zu bytes; TMEM=4096 bytes",
+        rdramSize, hiddenRdramSize);
     g_rdp.reset(new RDP::CommandProcessor(
-        *g_rdpDevice, g_info.RDRAM, 0, 8u * 1024u * 1024u, 0, 0));
+        *g_rdpDevice, g_info.RDRAM, 0, rdramSize, hiddenRdramSize, 0));
     if (!g_rdp->device_is_supported()) {
         __android_log_print(ANDROID_LOG_ERROR, TAG,
             "RDP backend: CommandProcessor inicializou, mas GPU/driver nao suportou o renderer");
