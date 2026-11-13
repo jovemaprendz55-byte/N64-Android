@@ -397,7 +397,7 @@ bool createRenderResources(std::string& error) {
         VkRect2D sc{}; sc.extent.width = static_cast<uint32_t>(ANativeWindow_getWidth(g_window)); sc.extent.height = static_cast<uint32_t>(ANativeWindow_getHeight(g_window));
         vkCmdSetViewport(g_commandBuffers[i], 0, 1, &vp); vkCmdSetScissor(g_commandBuffers[i], 0, 1, &sc);
         vkCmdBindPipeline(g_commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, g_graphicsPipeline);
-        vkCmdDraw(g_commandBuffers[i], 3, 1, 0, 0);
+        vkCmdDraw(g_commandBuffers[i], 6, 1, 0, 0);
         vkCmdEndRenderPass(g_commandBuffers[i]);
         status = vkEndCommandBuffer(g_commandBuffers[i]);
         if (status != VK_SUCCESS) {
@@ -472,7 +472,7 @@ bool presentTestFrame(std::string& error) {
         return false;
     }
     vkQueueWaitIdle(g_presentQueue);
-    error = "triângulo colorido renderizado e apresentado pela Vulkan.";
+    error = "quadro de teste em tela cheia renderizado pela Vulkan (padrão procedural, sem ROM).";
     return true;
 }
 
