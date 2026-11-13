@@ -56,5 +56,10 @@ typedef void (*N64VideoFrameCallback)(
 );
 
 #ifdef __cplusplus
+/* Function with the exact signature expected by N64VideoFrameCallback. */
+void n64VulkanVideoFrameCallback(const N64VideoFrame* frame, void* user_data);
+#endif
+
+#ifdef __cplusplus
 }
 #endif
