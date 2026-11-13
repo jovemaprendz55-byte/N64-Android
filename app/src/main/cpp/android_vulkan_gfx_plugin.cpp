@@ -9,8 +9,8 @@
 #include "m64p_plugin.h"
 #include "n64-video-frame.h"
 #include "n64-vulkan-context.h"
-#include "vulkan/context.hpp"
-#include "vulkan/device.hpp"
+#include "context.hpp"
+#include "device.hpp"
 #include "rdp_device.hpp"
 #include <memory>
 
