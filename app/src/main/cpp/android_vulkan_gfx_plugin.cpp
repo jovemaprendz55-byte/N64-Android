@@ -405,32 +405,32 @@ EXPORT void CALL MoveScreen(int, int) {}
 EXPORT void CALL ProcessDList(void) {
     std::lock_guard<std::mutex> lock(g_mutex);
     ++g_processDListCalls;
-    if (g_processDListCalls <= 5)
-        __android_log_print(ANDROID_LOG_INFO, TAG,
-            "ProcessDList #%llu (HLE display list); RDP ainda nao implementado",
+    // With the HLE RSP plugin, the graphics task has already been translated
+    // into RDP commands in RDRAM. ProcessDList is therefore the primary entry
+    // point for the command processor; waiting only for ProcessRDPList skips
+    // the normal HLE graphics path used by games such as GoldenEye.
+    const bool rendered = processRdpCommandList();
+    if (!rendered && g_processDListCalls <= 10) {
+        __android_log_print(ANDROID_LOG_WARN, TAG,
+            "ProcessDList #%llu: nenhuma imagem RDP valida; aguardando lista real (sem apresentar VI bruto)",
             static_cast<unsigned long long>(g_processDListCalls));
-    // The RDP command processor is not implemented in this plugin yet.
-    // Present the VI framebuffer when the Core exposes a completed CFB.
-    presentViFramebuffer();
+    }
 }
 EXPORT void CALL ProcessRDPList(void) {
     std::lock_guard<std::mutex> lock(g_mutex);
     ++g_processRdpCalls;
-    if (!processRdpCommandList()) {
-        if (g_processRdpCalls <= 5)
-            __android_log_print(ANDROID_LOG_WARN, TAG,
-                "ProcessRDPList #%llu sem frame RDP; usando fallback VI",
-                static_cast<unsigned long long>(g_processRdpCalls));
-        presentViFramebuffer();
+    if (!processRdpCommandList() && g_processRdpCalls <= 10) {
+        __android_log_print(ANDROID_LOG_WARN, TAG,
+            "ProcessRDPList #%llu sem frame RDP valido; fallback VI desativado para evitar imagem corrompida",
+            static_cast<unsigned long long>(g_processRdpCalls));
     }
 }
 EXPORT void CALL ShowCFB(void) {
-    std::lock_guard<std::mutex> lock(g_mutex);
-    presentViFramebuffer();
+    // The VI memory path is not yet validated. Do not upload arbitrary RDRAM
+    // as a framebuffer: it produces colored noise instead of a real game frame.
 }
 EXPORT void CALL UpdateScreen(void) {
-    std::lock_guard<std::mutex> lock(g_mutex);
-    presentViFramebuffer();
+    // Frames are presented only after a successful paraLLEl-RDP scanout.
 }
 EXPORT void CALL ViStatusChanged(void) {}
 EXPORT void CALL ViWidthChanged(void) {}
