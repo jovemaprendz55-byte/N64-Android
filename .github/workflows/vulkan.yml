@@ -57,6 +57,7 @@ jobs:
             third_party/stb/stb \
             third_party/meshoptimizer \
             third_party/muFFT \
+            third_party/rapidjson \
             third_party/volk \
             third_party/khronos/vulkan-headers
           # Granite overrides Shaderc's third-party root to Granite/third_party.
@@ -110,6 +111,7 @@ jobs:
           test -s third_party/parallel-rdp/Granite/third_party/volk/volk.h
           test -s third_party/parallel-rdp/Granite/third_party/meshoptimizer/CMakeLists.txt
           test -s third_party/parallel-rdp/Granite/third_party/muFFT/CMakeLists.txt
+          test -s third_party/parallel-rdp/Granite/third_party/rapidjson/include/rapidjson/document.h
           test -s third_party/parallel-rdp/Granite/third_party/spirv-headers/CMakeLists.txt
           test -s third_party/parallel-rdp/Granite/third_party/spirv-tools/CMakeLists.txt
 
