@@ -11,7 +11,8 @@ Branch: `vulkan`
 - `n64-video-frame.h` defines the CPU frame contract: RGBA8888, width, height, byte stride, frame number, and callback lifetime rules.
 - `n64VulkanSubmitVideoFrame()` validates a frame, honors its source stride, copies it into staging memory, uploads it to the Vulkan image, and requests presentation.
 - `n64VulkanVideoFrameCallback()` matches the `N64VideoFrameCallback` signature and is ready to be registered by a compatible N64 core.
-- The current texture contract is fixed at 256x192 RGBA8888. Other dimensions are rejected.
+- The video texture can now be recreated when an incoming RGBA8888 frame changes width or height. The replacement image is uploaded first, then its image view is switched into the existing descriptor set after the device is idle; the previous image is released only after that safe handoff.
+- Incoming dimensions are checked against the physical device's `maxImageDimension2D` limit. The first test texture remains 256x192 until a frame with different dimensions arrives.
 - Upload and presentation are synchronous and wait for queue completion. This is a correctness-first bridge, not a frame-pacing or performance implementation.
 - Commit `178a62326c14b627124880d147ea2aaab849198b` was built successfully by GitHub Actions run `43336521993`. The workflow verified that the APK contains the Vulkan native library and excludes the legacy EGL/OpenGL renderer libraries.
 
@@ -22,11 +23,12 @@ Branch: `vulkan`
 - The generated texture is only a renderer test; selecting a ROM does not start emulation.
 - Audio playback and audio-core integration are not implemented in this branch.
 - The callback is not optimized for continuous 60 FPS rendering.
-- Dynamic texture dimensions and swapchain recreation on surface resize are not implemented.
+- The dynamic texture path has been added but still requires a successful CI build and on-device validation with frames at multiple dimensions.
+- Swapchain recreation on Android surface resize is not implemented.
 
 ## Next implementation milestones
 
-1. Generalize the Vulkan video texture and upload path to accept real N64 framebuffer dimensions, including safe image/view/descriptor recreation when dimensions change.
+1. Build and test the new dynamic texture path on-device with more than one frame size.
 2. Add a core-facing video adapter that converts the selected core's framebuffer format and dimensions into the documented RGBA8888 frame contract.
 3. Select and integrate an N64 emulation core and a Vulkan-compatible video/RDP path. Do not use a GLideN64/OpenGL renderer as a substitute for this Vulkan renderer.
 4. Register `n64VulkanVideoFrameCallback()` with the running core and verify that actual ROM frames reach the Vulkan texture.
