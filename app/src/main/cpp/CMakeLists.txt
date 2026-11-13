@@ -26,7 +26,7 @@ target_compile_options(n64vulkan PRIVATE -Wall -Wextra -Werror)
 find_library(ANDROID_LIB android REQUIRED)
 find_library(LOG_LIB log REQUIRED)
 find_library(VULKAN_LIB vulkan REQUIRED)
-target_link_libraries(n64vulkan PRIVATE ${ANDROID_LIB} ${LOG_LIB} ${VULKAN_LIB})
+target_link_libraries(n64vulkan PRIVATE ${ANDROID_LIB} ${LOG_LIB} ${VULKAN_LIB} ${CMAKE_DL_LIBS})
 
 set(N64_SDL2_LIBRARY "${N64_PROJECT_ROOT}/build/sdl2-arm64/libSDL2.so")
 set(N64_SDL2_INCLUDE "${N64_PROJECT_ROOT}/third_party/SDL/include")
