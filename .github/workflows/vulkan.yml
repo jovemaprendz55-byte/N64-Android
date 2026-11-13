@@ -48,10 +48,38 @@ jobs:
           git clone https://github.com/Themaister/parallel-rdp.git third_party/parallel-rdp
           git -C third_party/parallel-rdp checkout 1cecd042b2619bc505c12bfdc713808386f2b54d
           git -C third_party/parallel-rdp submodule update --init angrylion-rdp-plus Granite
-          git -C third_party/parallel-rdp/Granite submodule update --init third_party/volk third_party/khronos/vulkan-headers third_party/stb/stb
+          git -C third_party/parallel-rdp/Granite submodule update --init \
+            third_party/spirv-cross \
+            third_party/shaderc \
+            third_party/stb/stb \
+            third_party/meshoptimizer \
+            third_party/muFFT \
+            third_party/volk \
+            third_party/khronos/vulkan-headers
+
+          # Granite's Android WSI path unconditionally requires Google's
+          # games-frame-pacing package. This app owns presentation and does
+          # not use Granite WSI/Swappy, so remove that optional link block.
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("third_party/parallel-rdp/Granite/vulkan/CMakeLists.txt")
+          s = p.read_text()
+          block = """if (ANDROID)
+              find_package(games-frame-pacing REQUIRED CONFIG)
+          	target_link_libraries(granite-vulkan PRIVATE games-frame-pacing::swappy)
+          	target_compile_definitions(granite-vulkan PRIVATE HAVE_SWAPPY)
+          endif()
+          """
+          if block not in s:
+              raise SystemExit("Expected Granite Swappy block not found; refusing unsafe patch")
+          p.write_text(s.replace(block, "", 1))
+          PY
+
           test -s third_party/parallel-rdp/parallel-rdp/rdp_device.hpp
           test -s third_party/parallel-rdp/Granite/vulkan/context.hpp
           test -s third_party/parallel-rdp/Granite/third_party/volk/volk.h
+          test -s third_party/parallel-rdp/Granite/third_party/meshoptimizer/CMakeLists.txt
+          test -s third_party/parallel-rdp/Granite/third_party/muFFT/CMakeLists.txt
 
       - name: Build pinned SDL2 for Android ARM64
         shell: bash
