@@ -6,7 +6,6 @@
 #include <vector>
 
 #define M64P_PLUGIN_PROTOTYPES 1
-#include "m64p_common.h"
 #include "m64p_plugin.h"
 #include "n64-video-frame.h"
 
