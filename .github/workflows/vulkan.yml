@@ -47,7 +47,7 @@ jobs:
             -DANDROID_PLATFORM=android-24 \
             -DSDL_SHARED=ON \
             -DSDL_STATIC=OFF \
-            -DSDL_VIDEO=OFF \
+            -DSDL_VIDEO=ON \
             -DSDL_RENDER=OFF \
             -DSDL_OPENGL=OFF \
             -DSDL_OPENGLES=OFF \
@@ -55,6 +55,7 @@ jobs:
             -DSDL_TEST=OFF \
             -DSDL_TESTS=OFF \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_SHARED_LINKER_FLAGS="-landroid -llog" \
             -DCMAKE_LIBRARY_OUTPUT_DIRECTORY="$GITHUB_WORKSPACE/build/sdl2-arm64"
           cmake --build build/sdl2-arm64 --config Release --parallel 2
           test -s build/sdl2-arm64/libSDL2.so
