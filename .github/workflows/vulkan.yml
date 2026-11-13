@@ -96,9 +96,9 @@ jobs:
           marker = "add_library(rdp-utils STATIC"
           if marker not in s:
               raise SystemExit("Expected paraLLEl-RDP desktop tools section not found")
-          if "if (NOT ANDROID)\\nadd_library(rdp-utils STATIC" not in s:
-              s = s.replace(marker, "if (NOT ANDROID)\\n" + marker, 1)
-              s = s.rstrip() + "\\nendif()\\n"
+          if "if (NOT ANDROID)\nadd_library(rdp-utils STATIC" not in s:
+              s = s.replace(marker, "if (NOT ANDROID)\n" + marker, 1)
+              s = s.rstrip() + "\nendif()\n"
           p.write_text(s)
           PY
 
