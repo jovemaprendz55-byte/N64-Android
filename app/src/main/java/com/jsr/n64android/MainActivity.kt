@@ -79,7 +79,7 @@ class MainActivity : Activity() {
             })
             addView(playVulkanButton)
             addView(Button(this@MainActivity).apply {
-                text = "DIAGNÓSTICO DO ÁUDIO"
+                text = "DIAGNÓSTICO DO SISTEMA"
                 setOnClickListener { showAudioDiagnostics() }
             })
             addView(TextView(this@MainActivity).apply {
@@ -291,12 +291,14 @@ class MainActivity : Activity() {
                     process.waitFor()
                     val markers = listOf(
                         "N64AndroidAudio", "N64ANDROID AUDIO:", "N64AndroidCore",
-                        "SDL_OpenAudio", "SDL_Init", "AiLenChanged"
+                        "N64AndroidVulkan", "SDL_OpenAudio", "SDL_Init", "AiLenChanged",
+                        "AndroidRuntime", "Fatal signal", "DEBUG", "tombstoned",
+                        "crash_dump", "SIGSEGV", "SIGABRT", "FATAL EXCEPTION"
                     )
                     lines.filter { line ->
                         markers.any { marker -> line.contains(marker, ignoreCase = true) }
-                    }.takeLast(100).joinToString("\n").ifBlank {
-                        "Nenhum registro do plugin de áudio foi encontrado."
+                    }.takeLast(250).joinToString("\n").ifBlank {
+                        "Nenhum erro ou registro do emulador encontrado no logcat."
                     }
                 } catch (error: Exception) {
                     "Não foi possível ler o logcat: ${error.message}"
@@ -310,7 +312,7 @@ class MainActivity : Activity() {
         val page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             addView(TextView(this@MainActivity).apply {
-                text = "Diagnóstico do áudio"
+                text = "Diagnóstico do sistema N64"
                 textSize = 22f
                 gravity = Gravity.CENTER
                 setPadding(12, 16, 12, 16)
@@ -320,10 +322,10 @@ class MainActivity : Activity() {
                 setOnClickListener { refresh() }
             })
             addView(Button(this@MainActivity).apply {
-                text = "Copiar diagnóstico"
+                text = "Copiar logs do erro"
                 setOnClickListener {
                     val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("Diagnóstico de áudio N64", audioReport))
+                    clipboard.setPrimaryClip(ClipData.newPlainText("Logs de diagnóstico N64", audioReport))
                     Toast.makeText(this@MainActivity, "Diagnóstico copiado.", Toast.LENGTH_SHORT).show()
                 }
             })
