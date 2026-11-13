@@ -81,6 +81,16 @@ jobs:
               raise SystemExit("Expected Granite Android platform branch not found; refusing unsafe patch")
           p.write_text(s.replace(old, new, 1))
 
+          # Granite's Vulkan target independently links Android Swappy.
+          # The app owns presentation/frame pacing, so omit that dependency too.
+          p = Path("third_party/parallel-rdp/Granite/vulkan/CMakeLists.txt")
+          s = p.read_text()
+          old = "if (ANDROID)\\n    find_package(games-frame-pacing REQUIRED CONFIG)\\n"
+          new = 'if (ANDROID AND NOT GRANITE_PLATFORM MATCHES "headless")\\n    find_package(games-frame-pacing REQUIRED CONFIG)\\n'
+          if old not in s:
+              raise SystemExit("Expected Granite Vulkan Swappy dependency block not found; refusing unsafe patch")
+          p.write_text(s.replace(old, new, 1))
+
           # paraLLEl-RDP's root CMakeLists also defines desktop replay and
           # conformance executables. They are not needed by the Android library
           # and one pulls in an optional flat_renderer.hpp source.
