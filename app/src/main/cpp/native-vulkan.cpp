@@ -260,7 +260,7 @@ bool selectPhysicalDevice(std::string& details) {
         const bool hasExternalMemoryHost = hasDeviceExtension(candidate, "VK_EXT_external_memory_host");
         const uint32_t apiMajor = VK_VERSION_MAJOR(properties.apiVersion);
         const uint32_t apiMinor = VK_VERSION_MINOR(properties.apiVersion);
-        details = properties.deviceName +
+        details = std::string(properties.deviceName) +
             " | Vulkan " + std::to_string(apiMajor) + "." + std::to_string(apiMinor) +
             " | RDP 8-bit storage: " + (has8BitStorage ? "SIM" : "NAO") +
             " | RDP 16-bit storage: " + (has16BitStorage ? "SIM" : "NAO") +
