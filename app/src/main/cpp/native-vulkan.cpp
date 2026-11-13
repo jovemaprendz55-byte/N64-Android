@@ -1425,6 +1425,73 @@ bool createSwapchain(std::string& details, bool presentInitialFrame) {
     return true;
 }
 
+
+std::mutex g_coreMutex;
+bool g_coreInitialized = false;
+bool g_romOpened = false;
+bool g_gfxAttached = false;
+bool g_inputAttached = false;
+bool g_rspAttached = false;
+void* g_gfxPluginHandle = nullptr;
+void* g_inputPluginHandle = nullptr;
+void* g_rspPluginHandle = nullptr;
+
+void coreDebugCallback(void*, int level, const char* message) {
+    __android_log_print(level <= M64MSG_WARNING ? ANDROID_LOG_WARN : ANDROID_LOG_INFO,
+                        "N64AndroidCore", "%s", message ? message : "(mensagem vazia)");
+}
+void coreStateCallback(void*, m64p_core_param param, int value) {
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidCore",
+                        "Estado do Core: parametro=%d valor=%d", param, value);
+}
+std::string coreError(const char* operation, m64p_error error) {
+    const char* detail = CoreErrorMessage(error);
+    return std::string(operation) + " falhou (" + std::to_string(error) + "): " +
+        (detail ? detail : "erro desconhecido");
+}
+void* openPluginLibrary(const char* name) {
+    void* handle = dlopen(name, RTLD_NOW | RTLD_LOCAL);
+    if (!handle) {
+        __android_log_print(ANDROID_LOG_ERROR, "N64AndroidCore",
+                            "dlopen(%s) falhou: %s", name, dlerror());
+    }
+    return handle;
+}
+void shutdownCoreLocked() {
+    if (g_romOpened) {
+        const m64p_error e = CoreDoCommand(M64CMD_ROM_CLOSE, 0, nullptr);
+        __android_log_print(e == M64ERR_SUCCESS ? ANDROID_LOG_INFO : ANDROID_LOG_WARN,
+                            "N64AndroidCore", "ROM_CLOSE: %d", e);
+        g_romOpened = false;
+    }
+    if (g_rspAttached) { CoreDetachPlugin(M64PLUGIN_RSP); g_rspAttached = false; }
+    if (g_inputAttached) { CoreDetachPlugin(M64PLUGIN_INPUT); g_inputAttached = false; }
+    if (g_gfxAttached) { CoreDetachPlugin(M64PLUGIN_GFX); g_gfxAttached = false; }
+
+    auto shutdownPlugin = [](void* handle) {
+        if (!handle) return;
+        using ShutdownFn = m64p_error (*)();
+        auto fn = reinterpret_cast<ShutdownFn>(dlsym(handle, "PluginShutdown"));
+        if (fn) fn();
+    };
+    shutdownPlugin(g_rspPluginHandle);
+    shutdownPlugin(g_inputPluginHandle);
+    shutdownPlugin(g_gfxPluginHandle);
+
+    if (g_coreInitialized) {
+        const m64p_error e = CoreShutdown();
+        __android_log_print(e == M64ERR_SUCCESS ? ANDROID_LOG_INFO : ANDROID_LOG_ERROR,
+                            "N64AndroidCore", "CoreShutdown: %d", e);
+        g_coreInitialized = false;
+    }
+    if (g_rspPluginHandle) dlclose(g_rspPluginHandle);
+    if (g_inputPluginHandle) dlclose(g_inputPluginHandle);
+    if (g_gfxPluginHandle) dlclose(g_gfxPluginHandle);
+    g_rspPluginHandle = nullptr;
+    g_inputPluginHandle = nullptr;
+    g_gfxPluginHandle = nullptr;
+}
+
 jstring result(JNIEnv* env, const std::string& message) {
     return env->NewStringUTF(message.c_str());
 }
@@ -1478,6 +1545,100 @@ extern "C" void n64VulkanVideoFrameCallback(
         __android_log_print(ANDROID_LOG_WARN, TAG,
             "Quadro do núcleo N64 não foi enviado ao renderer Vulkan.");
     }
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_jsr_n64android_VulkanNative_nativePrepareRom(
+    JNIEnv* env, jobject /* thiz */, jbyteArray romBytes,
+    jstring configPath, jstring dataPath) {
+    std::lock_guard<std::mutex> lock(g_coreMutex);
+    if (romBytes == nullptr || configPath == nullptr || dataPath == nullptr)
+        return result(env, "ROM ou diretórios de configuração inválidos.");
+    if (g_coreInitialized || g_romOpened)
+        return result(env, "O núcleo já está preparado; feche a ROM atual antes de abrir outra.");
+
+    const jsize length = env->GetArrayLength(romBytes);
+    if (length < 4096 || length > 64 * 1024 * 1024 || (length & 3) != 0)
+        return result(env, "Tamanho de ROM inválido para o Mupen64Plus.");
+    std::vector<jbyte> bytes(static_cast<size_t>(length));
+    env->GetByteArrayRegion(romBytes, 0, length, bytes.data());
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+        return result(env, "Não foi possível copiar os bytes da ROM para o núcleo.");
+    }
+
+    const char* configChars = env->GetStringUTFChars(configPath, nullptr);
+    const char* dataChars = env->GetStringUTFChars(dataPath, nullptr);
+    if (!configChars || !dataChars) {
+        if (configChars) env->ReleaseStringUTFChars(configPath, configChars);
+        if (dataChars) env->ReleaseStringUTFChars(dataPath, dataChars);
+        return result(env, "Não foi possível obter os diretórios do aplicativo.");
+    }
+    const std::string configDir(configChars);
+    const std::string dataDir(dataChars);
+    env->ReleaseStringUTFChars(configPath, configChars);
+    env->ReleaseStringUTFChars(dataPath, dataChars);
+    if (mkdir(configDir.c_str(), 0770) != 0 && errno != EEXIST)
+        return result(env, "Não foi possível criar a pasta de configuração do núcleo.");
+    if (mkdir(dataDir.c_str(), 0770) != 0 && errno != EEXIST)
+        return result(env, "Não foi possível criar a pasta de dados do núcleo.");
+
+    m64p_error error = CoreStartup(0x020106, configDir.c_str(), dataDir.c_str(),
+                                   nullptr, coreDebugCallback, nullptr, coreStateCallback);
+    if (error != M64ERR_SUCCESS) return result(env, coreError("CoreStartup", error));
+    g_coreInitialized = true;
+
+    error = CoreDoCommand(M64CMD_ROM_OPEN, length, bytes.data());
+    if (error != M64ERR_SUCCESS) {
+        const std::string message = coreError("M64CMD_ROM_OPEN", error);
+        shutdownCoreLocked();
+        return result(env, message);
+    }
+    g_romOpened = true;
+
+    g_gfxPluginHandle = openPluginLibrary("libn64vulkan.so");
+    g_inputPluginHandle = openPluginLibrary("libmupen64plus-input-android.so");
+    g_rspPluginHandle = openPluginLibrary("libmupen64plus-rsp-hle.so");
+    if (!g_gfxPluginHandle || !g_inputPluginHandle || !g_rspPluginHandle) {
+        shutdownCoreLocked();
+        return result(env, "Não foi possível carregar todos os plugins Vulkan/RSP/controle.");
+    }
+
+    error = CoreAttachPlugin(M64PLUGIN_GFX, g_gfxPluginHandle);
+    if (error != M64ERR_SUCCESS) {
+        const std::string message = coreError("Anexar plugin GFX Vulkan", error);
+        shutdownCoreLocked();
+        return result(env, message);
+    }
+    g_gfxAttached = true;
+
+    error = CoreAttachPlugin(M64PLUGIN_INPUT, g_inputPluginHandle);
+    if (error != M64ERR_SUCCESS) {
+        const std::string message = coreError("Anexar plugin de controle", error);
+        shutdownCoreLocked();
+        return result(env, message);
+    }
+    g_inputAttached = true;
+
+    error = CoreAttachPlugin(M64PLUGIN_RSP, g_rspPluginHandle);
+    if (error != M64ERR_SUCCESS) {
+        const std::string message = coreError("Anexar plugin RSP HLE", error);
+        shutdownCoreLocked();
+        return result(env, message);
+    }
+    g_rspAttached = true;
+
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidCore",
+        "ROM aberta e plugins GFX Vulkan, Input e RSP HLE anexados. Execução ainda não iniciada.");
+    return result(env, "ROM aberta no Mupen64Plus. Plugins Vulkan, controle e RSP HLE anexados. Próxima etapa: iniciar a execução do jogo.");
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_jsr_n64android_VulkanNative_nativeCloseRom(
+    JNIEnv* env, jobject /* thiz */) {
+    std::lock_guard<std::mutex> lock(g_coreMutex);
+    shutdownCoreLocked();
+    return result(env, "Núcleo N64 encerrado.");
 }
 
 extern "C" JNIEXPORT jstring JNICALL
