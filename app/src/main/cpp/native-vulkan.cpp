@@ -2,6 +2,13 @@
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
 #include <android/log.h>
+#include <cerrno>
+#include <dlfcn.h>
+#include <sys/stat.h>
+#define M64P_CORE_PROTOTYPES
+#include "m64p_types.h"
+#include "m64p_common.h"
+#include "m64p_frontend.h"
 #define VK_USE_PLATFORM_ANDROID_KHR
 #include <vulkan/vulkan.h>
 #include "triangle_shaders.h"
