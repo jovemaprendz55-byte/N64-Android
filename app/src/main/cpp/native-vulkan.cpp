@@ -1084,7 +1084,41 @@ bool presentTestFrame(std::string& error) {
         error = "Índice de imagem Vulkan fora do intervalo.";
         return false;
     }
-    vkResetFences(g_device, 1, &g_frameFence);
+    status = vkResetFences(g_device, 1, &g_frameFence);
+    if (status != VK_SUCCESS) {
+        // Acquire already signaled imageAvailable. Replace it after idling so
+        // a failed fence reset cannot leave a signaled semaphore for next frame.
+        const VkResult idleStatus = vkDeviceWaitIdle(g_device);
+        if (g_frameFence != VK_NULL_HANDLE) {
+            vkDestroyFence(g_device, g_frameFence, nullptr);
+            g_frameFence = VK_NULL_HANDLE;
+        }
+        if (g_imageAvailable != VK_NULL_HANDLE) {
+            vkDestroySemaphore(g_device, g_imageAvailable, nullptr);
+            g_imageAvailable = VK_NULL_HANDLE;
+        }
+        VkFenceCreateInfo recoveryFenceInfo{};
+        recoveryFenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        recoveryFenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        const VkResult fenceStatus = vkCreateFence(
+            g_device, &recoveryFenceInfo, nullptr, &g_frameFence);
+        VkSemaphoreCreateInfo recoverySemaphoreInfo{};
+        recoverySemaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        const VkResult semaphoreStatus = vkCreateSemaphore(
+            g_device, &recoverySemaphoreInfo, nullptr, &g_imageAvailable);
+        error = "vkResetFences falhou: " + std::to_string(status);
+        if (idleStatus != VK_SUCCESS)
+            error += "; vkDeviceWaitIdle falhou: " + std::to_string(idleStatus);
+        if (fenceStatus != VK_SUCCESS) {
+            g_frameFence = VK_NULL_HANDLE;
+            error += "; recuperação da fence falhou: " + std::to_string(fenceStatus);
+        }
+        if (semaphoreStatus != VK_SUCCESS) {
+            g_imageAvailable = VK_NULL_HANDLE;
+            error += "; recuperação do semáforo falhou: " + std::to_string(semaphoreStatus);
+        }
+        return false;
+    }
     const VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     VkSubmitInfo submit{};
     submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1131,7 +1165,11 @@ bool presentTestFrame(std::string& error) {
         error = "vkQueuePresentKHR falhou: " + std::to_string(status);
         return false;
     }
-    vkQueueWaitIdle(g_presentQueue);
+    status = vkQueueWaitIdle(g_presentQueue);
+    if (status != VK_SUCCESS) {
+        error = "vkQueueWaitIdle após apresentação falhou: " + std::to_string(status);
+        return false;
+    }
     error = "textura RGBA de teste enviada por staging buffer e exibida pelo sampler Vulkan; ROM ainda não conectada.";
     return true;
 }
