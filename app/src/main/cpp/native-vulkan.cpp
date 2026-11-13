@@ -38,6 +38,13 @@ std::vector<VkCommandBuffer> g_commandBuffers;
 VkSemaphore g_imageAvailable = VK_NULL_HANDLE;
 VkSemaphore g_renderFinished = VK_NULL_HANDLE;
 VkFence g_frameFence = VK_NULL_HANDLE;
+VkImage g_videoImage = VK_NULL_HANDLE;
+VkDeviceMemory g_videoImageMemory = VK_NULL_HANDLE;
+VkImageView g_videoImageView = VK_NULL_HANDLE;
+VkSampler g_videoSampler = VK_NULL_HANDLE;
+VkDescriptorSetLayout g_videoSetLayout = VK_NULL_HANDLE;
+VkDescriptorPool g_videoDescriptorPool = VK_NULL_HANDLE;
+VkDescriptorSet g_videoDescriptorSet = VK_NULL_HANDLE;
 
 PFN_vkDestroySurfaceKHR pDestroySurface = nullptr;
 PFN_vkGetPhysicalDeviceSurfaceSupportKHR pGetSurfaceSupport = nullptr;
@@ -55,6 +62,19 @@ void destroySwapchainLocked() {
             if (framebuffer != VK_NULL_HANDLE) vkDestroyFramebuffer(g_device, framebuffer, nullptr);
         g_framebuffers.clear();
         if (g_graphicsPipeline != VK_NULL_HANDLE) vkDestroyPipeline(g_device, g_graphicsPipeline, nullptr);
+        if (g_videoDescriptorPool != VK_NULL_HANDLE) vkDestroyDescriptorPool(g_device, g_videoDescriptorPool, nullptr);
+        if (g_videoSetLayout != VK_NULL_HANDLE) vkDestroyDescriptorSetLayout(g_device, g_videoSetLayout, nullptr);
+        if (g_videoSampler != VK_NULL_HANDLE) vkDestroySampler(g_device, g_videoSampler, nullptr);
+        if (g_videoImageView != VK_NULL_HANDLE) vkDestroyImageView(g_device, g_videoImageView, nullptr);
+        if (g_videoImage != VK_NULL_HANDLE) vkDestroyImage(g_device, g_videoImage, nullptr);
+        if (g_videoImageMemory != VK_NULL_HANDLE) vkFreeMemory(g_device, g_videoImageMemory, nullptr);
+        g_videoDescriptorPool = VK_NULL_HANDLE;
+        g_videoSetLayout = VK_NULL_HANDLE;
+        g_videoDescriptorSet = VK_NULL_HANDLE;
+        g_videoSampler = VK_NULL_HANDLE;
+        g_videoImageView = VK_NULL_HANDLE;
+        g_videoImage = VK_NULL_HANDLE;
+        g_videoImageMemory = VK_NULL_HANDLE;
         if (g_pipelineLayout != VK_NULL_HANDLE) vkDestroyPipelineLayout(g_device, g_pipelineLayout, nullptr);
         g_graphicsPipeline = VK_NULL_HANDLE;
         g_pipelineLayout = VK_NULL_HANDLE;
@@ -249,6 +269,286 @@ bool createLogicalDevice(std::string& error) {
     return true;
 }
 
+
+uint32_t findMemoryType(uint32_t typeBits, VkMemoryPropertyFlags properties) {
+    VkPhysicalDeviceMemoryProperties memoryProperties{};
+    vkGetPhysicalDeviceMemoryProperties(g_physicalDevice, &memoryProperties);
+    for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; ++i) {
+        if ((typeBits & (1u << i)) != 0 &&
+            (memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
+            return i;
+    }
+    return UINT32_MAX;
+}
+
+bool createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
+                  VkMemoryPropertyFlags properties, VkBuffer* buffer,
+                  VkDeviceMemory* memory, std::string& error) {
+    VkBufferCreateInfo info{};
+    info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    info.size = size;
+    info.usage = usage;
+    info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    VkResult status = vkCreateBuffer(g_device, &info, nullptr, buffer);
+    if (status != VK_SUCCESS) {
+        error = "vkCreateBuffer falhou: " + std::to_string(status);
+        return false;
+    }
+    VkMemoryRequirements requirements{};
+    vkGetBufferMemoryRequirements(g_device, *buffer, &requirements);
+    const uint32_t type = findMemoryType(requirements.memoryTypeBits, properties);
+    if (type == UINT32_MAX) {
+        error = "Tipo de memória Vulkan para buffer não encontrado.";
+        return false;
+    }
+    VkMemoryAllocateInfo allocation{};
+    allocation.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocation.allocationSize = requirements.size;
+    allocation.memoryTypeIndex = type;
+    status = vkAllocateMemory(g_device, &allocation, nullptr, memory);
+    if (status != VK_SUCCESS) {
+        error = "Alocação de memória do buffer falhou: " + std::to_string(status);
+        return false;
+    }
+    status = vkBindBufferMemory(g_device, *buffer, *memory, 0);
+    if (status != VK_SUCCESS) {
+        error = "vkBindBufferMemory falhou: " + std::to_string(status);
+        return false;
+    }
+    return true;
+}
+
+bool createVideoTexture(std::string& error) {
+    constexpr uint32_t width = 256;
+    constexpr uint32_t height = 192;
+    const VkDeviceSize byteCount = static_cast<VkDeviceSize>(width) * height * 4;
+    std::vector<uint8_t> pixels(static_cast<size_t>(byteCount));
+    N64VideoFrame testFrame{};
+    testFrame.pixels = pixels.data();
+    testFrame.width = width;
+    testFrame.height = height;
+    testFrame.stride_bytes = width * 4;
+    testFrame.pixel_format = N64_VIDEO_PIXEL_FORMAT_RGBA8888;
+    testFrame.frame_number = 0;
+    if (!n64VideoFrameIsValid(&testFrame)) {
+        error = "Quadro CPU de teste inválido.";
+        return false;
+    }
+    for (uint32_t y = 0; y < height; ++y) {
+        for (uint32_t x = 0; x < width; ++x) {
+            const size_t offset = (static_cast<size_t>(y) * width + x) * 4;
+            pixels[offset + 0] = static_cast<uint8_t>((x * 255) / (width - 1));
+            pixels[offset + 1] = static_cast<uint8_t>((y * 255) / (height - 1));
+            pixels[offset + 2] = static_cast<uint8_t>(((x / 16 + y / 12) % 2) ? 220 : 35);
+            pixels[offset + 3] = 255;
+        }
+    }
+
+    VkBuffer staging = VK_NULL_HANDLE;
+    VkDeviceMemory stagingMemory = VK_NULL_HANDLE;
+    if (!createBuffer(byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        &staging, &stagingMemory, error)) return false;
+    void* mapped = nullptr;
+    VkResult status = vkMapMemory(g_device, stagingMemory, 0, byteCount, 0, &mapped);
+    if (status != VK_SUCCESS) {
+        error = "Mapeamento do staging buffer falhou: " + std::to_string(status);
+        vkDestroyBuffer(g_device, staging, nullptr);
+        vkFreeMemory(g_device, stagingMemory, nullptr);
+        return false;
+    }
+    std::memcpy(mapped, pixels.data(), static_cast<size_t>(byteCount));
+    vkUnmapMemory(g_device, stagingMemory);
+
+    VkImageCreateInfo imageInfo{};
+    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+    imageInfo.extent = {width, height, 1};
+    imageInfo.mipLevels = 1;
+    imageInfo.arrayLayers = 1;
+    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    status = vkCreateImage(g_device, &imageInfo, nullptr, &g_videoImage);
+    if (status != VK_SUCCESS) {
+        error = "Criação da textura Vulkan falhou: " + std::to_string(status);
+        vkDestroyBuffer(g_device, staging, nullptr);
+        vkFreeMemory(g_device, stagingMemory, nullptr);
+        return false;
+    }
+    VkMemoryRequirements imageRequirements{};
+    vkGetImageMemoryRequirements(g_device, g_videoImage, &imageRequirements);
+    const uint32_t imageType = findMemoryType(imageRequirements.memoryTypeBits,
+                                               VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    if (imageType == UINT32_MAX) {
+        error = "Memória local da GPU não encontrada para textura.";
+        vkDestroyBuffer(g_device, staging, nullptr);
+        vkFreeMemory(g_device, stagingMemory, nullptr);
+        return false;
+    }
+    VkMemoryAllocateInfo imageAllocation{};
+    imageAllocation.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    imageAllocation.allocationSize = imageRequirements.size;
+    imageAllocation.memoryTypeIndex = imageType;
+    status = vkAllocateMemory(g_device, &imageAllocation, nullptr, &g_videoImageMemory);
+    if (status == VK_SUCCESS)
+        status = vkBindImageMemory(g_device, g_videoImage, g_videoImageMemory, 0);
+    if (status != VK_SUCCESS) {
+        error = "Alocação/vínculo da textura falhou: " + std::to_string(status);
+        vkDestroyBuffer(g_device, staging, nullptr);
+        vkFreeMemory(g_device, stagingMemory, nullptr);
+        return false;
+    }
+
+    VkCommandPool transferPool = VK_NULL_HANDLE;
+    VkCommandPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    poolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+    poolInfo.queueFamilyIndex = g_graphicsFamily;
+    status = vkCreateCommandPool(g_device, &poolInfo, nullptr, &transferPool);
+    VkCommandBuffer command = VK_NULL_HANDLE;
+    if (status == VK_SUCCESS) {
+        VkCommandBufferAllocateInfo allocate{};
+        allocate.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocate.commandPool = transferPool;
+        allocate.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocate.commandBufferCount = 1;
+        status = vkAllocateCommandBuffers(g_device, &allocate, &command);
+    }
+    if (status == VK_SUCCESS) {
+        VkCommandBufferBeginInfo begin{};
+        begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        status = vkBeginCommandBuffer(command, &begin);
+    }
+    if (status == VK_SUCCESS) {
+        VkImageMemoryBarrier toTransfer{};
+        toTransfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        toTransfer.srcAccessMask = 0;
+        toTransfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        toTransfer.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        toTransfer.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        toTransfer.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        toTransfer.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        toTransfer.image = g_videoImage;
+        toTransfer.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+        vkCmdPipelineBarrier(command, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toTransfer);
+        VkBufferImageCopy copy{};
+        copy.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+        copy.imageExtent = {width, height, 1};
+        vkCmdCopyBufferToImage(command, staging, g_videoImage,
+                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+        VkImageMemoryBarrier toShader{};
+        toShader.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        toShader.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        toShader.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        toShader.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        toShader.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        toShader.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        toShader.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        toShader.image = g_videoImage;
+        toShader.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+        vkCmdPipelineBarrier(command, VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toShader);
+        status = vkEndCommandBuffer(command);
+    }
+    if (status == VK_SUCCESS) {
+        VkSubmitInfo submit{};
+        submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submit.commandBufferCount = 1;
+        submit.pCommandBuffers = &command;
+        status = vkQueueSubmit(g_graphicsQueue, 1, &submit, VK_NULL_HANDLE);
+        if (status == VK_SUCCESS) status = vkQueueWaitIdle(g_graphicsQueue);
+    }
+    if (transferPool != VK_NULL_HANDLE) vkDestroyCommandPool(g_device, transferPool, nullptr);
+    vkDestroyBuffer(g_device, staging, nullptr);
+    vkFreeMemory(g_device, stagingMemory, nullptr);
+    if (status != VK_SUCCESS) {
+        error = "Transferência CPU-GPU da textura falhou: " + std::to_string(status);
+        return false;
+    }
+
+    VkImageViewCreateInfo viewInfo{};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.image = g_videoImage;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+    viewInfo.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    status = vkCreateImageView(g_device, &viewInfo, nullptr, &g_videoImageView);
+    if (status != VK_SUCCESS) {
+        error = "Image view da textura falhou: " + std::to_string(status);
+        return false;
+    }
+    VkSamplerCreateInfo samplerInfo{};
+    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerInfo.magFilter = VK_FILTER_NEAREST;
+    samplerInfo.minFilter = VK_FILTER_NEAREST;
+    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.maxLod = 0.0f;
+    status = vkCreateSampler(g_device, &samplerInfo, nullptr, &g_videoSampler);
+    if (status != VK_SUCCESS) {
+        error = "Sampler da textura falhou: " + std::to_string(status);
+        return false;
+    }
+
+    VkDescriptorSetLayoutBinding binding{};
+    binding.binding = 0;
+    binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    binding.descriptorCount = 1;
+    binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    VkDescriptorSetLayoutCreateInfo setLayoutInfo{};
+    setLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    setLayoutInfo.bindingCount = 1;
+    setLayoutInfo.pBindings = &binding;
+    status = vkCreateDescriptorSetLayout(g_device, &setLayoutInfo, nullptr, &g_videoSetLayout);
+    if (status != VK_SUCCESS) {
+        error = "Layout do descritor de textura falhou: " + std::to_string(status);
+        return false;
+    }
+    VkDescriptorPoolSize poolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1};
+    VkDescriptorPoolCreateInfo descriptorPoolInfo{};
+    descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    descriptorPoolInfo.maxSets = 1;
+    descriptorPoolInfo.poolSizeCount = 1;
+    descriptorPoolInfo.pPoolSizes = &poolSize;
+    status = vkCreateDescriptorPool(g_device, &descriptorPoolInfo, nullptr,
+                                    &g_videoDescriptorPool);
+    if (status != VK_SUCCESS) {
+        error = "Pool de descritores falhou: " + std::to_string(status);
+        return false;
+    }
+    VkDescriptorSetAllocateInfo setAllocate{};
+    setAllocate.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    setAllocate.descriptorPool = g_videoDescriptorPool;
+    setAllocate.descriptorSetCount = 1;
+    setAllocate.pSetLayouts = &g_videoSetLayout;
+    status = vkAllocateDescriptorSets(g_device, &setAllocate, &g_videoDescriptorSet);
+    if (status != VK_SUCCESS) {
+        error = "Alocação do descritor de textura falhou: " + std::to_string(status);
+        return false;
+    }
+    VkDescriptorImageInfo imageDescriptor{};
+    imageDescriptor.sampler = g_videoSampler;
+    imageDescriptor.imageView = g_videoImageView;
+    imageDescriptor.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    VkWriteDescriptorSet write{};
+    write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    write.dstSet = g_videoDescriptorSet;
+    write.dstBinding = 0;
+    write.descriptorCount = 1;
+    write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    write.pImageInfo = &imageDescriptor;
+    vkUpdateDescriptorSets(g_device, 1, &write, 0, nullptr);
+    return true;
+}
+
 bool createGraphicsPipeline(std::string& error) {
     auto makeShader = [](const uint32_t* code, size_t size, VkShaderModule* module) {
         VkShaderModuleCreateInfo info{};
@@ -276,7 +576,10 @@ bool createGraphicsPipeline(std::string& error) {
     VkPipelineColorBlendStateCreateInfo blend{}; blend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO; blend.attachmentCount = 1; blend.pAttachments = &attachment;
     const VkDynamicState states[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
     VkPipelineDynamicStateCreateInfo dynamic{}; dynamic.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO; dynamic.dynamicStateCount = 2; dynamic.pDynamicStates = states;
-    VkPipelineLayoutCreateInfo layout{}; layout.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    VkPipelineLayoutCreateInfo layout{};
+    layout.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    layout.setLayoutCount = 1;
+    layout.pSetLayouts = &g_videoSetLayout;
     status = vkCreatePipelineLayout(g_device, &layout, nullptr, &g_pipelineLayout);
     if (status == VK_SUCCESS) {
         VkGraphicsPipelineCreateInfo info{}; info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -330,6 +633,7 @@ bool createRenderResources(std::string& error) {
         return false;
     }
 
+    if (!createVideoTexture(error)) return false;
     if (!createGraphicsPipeline(error)) return false;
 
     for (VkImageView view : g_swapchainViews) {
@@ -398,6 +702,8 @@ bool createRenderResources(std::string& error) {
         VkRect2D sc{}; sc.extent.width = static_cast<uint32_t>(ANativeWindow_getWidth(g_window)); sc.extent.height = static_cast<uint32_t>(ANativeWindow_getHeight(g_window));
         vkCmdSetViewport(g_commandBuffers[i], 0, 1, &vp); vkCmdSetScissor(g_commandBuffers[i], 0, 1, &sc);
         vkCmdBindPipeline(g_commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, g_graphicsPipeline);
+        vkCmdBindDescriptorSets(g_commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
+            g_pipelineLayout, 0, 1, &g_videoDescriptorSet, 0, nullptr);
         vkCmdDraw(g_commandBuffers[i], 6, 1, 0, 0);
         vkCmdEndRenderPass(g_commandBuffers[i]);
         status = vkEndCommandBuffer(g_commandBuffers[i]);
