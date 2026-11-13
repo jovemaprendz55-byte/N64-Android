@@ -5,36 +5,39 @@ Branch: `vulkan`
 ## Current verified state
 
 - Android `SurfaceView` is connected to a native Vulkan surface.
-- The native backend creates a Vulkan instance, Android surface, physical/logical device, graphics/present queues, swapchain, image views, render pass, framebuffers, command buffers, synchronization objects, and a graphics pipeline.
-- The current test pipeline draws a colored triangle. This was installed and visually confirmed on the user's Poco C85.
-- `n64-video-frame.h` defines the CPU-side frame contract: RGBA8888, dimensions, byte stride, frame number, and callback lifetime rules.
-- `n64VulkanSubmitVideoFrame()` accepts a CPU frame, validates it, honors source stride, copies it into a staging buffer, uploads it to the sampled Vulkan image, and presents the updated image.
-- `n64VulkanVideoFrameCallback()` now has the exact `N64VideoFrameCallback` signature and can be registered by a future core. It currently performs synchronous upload/presentation; this is a correctness-first bridge, not yet a frame-pacing/performance solution.
-- The current upload contract is fixed at 256x192 RGBA8888; other dimensions are rejected.
-- CI run `43333804650` for commit `c7121a3` completed successfully. The APK build and check excluding legacy EGL/OpenGL libraries passed.
+- The native backend creates the Vulkan instance, Android surface, physical/logical device, graphics/present queues, swapchain, image views, render pass, framebuffers, command buffers, synchronization objects, and graphics pipeline.
+- The graphics pipeline draws a full-screen textured quad.
+- A CPU-generated RGBA8888 test texture is uploaded through a Vulkan staging buffer and sampled by the fragment shader. This is a renderer test, not output from a ROM.
+- `n64-video-frame.h` defines the CPU frame contract: RGBA8888, width, height, byte stride, frame number, and callback lifetime rules.
+- `n64VulkanSubmitVideoFrame()` validates a frame, honors its source stride, copies it into staging memory, uploads it to the Vulkan image, and requests presentation.
+- `n64VulkanVideoFrameCallback()` matches the `N64VideoFrameCallback` signature and is ready to be registered by a compatible N64 core.
+- The current texture contract is fixed at 256x192 RGBA8888. Other dimensions are rejected.
+- Upload and presentation are synchronous and wait for queue completion. This is a correctness-first bridge, not a frame-pacing or performance implementation.
+- Commit `178a62326c14b627124880d147ea2aaab849198b` was built successfully by GitHub Actions run `43336521993`. The workflow verified that the APK contains the Vulkan native library and excludes the legacy EGL/OpenGL renderer libraries.
 
 ## Not implemented yet
 
-- No N64 CPU/RSP/RDP core is currently connected to this Vulkan renderer.
-- No N64 core is registered with `n64VulkanVideoFrameCallback()`, so no game-produced framebuffer reaches the Vulkan image yet.
-- The triangle is only a renderer test; it is not output from a ROM.
-- Audio playback/core integration is not implemented in this Vulkan branch.
-- ROM selection/validation exists in the Android shell, but selecting a ROM does not start emulation.
+- No N64 CPU/RSP/RDP emulation core is connected to this renderer.
+- No game-produced framebuffer reaches the Vulkan texture.
+- The generated texture is only a renderer test; selecting a ROM does not start emulation.
+- Audio playback and audio-core integration are not implemented in this branch.
+- The callback is not optimized for continuous 60 FPS rendering.
+- Dynamic texture dimensions and swapchain recreation on surface resize are not implemented.
 
 ## Next implementation milestones
 
-1. Replace the triangle-only shaders/pipeline with a textured full-screen quad.
-2. Create a Vulkan RGBA8 sampled image, image view, sampler, descriptor set, and staging buffer.
-3. Upload a generated CPU test frame (not a ROM frame) through the staging buffer, with explicit image layout transitions and transfer synchronization.
-4. Draw that texture through the Vulkan pipeline and verify the result on the Poco C85.
-5. Register `n64VulkanVideoFrameCallback()` with the selected N64 core and adapt its real framebuffer dimensions/format to the renderer contract.
-6. Select and integrate an N64 emulation core and a Vulkan-compatible RDP/video path. Do not use a GLideN64/OpenGL renderer as a substitute for the Vulkan renderer.
-7. Integrate audio separately, then add frame pacing, resize/recreation handling, and performance profiling.
+1. Generalize the Vulkan video texture and upload path to accept real N64 framebuffer dimensions, including safe image/view/descriptor recreation when dimensions change.
+2. Add a core-facing video adapter that converts the selected core's framebuffer format and dimensions into the documented RGBA8888 frame contract.
+3. Select and integrate an N64 emulation core and a Vulkan-compatible video/RDP path. Do not use a GLideN64/OpenGL renderer as a substitute for this Vulkan renderer.
+4. Register `n64VulkanVideoFrameCallback()` with the running core and verify that actual ROM frames reach the Vulkan texture.
+5. Replace per-frame staging allocation and queue-idle waits with persistent staging resources and correct fence/semaphore-based frame pacing.
+6. Handle Android surface resize/recreation and lifecycle transitions.
+7. Integrate audio separately and validate synchronization between emulation, video, and audio.
 
 ## Safety rules for future changes
 
 - Work only on branch `vulkan`; do not modify `main`.
 - Keep the Vulkan APK free of EGL/OpenGL renderer dependencies.
-- Do not describe the current triangle as a running N64 game.
+- Never describe the test texture as a running N64 game.
 - After each code push, inspect the matching GitHub Actions run and report its actual result.
 - Ask the user to install an APK only when a new successful build artifact exists.
