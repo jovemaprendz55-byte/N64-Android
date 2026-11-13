@@ -5,6 +5,7 @@
 #define VK_USE_PLATFORM_ANDROID_KHR
 #include <vulkan/vulkan.h>
 #include "triangle_shaders.h"
+#include "n64-video-frame.h"
 
 #include <algorithm>
 #include <cstring>
