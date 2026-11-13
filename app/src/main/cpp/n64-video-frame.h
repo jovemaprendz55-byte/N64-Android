@@ -43,7 +43,8 @@ static inline int n64VideoFrameIsValid(const N64VideoFrame* frame) {
  */
 /*
  * Vulkan backend submission API. The implementation copies the frame before
- * returning. Current texture contract is fixed at 256x192 RGBA8888.
+ * returning. The sampled texture is recreated when frame dimensions change,
+ * subject to the GPU's maxImageDimension2D limit. Frames use RGBA8888.
  * Returns non-zero when the upload was accepted and completed.
  */
 #ifdef __cplusplus
