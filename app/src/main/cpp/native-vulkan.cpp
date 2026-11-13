@@ -1432,9 +1432,13 @@ bool g_romOpened = false;
 bool g_gfxAttached = false;
 bool g_inputAttached = false;
 bool g_rspAttached = false;
+void* g_corePluginHandle = nullptr;
 void* g_gfxPluginHandle = nullptr;
 void* g_inputPluginHandle = nullptr;
 void* g_rspPluginHandle = nullptr;
+bool g_gfxPluginStarted = false;
+bool g_inputPluginStarted = false;
+bool g_rspPluginStarted = false;
 
 void coreDebugCallback(void*, int level, const char* message) {
     __android_log_print(level <= M64MSG_WARNING ? ANDROID_LOG_WARN : ANDROID_LOG_INFO,
@@ -1474,9 +1478,12 @@ void shutdownCoreLocked() {
         auto fn = reinterpret_cast<ShutdownFn>(dlsym(handle, "PluginShutdown"));
         if (fn) fn();
     };
-    shutdownPlugin(g_rspPluginHandle);
-    shutdownPlugin(g_inputPluginHandle);
-    shutdownPlugin(g_gfxPluginHandle);
+    if (g_rspPluginStarted) shutdownPlugin(g_rspPluginHandle);
+    if (g_inputPluginStarted) shutdownPlugin(g_inputPluginHandle);
+    if (g_gfxPluginStarted) shutdownPlugin(g_gfxPluginHandle);
+    g_rspPluginStarted = false;
+    g_inputPluginStarted = false;
+    g_gfxPluginStarted = false;
 
     if (g_coreInitialized) {
         const m64p_error e = CoreShutdown();
@@ -1487,6 +1494,8 @@ void shutdownCoreLocked() {
     if (g_rspPluginHandle) dlclose(g_rspPluginHandle);
     if (g_inputPluginHandle) dlclose(g_inputPluginHandle);
     if (g_gfxPluginHandle) dlclose(g_gfxPluginHandle);
+    if (g_corePluginHandle) dlclose(g_corePluginHandle);
+    g_corePluginHandle = nullptr;
     g_rspPluginHandle = nullptr;
     g_inputPluginHandle = nullptr;
     g_gfxPluginHandle = nullptr;
@@ -1596,12 +1605,37 @@ Java_com_jsr_n64android_VulkanNative_nativePrepareRom(
     }
     g_romOpened = true;
 
+    g_corePluginHandle = openPluginLibrary("libmupen64plus.so");
     g_gfxPluginHandle = openPluginLibrary("libn64vulkan.so");
     g_inputPluginHandle = openPluginLibrary("libmupen64plus-input-android.so");
     g_rspPluginHandle = openPluginLibrary("libmupen64plus-rsp-hle.so");
-    if (!g_gfxPluginHandle || !g_inputPluginHandle || !g_rspPluginHandle) {
+    if (!g_corePluginHandle || !g_gfxPluginHandle ||
+        !g_inputPluginHandle || !g_rspPluginHandle) {
         shutdownCoreLocked();
-        return result(env, "Não foi possível carregar todos os plugins Vulkan/RSP/controle.");
+        return result(env, "Não foi possível carregar o Core ou todos os plugins Vulkan/RSP/controle.");
+    }
+
+    auto startPlugin = [&](void* handle, const char* label, bool& started) -> std::string {
+        auto fn = reinterpret_cast<ptr_PluginStartup>(dlsym(handle, "PluginStartup"));
+        if (!fn) return std::string(label) + ": símbolo PluginStartup não encontrado.";
+        const m64p_error startupError =
+            fn(g_corePluginHandle, nullptr, coreDebugCallback);
+        if (startupError != M64ERR_SUCCESS)
+            return coreError(label, startupError);
+        started = true;
+        return {};
+    };
+    std::string startupFailure = startPlugin(g_gfxPluginHandle,
+        "Inicialização do plugin GFX Vulkan", g_gfxPluginStarted);
+    if (startupFailure.empty())
+        startupFailure = startPlugin(g_inputPluginHandle,
+            "Inicialização do plugin de controle", g_inputPluginStarted);
+    if (startupFailure.empty())
+        startupFailure = startPlugin(g_rspPluginHandle,
+            "Inicialização do plugin RSP HLE", g_rspPluginStarted);
+    if (!startupFailure.empty()) {
+        shutdownCoreLocked();
+        return result(env, startupFailure);
     }
 
     error = CoreAttachPlugin(M64PLUGIN_GFX, g_gfxPluginHandle);
