@@ -60,43 +60,38 @@ PFN_vkGetSwapchainImagesKHR pGetSwapchainImages = nullptr;
 
 void destroySwapchainLocked() {
     if (g_device != VK_NULL_HANDLE) {
+        // This function owns only resources tied to the current swapchain.
+        // Video image, sampler and descriptor resources survive an ordinary resize.
         vkDeviceWaitIdle(g_device);
         for (VkFramebuffer framebuffer : g_framebuffers)
             if (framebuffer != VK_NULL_HANDLE) vkDestroyFramebuffer(g_device, framebuffer, nullptr);
         g_framebuffers.clear();
-        if (g_graphicsPipeline != VK_NULL_HANDLE) vkDestroyPipeline(g_device, g_graphicsPipeline, nullptr);
-        if (g_videoDescriptorPool != VK_NULL_HANDLE) vkDestroyDescriptorPool(g_device, g_videoDescriptorPool, nullptr);
-        if (g_pipelineLayout != VK_NULL_HANDLE) vkDestroyPipelineLayout(g_device, g_pipelineLayout, nullptr);
-        if (g_videoSetLayout != VK_NULL_HANDLE) vkDestroyDescriptorSetLayout(g_device, g_videoSetLayout, nullptr);
-        if (g_videoSampler != VK_NULL_HANDLE) vkDestroySampler(g_device, g_videoSampler, nullptr);
-        if (g_videoImageView != VK_NULL_HANDLE) vkDestroyImageView(g_device, g_videoImageView, nullptr);
-        if (g_videoImage != VK_NULL_HANDLE) vkDestroyImage(g_device, g_videoImage, nullptr);
-        if (g_videoImageMemory != VK_NULL_HANDLE) vkFreeMemory(g_device, g_videoImageMemory, nullptr);
-        g_videoDescriptorPool = VK_NULL_HANDLE;
-        g_videoSetLayout = VK_NULL_HANDLE;
-        g_videoDescriptorSet = VK_NULL_HANDLE;
-        g_videoSampler = VK_NULL_HANDLE;
-        g_videoImageView = VK_NULL_HANDLE;
-        g_videoImage = VK_NULL_HANDLE;
-        g_videoImageMemory = VK_NULL_HANDLE;
-        g_videoWidth = 0;
-        g_videoHeight = 0;
-        g_graphicsPipeline = VK_NULL_HANDLE;
-        g_pipelineLayout = VK_NULL_HANDLE;
-        if (g_renderPass != VK_NULL_HANDLE) vkDestroyRenderPass(g_device, g_renderPass, nullptr);
-        g_renderPass = VK_NULL_HANDLE;
+
         if (g_commandPool != VK_NULL_HANDLE)
             vkDestroyCommandPool(g_device, g_commandPool, nullptr);
         g_commandPool = VK_NULL_HANDLE;
         g_commandBuffers.clear();
+
+        if (g_graphicsPipeline != VK_NULL_HANDLE)
+            vkDestroyPipeline(g_device, g_graphicsPipeline, nullptr);
+        g_graphicsPipeline = VK_NULL_HANDLE;
+        if (g_pipelineLayout != VK_NULL_HANDLE)
+            vkDestroyPipelineLayout(g_device, g_pipelineLayout, nullptr);
+        g_pipelineLayout = VK_NULL_HANDLE;
+        if (g_renderPass != VK_NULL_HANDLE)
+            vkDestroyRenderPass(g_device, g_renderPass, nullptr);
+        g_renderPass = VK_NULL_HANDLE;
+
         if (g_imageAvailable != VK_NULL_HANDLE)
             vkDestroySemaphore(g_device, g_imageAvailable, nullptr);
         if (g_renderFinished != VK_NULL_HANDLE)
             vkDestroySemaphore(g_device, g_renderFinished, nullptr);
-        if (g_frameFence != VK_NULL_HANDLE) vkDestroyFence(g_device, g_frameFence, nullptr);
+        if (g_frameFence != VK_NULL_HANDLE)
+            vkDestroyFence(g_device, g_frameFence, nullptr);
         g_imageAvailable = VK_NULL_HANDLE;
         g_renderFinished = VK_NULL_HANDLE;
         g_frameFence = VK_NULL_HANDLE;
+
         auto destroyView = reinterpret_cast<PFN_vkDestroyImageView>(
             vkGetDeviceProcAddr(g_device, "vkDestroyImageView"));
         if (destroyView) {
@@ -106,16 +101,41 @@ void destroySwapchainLocked() {
         }
         g_swapchainViews.clear();
         g_swapchainImages.clear();
-        if (g_swapchain != VK_NULL_HANDLE && pDestroySwapchain) {
+        if (g_swapchain != VK_NULL_HANDLE && pDestroySwapchain)
             pDestroySwapchain(g_device, g_swapchain, nullptr);
-        }
     }
     g_swapchain = VK_NULL_HANDLE;
     g_swapchainFormat = VK_FORMAT_UNDEFINED;
 }
 
+void destroyVideoResourcesLocked() {
+    if (g_device != VK_NULL_HANDLE) {
+        if (g_videoDescriptorPool != VK_NULL_HANDLE)
+            vkDestroyDescriptorPool(g_device, g_videoDescriptorPool, nullptr);
+        if (g_videoSampler != VK_NULL_HANDLE)
+            vkDestroySampler(g_device, g_videoSampler, nullptr);
+        if (g_videoImageView != VK_NULL_HANDLE)
+            vkDestroyImageView(g_device, g_videoImageView, nullptr);
+        if (g_videoImage != VK_NULL_HANDLE)
+            vkDestroyImage(g_device, g_videoImage, nullptr);
+        if (g_videoImageMemory != VK_NULL_HANDLE)
+            vkFreeMemory(g_device, g_videoImageMemory, nullptr);
+        if (g_videoSetLayout != VK_NULL_HANDLE)
+            vkDestroyDescriptorSetLayout(g_device, g_videoSetLayout, nullptr);
+    }
+    g_videoDescriptorPool = VK_NULL_HANDLE;
+    g_videoDescriptorSet = VK_NULL_HANDLE;
+    g_videoSampler = VK_NULL_HANDLE;
+    g_videoImageView = VK_NULL_HANDLE;
+    g_videoImage = VK_NULL_HANDLE;
+    g_videoImageMemory = VK_NULL_HANDLE;
+    g_videoSetLayout = VK_NULL_HANDLE;
+    g_videoWidth = 0;
+    g_videoHeight = 0;
+}
 void shutdownLocked() {
     destroySwapchainLocked();
+    destroyVideoResourcesLocked();
     g_rendererFaulted = false;
     if (g_device != VK_NULL_HANDLE) vkDestroyDevice(g_device, nullptr);
     g_device = VK_NULL_HANDLE;
@@ -969,7 +989,13 @@ bool createRenderResources(std::string& error) {
         return false;
     }
 
-    if (!createVideoTexture(error)) return false;
+    // Keep the CPU-uploaded video texture and its descriptor objects alive
+    // when only swapchain-dependent resources are rebuilt.
+    if (g_videoImage == VK_NULL_HANDLE && !createVideoTexture(error)) return false;
+    if (g_videoSetLayout == VK_NULL_HANDLE || g_videoDescriptorSet == VK_NULL_HANDLE) {
+        error = "Recursos de descritor da textura Vulkan não estão disponíveis.";
+        return false;
+    }
     if (!createGraphicsPipeline(error)) return false;
 
     for (VkImageView view : g_swapchainViews) {
