@@ -37,6 +37,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y glslang-tools
 
+      - name: Fetch pinned Mupen64Plus HLE RSP source
+        run: |
+          git clone https://github.com/mupen64plus/mupen64plus-rsp-hle.git third_party/mupen64plus-rsp-hle
+          git -C third_party/mupen64plus-rsp-hle checkout 4cdc3051efbae9cd615f5fea37c62e5ab15a1ded
+
       - name: Build pinned SDL2 for Android ARM64
         shell: bash
         run: |
@@ -71,6 +76,7 @@ jobs:
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libn64vulkan.so"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus.so"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libSDL2.so"
+          unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus-rsp-hle.so"
           if unzip -Z1 "$APK" | grep -E 'lib/arm64-v8a/lib(n64bridge|mupen64plus-video-GLideN64|mupen64plus-video-android)\.so$'; then
             echo "Legacy EGL/OpenGL renderer unexpectedly packaged"
             exit 1
