@@ -27,6 +27,9 @@ find_library(ANDROID_LIB android REQUIRED)
 find_library(LOG_LIB log REQUIRED)
 find_library(VULKAN_LIB vulkan REQUIRED)
 target_link_libraries(n64vulkan PRIVATE ${ANDROID_LIB} ${LOG_LIB} ${VULKAN_LIB} ${CMAKE_DL_LIBS})
+# Keep the bundled Volk dispatch table and its initializer bound to the same
+# definitions inside this shared object; Granite also bundles Volk symbols.
+target_link_options(n64vulkan PRIVATE "-Wl,-Bsymbolic")
 
 # Build the real RDP implementation as a static dependency. Keep Granite lean:
 # the app owns the Vulkan instance/device/swapchain and will provide interop.
