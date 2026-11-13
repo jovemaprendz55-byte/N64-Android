@@ -1095,7 +1095,29 @@ bool createRenderResources(std::string& error) {
     return true;
 }
 
-bool presentTestFrame(std::string& error) {
+bool recreateSwapchainLocked(std::string& error) {
+    if (g_device == VK_NULL_HANDLE || g_surface == VK_NULL_HANDLE ||
+        g_window == nullptr) {
+        error = "Não é possível recriar a swapchain: dispositivo ou superfície indisponível.";
+        return false;
+    }
+    VkResult idle = vkDeviceWaitIdle(g_device);
+    if (idle != VK_SUCCESS) {
+        g_rendererFaulted = true;
+        error = "GPU não ficou ociosa antes da recriação da swapchain: " + std::to_string(idle);
+        return false;
+    }
+    destroySwapchainLocked();
+    if (!createSwapchain(error, false)) {
+        g_rendererFaulted = true;
+        error = "Recriação da swapchain falhou: " + error;
+        return false;
+    }
+    g_rendererFaulted = false;
+    return true;
+}
+
+bool presentTestFrame(std::string& error, bool allowSwapchainRecovery) {
     VkResult status = vkWaitForFences(g_device, 1, &g_frameFence, VK_TRUE, UINT64_MAX);
     if (status != VK_SUCCESS) {
         error = "vkWaitForFences falhou: " + std::to_string(status);
@@ -1105,8 +1127,11 @@ bool presentTestFrame(std::string& error) {
     status = vkAcquireNextImageKHR(g_device, g_swapchain, UINT64_MAX,
                                    g_imageAvailable, VK_NULL_HANDLE, &imageIndex);
     if (status == VK_ERROR_OUT_OF_DATE_KHR) {
+        if (allowSwapchainRecovery && recreateSwapchainLocked(error))
+            return presentTestFrame(error, false);
         g_rendererFaulted = true;
-        error = "Swapchain Vulkan desatualizada (VK_ERROR_OUT_OF_DATE_KHR); renderer pausado até reinicialização da superfície Android.";
+        if (error.empty())
+            error = "Swapchain Vulkan desatualizada (VK_ERROR_OUT_OF_DATE_KHR); renderer pausado até reinicialização da superfície Android.";
         return false;
     }
     if (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) {
@@ -1249,7 +1274,10 @@ bool presentTestFrame(std::string& error) {
     return true;
 }
 
-bool createSwapchain(std::string& details) {
+bool presentTestFrame(std::string& error, bool allowSwapchainRecovery = true);
+bool recreateSwapchainLocked(std::string& error);
+
+bool createSwapchain(std::string& details, bool presentInitialFrame = true) {
     VkSurfaceCapabilitiesKHR capabilities{};
     VkResult status = pGetSurfaceCapabilities(g_physicalDevice, g_surface, &capabilities);
     if (status != VK_SUCCESS) {
@@ -1384,7 +1412,7 @@ bool createSwapchain(std::string& details) {
     details = std::to_string(extent.width) + "x" + std::to_string(extent.height) +
         ", " + std::to_string(g_swapchainImages.size()) + " imagens";
     if (!createRenderResources(details)) return false;
-    if (!presentTestFrame(details)) return false;
+    if (presentInitialFrame && !presentTestFrame(details)) return false;
     return true;
 }
 
