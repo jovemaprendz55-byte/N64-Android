@@ -85,6 +85,13 @@ if(EXISTS "${MUPEN64PLUS_CORE_SOURCE_DIR}/src/asm_defines/asm_defines.c")
     target_link_libraries(mupen64plus PRIVATE
         SDL2 ${ANDROID_LIB} ${LOG_LIB} ${CMAKE_DL_LIBS} m z)
     m64p_add_arm64_asm_defines("${MUPEN64PLUS_CORE_SOURCE_DIR}" mupen64plus)
+
+    # Android Gradle packages shared libraries that are reachable from the
+    # app's native target. Keep the Core as a separate .so (the frontend loads
+    # its public API dynamically), but make it an explicit runtime dependency
+    # of the Vulkan bridge so it is built and packaged in the APK.
+    add_dependencies(n64vulkan mupen64plus n64android_input)
+    target_link_libraries(n64vulkan PRIVATE mupen64plus)
 else()
     message(STATUS "Pinned Mupen64Plus Core checkout not found; building Vulkan bridge only")
 endif()
