@@ -63,6 +63,7 @@ void destroySwapchainLocked() {
         g_framebuffers.clear();
         if (g_graphicsPipeline != VK_NULL_HANDLE) vkDestroyPipeline(g_device, g_graphicsPipeline, nullptr);
         if (g_videoDescriptorPool != VK_NULL_HANDLE) vkDestroyDescriptorPool(g_device, g_videoDescriptorPool, nullptr);
+        if (g_pipelineLayout != VK_NULL_HANDLE) vkDestroyPipelineLayout(g_device, g_pipelineLayout, nullptr);
         if (g_videoSetLayout != VK_NULL_HANDLE) vkDestroyDescriptorSetLayout(g_device, g_videoSetLayout, nullptr);
         if (g_videoSampler != VK_NULL_HANDLE) vkDestroySampler(g_device, g_videoSampler, nullptr);
         if (g_videoImageView != VK_NULL_HANDLE) vkDestroyImageView(g_device, g_videoImageView, nullptr);
@@ -75,7 +76,6 @@ void destroySwapchainLocked() {
         g_videoImageView = VK_NULL_HANDLE;
         g_videoImage = VK_NULL_HANDLE;
         g_videoImageMemory = VK_NULL_HANDLE;
-        if (g_pipelineLayout != VK_NULL_HANDLE) vkDestroyPipelineLayout(g_device, g_pipelineLayout, nullptr);
         g_graphicsPipeline = VK_NULL_HANDLE;
         g_pipelineLayout = VK_NULL_HANDLE;
         if (g_renderPass != VK_NULL_HANDLE) vkDestroyRenderPass(g_device, g_renderPass, nullptr);
