@@ -351,6 +351,7 @@ bool createLogicalDevice(std::string& error) {
         error = "vkCreateDevice falhou: " + std::to_string(status);
         return false;
     }
+    volkLoadDevice(g_device);
     vkGetDeviceQueue(g_device, g_graphicsFamily, 0, &g_graphicsQueue);
     vkGetDeviceQueue(g_device, g_presentFamily, 0, &g_presentQueue);
     pCreateSwapchain = reinterpret_cast<PFN_vkCreateSwapchainKHR>(
@@ -1889,13 +1890,26 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_VulkanNative_nativeInitialize(
     JNIEnv* env, jobject /* thiz */, jobject surface) {
     std::lock_guard<std::mutex> lock(g_mutex);
-    // Initialize Volk before the first Vulkan call. The paraLLEl-RDP/Granite
-    // dependency exports Vulkan dispatch pointers globally; without loading
-    // them here, this file can jump into the pointer table in .bss at startup.
-    const VkResult volkStatus = volkInitialize();
-    if (volkStatus != VK_SUCCESS)
-        return result(env, "Volk nao conseguiu carregar libvulkan: " +
-                            std::to_string(volkStatus));
+    // Resolve Android loader entry points directly. Granite and this
+    // renderer bundle Volk dispatch globals in the same shared object; the
+    // renderer's extension-enumeration slot was still null after volkInitialize.
+    static void* vulkanLoader = nullptr;
+    if (vulkanLoader == nullptr)
+        vulkanLoader = dlopen("libvulkan.so", RTLD_NOW | RTLD_LOCAL);
+    if (vulkanLoader == nullptr)
+        return result(env, "Nao foi possivel abrir libvulkan.so.");
+    auto getInstanceProcAddr = reinterpret_cast<PFN_vkGetInstanceProcAddr>(
+        dlsym(vulkanLoader, "vkGetInstanceProcAddr"));
+    if (getInstanceProcAddr == nullptr)
+        return result(env, "vkGetInstanceProcAddr indisponivel no loader Android.");
+    vkGetInstanceProcAddr = getInstanceProcAddr;
+    vkEnumerateInstanceExtensionProperties =
+        reinterpret_cast<PFN_vkEnumerateInstanceExtensionProperties>(
+            getInstanceProcAddr(VK_NULL_HANDLE, "vkEnumerateInstanceExtensionProperties"));
+    vkCreateInstance = reinterpret_cast<PFN_vkCreateInstance>(
+        getInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance"));
+    if (vkEnumerateInstanceExtensionProperties == nullptr || vkCreateInstance == nullptr)
+        return result(env, "Loader Vulkan nao forneceu as funcoes globais obrigatorias.");
     shutdownLocked();
     if (surface == nullptr) return result(env, "Surface Android nula.");
     g_window = ANativeWindow_fromSurface(env, surface);
@@ -1928,6 +1942,7 @@ Java_com_jsr_n64android_VulkanNative_nativeInitialize(
         shutdownLocked();
         return result(env, "vkCreateInstance falhou: " + std::to_string(status));
     }
+    volkLoadInstance(g_instance);
     auto createSurface = reinterpret_cast<PFN_vkCreateAndroidSurfaceKHR>(
         vkGetInstanceProcAddr(g_instance, "vkCreateAndroidSurfaceKHR"));
     if (!createSurface || !loadSurfaceFunctions()) {
