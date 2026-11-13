@@ -179,6 +179,143 @@ bool presentViFramebuffer() {
             origin, stride, status);
     return true;
 }
+
+uint32_t readRdpWord(uint32_t address) {
+    return (static_cast<uint32_t>(rdramByte(address)) << 24) |
+           (static_cast<uint32_t>(rdramByte(address + 1u)) << 16) |
+           (static_cast<uint32_t>(rdramByte(address + 2u)) << 8) |
+           static_cast<uint32_t>(rdramByte(address + 3u));
+}
+
+unsigned rdpCommandWordCount(uint32_t opcode) {
+    // paraLLEl-RDP consumes complete RDP commands. Triangle commands have
+    // optional shade/texture/Z payloads; all other hardware commands are
+    // two 32-bit words, except texture rectangles (four words).
+    switch (opcode & 0x3fu) {
+    case 0x08: return 8;   // Fill triangle
+    case 0x09: return 12;  // Fill + Z
+    case 0x0a: return 24;  // Texture
+    case 0x0b: return 28;  // Texture + Z
+    case 0x0c: return 24;  // Shade
+    case 0x0d: return 28;  // Shade + Z
+    case 0x0e: return 40;  // Shade + texture
+    case 0x0f: return 44;  // Shade + texture + Z
+    case 0x24:
+    case 0x25: return 4;   // Texture rectangle / flipped
+    default: return 2;
+    }
+}
+
+void setRdpViRegisters() {
+    if (!g_rdp) return;
+#define SET_VI(reg, field) \
+    do { if (g_info.field) g_rdp->set_vi_register(RDP::VIRegister::reg, *g_info.field); } while (0)
+    SET_VI(Control, VI_STATUS_REG);
+    SET_VI(Origin, VI_ORIGIN_REG);
+    SET_VI(Width, VI_WIDTH_REG);
+    SET_VI(Intr, VI_INTR_REG);
+    SET_VI(VCurrentLine, VI_V_CURRENT_LINE_REG);
+    SET_VI(Timing, VI_TIMING_REG);
+    SET_VI(VSync, VI_V_SYNC_REG);
+    SET_VI(HSync, VI_H_SYNC_REG);
+    SET_VI(Leap, VI_LEAP_REG);
+    SET_VI(HStart, VI_H_START_REG);
+    SET_VI(VStart, VI_V_START_REG);
+    SET_VI(VBurst, VI_V_BURST_REG);
+    SET_VI(XScale, VI_X_SCALE_REG);
+    SET_VI(YScale, VI_Y_SCALE_REG);
+#undef SET_VI
+}
+
+bool processRdpCommandList() {
+    if (!g_rdp || !g_info.RDRAM || !g_info.DPC_START_REG || !g_info.DPC_END_REG)
+        return false;
+
+    const uint32_t start = *g_info.DPC_START_REG & 0x00fffff8u;
+    const uint32_t end = *g_info.DPC_END_REG & 0x00fffff8u;
+    if (end <= start || end > 8u * 1024u * 1024u) {
+        if (g_processRdpCalls <= 5)
+            __android_log_print(ANDROID_LOG_WARN, TAG,
+                "RDP lista vazia/invalida: START=0x%06x END=0x%06x",
+                start, end);
+        return false;
+    }
+
+    uint32_t cursor = start;
+    unsigned commands = 0;
+    while (cursor < end && commands < 65536u) {
+        if (cursor > end - 8u) {
+            __android_log_print(ANDROID_LOG_WARN, TAG,
+                "RDP lista truncada no endereco 0x%06x", cursor);
+            return false;
+        }
+
+        uint32_t words[44] = {};
+        words[0] = readRdpWord(cursor);
+        const unsigned count = rdpCommandWordCount(words[0] >> 24);
+        const uint64_t commandEnd = static_cast<uint64_t>(cursor) +
+                                    static_cast<uint64_t>(count) * 4u;
+        if (commandEnd > end || commandEnd > 8u * 1024u * 1024u) {
+            __android_log_print(ANDROID_LOG_WARN, TAG,
+                "RDP comando truncado: opcode=0x%02x endereco=0x%06x palavras=%u END=0x%06x",
+                (words[0] >> 24) & 0x3fu, cursor, count, end);
+            return false;
+        }
+        for (unsigned i = 1; i < count; ++i)
+            words[i] = readRdpWord(cursor + i * 4u);
+
+        g_rdp->enqueue_command(count, words);
+        cursor += count * 4u;
+        ++commands;
+    }
+
+    if (cursor != end) {
+        __android_log_print(ANDROID_LOG_WARN, TAG,
+            "RDP lista excedeu limite de comandos: cursor=0x%06x END=0x%06x",
+            cursor, end);
+        return false;
+    }
+
+    setRdpViRegisters();
+    g_rdp->flush();
+
+    std::vector<RDP::RGBA> colors;
+    unsigned width = 0;
+    unsigned height = 0;
+    RDP::ScanoutOptions options = {};
+    g_rdp->scanout_sync(colors, width, height, options);
+    if (width == 0 || height == 0 ||
+        colors.size() < static_cast<size_t>(width) * height) {
+        __android_log_print(ANDROID_LOG_WARN, TAG,
+            "RDP scanout sem imagem valida: %ux%u pixels=%zu comandos=%u",
+            width, height, colors.size(), commands);
+        return false;
+    }
+
+    g_rgba.resize(static_cast<size_t>(width) * height * 4u);
+    for (size_t i = 0; i < static_cast<size_t>(width) * height; ++i) {
+        g_rgba[i * 4u + 0u] = colors[i].r;
+        g_rgba[i * 4u + 1u] = colors[i].g;
+        g_rgba[i * 4u + 2u] = colors[i].b;
+        g_rgba[i * 4u + 3u] = colors[i].a;
+    }
+
+    N64VideoFrame frame{};
+    frame.pixels = g_rgba.data();
+    frame.width = width;
+    frame.height = height;
+    frame.stride_bytes = width * 4u;
+    frame.pixel_format = N64_VIDEO_PIXEL_FORMAT_RGBA8888;
+    frame.frame_number = ++g_frameNumber;
+    n64VulkanVideoFrameCallback(&frame, nullptr);
+
+    if (g_processRdpCalls <= 5 || (g_processRdpCalls % 120u) == 0u)
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "RDP real processado: comandos=%u lista=0x%06x-0x%06x frame=%ux%u",
+            commands, start, end, width, height);
+    return true;
+}
+
 } // namespace
 
 extern "C" {
@@ -243,11 +380,13 @@ EXPORT void CALL ProcessDList(void) {
 EXPORT void CALL ProcessRDPList(void) {
     std::lock_guard<std::mutex> lock(g_mutex);
     ++g_processRdpCalls;
-    if (g_processRdpCalls <= 5)
-        __android_log_print(ANDROID_LOG_INFO, TAG,
-            "ProcessRDPList #%llu; framebuffer VI sera consultado",
-            static_cast<unsigned long long>(g_processRdpCalls));
-    presentViFramebuffer();
+    if (!processRdpCommandList()) {
+        if (g_processRdpCalls <= 5)
+            __android_log_print(ANDROID_LOG_WARN, TAG,
+                "ProcessRDPList #%llu sem frame RDP; usando fallback VI",
+                static_cast<unsigned long long>(g_processRdpCalls));
+        presentViFramebuffer();
+    }
 }
 EXPORT void CALL ShowCFB(void) {
     std::lock_guard<std::mutex> lock(g_mutex);
