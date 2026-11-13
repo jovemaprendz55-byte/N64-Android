@@ -42,6 +42,16 @@ jobs:
           git clone https://github.com/mupen64plus/mupen64plus-rsp-hle.git third_party/mupen64plus-rsp-hle
           git -C third_party/mupen64plus-rsp-hle checkout 4cdc3051efbae9cd615f5fea37c62e5ab15a1ded
 
+      - name: Fetch pinned paraLLEl-RDP and its Granite dependencies
+        shell: bash
+        run: |
+          git clone https://github.com/Themaister/parallel-rdp.git third_party/parallel-rdp
+          git -C third_party/parallel-rdp checkout 1cecd042b2619bc505c12bfdc713808386f2b54d
+          git -C third_party/parallel-rdp submodule update --init --recursive
+          test -s third_party/parallel-rdp/parallel-rdp/rdp_device.hpp
+          test -s third_party/parallel-rdp/Granite/vulkan/context.hpp
+          test -s third_party/parallel-rdp/Granite/third_party/volk/volk.h
+
       - name: Build pinned SDL2 for Android ARM64
         shell: bash
         run: |
