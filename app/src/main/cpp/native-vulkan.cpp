@@ -1266,6 +1266,26 @@ jstring result(JNIEnv* env, const std::string& message) {
 extern "C" bool n64VulkanSubmitVideoFrame(const N64VideoFrame* frame) {
     if (frame == nullptr) return false;
     std::lock_guard<std::mutex> lock(g_mutex);
+
+    // The core may call this adapter before surface creation or during teardown.
+    // Reject the frame unless every object needed by upload and presentation is live.
+    if (g_device == VK_NULL_HANDLE ||
+        g_physicalDevice == VK_NULL_HANDLE ||
+        g_graphicsQueue == VK_NULL_HANDLE ||
+        g_presentQueue == VK_NULL_HANDLE ||
+        g_swapchain == VK_NULL_HANDLE ||
+        g_videoImage == VK_NULL_HANDLE ||
+        g_videoImageView == VK_NULL_HANDLE ||
+        g_videoDescriptorSet == VK_NULL_HANDLE ||
+        g_graphicsPipeline == VK_NULL_HANDLE ||
+        g_imageAvailable == VK_NULL_HANDLE ||
+        g_renderFinished == VK_NULL_HANDLE ||
+        g_frameFence == VK_NULL_HANDLE) {
+        __android_log_print(ANDROID_LOG_WARN, TAG,
+            "Quadro Vulkan rejeitado: renderer ainda não está inicializado.");
+        return false;
+    }
+
     std::string error;
     const bool uploaded = uploadVideoFrameLocked(*frame, error);
     if (!uploaded) {
