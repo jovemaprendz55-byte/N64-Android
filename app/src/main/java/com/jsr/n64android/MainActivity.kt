@@ -291,7 +291,7 @@ class MainActivity : Activity() {
                     process.waitFor()
                     val markers = listOf(
                         "N64AndroidAudio", "N64ANDROID AUDIO:", "N64AndroidCore",
-                        "N64AndroidVulkan", "SDL_OpenAudio", "SDL_Init", "AiLenChanged",
+                        "N64AndroidVulkan", "N64AndroidVulkanGFX", "SDL_OpenAudio", "SDL_Init", "AiLenChanged",
                         "AndroidRuntime", "Fatal signal", "DEBUG", "tombstoned",
                         "crash_dump", "SIGSEGV", "SIGABRT", "FATAL EXCEPTION"
                     )
