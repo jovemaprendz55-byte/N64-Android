@@ -47,6 +47,7 @@ VkDescriptorPool g_videoDescriptorPool = VK_NULL_HANDLE;
 VkDescriptorSet g_videoDescriptorSet = VK_NULL_HANDLE;
 uint32_t g_videoWidth = 0;
 uint32_t g_videoHeight = 0;
+bool g_rendererFaulted = false;
 
 PFN_vkDestroySurfaceKHR pDestroySurface = nullptr;
 PFN_vkGetPhysicalDeviceSurfaceSupportKHR pGetSurfaceSupport = nullptr;
@@ -115,6 +116,7 @@ void destroySwapchainLocked() {
 
 void shutdownLocked() {
     destroySwapchainLocked();
+    g_rendererFaulted = false;
     if (g_device != VK_NULL_HANDLE) vkDestroyDevice(g_device, nullptr);
     g_device = VK_NULL_HANDLE;
     g_graphicsQueue = VK_NULL_HANDLE;
@@ -1136,25 +1138,51 @@ bool presentTestFrame(std::string& error) {
     submit.pSignalSemaphores = &g_renderFinished;
     status = vkQueueSubmit(g_graphicsQueue, 1, &submit, g_frameFence);
     if (status != VK_SUCCESS) {
-        // A fence was reset immediately before submission. If submission fails,
-        // no queue operation will signal it, so replace it with a signaled fence
-        // to prevent the next frame from waiting forever on an unsignalable fence.
-        VkFence failedFence = g_frameFence;
-        g_frameFence = VK_NULL_HANDLE;
-        if (failedFence != VK_NULL_HANDLE)
-            vkDestroyFence(g_device, failedFence, nullptr);
-
-        VkFenceCreateInfo recoveryInfo{};
-        recoveryInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        recoveryInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        const VkResult recoveryStatus =
-            vkCreateFence(g_device, &recoveryInfo, nullptr, &g_frameFence);
-
+        // Acquire signaled imageAvailable, but a failed submit did not consume it.
+        // Wait for the device before replacing all frame-sync objects so neither
+        // semaphore can be reused in an unknown signaled state.
+        const VkResult idleStatus = vkDeviceWaitIdle(g_device);
         error = "vkQueueSubmit falhou: " + std::to_string(status);
-        if (recoveryStatus != VK_SUCCESS) {
-            g_frameFence = VK_NULL_HANDLE;
-            error += "; recuperação da fence também falhou: " +
-                std::to_string(recoveryStatus);
+        if (idleStatus != VK_SUCCESS) {
+            g_rendererFaulted = true;
+            error += "; vkDeviceWaitIdle falhou durante recuperação: " +
+                std::to_string(idleStatus) +
+                "; renderer bloqueado até reinicialização Vulkan.";
+            return false;
+        }
+
+        if (g_frameFence != VK_NULL_HANDLE)
+            vkDestroyFence(g_device, g_frameFence, nullptr);
+        if (g_imageAvailable != VK_NULL_HANDLE)
+            vkDestroySemaphore(g_device, g_imageAvailable, nullptr);
+        if (g_renderFinished != VK_NULL_HANDLE)
+            vkDestroySemaphore(g_device, g_renderFinished, nullptr);
+        g_frameFence = VK_NULL_HANDLE;
+        g_imageAvailable = VK_NULL_HANDLE;
+        g_renderFinished = VK_NULL_HANDLE;
+
+        VkFenceCreateInfo recoveryFenceInfo{};
+        recoveryFenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        recoveryFenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        const VkResult fenceStatus =
+            vkCreateFence(g_device, &recoveryFenceInfo, nullptr, &g_frameFence);
+        VkSemaphoreCreateInfo recoverySemaphoreInfo{};
+        recoverySemaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        const VkResult imageSemaphoreStatus =
+            vkCreateSemaphore(g_device, &recoverySemaphoreInfo, nullptr, &g_imageAvailable);
+        const VkResult renderSemaphoreStatus =
+            vkCreateSemaphore(g_device, &recoverySemaphoreInfo, nullptr, &g_renderFinished);
+
+        if (fenceStatus != VK_SUCCESS || imageSemaphoreStatus != VK_SUCCESS ||
+            renderSemaphoreStatus != VK_SUCCESS) {
+            g_rendererFaulted = true;
+            error += "; falha ao recriar sincronização (fence=" +
+                std::to_string(fenceStatus) + ", imageAvailable=" +
+                std::to_string(imageSemaphoreStatus) + ", renderFinished=" +
+                std::to_string(renderSemaphoreStatus) +
+                "); renderer bloqueado até reinicialização Vulkan.";
+        } else {
+            error += "; sincronização recriada após aguardar o dispositivo.";
         }
         return false;
     }
@@ -1338,7 +1366,8 @@ extern "C" bool n64VulkanSubmitVideoFrame(const N64VideoFrame* frame) {
 
     // The core may call this adapter before surface creation or during teardown.
     // Reject the frame unless every object needed by upload and presentation is live.
-    if (g_device == VK_NULL_HANDLE ||
+    if (g_rendererFaulted ||
+        g_device == VK_NULL_HANDLE ||
         g_physicalDevice == VK_NULL_HANDLE ||
         g_graphicsQueue == VK_NULL_HANDLE ||
         g_presentQueue == VK_NULL_HANDLE ||
