@@ -13,6 +13,7 @@
 #include <vulkan/vulkan.h>
 #include "triangle_shaders.h"
 #include "n64-video-frame.h"
+#include "n64-vulkan-context.h"
 
 #include <algorithm>
 #include <atomic>
@@ -1662,6 +1663,18 @@ jstring result(JNIEnv* env, const std::string& message) {
     return env->NewStringUTF(message.c_str());
 }
 } // namespace
+
+// Expose only the borrowed instance/GPU handles. The Android renderer retains
+// ownership; Granite creates and owns its separate logical device.
+extern "C" bool n64VulkanGetRdpContext(VkInstance* instance, VkPhysicalDevice* gpu) {
+    if (instance == nullptr || gpu == nullptr) return false;
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (g_instance == VK_NULL_HANDLE || g_physicalDevice == VK_NULL_HANDLE ||
+        g_device == VK_NULL_HANDLE) return false;
+    *instance = g_instance;
+    *gpu = g_physicalDevice;
+    return true;
+}
 
 // Entry point for the N64 core: copies the callback frame into Vulkan-owned
 // staging memory before the producer is allowed to reuse its pixel buffer.
