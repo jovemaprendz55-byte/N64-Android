@@ -72,8 +72,8 @@ jobs:
           from pathlib import Path
           p = Path("third_party/parallel-rdp/Granite/application/platforms/CMakeLists.txt")
           s = p.read_text()
-          old = "if (ANDROID)\\n    add_granite_internal_static_lib(granite-platform application_android.cpp)"
-          new = 'if (ANDROID AND NOT GRANITE_PLATFORM MATCHES "headless")\\n    add_granite_internal_static_lib(granite-platform application_android.cpp)'
+          old = "if (ANDROID)\n    add_granite_internal_static_lib(granite-platform application_android.cpp)"
+          new = 'if (ANDROID AND NOT GRANITE_PLATFORM MATCHES "headless")\n    add_granite_internal_static_lib(granite-platform application_android.cpp)'
           if old not in s:
               raise SystemExit("Expected Granite Android platform branch not found; refusing unsafe patch")
           p.write_text(s.replace(old, new, 1))
