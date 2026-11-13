@@ -130,6 +130,39 @@ bool initializeRdpBackend() {
     return true;
 }
 
+uint32_t readN64MemoryWord(const unsigned char* memory, uint32_t address) {
+    if (!memory) return 0;
+    return (static_cast<uint32_t>(memory[(address + 0u) ^ 3u]) << 24) |
+           (static_cast<uint32_t>(memory[(address + 1u) ^ 3u]) << 16) |
+           (static_cast<uint32_t>(memory[(address + 2u) ^ 3u]) << 8) |
+           static_cast<uint32_t>(memory[(address + 3u) ^ 3u]);
+}
+
+void logRspTaskSnapshot() {
+    if (!g_info.DMEM) {
+        __android_log_print(ANDROID_LOG_ERROR, TAG,
+            "RSP task snapshot: DMEM indisponivel");
+        return;
+    }
+
+    uint32_t task[16] = {};
+    for (unsigned i = 0; i < 16; ++i)
+        task[i] = readN64MemoryWord(g_info.DMEM, 0xFC0u + i * 4u);
+
+    __android_log_print(ANDROID_LOG_INFO, TAG,
+        "RSP OSTask: type=%08x flags=%08x ucode=%08x ucode_size=%08x "
+        "ucode_data=%08x data_ptr=%08x data_size=%08x yield_ptr=%08x yield_size=%08x",
+        task[0], task[1], task[4], task[5], task[6], task[10], task[11],
+        task[12], task[13]);
+
+    const uint32_t dpcStart = g_info.DPC_START_REG ? *g_info.DPC_START_REG : 0;
+    const uint32_t dpcEnd = g_info.DPC_END_REG ? *g_info.DPC_END_REG : 0;
+    const uint32_t spStatus = g_info.SP_STATUS_REG ? *g_info.SP_STATUS_REG : 0;
+    __android_log_print(ANDROID_LOG_INFO, TAG,
+        "RSP task registers: DPC_START=%08x DPC_END=%08x SP_STATUS=%08x",
+        dpcStart, dpcEnd, spStatus);
+}
+
 uint32_t readRdpWord(uint32_t address) {
     return (static_cast<uint32_t>(rdramByte(address)) << 24) |
            (static_cast<uint32_t>(rdramByte(address + 1u)) << 16) |
@@ -319,10 +352,12 @@ EXPORT void CALL MoveScreen(int, int) {}
 EXPORT void CALL ProcessDList(void) {
     std::lock_guard<std::mutex> lock(g_mutex);
     ++g_processDListCalls;
-    // With the HLE RSP plugin, the graphics task has already been translated
-    // into RDP commands in RDRAM. ProcessDList is therefore the primary entry
-    // point for the command processor; waiting only for ProcessRDPList skips
-    // the normal HLE graphics path used by games such as GoldenEye.
+    // RSP HLE signals a graphics task to the GFX plugin. It does not guarantee
+    // that the OSTask display-list data has already become raw RDP commands.
+    // Capture the task descriptor first so the GBI translation path can be
+    // implemented against the actual microcode/data pointers used by GoldenEye.
+    if (g_processDListCalls <= 8)
+        logRspTaskSnapshot();
     const bool rendered = processRdpCommandList();
     if (!rendered && g_processDListCalls <= 10) {
         __android_log_print(ANDROID_LOG_WARN, TAG,
