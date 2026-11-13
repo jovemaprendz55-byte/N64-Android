@@ -71,3 +71,11 @@ Do not destroy swapchain images directly; they are owned by the swapchain. Do no
 ## Current scope boundary
 
 This work is renderer lifecycle preparation only. The Vulkan branch still displays a generated CPU test texture; the Nintendo 64 emulation core, ROM execution and audio are not connected to this renderer yet.
+
+## First implementation refactor
+
+The native cleanup path is now split into two ownership groups:
+- `destroySwapchainLocked()` destroys framebuffers, command pool/buffers, graphics pipeline/layout, render pass, frame synchronization, swapchain views and swapchain.
+- `destroyVideoResourcesLocked()` destroys the video descriptor pool, sampler, image view/image/memory and descriptor-set layout. It is called during full device shutdown, not by swapchain cleanup.
+
+`createRenderResources()` now reuses an existing video texture and descriptor set when they are already alive. This is a prerequisite for swapchain-only recreation; it does not yet perform that recreation or change the current Android resize fallback.
