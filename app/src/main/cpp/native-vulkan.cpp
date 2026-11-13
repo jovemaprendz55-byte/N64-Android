@@ -234,15 +234,23 @@ bool selectPhysicalDevice(std::string& details) {
         vkGetPhysicalDeviceQueueFamilyProperties(candidate, &familyCount, nullptr);
         std::vector<VkQueueFamilyProperties> families(familyCount);
         vkGetPhysicalDeviceQueueFamilyProperties(candidate, &familyCount, families.data());
+        // Granite/paraLLEl-RDP needs a queue family that supports both
+        // graphics and compute. Prefer a single family that can also present,
+        // so its Context can reuse queue index 0 from this externally owned device.
         uint32_t graphics = UINT32_MAX;
         uint32_t present = UINT32_MAX;
         for (uint32_t i = 0; i < familyCount; ++i) {
-            if (families[i].queueCount > 0 &&
-                (families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0 && graphics == UINT32_MAX)
-                graphics = i;
+            const VkQueueFlags required = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT;
+            if (families[i].queueCount == 0 ||
+                (families[i].queueFlags & required) != required)
+                continue;
             VkBool32 supported = VK_FALSE;
             if (pGetSurfaceSupport(candidate, i, g_surface, &supported) == VK_SUCCESS &&
-                supported == VK_TRUE && present == UINT32_MAX) present = i;
+                supported == VK_TRUE) {
+                graphics = i;
+                present = i;
+                break;
+            }
         }
         if (graphics == UINT32_MAX || present == UINT32_MAX) continue;
         uint32_t formatCount = 0;
