@@ -182,7 +182,7 @@ class MainActivity : Activity() {
                     status.text = "Reconstruindo dispositivo e swapchain Vulkan (${width}x${height})..."
                     initializeVulkanSurface(holder, width, height)
                 } else {
-                    status.text = "Vulkan ativa (${width}x${height}). Textura CPU de teste exibida; ROM ainda não conectada."
+                    status.text = if (corePrepared) "Vulkan ativa (${width}x${height}). ROM aberta e plugins anexados; execução do jogo ainda não iniciada." else "Vulkan ativa (${width}x${height}). Aguardando preparação da ROM."
                 }
             }
 
