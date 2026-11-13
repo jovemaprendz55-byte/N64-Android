@@ -152,6 +152,10 @@ class MainActivity : Activity() {
                             File(filesDir, "n64-data").absolutePath
                         )
                         corePrepared = status.text.toString().startsWith("ROM aberta no Mupen64Plus")
+                        if (corePrepared) {
+                            status.text = "Plugins anexados. Iniciando execução da ROM..."
+                            status.text = VulkanNative.nativeStartEmulation()
+                        }
                     }
                 } else {
                     initializedWidth = 0
@@ -182,7 +186,7 @@ class MainActivity : Activity() {
                     status.text = "Reconstruindo dispositivo e swapchain Vulkan (${width}x${height})..."
                     initializeVulkanSurface(holder, width, height)
                 } else {
-                    status.text = if (corePrepared) "Vulkan ativa (${width}x${height}). ROM aberta e plugins anexados; execução do jogo ainda não iniciada." else "Vulkan ativa (${width}x${height}). Aguardando preparação da ROM."
+                    status.text = if (corePrepared) "Vulkan ativa (${width}x${height}). Núcleo N64 preparado; execução iniciada ou em andamento." else "Vulkan ativa (${width}x${height}). Aguardando preparação da ROM."
                 }
             }
 
