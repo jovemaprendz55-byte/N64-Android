@@ -292,9 +292,43 @@ bool createLogicalDevice(std::string& error) {
         presentInfo.pQueuePriorities = &priority;
         queueInfos.push_back(presentInfo);
     }
+    // paraLLEl-RDP requires 16-bit and 8-bit storage-buffer access.
+    // Merely finding the extensions is not enough: Vulkan features must be
+    // queried and explicitly enabled when the logical device is created.
+    VkPhysicalDevice8BitStorageFeatures supported8{};
+    supported8.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES;
+    VkPhysicalDevice16BitStorageFeatures supported16{};
+    supported16.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES;
+    supported16.pNext = &supported8;
+    VkPhysicalDeviceFeatures2 supportedFeatures{};
+    supportedFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    supportedFeatures.pNext = &supported16;
+    vkGetPhysicalDeviceFeatures2(g_physicalDevice, &supportedFeatures);
+
+    if (supported16.storageBuffer16BitAccess != VK_TRUE ||
+        supported8.storageBuffer8BitAccess != VK_TRUE) {
+        error = "A GPU não oferece os recursos obrigatórios do paraLLEl-RDP: "
+                "storageBuffer16BitAccess e storageBuffer8BitAccess.";
+        __android_log_print(ANDROID_LOG_ERROR, TAG, "%s", error.c_str());
+        return false;
+    }
+
+    VkPhysicalDevice8BitStorageFeatures enabled8{};
+    enabled8.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES;
+    enabled8.storageBuffer8BitAccess = VK_TRUE;
+    VkPhysicalDevice16BitStorageFeatures enabled16{};
+    enabled16.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES;
+    enabled16.storageBuffer16BitAccess = VK_TRUE;
+    enabled16.pNext = &enabled8;
+    VkPhysicalDeviceFeatures2 enabledFeatures{};
+    enabledFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    enabledFeatures.pNext = &enabled16;
+    enabledFeatures.features.shaderInt16 = supportedFeatures.features.shaderInt16;
+
     const char* extensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
     VkDeviceCreateInfo info{};
     info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    info.pNext = &enabledFeatures;
     info.queueCreateInfoCount = static_cast<uint32_t>(queueInfos.size());
     info.pQueueCreateInfos = queueInfos.data();
     info.enabledExtensionCount = 1;
