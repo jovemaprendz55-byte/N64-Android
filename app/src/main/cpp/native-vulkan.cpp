@@ -318,6 +318,120 @@ bool createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
     return true;
 }
 
+bool uploadVideoFrameLocked(const N64VideoFrame& frame, std::string& error) {
+    if (!n64VideoFrameIsValid(&frame)) {
+        error = "Quadro N64 inválido: esperado RGBA8888 com stride válido.";
+        return false;
+    }
+    if (g_device == VK_NULL_HANDLE || g_videoImage == VK_NULL_HANDLE) {
+        error = "Textura Vulkan ainda não foi inicializada.";
+        return false;
+    }
+    constexpr uint32_t textureWidth = 256;
+    constexpr uint32_t textureHeight = 192;
+    if (frame.width != textureWidth || frame.height != textureHeight) {
+        error = "Dimensão do quadro incompatível com a textura atual (256x192).";
+        return false;
+    }
+
+    const VkDeviceSize rowBytes = static_cast<VkDeviceSize>(frame.width) * 4;
+    const VkDeviceSize byteCount = rowBytes * frame.height;
+    std::vector<uint8_t> packed(static_cast<size_t>(byteCount));
+    for (uint32_t y = 0; y < frame.height; ++y) {
+        std::memcpy(packed.data() + static_cast<size_t>(y * rowBytes),
+                    frame.pixels + static_cast<size_t>(y) * frame.stride_bytes,
+                    static_cast<size_t>(rowBytes));
+    }
+
+    VkBuffer staging = VK_NULL_HANDLE;
+    VkDeviceMemory stagingMemory = VK_NULL_HANDLE;
+    if (!createBuffer(byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        &staging, &stagingMemory, error)) {
+        if (staging != VK_NULL_HANDLE) vkDestroyBuffer(g_device, staging, nullptr);
+        if (stagingMemory != VK_NULL_HANDLE) vkFreeMemory(g_device, stagingMemory, nullptr);
+        return false;
+    }
+    void* mapped = nullptr;
+    VkResult status = vkMapMemory(g_device, stagingMemory, 0, byteCount, 0, &mapped);
+    if (status == VK_SUCCESS) {
+        std::memcpy(mapped, packed.data(), static_cast<size_t>(byteCount));
+        vkUnmapMemory(g_device, stagingMemory);
+    }
+
+    VkCommandPool pool = VK_NULL_HANDLE;
+    VkCommandBuffer command = VK_NULL_HANDLE;
+    if (status == VK_SUCCESS) {
+        VkCommandPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        poolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+        poolInfo.queueFamilyIndex = g_graphicsFamily;
+        status = vkCreateCommandPool(g_device, &poolInfo, nullptr, &pool);
+    }
+    if (status == VK_SUCCESS) {
+        VkCommandBufferAllocateInfo alloc{};
+        alloc.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        alloc.commandPool = pool;
+        alloc.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        alloc.commandBufferCount = 1;
+        status = vkAllocateCommandBuffers(g_device, &alloc, &command);
+    }
+    if (status == VK_SUCCESS) {
+        VkCommandBufferBeginInfo begin{};
+        begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        status = vkBeginCommandBuffer(command, &begin);
+    }
+    if (status == VK_SUCCESS) {
+        VkImageMemoryBarrier toTransfer{};
+        toTransfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        toTransfer.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        toTransfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        toTransfer.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        toTransfer.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        toTransfer.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        toTransfer.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        toTransfer.image = g_videoImage;
+        toTransfer.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+        vkCmdPipelineBarrier(command, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toTransfer);
+        VkBufferImageCopy copy{};
+        copy.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+        copy.imageExtent = {textureWidth, textureHeight, 1};
+        vkCmdCopyBufferToImage(command, staging, g_videoImage,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+        VkImageMemoryBarrier toShader{};
+        toShader.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        toShader.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        toShader.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        toShader.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        toShader.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        toShader.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        toShader.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        toShader.image = g_videoImage;
+        toShader.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+        vkCmdPipelineBarrier(command, VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toShader);
+        status = vkEndCommandBuffer(command);
+    }
+    if (status == VK_SUCCESS) {
+        VkSubmitInfo submit{};
+        submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submit.commandBufferCount = 1;
+        submit.pCommandBuffers = &command;
+        status = vkQueueSubmit(g_graphicsQueue, 1, &submit, VK_NULL_HANDLE);
+        if (status == VK_SUCCESS) status = vkQueueWaitIdle(g_graphicsQueue);
+    }
+    if (pool != VK_NULL_HANDLE) vkDestroyCommandPool(g_device, pool, nullptr);
+    vkDestroyBuffer(g_device, staging, nullptr);
+    vkFreeMemory(g_device, stagingMemory, nullptr);
+    if (status != VK_SUCCESS) {
+        error = "Upload do quadro N64 para Vulkan falhou: " + std::to_string(status);
+        return false;
+    }
+    return true;
+}
+
 bool createVideoTexture(std::string& error) {
     constexpr uint32_t width = 256;
     constexpr uint32_t height = 192;
@@ -926,6 +1040,19 @@ jstring result(JNIEnv* env, const std::string& message) {
     return env->NewStringUTF(message.c_str());
 }
 } // namespace
+
+// Entry point for the N64 core: copies the callback frame into Vulkan-owned
+// staging memory before the producer is allowed to reuse its pixel buffer.
+extern "C" bool n64VulkanSubmitVideoFrame(const N64VideoFrame* frame) {
+    if (frame == nullptr) return false;
+    std::lock_guard<std::mutex> lock(g_mutex);
+    std::string error;
+    const bool uploaded = uploadVideoFrameLocked(*frame, error);
+    if (!uploaded) {
+        __android_log_print(ANDROID_LOG_ERROR, TAG, "%s", error.c_str());
+    }
+    return uploaded;
+}
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_VulkanNative_nativeInitialize(
