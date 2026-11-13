@@ -1468,6 +1468,67 @@ void* openPluginLibrary(const char* name) {
     }
     return handle;
 }
+// Android owns the window and Vulkan swapchain. These callbacks satisfy the
+// Core video-extension contract without creating an SDL window or GL context.
+m64p_error androidVidInit() { return M64ERR_SUCCESS; }
+m64p_error androidVidInitWithRenderMode(m64p_render_mode mode) {
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidCore",
+        "Video extension Android ativa; render mode solicitado=%d", mode);
+    return M64ERR_SUCCESS;
+}
+m64p_error androidVidQuit() { return M64ERR_SUCCESS; }
+m64p_error androidVidListModes(m64p_2d_size*, int* count) {
+    if (!count) return M64ERR_INPUT_ASSERT;
+    *count = 0;
+    return M64ERR_SUCCESS;
+}
+m64p_error androidVidListRates(m64p_2d_size, int* count, int*) {
+    if (!count) return M64ERR_INPUT_ASSERT;
+    *count = 0;
+    return M64ERR_SUCCESS;
+}
+m64p_error androidVidSetMode(int, int, int, int, int) { return M64ERR_SUCCESS; }
+m64p_error androidVidSetModeWithRate(int w, int h, int bpp, int mode, int flags, int) {
+    return androidVidSetMode(w, h, bpp, mode, flags);
+}
+m64p_function androidVidGLGetProc(const char*) { return nullptr; }
+m64p_error androidVidGLSetAttr(m64p_GLattr, int) { return M64ERR_SUCCESS; }
+m64p_error androidVidGLGetAttr(m64p_GLattr, int* value) {
+    if (!value) return M64ERR_INPUT_ASSERT;
+    *value = 0;
+    return M64ERR_SUCCESS;
+}
+m64p_error androidVidGLSwap() { return M64ERR_SUCCESS; }
+m64p_error androidVidCaption(const char*) { return M64ERR_SUCCESS; }
+m64p_error androidVidToggleFullscreen() { return M64ERR_SUCCESS; }
+m64p_error androidVidResize(int, int) { return M64ERR_SUCCESS; }
+uint32_t androidVidDefaultFramebuffer() { return 0; }
+m64p_error androidVidVkSurface(void**, void*) { return M64ERR_UNSUPPORTED; }
+m64p_error androidVidVkExtensions(const char**[], uint32_t*) { return M64ERR_UNSUPPORTED; }
+
+m64p_error installAndroidVideoExtension() {
+    m64p_video_extension_functions functions{};
+    functions.Functions = 17;
+    functions.VidExtFuncInit = androidVidInit;
+    functions.VidExtFuncQuit = androidVidQuit;
+    functions.VidExtFuncListModes = androidVidListModes;
+    functions.VidExtFuncListRates = androidVidListRates;
+    functions.VidExtFuncSetMode = androidVidSetMode;
+    functions.VidExtFuncSetModeWithRate = androidVidSetModeWithRate;
+    functions.VidExtFuncGLGetProc = androidVidGLGetProc;
+    functions.VidExtFuncGLSetAttr = androidVidGLSetAttr;
+    functions.VidExtFuncGLGetAttr = androidVidGLGetAttr;
+    functions.VidExtFuncGLSwapBuf = androidVidGLSwap;
+    functions.VidExtFuncSetCaption = androidVidCaption;
+    functions.VidExtFuncToggleFS = androidVidToggleFullscreen;
+    functions.VidExtFuncResizeWindow = androidVidResize;
+    functions.VidExtFuncGLGetDefaultFramebuffer = androidVidDefaultFramebuffer;
+    functions.VidExtFuncInitWithRenderMode = androidVidInitWithRenderMode;
+    functions.VidExtFuncVKGetSurface = androidVidVkSurface;
+    functions.VidExtFuncVKGetInstanceExtensions = androidVidVkExtensions;
+    return CoreOverrideVidExt(&functions);
+}
+
 void shutdownCoreLocked() {
     if (g_romOpened) {
         const m64p_error e = CoreDoCommand(M64CMD_ROM_CLOSE, 0, nullptr);
@@ -1643,6 +1704,13 @@ Java_com_jsr_n64android_VulkanNative_nativePrepareRom(
     if (!startupFailure.empty()) {
         shutdownCoreLocked();
         return result(env, startupFailure);
+    }
+
+    error = installAndroidVideoExtension();
+    if (error != M64ERR_SUCCESS) {
+        const std::string message = coreError("Instalar extensão de vídeo Android", error);
+        shutdownCoreLocked();
+        return result(env, message);
     }
 
     error = CoreAttachPlugin(M64PLUGIN_GFX, g_gfxPluginHandle);
