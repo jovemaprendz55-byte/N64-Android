@@ -1076,10 +1076,15 @@ bool presentTestFrame(std::string& error) {
     uint32_t imageIndex = 0;
     status = vkAcquireNextImageKHR(g_device, g_swapchain, UINT64_MAX,
                                    g_imageAvailable, VK_NULL_HANDLE, &imageIndex);
+    if (status == VK_ERROR_OUT_OF_DATE_KHR) {
+        error = "Swapchain Vulkan desatualizada (VK_ERROR_OUT_OF_DATE_KHR); aguardando recriação da superfície Android.";
+        return false;
+    }
     if (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) {
         error = "vkAcquireNextImageKHR falhou: " + std::to_string(status);
         return false;
     }
+    const bool acquireSuboptimal = status == VK_SUBOPTIMAL_KHR;
     if (imageIndex >= g_commandBuffers.size()) {
         error = "Índice de imagem Vulkan fora do intervalo.";
         return false;
@@ -1161,16 +1166,23 @@ bool presentTestFrame(std::string& error) {
     present.pSwapchains = &g_swapchain;
     present.pImageIndices = &imageIndex;
     status = vkQueuePresentKHR(g_presentQueue, &present);
+    if (status == VK_ERROR_OUT_OF_DATE_KHR) {
+        error = "Apresentação Vulkan desatualizada (VK_ERROR_OUT_OF_DATE_KHR); aguardando recriação da superfície Android.";
+        return false;
+    }
     if (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) {
         error = "vkQueuePresentKHR falhou: " + std::to_string(status);
         return false;
     }
+    const bool presentSuboptimal = status == VK_SUBOPTIMAL_KHR;
     status = vkQueueWaitIdle(g_presentQueue);
     if (status != VK_SUCCESS) {
         error = "vkQueueWaitIdle após apresentação falhou: " + std::to_string(status);
         return false;
     }
-    error = "textura RGBA de teste enviada por staging buffer e exibida pelo sampler Vulkan; ROM ainda não conectada.";
+    error = (acquireSuboptimal || presentSuboptimal)
+        ? "Quadro apresentado, mas a swapchain ficou subótima; a superfície será recriada se o Android informar mudança de tamanho."
+        : "textura RGBA de teste enviada por staging buffer e exibida pelo sampler Vulkan; ROM ainda não conectada.";
     return true;
 }
 
