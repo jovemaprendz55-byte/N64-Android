@@ -147,8 +147,18 @@ jobs:
           # Guard optional Granite timestamp-query dispatch on Android.
           p = Path("third_party/parallel-rdp/Granite/vulkan/query_pool.cpp")
           s = p.read_text()
-          old = "\\tsupports_timestamp = device->get_gpu_properties().limits.timestampComputeAndGraphics &&\\n\\t                     device->get_device_features().vk12_features.hostQueryReset;"
-          new = "\\tsupports_timestamp = device->get_gpu_properties().limits.timestampComputeAndGraphics &&\\n\\t                     device->get_device_features().vk12_features.hostQueryReset &&\\n\\t                     table.vkCreateQueryPool != nullptr &&\\n\\t                     table.vkResetQueryPool != nullptr;\\n\\tif (!supports_timestamp)\\n\\t\\tLOGW(\\"N64-RDP-DIAG: timestamp queries disabled (create=%p reset=%p timestamp=%u hostReset=%u).\\\\n\\",\\n\\t\\t     (void *)table.vkCreateQueryPool, (void *)table.vkResetQueryPool,\\n\\t\\t     device->get_gpu_properties().limits.timestampComputeAndGraphics,\\n\\t\\t     device->get_device_features().vk12_features.hostQueryReset);"
+          old = "\t" + "supports_timestamp = device->get_gpu_properties().limits.timestampComputeAndGraphics &&\n\t                     device->get_device_features().vk12_features.hostQueryReset;"
+          new = (
+              "\t" + "supports_timestamp = device->get_gpu_properties().limits.timestampComputeAndGraphics &&\n"
+              "\t                     device->get_device_features().vk12_features.hostQueryReset &&\n"
+              "\t                     table.vkCreateQueryPool != nullptr &&\n"
+              "\t                     table.vkResetQueryPool != nullptr;\n"
+              "\tif (!supports_timestamp)\n"
+              "\t\tLOGW(\"N64-RDP-DIAG: timestamp queries disabled (create=%p reset=%p timestamp=%u hostReset=%u).\\n\",\n"
+              "\t\t     (void *)table.vkCreateQueryPool, (void *)table.vkResetQueryPool,\n"
+              "\t\t     device->get_gpu_properties().limits.timestampComputeAndGraphics,\n"
+              "\t\t     device->get_device_features().vk12_features.hostQueryReset);"
+          )
           if old not in s:
               raise SystemExit("Expected Granite QueryPool timestamp feature block not found")
           p.write_text(s.replace(old, new, 1))
