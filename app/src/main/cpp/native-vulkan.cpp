@@ -1251,18 +1251,16 @@ bool presentTestFrame(std::string& error, bool allowSwapchainRecovery) {
     present.pSwapchains = &g_swapchain;
     present.pImageIndices = &imageIndex;
     status = vkQueuePresentKHR(g_presentQueue, &present);
-    if (status == VK_ERROR_OUT_OF_DATE_KHR) {
-        g_rendererFaulted = true;
-        error = "Apresentação Vulkan desatualizada (VK_ERROR_OUT_OF_DATE_KHR); renderer pausado até reinicialização da superfície Android.";
-        return false;
-    }
-    if (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) {
+    const bool presentOutOfDate = status == VK_ERROR_OUT_OF_DATE_KHR;
+    if (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR && !presentOutOfDate) {
         g_rendererFaulted = true;
         error = "vkQueuePresentKHR falhou: " + std::to_string(status) +
             "; renderer pausado até reinicialização Vulkan.";
         return false;
     }
     const bool presentSuboptimal = status == VK_SUBOPTIMAL_KHR;
+    // Complete the present operation before destroying its semaphores or
+    // rebuilding swapchain-dependent resources.
     status = vkQueueWaitIdle(g_presentQueue);
     if (status != VK_SUCCESS) {
         g_rendererFaulted = true;
@@ -1270,9 +1268,18 @@ bool presentTestFrame(std::string& error, bool allowSwapchainRecovery) {
             "; renderer pausado até reinicialização Vulkan.";
         return false;
     }
-    error = (acquireSuboptimal || presentSuboptimal)
-        ? "Quadro apresentado, mas a swapchain ficou subótima; a superfície será recriada se o Android informar mudança de tamanho."
-        : "textura RGBA de teste enviada por staging buffer e exibida pelo sampler Vulkan; ROM ainda não conectada.";
+    if (presentOutOfDate || acquireSuboptimal || presentSuboptimal) {
+        if (allowSwapchainRecovery && recreateSwapchainLocked(error))
+            return presentTestFrame(error, false);
+        g_rendererFaulted = true;
+        if (error.empty()) {
+            error = presentOutOfDate
+                ? "Apresentação Vulkan desatualizada; não foi possível recriar a swapchain."
+                : "Swapchain Vulkan subótima; não foi possível recriá-la.";
+        }
+        return false;
+    }
+    error = "textura RGBA de teste enviada por staging buffer e exibida pelo sampler Vulkan; ROM ainda não conectada.";
     return true;
 }
 
