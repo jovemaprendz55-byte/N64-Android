@@ -115,6 +115,7 @@ class MainActivity : Activity() {
         container.addView(Button(this).apply {
             text = "VOLTAR"
             setOnClickListener {
+                try { VulkanNative.nativeCloseRom() } catch (_: Throwable) {}
                 try { VulkanNative.nativeShutdown() } catch (_: Throwable) {}
                 setContentView(homeLayout)
                 refreshSelectedRom()
@@ -126,6 +127,7 @@ class MainActivity : Activity() {
         ))
 
         var initialized = false
+        var corePrepared = false
         var initializedWidth = 0
         var initializedHeight = 0
 
@@ -141,6 +143,16 @@ class MainActivity : Activity() {
                 if (initialized) {
                     initializedWidth = width
                     initializedHeight = height
+                    if (!corePrepared) {
+                        status.text = "Vulkan ativa. Abrindo ROM e anexando os plugins..."
+                        val romBytes = selectedRomFile().readBytes()
+                        status.text = VulkanNative.nativePrepareRom(
+                            romBytes,
+                            File(filesDir, "n64-config").absolutePath,
+                            File(filesDir, "n64-data").absolutePath
+                        )
+                        corePrepared = status.text.toString().startsWith("ROM aberta no Mupen64Plus")
+                    }
                 } else {
                     initializedWidth = 0
                     initializedHeight = 0
@@ -175,7 +187,9 @@ class MainActivity : Activity() {
             }
 
             override fun surfaceDestroyed(holder: SurfaceHolder) {
+                try { VulkanNative.nativeCloseRom() } catch (_: Throwable) {}
                 try { VulkanNative.nativeShutdown() } catch (_: Throwable) {}
+                corePrepared = false
                 initialized = false
                 initializedWidth = 0
                 initializedHeight = 0
