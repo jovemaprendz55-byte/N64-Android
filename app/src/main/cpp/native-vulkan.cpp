@@ -351,10 +351,14 @@ bool recreateVideoTextureLocked(const N64VideoFrame& frame,
         if (newMemory != VK_NULL_HANDLE) vkFreeMemory(g_device, newMemory, nullptr);
     };
 
-    VkResult status = createBuffer(byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+    VkResult status = VK_SUCCESS;
+    if (!createBuffer(byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        &staging, &stagingMemory, error);
-    if (status == VK_SUCCESS) {
+        &staging, &stagingMemory, error)) {
+        cleanupNew();
+        return false;
+    }
+    {
         void* mapped = nullptr;
         status = vkMapMemory(g_device, stagingMemory, 0, byteCount, 0, &mapped);
         if (status == VK_SUCCESS) {
@@ -363,9 +367,6 @@ bool recreateVideoTextureLocked(const N64VideoFrame& frame,
         } else {
             error = "Mapeamento do staging para nova textura falhou: " + std::to_string(status);
         }
-    } else {
-        cleanupNew();
-        return false;
     }
 
     if (status == VK_SUCCESS) {
