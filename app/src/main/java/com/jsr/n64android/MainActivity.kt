@@ -138,7 +138,7 @@ class MainActivity : Activity() {
 
             override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
                 status.text = if (initialized) {
-                    "Superfície Vulkan ativa (${width}x${height}). Renderização ainda não conectada."
+                    "Vulkan ativa (${width}x${height}). Textura CPU de teste exibida; ROM ainda não conectada."
                 } else {
                     status.text
                 }
