@@ -10,7 +10,11 @@
 #include "m64p_common.h"
 #include "m64p_frontend.h"
 #define VK_USE_PLATFORM_ANDROID_KHR
-#include <vulkan/vulkan.h>
+// Granite/Volk exports Vulkan entry points as global function-pointer variables.
+// Use the same dispatch model in this translation unit to avoid ELF symbol
+// interposition with libvulkan's function entry points.
+#define VK_NO_PROTOTYPES 1
+#include "vulkan_headers.hpp"
 #include "triangle_shaders.h"
 #include "n64-video-frame.h"
 #include "n64-vulkan-context.h"
@@ -1885,6 +1889,13 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_VulkanNative_nativeInitialize(
     JNIEnv* env, jobject /* thiz */, jobject surface) {
     std::lock_guard<std::mutex> lock(g_mutex);
+    // Initialize Volk before the first Vulkan call. The paraLLEl-RDP/Granite
+    // dependency exports Vulkan dispatch pointers globally; without loading
+    // them here, this file can jump into the pointer table in .bss at startup.
+    const VkResult volkStatus = volkInitialize();
+    if (volkStatus != VK_SUCCESS)
+        return result(env, "Volk nao conseguiu carregar libvulkan: " +
+                            std::to_string(volkStatus));
     shutdownLocked();
     if (surface == nullptr) return result(env, "Surface Android nula.");
     g_window = ANativeWindow_fromSurface(env, surface);
