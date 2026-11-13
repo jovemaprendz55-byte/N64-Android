@@ -17,6 +17,10 @@ bool g_started = false;
 bool g_initialized = false;
 bool g_romOpen = false;
 uint64_t g_frameNumber = 0;
+uint64_t g_processDListCalls = 0;
+uint64_t g_processRdpCalls = 0;
+uint64_t g_viAttempts = 0;
+uint64_t g_viRejected = 0;
 std::vector<uint8_t> g_rgba;
 
 inline uint8_t rdramByte(uint32_t address) {
@@ -25,16 +29,32 @@ inline uint8_t rdramByte(uint32_t address) {
 }
 
 bool presentViFramebuffer() {
+    ++g_viAttempts;
     if (!g_initialized || !g_romOpen || g_info.RDRAM == nullptr ||
         g_info.VI_STATUS_REG == nullptr || g_info.VI_ORIGIN_REG == nullptr ||
-        g_info.VI_WIDTH_REG == nullptr) return false;
+        g_info.VI_WIDTH_REG == nullptr) {
+        if (g_viAttempts <= 5)
+            __android_log_print(ANDROID_LOG_WARN, TAG,
+                "VI sem dados: initialized=%d romOpen=%d RDRAM=%p STATUS=%p ORIGIN=%p WIDTH=%p",
+                g_initialized, g_romOpen, g_info.RDRAM, g_info.VI_STATUS_REG,
+                g_info.VI_ORIGIN_REG, g_info.VI_WIDTH_REG);
+        ++g_viRejected;
+        return false;
+    }
 
     const uint32_t status = *g_info.VI_STATUS_REG;
     const uint32_t origin = *g_info.VI_ORIGIN_REG & 0x00FFFFFFu;
     const uint32_t stride = *g_info.VI_WIDTH_REG & 0x0FFFu;
     const uint32_t pixelType = status & 3u;
     const uint32_t bytesPerPixel = pixelType == 2u ? 2u : (pixelType == 3u ? 4u : 0u);
-    if (bytesPerPixel == 0 || stride == 0 || stride > 1024u) return false;
+    if (bytesPerPixel == 0 || stride == 0 || stride > 1024u) {
+        if (g_viRejected < 10)
+            __android_log_print(ANDROID_LOG_WARN, TAG,
+                "VI ainda sem framebuffer válido: status=0x%08x origin=0x%06x width=%u pixelType=%u",
+                status, origin, stride, pixelType);
+        ++g_viRejected;
+        return false;
+    }
 
     // VI scanout is a framebuffer path, not an RDP command-list renderer.
     // Keep the first implementation bounded while the software RDP is added.
@@ -42,7 +62,14 @@ bool presentViFramebuffer() {
     const uint32_t height = 240u;
     const uint64_t sourceBytes = static_cast<uint64_t>(stride) * height * bytesPerPixel;
     if (sourceBytes == 0 || sourceBytes > 8u * 1024u * 1024u ||
-        static_cast<uint64_t>(origin) + sourceBytes > 8u * 1024u * 1024u) return false;
+        static_cast<uint64_t>(origin) + sourceBytes > 8u * 1024u * 1024u) {
+        if (g_viRejected < 10)
+            __android_log_print(ANDROID_LOG_WARN, TAG,
+                "VI framebuffer fora dos limites: origin=0x%06x stride=%u bytesPerPixel=%u",
+                origin, stride, bytesPerPixel);
+        ++g_viRejected;
+        return false;
+    }
 
     g_rgba.resize(static_cast<size_t>(width) * height * 4u);
     for (uint32_t y = 0; y < height; ++y) {
@@ -79,6 +106,11 @@ bool presentViFramebuffer() {
     frame.pixel_format = N64_VIDEO_PIXEL_FORMAT_RGBA8888;
     frame.frame_number = ++g_frameNumber;
     n64VulkanVideoFrameCallback(&frame, nullptr);
+    if (g_frameNumber <= 5 || (g_frameNumber % 120u) == 0u)
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "VI frame #%llu enviado: %ux%u origin=0x%06x stride=%u status=0x%08x",
+            static_cast<unsigned long long>(g_frameNumber), width, height,
+            origin, stride, status);
     return true;
 }
 } // namespace
@@ -127,12 +159,22 @@ EXPORT int CALL InitiateGFX(GFX_INFO info) {
 EXPORT void CALL MoveScreen(int, int) {}
 EXPORT void CALL ProcessDList(void) {
     std::lock_guard<std::mutex> lock(g_mutex);
+    ++g_processDListCalls;
+    if (g_processDListCalls <= 5)
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "ProcessDList #%llu (HLE display list); RDP ainda nao implementado",
+            static_cast<unsigned long long>(g_processDListCalls));
     // The RDP command processor is not implemented in this plugin yet.
     // Present the VI framebuffer when the Core exposes a completed CFB.
     presentViFramebuffer();
 }
 EXPORT void CALL ProcessRDPList(void) {
     std::lock_guard<std::mutex> lock(g_mutex);
+    ++g_processRdpCalls;
+    if (g_processRdpCalls <= 5)
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "ProcessRDPList #%llu; framebuffer VI sera consultado",
+            static_cast<unsigned long long>(g_processRdpCalls));
     presentViFramebuffer();
 }
 EXPORT void CALL ShowCFB(void) {
@@ -162,6 +204,11 @@ EXPORT int CALL RomOpen(void) {
     if (!g_initialized) return 0;
     g_romOpen = true;
     g_frameNumber = 0;
+    g_processDListCalls = 0;
+    g_processRdpCalls = 0;
+    g_viAttempts = 0;
+    g_viRejected = 0;
+    __android_log_print(ANDROID_LOG_INFO, TAG, "ROM aberta no plugin GFX Vulkan");
     return 1;
 }
 EXPORT void CALL RomClosed(void) {
