@@ -47,7 +47,8 @@ jobs:
         run: |
           git clone https://github.com/Themaister/parallel-rdp.git third_party/parallel-rdp
           git -C third_party/parallel-rdp checkout 1cecd042b2619bc505c12bfdc713808386f2b54d
-          git -C third_party/parallel-rdp submodule update --init --recursive
+          git -C third_party/parallel-rdp submodule update --init angrylion-rdp-plus Granite
+          git -C third_party/parallel-rdp/Granite submodule update --init third_party/volk third_party/khronos/vulkan-headers third_party/stb/stb
           test -s third_party/parallel-rdp/parallel-rdp/rdp_device.hpp
           test -s third_party/parallel-rdp/Granite/vulkan/context.hpp
           test -s third_party/parallel-rdp/Granite/third_party/volk/volk.h
