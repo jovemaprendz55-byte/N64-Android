@@ -65,22 +65,18 @@ jobs:
           git clone https://github.com/KhronosGroup/glslang.git "$GRANITE_THIRD_PARTY/glslang"
           git -C "$GRANITE_THIRD_PARTY/glslang" checkout 142052fa30f9eca191aa9dcf65359fcaed09eeec
 
-          # Granite's Android WSI path unconditionally requires Google's
-          # games-frame-pacing package. This app owns presentation and does
-          # not use Granite WSI/Swappy, so remove that optional link block.
+          # Granite's Android platform branch requires GameActivity, Paddleboat,
+          # and Swappy. This app supplies its own Android surface and WSI, so
+          # force Granite's existing headless platform implementation instead.
           python3 - <<'PY'
           from pathlib import Path
-          p = Path("third_party/parallel-rdp/Granite/vulkan/CMakeLists.txt")
+          p = Path("third_party/parallel-rdp/Granite/application/platforms/CMakeLists.txt")
           s = p.read_text()
-          block = """if (ANDROID)
-              find_package(games-frame-pacing REQUIRED CONFIG)
-          	target_link_libraries(granite-vulkan PRIVATE games-frame-pacing::swappy)
-          	target_compile_definitions(granite-vulkan PRIVATE HAVE_SWAPPY)
-          endif()
-          """
-          if block not in s:
-              raise SystemExit("Expected Granite Swappy block not found; refusing unsafe patch")
-          p.write_text(s.replace(block, "", 1))
+          old = "if (ANDROID)\\n    add_granite_internal_static_lib(granite-platform application_android.cpp)"
+          new = 'if (ANDROID AND NOT GRANITE_PLATFORM MATCHES "headless")\\n    add_granite_internal_static_lib(granite-platform application_android.cpp)'
+          if old not in s:
+              raise SystemExit("Expected Granite Android platform branch not found; refusing unsafe patch")
+          p.write_text(s.replace(old, new, 1))
           PY
 
           test -s third_party/parallel-rdp/parallel-rdp/rdp_device.hpp
