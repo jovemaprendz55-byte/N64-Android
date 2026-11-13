@@ -118,12 +118,17 @@ bool presentViFramebuffer() {
 extern "C" {
 EXPORT m64p_error CALL PluginGetVersion(m64p_plugin_type* type, int* pluginVersion,
                                          int* apiVersion, const char** name, int* caps) {
-    if (!type || !pluginVersion || !apiVersion || !name || !caps) return M64ERR_INPUT_ASSERT;
+    // Mupen64Plus calls PluginGetVersion with name and caps set to nullptr
+    // during compatibility checks. Only the three version outputs are required.
+    if (!type || !pluginVersion || !apiVersion) return M64ERR_INPUT_ASSERT;
     *type = M64PLUGIN_GFX;
     *pluginVersion = 0x000100;
     *apiVersion = 0x020200;
-    *name = "N64 Android Vulkan VI Framebuffer Plugin";
-    *caps = 0;
+    if (name) *name = "N64 Android Vulkan VI Framebuffer Plugin";
+    if (caps) *caps = 0;
+    __android_log_print(ANDROID_LOG_INFO, TAG,
+        "PluginGetVersion: type=%d plugin=0x%06x api=0x%06x",
+        static_cast<int>(*type), *pluginVersion, *apiVersion);
     return M64ERR_SUCCESS;
 }
 
