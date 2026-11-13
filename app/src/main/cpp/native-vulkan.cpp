@@ -1095,6 +1095,8 @@ bool createRenderResources(std::string& error) {
     return true;
 }
 
+bool createSwapchain(std::string& details, bool presentInitialFrame = true);
+
 bool recreateSwapchainLocked(std::string& error) {
     if (g_device == VK_NULL_HANDLE || g_surface == VK_NULL_HANDLE ||
         g_window == nullptr) {
@@ -1277,7 +1279,7 @@ bool presentTestFrame(std::string& error, bool allowSwapchainRecovery) {
 bool presentTestFrame(std::string& error, bool allowSwapchainRecovery = true);
 bool recreateSwapchainLocked(std::string& error);
 
-bool createSwapchain(std::string& details, bool presentInitialFrame = true) {
+bool createSwapchain(std::string& details, bool presentInitialFrame) {
     VkSurfaceCapabilitiesKHR capabilities{};
     VkResult status = pGetSurfaceCapabilities(g_physicalDevice, g_surface, &capabilities);
     if (status != VK_SUCCESS) {
