@@ -28,6 +28,27 @@ find_library(LOG_LIB log REQUIRED)
 find_library(VULKAN_LIB vulkan REQUIRED)
 target_link_libraries(n64vulkan PRIVATE ${ANDROID_LIB} ${LOG_LIB} ${VULKAN_LIB} ${CMAKE_DL_LIBS})
 
+# Build the real RDP implementation as a static dependency. Keep Granite lean:
+# the app owns the Vulkan instance/device/swapchain and will provide interop.
+set(PARALLEL_RDP_SOURCE_DIR "${N64_PROJECT_ROOT}/third_party/parallel-rdp")
+if(EXISTS "${PARALLEL_RDP_SOURCE_DIR}/parallel-rdp/rdp_device.hpp")
+    set(GRANITE_TOOLS OFF CACHE BOOL "" FORCE)
+    set(GRANITE_PLATFORM "headless" CACHE STRING "" FORCE)
+    set(GRANITE_VULKAN_SYSTEM_HANDLES OFF CACHE BOOL "" FORCE)
+    set(GRANITE_RENDERER OFF CACHE BOOL "" FORCE)
+    set(GRANITE_VULKAN_SPIRV_CROSS OFF CACHE BOOL "" FORCE)
+    set(GRANITE_VULKAN_SHADER_MANAGER_RUNTIME_COMPILER OFF CACHE BOOL "" FORCE)
+    set(GRANITE_VULKAN_FOSSILIZE OFF CACHE BOOL "" FORCE)
+    set(GRANITE_RENDERDOC_CAPTURE OFF CACHE BOOL "" FORCE)
+    set(GRANITE_INSTALL_TARGETS OFF CACHE BOOL "" FORCE)
+    add_subdirectory("${PARALLEL_RDP_SOURCE_DIR}"
+        "${CMAKE_CURRENT_BINARY_DIR}/parallel-rdp" EXCLUDE_FROM_ALL)
+    target_link_libraries(n64vulkan PRIVATE parallel-rdp)
+    target_compile_definitions(n64vulkan PRIVATE N64_HAS_PARALLEL_RDP=1)
+else()
+    message(STATUS "Pinned paraLLEl-RDP source not found; RDP backend remains disabled")
+endif()
+
 set(N64_SDL2_LIBRARY "${N64_PROJECT_ROOT}/build/sdl2-arm64/libSDL2.so")
 set(N64_SDL2_INCLUDE "${N64_PROJECT_ROOT}/third_party/SDL/include")
 
