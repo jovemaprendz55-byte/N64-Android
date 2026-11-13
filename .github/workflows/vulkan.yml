@@ -115,6 +115,36 @@ jobs:
           test -s third_party/parallel-rdp/Granite/third_party/spirv-headers/CMakeLists.txt
           test -s third_party/parallel-rdp/Granite/third_party/spirv-tools/CMakeLists.txt
 
+      - name: Guard and trace Granite Vulkan device dispatch
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("third_party/parallel-rdp/Granite/vulkan/context.cpp")
+          s = p.read_text()
+          marker = "bool Context::create_device(VkPhysicalDevice gpu_, VkSurfaceKHR surface,"
+          start = s.find(marker)
+          if start < 0:
+              raise SystemExit("Granite create_device marker not found")
+          brace = s.find("{", start)
+          guard = """
+          	LOGI("N64-RDP-DIAG: create_device entered. instance=%p gpu=%p instance_api=%u\\n",
+          	     (void *)instance, (void *)gpu_, ext.instance_api_core_version);
+          	#define N64_CHECK_VK_PROC(fn) do { if (!(fn)) { LOGE("N64-RDP-DIAG: missing Vulkan function: %s\\n", #fn); return false; } } while (0)
+          	N64_CHECK_VK_PROC(vkEnumerateDeviceExtensionProperties);
+          	N64_CHECK_VK_PROC(vkGetPhysicalDeviceProperties);
+          	N64_CHECK_VK_PROC(vkGetPhysicalDeviceMemoryProperties);
+          	N64_CHECK_VK_PROC(vkGetPhysicalDeviceQueueFamilyProperties2);
+          	N64_CHECK_VK_PROC(vkGetPhysicalDeviceFeatures2);
+          	N64_CHECK_VK_PROC(vkCreateDevice);
+          	#undef N64_CHECK_VK_PROC
+          	LOGI("N64-RDP-DIAG: required device dispatch pointers are non-null.\\n");
+          """
+          if "N64-RDP-DIAG: create_device entered" not in s:
+              s = s[:brace + 1] + guard + s[brace + 1:]
+          p.write_text(s)
+          PY
+
       - name: Build pinned SDL2 for Android ARM64
         shell: bash
         run: |
