@@ -41,6 +41,15 @@ static inline int n64VideoFrameIsValid(const N64VideoFrame* frame) {
  * The callback must validate the frame and consume/copy its pixels before
  * returning. It must not retain frame->pixels or the frame pointer.
  */
+/*
+ * Vulkan backend submission API. The implementation copies the frame before
+ * returning. Current texture contract is fixed at 256x192 RGBA8888.
+ * Returns non-zero when the upload was accepted and completed.
+ */
+#ifdef __cplusplus
+int n64VulkanSubmitVideoFrame(const N64VideoFrame* frame);
+#endif
+
 typedef void (*N64VideoFrameCallback)(
     const N64VideoFrame* frame,
     void* user_data
