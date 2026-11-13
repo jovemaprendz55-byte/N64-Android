@@ -84,12 +84,12 @@ jobs:
           # Granite's Vulkan target independently links Android Swappy.
           # The app owns presentation/frame pacing, so omit that dependency too.
           p = Path("third_party/parallel-rdp/Granite/vulkan/CMakeLists.txt")
-          s = p.read_text()
-          old = "if (ANDROID)\\n    find_package(games-frame-pacing REQUIRED CONFIG)\\n"
-          new = 'if (ANDROID AND NOT GRANITE_PLATFORM MATCHES "headless")\\n    find_package(games-frame-pacing REQUIRED CONFIG)\\n'
-          if old not in s:
-              raise SystemExit("Expected Granite Vulkan Swappy dependency block not found; refusing unsafe patch")
-          p.write_text(s.replace(old, new, 1))
+          lines = p.read_text().splitlines()
+          matches = [i for i, line in enumerate(lines) if line.strip() == "if (ANDROID)"]
+          if len(matches) != 1:
+              raise SystemExit(f"Expected exactly one Granite Vulkan Android branch, found {len(matches)}")
+          lines[matches[0]] = 'if (ANDROID AND NOT GRANITE_PLATFORM MATCHES "headless")'
+          p.write_text("\n".join(lines) + "\n")
 
           # paraLLEl-RDP's root CMakeLists also defines desktop replay and
           # conformance executables. They are not needed by the Android library
