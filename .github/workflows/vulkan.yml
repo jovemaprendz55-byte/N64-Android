@@ -56,6 +56,10 @@ jobs:
             third_party/muFFT \
             third_party/volk \
             third_party/khronos/vulkan-headers
+          # Shaderc vendors SPIRV-Headers and SPIRV-Tools as nested submodules.
+          git -C third_party/parallel-rdp/Granite submodule update --init \
+            third_party/shaderc/third_party/spirv-headers \
+            third_party/shaderc/third_party/spirv-tools
 
           # Granite's Android WSI path unconditionally requires Google's
           # games-frame-pacing package. This app owns presentation and does
@@ -80,6 +84,8 @@ jobs:
           test -s third_party/parallel-rdp/Granite/third_party/volk/volk.h
           test -s third_party/parallel-rdp/Granite/third_party/meshoptimizer/CMakeLists.txt
           test -s third_party/parallel-rdp/Granite/third_party/muFFT/CMakeLists.txt
+          test -s third_party/parallel-rdp/Granite/third_party/shaderc/third_party/spirv-headers/CMakeLists.txt
+          test -s third_party/parallel-rdp/Granite/third_party/shaderc/third_party/spirv-tools/CMakeLists.txt
 
       - name: Build pinned SDL2 for Android ARM64
         shell: bash
@@ -125,7 +131,7 @@ jobs:
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus.so"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libSDL2.so"
           unzip -Z1 "$APK" | grep -Fx "lib/arm64-v8a/libmupen64plus-rsp-hle.so"
-          if unzip -Z1 "$APK" | grep -E 'lib/arm64-v8a/lib(n64bridge|mupen64plus-video-GLideN64|mupen64plus-video-android)\.so$'; then
+          if unzip -Z1 "$APK" | grep -E 'lib/arm64-v8a/lib(n64bridge|mupen64plus-video-GLideN64|mupen64plus-video-android)\\.so$'; then
             echo "Legacy EGL/OpenGL renderer unexpectedly packaged"
             exit 1
           fi
@@ -135,7 +141,7 @@ jobs:
               echo "Unexpected EGL/GLES dependency in $so"
               exit 1
             fi
-          done < <(unzip -Z1 "$APK" | grep '\.so$')
+          done < <(unzip -Z1 "$APK" | grep '\\.so$')
 
       - name: Upload Vulkan debug APK
         uses: actions/upload-artifact@v4
