@@ -43,6 +43,9 @@ if(EXISTS "${PARALLEL_RDP_SOURCE_DIR}/parallel-rdp/rdp_device.hpp")
     set(GRANITE_INSTALL_TARGETS OFF CACHE BOOL "" FORCE)
     add_subdirectory("${PARALLEL_RDP_SOURCE_DIR}"
         "${CMAKE_CURRENT_BINARY_DIR}/parallel-rdp" EXCLUDE_FROM_ALL)
+    # paraLLEl-RDP includes Granite OSFilesystem by its platform header name.
+    target_include_directories(parallel-rdp PRIVATE
+        "${PARALLEL_RDP_SOURCE_DIR}/Granite/filesystem/linux")
     # Upstream also declares desktop replay/conformance tools as ALL targets.
     # They are not part of the Android renderer; avoid compiling their optional
     # angrylion-only sources (for example flat_renderer.hpp) in the APK build.
