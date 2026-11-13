@@ -779,7 +779,7 @@ bool presentTestFrame(std::string& error) {
         return false;
     }
     vkQueueWaitIdle(g_presentQueue);
-    error = "quadro de teste em tela cheia renderizado pela Vulkan (padrão procedural, sem ROM).";
+    error = "textura RGBA de teste enviada por staging buffer e exibida pelo sampler Vulkan; ROM ainda não conectada.";
     return true;
 }
 
