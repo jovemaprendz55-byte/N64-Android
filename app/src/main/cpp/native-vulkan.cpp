@@ -1054,6 +1054,16 @@ extern "C" bool n64VulkanSubmitVideoFrame(const N64VideoFrame* frame) {
     return uploaded;
 }
 
+// Adapter can be registered directly as an N64VideoFrameCallback.
+// user_data is reserved for future per-core/per-instance renderer contexts.
+extern "C" void n64VulkanVideoFrameCallback(
+    const N64VideoFrame* frame, void* /* user_data */) {
+    if (!n64VulkanSubmitVideoFrame(frame)) {
+        __android_log_print(ANDROID_LOG_WARN, TAG,
+            "Quadro do núcleo N64 não foi enviado ao renderer Vulkan.");
+    }
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_VulkanNative_nativeInitialize(
     JNIEnv* env, jobject /* thiz */, jobject surface) {
