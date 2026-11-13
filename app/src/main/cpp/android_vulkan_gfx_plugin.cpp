@@ -1,3 +1,6 @@
+#define VK_NO_PROTOTYPES 1
+#include "vulkan_headers.hpp"
+
 #include <android/log.h>
 #include <algorithm>
 #include <cstdint>
