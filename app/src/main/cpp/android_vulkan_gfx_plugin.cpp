@@ -121,7 +121,7 @@ EXPORT m64p_error CALL PluginGetVersion(m64p_plugin_type* type, int* pluginVersi
     if (!type || !pluginVersion || !apiVersion || !name || !caps) return M64ERR_INPUT_ASSERT;
     *type = M64PLUGIN_GFX;
     *pluginVersion = 0x000100;
-    *apiVersion = 0x020000;
+    *apiVersion = 0x020200;
     *name = "N64 Android Vulkan VI Framebuffer Plugin";
     *caps = 0;
     return M64ERR_SUCCESS;
