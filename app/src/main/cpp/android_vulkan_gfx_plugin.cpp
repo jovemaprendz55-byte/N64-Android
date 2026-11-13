@@ -8,6 +8,11 @@
 #define M64P_PLUGIN_PROTOTYPES 1
 #include "m64p_plugin.h"
 #include "n64-video-frame.h"
+#include "n64-vulkan-context.h"
+#include "vulkan/context.hpp"
+#include "vulkan/device.hpp"
+#include "rdp_device.hpp"
+#include <memory>
 
 namespace {
 constexpr char TAG[] = "N64AndroidVulkanGFX";
@@ -22,10 +27,68 @@ uint64_t g_processRdpCalls = 0;
 uint64_t g_viAttempts = 0;
 uint64_t g_viRejected = 0;
 std::vector<uint8_t> g_rgba;
+Vulkan::ContextHandle g_rdpContext;
+Vulkan::DeviceHandle g_rdpDevice;
+std::unique_ptr<RDP::CommandProcessor> g_rdp;
 
 inline uint8_t rdramByte(uint32_t address) {
     // Mupen64Plus stores N64 big-endian bytes in its host-endian RDRAM layout.
     return g_info.RDRAM[(address ^ 3u) & 0x7FFFFFu];
+}
+
+void shutdownRdpBackend() {
+    if (g_rdp) {
+        g_rdp->idle();
+        g_rdp.reset();
+    }
+    if (g_rdpDevice) {
+        g_rdpDevice->wait_idle();
+        g_rdpDevice = {};
+    }
+    g_rdpContext = {};
+}
+
+bool initializeRdpBackend() {
+    if (g_rdp && g_rdp->device_is_supported()) return true;
+    shutdownRdpBackend();
+
+    VkInstance instance = VK_NULL_HANDLE;
+    VkPhysicalDevice gpu = VK_NULL_HANDLE;
+    if (!n64VulkanGetRdpContext(&instance, &gpu)) {
+        __android_log_print(ANDROID_LOG_ERROR, TAG,
+            "RDP backend: Vulkan instance/GPU ainda nao estao disponiveis");
+        return false;
+    }
+    if (!Vulkan::Context::init_loader(vkGetInstanceProcAddr)) {
+        __android_log_print(ANDROID_LOG_ERROR, TAG,
+            "RDP backend: Granite/Volk nao conseguiu inicializar o loader Vulkan");
+        return false;
+    }
+
+    g_rdpContext = Vulkan::ContextHandle(new Vulkan::Context());
+    if (!g_rdpContext->init_device_from_instance(
+            instance, gpu, VK_NULL_HANDLE, nullptr, 0, nullptr)) {
+        __android_log_print(ANDROID_LOG_ERROR, TAG,
+            "RDP backend: Granite nao conseguiu criar seu dispositivo Vulkan");
+        shutdownRdpBackend();
+        return false;
+    }
+
+    g_rdpDevice = Vulkan::DeviceHandle(new Vulkan::Device());
+    g_rdpDevice->set_context(*g_rdpContext);
+
+    g_rdp.reset(new RDP::CommandProcessor(
+        *g_rdpDevice, g_info.RDRAM, 0, 8u * 1024u * 1024u, 0, 0));
+    if (!g_rdp->device_is_supported()) {
+        __android_log_print(ANDROID_LOG_ERROR, TAG,
+            "RDP backend: CommandProcessor inicializou, mas GPU/driver nao suportou o renderer");
+        shutdownRdpBackend();
+        return false;
+    }
+
+    __android_log_print(ANDROID_LOG_INFO, TAG,
+        "RDP backend inicializado: Granite + paraLLEl-RDP; RDRAM=8 MiB; device Vulkan separado");
+    return true;
 }
 
 bool presentViFramebuffer() {
@@ -144,6 +207,7 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle, void*,
 EXPORT m64p_error CALL PluginShutdown(void) {
     std::lock_guard<std::mutex> lock(g_mutex);
     g_romOpen = false;
+    shutdownRdpBackend();
     g_initialized = false;
     g_started = false;
     g_rgba.clear();
@@ -208,6 +272,10 @@ EXPORT int CALL RomOpen(void) {
     std::lock_guard<std::mutex> lock(g_mutex);
     if (!g_initialized) return 0;
     g_romOpen = true;
+    if (!initializeRdpBackend()) {
+        __android_log_print(ANDROID_LOG_ERROR, TAG,
+            "ROM aberta, mas backend RDP indisponivel; framebuffer VI permanece como fallback");
+    }
     g_frameNumber = 0;
     g_processDListCalls = 0;
     g_processRdpCalls = 0;
@@ -219,5 +287,6 @@ EXPORT int CALL RomOpen(void) {
 EXPORT void CALL RomClosed(void) {
     std::lock_guard<std::mutex> lock(g_mutex);
     g_romOpen = false;
+    shutdownRdpBackend();
 }
 }
