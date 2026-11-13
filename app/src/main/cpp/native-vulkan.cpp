@@ -15,9 +15,13 @@
 #include "n64-video-frame.h"
 
 #include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
 #include <cstring>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace {
@@ -1434,6 +1438,11 @@ bool createSwapchain(std::string& details, bool presentInitialFrame) {
 
 
 std::mutex g_coreMutex;
+std::mutex g_executionMutex;
+std::condition_variable g_executionCondition;
+std::thread g_executionThread;
+std::atomic<bool> g_executionRunning{false};
+std::atomic<bool> g_executionFinished{true};
 bool g_coreInitialized = false;
 bool g_romOpened = false;
 bool g_gfxAttached = false;
@@ -1452,6 +1461,11 @@ void coreDebugCallback(void*, int level, const char* message) {
                         "N64AndroidCore", "%s", message ? message : "(mensagem vazia)");
 }
 void coreStateCallback(void*, m64p_core_param param, int value) {
+    if (param == M64CORE_EMU_STATE) {
+        g_executionRunning.store(value == M64EMU_RUNNING);
+        if (value == M64EMU_STOPPED) g_executionFinished.store(true);
+        g_executionCondition.notify_all();
+    }
     __android_log_print(ANDROID_LOG_INFO, "N64AndroidCore",
                         "Estado do Core: parametro=%d valor=%d", param, value);
 }
@@ -1529,7 +1543,21 @@ m64p_error installAndroidVideoExtension() {
     return CoreOverrideVidExt(&functions);
 }
 
+void stopExecutionLocked() {
+    if (g_executionThread.joinable()) {
+        if (g_executionRunning.load()) {
+            const m64p_error stopError = CoreDoCommand(M64CMD_STOP, 0, nullptr);
+            __android_log_print(stopError == M64ERR_SUCCESS ? ANDROID_LOG_INFO : ANDROID_LOG_WARN,
+                "N64AndroidCore", "M64CMD_STOP: %d", stopError);
+        }
+        g_executionThread.join();
+    }
+    g_executionRunning.store(false);
+    g_executionFinished.store(true);
+}
+
 void shutdownCoreLocked() {
+    stopExecutionLocked();
     if (g_romOpened) {
         const m64p_error e = CoreDoCommand(M64CMD_ROM_CLOSE, 0, nullptr);
         __android_log_print(e == M64ERR_SUCCESS ? ANDROID_LOG_INFO : ANDROID_LOG_WARN,
@@ -1740,6 +1768,44 @@ Java_com_jsr_n64android_VulkanNative_nativePrepareRom(
     __android_log_print(ANDROID_LOG_INFO, "N64AndroidCore",
         "ROM aberta e plugins GFX Vulkan, Input e RSP HLE anexados. Execução ainda não iniciada.");
     return result(env, "ROM aberta no Mupen64Plus. Plugins Vulkan, controle e RSP HLE anexados. Próxima etapa: iniciar a execução do jogo.");
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_jsr_n64android_VulkanNative_nativeStartEmulation(
+    JNIEnv* env, jobject /* thiz */) {
+    std::lock_guard<std::mutex> lock(g_coreMutex);
+    if (!g_coreInitialized || !g_romOpened)
+        return result(env, "Não há ROM preparada para executar.");
+    if (g_executionThread.joinable() || g_executionRunning.load())
+        return result(env, "A execução da ROM já foi iniciada.");
+
+    g_executionRunning.store(false);
+    g_executionFinished.store(false);
+    g_executionThread = std::thread([]() {
+        __android_log_print(ANDROID_LOG_INFO, "N64AndroidCore",
+            "Iniciando M64CMD_EXECUTE em thread nativa.");
+        const m64p_error executeError = CoreDoCommand(M64CMD_EXECUTE, 0, nullptr);
+        __android_log_print(executeError == M64ERR_SUCCESS ? ANDROID_LOG_INFO : ANDROID_LOG_ERROR,
+            "N64AndroidCore", "M64CMD_EXECUTE terminou: %d", executeError);
+        g_executionRunning.store(false);
+        g_executionFinished.store(true);
+        g_executionCondition.notify_all();
+    });
+
+    std::unique_lock<std::mutex> waitLock(g_executionMutex);
+    const bool entered = g_executionCondition.wait_for(waitLock, std::chrono::seconds(10), [] {
+        return g_executionRunning.load() || g_executionFinished.load();
+    });
+    if (!entered) {
+        __android_log_print(ANDROID_LOG_WARN, "N64AndroidCore",
+            "M64CMD_EXECUTE ainda não confirmou estado RUNNING após 10 segundos.");
+        return result(env, "O Core foi acionado, mas ainda não confirmou o início da execução. Consulte o diagnóstico.");
+    }
+    if (!g_executionRunning.load()) {
+        if (g_executionThread.joinable()) g_executionThread.join();
+        return result(env, "O Core encerrou a execução durante a inicialização. Consulte o diagnóstico.");
+    }
+    return result(env, "Execução da ROM iniciada pelo Mupen64Plus em thread nativa.");
 }
 
 extern "C" JNIEXPORT jstring JNICALL
