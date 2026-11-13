@@ -77,6 +77,16 @@ jobs:
           if old not in s:
               raise SystemExit("Expected Granite Android platform branch not found; refusing unsafe patch")
           p.write_text(s.replace(old, new, 1))
+
+          # Granite's Vulkan target also enables Swappy unconditionally on Android.
+          # The headless app owns presentation, so do not require games-frame-pacing.
+          p = Path("third_party/parallel-rdp/Granite/vulkan/CMakeLists.txt")
+          s = p.read_text()
+          old = "if (ANDROID)\\n    find_package(games-frame-pacing REQUIRED CONFIG)"
+          new = 'if (ANDROID AND NOT GRANITE_PLATFORM MATCHES "headless")\\n    find_package(games-frame-pacing REQUIRED CONFIG)'
+          if old not in s:
+              raise SystemExit("Expected Granite Vulkan Swappy branch not found; refusing unsafe patch")
+          p.write_text(s.replace(old, new, 1))
           PY
 
           test -s third_party/parallel-rdp/parallel-rdp/rdp_device.hpp
