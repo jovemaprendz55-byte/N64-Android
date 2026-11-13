@@ -59,6 +59,11 @@ if(EXISTS "${MUPEN64PLUS_CORE_SOURCE_DIR}/src/asm_defines/asm_defines.c")
         MINIZIP_IOAPI_CONTENT "${MINIZIP_IOAPI_CONTENT}")
     file(WRITE "${MINIZIP_IOAPI_C}" "${MINIZIP_IOAPI_CONTENT}")
 
+    # Vulkan GFX plugin: built into libn64vulkan so its frame callback resolves
+    # directly to the Vulkan uploader without EGL/GLES or a cyclic shared-library link.
+    target_sources(n64vulkan PRIVATE android_vulkan_gfx_plugin.cpp)
+    target_include_directories(n64vulkan PRIVATE "${MUPEN64PLUS_CORE_SOURCE_DIR}/src/api")
+
     # Input plugin is independent of the graphics API.
     add_library(n64android_input SHARED android_input_plugin.cpp)
     target_include_directories(n64android_input PRIVATE
