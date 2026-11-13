@@ -43,6 +43,14 @@ if(EXISTS "${PARALLEL_RDP_SOURCE_DIR}/parallel-rdp/rdp_device.hpp")
     set(GRANITE_INSTALL_TARGETS OFF CACHE BOOL "" FORCE)
     add_subdirectory("${PARALLEL_RDP_SOURCE_DIR}"
         "${CMAKE_CURRENT_BINARY_DIR}/parallel-rdp" EXCLUDE_FROM_ALL)
+    # Upstream also declares desktop replay/conformance tools as ALL targets.
+    # They are not part of the Android renderer; avoid compiling their optional
+    # angrylion-only sources (for example flat_renderer.hpp) in the APK build.
+    foreach(_rdp_tool rdp-replayer rdp-conformance rdp-validate-dump vi-conformance rdp-bench rdp-utils)
+        if(TARGET ${_rdp_tool})
+            set_property(TARGET ${_rdp_tool} PROPERTY EXCLUDE_FROM_ALL TRUE)
+        endif()
+    endforeach()
     target_link_libraries(n64vulkan PRIVATE parallel-rdp)
     target_compile_definitions(n64vulkan PRIVATE N64_HAS_PARALLEL_RDP=1)
 else()
