@@ -47,7 +47,7 @@ static inline int n64VideoFrameIsValid(const N64VideoFrame* frame) {
  * Returns non-zero when the upload was accepted and completed.
  */
 #ifdef __cplusplus
-int n64VulkanSubmitVideoFrame(const N64VideoFrame* frame);
+bool n64VulkanSubmitVideoFrame(const N64VideoFrame* frame);
 #endif
 
 typedef void (*N64VideoFrameCallback)(
