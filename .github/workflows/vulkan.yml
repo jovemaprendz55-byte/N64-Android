@@ -65,6 +65,15 @@ jobs:
           cmake --build build/sdl2-arm64 --config Release --parallel 2
           test -s build/sdl2-arm64/libSDL2.so
 
+      - name: Include SDL2 Android Java bridge classes
+        shell: bash
+        run: |
+          SDL_JAVA_DIR="third_party/SDL/android-project/app/src/main/java/org/libsdl/app"
+          test -s "$SDL_JAVA_DIR/SDLActivity.java"
+          mkdir -p app/src/main/java/org/libsdl/app
+          cp "$SDL_JAVA_DIR"/*.java app/src/main/java/org/libsdl/app/
+          test -s app/src/main/java/org/libsdl/app/SDLActivity.java
+
       - name: Build Vulkan renderer and Mupen64Plus Core APK
         run: gradle --no-daemon assembleDebug
 
