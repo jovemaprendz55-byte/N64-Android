@@ -4,6 +4,7 @@
 #include <android/log.h>
 #include <algorithm>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 #include <mutex>
 #include <vector>
@@ -420,6 +421,13 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
         ++localCommands;
         ++calls;
 
+        // Compact command trace across recursive display-list calls.
+        if (calls <= 128u) {
+            __android_log_print(ANDROID_LOG_INFO, TAG,
+                "F3DGOLDEN CMD_TRACE[%u]: opcode=%02x w0=%08x w1=%08x pc=%06x depth=%u",
+                calls, opcode, w0, w1, pc, depth);
+        }
+
         if (opcode == 0xB8u) { // F3D G_ENDDL
             return true;
         }
@@ -741,13 +749,36 @@ void logF3DDisplayListTraversal() {
         complete ? "fim/retorno alcancado" : "incompleto/limite",
         budget, calls, rawRdpCommands, loggedGbiCommands,
         decodedGoldenTriangles, vertexCacheMask);
-    for (unsigned opcode = 0; opcode < 0xe4u; ++opcode) {
-        if (opcodeCounts[opcode] != 0u) {
+    // Emit the complete opcode histogram in compact chunks so logcat
+    // cannot make a multi-line summary look as if only one opcode existed.
+    char histogram[768] = {};
+    size_t used = 0;
+    for (unsigned opcode = 0; opcode < 256u; ++opcode) {
+        if (opcodeCounts[opcode] == 0u) continue;
+        const int written = std::snprintf(histogram + used, sizeof(histogram) - used,
+            "%s%02x:%u", used == 0u ? "" : " ", opcode, opcodeCounts[opcode]);
+        if (written < 0) break;
+        if (static_cast<size_t>(written) >= sizeof(histogram) - used) {
             __android_log_print(ANDROID_LOG_INFO, TAG,
-                "F3DGOLDEN GBI resumo: opcode=%02x quantidade=%u",
-                opcode, opcodeCounts[opcode]);
+                "F3DGOLDEN OPCODE_HIST: %s", histogram);
+            used = 0;
+            histogram[0] = '\\0';
+            const int retry = std::snprintf(histogram, sizeof(histogram),
+                "%02x:%u", opcode, opcodeCounts[opcode]);
+            if (retry < 0 || static_cast<size_t>(retry) >= sizeof(histogram)) break;
+            used = static_cast<size_t>(retry);
+        } else {
+            used += static_cast<size_t>(written);
         }
     }
+    if (used != 0u) {
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "F3DGOLDEN OPCODE_HIST: %s", histogram);
+    }
+    __android_log_print(ANDROID_LOG_INFO, TAG,
+        "F3DGOLDEN OPCODE_KEY: B1_G_TRIX=%u 04_G_VTX=%u 06_G_DL=%u 01_G_MTX=%u BA=%u B8_ENDDL=%u",
+        opcodeCounts[0xb1u], opcodeCounts[0x04u], opcodeCounts[0x06u],
+        opcodeCounts[0x01u], opcodeCounts[0xbau], opcodeCounts[0xb8u]);
 }
 
 unsigned rdpCommandWordCount(uint32_t opcode) {
