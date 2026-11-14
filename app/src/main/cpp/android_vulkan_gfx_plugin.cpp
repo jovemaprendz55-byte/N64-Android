@@ -468,15 +468,15 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     "F3DGOLDEN GBI: segmento[%u]=%06x (cmd @%06x)",
                     segment, segments[segment], pc);
             }
-        } else if (opcode == 0xBDu) { // F3D G_POPMTX
-            // Fast3D encodes the number of matrices to pop as a byte count
-            // in w1. A zero/legacy value is treated as one matrix.
-            unsigned popCount = w1 / 64u;
-            if (popCount == 0u) popCount = 1u;
+        } else if (opcode == 0xBDu) { // Fast3D G_POPMTX
+            // The game's gspFast3DNoN.fifo (2.0G) uses classic Fast3D:
+            // G_POPMTX pops exactly one model-view matrix. The w1/64
+            // byte-count encoding belongs to the F3DEX variant.
+            constexpr unsigned popCount = 1u;
             if (popCount > matrixState.modelViewStackDepth) {
                 __android_log_print(ANDROID_LOG_WARN, TAG,
-                    "F3DGOLDEN G_POPMTX underflow: requested=%u depth=%u @%06x",
-                    popCount, matrixState.modelViewStackDepth, pc);
+                    "F3DGOLDEN G_POPMTX underflow: w0=%08x w1=%08x requested=%u depth=%u @%06x",
+                    w0, w1, popCount, matrixState.modelViewStackDepth, pc);
                 matrixState.modelViewStackDepth = 0u;
                 matrixState.modelViewValid = false;
             } else {
@@ -486,8 +486,8 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     sizeof(matrixState.modelView));
                 matrixState.modelViewValid = true;
                 __android_log_print(ANDROID_LOG_INFO, TAG,
-                    "F3DGOLDEN G_POPMTX: count=%u depth=%u @%06x",
-                    popCount, matrixState.modelViewStackDepth, pc);
+                    "F3DGOLDEN G_POPMTX: w0=%08x w1=%08x count=%u depth=%u @%06x",
+                    w0, w1, popCount, matrixState.modelViewStackDepth, pc);
             }
         } else if (opcode == 0x06u) { // F3D G_DL
             const unsigned mode = (w0 >> 16) & 0xffu;
