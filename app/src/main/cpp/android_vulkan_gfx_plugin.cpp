@@ -68,6 +68,15 @@ void transformGoldenEyeVertex(const float matrix[16],
             out[col] += input[row] * matrix[row * 4u + col];
     }
 }
+
+void transformGoldenEyeVector4(const float matrix[16],
+                               const float input[4], float out[4]) {
+    for (unsigned col = 0; col < 4u; ++col) {
+        out[col] = 0.0f;
+        for (unsigned row = 0; row < 4u; ++row)
+            out[col] += input[row] * matrix[row * 4u + col];
+    }
+}
 std::mutex g_mutex;
 GFX_INFO g_info{};
 bool g_started = false;
@@ -595,6 +604,65 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                         "F3DGOLDEN TRIANGLE[%u]: idx=(%u,%u,%u) A=(%d,%d,%d) B=(%d,%d,%d) C=(%d,%d,%d)",
                         decodedGoldenTriangles, v0, v1, v2,
                         a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+                    if (decodedGoldenTriangles < 12u &&
+                        matrixState.modelViewValid) {
+                        const GoldenEyeVertex* vertices[3] = {&a, &b, &c};
+                        float mv[3][4] = {};
+                        float clip[3][4] = {};
+                        for (unsigned vertex = 0; vertex < 3u; ++vertex) {
+                            transformGoldenEyeVertex(
+                                matrixState.modelView, *vertices[vertex], mv[vertex]);
+                            if (matrixState.projectionValid) {
+                                transformGoldenEyeVector4(
+                                    matrixState.projection, mv[vertex], clip[vertex]);
+                            }
+                        }
+                        if (matrixState.projectionValid) {
+                            __android_log_print(ANDROID_LOG_INFO, TAG,
+                                "F3DGOLDEN TRI_PROJECTED[%u]: "
+                                "Aclip=(%.2f,%.2f,%.2f,%.2f) "
+                                "Bclip=(%.2f,%.2f,%.2f,%.2f) "
+                                "Cclip=(%.2f,%.2f,%.2f,%.2f)",
+                                decodedGoldenTriangles,
+                                clip[0][0], clip[0][1], clip[0][2], clip[0][3],
+                                clip[1][0], clip[1][1], clip[1][2], clip[1][3],
+                                clip[2][0], clip[2][1], clip[2][2], clip[2][3]);
+                            if (std::abs(clip[0][3]) > 0.00001f &&
+                                std::abs(clip[1][3]) > 0.00001f &&
+                                std::abs(clip[2][3]) > 0.00001f) {
+                                __android_log_print(ANDROID_LOG_INFO, TAG,
+                                    "F3DGOLDEN TRI_NDC[%u]: "
+                                    "A=(%.5f,%.5f,%.5f) "
+                                    "B=(%.5f,%.5f,%.5f) "
+                                    "C=(%.5f,%.5f,%.5f)",
+                                    decodedGoldenTriangles,
+                                    clip[0][0] / clip[0][3],
+                                    clip[0][1] / clip[0][3],
+                                    clip[0][2] / clip[0][3],
+                                    clip[1][0] / clip[1][3],
+                                    clip[1][1] / clip[1][3],
+                                    clip[1][2] / clip[1][3],
+                                    clip[2][0] / clip[2][3],
+                                    clip[2][1] / clip[2][3],
+                                    clip[2][2] / clip[2][3]);
+                            } else {
+                                __android_log_print(ANDROID_LOG_WARN, TAG,
+                                    "F3DGOLDEN TRI_NDC[%u]: W invalido A=%.6f B=%.6f C=%.6f",
+                                    decodedGoldenTriangles,
+                                    clip[0][3], clip[1][3], clip[2][3]);
+                            }
+                        } else {
+                            __android_log_print(ANDROID_LOG_INFO, TAG,
+                                "F3DGOLDEN TRI_MODELVIEW[%u]: "
+                                "A=(%.2f,%.2f,%.2f,%.2f) "
+                                "B=(%.2f,%.2f,%.2f,%.2f) "
+                                "C=(%.2f,%.2f,%.2f,%.2f) projection=NOT_LOADED",
+                                decodedGoldenTriangles,
+                                mv[0][0], mv[0][1], mv[0][2], mv[0][3],
+                                mv[1][0], mv[1][1], mv[1][2], mv[1][3],
+                                mv[2][0], mv[2][1], mv[2][2], mv[2][3]);
+                        }
+                    }
                 }
                 ++triangles;
                 ++decodedGoldenTriangles;
