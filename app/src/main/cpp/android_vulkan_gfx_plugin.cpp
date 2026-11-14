@@ -157,6 +157,44 @@ uint32_t fnv1aRdramBytes(uint32_t address, uint32_t size) {
     }
     return hash;
 }
+uint32_t crc32RdramBytes(uint32_t address, uint32_t size) {
+    uint32_t crc = 0xffffffffu;
+    for (uint32_t i = 0; i < size; ++i) {
+        crc ^= rdramByte(address + i);
+        for (unsigned bit = 0; bit < 8; ++bit)
+            crc = (crc >> 1) ^ (0xedb88320u & (0u - (crc & 1u)));
+    }
+    return ~crc;
+}
+
+void logRdramAsciiSignatures(uint32_t address, uint32_t size) {
+    // Microcode identification strings commonly live in the data segment.
+    // Emit only printable ASCII runs, capped to avoid flooding logcat.
+    char run[96];
+    uint32_t runLength = 0;
+    unsigned emitted = 0;
+    for (uint32_t i = 0; i < size && emitted < 8; ++i) {
+        const uint8_t ch = rdramByte(address + i);
+        if (ch >= 0x20 && ch <= 0x7e) {
+            if (runLength < sizeof(run) - 1)
+                run[runLength++] = static_cast<char>(ch);
+        } else {
+            if (runLength >= 8) {
+                run[runLength] = '\\0';
+                __android_log_print(ANDROID_LOG_INFO, TAG,
+                    "RSP ucode_data text @+%04x: %s", i - runLength, run);
+                ++emitted;
+            }
+            runLength = 0;
+        }
+    }
+    if (runLength >= 8 && emitted < 8) {
+        run[runLength] = '\\0';
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "RSP ucode_data text @+%04x: %s", size - runLength, run);
+    }
+}
+
 
 void logRspTaskSnapshot() {
     if (!g_info.DMEM) {
@@ -190,12 +228,14 @@ void logRspTaskSnapshot() {
         ucodeDataSize <= 8u * 1024u * 1024u - ucodeDataAddress) {
         const uint32_t hleChecksumSize = ucodeSize >> 1;
         __android_log_print(ANDROID_LOG_INFO, TAG,
-            "RSP ucode identity: HLE_sum=%08x HLE_bytes=%u ucode_fnv1a=%08x "
-            "ucode_data_sum=%08x ucode_data_fnv1a=%08x",
+            "RSP ucode identity: HLE_sum=%08x HLE_bytes=%u ucode_crc32=%08x "
+            "ucode_fnv1a=%08x ucode_data_crc32=%08x ucode_data_fnv1a=%08x",
             checksumRdramBytes(ucodeAddress, hleChecksumSize), hleChecksumSize,
+            crc32RdramBytes(ucodeAddress, ucodeSize),
             fnv1aRdramBytes(ucodeAddress, ucodeSize),
-            checksumRdramBytes(ucodeDataAddress, ucodeDataSize),
+            crc32RdramBytes(ucodeDataAddress, ucodeDataSize),
             fnv1aRdramBytes(ucodeDataAddress, ucodeDataSize));
+        logRdramAsciiSignatures(ucodeDataAddress, ucodeDataSize);
     } else {
         __android_log_print(ANDROID_LOG_WARN, TAG,
             "RSP ucode range invalid: ucode=%08x/%08x data=%08x/%08x",
