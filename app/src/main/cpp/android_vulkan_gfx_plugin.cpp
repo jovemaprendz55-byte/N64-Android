@@ -565,7 +565,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                         std::memcpy(destination, loadedMatrix, sizeof(loadedMatrix));
                     } else {
                         float combined[16] = {};
-                        multiplyMatrix4x4(destination, loadedMatrix, combined);
+                        multiplyMatrix4x4(loadedMatrix, destination, combined);
                         std::memcpy(destination, combined, sizeof(combined));
                     }
                     destinationValid = true;
