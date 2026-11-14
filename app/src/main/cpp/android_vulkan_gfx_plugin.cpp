@@ -361,7 +361,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     "F3DGOLDEN GBI: modo G_DL desconhecido %u", mode);
                 return false;
             }
-        } else if (opcode >= 0xE4u) {
+        } else if (opcode >= 0xC8u) {
             // Raw RDP commands may be embedded in a GBI list. Count them,
             // but do not enqueue them until the RSP geometry path is implemented.
             ++rawRdpCommands;
@@ -593,6 +593,24 @@ bool processRdpCommandList() {
     }
 
     setRdpViRegisters();
+    if (g_processDListCalls <= 5) {
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "GoldenEye VI: status=%08x origin=%08x width=%08x "
+            "h_start=%08x v_start=%08x x_scale=%08x y_scale=%08x",
+            g_info.VI_STATUS_REG ? *g_info.VI_STATUS_REG : 0u,
+            g_info.VI_ORIGIN_REG ? *g_info.VI_ORIGIN_REG : 0u,
+            g_info.VI_WIDTH_REG ? *g_info.VI_WIDTH_REG : 0u,
+            g_info.VI_H_START_REG ? *g_info.VI_H_START_REG : 0u,
+            g_info.VI_V_START_REG ? *g_info.VI_V_START_REG : 0u,
+            g_info.VI_X_SCALE_REG ? *g_info.VI_X_SCALE_REG : 0u,
+            g_info.VI_Y_SCALE_REG ? *g_info.VI_Y_SCALE_REG : 0u);
+        for (size_t i = 0; i < commands.size(); ++i) {
+            const auto& c = commands[i];
+            __android_log_print(ANDROID_LOG_INFO, TAG,
+                "GoldenEye RDP[%zu]: opcode=%02x w0=%08x w1=%08x words=%zu",
+                i, (c[0] >> 24) & 0xffu, c[0], c[1], c.size());
+        }
+    }
     g_rdp->flush();
 
     std::vector<RDP::RGBA> colors;
