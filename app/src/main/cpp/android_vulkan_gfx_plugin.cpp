@@ -151,9 +151,30 @@ void logRspTaskSnapshot() {
 
     __android_log_print(ANDROID_LOG_INFO, TAG,
         "RSP OSTask: type=%08x flags=%08x ucode=%08x ucode_size=%08x "
-        "ucode_data=%08x data_ptr=%08x data_size=%08x yield_ptr=%08x yield_size=%08x",
-        task[0], task[1], task[4], task[5], task[6], task[10], task[11],
-        task[12], task[13]);
+        "ucode_data=%08x ucode_data_size=%08x output_buff=%08x output_buff_size=%08x "
+        "data_ptr=%08x data_size=%08x yield_ptr=%08x yield_size=%08x",
+        task[0], task[1], task[4], task[5], task[6], task[7], task[10], task[11],
+        task[12], task[13], task[14], task[15]);
+
+    // Dump the actual HLE display-list payload. OSTask fields 12/13 are
+    // data_ptr/data_size; fields 10/11 are output buffer metadata.
+    const uint32_t dataPtr = task[12] & 0x00ffffffu;
+    const uint32_t dataSize = task[13];
+    if (dataSize != 0 && dataSize <= 0x1000u &&
+        dataPtr <= 8u * 1024u * 1024u &&
+        dataSize <= 8u * 1024u * 1024u - dataPtr) {
+        const unsigned count = std::min<unsigned>(dataSize / 8u, 16u);
+        for (unsigned i = 0; i < count; ++i) {
+            const uint32_t address = dataPtr + i * 8u;
+            __android_log_print(ANDROID_LOG_INFO, TAG,
+                "RSP GBI[%02u] @%06x: %08x %08x",
+                i, address, readRdpWord(address), readRdpWord(address + 4u));
+        }
+    } else {
+        __android_log_print(ANDROID_LOG_WARN, TAG,
+            "RSP display list range invalid: ptr=%08x size=%08x",
+            task[12], task[13]);
+    }
 
     const uint32_t dpcStart = g_info.DPC_START_REG ? *g_info.DPC_START_REG : 0;
     const uint32_t dpcEnd = g_info.DPC_END_REG ? *g_info.DPC_END_REG : 0;
