@@ -279,7 +279,8 @@ uint32_t readRdpWord(uint32_t address) {
 
 bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                         unsigned depth, uint32_t& budget,
-                        uint32_t& calls, uint32_t& rawRdpCommands) {
+                        uint32_t& calls, uint32_t& rawRdpCommands,
+                        uint32_t opcodeCounts[256], uint32_t& loggedGbiCommands) {
     constexpr uint32_t rdramLimit = 8u * 1024u * 1024u;
     if (depth > 10u || start >= rdramLimit || (start & 7u) != 0u) {
         __android_log_print(ANDROID_LOG_WARN, TAG,
@@ -301,6 +302,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
         const uint32_t w0 = readRdpWord(pc);
         const uint32_t w1 = readRdpWord(pc + 4u);
         const uint32_t opcode = w0 >> 24;
+        ++opcodeCounts[opcode];
         ++budget;
         ++localCommands;
         ++calls;
@@ -341,7 +343,8 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
 
             if (mode == 0u) { // G_DL_PUSH: call and return
                 if (!walkF3DDisplayList(target, rdramLimit, segments,
-                                        depth + 1u, budget, calls, rawRdpCommands))
+                                        depth + 1u, budget, calls, rawRdpCommands,
+                                        opcodeCounts, loggedGbiCommands))
                     return false;
             } else if (mode == 1u) { // G_DL_NOPUSH: branch without return
                 pc = target;
@@ -360,6 +363,13 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     "F3DGOLDEN GBI: comando RDP bruto opcode=%02x @%06x",
                     opcode, pc);
             }
+        } else if (loggedGbiCommands < 100u) {
+            // Capture unknown/non-RDP F3D commands (matrix, vertex, triangles,
+            // texture and GoldenEye extensions) to map the real geometry path.
+            __android_log_print(ANDROID_LOG_INFO, TAG,
+                "F3DGOLDEN GBI: GBI opcode=%02x w0=%08x w1=%08x @%06x depth=%u",
+                opcode, w0, w1, pc, depth);
+            ++loggedGbiCommands;
         }
 
         pc += 8u;
@@ -399,13 +409,22 @@ void logF3DDisplayListTraversal() {
     uint32_t budget = 0;
     uint32_t calls = 0;
     uint32_t rawRdpCommands = 0;
+    uint32_t opcodeCounts[256] = {};
+    uint32_t loggedGbiCommands = 0;
     const bool complete = walkF3DDisplayList(
         dataPtr, dataPtr + dataSize, segments, 0u,
-        budget, calls, rawRdpCommands);
+        budget, calls, rawRdpCommands, opcodeCounts, loggedGbiCommands);
     __android_log_print(ANDROID_LOG_INFO, TAG,
-        "F3DGOLDEN GBI traversal: %s comandos=%u listas/chamadas=%u RDP_brutos=%u",
+        "F3DGOLDEN GBI traversal: %s comandos=%u listas/chamadas=%u RDP_brutos=%u GBI_detalhados=%u",
         complete ? "fim/retorno alcancado" : "incompleto/limite",
-        budget, calls, rawRdpCommands);
+        budget, calls, rawRdpCommands, loggedGbiCommands);
+    for (unsigned opcode = 0; opcode < 0xe4u; ++opcode) {
+        if (opcodeCounts[opcode] != 0u) {
+            __android_log_print(ANDROID_LOG_INFO, TAG,
+                "F3DGOLDEN GBI resumo: opcode=%02x quantidade=%u",
+                opcode, opcodeCounts[opcode]);
+        }
+    }
 }
 
 unsigned rdpCommandWordCount(uint32_t opcode) {
