@@ -39,6 +39,9 @@ struct GoldenEyeMatrixState {
     float projection[16] = {};
     bool modelViewValid = false;
     bool projectionValid = false;
+    // Fast3D G_MTX_PUSH / G_POPMTX use a model-view matrix stack.
+    std::array<std::array<float, 16>, 32> modelViewStack{};
+    unsigned modelViewStackDepth = 0;
 };
 
 void multiplyMatrix4x4(const float a[16], const float b[16], float out[16]) {
@@ -457,13 +460,34 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
             return true;
         }
 
-        if (opcode == 0xBCu || opcode == 0xBDu) { // G_MOVEWORD / GoldenEye variant
+        if (opcode == 0xBCu) { // F3D G_MOVEWORD
             if ((w0 & 0xffu) == 0x06u) { // G_MW_SEGMENT
                 const unsigned segment = (w0 >> 10) & 0x0fu;
                 segments[segment] = w1 & 0x00ffffffu;
                 __android_log_print(ANDROID_LOG_INFO, TAG,
                     "F3DGOLDEN GBI: segmento[%u]=%06x (cmd @%06x)",
                     segment, segments[segment], pc);
+            }
+        } else if (opcode == 0xBDu) { // F3D G_POPMTX
+            // Fast3D encodes the number of matrices to pop as a byte count
+            // in w1. A zero/legacy value is treated as one matrix.
+            unsigned popCount = w1 / 64u;
+            if (popCount == 0u) popCount = 1u;
+            if (popCount > matrixState.modelViewStackDepth) {
+                __android_log_print(ANDROID_LOG_WARN, TAG,
+                    "F3DGOLDEN G_POPMTX underflow: requested=%u depth=%u @%06x",
+                    popCount, matrixState.modelViewStackDepth, pc);
+                matrixState.modelViewStackDepth = 0u;
+                matrixState.modelViewValid = false;
+            } else {
+                matrixState.modelViewStackDepth -= popCount;
+                std::memcpy(matrixState.modelView,
+                    matrixState.modelViewStack[matrixState.modelViewStackDepth].data(),
+                    sizeof(matrixState.modelView));
+                matrixState.modelViewValid = true;
+                __android_log_print(ANDROID_LOG_INFO, TAG,
+                    "F3DGOLDEN G_POPMTX: count=%u depth=%u @%06x",
+                    popCount, matrixState.modelViewStackDepth, pc);
             }
         } else if (opcode == 0x06u) { // F3D G_DL
             const unsigned mode = (w0 >> 16) & 0xffu;
@@ -524,6 +548,19 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                         ? matrixState.projection : matrixState.modelView;
                     bool& destinationValid = isProjection
                         ? matrixState.projectionValid : matrixState.modelViewValid;
+                    const bool push = (param & 0x04u) != 0u;
+                    if (!isProjection && push && destinationValid) {
+                        if (matrixState.modelViewStackDepth <
+                            matrixState.modelViewStack.size()) {
+                            std::memcpy(
+                                matrixState.modelViewStack[matrixState.modelViewStackDepth].data(),
+                                matrixState.modelView, sizeof(matrixState.modelView));
+                            ++matrixState.modelViewStackDepth;
+                        } else {
+                            __android_log_print(ANDROID_LOG_WARN, TAG,
+                                "F3DGOLDEN G_MTX stack cheia; push ignorado @%06x", pc);
+                        }
+                    }
                     if (isLoad || !destinationValid) {
                         std::memcpy(destination, loadedMatrix, sizeof(loadedMatrix));
                     } else {
