@@ -149,8 +149,10 @@ uint32_t checksumRdramBytes(uint32_t address, uint32_t size) {
 
 uint32_t fnv1aRdramBytes(uint32_t address, uint32_t size) {
     uint32_t hash = 2166136261u;
+    // Hash the host byte layout exactly as the HLE plugin sees hle->dram.
+    // The byte sum is endian-independent, but FNV-1a is not.
     for (uint32_t i = 0; i < size; ++i) {
-        hash ^= rdramByte(address + i);
+        hash ^= g_info.RDRAM[address + i];
         hash *= 16777619u;
     }
     return hash;
