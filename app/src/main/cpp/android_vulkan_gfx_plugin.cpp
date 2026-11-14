@@ -718,6 +718,24 @@ bool processGoldenEyeEmbeddedRdp() {
     }
     g_rdp->flush();
 
+    // This GoldenEye path is entered through RSP HLE's ProcessDList callback,
+    // not the core's DPC_END write path. Therefore the core will not generate
+    // the DP interrupt for an embedded RDP FullSync automatically. Set the
+    // MI interrupt bit before returning; rsp_core::do_SP_Task() observes it
+    // after DoRspCycles() and schedules the normal DP_INT event.
+    const bool hasFullSync = std::any_of(
+        commands.begin(), commands.end(),
+        [](const std::vector<uint32_t>& command) {
+            return !command.empty() && (command[0] >> 24) == 0xE9u;
+        });
+    if (hasFullSync && g_info.MI_INTR_REG) {
+        *g_info.MI_INTR_REG |= 0x20u; // MI_INTR_DP
+        if (g_processDListCalls <= 10u) {
+            __android_log_print(ANDROID_LOG_INFO, TAG,
+                "GoldenEye embedded RDP: FullSync detectado; MI_INTR_DP sinalizado ao Core");
+        }
+    }
+
     std::vector<RDP::RGBA> colors;
     unsigned width = 0;
     unsigned height = 0;
