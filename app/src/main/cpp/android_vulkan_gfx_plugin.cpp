@@ -559,6 +559,7 @@ bool processRdpCommandList() {
 
     uint32_t cursor = start;
     unsigned commands = 0;
+    std::vector<std::vector<uint32_t>> capturedCommands;
     while (cursor < end && commands < 65536u) {
         if (cursor > end - 8u) {
             __android_log_print(ANDROID_LOG_WARN, TAG,
@@ -581,6 +582,7 @@ bool processRdpCommandList() {
             words[i] = readRdpWord(cursor + i * 4u);
 
         g_rdp->enqueue_command(count, words);
+        capturedCommands.emplace_back(words, words + count);
         cursor += count * 4u;
         ++commands;
     }
@@ -604,11 +606,12 @@ bool processRdpCommandList() {
             g_info.VI_V_START_REG ? *g_info.VI_V_START_REG : 0u,
             g_info.VI_X_SCALE_REG ? *g_info.VI_X_SCALE_REG : 0u,
             g_info.VI_Y_SCALE_REG ? *g_info.VI_Y_SCALE_REG : 0u);
-        for (size_t i = 0; i < commands.size(); ++i) {
-            const auto& c = commands[i];
+        for (size_t i = 0; i < capturedCommands.size(); ++i) {
+            const auto& c = capturedCommands[i];
             __android_log_print(ANDROID_LOG_INFO, TAG,
-                "GoldenEye RDP[%zu]: opcode=%02x w0=%08x w1=%08x words=%zu",
-                i, (c[0] >> 24) & 0xffu, c[0], c[1], c.size());
+                "DPC RDP[%zu]: opcode=%02x w0=%08x w1=%08x words=%zu",
+                i, (c[0] >> 24) & 0xffu, c[0],
+                c.size() > 1 ? c[1] : 0u, c.size());
         }
     }
     g_rdp->flush();
