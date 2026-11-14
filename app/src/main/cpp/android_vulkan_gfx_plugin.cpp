@@ -80,6 +80,25 @@ void transformGoldenEyeVector4(const float matrix[16],
             out[col] += input[row] * matrix[row * 4u + col];
     }
 }
+void logGoldenEyeActiveMatrixState(const GoldenEyeMatrixState& state,
+                                     unsigned triangleIndex, uint32_t commandPc) {
+    if (triangleIndex >= 3u) return;
+    for (unsigned row = 0; row < 4u; ++row) {
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "F3DGOLDEN TRI1_MATRIX[%u] pc=%06x MODELVIEW row%u: %.5f %.5f %.5f %.5f",
+            triangleIndex, commandPc, row,
+            state.modelView[row * 4u + 0u], state.modelView[row * 4u + 1u],
+            state.modelView[row * 4u + 2u], state.modelView[row * 4u + 3u]);
+    }
+    for (unsigned row = 0; row < 4u; ++row) {
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "F3DGOLDEN TRI1_MATRIX[%u] pc=%06x PROJECTION row%u: %.5f %.5f %.5f %.5f",
+            triangleIndex, commandPc, row,
+            state.projection[row * 4u + 0u], state.projection[row * 4u + 1u],
+            state.projection[row * 4u + 2u], state.projection[row * 4u + 3u]);
+    }
+}
+
 std::mutex g_mutex;
 GFX_INFO g_info{};
 bool g_started = false;
@@ -621,6 +640,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     const GoldenEyeVertex& c = vertexCache[v2];
 
                     if (matrixState.modelViewValid && matrixState.projectionValid) {
+                        logGoldenEyeActiveMatrixState(matrixState, decodedGoldenTriangles, pc);
                         const GoldenEyeVertex* cv[3] = {&a,&b,&c};
                         float clip[3][4] = {};
                         bool valid = true;
