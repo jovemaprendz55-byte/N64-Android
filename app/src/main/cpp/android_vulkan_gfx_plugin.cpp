@@ -58,10 +58,14 @@ void transformGoldenEyeVertex(const float matrix[16],
         static_cast<float>(vertex.z),
         1.0f
     };
-    for (unsigned row = 0; row < 4u; ++row) {
-        out[row] = 0.0f;
-        for (unsigned col = 0; col < 4u; ++col)
-            out[row] += matrix[row * 4u + col] * input[col];
+    // N64 Mtx values are stored as rows, with translation in row 3.
+    // Transform positions as row vectors: out = input * matrix.
+    // Using the column-vector form here moves the translation into W and
+    // produces huge, invalid homogeneous coordinates (e.g. W ~= -988000).
+    for (unsigned col = 0; col < 4u; ++col) {
+        out[col] = 0.0f;
+        for (unsigned row = 0; row < 4u; ++row)
+            out[col] += input[row] * matrix[row * 4u + col];
     }
 }
 std::mutex g_mutex;
