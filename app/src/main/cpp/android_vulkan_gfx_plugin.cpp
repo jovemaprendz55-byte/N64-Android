@@ -287,7 +287,8 @@ uint32_t readRdpWord(uint32_t address) {
 bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                         unsigned depth, uint32_t& budget,
                         uint32_t& calls, uint32_t& rawRdpCommands,
-                        uint32_t opcodeCounts[256], uint32_t& loggedGbiCommands) {
+                        uint32_t opcodeCounts[256], uint32_t& loggedGbiCommands,
+                        uint32_t& vertexCacheMask, uint32_t& decodedGoldenTriangles) {
     constexpr uint32_t rdramLimit = 8u * 1024u * 1024u;
     if (depth > 10u || start >= rdramLimit || (start & 7u) != 0u) {
         __android_log_print(ANDROID_LOG_WARN, TAG,
@@ -351,7 +352,8 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
             if (mode == 0u) { // G_DL_PUSH: call and return
                 if (!walkF3DDisplayList(target, rdramLimit, segments,
                                         depth + 1u, budget, calls, rawRdpCommands,
-                                        opcodeCounts, loggedGbiCommands))
+                                        opcodeCounts, loggedGbiCommands,
+                                        vertexCacheMask, decodedGoldenTriangles))
                     return false;
             } else if (mode == 1u) { // G_DL_NOPUSH: branch without return
                 pc = target;
@@ -360,6 +362,65 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                 __android_log_print(ANDROID_LOG_WARN, TAG,
                     "F3DGOLDEN GBI: modo G_DL desconhecido %u", mode);
                 return false;
+            }
+        } else if (opcode == 0x04u) { // F3D G_VTX (GoldenEye base F3D)
+            const unsigned vertexCount = ((w0 >> 20) & 0x0fu) + 1u;
+            const unsigned firstVertex = (w0 >> 16) & 0x0fu;
+            const unsigned segment = (w1 >> 24) & 0xffu;
+            const uint32_t offset = w1 & 0x00ffffffu;
+            const uint64_t vertexAddress64 = segment < 16u
+                ? static_cast<uint64_t>(segments[segment]) + offset
+                : 8u * 1024u * 1024u;
+            const bool validRange = segment < 16u &&
+                vertexAddress64 < 8u * 1024u * 1024u &&
+                vertexCount <= (8u * 1024u * 1024u - vertexAddress64) / 16u &&
+                firstVertex + vertexCount <= 32u;
+            if (validRange) {
+                const uint32_t vertexAddress = static_cast<uint32_t>(vertexAddress64);
+                for (unsigned i = 0; i < vertexCount; ++i)
+                    vertexCacheMask |= (1u << (firstVertex + i));
+                const uint32_t first = readRdpWord(vertexAddress);
+                const uint32_t second = readRdpWord(vertexAddress + 4u);
+                __android_log_print(ANDROID_LOG_INFO, TAG,
+                    "F3DGOLDEN G_VTX: seg=%u offset=%06x endereco=%06x count=%u v0=%u cache=0x%08x V0=(%d,%d,%d) flag=%04x",
+                    segment, offset, vertexAddress, vertexCount, firstVertex,
+                    vertexCacheMask,
+                    static_cast<int16_t>(first >> 16),
+                    static_cast<int16_t>(first & 0xffffu),
+                    static_cast<int16_t>(second >> 16),
+                    second & 0xffffu);
+            } else {
+                __android_log_print(ANDROID_LOG_WARN, TAG,
+                    "F3DGOLDEN G_VTX invalido: seg=%u offset=%06x count=%u v0=%u",
+                    segment, offset, vertexCount, firstVertex);
+            }
+            if (loggedGbiCommands < 100u) {
+                __android_log_print(ANDROID_LOG_INFO, TAG,
+                    "F3DGOLDEN GBI: G_VTX raw w0=%08x w1=%08x @%06x", w0, w1, pc);
+                ++loggedGbiCommands;
+            }
+        } else if (opcode == 0xB1u) { // F3DGOLDEN G_TRIX: packed triples, up to four
+            uint32_t packedW0 = w0;
+            uint32_t packedW1 = w1;
+            unsigned triangles = 0;
+            while (packedW1 != 0u && triangles < 4u) {
+                const unsigned v0 = packedW1 & 0x0fu;
+                packedW1 >>= 4;
+                const unsigned v1 = packedW1 & 0x0fu;
+                packedW1 >>= 4;
+                const unsigned v2 = packedW0 & 0x0fu;
+                packedW0 >>= 4;
+                const uint32_t triangleMask = (1u << v0) | (1u << v1) | (1u << v2);
+                const bool verticesReady = (vertexCacheMask & triangleMask) == triangleMask;
+                __android_log_print(ANDROID_LOG_INFO, TAG,
+                    "F3DGOLDEN G_TRIX[%u]: (%u,%u,%u) vertices_loaded=%s cache=0x%08x",
+                    triangles, v0, v1, v2, verticesReady ? "yes" : "NO", vertexCacheMask);
+                ++triangles;
+                ++decodedGoldenTriangles;
+            }
+            if (triangles == 0u) {
+                __android_log_print(ANDROID_LOG_WARN, TAG,
+                    "F3DGOLDEN G_TRIX vazio/invalid: w0=%08x w1=%08x @%06x", w0, w1, pc);
             }
         } else if (opcode >= 0xC8u) {
             // Raw RDP commands may be embedded in a GBI list. Count them,
@@ -418,13 +479,17 @@ void logF3DDisplayListTraversal() {
     uint32_t rawRdpCommands = 0;
     uint32_t opcodeCounts[256] = {};
     uint32_t loggedGbiCommands = 0;
+    uint32_t vertexCacheMask = 0;
+    uint32_t decodedGoldenTriangles = 0;
     const bool complete = walkF3DDisplayList(
         dataPtr, dataPtr + dataSize, segments, 0u,
-        budget, calls, rawRdpCommands, opcodeCounts, loggedGbiCommands);
+        budget, calls, rawRdpCommands, opcodeCounts, loggedGbiCommands,
+        vertexCacheMask, decodedGoldenTriangles);
     __android_log_print(ANDROID_LOG_INFO, TAG,
-        "F3DGOLDEN GBI traversal: %s comandos=%u listas/chamadas=%u RDP_brutos=%u GBI_detalhados=%u",
+        "F3DGOLDEN GBI traversal: %s comandos=%u listas/chamadas=%u RDP_brutos=%u GBI_detalhados=%u G_TRIX_triangulos=%u vertex_cache=0x%08x",
         complete ? "fim/retorno alcancado" : "incompleto/limite",
-        budget, calls, rawRdpCommands, loggedGbiCommands);
+        budget, calls, rawRdpCommands, loggedGbiCommands,
+        decodedGoldenTriangles, vertexCacheMask);
     for (unsigned opcode = 0; opcode < 0xe4u; ++opcode) {
         if (opcodeCounts[opcode] != 0u) {
             __android_log_print(ANDROID_LOG_INFO, TAG,
