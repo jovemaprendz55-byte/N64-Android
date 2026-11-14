@@ -528,6 +528,9 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
             }
         } else if (opcode == 0x01u) { // F3D G_MTX
             const unsigned param = (w0 >> 16) & 0xffu;
+            __android_log_print(ANDROID_LOG_INFO, TAG,
+                "F3DGOLDEN G_MTX_CMD: w0=%08x w1=%08x param=%02x depth=%u pc=%06x",
+                w0, w1, param, depth, pc);
             const unsigned segment = (w1 >> 24) & 0xffu;
             const uint32_t offset = w1 & 0x00ffffffu;
             const uint64_t matrixAddress64 = segment < 16u
