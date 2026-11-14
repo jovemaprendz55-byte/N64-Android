@@ -453,6 +453,75 @@ unsigned rdpCommandWordCount(uint32_t opcode) {
     }
 }
 
+
+bool collectGoldenEyeRdpCommands(
+        uint32_t start, uint32_t limit, uint32_t segments[16],
+        unsigned depth, uint32_t& budget,
+        std::vector<std::vector<uint32_t>>& commands) {
+    constexpr uint32_t rdramLimit = 8u * 1024u * 1024u;
+    if (depth > 10u || start >= rdramLimit || (start & 7u) != 0u)
+        return false;
+
+    uint32_t pc = start;
+    while (budget < 8192u) {
+        if (pc > rdramLimit - 8u || limit < 8u || pc > limit - 8u)
+            return false;
+
+        const uint32_t w0 = readRdpWord(pc);
+        const uint32_t w1 = readRdpWord(pc + 4u);
+        const uint32_t opcode = w0 >> 24;
+        ++budget;
+
+        if (opcode == 0xB8u)
+            return true;
+
+        if (opcode == 0xBCu || opcode == 0xBDu) {
+            if ((w0 & 0xffu) == 0x06u) {
+                const unsigned segment = (w0 >> 10) & 0x0fu;
+                segments[segment] = w1 & 0x00ffffffu;
+            }
+        } else if (opcode == 0x06u) {
+            const unsigned mode = (w0 >> 16) & 0xffu;
+            const unsigned segment = (w1 >> 24) & 0xffu;
+            const uint32_t offset = w1 & 0x00ffffffu;
+            if (segment >= 16u) return false;
+            const uint64_t target64 =
+                static_cast<uint64_t>(segments[segment]) + offset;
+            if (target64 >= rdramLimit || (target64 & 7u) != 0u)
+                return false;
+            const uint32_t target = static_cast<uint32_t>(target64);
+            if (mode == 0u) {
+                if (!collectGoldenEyeRdpCommands(
+                        target, rdramLimit, segments, depth + 1u,
+                        budget, commands))
+                    return false;
+            } else if (mode == 1u) {
+                pc = target;
+                continue;
+            } else {
+                return false;
+            }
+        } else if (opcode >= 0xE4u) {
+            const unsigned wordCount = rdpCommandWordCount(opcode);
+            const uint64_t commandEnd =
+                static_cast<uint64_t>(pc) + wordCount * sizeof(uint32_t);
+            if (wordCount < 2u || wordCount > 44u ||
+                commandEnd > rdramLimit || commandEnd > limit)
+                return false;
+
+            std::vector<uint32_t> command(wordCount);
+            for (unsigned i = 0; i < wordCount; ++i)
+                command[i] = readRdpWord(pc + i * sizeof(uint32_t));
+            commands.emplace_back(std::move(command));
+            pc += wordCount * sizeof(uint32_t);
+            continue;
+        }
+
+        pc += 8u;
+    }
+    return false;
+}
+
 void setRdpViRegisters() {
     if (!g_rdp) return;
 #define SET_VI(reg, field) \
@@ -563,6 +632,86 @@ bool processRdpCommandList() {
     return true;
 }
 
+
+bool processGoldenEyeEmbeddedRdp() {
+    if (!g_rdp || !g_info.DMEM || !g_info.RDRAM)
+        return false;
+
+    uint32_t task[16] = {};
+    for (unsigned i = 0; i < 16; ++i)
+        task[i] = readN64MemoryWord(g_info.DMEM, 0xFC0u + i * 4u);
+
+    const uint32_t ucodeDataAddress = task[6] & 0x00ffffffu;
+    const uint32_t ucodeDataSize = std::min<uint32_t>(task[7], 0x1000u);
+    if (ucodeDataAddress >= 8u * 1024u * 1024u ||
+        ucodeDataSize > 8u * 1024u * 1024u - ucodeDataAddress ||
+        crc32RdramBytes(ucodeDataAddress, ucodeDataSize) != 0x2a9b4b97u)
+        return false;
+
+    const uint32_t dataPtr = task[12] & 0x00ffffffu;
+    const uint32_t dataSize = task[13];
+    if (dataSize < 8u || dataSize > 0x1000u ||
+        dataPtr >= 8u * 1024u * 1024u ||
+        dataSize > 8u * 1024u * 1024u - dataPtr)
+        return false;
+
+    uint32_t segments[16] = {};
+    uint32_t budget = 0;
+    std::vector<std::vector<uint32_t>> commands;
+    if (!collectGoldenEyeRdpCommands(
+            dataPtr, dataPtr + dataSize, segments, 0u, budget, commands) ||
+        commands.empty())
+        return false;
+
+    unsigned submitted = 0;
+    for (const auto& command : commands) {
+        if (command.size() < 2u || command.size() > 44u)
+            return false;
+        g_rdp->enqueue_command(
+            static_cast<unsigned>(command.size()), command.data());
+        ++submitted;
+    }
+
+    setRdpViRegisters();
+    g_rdp->flush();
+
+    std::vector<RDP::RGBA> colors;
+    unsigned width = 0;
+    unsigned height = 0;
+    RDP::ScanoutOptions options = {};
+    g_rdp->scanout_sync(colors, width, height, options);
+    if (width == 0 || height == 0 ||
+        colors.size() < static_cast<size_t>(width) * height) {
+        __android_log_print(ANDROID_LOG_WARN, TAG,
+            "GoldenEye raw-RDP scanout invalido: %ux%u pixels=%zu comandos=%u",
+            width, height, colors.size(), submitted);
+        return false;
+    }
+
+    g_rgba.resize(static_cast<size_t>(width) * height * 4u);
+    for (size_t i = 0; i < static_cast<size_t>(width) * height; ++i) {
+        g_rgba[i * 4u + 0u] = colors[i].r;
+        g_rgba[i * 4u + 1u] = colors[i].g;
+        g_rgba[i * 4u + 2u] = colors[i].b;
+        g_rgba[i * 4u + 3u] = colors[i].a;
+    }
+
+    N64VideoFrame frame{};
+    frame.pixels = g_rgba.data();
+    frame.width = width;
+    frame.height = height;
+    frame.stride_bytes = width * 4u;
+    frame.pixel_format = N64_VIDEO_PIXEL_FORMAT_RGBA8888;
+    frame.frame_number = ++g_frameNumber;
+    n64VulkanVideoFrameCallback(&frame, nullptr);
+
+    if (g_processDListCalls <= 10u)
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "GoldenEye raw-RDP encaminhado: comandos=%u frame=%ux%u",
+            submitted, width, height);
+    return true;
+}
+
 } // namespace
 
 extern "C" {
@@ -624,7 +773,10 @@ EXPORT void CALL ProcessDList(void) {
         logRspTaskSnapshot();
         logF3DDisplayListTraversal();
     }
-    const bool rendered = processRdpCommandList();
+    // GoldenEye stores hardware RDP commands inside its F3D display lists.
+    // DPC_START/END can therefore be zero even though the OSTask contains
+    // valid embedded RDP commands. Forward those commands before the DPC path.
+    const bool rendered = processGoldenEyeEmbeddedRdp() || processRdpCommandList();
     if (!rendered && g_processDListCalls <= 10) {
         __android_log_print(ANDROID_LOG_WARN, TAG,
             "ProcessDList #%llu: nenhuma imagem RDP valida; aguardando lista real (sem apresentar VI bruto)",
