@@ -130,6 +130,8 @@ bool initializeRdpBackend() {
     return true;
 }
 
+uint32_t readRdpWord(uint32_t address);
+
 uint32_t readN64MemoryWord(const unsigned char* memory, uint32_t address) {
     if (!memory) return 0;
     return (static_cast<uint32_t>(memory[(address + 0u) ^ 3u]) << 24) |
