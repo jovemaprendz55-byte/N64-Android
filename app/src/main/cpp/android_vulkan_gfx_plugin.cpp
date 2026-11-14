@@ -754,16 +754,19 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                 }
             }
         } else if (opcode == 0xB1u) { // F3DGOLDEN G_TRIX: packed triples, up to four
-            uint32_t packedW0 = w0;
-            uint32_t packedW1 = w1;
-            unsigned triangles = 0;
-            while (packedW1 != 0u && triangles < 4u) {
-                const unsigned v0 = packedW1 & 0x0fu;
-                packedW1 >>= 4;
-                const unsigned v1 = packedW1 & 0x0fu;
-                packedW1 >>= 4;
-                const unsigned v2 = packedW0 & 0x0fu;
-                packedW0 >>= 4;
+            // Fast3D opcode 0xB1 is TRI4, not a sequential nibble stream.
+            // Match Glide64 uc0_tri4(): four triangles are interleaved across
+            // cmd0/cmd1 in the exact hardware-defined order.
+            const unsigned triIndices[12] = {
+                (w1 >> 28) & 0x0fu, (w0 >> 12) & 0x0fu, (w1 >> 24) & 0x0fu,
+                (w1 >> 20) & 0x0fu, (w0 >> 8) & 0x0fu,  (w1 >> 16) & 0x0fu,
+                (w1 >> 12) & 0x0fu, (w0 >> 4) & 0x0fu,  (w1 >> 8) & 0x0fu,
+                (w1 >> 4) & 0x0fu,  w0 & 0x0fu,          w1 & 0x0fu
+            };
+            for (unsigned triangles = 0; triangles < 4u; ++triangles) {
+                const unsigned v0 = triIndices[triangles * 3u];
+                const unsigned v1 = triIndices[triangles * 3u + 1u];
+                const unsigned v2 = triIndices[triangles * 3u + 2u];
                 const uint32_t triangleMask = (1u << v0) | (1u << v1) | (1u << v2);
                 const bool verticesReady = vertexCache[v0].valid &&
                     vertexCache[v1].valid && vertexCache[v2].valid &&
@@ -870,12 +873,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                         }
                     }
                 }
-                ++triangles;
                 ++decodedGoldenTriangles;
-            }
-            if (triangles == 0u) {
-                __android_log_print(ANDROID_LOG_WARN, TAG,
-                    "F3DGOLDEN G_TRIX vazio/invalid: w0=%08x w1=%08x @%06x", w0, w1, pc);
             }
         } else if (opcode >= 0xC8u) {
             // Raw RDP commands may be embedded in a GBI list. Count them,
