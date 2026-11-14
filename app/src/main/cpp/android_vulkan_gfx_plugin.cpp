@@ -95,6 +95,7 @@ std::vector<uint8_t> g_rgba;
 // Temporary first-light path: projected F3D triangles become an RGBA frame.
 std::vector<std::array<float,  9>> g_goldenEyeDebugTriangles;
 std::vector<uint8_t> g_goldenEyeDebugPixels;
+bool g_hasGoldenEyeDebugFrame = false;
 Vulkan::ContextHandle g_rdpContext;
 Vulkan::DeviceHandle g_rdpDevice;
 std::unique_ptr<RDP::CommandProcessor> g_rdp;
@@ -869,9 +870,28 @@ void presentGoldenEyeDebugGeometry() {
     frame.pixel_format=N64_VIDEO_PIXEL_FORMAT_RGBA8888;
     frame.frame_number=++g_frameNumber;
     n64VulkanVideoFrameCallback(&frame,nullptr);
+    g_hasGoldenEyeDebugFrame = true;
     __android_log_print(ANDROID_LOG_INFO,TAG,
         "F3DGOLDEN DEBUG_GEOMETRY: triangulos=%zu rasterizados=%u frame=%ux%u",
         g_goldenEyeDebugTriangles.size(),drawn,width,height);
+}
+
+// Re-submit the last valid diagnostic image on every display-list callback.
+// The GBI walker is intentionally sampled for logging, but presentation must
+// not be sampled: otherwise a single frame flashes and is replaced by blank.
+void replayGoldenEyeDebugFrame() {
+    constexpr uint32_t width = 320u, height = 240u;
+    if (!g_hasGoldenEyeDebugFrame ||
+        g_goldenEyeDebugPixels.size() != static_cast<size_t>(width) * height * 4u)
+        return;
+    N64VideoFrame frame{};
+    frame.pixels = g_goldenEyeDebugPixels.data();
+    frame.width = width;
+    frame.height = height;
+    frame.stride_bytes = width * 4u;
+    frame.pixel_format = N64_VIDEO_PIXEL_FORMAT_RGBA8888;
+    frame.frame_number = ++g_frameNumber;
+    n64VulkanVideoFrameCallback(&frame, nullptr);
 }
 
 void logF3DDisplayListTraversal() {
@@ -1359,6 +1379,7 @@ EXPORT void CALL ProcessDList(void) {
     // DPC_START/END can therefore be zero even though the OSTask contains
     // valid embedded RDP commands. Forward those commands before the DPC path.
     const bool rendered = processGoldenEyeEmbeddedRdp() || processRdpCommandList();
+    if (!rendered) replayGoldenEyeDebugFrame();
     if (!rendered && g_processDListCalls <= 10) {
         __android_log_print(ANDROID_LOG_WARN, TAG,
             "ProcessDList #%llu: nenhuma imagem RDP valida; aguardando lista real (sem apresentar VI bruto)",
