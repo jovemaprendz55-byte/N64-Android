@@ -30,6 +30,40 @@ struct GoldenEyeVertex {
     uint8_t colorOrNormal[4] = {};
     bool valid = false;
 };
+
+struct GoldenEyeMatrixState {
+    float modelView[16] = {};
+    float projection[16] = {};
+    bool modelViewValid = false;
+    bool projectionValid = false;
+};
+
+void multiplyMatrix4x4(const float a[16], const float b[16], float out[16]) {
+    float result[16] = {};
+    for (unsigned row = 0; row < 4u; ++row) {
+        for (unsigned col = 0; col < 4u; ++col) {
+            for (unsigned k = 0; k < 4u; ++k)
+                result[row * 4u + col] += a[row * 4u + k] * b[k * 4u + col];
+        }
+    }
+    std::memcpy(out, result, sizeof(result));
+}
+
+void transformGoldenEyeVertex(const float matrix[16],
+                              const GoldenEyeVertex& vertex,
+                              float out[4]) {
+    const float input[4] = {
+        static_cast<float>(vertex.x),
+        static_cast<float>(vertex.y),
+        static_cast<float>(vertex.z),
+        1.0f
+    };
+    for (unsigned row = 0; row < 4u; ++row) {
+        out[row] = 0.0f;
+        for (unsigned col = 0; col < 4u; ++col)
+            out[row] += matrix[row * 4u + col] * input[col];
+    }
+}
 std::mutex g_mutex;
 GFX_INFO g_info{};
 bool g_started = false;
@@ -300,7 +334,8 @@ int16_t readN64MatrixS16(uint32_t address) {
     return static_cast<int16_t>(value);
 }
 
-bool logGoldenEyeMatrix(uint32_t address, uint32_t w0, uint32_t commandPc) {
+bool logGoldenEyeMatrix(uint32_t address, uint32_t w0, uint32_t commandPc,
+                        float matrixOut[16]) {
     constexpr uint32_t matrixBytes = 64u;
     constexpr uint32_t rdramLimit = 8u * 1024u * 1024u;
     if (address > rdramLimit - matrixBytes) {
@@ -330,6 +365,7 @@ bool logGoldenEyeMatrix(uint32_t address, uint32_t w0, uint32_t commandPc) {
                 static_cast<uint16_t>(rdramByte(address + 33u + element * 2u)));
             values[col] = static_cast<float>(integer) +
                            static_cast<float>(fraction) / 65536.0f;
+            matrixOut[element] = values[col];
         }
         __android_log_print(ANDROID_LOG_INFO, TAG,
             "F3DGOLDEN G_MTX row%u: %.5f %.5f %.5f %.5f",
@@ -343,7 +379,8 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                         uint32_t& calls, uint32_t& rawRdpCommands,
                         uint32_t opcodeCounts[256], uint32_t& loggedGbiCommands,
                         uint32_t& vertexCacheMask, uint32_t& decodedGoldenTriangles,
-                        GoldenEyeVertex vertexCache[32]) {
+                        GoldenEyeVertex vertexCache[32],
+                        GoldenEyeMatrixState& matrixState) {
     constexpr uint32_t rdramLimit = 8u * 1024u * 1024u;
     if (depth > 10u || start >= rdramLimit || (start & 7u) != 0u) {
         __android_log_print(ANDROID_LOG_WARN, TAG,
@@ -408,7 +445,8 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                 if (!walkF3DDisplayList(target, rdramLimit, segments,
                                         depth + 1u, budget, calls, rawRdpCommands,
                                         opcodeCounts, loggedGbiCommands,
-                                        vertexCacheMask, decodedGoldenTriangles, vertexCache))
+                                        vertexCacheMask, decodedGoldenTriangles, vertexCache,
+                                        matrixState))
                     return false;
             } else if (mode == 1u) { // G_DL_NOPUSH: branch without return
                 pc = target;
@@ -431,7 +469,28 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     "F3DGOLDEN G_MTX range/length invalido: w0=%08x w1=%08x seg=%u @%06x",
                     w0, w1, segment, pc);
             } else {
-                logGoldenEyeMatrix(static_cast<uint32_t>(matrixAddress64), w0, pc);
+                float loadedMatrix[16] = {};
+                if (logGoldenEyeMatrix(static_cast<uint32_t>(matrixAddress64),
+                                       w0, pc, loadedMatrix)) {
+                    const bool isProjection = (param & 0x01u) != 0u;
+                    const bool isLoad = (param & 0x02u) != 0u;
+                    float* destination = isProjection
+                        ? matrixState.projection : matrixState.modelView;
+                    bool& destinationValid = isProjection
+                        ? matrixState.projectionValid : matrixState.modelViewValid;
+                    if (isLoad || !destinationValid) {
+                        std::memcpy(destination, loadedMatrix, sizeof(loadedMatrix));
+                    } else {
+                        float combined[16] = {};
+                        multiplyMatrix4x4(destination, loadedMatrix, combined);
+                        std::memcpy(destination, combined, sizeof(combined));
+                    }
+                    destinationValid = true;
+                    __android_log_print(ANDROID_LOG_INFO, TAG,
+                        "F3DGOLDEN MATRIX_STATE: %s %s push=%u",
+                        isProjection ? "PROJECTION" : "MODELVIEW",
+                        isLoad ? "LOAD" : "MUL", (param & 0x04u) ? 1u : 0u);
+                }
             }
             (void)param;
         } else if (opcode == 0x04u) { // F3D G_VTX (GoldenEye base F3D)
@@ -478,11 +537,22 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     }
                 }
                 const GoldenEyeVertex& first = vertexCache[firstVertex];
+                if (matrixState.modelViewValid && loggedGbiCommands < 120u) {
+                    float transformed[4] = {};
+                    transformGoldenEyeVertex(matrixState.modelView, first, transformed);
+                    __android_log_print(ANDROID_LOG_INFO, TAG,
+                        "F3DGOLDEN VTX_MODELVIEW: slot=%u XYZ=(%d,%d,%d) -> (%.2f,%.2f,%.2f,%.2f)",
+                        firstVertex, first.x, first.y, first.z,
+                        transformed[0], transformed[1], transformed[2], transformed[3]);
+                    ++loggedGbiCommands;
+                }
+                const GoldenEyeVertex& firstForLog = vertexCache[firstVertex];
                 __android_log_print(ANDROID_LOG_INFO, TAG,
                     "F3DGOLDEN G_VTX: seg=%u offset=%06x endereco=%06x count=%u v0=%u cache=0x%08x V0=(%d,%d,%d) ST=(%d,%d) flag=%04x attr=%02x,%02x,%02x,%02x",
                     segment, offset, vertexAddress, vertexCount, firstVertex,
-                    vertexCacheMask, first.x, first.y, first.z, first.s, first.t,
-                    first.flag, first.colorOrNormal[0], first.colorOrNormal[1],
+                    vertexCacheMask, firstForLog.x, firstForLog.y, firstForLog.z,
+                    firstForLog.s, firstForLog.t, firstForLog.flag,
+                    firstForLog.colorOrNormal[0], firstForLog.colorOrNormal[1],
                     first.colorOrNormal[2], first.colorOrNormal[3]);
             } else {
                 __android_log_print(ANDROID_LOG_WARN, TAG,
@@ -589,10 +659,11 @@ void logF3DDisplayListTraversal() {
     uint32_t vertexCacheMask = 0;
     uint32_t decodedGoldenTriangles = 0;
     GoldenEyeVertex vertexCache[32] = {};
+    GoldenEyeMatrixState matrixState{};
     const bool complete = walkF3DDisplayList(
         dataPtr, dataPtr + dataSize, segments, 0u,
         budget, calls, rawRdpCommands, opcodeCounts, loggedGbiCommands,
-        vertexCacheMask, decodedGoldenTriangles, vertexCache);
+        vertexCacheMask, decodedGoldenTriangles, vertexCache, matrixState);
     __android_log_print(ANDROID_LOG_INFO, TAG,
         "F3DGOLDEN GBI traversal: %s comandos=%u listas/chamadas=%u RDP_brutos=%u GBI_detalhados=%u G_TRIX_triangulos=%u vertex_cache=0x%08x",
         complete ? "fim/retorno alcancado" : "incompleto/limite",
