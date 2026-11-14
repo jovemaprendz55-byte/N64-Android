@@ -1238,9 +1238,17 @@ bool processGoldenEyeEmbeddedRdp() {
     uint32_t segments[16] = {};
     uint32_t budget = 0;
     std::vector<std::vector<uint32_t>> commands;
-    if (!collectGoldenEyeRdpCommands(
-            dataPtr, dataPtr + dataSize, segments, 0u, budget, commands) ||
-        commands.empty())
+    const bool collectionOk = collectGoldenEyeRdpCommands(
+        dataPtr, dataPtr + dataSize, segments, 0u, budget, commands);
+    const uint32_t nonRdpOrControlCommands =
+        budget > commands.size()
+            ? budget - static_cast<uint32_t>(commands.size())
+            : 0u;
+    __android_log_print(ANDROID_LOG_INFO, TAG,
+        "GoldenEye embedded collector: ok=%u scanned=%u raw_RDP=%zu GBI/control=%u data=%06x+%04x",
+        collectionOk ? 1u : 0u, budget, commands.size(),
+        nonRdpOrControlCommands, dataPtr, dataSize);
+    if (!collectionOk || commands.empty())
         return false;
 
     unsigned submitted = 0;
