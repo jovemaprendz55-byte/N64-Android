@@ -140,6 +140,22 @@ uint32_t readN64MemoryWord(const unsigned char* memory, uint32_t address) {
            static_cast<uint32_t>(memory[(address + 3u) ^ 3u]);
 }
 
+uint32_t checksumRdramBytes(uint32_t address, uint32_t size) {
+    uint32_t sum = 0;
+    for (uint32_t i = 0; i < size; ++i)
+        sum += rdramByte(address + i);
+    return sum;
+}
+
+uint32_t fnv1aRdramBytes(uint32_t address, uint32_t size) {
+    uint32_t hash = 2166136261u;
+    for (uint32_t i = 0; i < size; ++i) {
+        hash ^= rdramByte(address + i);
+        hash *= 16777619u;
+    }
+    return hash;
+}
+
 void logRspTaskSnapshot() {
     if (!g_info.DMEM) {
         __android_log_print(ANDROID_LOG_ERROR, TAG,
@@ -152,11 +168,37 @@ void logRspTaskSnapshot() {
         task[i] = readN64MemoryWord(g_info.DMEM, 0xFC0u + i * 4u);
 
     __android_log_print(ANDROID_LOG_INFO, TAG,
-        "RSP OSTask: type=%08x flags=%08x ucode=%08x ucode_size=%08x "
-        "ucode_data=%08x ucode_data_size=%08x output_buff=%08x output_buff_size=%08x "
-        "data_ptr=%08x data_size=%08x yield_ptr=%08x yield_size=%08x",
-        task[0], task[1], task[4], task[5], task[6], task[7], task[10], task[11],
-        task[12], task[13], task[14], task[15]);
+        "RSP OSTask: type=%08x flags=%08x ucode_boot=%08x boot_size=%08x "
+        "ucode=%08x ucode_size=%08x ucode_data=%08x ucode_data_size=%08x "
+        "output_buff=%08x output_buff_size=%08x data_ptr=%08x data_size=%08x "
+        "yield_ptr=%08x yield_size=%08x",
+        task[0], task[1], task[2], task[3], task[4], task[5], task[6], task[7],
+        task[10], task[11], task[12], task[13], task[14], task[15]);
+
+    // Match the checksum window used by mupen64plus-rsp-hle when it identifies
+    // a graphics microcode. The additional FNV-1a value distinguishes ucodes
+    // that happen to share the same byte sum.
+    const uint32_t ucodeAddress = task[4] & 0x00ffffffu;
+    const uint32_t ucodeSize = std::min<uint32_t>(task[5], 0x0f80u);
+    const uint32_t ucodeDataAddress = task[6] & 0x00ffffffu;
+    const uint32_t ucodeDataSize = std::min<uint32_t>(task[7], 0x1000u);
+    if (ucodeAddress < 8u * 1024u * 1024u &&
+        ucodeSize <= 8u * 1024u * 1024u - ucodeAddress &&
+        ucodeDataAddress < 8u * 1024u * 1024u &&
+        ucodeDataSize <= 8u * 1024u * 1024u - ucodeDataAddress) {
+        const uint32_t hleChecksumSize = ucodeSize >> 1;
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "RSP ucode identity: HLE_sum=%08x HLE_bytes=%u ucode_fnv1a=%08x "
+            "ucode_data_sum=%08x ucode_data_fnv1a=%08x",
+            checksumRdramBytes(ucodeAddress, hleChecksumSize), hleChecksumSize,
+            fnv1aRdramBytes(ucodeAddress, ucodeSize),
+            checksumRdramBytes(ucodeDataAddress, ucodeDataSize),
+            fnv1aRdramBytes(ucodeDataAddress, ucodeDataSize));
+    } else {
+        __android_log_print(ANDROID_LOG_WARN, TAG,
+            "RSP ucode range invalid: ucode=%08x/%08x data=%08x/%08x",
+            task[4], task[5], task[6], task[7]);
+    }
 
     // Dump the actual HLE display-list payload. OSTask fields 12/13 are
     // data_ptr/data_size; fields 10/11 are output buffer metadata.
