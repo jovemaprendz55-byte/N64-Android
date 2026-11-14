@@ -180,7 +180,7 @@ void logRdramAsciiSignatures(uint32_t address, uint32_t size) {
                 run[runLength++] = static_cast<char>(ch);
         } else {
             if (runLength >= 8) {
-                run[runLength] = '\\0';
+                run[runLength] = '\0';
                 __android_log_print(ANDROID_LOG_INFO, TAG,
                     "RSP ucode_data text @+%04x: %s", i - runLength, run);
                 ++emitted;
@@ -189,7 +189,7 @@ void logRdramAsciiSignatures(uint32_t address, uint32_t size) {
         }
     }
     if (runLength >= 8 && emitted < 8) {
-        run[runLength] = '\\0';
+        run[runLength] = '\0';
         __android_log_print(ANDROID_LOG_INFO, TAG,
             "RSP ucode_data text @+%04x: %s", size - runLength, run);
     }
