@@ -1767,6 +1767,30 @@ Java_com_jsr_n64android_VulkanNative_nativePrepareRom(
     if (mkdir(dataDir.c_str(), 0770) != 0 && errno != EEXIST)
         return result(env, "Não foi possível criar a pasta de dados do núcleo.");
 
+    // Android não define HOME por padrão. O Mupen64Plus usa HOME para
+    // montar caminhos relativos de saves (por exemplo, $HOME/save/*.eep).
+    // Sem isso, o Core tenta gravar em "(null)save/...".
+    std::string homeDir = dataDir;
+    const size_t homeSeparator = homeDir.find_last_of('/');
+    if (homeSeparator != std::string::npos)
+        homeDir.resize(homeSeparator);
+    if (homeDir.empty() ||
+        setenv("HOME", homeDir.c_str(), 1) != 0 ||
+        setenv("XDG_CONFIG_HOME", configDir.c_str(), 1) != 0 ||
+        setenv("XDG_DATA_HOME", dataDir.c_str(), 1) != 0 ||
+        setenv("XDG_CACHE_HOME", dataDir.c_str(), 1) != 0) {
+        return result(env, "Não foi possível configurar HOME/XDG para os dados do núcleo.");
+    }
+    const std::string saveDir = homeDir + "/save";
+    if (mkdir(saveDir.c_str(), 0770) != 0 && errno != EEXIST) {
+        __android_log_print(ANDROID_LOG_WARN, "N64AndroidCore",
+            "Não foi possível criar a pasta de saves: %s (errno=%d)",
+            saveDir.c_str(), errno);
+    }
+    __android_log_print(ANDROID_LOG_INFO, "N64AndroidCore",
+        "Diretórios do núcleo: HOME=%s | CONFIG=%s | DATA=%s | SAVE=%s",
+        homeDir.c_str(), configDir.c_str(), dataDir.c_str(), saveDir.c_str());
+
     m64p_error error = CoreStartup(0x020106, configDir.c_str(), dataDir.c_str(),
                                    nullptr, coreDebugCallback, nullptr, coreStateCallback);
     if (error != M64ERR_SUCCESS) return result(env, coreError("CoreStartup", error));
