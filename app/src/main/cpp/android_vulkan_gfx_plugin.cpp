@@ -253,7 +253,7 @@ void logRspTaskSnapshot() {
     // data_ptr/data_size; fields 10/11 are output buffer metadata.
     const uint32_t dataPtr = task[12] & 0x00ffffffu;
     const uint32_t dataSize = task[13];
-    if (dataSize != 0 && dataSize <= 0x1000u &&
+    if (dataSize != 0 && dataSize <= 0x100000u &&
         dataPtr <= 8u * 1024u * 1024u &&
         dataSize <= 8u * 1024u * 1024u - dataPtr) {
         const unsigned count = std::min<unsigned>(dataSize / 8u, 16u);
@@ -403,7 +403,7 @@ void logF3DDisplayListTraversal() {
 
     const uint32_t dataPtr = task[12] & 0x00ffffffu;
     const uint32_t dataSize = task[13];
-    if (dataSize < 8u || dataSize > 0x1000u ||
+    if (dataSize < 8u || dataSize > 0x100000u ||
         dataPtr >= 8u * 1024u * 1024u ||
         dataSize > 8u * 1024u * 1024u - dataPtr) {
         __android_log_print(ANDROID_LOG_WARN, TAG,
@@ -673,7 +673,7 @@ bool processGoldenEyeEmbeddedRdp() {
 
     const uint32_t dataPtr = task[12] & 0x00ffffffu;
     const uint32_t dataSize = task[13];
-    if (dataSize < 8u || dataSize > 0x1000u ||
+    if (dataSize < 8u || dataSize > 0x100000u ||
         dataPtr >= 8u * 1024u * 1024u ||
         dataSize > 8u * 1024u * 1024u - dataPtr)
         return false;
@@ -830,7 +830,11 @@ EXPORT void CALL ProcessDList(void) {
     // that the OSTask display-list data has already become raw RDP commands.
     // Capture the task descriptor first so the GBI translation path can be
     // implemented against the actual microcode/data pointers used by GoldenEye.
-    if (g_processDListCalls <= 8) {
+    // Trace startup tasks and then sample periodically so geometry tasks that
+    // appear later in gameplay are not missed by the initial diagnostic window.
+    const bool traceTask = g_processDListCalls <= 12u ||
+                          (g_processDListCalls % 120u) == 0u;
+    if (traceTask) {
         logRspTaskSnapshot();
         logF3DDisplayListTraversal();
     }
