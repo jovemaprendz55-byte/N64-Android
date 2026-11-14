@@ -585,6 +585,95 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     "F3DGOLDEN GBI: G_VTX raw w0=%08x w1=%08x @%06x", w0, w1, pc);
                 ++loggedGbiCommands;
             }
+        } else if (opcode == 0xBFu) { // F3D/F3DEX G_TRI1; GoldenEye stores indices scaled by 10
+            const unsigned rawV0 = (w1 >> 16) & 0xffu;
+            const unsigned rawV1 = (w1 >> 8) & 0xffu;
+            const unsigned rawV2 = w1 & 0xffu;
+            const bool packedIndicesValid =
+                (rawV0 % 10u) == 0u && (rawV1 % 10u) == 0u &&
+                (rawV2 % 10u) == 0u;
+            const unsigned v0 = rawV0 / 10u;
+            const unsigned v1 = rawV1 / 10u;
+            const unsigned v2 = rawV2 / 10u;
+            if (!packedIndicesValid || v0 >= 32u || v1 >= 32u || v2 >= 32u) {
+                __android_log_print(ANDROID_LOG_WARN, TAG,
+                    "F3DGOLDEN G_TRI1 indices invalidos: raw=%02x,%02x,%02x decoded=%u,%u,%u @%06x",
+                    rawV0, rawV1, rawV2, v0, v1, v2, pc);
+            } else {
+                const uint32_t triangleMask =
+                    (1u << v0) | (1u << v1) | (1u << v2);
+                const bool verticesReady = vertexCache[v0].valid &&
+                    vertexCache[v1].valid && vertexCache[v2].valid &&
+                    (vertexCacheMask & triangleMask) == triangleMask;
+                if (!verticesReady) {
+                    __android_log_print(ANDROID_LOG_WARN, TAG,
+                        "F3DGOLDEN G_TRI1[%u]: idx=(%u,%u,%u) vertices_loaded=NO cache=0x%08x",
+                        decodedGoldenTriangles, v0, v1, v2, vertexCacheMask);
+                } else {
+                    const GoldenEyeVertex& a = vertexCache[v0];
+                    const GoldenEyeVertex& b = vertexCache[v1];
+                    const GoldenEyeVertex& c = vertexCache[v2];
+                    if (decodedGoldenTriangles < 32u) {
+                        __android_log_print(ANDROID_LOG_INFO, TAG,
+                            "F3DGOLDEN G_TRI1[%u]: raw=(%02x,%02x,%02x) idx=(%u,%u,%u) "
+                            "A=(%d,%d,%d) B=(%d,%d,%d) C=(%d,%d,%d)",
+                            decodedGoldenTriangles, rawV0, rawV1, rawV2,
+                            v0, v1, v2, a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+                    }
+                    if (decodedGoldenTriangles < 12u &&
+                        matrixState.modelViewValid && matrixState.projectionValid) {
+                        const GoldenEyeVertex* vertices[3] = {&a, &b, &c};
+                        float mv[3][4] = {};
+                        float clip[3][4] = {};
+                        for (unsigned vertex = 0; vertex < 3u; ++vertex) {
+                            transformGoldenEyeVertex(
+                                matrixState.modelView, *vertices[vertex], mv[vertex]);
+                            transformGoldenEyeVector4(
+                                matrixState.projection, mv[vertex], clip[vertex]);
+                        }
+                        __android_log_print(ANDROID_LOG_INFO, TAG,
+                            "F3DGOLDEN TRI1_PROJECTED[%u]: "
+                            "Aclip=(%.2f,%.2f,%.2f,%.2f) "
+                            "Bclip=(%.2f,%.2f,%.2f,%.2f) "
+                            "Cclip=(%.2f,%.2f,%.2f,%.2f)",
+                            decodedGoldenTriangles,
+                            clip[0][0], clip[0][1], clip[0][2], clip[0][3],
+                            clip[1][0], clip[1][1], clip[1][2], clip[1][3],
+                            clip[2][0], clip[2][1], clip[2][2], clip[2][3]);
+                        if (std::abs(clip[0][3]) > 0.00001f &&
+                            std::abs(clip[1][3]) > 0.00001f &&
+                            std::abs(clip[2][3]) > 0.00001f) {
+                            __android_log_print(ANDROID_LOG_INFO, TAG,
+                                "F3DGOLDEN TRI1_NDC[%u]: "
+                                "A=(%.5f,%.5f,%.5f) "
+                                "B=(%.5f,%.5f,%.5f) "
+                                "C=(%.5f,%.5f,%.5f)",
+                                decodedGoldenTriangles,
+                                clip[0][0] / clip[0][3],
+                                clip[0][1] / clip[0][3],
+                                clip[0][2] / clip[0][3],
+                                clip[1][0] / clip[1][3],
+                                clip[1][1] / clip[1][3],
+                                clip[1][2] / clip[1][3],
+                                clip[2][0] / clip[2][3],
+                                clip[2][1] / clip[2][3],
+                                clip[2][2] / clip[2][3]);
+                        } else {
+                            __android_log_print(ANDROID_LOG_WARN, TAG,
+                                "F3DGOLDEN TRI1_NDC[%u]: W invalido A=%.6f B=%.6f C=%.6f",
+                                decodedGoldenTriangles,
+                                clip[0][3], clip[1][3], clip[2][3]);
+                        }
+                    } else if (decodedGoldenTriangles < 12u &&
+                               matrixState.modelViewValid &&
+                               !matrixState.projectionValid) {
+                        __android_log_print(ANDROID_LOG_INFO, TAG,
+                            "F3DGOLDEN TRI1_MODELVIEW[%u]: projection=NOT_LOADED",
+                            decodedGoldenTriangles);
+                    }
+                    ++decodedGoldenTriangles;
+                }
+            }
         } else if (opcode == 0xB1u) { // F3DGOLDEN G_TRIX: packed triples, up to four
             uint32_t packedW0 = w0;
             uint32_t packedW1 = w1;
@@ -776,8 +865,8 @@ void logF3DDisplayListTraversal() {
             "F3DGOLDEN OPCODE_HIST: %s", histogram);
     }
     __android_log_print(ANDROID_LOG_INFO, TAG,
-        "F3DGOLDEN OPCODE_KEY: B1_G_TRIX=%u 04_G_VTX=%u 06_G_DL=%u 01_G_MTX=%u BA=%u B8_ENDDL=%u",
-        opcodeCounts[0xb1u], opcodeCounts[0x04u], opcodeCounts[0x06u],
+        "F3DGOLDEN OPCODE_KEY: BF_G_TRI1=%u B1_G_TRIX=%u 04_G_VTX=%u 06_G_DL=%u 01_G_MTX=%u BA=%u B8_ENDDL=%u",
+        opcodeCounts[0xbfu], opcodeCounts[0xb1u], opcodeCounts[0x04u], opcodeCounts[0x06u],
         opcodeCounts[0x01u], opcodeCounts[0xbau], opcodeCounts[0xb8u]);
 }
 
