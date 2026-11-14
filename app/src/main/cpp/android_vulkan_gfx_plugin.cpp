@@ -277,6 +277,137 @@ uint32_t readRdpWord(uint32_t address) {
            static_cast<uint32_t>(rdramByte(address + 3u));
 }
 
+bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
+                        unsigned depth, uint32_t& budget,
+                        uint32_t& calls, uint32_t& rawRdpCommands) {
+    constexpr uint32_t rdramLimit = 8u * 1024u * 1024u;
+    if (depth > 10u || start >= rdramLimit || (start & 7u) != 0u) {
+        __android_log_print(ANDROID_LOG_WARN, TAG,
+            "F3DGOLDEN GBI: endereco/profundidade invalida start=%06x depth=%u",
+            start, depth);
+        return false;
+    }
+
+    uint32_t pc = start;
+    uint32_t localCommands = 0;
+    while (budget < 8192u && localCommands < 2048u) {
+        if (pc > rdramLimit - 8u || pc > limit - (limit >= 8u ? 8u : limit)) {
+            __android_log_print(ANDROID_LOG_WARN, TAG,
+                "F3DGOLDEN GBI: lista saiu dos limites pc=%06x limit=%06x",
+                pc, limit);
+            return false;
+        }
+
+        const uint32_t w0 = readRdpWord(pc);
+        const uint32_t w1 = readRdpWord(pc + 4u);
+        const uint32_t opcode = w0 >> 24;
+        ++budget;
+        ++localCommands;
+        ++calls;
+
+        if (opcode == 0xB8u) { // F3D G_ENDDL
+            return true;
+        }
+
+        if (opcode == 0xBCu || opcode == 0xBDu) { // G_MOVEWORD / GoldenEye variant
+            if ((w0 & 0xffu) == 0x06u) { // G_MW_SEGMENT
+                const unsigned segment = (w0 >> 10) & 0x0fu;
+                segments[segment] = w1 & 0x00ffffffu;
+                __android_log_print(ANDROID_LOG_INFO, TAG,
+                    "F3DGOLDEN GBI: segmento[%u]=%06x (cmd @%06x)",
+                    segment, segments[segment], pc);
+            }
+        } else if (opcode == 0x06u) { // F3D G_DL
+            const unsigned mode = (w0 >> 16) & 0xffu;
+            const unsigned segment = (w1 >> 24) & 0xffu;
+            const uint32_t offset = w1 & 0x00ffffffu;
+            if (segment >= 16u) {
+                __android_log_print(ANDROID_LOG_WARN, TAG,
+                    "F3DGOLDEN GBI: segmento invalido %u em G_DL @%06x",
+                    segment, pc);
+                return false;
+            }
+            const uint64_t resolved64 = static_cast<uint64_t>(segments[segment]) + offset;
+            if (resolved64 >= rdramLimit || (resolved64 & 7u) != 0u) {
+                __android_log_print(ANDROID_LOG_WARN, TAG,
+                    "F3DGOLDEN GBI: G_DL fora da RDRAM seg=%u base=%06x offset=%06x",
+                    segment, segments[segment], offset);
+                return false;
+            }
+            const uint32_t target = static_cast<uint32_t>(resolved64);
+            __android_log_print(ANDROID_LOG_INFO, TAG,
+                "F3DGOLDEN GBI: G_DL mode=%u alvo=%06x depth=%u",
+                mode, target, depth);
+
+            if (mode == 0u) { // G_DL_PUSH: call and return
+                if (!walkF3DDisplayList(target, rdramLimit, segments,
+                                        depth + 1u, budget, calls, rawRdpCommands))
+                    return false;
+            } else if (mode == 1u) { // G_DL_NOPUSH: branch without return
+                pc = target;
+                continue;
+            } else {
+                __android_log_print(ANDROID_LOG_WARN, TAG,
+                    "F3DGOLDEN GBI: modo G_DL desconhecido %u", mode);
+                return false;
+            }
+        } else if (opcode >= 0xE4u) {
+            // Raw RDP commands may be embedded in a GBI list. Count them,
+            // but do not enqueue them until the RSP geometry path is implemented.
+            ++rawRdpCommands;
+            if (rawRdpCommands <= 12u) {
+                __android_log_print(ANDROID_LOG_INFO, TAG,
+                    "F3DGOLDEN GBI: comando RDP bruto opcode=%02x @%06x",
+                    opcode, pc);
+            }
+        }
+
+        pc += 8u;
+    }
+
+    __android_log_print(ANDROID_LOG_WARN, TAG,
+        "F3DGOLDEN GBI: limite de comandos atingido start=%06x depth=%u",
+        start, depth);
+    return false;
+}
+
+void logF3DDisplayListTraversal() {
+    if (!g_info.DMEM || !g_info.RDRAM) return;
+    uint32_t task[16] = {};
+    for (unsigned i = 0; i < 16; ++i)
+        task[i] = readN64MemoryWord(g_info.DMEM, 0xFC0u + i * 4u);
+
+    const uint32_t ucodeDataAddress = task[6] & 0x00ffffffu;
+    const uint32_t ucodeDataSize = std::min<uint32_t>(task[7], 0x1000u);
+    if (ucodeDataAddress >= 8u * 1024u * 1024u ||
+        ucodeDataSize > 8u * 1024u * 1024u - ucodeDataAddress ||
+        crc32RdramBytes(ucodeDataAddress, ucodeDataSize) != 0x2a9b4b97u)
+        return; // This diagnostic walker is intentionally limited to F3DGOLDEN.
+
+    const uint32_t dataPtr = task[12] & 0x00ffffffu;
+    const uint32_t dataSize = task[13];
+    if (dataSize < 8u || dataSize > 0x1000u ||
+        dataPtr >= 8u * 1024u * 1024u ||
+        dataSize > 8u * 1024u * 1024u - dataPtr) {
+        __android_log_print(ANDROID_LOG_WARN, TAG,
+            "F3DGOLDEN GBI: payload raiz invalido ptr=%06x size=%08x",
+            dataPtr, dataSize);
+        return;
+    }
+
+    uint32_t segments[16] = {};
+    uint32_t budget = 0;
+    uint32_t calls = 0;
+    uint32_t rawRdpCommands = 0;
+    const bool complete = walkF3DDisplayList(
+        dataPtr, dataPtr + dataSize, segments, 0u,
+        budget, calls, rawRdpCommands);
+    __android_log_print(ANDROID_LOG_INFO, TAG,
+        "F3DGOLDEN GBI traversal: %s comandos=%u listas/chamadas=%u RDP_brutos=%u",
+        complete ? "fim/retorno alcancado" : "incompleto/limite",
+        budget, calls, rawRdpCommands);
+}
+
 unsigned rdpCommandWordCount(uint32_t opcode) {
     // paraLLEl-RDP consumes complete RDP commands. Triangle commands have
     // optional shade/texture/Z payloads; all other hardware commands are
@@ -463,8 +594,10 @@ EXPORT void CALL ProcessDList(void) {
     // that the OSTask display-list data has already become raw RDP commands.
     // Capture the task descriptor first so the GBI translation path can be
     // implemented against the actual microcode/data pointers used by GoldenEye.
-    if (g_processDListCalls <= 8)
+    if (g_processDListCalls <= 8) {
         logRspTaskSnapshot();
+        logF3DDisplayListTraversal();
+    }
     const bool rendered = processRdpCommandList();
     if (!rendered && g_processDListCalls <= 10) {
         __android_log_print(ANDROID_LOG_WARN, TAG,
