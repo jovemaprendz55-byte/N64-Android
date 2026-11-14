@@ -21,6 +21,15 @@
 
 namespace {
 constexpr char TAG[] = "N64AndroidVulkanGFX";
+
+// Native F3D Vtx layout: 16 bytes in big-endian N64 RDRAM.
+struct GoldenEyeVertex {
+    int16_t x = 0, y = 0, z = 0;
+    uint16_t flag = 0;
+    int16_t s = 0, t = 0;
+    uint8_t colorOrNormal[4] = {};
+    bool valid = false;
+};
 std::mutex g_mutex;
 GFX_INFO g_info{};
 bool g_started = false;
@@ -288,7 +297,8 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                         unsigned depth, uint32_t& budget,
                         uint32_t& calls, uint32_t& rawRdpCommands,
                         uint32_t opcodeCounts[256], uint32_t& loggedGbiCommands,
-                        uint32_t& vertexCacheMask, uint32_t& decodedGoldenTriangles) {
+                        uint32_t& vertexCacheMask, uint32_t& decodedGoldenTriangles,
+                        GoldenEyeVertex vertexCache[32]) {
     constexpr uint32_t rdramLimit = 8u * 1024u * 1024u;
     if (depth > 10u || start >= rdramLimit || (start & 7u) != 0u) {
         __android_log_print(ANDROID_LOG_WARN, TAG,
@@ -353,7 +363,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                 if (!walkF3DDisplayList(target, rdramLimit, segments,
                                         depth + 1u, budget, calls, rawRdpCommands,
                                         opcodeCounts, loggedGbiCommands,
-                                        vertexCacheMask, decodedGoldenTriangles))
+                                        vertexCacheMask, decodedGoldenTriangles, vertexCache))
                     return false;
             } else if (mode == 1u) { // G_DL_NOPUSH: branch without return
                 pc = target;
@@ -377,18 +387,33 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                 firstVertex + vertexCount <= 32u;
             if (validRange) {
                 const uint32_t vertexAddress = static_cast<uint32_t>(vertexAddress64);
-                for (unsigned i = 0; i < vertexCount; ++i)
+                for (unsigned i = 0; i < vertexCount; ++i) {
+                    const uint32_t address = vertexAddress + i * 16u;
+                    const uint32_t xy = readRdpWord(address);
+                    const uint32_t zFlag = readRdpWord(address + 4u);
+                    const uint32_t st = readRdpWord(address + 8u);
+                    const uint32_t rgba = readRdpWord(address + 12u);
+                    GoldenEyeVertex& vertex = vertexCache[firstVertex + i];
+                    vertex.x = static_cast<int16_t>(xy >> 16);
+                    vertex.y = static_cast<int16_t>(xy & 0xffffu);
+                    vertex.z = static_cast<int16_t>(zFlag >> 16);
+                    vertex.flag = static_cast<uint16_t>(zFlag);
+                    vertex.s = static_cast<int16_t>(st >> 16);
+                    vertex.t = static_cast<int16_t>(st);
+                    vertex.colorOrNormal[0] = static_cast<uint8_t>(rgba >> 24);
+                    vertex.colorOrNormal[1] = static_cast<uint8_t>(rgba >> 16);
+                    vertex.colorOrNormal[2] = static_cast<uint8_t>(rgba >> 8);
+                    vertex.colorOrNormal[3] = static_cast<uint8_t>(rgba);
+                    vertex.valid = true;
                     vertexCacheMask |= (1u << (firstVertex + i));
-                const uint32_t first = readRdpWord(vertexAddress);
-                const uint32_t second = readRdpWord(vertexAddress + 4u);
+                }
+                const GoldenEyeVertex& first = vertexCache[firstVertex];
                 __android_log_print(ANDROID_LOG_INFO, TAG,
-                    "F3DGOLDEN G_VTX: seg=%u offset=%06x endereco=%06x count=%u v0=%u cache=0x%08x V0=(%d,%d,%d) flag=%04x",
+                    "F3DGOLDEN G_VTX: seg=%u offset=%06x endereco=%06x count=%u v0=%u cache=0x%08x V0=(%d,%d,%d) ST=(%d,%d) flag=%04x attr=%02x,%02x,%02x,%02x",
                     segment, offset, vertexAddress, vertexCount, firstVertex,
-                    vertexCacheMask,
-                    static_cast<int16_t>(first >> 16),
-                    static_cast<int16_t>(first & 0xffffu),
-                    static_cast<int16_t>(second >> 16),
-                    second & 0xffffu);
+                    vertexCacheMask, first.x, first.y, first.z, first.s, first.t,
+                    first.flag, first.colorOrNormal[0], first.colorOrNormal[1],
+                    first.colorOrNormal[2], first.colorOrNormal[3]);
             } else {
                 __android_log_print(ANDROID_LOG_WARN, TAG,
                     "F3DGOLDEN G_VTX invalido: seg=%u offset=%06x count=%u v0=%u",
@@ -411,10 +436,14 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                 const unsigned v2 = packedW0 & 0x0fu;
                 packedW0 >>= 4;
                 const uint32_t triangleMask = (1u << v0) | (1u << v1) | (1u << v2);
-                const bool verticesReady = (vertexCacheMask & triangleMask) == triangleMask;
-                __android_log_print(ANDROID_LOG_INFO, TAG,
-                    "F3DGOLDEN G_TRIX[%u]: (%u,%u,%u) vertices_loaded=%s cache=0x%08x",
-                    triangles, v0, v1, v2, verticesReady ? "yes" : "NO", vertexCacheMask);
+                const bool verticesReady = vertexCache[v0].valid &&
+                    vertexCache[v1].valid && vertexCache[v2].valid &&
+                    (vertexCacheMask & triangleMask) == triangleMask;
+                if (!verticesReady) {
+                    __android_log_print(ANDROID_LOG_WARN, TAG,
+                        "F3DGOLDEN G_TRIX[%u]: (%u,%u,%u) vertices_loaded=NO cache=0x%08x",
+                        triangles, v0, v1, v2, vertexCacheMask);
+                }
                 ++triangles;
                 ++decodedGoldenTriangles;
             }
@@ -481,10 +510,11 @@ void logF3DDisplayListTraversal() {
     uint32_t loggedGbiCommands = 0;
     uint32_t vertexCacheMask = 0;
     uint32_t decodedGoldenTriangles = 0;
+    GoldenEyeVertex vertexCache[32] = {};
     const bool complete = walkF3DDisplayList(
         dataPtr, dataPtr + dataSize, segments, 0u,
         budget, calls, rawRdpCommands, opcodeCounts, loggedGbiCommands,
-        vertexCacheMask, decodedGoldenTriangles);
+        vertexCacheMask, decodedGoldenTriangles, vertexCache);
     __android_log_print(ANDROID_LOG_INFO, TAG,
         "F3DGOLDEN GBI traversal: %s comandos=%u listas/chamadas=%u RDP_brutos=%u GBI_detalhados=%u G_TRIX_triangulos=%u vertex_cache=0x%08x",
         complete ? "fim/retorno alcancado" : "incompleto/limite",
