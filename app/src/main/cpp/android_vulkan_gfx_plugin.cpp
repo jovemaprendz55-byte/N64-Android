@@ -293,6 +293,51 @@ uint32_t readRdpWord(uint32_t address) {
            static_cast<uint32_t>(rdramByte(address + 3u));
 }
 
+int16_t readN64MatrixS16(uint32_t address) {
+    const uint16_t value =
+        (static_cast<uint16_t>(rdramByte(address)) << 8) |
+        static_cast<uint16_t>(rdramByte(address + 1u));
+    return static_cast<int16_t>(value);
+}
+
+bool logGoldenEyeMatrix(uint32_t address, uint32_t w0, uint32_t commandPc) {
+    constexpr uint32_t matrixBytes = 64u;
+    constexpr uint32_t rdramLimit = 8u * 1024u * 1024u;
+    if (address > rdramLimit - matrixBytes) {
+        __android_log_print(ANDROID_LOG_WARN, TAG,
+            "F3DGOLDEN G_MTX invalida: endereco=%06x @%06x",
+            address, commandPc);
+        return false;
+    }
+
+    const unsigned param = (w0 >> 16) & 0xffu;
+    const char* matrixType = (param & 0x01u) ? "PROJECTION" : "MODELVIEW";
+    const char* operation = (param & 0x02u) ? "LOAD" : "MUL";
+    const bool push = (param & 0x04u) != 0u;
+    __android_log_print(ANDROID_LOG_INFO, TAG,
+        "F3DGOLDEN G_MTX: addr=%06x type=%s op=%s push=%u @%06x",
+        address, matrixType, operation, push ? 1u : 0u, commandPc);
+
+    for (unsigned row = 0; row < 4u; ++row) {
+        float values[4] = {};
+        for (unsigned col = 0; col < 4u; ++col) {
+            // N64 Mtx stores 16 signed integer halfwords followed by
+            // 16 fractional halfwords. rdramByte exposes logical big-endian bytes.
+            const unsigned element = row * 4u + col;
+            const int16_t integer = readN64MatrixS16(address + element * 2u);
+            const uint16_t fraction = static_cast<uint16_t>(
+                (static_cast<uint16_t>(rdramByte(address + 32u + element * 2u)) << 8) |
+                static_cast<uint16_t>(rdramByte(address + 33u + element * 2u)));
+            values[col] = static_cast<float>(integer) +
+                           static_cast<float>(fraction) / 65536.0f;
+        }
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "F3DGOLDEN G_MTX row%u: %.5f %.5f %.5f %.5f",
+            row, values[0], values[1], values[2], values[3]);
+    }
+    return true;
+}
+
 bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                         unsigned depth, uint32_t& budget,
                         uint32_t& calls, uint32_t& rawRdpCommands,
@@ -373,6 +418,22 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     "F3DGOLDEN GBI: modo G_DL desconhecido %u", mode);
                 return false;
             }
+        } else if (opcode == 0x01u) { // F3D G_MTX
+            const unsigned param = (w0 >> 16) & 0xffu;
+            const unsigned segment = (w1 >> 24) & 0xffu;
+            const uint32_t offset = w1 & 0x00ffffffu;
+            const uint64_t matrixAddress64 = segment < 16u
+                ? static_cast<uint64_t>(segments[segment]) + offset
+                : 8u * 1024u * 1024u;
+            if ((w0 & 0xffffu) != 0x0040u || segment >= 16u ||
+                matrixAddress64 > 8u * 1024u * 1024u - 64u) {
+                __android_log_print(ANDROID_LOG_WARN, TAG,
+                    "F3DGOLDEN G_MTX range/length invalido: w0=%08x w1=%08x seg=%u @%06x",
+                    w0, w1, segment, pc);
+            } else {
+                logGoldenEyeMatrix(static_cast<uint32_t>(matrixAddress64), w0, pc);
+            }
+            (void)param;
         } else if (opcode == 0x04u) { // F3D G_VTX (GoldenEye base F3D)
             const unsigned vertexCount = ((w0 >> 20) & 0x0fu) + 1u;
             const unsigned firstVertex = (w0 >> 16) & 0x0fu;
@@ -406,6 +467,15 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     vertex.colorOrNormal[3] = static_cast<uint8_t>(rgba);
                     vertex.valid = true;
                     vertexCacheMask |= (1u << (firstVertex + i));
+                    if (i < 4u && loggedGbiCommands < 100u) {
+                        __android_log_print(ANDROID_LOG_INFO, TAG,
+                            "F3DGOLDEN VTX_SAMPLE[%u]: slot=%u XYZ=(%d,%d,%d) ST=(%d,%d) flag=%04x attr=%02x,%02x,%02x,%02x",
+                            i, firstVertex + i, vertex.x, vertex.y, vertex.z,
+                            vertex.s, vertex.t, vertex.flag,
+                            vertex.colorOrNormal[0], vertex.colorOrNormal[1],
+                            vertex.colorOrNormal[2], vertex.colorOrNormal[3]);
+                        ++loggedGbiCommands;
+                    }
                 }
                 const GoldenEyeVertex& first = vertexCache[firstVertex];
                 __android_log_print(ANDROID_LOG_INFO, TAG,
@@ -443,6 +513,14 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     __android_log_print(ANDROID_LOG_WARN, TAG,
                         "F3DGOLDEN G_TRIX[%u]: (%u,%u,%u) vertices_loaded=NO cache=0x%08x",
                         triangles, v0, v1, v2, vertexCacheMask);
+                } else if (decodedGoldenTriangles < 32u) {
+                    const GoldenEyeVertex& a = vertexCache[v0];
+                    const GoldenEyeVertex& b = vertexCache[v1];
+                    const GoldenEyeVertex& c = vertexCache[v2];
+                    __android_log_print(ANDROID_LOG_INFO, TAG,
+                        "F3DGOLDEN TRIANGLE[%u]: idx=(%u,%u,%u) A=(%d,%d,%d) B=(%d,%d,%d) C=(%d,%d,%d)",
+                        decodedGoldenTriangles, v0, v1, v2,
+                        a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
                 }
                 ++triangles;
                 ++decodedGoldenTriangles;
