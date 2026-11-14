@@ -3,8 +3,10 @@
 
 #include <android/log.h>
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <cstdio>
+#include <cmath>
 #include <cstring>
 #include <mutex>
 #include <vector>
@@ -90,6 +92,9 @@ uint64_t g_processRdpCalls = 0;
 uint64_t g_viAttempts = 0;
 uint64_t g_viRejected = 0;
 std::vector<uint8_t> g_rgba;
+// Temporary first-light path: projected F3D triangles become an RGBA frame.
+std::vector<std::array<float,  9>> g_goldenEyeDebugTriangles;
+std::vector<uint8_t> g_goldenEyeDebugPixels;
 Vulkan::ContextHandle g_rdpContext;
 Vulkan::DeviceHandle g_rdpDevice;
 std::unique_ptr<RDP::CommandProcessor> g_rdp;
@@ -613,6 +618,22 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     const GoldenEyeVertex& a = vertexCache[v0];
                     const GoldenEyeVertex& b = vertexCache[v1];
                     const GoldenEyeVertex& c = vertexCache[v2];
+
+                    if (matrixState.modelViewValid && matrixState.projectionValid) {
+                        const GoldenEyeVertex* cv[3] = {&a,&b,&c};
+                        float clip[3][4] = {};
+                        bool valid = true;
+                        for (unsigned vi=0; vi<3u; ++vi) {
+                            float mv[4] = {};
+                            transformGoldenEyeVertex(matrixState.modelView,*cv[vi],mv);
+                            transformGoldenEyeVector4(matrixState.projection,mv,clip[vi]);
+                            if (clip[vi][3] <= 0.00001f) valid=false;
+                        }
+                        if (valid) g_goldenEyeDebugTriangles.push_back({
+                            clip[0][0]/clip[0][3],clip[0][1]/clip[0][3],clip[0][2]/clip[0][3],
+                            clip[1][0]/clip[1][3],clip[1][1]/clip[1][3],clip[1][2]/clip[1][3],
+                            clip[2][0]/clip[2][3],clip[2][1]/clip[2][3],clip[2][2]/clip[2][3]});
+                    }
                     if (decodedGoldenTriangles < 32u) {
                         __android_log_print(ANDROID_LOG_INFO, TAG,
                             "F3DGOLDEN G_TRI1[%u]: raw=(%02x,%02x,%02x) idx=(%u,%u,%u) "
@@ -795,6 +816,64 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
     return false;
 }
 
+
+void presentGoldenEyeDebugGeometry() {
+    constexpr uint32_t width = 320u, height = 240u;
+    if (g_goldenEyeDebugTriangles.empty()) return;
+    g_goldenEyeDebugPixels.assign(static_cast<size_t>(width) * height * 4u, 0u);
+    std::vector<float> depth(static_cast<size_t>(width) * height, 1.0f);
+    for (size_t i = 0; i < static_cast<size_t>(width) * height; ++i) {
+        g_goldenEyeDebugPixels[i * 4u + 0u] = 8u;
+        g_goldenEyeDebugPixels[i * 4u + 1u] = 12u;
+        g_goldenEyeDebugPixels[i * 4u + 2u] = 20u;
+        g_goldenEyeDebugPixels[i * 4u + 3u] = 255u;
+    }
+    auto edge = [](float ax, float ay, float bx, float by, float px, float py) {
+        return (px - ax) * (by - ay) - (py - ay) * (bx - ax);
+    };
+    unsigned drawn = 0;
+    for (const auto& tri : g_goldenEyeDebugTriangles) {
+        const float x0 = (tri[0] * 0.5f + 0.5f) * (width - 1u);
+        const float y0 = (0.5f - tri[1] * 0.5f) * (height - 1u);
+        const float x1 = (tri[3] * 0.5f + 0.5f) * (width - 1u);
+        const float y1 = (0.5f - tri[4] * 0.5f) * (height - 1u);
+        const float x2 = (tri[6] * 0.5f + 0.5f) * (width - 1u);
+        const float y2 = (0.5f - tri[7] * 0.5f) * (height - 1u);
+        const float area = edge(x0, y0, x1, y1, x2, y2);
+        if (std::abs(area) < 0.0001f) continue;
+        const int minX = std::max(0, static_cast<int>(std::floor(std::min({x0,x1,x2}))));
+        const int maxX = std::min(static_cast<int>(width)-1, static_cast<int>(std::ceil(std::max({x0,x1,x2}))));
+        const int minY = std::max(0, static_cast<int>(std::floor(std::min({y0,y1,y2}))));
+        const int maxY = std::min(static_cast<int>(height)-1, static_cast<int>(std::ceil(std::max({y0,y1,y2}))));
+        if (minX > maxX || minY > maxY) continue;
+        for (int y=minY; y<=maxY; ++y) for (int x=minX; x<=maxX; ++x) {
+            const float px=x+0.5f, py=y+0.5f;
+            const float w0=edge(x1,y1,x2,y2,px,py)/area;
+            const float w1=edge(x2,y2,x0,y0,px,py)/area;
+            const float w2=1.0f-w0-w1;
+            if (w0<0.0f || w1<0.0f || w2<0.0f) continue;
+            const float z=w0*tri[2]+w1*tri[5]+w2*tri[8];
+            const size_t p=static_cast<size_t>(y)*width+static_cast<unsigned>(x);
+            if (z<0.0f || z>1.0f || z>depth[p]) continue;
+            depth[p]=z;
+            g_goldenEyeDebugPixels[p*4u+0u]=235u;
+            g_goldenEyeDebugPixels[p*4u+1u]=242u;
+            g_goldenEyeDebugPixels[p*4u+2u]=255u;
+            g_goldenEyeDebugPixels[p*4u+3u]=255u;
+        }
+        ++drawn;
+    }
+    N64VideoFrame frame{};
+    frame.pixels=g_goldenEyeDebugPixels.data();
+    frame.width=width; frame.height=height; frame.stride_bytes=width*4u;
+    frame.pixel_format=N64_VIDEO_PIXEL_FORMAT_RGBA8888;
+    frame.frame_number=++g_frameNumber;
+    n64VulkanVideoFrameCallback(&frame,nullptr);
+    __android_log_print(ANDROID_LOG_INFO,TAG,
+        "F3DGOLDEN DEBUG_GEOMETRY: triangulos=%zu rasterizados=%u frame=%ux%u",
+        g_goldenEyeDebugTriangles.size(),drawn,width,height);
+}
+
 void logF3DDisplayListTraversal() {
     if (!g_info.DMEM || !g_info.RDRAM) return;
     uint32_t task[16] = {};
@@ -819,6 +898,7 @@ void logF3DDisplayListTraversal() {
         return;
     }
 
+    g_goldenEyeDebugTriangles.clear();
     uint32_t segments[16] = {};
     uint32_t budget = 0;
     uint32_t calls = 0;
@@ -868,6 +948,7 @@ void logF3DDisplayListTraversal() {
         "F3DGOLDEN OPCODE_KEY: BF_G_TRI1=%u B1_G_TRIX=%u 04_G_VTX=%u 06_G_DL=%u 01_G_MTX=%u BA=%u B8_ENDDL=%u",
         opcodeCounts[0xbfu], opcodeCounts[0xb1u], opcodeCounts[0x04u], opcodeCounts[0x06u],
         opcodeCounts[0x01u], opcodeCounts[0xbau], opcodeCounts[0xb8u]);
+    presentGoldenEyeDebugGeometry();
 }
 
 unsigned rdpCommandWordCount(uint32_t opcode) {
