@@ -735,14 +735,44 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     __android_log_print(ANDROID_LOG_WARN, TAG,
                         "F3DGOLDEN G_TRIX[%u]: (%u,%u,%u) vertices_loaded=NO cache=0x%08x",
                         triangles, v0, v1, v2, vertexCacheMask);
-                } else if (decodedGoldenTriangles < 32u) {
+                } else {
                     const GoldenEyeVertex& a = vertexCache[v0];
                     const GoldenEyeVertex& b = vertexCache[v1];
                     const GoldenEyeVertex& c = vertexCache[v2];
-                    __android_log_print(ANDROID_LOG_INFO, TAG,
-                        "F3DGOLDEN TRIANGLE[%u]: idx=(%u,%u,%u) A=(%d,%d,%d) B=(%d,%d,%d) C=(%d,%d,%d)",
-                        decodedGoldenTriangles, v0, v1, v2,
-                        a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+                    if (decodedGoldenTriangles < 32u) {
+                        __android_log_print(ANDROID_LOG_INFO, TAG,
+                            "F3DGOLDEN TRIANGLE[%u]: idx=(%u,%u,%u) A=(%d,%d,%d) B=(%d,%d,%d) C=(%d,%d,%d)",
+                            decodedGoldenTriangles, v0, v1, v2,
+                            a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+                    }
+                    // Keep the custom G_TRIX path consistent with G_TRI1:
+                    // decoded triangles must enter the diagnostic frame too.
+                    if (matrixState.modelViewValid && matrixState.projectionValid) {
+                        const GoldenEyeVertex* triVertices[3] = {&a, &b, &c};
+                        float ndc[3][3] = {};
+                        bool clipValid = true;
+                        for (unsigned vi = 0; vi < 3u; ++vi) {
+                            float mv[4] = {};
+                            float clip[4] = {};
+                            transformGoldenEyeVertex(
+                                matrixState.modelView, *triVertices[vi], mv);
+                            transformGoldenEyeVector4(
+                                matrixState.projection, mv, clip);
+                            if (clip[3] <= 0.00001f) {
+                                clipValid = false;
+                                break;
+                            }
+                            ndc[vi][0] = clip[0] / clip[3];
+                            ndc[vi][1] = clip[1] / clip[3];
+                            ndc[vi][2] = clip[2] / clip[3];
+                        }
+                        if (clipValid) {
+                            g_goldenEyeDebugTriangles.push_back({
+                                ndc[0][0], ndc[0][1], ndc[0][2],
+                                ndc[1][0], ndc[1][1], ndc[1][2],
+                                ndc[2][0], ndc[2][1], ndc[2][2]});
+                        }
+                    }
                     if (decodedGoldenTriangles < 12u &&
                         matrixState.modelViewValid) {
                         const GoldenEyeVertex* vertices[3] = {&a, &b, &c};
