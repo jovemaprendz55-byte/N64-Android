@@ -235,6 +235,13 @@ void logRspTaskSnapshot() {
             fnv1aRdramBytes(ucodeAddress, ucodeSize),
             crc32RdramBytes(ucodeDataAddress, ucodeDataSize),
             fnv1aRdramBytes(ucodeDataAddress, ucodeDataSize));
+        const uint32_t ucodeEntry = readRdpWord(ucodeAddress);
+        const uint32_t ucodeEntry1 = readRdpWord(ucodeAddress + 4u);
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "RSP ucode entry: text=%06x word0=%08x word1=%08x "
+            "GoldenEye_F3DEX_signature=%s",
+            ucodeAddress, ucodeEntry, ucodeEntry1,
+            ucodeEntry == 0x090005eau ? "MATCH" : "no");
         logRdramAsciiSignatures(ucodeDataAddress, ucodeDataSize);
     } else {
         __android_log_print(ANDROID_LOG_WARN, TAG,
