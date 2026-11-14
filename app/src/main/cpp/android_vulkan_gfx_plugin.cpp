@@ -762,7 +762,7 @@ void logF3DDisplayListTraversal() {
             __android_log_print(ANDROID_LOG_INFO, TAG,
                 "F3DGOLDEN OPCODE_HIST: %s", histogram);
             used = 0;
-            histogram[0] = '\\0';
+            histogram[0] = '\0';
             const int retry = std::snprintf(histogram, sizeof(histogram),
                 "%02x:%u", opcode, opcodeCounts[opcode]);
             if (retry < 0 || static_cast<size_t>(retry) >= sizeof(histogram)) break;
