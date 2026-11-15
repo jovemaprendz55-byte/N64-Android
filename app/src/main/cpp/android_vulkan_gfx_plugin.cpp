@@ -756,28 +756,31 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     ++decodedGoldenTriangles;
                 }
             }
-        } else if (opcode == 0xB1u) { // F3DGOLDEN G_TRIX: packed triples, up to four
-            // Fast3D opcode 0xB1 is TRI4, not a sequential nibble stream.
-            // Match Glide64 uc0_tri4(): four triangles are interleaved across
-            // cmd0/cmd1 in the exact hardware-defined order.
-            const unsigned triIndices[12] = {
-                (w1 >> 28) & 0x0fu, (w0 >> 12) & 0x0fu, (w1 >> 24) & 0x0fu,
-                (w1 >> 20) & 0x0fu, (w0 >> 8) & 0x0fu,  (w1 >> 16) & 0x0fu,
-                (w1 >> 12) & 0x0fu, (w0 >> 4) & 0x0fu,  (w1 >> 8) & 0x0fu,
-                (w1 >> 4) & 0x0fu,  w0 & 0x0fu,          w1 & 0x0fu
-            };
-            for (unsigned triangles = 0; triangles < 4u; ++triangles) {
-                const unsigned v0 = triIndices[triangles * 3u];
-                const unsigned v1 = triIndices[triangles * 3u + 1u];
-                const unsigned v2 = triIndices[triangles * 3u + 2u];
-                const uint32_t triangleMask = (1u << v0) | (1u << v1) | (1u << v2);
+        } else if (opcode == 0xB1u) { // F3DGOLDEN G_TRIX: packed nibble stream
+            // GLideN64 F3DGOLDEN.cpp (F3D_TriX) decodes two indices from
+            // the low nibbles of w1 and the third from the low nibble of w0.
+            // It shifts w1 by 8 and w0 by 4 after each triangle, stopping
+            // when w1 becomes zero. This is NOT the generic TRI4 interleave.
+            uint32_t triW0 = w0;
+            uint32_t triW1 = w1;
+            unsigned triangleInCommand = 0u;
+            while (triW1 != 0u && triangleInCommand < 4u) {
+                const unsigned v0 = triW1 & 0x0fu;
+                triW1 >>= 4u;
+                const unsigned v1 = triW1 & 0x0fu;
+                triW1 >>= 4u;
+                const unsigned v2 = triW0 & 0x0fu;
+                triW0 >>= 4u;
+
+                const uint32_t triangleMask =
+                    (1u << v0) | (1u << v1) | (1u << v2);
                 const bool verticesReady = vertexCache[v0].valid &&
                     vertexCache[v1].valid && vertexCache[v2].valid &&
                     (vertexCacheMask & triangleMask) == triangleMask;
                 if (!verticesReady) {
                     __android_log_print(ANDROID_LOG_WARN, TAG,
                         "F3DGOLDEN G_TRIX[%u]: (%u,%u,%u) vertices_loaded=NO cache=0x%08x",
-                        triangles, v0, v1, v2, vertexCacheMask);
+                        triangleInCommand, v0, v1, v2, vertexCacheMask);
                 } else {
                     const GoldenEyeVertex& a = vertexCache[v0];
                     const GoldenEyeVertex& b = vertexCache[v1];
@@ -788,8 +791,6 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                             decodedGoldenTriangles, v0, v1, v2,
                             a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
                     }
-                    // Keep the custom G_TRIX path consistent with G_TRI1:
-                    // decoded triangles must enter the diagnostic frame too.
                     if (matrixState.modelViewValid && matrixState.projectionValid) {
                         const GoldenEyeVertex* triVertices[3] = {&a, &b, &c};
                         float ndc[3][3] = {};
@@ -877,7 +878,11 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     }
                 }
                 ++decodedGoldenTriangles;
+                ++triangleInCommand;
             }
+            __android_log_print(ANDROID_LOG_INFO, TAG,
+                "F3DGOLDEN G_TRIX_CMD: w0=%08x w1=%08x triangles=%u remaining_w1=%08x @%06x",
+                w0, w1, triangleInCommand, triW1, pc);
         } else if (opcode >= 0xC8u) {
             // Raw RDP commands may be embedded in a GBI list. Count them,
             // but do not enqueue them until the RSP geometry path is implemented.
