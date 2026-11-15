@@ -977,7 +977,8 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     const GoldenEyeVertex& c = vertexCache[v2];
                     if (verbose)
                         logGoldenEyeTriangleColors("G_TRIX", decodedGoldenTriangles,
-                            v0, v1, v2, a, b, c, matrixState.geometryMode);
+                            v0, v1, v2, a, b, c, matrixState.geometryMode,
+                            matrixState);
                     if (decodedGoldenTriangles < 32u) {
                         if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
                             "F3DGOLDEN TRIANGLE[%u]: idx=(%u,%u,%u) A=(%d,%d,%d) B=(%d,%d,%d) C=(%d,%d,%d)",
