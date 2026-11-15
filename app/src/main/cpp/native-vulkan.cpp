@@ -43,6 +43,7 @@ uint32_t g_graphicsFamily = UINT32_MAX;
 uint32_t g_presentFamily = UINT32_MAX;
 VkSwapchainKHR g_swapchain = VK_NULL_HANDLE;
 VkFormat g_swapchainFormat = VK_FORMAT_UNDEFINED;
+VkExtent2D g_swapchainExtent{};
 std::vector<VkImage> g_swapchainImages;
 std::vector<VkImageView> g_swapchainViews;
 VkRenderPass g_renderPass = VK_NULL_HANDLE;
@@ -105,6 +106,7 @@ void destroySwapchainLocked() {
         g_depthImage = VK_NULL_HANDLE;
         g_depthMemory = VK_NULL_HANDLE;
         g_depthFormat = VK_FORMAT_UNDEFINED;
+        g_swapchainExtent = {};
 
         if (g_commandPool != VK_NULL_HANDLE)
             vkDestroyCommandPool(g_device, g_commandPool, nullptr);
@@ -1228,18 +1230,16 @@ bool recordFrameCommandBuffer(uint32_t imageIndex, std::string& error) {
     pass.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     pass.renderPass = g_renderPass;
     pass.framebuffer = g_framebuffers[imageIndex];
-    pass.renderArea.extent.width = ANativeWindow_getWidth(g_window);
-    pass.renderArea.extent.height = ANativeWindow_getHeight(g_window);
+    pass.renderArea.extent = g_swapchainExtent;
     pass.clearValueCount = 2;
     pass.pClearValues = clears;
     vkCmdBeginRenderPass(command, &pass, VK_SUBPASS_CONTENTS_INLINE);
     VkViewport viewport{};
-    viewport.width = static_cast<float>(ANativeWindow_getWidth(g_window));
-    viewport.height = static_cast<float>(ANativeWindow_getHeight(g_window));
+    viewport.width = static_cast<float>(g_swapchainExtent.width);
+    viewport.height = static_cast<float>(g_swapchainExtent.height);
     viewport.maxDepth = 1.0f;
     VkRect2D scissor{};
-    scissor.extent.width = static_cast<uint32_t>(ANativeWindow_getWidth(g_window));
-    scissor.extent.height = static_cast<uint32_t>(ANativeWindow_getHeight(g_window));
+    scissor.extent = g_swapchainExtent;
     vkCmdSetViewport(command, 0, 1, &viewport);
     vkCmdSetScissor(command, 0, 1, &scissor);
     vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, g_graphicsPipeline);
@@ -1286,8 +1286,8 @@ bool createDepthResources(std::string& error) {
     image.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     image.imageType = VK_IMAGE_TYPE_2D;
     image.format = g_depthFormat;
-    image.extent.width = static_cast<uint32_t>(ANativeWindow_getWidth(g_window));
-    image.extent.height = static_cast<uint32_t>(ANativeWindow_getHeight(g_window));
+    image.extent.width = g_swapchainExtent.width;
+    image.extent.height = g_swapchainExtent.height;
     image.extent.depth = 1;
     image.mipLevels = 1;
     image.arrayLayers = 1;
@@ -1419,8 +1419,8 @@ bool createRenderResources(std::string& error) {
         framebufferInfo.renderPass = g_renderPass;
         framebufferInfo.attachmentCount = 2;
         framebufferInfo.pAttachments = framebufferAttachments;
-        framebufferInfo.width = ANativeWindow_getWidth(g_window);
-        framebufferInfo.height = ANativeWindow_getHeight(g_window);
+        framebufferInfo.width = g_swapchainExtent.width;
+        framebufferInfo.height = g_swapchainExtent.height;
         framebufferInfo.layers = 1;
         VkFramebuffer framebuffer = VK_NULL_HANDLE;
         status = vkCreateFramebuffer(g_device, &framebufferInfo, nullptr, &framebuffer);
@@ -1472,13 +1472,12 @@ bool createRenderResources(std::string& error) {
         passInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         passInfo.renderPass = g_renderPass;
         passInfo.framebuffer = g_framebuffers[i];
-        passInfo.renderArea.extent.width = ANativeWindow_getWidth(g_window);
-        passInfo.renderArea.extent.height = ANativeWindow_getHeight(g_window);
+        passInfo.renderArea.extent = g_swapchainExtent;
         passInfo.clearValueCount = 2;
         passInfo.pClearValues = clears;
         vkCmdBeginRenderPass(g_commandBuffers[i], &passInfo, VK_SUBPASS_CONTENTS_INLINE);
-        VkViewport vp{}; vp.width = static_cast<float>(ANativeWindow_getWidth(g_window)); vp.height = static_cast<float>(ANativeWindow_getHeight(g_window)); vp.maxDepth = 1.0f;
-        VkRect2D sc{}; sc.extent.width = static_cast<uint32_t>(ANativeWindow_getWidth(g_window)); sc.extent.height = static_cast<uint32_t>(ANativeWindow_getHeight(g_window));
+        VkViewport vp{}; vp.width = static_cast<float>(g_swapchainExtent.width); vp.height = static_cast<float>(g_swapchainExtent.height); vp.maxDepth = 1.0f;
+        VkRect2D sc{}; sc.extent = g_swapchainExtent;
         vkCmdSetViewport(g_commandBuffers[i], 0, 1, &vp); vkCmdSetScissor(g_commandBuffers[i], 0, 1, &sc);
         vkCmdBindPipeline(g_commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, g_graphicsPipeline);
         vkCmdBindDescriptorSets(g_commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -1840,6 +1839,7 @@ bool createSwapchain(std::string& details, bool presentInitialFrame) {
         g_swapchainViews.push_back(view);
     }
     g_swapchainFormat = chosen.format;
+    g_swapchainExtent = extent;
     details = std::to_string(extent.width) + "x" + std::to_string(extent.height) +
         ", " + std::to_string(g_swapchainImages.size()) + " imagens";
     if (!createRenderResources(details)) return false;
