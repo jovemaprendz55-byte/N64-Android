@@ -123,6 +123,7 @@ void logGoldenEyeActiveMatrixState(const GoldenEyeMatrixState& state,
 }
 
 std::mutex g_mutex;
+GoldenEyeGbiState g_goldenEyeGbiState{};
 GFX_INFO g_info{};
 bool g_started = false;
 bool g_initialized = false;
@@ -1219,7 +1220,8 @@ void processF3DDisplayList(bool verbose) {
 
     // OSTask owns this interpreter state; nested G_DL calls share it,
     // but a new graphics task starts with a fresh GBI state.
-    GoldenEyeGbiState taskState{};
+    // Preserve Fast3D segment bases, vertex cache and matrix stack across OSTasks.
+    GoldenEyeGbiState& taskState = g_goldenEyeGbiState;
     g_goldenEyeDebugTriangles.clear();
     g_goldenEyeRenderVertices.clear();
     uint32_t budget = 0;
@@ -1748,6 +1750,7 @@ EXPORT int CALL RomOpen(void) {
     }
     g_frameNumber = 0;
     g_processDListCalls = 0;
+    g_goldenEyeGbiState = {};
     g_processRdpCalls = 0;
     g_viAttempts = 0;
     g_viRejected = 0;
