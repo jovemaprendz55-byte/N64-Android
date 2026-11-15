@@ -44,6 +44,16 @@ struct GoldenEyeMatrixState {
     unsigned modelViewStackDepth = 0;
 };
 
+// Persistent state for the GoldenEye GBI interpreter. Display lists can be
+// split across OSTasks; vertex cache, segment bases and matrix stack must not
+// be recreated by the diagnostic pass for every task.
+struct GoldenEyeGbiState {
+    std::array<uint32_t, 16> segments{};
+    std::array<GoldenEyeVertex, 32> vertexCache{};
+    GoldenEyeMatrixState matrices{};
+    uint32_t vertexCacheMask = 0;
+};
+
 void multiplyMatrix4x4(const float a[16], const float b[16], float out[16]) {
     float result[16] = {};
     for (unsigned row = 0; row < 4u; ++row) {
@@ -116,6 +126,7 @@ uint64_t g_viRejected = 0;
 std::vector<uint8_t> g_rgba;
 // Temporary first-light path: projected F3D triangles become an RGBA frame.
 std::vector<std::array<float,  9>> g_goldenEyeDebugTriangles;
+GoldenEyeGbiState g_goldenEyeGbiState{};
 std::vector<uint8_t> g_goldenEyeDebugPixels;
 bool g_hasGoldenEyeDebugFrame = false;
 Vulkan::ContextHandle g_rdpContext;
@@ -995,20 +1006,17 @@ void logF3DDisplayListTraversal() {
     }
 
     g_goldenEyeDebugTriangles.clear();
-    uint32_t segments[16] = {};
     uint32_t budget = 0;
     uint32_t calls = 0;
     uint32_t rawRdpCommands = 0;
     uint32_t opcodeCounts[256] = {};
     uint32_t loggedGbiCommands = 0;
-    uint32_t vertexCacheMask = 0;
     uint32_t decodedGoldenTriangles = 0;
-    GoldenEyeVertex vertexCache[32] = {};
-    GoldenEyeMatrixState matrixState{};
     const bool complete = walkF3DDisplayList(
-        dataPtr, dataPtr + dataSize, segments, 0u,
+        dataPtr, dataPtr + dataSize, g_goldenEyeGbiState.segments.data(), 0u,
         budget, calls, rawRdpCommands, opcodeCounts, loggedGbiCommands,
-        vertexCacheMask, decodedGoldenTriangles, vertexCache, matrixState);
+        g_goldenEyeGbiState.vertexCacheMask, decodedGoldenTriangles,
+        g_goldenEyeGbiState.vertexCache.data(), g_goldenEyeGbiState.matrices);
     __android_log_print(ANDROID_LOG_INFO, TAG,
         "F3DGOLDEN GBI traversal: %s comandos=%u listas/chamadas=%u RDP_brutos=%u GBI_detalhados=%u G_TRIX_triangulos=%u vertex_cache=0x%08x",
         complete ? "fim/retorno alcancado" : "incompleto/limite",
@@ -1511,6 +1519,8 @@ EXPORT int CALL RomOpen(void) {
             "ROM aberta, mas backend RDP indisponivel; framebuffer VI permanece como fallback");
     }
     g_frameNumber = 0;
+    g_goldenEyeGbiState = {};
+    g_goldenEyeDebugTriangles.clear();
     g_processDListCalls = 0;
     g_processRdpCalls = 0;
     g_viAttempts = 0;
