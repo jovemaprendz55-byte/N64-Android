@@ -67,7 +67,6 @@ bool g_rendererFaulted = false;
 // CPU-side handoff buffer for projected GoldenEye geometry. A dedicated 3D
 // Vulkan pipeline will consume this data in a later stage.
 std::vector<float> g_goldenEyePositionsNdc;
-uint64_t g_goldenEyeGeometryTask = 0;
 
 PFN_vkDestroySurfaceKHR pDestroySurface = nullptr;
 PFN_vkGetPhysicalDeviceSurfaceSupportKHR pGetSurfaceSupport = nullptr;
@@ -1742,7 +1741,6 @@ extern "C" bool n64VulkanSubmitGoldenEyeGeometry(
         g_goldenEyePositionsNdc.assign(
             positions_xyz, positions_xyz + static_cast<size_t>(vertex_count) * 3u);
     }
-    g_goldenEyeGeometryTask = task_number;
     if (task_number <= 12u || (task_number % 120u) == 0u) {
         __android_log_print(ANDROID_LOG_INFO, TAG,
             "GoldenEye geometry recebida: task=%llu vertices=%u triangulos=%u (NDC; ainda sem draw)",
