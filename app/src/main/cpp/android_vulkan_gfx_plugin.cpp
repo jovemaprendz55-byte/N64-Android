@@ -1353,9 +1353,9 @@ bool collectGoldenEyeRdpCommands(
             } else {
                 return false;
             }
-        } else if (opcode >= 0xC8u) {
-            // RDP triangle commands (0xC8-0xCF) carry extra payload words.
-            // Capture them as complete commands instead of stepping 8 bytes.
+        } else if (opcode >= 0xC8u || opcode == 0xE4u || opcode == 0xE5u) {
+            // RDP triangles and E4/E5 texture rectangles carry payload words.
+            // Capture each complete command instead of stepping only 8 bytes.
             const unsigned wordCount = rdpCommandWordCount(opcode);
             const uint64_t commandEnd =
                 static_cast<uint64_t>(pc) + wordCount * sizeof(uint32_t);
