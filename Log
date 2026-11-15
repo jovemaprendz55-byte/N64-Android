@@ -1,250 +1,250 @@
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN VTX_MODELVIEW: slot=0 XYZ=(9,-197,-245) -> (-266.28,-216.70,-4042.67,1.00)
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=001da8 endereco=16e5e8 count=14 v0=0 cache=0x0000ffff V0=(9,-197,-245) ST=(0,0) flag=0000 attr=3d,6e,f5,ff
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: segmento[5]=16c840 (cmd @0a5378)
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: G_DL mode=0 alvo=1732a8 depth=0
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX: addr=0be290 type=MODELVIEW op=LOAD push=0 @173328
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row0: 0.13405 0.00000 -1.09180 0.00000
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row1: 0.00000 1.09999 0.00000 0.00000
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row2: 1.09180 0.00000 0.13405 0.00000
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row3: 0.00000 0.00000 -4000.00000 1.00000
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN MATRIX_STATE: MODELVIEW LOAD push=0
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN VTX_MODELVIEW: slot=0 XYZ=(-5,-23,-244) -> (-267.07,-25.30,-4027.25,1.00)
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=001af0 endereco=16e330 count=16 v0=0 cache=0x0000ffff V0=(-5,-23,-244) ST=(0,0) flag=0000 attr=7d,0e,f5,ff
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=001bf0 endereco=16e430 count=10 v0=0 cache=0x0000ffff V0=(80,41,-244) ST=(0,0) flag=0000 attr=a0,ae,f6,ff
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: segmento[5]=16c840 (cmd @0a5388)
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: G_DL mode=0 alvo=173458 depth=0
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX: addr=0be290 type=MODELVIEW op=LOAD push=0 @1734d8
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row0: 0.13405 0.00000 -1.09180 0.00000
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row1: 0.00000 1.09999 0.00000 0.00000
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row2: 1.09180 0.00000 0.13405 0.00000
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row3: 0.00000 0.00000 -4000.00000 1.00000
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN MATRIX_STATE: MODELVIEW LOAD push=0
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=001ea0 endereco=16e6e0 count=16 v0=0 cache=0x0000ffff V0=(204,-176,-245) ST=(0,0) flag=0000 attr=61,b0,f5,ff
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=001fa0 endereco=16e7e0 count=16 v0=0 cache=0x0000ffff V0=(-98,-186,243) ST=(0,0) flag=0000 attr=bb,97,0b,ff
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0020a0 endereco=16e8e0 count=16 v0=0 cache=0x0000ffff V0=(0,90,244) ST=(0,0) flag=0000 attr=e4,7b,0b,ff
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0021a0 endereco=16e9e0 count=4 v0=0 cache=0x0000ffff V0=(225,-146,243) ST=(0,0) flag=0000 attr=72,ca,0a,ff
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: segmento[5]=16c840 (cmd @0a5398)
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: G_DL mode=0 alvo=1731f8 depth=0
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX: addr=0be290 type=MODELVIEW op=LOAD push=0 @173278
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row0: 0.13405 0.00000 -1.09180 0.00000
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row1: 0.00000 1.09999 0.00000 0.00000
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row2: 1.09180 0.00000 0.13405 0.00000
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row3: 0.00000 0.00000 -4000.00000 1.00000
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN MATRIX_STATE: MODELVIEW LOAD push=0
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0019d0 endereco=16e210 count=12 v0=0 cache=0x0000ffff V0=(-205,76,-243) ST=(0,0) flag=0000 attr=fe,84,ea,ff
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: segmento[5]=16c840 (cmd @0a53a8)
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: G_DL mode=0 alvo=173088 depth=0
-11-14 20:39:09.270 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX: addr=0be290 type=MODELVIEW op=LOAD push=0 @173108
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row0: 0.13405 0.00000 -1.09180 0.00000
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row1: 0.00000 1.09999 0.00000 0.00000
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row2: 1.09180 0.00000 0.13405 0.00000
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row3: 0.00000 0.00000 -4000.00000 1.00000
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN MATRIX_STATE: MODELVIEW LOAD push=0
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=001760 endereco=16dfa0 count=16 v0=0 cache=0x0000ffff V0=(-351,173,245) ST=(0,0) flag=0000 attr=83,02,16,ff
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=001860 endereco=16e0a0 count=8 v0=0 cache=0x0000ffff V0=(-204,-220,244) ST=(0,0) flag=0000 attr=06,83,14,ff
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: segmento[5]=16c840 (cmd @0a53b8)
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: G_DL mode=0 alvo=173148 depth=0
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX: addr=0be290 type=MODELVIEW op=LOAD push=0 @1731c8
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row0: 0.13405 0.00000 -1.09180 0.00000
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row1: 0.00000 1.09999 0.00000 0.00000
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row2: 1.09180 0.00000 0.13405 0.00000
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row3: 0.00000 0.00000 -4000.00000 1.00000
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN MATRIX_STATE: MODELVIEW LOAD push=0
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0018f8 endereco=16e138 count=12 v0=0 cache=0x0000ffff V0=(-351,124,245) ST=(0,0) flag=0000 attr=02,7c,16,ff
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: segmento[5]=16c840 (cmd @0a53c8)
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: G_DL mode=0 alvo=172ee0 depth=0
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX: addr=0be290 type=MODELVIEW op=LOAD push=0 @172f60
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row0: 0.13405 0.00000 -1.09180 0.00000
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row1: 0.00000 1.09999 0.00000 0.00000
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row2: 1.09180 0.00000 0.13405 0.00000
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row3: 0.00000 0.00000 -4000.00000 1.00000
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN MATRIX_STATE: MODELVIEW LOAD push=0
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0012e8 endereco=16db28 count=16 v0=0 cache=0x0000ffff V0=(-695,-18,245) ST=(0,0) flag=0000 attr=70,e5,33,ff
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0013e8 endereco=16dc28 count=16 v0=0 cache=0x0000ffff V0=(-677,2,-243) ST=(0,0) flag=0000 attr=40,94,f5,ff
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0014e8 endereco=16dd28 count=14 v0=0 cache=0x0000ffff V0=(-696,47,-242) ST=(0,0) flag=0000 attr=be,6b,f6,ff
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: segmento[5]=16c840 (cmd @0a53d8)
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: G_DL mode=0 alvo=172fd8 depth=0
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX: addr=0be290 type=MODELVIEW op=LOAD push=0 @173058
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row0: 0.13405 0.00000 -1.09180 0.00000
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row1: 0.00000 1.09999 0.00000 0.00000
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row2: 1.09180 0.00000 0.13405 0.00000
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row3: 0.00000 0.00000 -4000.00000 1.00000
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN MATRIX_STATE: MODELVIEW LOAD push=0
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0015e0 endereco=16de20 count=16 v0=0 cache=0x0000ffff V0=(-842,-219,245) ST=(0,0) flag=0000 attr=83,f5,12,ff
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: segmento[5]=16c840 (cmd @0a53e8)
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: G_DL mode=0 alvo=172d80 depth=0
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX: addr=0be290 type=MODELVIEW op=LOAD push=0 @172e00
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row0: 0.13405 0.00000 -1.09180 0.00000
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row1: 0.00000 1.09999 0.00000 0.00000
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row2: 1.09180 0.00000 0.13405 0.00000
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row3: 0.00000 0.00000 -4000.00000 1.00000
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN MATRIX_STATE: MODELVIEW LOAD push=0
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=001070 endereco=16d8b0 count=16 v0=0 cache=0x0000ffff V0=(-891,223,247) ST=(0,0) flag=0000 attr=06,7c,15,ff
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: segmento[5]=16c840 (cmd @0a53f8)
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: G_DL mode=0 alvo=172e30 depth=0
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX: addr=0be290 type=MODELVIEW op=LOAD push=0 @172eb0
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row0: 0.13405 0.00000 -1.09180 0.00000
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row1: 0.00000 1.09999 0.00000 0.00000
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row2: 1.09180 0.00000 0.13405 0.00000
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row3: 0.00000 0.00000 -4000.00000 1.00000
-11-14 20:39:09.271 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN MATRIX_STATE: MODELVIEW LOAD push=0
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=001188 endereco=16d9c8 count=16 v0=0 cache=0x0000ffff V0=(-891,76,246) ST=(0,0) flag=0000 attr=06,7c,15,ff
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: segmento[5]=16c840 (cmd @0a5408)
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: G_DL mode=0 alvo=172b78 depth=0
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX: addr=0be290 type=MODELVIEW op=LOAD push=0 @172bf8
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row0: 0.13405 0.00000 -1.09180 0.00000
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row1: 0.00000 1.09999 0.00000 0.00000
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row2: 1.09180 0.00000 0.13405 0.00000
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row3: 0.00000 0.00000 -4000.00000 1.00000
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN MATRIX_STATE: MODELVIEW LOAD push=0
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=000d40 endereco=16d580 count=16 v0=0 cache=0x0000ffff V0=(-1087,223,247) ST=(0,0) flag=0000 attr=06,7c,15,ff
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: segmento[5]=16c840 (cmd @0a5418)
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: G_DL mode=0 alvo=172c28 depth=0
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX: addr=0be290 type=MODELVIEW op=LOAD push=0 @172ca8
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row0: 0.13405 0.00000 -1.09180 0.00000
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row1: 0.00000 1.09999 0.00000 0.00000
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row2: 1.09180 0.00000 0.13405 0.00000
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row3: 0.00000 0.00000 -4000.00000 1.00000
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN MATRIX_STATE: MODELVIEW LOAD push=0
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=000e78 endereco=16d6b8 count=8 v0=0 cache=0x0000ffff V0=(-1236,-216,-242) ST=(0,0) flag=0000 attr=9f,b1,ef,ff
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: segmento[5]=16c840 (cmd @0a5428)
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: G_DL mode=0 alvo=172cd0 depth=0
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX: addr=0be290 type=MODELVIEW op=LOAD push=0 @172d50
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row0: 0.13405 0.00000 -1.09180 0.00000
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row1: 0.00000 1.09999 0.00000 0.00000
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row2: 1.09180 0.00000 0.13405 0.00000
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row3: 0.00000 0.00000 -4000.00000 1.00000
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN MATRIX_STATE: MODELVIEW LOAD push=0
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=000f10 endereco=16d750 count=16 v0=0 cache=0x0000ffff V0=(-1579,226,-239) ST=(0,0) flag=0000 attr=83,0f,f1,ff
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: segmento[5]=16c840 (cmd @0a5438)
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI: G_DL mode=0 alvo=173ce8 depth=0
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX: addr=0be290 type=MODELVIEW op=LOAD push=0 @173d68
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row0: 0.13405 0.00000 -1.09180 0.00000
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row1: 0.00000 1.09999 0.00000 0.00000
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row2: 1.09180 0.00000 0.13405 0.00000
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row3: 0.00000 0.00000 -4000.00000 1.00000
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN MATRIX_STATE: MODELVIEW LOAD push=0
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0034e0 endereco=16fd20 count=16 v0=0 cache=0x0000ffff V0=(-1335,407,249) ST=(0,0) flag=0000 attr=fe,7e,02,ff
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0035e0 endereco=16fe20 count=16 v0=0 cache=0x0000ffff V0=(1754,262,241) ST=(0,0) flag=0000 attr=5c,56,02,ff
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0036e0 endereco=16ff20 count=16 v0=0 cache=0x0000ffff V0=(1675,-340,239) ST=(0,0) flag=0000 attr=4d,9c,02,ff
-11-14 20:39:09.272 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0037e0 endereco=170020 count=16 v0=0 cache=0x0000ffff V0=(-1676,-333,-241) ST=(0,0) flag=0000 attr=b9,97,fe,ff
-11-14 20:39:09.273 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0038e0 endereco=170120 count=16 v0=0 cache=0x0000ffff V0=(-1805,190,249) ST=(0,0) flag=0000 attr=92,3e,02,ff
-11-14 20:39:09.273 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0039e0 endereco=170220 count=16 v0=0 cache=0x0000ffff V0=(-1805,190,249) ST=(0,0) flag=0000 attr=eb,01,7d,ff
-11-14 20:39:09.273 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=003ae0 endereco=170320 count=15 v0=0 cache=0x0000ffff V0=(1386,401,242) ST=(0,0) flag=0000 attr=10,04,7d,ff
-11-14 20:39:09.273 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=003bd0 endereco=170410 count=16 v0=0 cache=0x0000ffff V0=(1840,-102,239) ST=(0,0) flag=0000 attr=16,ff,7d,ff
-11-14 20:39:09.273 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=003cd0 endereco=170510 count=16 v0=0 cache=0x0000ffff V0=(1336,-338,239) ST=(0,0) flag=0000 attr=10,fc,7d,ff
-11-14 20:39:09.273 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=003dd0 endereco=170610 count=16 v0=0 cache=0x0000ffff V0=(-1839,-93,248) ST=(0,0) flag=0000 attr=eb,ff,7d,ff
-11-14 20:39:09.273 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=003ed0 endereco=170710 count=16 v0=0 cache=0x0000ffff V0=(-1778,-75,-240) ST=(0,0) flag=0000 attr=eb,00,83,ff
-11-14 20:39:09.273 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=003fd0 endereco=170810 count=16 v0=0 cache=0x0000ffff V0=(1335,-338,-248) ST=(0,0) flag=0000 attr=0f,fd,83,ff
-11-14 20:39:09.273 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0040d0 endereco=170910 count=16 v0=0 cache=0x0000ffff V0=(1777,-83,-248) ST=(0,0) flag=0000 attr=14,00,83,ff
-11-14 20:39:09.273 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0041d0 endereco=170a10 count=16 v0=0 cache=0x0000ffff V0=(1522,326,-246) ST=(0,0) flag=0000 attr=11,04,83,ff
-11-14 20:39:09.273 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0042d0 endereco=170b10 count=16 v0=0 cache=0x0000ffff V0=(-1705,223,-239) ST=(0,0) flag=0000 attr=ec,03,83,ff
-11-14 20:39:09.273 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0043d0 endereco=170c10 count=16 v0=0 cache=0x0000ffff V0=(1615,97,-246) ST=(0,0) flag=0000 attr=00,00,81,ff
-11-14 20:39:09.273 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0044d0 endereco=170d10 count=16 v0=0 cache=0x0000ffff V0=(1583,156,240) ST=(0,0) flag=0000 attr=00,00,7f,ff
-11-14 20:39:09.273 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0045d0 endereco=170e10 count=16 v0=0 cache=0x0000ffff V0=(1621,-79,240) ST=(0,0) flag=0000 attr=16,ff,7d,ff
-11-14 20:39:09.273 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0046d0 endereco=170f10 count=15 v0=0 cache=0x0000ffff V0=(1392,-195,240) ST=(0,0) flag=0000 attr=ff,f3,7e,ff
-11-14 20:39:09.273 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0047c0 endereco=171000 count=16 v0=0 cache=0x0000ffff V0=(1358,16,241) ST=(0,0) flag=0000 attr=fb,08,7e,ff
-11-14 20:39:09.273 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0048c0 endereco=171100 count=16 v0=0 cache=0x0000ffff V0=(1535,68,-247) ST=(0,0) flag=0000 attr=0c,0e,83,ff
-11-14 20:39:09.273 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0049c0 endereco=171200 count=16 v0=0 cache=0x0000ffff V0=(1455,-229,-248) ST=(0,0) flag=0000 attr=04,f0,83,ff
-11-14 20:39:09.273 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=004ac0 endereco=171300 count=16 v0=0 cache=0x0000ffff V0=(1209,-68,-247) ST=(0,0) flag=0000 attr=eb,00,83,ff
-11-14 20:39:09.273 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=004bc0 endereco=171400 count=16 v0=0 cache=0x0000ffff V0=(1459,41,-247) ST=(0,0) flag=0000 attr=04,0c,82,ff
-11-14 20:39:09.273 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=004cc0 endereco=171500 count=16 v0=0 cache=0x0000ffff V0=(-1433,-216,-241) ST=(0,0) flag=0000 attr=fa,f2,83,ff
-11-14 20:39:09.273 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=004dc0 endereco=171600 count=14 v0=0 cache=0x0000ffff V0=(-1038,223,247) ST=(0,0) flag=0000 attr=fb,0d,7e,ff
-11-14 20:39:09.273 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=004ea0 endereco=1716e0 count=15 v0=0 cache=0x0000ffff V0=(-842,91,246) ST=(0,0) flag=0000 attr=f0,05,7d,ff
-11-14 20:39:09.274 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=004f90 endereco=1717d0 count=14 v0=0 cache=0x0000ffff V0=(-545,-42,245) ST=(0,0) flag=0000 attr=02,fe,7e,ff
-11-14 20:39:09.274 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005070 endereco=1718b0 count=16 v0=0 cache=0x0000ffff V0=(-546,-220,-243) ST=(0,0) flag=0000 attr=02,f3,82,ff
-11-14 20:39:09.274 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005170 endereco=1719b0 count=16 v0=0 cache=0x0000ffff V0=(-400,124,245) ST=(0,0) flag=0000 attr=f7,04,7e,ff
-11-14 20:39:09.274 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005270 endereco=171ab0 count=16 v0=0 cache=0x0000ffff V0=(-352,175,-242) ST=(0,0) flag=0000 attr=fb,09,82,ff
-11-14 20:39:09.274 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005370 endereco=171bb0 count=16 v0=0 cache=0x0000ffff V0=(85,-187,243) ST=(0,0) flag=0000 attr=05,f3,7e,ff
-11-14 20:39:09.274 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005470 endereco=171cb0 count=16 v0=0 cache=0x0000ffff V0=(-5,-73,244) ST=(0,0) flag=0000 attr=fc,ff,7e,ff
-11-14 20:39:09.274 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005570 endereco=171db0 count=14 v0=0 cache=0x0000ffff V0=(149,70,244) ST=(0,0) flag=0000 attr=0c,0e,7d,ff
-11-14 20:39:09.274 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005650 endereco=171e90 count=15 v0=0 cache=0x0000ffff V0=(95,-124,-245) ST=(0,0) flag=0000 attr=05,fa,82,ff
-11-14 20:39:09.274 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005740 endereco=171f80 count=16 v0=0 cache=0x0000ffff V0=(-99,-186,-244) ST=(0,0) flag=0000 attr=f1,f4,83,ff
-11-14 20:39:09.274 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005840 endereco=172080 count=16 v0=0 cache=0x0000ffff V0=(7,43,-244) ST=(0,0) flag=0000 attr=fc,0c,82,ff
-11-14 20:39:09.274 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005940 endereco=172180 count=14 v0=0 cache=0x0000ffff V0=(238,-73,-245) ST=(0,0) flag=0000 attr=15,00,83,ff
-11-14 20:39:09.274 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005a20 endereco=172260 count=16 v0=0 cache=0x0000ffff V0=(489,17,245) ST=(0,0) flag=0000 attr=fd,01,7e,ff
-11-14 20:39:09.274 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005b20 endereco=172360 count=16 v0=0 cache=0x0000ffff V0=(476,72,245) ST=(0,0) flag=0000 attr=fe,04,7e,ff
-11-14 20:39:09.274 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005c20 endereco=172460 count=14 v0=0 cache=0x0000ffff V0=(533,93,-243) ST=(0,0) flag=0000 attr=00,06,82,ff
-11-14 20:39:09.274 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005d00 endereco=172540 count=16 v0=0 cache=0x0000ffff V0=(1021,72,242) ST=(0,0) flag=0000 attr=04,07,7e,ff
-11-14 20:39:09.274 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005e00 endereco=172640 count=15 v0=0 cache=0x0000ffff V0=(921,-138,241) ST=(0,0) flag=0000 attr=ff,fa,7e,ff
-11-14 20:39:09.274 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005ef0 endereco=172730 count=15 v0=0 cache=0x0000ffff V0=(1021,72,242) ST=(0,0) flag=0000 attr=04,07,7e,ff
-11-14 20:39:09.274 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005fe0 endereco=172820 count=15 v0=0 cache=0x0000ffff V0=(909,93,-246) ST=(0,0) flag=0000 attr=fd,09,82,ff
-11-14 20:39:09.274 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0060d0 endereco=172910 count=16 v0=0 cache=0x0000ffff V0=(918,-221,-247) ST=(0,0) flag=0000 attr=fe,f6,82,ff
-11-14 20:39:09.274 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN GBI traversal: fim/retorno alcancado comandos=906 listas/chamadas=906 RDP_brutos=218 GBI_detalhados=120 G_TRIX_triangulos=1125 vertex_cache=0x0000ffff
-11-14 20:39:09.274 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN OPCODE_HIST: 01:24 03:3 04:93 06:25 b1:279 b6:24 b7:24 b8:26 b9:25 ba:103 bb:25 bc:28 bf:9 e6:23 e7:48 e9:1 ed:2 f2:23 f3:23 f5:46 f6:1 f7:1 fc:25 fd:23 ff:2
-11-14 20:39:09.274 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN OPCODE_KEY: BF_G_TRI1=9 B1_G_TRIX=279 04_G_VTX=93 06_G_DL=25 01_G_MTX=24 BA=103 B8_ENDDL=26
-11-14 20:39:09.304 28024 28268 I N64AndroidVulkanGFX: F3DGOLDEN DEBUG_GEOMETRY: triangulos=1125 rasterizados=1018 frame=320x240
-11-14 20:39:09.305 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:09.355 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:09.413 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:09.469 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:09.514 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:09.575 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:09.622 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:09.680 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:09.735 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:09.783 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:09.836 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:09.889 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:09.945 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:10.002 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:10.057 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:10.112 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:10.171 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:10.223 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:10.275 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:10.327 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:10.390 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:10.445 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:10.498 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:10.554 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:10.608 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:10.650 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:10.701 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:10.758 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:10.812 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:10.863 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:10.918 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:10.976 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:11.022 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:11.082 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:11.135 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:11.191 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:11.243 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:11.300 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:11.352 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:11.401 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:11.444 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:11.496 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:11.544 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:11.590 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:11.640 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:11.693 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:11.741 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:11.790 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:11.840 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:11.898 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:11.944 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:11.995 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:12.165 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:12.226 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:12.293 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:12.387 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:12.478 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:12.572 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:12.658 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:12.747 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:12.822 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:12.901 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:12.981 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:13.056 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
-11-14 20:39:13.132 28024 28268 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
-11-14 20:39:13.200 28024 28024 I N64AndroidCore: Stopping emulation.
-11-14 20:39:13.200 28024 28024 I N64AndroidCore: M64CMD_STOP: 0
-11-14 20:39:13.228 28024 28268 I N64AndroidCore: R4300 emulator finished.
-11-14 20:39:14.186 28024 28268 I N64AndroidCore: Estado do Core: parametro=1 valor=1
-11-14 20:39:14.186 28024 28268 I N64AndroidCore: M64CMD_EXECUTE terminou: 0
-11-14 20:39:14.187 28024 28024 I N64AndroidCore: Rom closed.
-11-14 20:39:14.187 28024 28024 I N64AndroidCore: ROM_CLOSE: 0
-11-14 20:39:14.207 28024 28024 I N64AndroidCore: CoreShutdown: 0
-11-14 20:39:14.231 28024 28024 I N64AndroidVulkan: Dispositivo Vulkan e swapchain encerrados.
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100cbb9 w1=dbac9a8a triangles=4 remaining_w1=00000000 @173c38
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b10000fd w1=0000dece triangles=2 remaining_w1=00000000 @173c40
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=003108 endereco=16f948 count=16 v0=0 cache=0x0000ffff V0=(1605,1,240) ST=(0,0) flag=0000 attr=70,3a,0a,ff
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1005332 w1=34042010 triangles=4 remaining_w1=00000000 @173c50
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1009775 w1=78685646 triangles=4 remaining_w1=00000000 @173c58
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100eeb9 w1=fddc9a8a triangles=4 remaining_w1=00000000 @173c60
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=003208 endereco=16fa48 count=16 v0=0 cache=0x0000ffff V0=(1447,56,-247) ST=(0,0) flag=0000 attr=b9,98,f6,ff
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1003322 w1=54413110 triangles=4 remaining_w1=00000000 @173c70
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1007755 w1=98867664 triangles=4 remaining_w1=00000000 @173c78
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100bb99 w1=dccabaa8 triangles=4 remaining_w1=00000000 @173c80
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b10000dd w1=0000feec triangles=2 remaining_w1=00000000 @173c88
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=003308 endereco=16fb48 count=16 v0=0 cache=0x0000ffff V0=(1433,-200,-248) ST=(0,0) flag=0000 attr=df,79,f6,ff
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1003322 w1=54413110 triangles=4 remaining_w1=00000000 @173c98
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1009655 w1=68787664 triangles=4 remaining_w1=00000000 @173ca0
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100dbb9 w1=bcac9a8a triangles=4 remaining_w1=00000000 @173ca8
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b10000cc w1=0000feed triangles=2 remaining_w1=00000000 @173cb0
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=003408 endereco=16fc48 count=12 v0=0 cache=0x0000ffff V0=(1357,16,-247) ST=(0,0) flag=0000 attr=7e,f8,f5,ff
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1003322 w1=54413110 triangles=4 remaining_w1=00000000 @173cc0
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1007755 w1=98867664 triangles=4 remaining_w1=00000000 @173cc8
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1000099 w1=0000baa8 triangles=2 remaining_w1=00000000 @173cd0
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN MOVEWORD: opcode=bc segment[5]=16c840 cmd=bc001406/0016c840 @0a5438
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN GBI: G_DL mode=0 alvo=173ce8 depth=0
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX_CMD: w0=01020040 w1=03000000 param=02 depth=1 pc=173d68
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX: addr=0be290 type=MODELVIEW op=LOAD push=0 @173d68
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row0: 0.87848 0.00000 0.66200 0.00000
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row1: 0.00000 1.09999 0.00000 0.00000
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row2: -0.66200 0.00000 0.87848 0.00000
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_MTX row3: 0.00000 0.00000 -4000.00000 1.00000
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN MATRIX_STATE: MODELVIEW LOAD push=0
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0034e0 endereco=16fd20 count=16 v0=0 cache=0x0000ffff V0=(-1335,407,249) ST=(0,0) flag=0000 attr=fe,7e,02,ff
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1004402 w1=35031310 triangles=4 remaining_w1=00000000 @173d78
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1008866 w1=79675745 triangles=4 remaining_w1=00000000 @173d80
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100bbaa w1=dcca9b89 triangles=4 remaining_w1=00000000 @173d88
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b10000dd w1=0000feec triangles=2 remaining_w1=00000000 @173d90
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0035e0 endereco=16fe20 count=16 v0=0 cache=0x0000ffff V0=(1754,262,241) ST=(0,0) flag=0000 attr=5c,56,02,ff
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1004322 w1=35413110 triangles=4 remaining_w1=00000000 @173da0
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1007856 w1=98677645 triangles=4 remaining_w1=00000000 @173da8
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100bb99 w1=dccabaa8 triangles=4 remaining_w1=00000000 @173db0
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b10000dd w1=0000feec triangles=2 remaining_w1=00000000 @173db8
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0036e0 endereco=16ff20 count=16 v0=0 cache=0x0000ffff V0=(1675,-340,239) ST=(0,0) flag=0000 attr=4d,9c,02,ff
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1005122 w1=14343110 triangles=4 remaining_w1=00000000 @173dc8
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1009775 w1=78685646 triangles=4 remaining_w1=00000000 @173dd0
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100dba9 w1=bcacb98a triangles=4 remaining_w1=00000000 @173dd8
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b10000fd w1=0000dece triangles=2 remaining_w1=00000000 @173de0
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0037e0 endereco=170020 count=16 v0=0 cache=0x0000ffff V0=(-1676,-333,-241) ST=(0,0) flag=0000 attr=b9,97,fe,ff
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1005332 w1=34042010 triangles=4 remaining_w1=00000000 @173df0
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1009775 w1=78685646 triangles=4 remaining_w1=00000000 @173df8
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100dbb9 w1=bcac9a8a triangles=4 remaining_w1=00000000 @173e00
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b10000ed w1=0000fdce triangles=2 remaining_w1=00000000 @173e08
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0038e0 endereco=170120 count=16 v0=0 cache=0x0000ffff V0=(-1805,190,249) ST=(0,0) flag=0000 attr=92,3e,02,ff
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1004132 w1=53430110 triangles=4 remaining_w1=00000000 @173e18
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1009776 w1=78685654 triangles=4 remaining_w1=00000000 @173e20
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100eecc w1=dfcdadba triangles=4 remaining_w1=00000000 @173e28
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0039e0 endereco=170220 count=16 v0=0 cache=0x0000ffff V0=(-1805,190,249) ST=(0,0) flag=0000 attr=eb,01,7d,ff
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1004422 w1=35230310 triangles=4 remaining_w1=00000000 @173e38
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1008866 w1=79675745 triangles=4 remaining_w1=00000000 @173e40
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100baa8 w1=dcbc9b9a triangles=4 remaining_w1=00000000 @173e48
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b10000dd w1=0000feec triangles=2 remaining_w1=00000000 @173e50
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=003ae0 endereco=170320 count=15 v0=0 cache=0x0000ffff V0=(1386,401,242) ST=(0,0) flag=0000 attr=10,04,7d,ff
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1005332 w1=34042010 triangles=4 remaining_w1=00000000 @173e60
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1008675 w1=97875646 triangles=4 remaining_w1=00000000 @173e68
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100aca8 w1=dcbab9a9 triangles=4 remaining_w1=00000000 @173e70
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=003bd0 endereco=170410 count=16 v0=0 cache=0x0000ffff V0=(1840,-102,239) ST=(0,0) flag=0000 attr=16,ff,7d,ff
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1005532 w1=30042010 triangles=4 remaining_w1=00000000 @173e88
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1009775 w1=78685646 triangles=4 remaining_w1=00000000 @173e90
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100caa8 w1=dbcbb9a9 triangles=4 remaining_w1=00000000 @173e98
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b10000ce w1=0000fedc triangles=2 remaining_w1=00000000 @173ea0
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=003cd0 endereco=170510 count=16 v0=0 cache=0x0000ffff V0=(1336,-338,239) ST=(0,0) flag=0000 attr=10,fc,7d,ff
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1005302 w1=34141310 triangles=4 remaining_w1=00000000 @173eb0
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1009775 w1=78685646 triangles=4 remaining_w1=00000000 @173eb8
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100dbb9 w1=bcac9a8a triangles=4 remaining_w1=00000000 @173ec0
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b10000ed w1=0000fdce triangles=2 remaining_w1=00000000 @173ec8
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=003dd0 endereco=170610 count=16 v0=0 cache=0x0000ffff V0=(-1839,-93,248) ST=(0,0) flag=0000 attr=eb,ff,7d,ff
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1005332 w1=34042010 triangles=4 remaining_w1=00000000 @173ed8
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100eeb8 w1=fddca976 triangles=4 remaining_w1=00000000 @173ee0
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=003ed0 endereco=170710 count=16 v0=0 cache=0x0000ffff V0=(-1778,-75,-240) ST=(0,0) flag=0000 attr=eb,00,83,ff
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1003422 w1=54133110 triangles=4 remaining_w1=00000000 @173ef0
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1007755 w1=98867664 triangles=4 remaining_w1=00000000 @173ef8
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100bb99 w1=dccabaa8 triangles=4 remaining_w1=00000000 @173f00
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b10000dd w1=0000feec triangles=2 remaining_w1=00000000 @173f08
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=003fd0 endereco=170810 count=16 v0=0 cache=0x0000ffff V0=(1335,-338,-248) ST=(0,0) flag=0000 attr=0f,fd,83,ff
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1004002 w1=50341310 triangles=4 remaining_w1=00000000 @173f18
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1008866 w1=79674754 triangles=4 remaining_w1=00000000 @173f20
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100bb99 w1=dccabaa8 triangles=4 remaining_w1=00000000 @173f28
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b10000df w1=0000fcec triangles=2 remaining_w1=00000000 @173f30
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0040d0 endereco=170910 count=16 v0=0 cache=0x0000ffff V0=(1777,-83,-248) ST=(0,0) flag=0000 attr=14,00,83,ff
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1005522 w1=46343110 triangles=4 remaining_w1=00000000 @173f40
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100a886 w1=89697675 triangles=4 remaining_w1=00000000 @173f48
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100dbba w1=ecdcca9b triangles=4 remaining_w1=00000000 @173f50
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0041d0 endereco=170a10 count=16 v0=0 cache=0x0000ffff V0=(1522,326,-246) ST=(0,0) flag=0000 attr=11,04,83,ff
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1005122 w1=14343110 triangles=4 remaining_w1=00000000 @173f68
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1007655 w1=89876746 triangles=4 remaining_w1=00000000 @173f70
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100caa8 w1=dbcbb9a9 triangles=4 remaining_w1=00000000 @173f78
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b10000ec w1=0000fded triangles=2 remaining_w1=00000000 @173f80
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0042d0 endereco=170b10 count=16 v0=0 cache=0x0000ffff V0=(-1705,223,-239) ST=(0,0) flag=0000 attr=ec,03,83,ff
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1004112 w1=53433010 triangles=4 remaining_w1=00000000 @173f90
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100ba64 w1=a8987565 triangles=4 remaining_w1=00000000 @173f98
+11-15 02:59:23.001 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100fedc w1=e8d8c8b8 triangles=4 remaining_w1=00000000 @173fa0
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0043d0 endereco=170c10 count=16 v0=0 cache=0x0000ffff V0=(1615,97,-246) ST=(0,0) flag=0000 attr=00,00,81,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1005432 w1=40302010 triangles=4 remaining_w1=00000000 @173fb0
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100ba98 w1=a6968676 triangles=4 remaining_w1=00000000 @173fb8
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100fedc w1=e6d6c6b6 triangles=4 remaining_w1=00000000 @173fc0
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0044d0 endereco=170d10 count=16 v0=0 cache=0x0000ffff V0=(1583,156,240) ST=(0,0) flag=0000 attr=00,00,7f,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1009632 w1=87542010 triangles=4 remaining_w1=00000000 @173fd0
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100b489 w1=a4a65658 triangles=4 remaining_w1=00000000 @173fd8
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100fedb w1=cecdcbca triangles=4 remaining_w1=00000000 @173fe0
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0045d0 endereco=170e10 count=16 v0=0 cache=0x0000ffff V0=(1621,-79,240) ST=(0,0) flag=0000 attr=16,ff,7d,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1003322 w1=54413110 triangles=4 remaining_w1=00000000 @173ff0
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1007755 w1=98867664 triangles=4 remaining_w1=00000000 @173ff8
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100bb99 w1=dccabaa8 triangles=4 remaining_w1=00000000 @174000
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b10000dd w1=0000feec triangles=2 remaining_w1=00000000 @174008
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0046d0 endereco=170f10 count=15 v0=0 cache=0x0000ffff V0=(1392,-195,240) ST=(0,0) flag=0000 attr=ff,f3,7e,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1003322 w1=54413110 triangles=4 remaining_w1=00000000 @174018
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1006655 w1=89787664 triangles=4 remaining_w1=00000000 @174020
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100daa9 w1=acbc69ba triangles=4 remaining_w1=00000000 @174028
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0047c0 endereco=171000 count=16 v0=0 cache=0x0000ffff V0=(1358,16,241) ST=(0,0) flag=0000 attr=fb,08,7e,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1004402 w1=25123210 triangles=4 remaining_w1=00000000 @174040
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1009866 w1=87675745 triangles=4 remaining_w1=00000000 @174048
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100fcd7 w1=ecebcba9 triangles=4 remaining_w1=00000000 @174050
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0048c0 endereco=171100 count=16 v0=0 cache=0x0000ffff V0=(1535,68,-247) ST=(0,0) flag=0000 attr=0c,0e,83,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1003102 w1=45431310 triangles=4 remaining_w1=00000000 @174060
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1004765 w1=98484746 triangles=4 remaining_w1=00000000 @174068
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100caa4 w1=dbcbb9a9 triangles=4 remaining_w1=00000000 @174070
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b10000ec w1=0000fded triangles=2 remaining_w1=00000000 @174078
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0049c0 endereco=171200 count=16 v0=0 cache=0x0000ffff V0=(1455,-229,-248) ST=(0,0) flag=0000 attr=04,f0,83,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1004112 w1=53433010 triangles=4 remaining_w1=00000000 @174088
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1008664 w1=97877565 triangles=4 remaining_w1=00000000 @174090
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100caa8 w1=dbcbb9a9 triangles=4 remaining_w1=00000000 @174098
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b10000fe w1=0000ecdc triangles=2 remaining_w1=00000000 @1740a0
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=004ac0 endereco=171300 count=16 v0=0 cache=0x0000ffff V0=(1209,-68,-247) ST=(0,0) flag=0000 attr=eb,00,83,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1004402 w1=25123210 triangles=4 remaining_w1=00000000 @1740b0
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1007756 w1=89658745 triangles=4 remaining_w1=00000000 @1740b8
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100ccaa w1=bdab9b79 triangles=4 remaining_w1=00000000 @1740c0
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b10000ec w1=0000fcde triangles=2 remaining_w1=00000000 @1740c8
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=004bc0 endereco=171400 count=16 v0=0 cache=0x0000ffff V0=(1459,41,-247) ST=(0,0) flag=0000 attr=04,0c,82,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1006652 w1=87344310 triangles=4 remaining_w1=00000000 @1740d8
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100fab9 w1=edcb9a78 triangles=4 remaining_w1=00000000 @1740e0
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=004cc0 endereco=171500 count=16 v0=0 cache=0x0000ffff V0=(-1433,-216,-241) ST=(0,0) flag=0000 attr=fa,f2,83,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1007422 w1=56534310 triangles=4 remaining_w1=00000000 @1740f0
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100f9b6 w1=edcba987 triangles=4 remaining_w1=00000000 @1740f8
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=004dc0 endereco=171600 count=14 v0=0 cache=0x0000ffff V0=(-1038,223,247) ST=(0,0) flag=0000 attr=fb,0d,7e,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1009352 w1=87654310 triangles=4 remaining_w1=00000000 @174108
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b10000d9 w1=0000cb7a triangles=2 remaining_w1=00000000 @174110
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=004ea0 endereco=1716e0 count=15 v0=0 cache=0x0000ffff V0=(-842,91,246) ST=(0,0) flag=0000 attr=f0,05,7d,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1008622 w1=74540310 triangles=4 remaining_w1=00000000 @174120
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100b777 w1=cabaa994 triangles=4 remaining_w1=00000000 @174128
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b10000db w1=0000ecdc triangles=2 remaining_w1=00000000 @174130
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=004f90 endereco=1717d0 count=14 v0=0 cache=0x0000ffff V0=(-545,-42,245) ST=(0,0) flag=0000 attr=02,fe,7e,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1004412 w1=65534310 triangles=4 remaining_w1=00000000 @174140
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1000dc9 w1=00caba87 triangles=3 remaining_w1=00000000 @174148
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005070 endereco=1718b0 count=16 v0=0 cache=0x0000ffff V0=(-546,-220,-243) ST=(0,0) flag=0000 attr=02,f3,82,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1005432 w1=43131210 triangles=4 remaining_w1=00000000 @174158
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1008876 w1=79676545 triangles=4 remaining_w1=00000000 @174160
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100dab8 w1=cbbca99a triangles=4 remaining_w1=00000000 @174168
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100000e w1=0000f2cd triangles=2 remaining_w1=00000000 @174170
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005170 endereco=1719b0 count=16 v0=0 cache=0x0000ffff V0=(-400,124,245) ST=(0,0) flag=0000 attr=f7,04,7e,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1005602 w1=74543210 triangles=4 remaining_w1=00000000 @174180
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100deaa w1=fcdc8b98 triangles=4 remaining_w1=00000000 @174188
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005270 endereco=171ab0 count=16 v0=0 cache=0x0000ffff V0=(-352,175,-242) ST=(0,0) flag=0000 attr=fb,09,82,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1005602 w1=74543210 triangles=4 remaining_w1=00000000 @174198
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100e8ba w1=dccba898 triangles=4 remaining_w1=00000000 @1741a0
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b10000dd w1=0000efbc triangles=2 remaining_w1=00000000 @1741a8
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005370 endereco=171bb0 count=16 v0=0 cache=0x0000ffff V0=(85,-187,243) ST=(0,0) flag=0000 attr=05,f3,7e,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1004412 w1=35132310 triangles=4 remaining_w1=00000000 @1741b8
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100a756 w1=98867645 triangles=4 remaining_w1=00000000 @1741c0
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100b9c8 w1=cdacb97a triangles=4 remaining_w1=00000000 @1741c8
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b10000de w1=0000febd triangles=2 remaining_w1=00000000 @1741d0
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005470 endereco=171cb0 count=16 v0=0 cache=0x0000ffff V0=(-5,-73,244) ST=(0,0) flag=0000 attr=fc,ff,7e,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1006532 w1=54341210 triangles=4 remaining_w1=00000000 @1741e0
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100a876 w1=89798647 triangles=4 remaining_w1=00000000 @1741e8
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100ddbb w1=cebc9ca9 triangles=4 remaining_w1=00000000 @1741f0
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005570 endereco=171db0 count=14 v0=0 cache=0x0000ffff V0=(149,70,244) ST=(0,0) flag=0000 attr=0c,0e,7d,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1004032 w1=53432010 triangles=4 remaining_w1=00000000 @174208
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1008665 w1=96785763 triangles=4 remaining_w1=00000000 @174210
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1000d9a w1=00acba69 triangles=3 remaining_w1=00000000 @174218
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005650 endereco=171e90 count=15 v0=0 cache=0x0000ffff V0=(95,-124,-245) ST=(0,0) flag=0000 attr=05,fa,82,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1004322 w1=65420310 triangles=4 remaining_w1=00000000 @174228
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1009674 w1=78875636 triangles=4 remaining_w1=00000000 @174230
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100cbb9 w1=dbac9a8a triangles=4 remaining_w1=00000000 @174238
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005740 endereco=171f80 count=16 v0=0 cache=0x0000ffff V0=(-99,-186,-244) ST=(0,0) flag=0000 attr=f1,f4,83,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1004102 w1=01543210 triangles=4 remaining_w1=00000000 @174250
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1007766 w1=98865745 triangles=4 remaining_w1=00000000 @174258
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100ecc8 w1=cdbdab9a triangles=4 remaining_w1=00000000 @174260
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005840 endereco=172080 count=16 v0=0 cache=0x0000ffff V0=(7,43,-244) ST=(0,0) flag=0000 attr=fc,0c,82,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1005222 w1=24340310 triangles=4 remaining_w1=00000000 @174278
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1009775 w1=78685646 triangles=4 remaining_w1=00000000 @174280
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100aaa9 w1=dccbb98a triangles=4 remaining_w1=00000000 @174288
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b10000fe w1=0000edcd triangles=2 remaining_w1=00000000 @174290
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005940 endereco=172180 count=14 v0=0 cache=0x0000ffff V0=(238,-73,-245) ST=(0,0) flag=0000 attr=15,00,83,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1006312 w1=53412310 triangles=4 remaining_w1=00000000 @1742a0
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1000cc9 w1=00adba87 triangles=3 remaining_w1=00000000 @1742a8
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005a20 endereco=172260 count=16 v0=0 cache=0x0000ffff V0=(489,17,245) ST=(0,0) flag=0000 attr=fd,01,7e,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1003342 w1=65503010 triangles=4 remaining_w1=00000000 @1742b8
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1009773 w1=a8988676 triangles=4 remaining_w1=00000000 @1742c0
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100ddc9 w1=feeadacb triangles=4 remaining_w1=00000000 @1742c8
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005b20 endereco=172360 count=16 v0=0 cache=0x0000ffff V0=(476,72,245) ST=(0,0) flag=0000 attr=fe,04,7e,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1009652 w1=87534310 triangles=4 remaining_w1=00000000 @1742d8
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100dcba w1=bcba8a89 triangles=4 remaining_w1=00000000 @1742e0
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b10000fe w1=0000dedc triangles=2 remaining_w1=00000000 @1742e8
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005c20 endereco=172460 count=14 v0=0 cache=0x0000ffff V0=(533,93,-243) ST=(0,0) flag=0000 attr=00,06,82,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1003422 w1=45300310 triangles=4 remaining_w1=00000000 @1742f8
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100da76 w1=cb985654 triangles=4 remaining_w1=00000000 @174300
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005d00 endereco=172540 count=16 v0=0 cache=0x0000ffff V0=(1021,72,242) ST=(0,0) flag=0000 attr=04,07,7e,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1005132 w1=34430110 triangles=4 remaining_w1=00000000 @174310
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1008754 w1=9a986765 triangles=4 remaining_w1=00000000 @174318
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100edbb w1=dcbcac8a triangles=4 remaining_w1=00000000 @174320
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005e00 endereco=172640 count=15 v0=0 cache=0x0000ffff V0=(921,-138,241) ST=(0,0) flag=0000 attr=ff,fa,7e,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1004432 w1=05302010 triangles=4 remaining_w1=00000000 @174338
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1006675 w1=79986564 triangles=4 remaining_w1=00000000 @174340
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100bdb8 w1=acbc8a9a triangles=4 remaining_w1=00000000 @174348
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005ef0 endereco=172730 count=15 v0=0 cache=0x0000ffff V0=(1021,72,242) ST=(0,0) flag=0000 attr=04,07,7e,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1000222 w1=62543110 triangles=4 remaining_w1=00000000 @174360
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100ba89 w1=acb89a87 triangles=4 remaining_w1=00000000 @174368
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b10000ec w1=0000dcdb triangles=2 remaining_w1=00000000 @174370
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=005fe0 endereco=172820 count=15 v0=0 cache=0x0000ffff V0=(909,93,-246) ST=(0,0) flag=0000 attr=fd,09,82,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1005332 w1=34241210 triangles=4 remaining_w1=00000000 @174380
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1008855 w1=79576746 triangles=4 remaining_w1=00000000 @174388
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100bc88 w1=dc8bab9a triangles=4 remaining_w1=00000000 @174390
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_VTX: seg=5 offset=0060d0 endereco=172910 count=16 v0=0 cache=0x0000ffff V0=(918,-221,-247) ST=(0,0) flag=0000 attr=fe,f6,82,ff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b1004412 w1=25123010 triangles=4 remaining_w1=00000000 @1743a8
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100a877 w1=98764556 triangles=4 remaining_w1=00000000 @1743b0
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN G_TRIX_CMD: w0=b100f869 w1=edcab878 triangles=4 remaining_w1=00000000 @1743b8
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN GBI traversal: fim/retorno alcancado comandos=906 listas/chamadas=906 RDP_brutos=218 GBI_detalhados=120 G_TRIX_triangulos=1018 vertex_cache=0x0000ffff
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN OPCODE_HIST: 01:24 03:3 04:93 06:25 b1:279 b6:24 b7:24 b8:26 b9:25 ba:103 bb:25 bc:28 bf:9 e6:23 e7:48 e9:1 ed:2 f2:23 f3:23 f5:46 f6:1 f7:1 fc:25 fd:23 ff:2
+11-15 02:59:23.002 18234 18386 I N64AndroidVulkanGFX: F3DGOLDEN OPCODE_KEY: BF_G_TRI1=9 B1_G_TRIX=279 04_G_VTX=93 06_G_DL=25 01_G_MTX=24 BA=103 B8_ENDDL=26
+11-15 02:59:23.003 18234 18386 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
+11-15 02:59:23.037 18234 18386 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
+11-15 02:59:23.071 18234 18386 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
+11-15 02:59:23.107 18234 18386 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
+11-15 02:59:23.352 18234 18386 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
+11-15 02:59:23.405 18234 18386 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
+11-15 02:59:23.450 18234 18386 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
+11-15 02:59:23.531 18234 18386 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
+11-15 02:59:23.603 18234 18386 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
+11-15 02:59:23.690 18234 18386 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
+11-15 02:59:23.804 18234 18386 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
+11-15 02:59:23.884 18234 18386 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
+11-15 02:59:23.969 18234 18386 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
+11-15 02:59:24.051 18234 18386 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
+11-15 02:59:24.133 18234 18386 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=0a5250+0210
+11-15 02:59:24.217 18234 18386 I N64AndroidVulkanGFX: GoldenEye embedded collector: ok=1 scanned=906 raw_RDP=218 GBI/control=688 data=091250+0210
+11-15 02:59:24.284 18234 18234 I N64AndroidCore: Stopping emulation.
+11-15 02:59:24.286 18234 18234 I N64AndroidCore: M64CMD_STOP: 0
+11-15 02:59:24.313 18234 18386 I N64AndroidCore: R4300 emulator finished.
+11-15 02:59:25.970 18234 18386 I N64AndroidCore: Estado do Core: parametro=1 valor=1
+11-15 02:59:25.970 18234 18386 I N64AndroidCore: M64CMD_EXECUTE terminou: 0
+11-15 02:59:25.971 18234 18234 I N64AndroidCore: Rom closed.
+11-15 02:59:25.971 18234 18234 I N64AndroidCore: ROM_CLOSE: 0
+11-15 02:59:25.990 18234 18234 I N64AndroidCore: CoreShutdown: 0
+11-15 02:59:26.005 18234 18234 I N64AndroidVulkan: Dispositivo Vulkan e swapchain encerrados.
