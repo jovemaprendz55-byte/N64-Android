@@ -136,13 +136,13 @@ std::vector<uint8_t> g_rgba;
 // Temporary first-light path: projected F3D triangles become an RGBA frame.
 std::vector<std::array<float,  9>> g_goldenEyeDebugTriangles;
 std::vector<float> g_goldenEyeRenderVertices;
-void appendGoldenEyeRenderVertex(float x,float y,float z,const GoldenEyeVertex& vertex) {
+void appendGoldenEyeRenderVertex(float x,float y,float z,const GoldenEyeVertex& /* vertex */) {
+    // TEMPORARY FIRST-SCENE PATH: render decoded F3DGOLDEN triangles as
+    // opaque white geometry. This deliberately bypasses vertex colors,
+    // normals and lighting so we can validate projection + Vulkan rasterization
+    // before implementing the complete N64 combiner/lighting pipeline.
     g_goldenEyeRenderVertices.insert(g_goldenEyeRenderVertices.end(),
-        {x,y,z,
-         (vertex.lightingEnabled ? 1.0f : static_cast<float>(vertex.colorOrNormal[0])/255.0f),
-         (vertex.lightingEnabled ? 1.0f : static_cast<float>(vertex.colorOrNormal[1])/255.0f),
-         (vertex.lightingEnabled ? 1.0f : static_cast<float>(vertex.colorOrNormal[2])/255.0f),
-         static_cast<float>(vertex.colorOrNormal[3])/255.0f});
+        {x, y, z, 1.0f, 1.0f, 1.0f, 1.0f});
 }
 
 void logGoldenEyeTriangleColors(const char* source, unsigned triangleIndex,
