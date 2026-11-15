@@ -117,7 +117,6 @@ GFX_INFO g_info{};
 bool g_started = false;
 bool g_initialized = false;
 bool g_romOpen = false;
-bool g_graniteInitialized = false;
 uint64_t g_frameNumber = 0;
 uint64_t g_processDListCalls = 0;
 uint64_t g_processRdpCalls = 0;
@@ -175,24 +174,23 @@ bool initializeRdpBackend() {
         return false;
     }
 
-    // paraLLEl-RDP's runtime shader path uses Granite's global filesystem
-    // and worker-thread context. The Android host does not run a Granite app,
-    // so initialize only the managers required by this renderer.
-    if (!g_graniteInitialized) {
+    // Granite global managers are thread_local. A process-wide boolean is
+    // not sufficient: RomOpen / RDP construction can run on a different
+    // thread from the one which first initialized the backend. Ensure this
+    // calling thread owns its own filesystem and worker-group context.
+    if (!Granite::Global::filesystem() || !Granite::Global::thread_group()) {
         Granite::Global::init(
             Granite::Global::MANAGER_FEATURE_FILESYSTEM_BIT |
             Granite::Global::MANAGER_FEATURE_THREAD_GROUP_BIT,
             2);
-        if (!Granite::Global::filesystem() || !Granite::Global::thread_group()) {
-            __android_log_print(ANDROID_LOG_ERROR, TAG,
-                "RDP backend: Granite global filesystem/thread group unavailable");
-            Granite::Global::deinit();
-            return false;
-        }
-        g_graniteInitialized = true;
-        __android_log_print(ANDROID_LOG_INFO, TAG,
-            "Granite global filesystem and worker threads initialized");
     }
+    if (!Granite::Global::filesystem() || !Granite::Global::thread_group()) {
+        __android_log_print(ANDROID_LOG_ERROR, TAG,
+            "RDP backend: Granite managers unavailable on RDP initialization thread");
+        return false;
+    }
+    __android_log_print(ANDROID_LOG_INFO, TAG,
+        "Granite managers ready on current RDP thread");
 
     g_rdpContext = Vulkan::ContextHandle(new Vulkan::Context());
 
