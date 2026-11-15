@@ -690,41 +690,6 @@ bool uploadVideoFrameLocked(const N64VideoFrame& frame, std::string& error) {
                     static_cast<size_t>(rowBytes));
     }
 
-    // TEMPORARY DIAGNOSTIC: replace the incoming RDP pixels with a known
-    // RGBA test pattern. This isolates the Android Vulkan upload/present path
-    // from paraLLEl-RDP. Remove this block after the presentation test.
-    static constexpr uint8_t testBars[8][4] = {
-        {255u, 255u, 255u, 255u}, {255u, 255u, 0u, 255u},
-        {0u, 255u, 255u, 255u}, {0u, 255u, 0u, 255u},
-        {255u, 0u, 255u, 255u}, {255u, 0u, 0u, 255u},
-        {0u, 0u, 255u, 255u}, {0u, 0u, 0u, 255u}
-    };
-    for (uint32_t y = 0; y < frame.height; ++y) {
-        for (uint32_t x = 0; x < frame.width; ++x) {
-            const uint32_t bar = std::min(7u, (x * 8u) / frame.width);
-            const size_t offset = static_cast<size_t>(y) *
-                                  static_cast<size_t>(rowBytes) +
-                                  static_cast<size_t>(x) * 4u;
-            const uint8_t shade = static_cast<uint8_t>(
-                (static_cast<uint64_t>(y) * 255u) /
-                std::max(1u, frame.height - 1u));
-            packed[offset + 0u] = y < frame.height / 2u
-                ? testBars[bar][0] : shade;
-            packed[offset + 1u] = y < frame.height / 2u
-                ? testBars[bar][1] : shade;
-            packed[offset + 2u] = y < frame.height / 2u
-                ? testBars[bar][2] : shade;
-            packed[offset + 3u] = 255u;
-        }
-    }
-    if (frame.frame_number <= 3u) {
-        __android_log_print(ANDROID_LOG_INFO, TAG,
-            "VULKAN_PATTERN_TEST active: frame=%llu size=%ux%u "
-            "top=8 color bars bottom=grayscale",
-            static_cast<unsigned long long>(frame.frame_number),
-            frame.width, frame.height);
-    }
-
     if (frame.width != g_videoWidth || frame.height != g_videoHeight) {
         return recreateVideoTextureLocked(frame, packed.data(), byteCount, error);
     }
