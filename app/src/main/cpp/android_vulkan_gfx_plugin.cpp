@@ -1004,7 +1004,10 @@ void processF3DDisplayList(bool verbose) {
         return;
     }
 
+    // OSTask owns this interpreter state; nested G_DL calls share it,
+    // but a new graphics task starts with a fresh GBI state.
     GoldenEyeGbiState taskState{};
+    g_goldenEyeDebugTriangles.clear();
     uint32_t budget = 0;
     uint32_t calls = 0;
     uint32_t rawRdpCommands = 0;
