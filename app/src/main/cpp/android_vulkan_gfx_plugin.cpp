@@ -982,6 +982,9 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
 
 void processF3DDisplayList(bool verbose) {
     if (!g_info.DMEM || !g_info.RDRAM) return;
+    // Clear the previous task's packet first. Non-GoldenEye tasks and invalid
+    // payloads must never leave stale geometry queued for a future renderer.
+    n64VulkanSubmitGoldenEyeGeometry(nullptr, 0u, g_processDListCalls);
     uint32_t task[16] = {};
     for (unsigned i = 0; i < 16; ++i)
         task[i] = readN64MemoryWord(g_info.DMEM, 0xFC0u + i * 4u);
