@@ -40,6 +40,7 @@ struct GoldenEyeMatrixState {
     float projection[16] = {};
     bool modelViewValid = false;
     bool projectionValid = false;
+    uint32_t geometryMode = 0;
     // Fast3D G_MTX_PUSH / G_POPMTX use a model-view matrix stack.
     std::array<std::array<float, 16>, 32> modelViewStack{};
     unsigned modelViewStackDepth = 0;
@@ -53,7 +54,6 @@ struct GoldenEyeGbiState {
     std::array<GoldenEyeVertex, 32> vertexCache{};
     GoldenEyeMatrixState matrices{};
     uint32_t vertexCacheMask = 0;
-    uint32_t geometryMode = 0;
 };
 
 void multiplyMatrix4x4(const float a[16], const float b[16], float out[16]) {
