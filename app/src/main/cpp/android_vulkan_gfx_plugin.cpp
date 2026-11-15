@@ -483,10 +483,23 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
         // are signed normal XYZ plus alpha, not an RGBA color. The temporary
         // Vulkan path has no N64 lighting implementation yet, so render lit
         // vertices neutral white instead of incorrectly treating normals as RGB.
-        if (opcode == 0xB7u) { // G_SETGEOMETRYMODE
-            matrixState.geometryMode |= w1;
-        } else if (opcode == 0xB6u) { // G_CLEARGEOMETRYMODE
-            matrixState.geometryMode &= ~w1;
+        if (opcode == 0xB7u || opcode == 0xB6u) {
+            if (opcode == 0xB7u) { // G_SETGEOMETRYMODE
+                matrixState.geometryMode |= w1;
+            } else { // G_CLEARGEOMETRYMODE
+                matrixState.geometryMode &= ~w1;
+            }
+            if (verbose) {
+                __android_log_print(ANDROID_LOG_INFO, TAG,
+                    "F3DGOLDEN GEOMETRY_MODE: cmd=%s mask=%08x state=%08x lighting=%u @%06x",
+                    opcode == 0xB7u ? "SET" : "CLEAR", w1,
+                    matrixState.geometryMode,
+                    (matrixState.geometryMode & 0x00020000u) ? 1u : 0u, pc);
+            }
+            // These are RSP GBI commands, not RDP commands. Consume them here
+            // so they cannot fall through into the generic command/RDP path.
+            pc += 8u;
+            continue;
         }
 
         // GLideN64 F3DGOLDEN_Init maps BOTH 0xBC (G_MOVEWORD) and
