@@ -2,7 +2,7 @@
 import pathlib
 import struct
 import sys
-vertex_path, fragment_path, output_path = map(pathlib.Path, sys.argv[1:4])
+vertex_path, fragment_path, geometry_vertex_path, geometry_fragment_path, output_path = map(pathlib.Path, sys.argv[1:6])
 def words(path):
     data = path.read_bytes()
     if len(data) % 4:
@@ -13,6 +13,8 @@ def array(name, values):
     return f"static const uint32_t {name}[] = {{\n" + ",\n".join(rows) + "\n};\n"
 content = "#pragma once\n#include <cstdint>\n\n"
 content += array("triangle_vertex_spv", words(vertex_path)) + "\n"
-content += array("triangle_fragment_spv", words(fragment_path))
+content += array("triangle_fragment_spv", words(fragment_path)) + "\\n"
+content += array("geometry_vertex_spv", words(geometry_vertex_path)) + "\\n"
+content += array("geometry_fragment_spv", words(geometry_fragment_path))
 output_path.parent.mkdir(parents=True, exist_ok=True)
 output_path.write_text(content, encoding="utf-8")
