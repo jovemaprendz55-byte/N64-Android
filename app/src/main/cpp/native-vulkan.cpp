@@ -1257,9 +1257,14 @@ bool recordFrameCommandBuffer(uint32_t imageIndex, std::string& error) {
     vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS,
         g_pipelineLayout, 0, 1, &g_videoDescriptorSet, 0, nullptr);
     vkCmdDraw(command, 6, 1, 0, 0);
-    // DEBUG GoldenEye desativado temporariamente: a geometria sem texturas
-    // estava sendo desenhada por cima do quadro RDP e deixando os objetos brancos.
-    // O envio/coletor da geometria permanece intacto para reativação após corrigir o shader.
+    // DEBUG GoldenEye: manter a geometria visível enquanto o caminho RDP/texturas
+    // ainda está em desenvolvimento. Próximo passo: corrigir iluminação e texturas. 
+    if (g_geometryVertexCount != 0 && g_geometryVertexBuffer != VK_NULL_HANDLE) {
+        const VkDeviceSize offset = 0;
+        vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, g_geometryPipeline);
+        vkCmdBindVertexBuffers(command, 0, 1, &g_geometryVertexBuffer, &offset);
+        vkCmdDraw(command, g_geometryVertexCount, 1, 0, 0);
+    }
 
     vkCmdEndRenderPass(command);
     status = vkEndCommandBuffer(command);
