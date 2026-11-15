@@ -196,6 +196,22 @@ jobs:
           cp "$SDL_JAVA_DIR"/*.java app/src/main/java/org/libsdl/app/
           test -s app/src/main/java/org/libsdl/app/SDLActivity.java
 
+      # Reuse Gradle, CMake/Ninja and SDL2 outputs between workflow runs.
+      # The restore prefix allows a changed C++ file to reuse unchanged objects.
+      - name: Cache Gradle and native build outputs
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.gradle/native
+            app/.cxx
+            app/build
+            build/sdl2-arm64
+          key: ${{ runner.os }}-android-vulkan-ndk27-cmake322-${{ hashFiles('.github/workflows/vulkan.yml', 'app/build.gradle.kts', 'app/src/main/cpp/CMakeLists.txt', 'app/src/main/cpp/**/*.cpp', 'app/src/main/cpp/**/*.h', 'app/src/main/cpp/**/*.hpp') }}
+          restore-keys: |
+            ${{ runner.os }}-android-vulkan-ndk27-cmake322-
+
       - name: Build Vulkan renderer and Mupen64Plus Core APK
         run: gradle --no-daemon assembleDebug
 
