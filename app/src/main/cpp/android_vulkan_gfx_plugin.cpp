@@ -35,6 +35,12 @@ struct GoldenEyeVertex {
     bool valid = false;
 };
 
+struct GoldenEyeLightState {
+    float color[3]{};
+    float direction[3]{};
+    bool valid = false;
+};
+
 struct GoldenEyeMatrixState {
     float modelView[16] = {};
     float projection[16] = {};
@@ -54,6 +60,8 @@ struct GoldenEyeGbiState {
     std::array<GoldenEyeVertex, 32> vertexCache{};
     GoldenEyeMatrixState matrices{};
     uint32_t vertexCacheMask = 0;
+    std::array<GoldenEyeLightState, 9> lights{};
+    unsigned numLights = 0;
 };
 
 void multiplyMatrix4x4(const float a[16], const float b[16], float out[16]) {
@@ -514,6 +522,55 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
             return true;
         }
 
+        // F3D G_MOVEMEM loads directional lights into the RSP light state.
+        // Keep the data separate from vertex colors: with G_LIGHTING enabled,
+        // the Vtx attribute bytes are normals, not RGB.
+        if (opcode == 0x03u) {
+            const unsigned moveMemType = (w0 >> 16) & 0xffu;
+            if (moveMemType >= 0x86u && moveMemType <= 0x94u &&
+                (moveMemType & 1u) == 0u) {
+                const unsigned lightIndex = (moveMemType - 0x86u) / 2u;
+                const unsigned segment = (w1 >> 24) & 0xffu;
+                const uint32_t offset = w1 & 0x00ffffffu;
+                const uint64_t address64 = segment < 16u
+                    ? static_cast<uint64_t>(segments[segment]) + offset
+                    : 8u * 1024u * 1024u;
+                if (lightIndex < matrixState.lights.size() &&
+                    address64 <= 8u * 1024u * 1024u - 24u) {
+                    const uint32_t address = static_cast<uint32_t>(address64);
+                    GoldenEyeLightState& light = matrixState.lights[lightIndex];
+                    for (unsigned channel = 0; channel < 3u; ++channel) {
+                        light.color[channel] =
+                            static_cast<float>(rdramByte(address + channel)) / 255.0f;
+                        const int8_t direction =
+                            static_cast<int8_t>(rdramByte(address + 8u + channel));
+                        light.direction[channel] = static_cast<float>(direction) / 127.0f;
+                    }
+                    const float length = std::sqrt(
+                        light.direction[0] * light.direction[0] +
+                        light.direction[1] * light.direction[1] +
+                        light.direction[2] * light.direction[2]);
+                    if (length > 0.0001f) {
+                        for (float& component : light.direction) component /= length;
+                        light.valid = true;
+                    } else {
+                        light.valid = false;
+                    }
+                    if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
+                        "F3DGOLDEN LIGHT_LOAD[%u]: addr=%06x rgb=%.3f,%.3f,%.3f dir=%.3f,%.3f,%.3f valid=%u",
+                        lightIndex, address, light.color[0], light.color[1], light.color[2],
+                        light.direction[0], light.direction[1], light.direction[2],
+                        light.valid ? 1u : 0u);
+                } else if (verbose) {
+                    __android_log_print(ANDROID_LOG_WARN, TAG,
+                        "F3DGOLDEN LIGHT_LOAD invalido: type=%02x seg=%u offset=%06x",
+                        moveMemType, segment, offset);
+                }
+            }
+            pc += 8u;
+            continue;
+        }
+
         // F3D geometry-mode commands. In a lit vertex, the final four bytes
         // are signed normal XYZ plus alpha, not an RGBA color. The temporary
         // Vulkan path has no N64 lighting implementation yet, so render lit
@@ -548,6 +605,18 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                 if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
                     "F3DGOLDEN MOVEWORD: opcode=%02x segment[%u]=%06x cmd=%08x/%08x @%06x",
                     opcode, segment, segments[segment], w0, w1, pc);
+            } else if (moveWordType == 0x02u) { // G_MW_NUMLIGHT
+                if (w1 >= 0x80000020u) {
+                    matrixState.numLights = std::min(
+                        static_cast<unsigned>((w1 - 0x80000000u) >> 5) - 1u,
+                        8u);
+                    if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
+                        "F3DGOLDEN NUM_LIGHTS: count=%u raw=%08x @%06x",
+                        matrixState.numLights, w1, pc);
+                } else if (verbose) {
+                    __android_log_print(ANDROID_LOG_WARN, TAG,
+                        "F3DGOLDEN NUM_LIGHTS invalido: %08x @%06x", w1, pc);
+                }
             }
         } else if (opcode == 0x06u) { // F3D G_DL
             const unsigned mode = (w0 >> 16) & 0xffu;
