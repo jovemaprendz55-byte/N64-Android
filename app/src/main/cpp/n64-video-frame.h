@@ -51,13 +51,11 @@ static inline int n64VideoFrameIsValid(const N64VideoFrame* frame) {
 bool n64VulkanSubmitVideoFrame(const N64VideoFrame* frame);
 
 /*
- * Temporary geometry handoff: xyz positions are normalized device coordinates
- * (NDC), three vertices per triangle. The Vulkan backend copies the array
- * before returning. This validates the GBI-to-renderer boundary; it does not
- * imply that the geometry is drawn yet.
+ * Each GoldenEye vertex is seven floats: NDC xyz followed by RGBA color.
+ * Three vertices per triangle; the Vulkan backend copies the packet.
  */
 bool n64VulkanSubmitGoldenEyeGeometry(
-    const float* positions_xyz, uint32_t vertex_count, uint64_t task_number);
+    const float* vertices_xyz_rgba, uint32_t vertex_count, uint64_t task_number);
 #endif
 
 typedef void (*N64VideoFrameCallback)(
