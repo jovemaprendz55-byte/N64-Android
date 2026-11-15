@@ -70,9 +70,8 @@ VkDescriptorSet g_videoDescriptorSet = VK_NULL_HANDLE;
 uint32_t g_videoWidth = 0;
 uint32_t g_videoHeight = 0;
 bool g_rendererFaulted = false;
-// CPU-side handoff buffer for projected GoldenEye geometry. A dedicated 3D
-// Vulkan pipeline will consume this data in a later stage.
-std::vector<float> g_goldenEyePositionsNdc;
+// Interleaved GoldenEye vertex packet: NDC xyz + RGBA float color.
+std::vector<float> g_goldenEyeVerticesXyzRgba;
 
 PFN_vkDestroySurfaceKHR pDestroySurface = nullptr;
 PFN_vkGetPhysicalDeviceSurfaceSupportKHR pGetSurfaceSupport = nullptr;
@@ -1075,19 +1074,23 @@ bool createGeometryPipeline(std::string& error) {
 
     VkVertexInputBindingDescription binding{};
     binding.binding = 0;
-    binding.stride = sizeof(float) * 3u;
+    binding.stride = sizeof(float) * 7u;
     binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    VkVertexInputAttributeDescription attribute{};
-    attribute.location = 0;
-    attribute.binding = 0;
-    attribute.format = VK_FORMAT_R32G32B32_SFLOAT;
-    attribute.offset = 0;
+    VkVertexInputAttributeDescription attributes[2]{};
+    attributes[0].location = 0;
+    attributes[0].binding = 0;
+    attributes[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+    attributes[0].offset = 0;
+    attributes[1].location = 1;
+    attributes[1].binding = 0;
+    attributes[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    attributes[1].offset = sizeof(float) * 3u;
     VkPipelineVertexInputStateCreateInfo vertex{};
     vertex.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertex.vertexBindingDescriptionCount = 1;
     vertex.pVertexBindingDescriptions = &binding;
-    vertex.vertexAttributeDescriptionCount = 1;
-    vertex.pVertexAttributeDescriptions = &attribute;
+    vertex.vertexAttributeDescriptionCount = 2;
+    vertex.pVertexAttributeDescriptions = attributes;
 
     VkPipelineInputAssemblyStateCreateInfo assembly{};
     assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -1148,8 +1151,8 @@ bool createGeometryPipeline(std::string& error) {
 }
 
 bool uploadGoldenEyeGeometryLocked(std::string& error) {
-    const VkDeviceSize required = static_cast<VkDeviceSize>(g_goldenEyePositionsNdc.size() * sizeof(float));
-    g_geometryVertexCount = static_cast<uint32_t>(g_goldenEyePositionsNdc.size() / 3u);
+    const VkDeviceSize required = static_cast<VkDeviceSize>(g_goldenEyeVerticesXyzRgba.size() * sizeof(float));
+    g_geometryVertexCount = static_cast<uint32_t>(g_goldenEyeVerticesXyzRgba.size() / 7u);
     if (required == 0) return true;
     if (required > g_geometryVertexCapacity) {
         if (g_geometryVertexBuffer != VK_NULL_HANDLE)
@@ -1172,7 +1175,7 @@ bool uploadGoldenEyeGeometryLocked(std::string& error) {
         error = "Mapeamento do vertex buffer GoldenEye falhou: " + std::to_string(status);
         return false;
     }
-    std::memcpy(mapped, g_goldenEyePositionsNdc.data(), static_cast<size_t>(required));
+    std::memcpy(mapped, g_goldenEyeVerticesXyzRgba.data(), static_cast<size_t>(required));
     vkUnmapMemory(g_device, g_geometryVertexMemory);
     return true;
 }
@@ -1942,23 +1945,23 @@ extern "C" bool n64VulkanSubmitVideoFrame(const N64VideoFrame* frame) {
 // Adapter can be registered directly as an N64VideoFrameCallback.
 // user_data is reserved for future per-core/per-instance renderer contexts.
 extern "C" bool n64VulkanSubmitGoldenEyeGeometry(
-    const float* positions_xyz, uint32_t vertex_count, uint64_t task_number) {
+    const float* vertices_xyz_rgba, uint32_t vertex_count, uint64_t task_number) {
     if ((vertex_count % 3u) != 0u || vertex_count > 3u * 1024u * 1024u ||
-        (vertex_count != 0u && positions_xyz == nullptr)) {
+        (vertex_count != 0u && vertices_xyz_rgba == nullptr)) {
         __android_log_print(ANDROID_LOG_WARN, TAG,
             "GoldenEye geometry rejeitada: vertex_count=%u", vertex_count);
         return false;
     }
     std::lock_guard<std::mutex> lock(g_mutex);
     if (vertex_count == 0u) {
-        g_goldenEyePositionsNdc.clear();
+        g_goldenEyeVerticesXyzRgba.clear();
     } else {
-        g_goldenEyePositionsNdc.assign(
-            positions_xyz, positions_xyz + static_cast<size_t>(vertex_count) * 3u);
+        g_goldenEyeVerticesXyzRgba.assign(
+            vertices_xyz_rgba, vertices_xyz_rgba + static_cast<size_t>(vertex_count) * 7u);
     }
     if (vertex_count != 0u && (task_number <= 12u || (task_number % 120u) == 0u)) {
         __android_log_print(ANDROID_LOG_INFO, TAG,
-            "GoldenEye geometry recebida: task=%llu vertices=%u triangulos=%u (NDC; ainda sem draw)",
+            "GoldenEye geometry recebida: task=%llu vertices=%u triangulos=%u (NDC xyz + RGBA)",
             static_cast<unsigned long long>(task_number), vertex_count,
             vertex_count / 3u);
     }
