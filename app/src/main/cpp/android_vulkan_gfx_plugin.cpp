@@ -47,6 +47,8 @@ struct GoldenEyeMatrixState {
     bool modelViewValid = false;
     bool projectionValid = false;
     uint32_t geometryMode = 0;
+    std::array<GoldenEyeLightState, 9> lights{};
+    unsigned numLights = 0;
     // Fast3D G_MTX_PUSH / G_POPMTX use a model-view matrix stack.
     std::array<std::array<float, 16>, 32> modelViewStack{};
     unsigned modelViewStackDepth = 0;
@@ -60,8 +62,6 @@ struct GoldenEyeGbiState {
     std::array<GoldenEyeVertex, 32> vertexCache{};
     GoldenEyeMatrixState matrices{};
     uint32_t vertexCacheMask = 0;
-    std::array<GoldenEyeLightState, 9> lights{};
-    unsigned numLights = 0;
 };
 
 void multiplyMatrix4x4(const float a[16], const float b[16], float out[16]) {
@@ -566,9 +566,9 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                         "F3DGOLDEN LIGHT_LOAD invalido: type=%02x seg=%u offset=%06x",
                         moveMemType, segment, offset);
                 }
+                pc += 8u;
+                continue;
             }
-            pc += 8u;
-            continue;
         }
 
         // F3D geometry-mode commands. In a lit vertex, the final four bytes
