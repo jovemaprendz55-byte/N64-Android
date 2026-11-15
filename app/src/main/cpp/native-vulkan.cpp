@@ -48,6 +48,12 @@ std::vector<VkImageView> g_swapchainViews;
 VkRenderPass g_renderPass = VK_NULL_HANDLE;
 VkPipelineLayout g_pipelineLayout = VK_NULL_HANDLE;
 VkPipeline g_graphicsPipeline = VK_NULL_HANDLE;
+VkPipelineLayout g_geometryPipelineLayout = VK_NULL_HANDLE;
+VkPipeline g_geometryPipeline = VK_NULL_HANDLE;
+VkBuffer g_geometryVertexBuffer = VK_NULL_HANDLE;
+VkDeviceMemory g_geometryVertexMemory = VK_NULL_HANDLE;
+VkDeviceSize g_geometryVertexCapacity = 0;
+uint32_t g_geometryVertexCount = 0;
 std::vector<VkFramebuffer> g_framebuffers;
 VkCommandPool g_commandPool = VK_NULL_HANDLE;
 std::vector<VkCommandBuffer> g_commandBuffers;
@@ -91,6 +97,20 @@ void destroySwapchainLocked() {
         g_commandPool = VK_NULL_HANDLE;
         g_commandBuffers.clear();
 
+        if (g_geometryPipeline != VK_NULL_HANDLE)
+            vkDestroyPipeline(g_device, g_geometryPipeline, nullptr);
+        g_geometryPipeline = VK_NULL_HANDLE;
+        if (g_geometryPipelineLayout != VK_NULL_HANDLE)
+            vkDestroyPipelineLayout(g_device, g_geometryPipelineLayout, nullptr);
+        g_geometryPipelineLayout = VK_NULL_HANDLE;
+        if (g_geometryVertexBuffer != VK_NULL_HANDLE)
+            vkDestroyBuffer(g_device, g_geometryVertexBuffer, nullptr);
+        if (g_geometryVertexMemory != VK_NULL_HANDLE)
+            vkFreeMemory(g_device, g_geometryVertexMemory, nullptr);
+        g_geometryVertexBuffer = VK_NULL_HANDLE;
+        g_geometryVertexMemory = VK_NULL_HANDLE;
+        g_geometryVertexCapacity = 0;
+        g_geometryVertexCount = 0;
         if (g_graphicsPipeline != VK_NULL_HANDLE)
             vkDestroyPipeline(g_device, g_graphicsPipeline, nullptr);
         g_graphicsPipeline = VK_NULL_HANDLE;
@@ -1024,6 +1044,195 @@ bool createGraphicsPipeline(std::string& error) {
     return true;
 }
 
+bool createGeometryPipeline(std::string& error) {
+    auto makeShader = [](const uint32_t* code, size_t size, VkShaderModule* module) {
+        VkShaderModuleCreateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        info.codeSize = size;
+        info.pCode = code;
+        return vkCreateShaderModule(g_device, &info, nullptr, module);
+    };
+    VkShaderModule vert = VK_NULL_HANDLE;
+    VkShaderModule frag = VK_NULL_HANDLE;
+    VkResult status = makeShader(geometry_vertex_spv, sizeof(geometry_vertex_spv), &vert);
+    if (status == VK_SUCCESS)
+        status = makeShader(geometry_fragment_spv, sizeof(geometry_fragment_spv), &frag);
+    if (status != VK_SUCCESS) {
+        if (vert != VK_NULL_HANDLE) vkDestroyShaderModule(g_device, vert, nullptr);
+        error = "Shaders da geometria GoldenEye falharam: " + std::to_string(status);
+        return false;
+    }
+
+    VkPipelineShaderStageCreateInfo stages[2]{};
+    stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+    stages[0].module = vert;
+    stages[0].pName = "main";
+    stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    stages[1].module = frag;
+    stages[1].pName = "main";
+
+    VkVertexInputBindingDescription binding{};
+    binding.binding = 0;
+    binding.stride = sizeof(float) * 3u;
+    binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    VkVertexInputAttributeDescription attribute{};
+    attribute.location = 0;
+    attribute.binding = 0;
+    attribute.format = VK_FORMAT_R32G32B32_SFLOAT;
+    attribute.offset = 0;
+    VkPipelineVertexInputStateCreateInfo vertex{};
+    vertex.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vertex.vertexBindingDescriptionCount = 1;
+    vertex.pVertexBindingDescriptions = &binding;
+    vertex.vertexAttributeDescriptionCount = 1;
+    vertex.pVertexAttributeDescriptions = &attribute;
+
+    VkPipelineInputAssemblyStateCreateInfo assembly{};
+    assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    VkPipelineViewportStateCreateInfo viewport{};
+    viewport.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewport.viewportCount = 1;
+    viewport.scissorCount = 1;
+    VkPipelineRasterizationStateCreateInfo raster{};
+    raster.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    raster.polygonMode = VK_POLYGON_MODE_FILL;
+    raster.cullMode = VK_CULL_MODE_NONE;
+    raster.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    raster.lineWidth = 1.0f;
+    VkPipelineMultisampleStateCreateInfo samples{};
+    samples.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    samples.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    VkPipelineColorBlendAttachmentState blendAttachment{};
+    blendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+        VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    VkPipelineColorBlendStateCreateInfo blend{};
+    blend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    blend.attachmentCount = 1;
+    blend.pAttachments = &blendAttachment;
+    const VkDynamicState states[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+    VkPipelineDynamicStateCreateInfo dynamic{};
+    dynamic.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamic.dynamicStateCount = 2;
+    dynamic.pDynamicStates = states;
+
+    VkPipelineLayoutCreateInfo layout{};
+    layout.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    status = vkCreatePipelineLayout(g_device, &layout, nullptr, &g_geometryPipelineLayout);
+    if (status == VK_SUCCESS) {
+        VkGraphicsPipelineCreateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        info.stageCount = 2;
+        info.pStages = stages;
+        info.pVertexInputState = &vertex;
+        info.pInputAssemblyState = &assembly;
+        info.pViewportState = &viewport;
+        info.pRasterizationState = &raster;
+        info.pMultisampleState = &samples;
+        info.pColorBlendState = &blend;
+        info.pDynamicState = &dynamic;
+        info.layout = g_geometryPipelineLayout;
+        info.renderPass = g_renderPass;
+        status = vkCreateGraphicsPipelines(g_device, VK_NULL_HANDLE, 1, &info,
+                                           nullptr, &g_geometryPipeline);
+    }
+    vkDestroyShaderModule(g_device, frag, nullptr);
+    vkDestroyShaderModule(g_device, vert, nullptr);
+    if (status != VK_SUCCESS) {
+        error = "Pipeline 3D GoldenEye falhou: " + std::to_string(status);
+        return false;
+    }
+    return true;
+}
+
+bool uploadGoldenEyeGeometryLocked(std::string& error) {
+    const VkDeviceSize required = static_cast<VkDeviceSize>(g_goldenEyePositionsNdc.size() * sizeof(float));
+    g_geometryVertexCount = static_cast<uint32_t>(g_goldenEyePositionsNdc.size() / 3u);
+    if (required == 0) return true;
+    if (required > g_geometryVertexCapacity) {
+        if (g_geometryVertexBuffer != VK_NULL_HANDLE)
+            vkDestroyBuffer(g_device, g_geometryVertexBuffer, nullptr);
+        if (g_geometryVertexMemory != VK_NULL_HANDLE)
+            vkFreeMemory(g_device, g_geometryVertexMemory, nullptr);
+        g_geometryVertexBuffer = VK_NULL_HANDLE;
+        g_geometryVertexMemory = VK_NULL_HANDLE;
+        g_geometryVertexCapacity = 0;
+        VkDeviceSize capacity = std::max<VkDeviceSize>(required, 64u * 1024u);
+        if (!createBuffer(capacity, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                          &g_geometryVertexBuffer, &g_geometryVertexMemory, error))
+            return false;
+        g_geometryVertexCapacity = capacity;
+    }
+    void* mapped = nullptr;
+    VkResult status = vkMapMemory(g_device, g_geometryVertexMemory, 0, required, 0, &mapped);
+    if (status != VK_SUCCESS) {
+        error = "Mapeamento do vertex buffer GoldenEye falhou: " + std::to_string(status);
+        return false;
+    }
+    std::memcpy(mapped, g_goldenEyePositionsNdc.data(), static_cast<size_t>(required));
+    vkUnmapMemory(g_device, g_geometryVertexMemory);
+    return true;
+}
+
+bool recordFrameCommandBuffer(uint32_t imageIndex, std::string& error) {
+    VkCommandBuffer command = g_commandBuffers[imageIndex];
+    VkResult status = vkResetCommandBuffer(command, 0);
+    if (status != VK_SUCCESS) {
+        error = "Reset do command buffer Vulkan falhou: " + std::to_string(status);
+        return false;
+    }
+    VkCommandBufferBeginInfo begin{};
+    begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    status = vkBeginCommandBuffer(command, &begin);
+    if (status != VK_SUCCESS) {
+        error = "Início do command buffer Vulkan falhou: " + std::to_string(status);
+        return false;
+    }
+    VkClearValue clear{};
+    clear.color.float32[0] = 0.035f;
+    clear.color.float32[1] = 0.10f;
+    clear.color.float32[2] = 0.22f;
+    clear.color.float32[3] = 1.0f;
+    VkRenderPassBeginInfo pass{};
+    pass.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    pass.renderPass = g_renderPass;
+    pass.framebuffer = g_framebuffers[imageIndex];
+    pass.renderArea.extent.width = ANativeWindow_getWidth(g_window);
+    pass.renderArea.extent.height = ANativeWindow_getHeight(g_window);
+    pass.clearValueCount = 1;
+    pass.pClearValues = &clear;
+    vkCmdBeginRenderPass(command, &pass, VK_SUBPASS_CONTENTS_INLINE);
+    VkViewport viewport{};
+    viewport.width = static_cast<float>(ANativeWindow_getWidth(g_window));
+    viewport.height = static_cast<float>(ANativeWindow_getHeight(g_window));
+    viewport.maxDepth = 1.0f;
+    VkRect2D scissor{};
+    scissor.extent.width = static_cast<uint32_t>(ANativeWindow_getWidth(g_window));
+    scissor.extent.height = static_cast<uint32_t>(ANativeWindow_getHeight(g_window));
+    vkCmdSetViewport(command, 0, 1, &viewport);
+    vkCmdSetScissor(command, 0, 1, &scissor);
+    vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, g_graphicsPipeline);
+    vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS,
+        g_pipelineLayout, 0, 1, &g_videoDescriptorSet, 0, nullptr);
+    vkCmdDraw(command, 6, 1, 0, 0);
+    if (g_geometryVertexCount != 0 && g_geometryVertexBuffer != VK_NULL_HANDLE) {
+        const VkDeviceSize offset = 0;
+        vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, g_geometryPipeline);
+        vkCmdBindVertexBuffers(command, 0, 1, &g_geometryVertexBuffer, &offset);
+        vkCmdDraw(command, g_geometryVertexCount, 1, 0, 0);
+    }
+    vkCmdEndRenderPass(command);
+    status = vkEndCommandBuffer(command);
+    if (status != VK_SUCCESS) {
+        error = "Finalização do command buffer Vulkan falhou: " + std::to_string(status);
+        return false;
+    }
+    return true;
+}
+
 bool createRenderResources(std::string& error) {
     VkAttachmentDescription attachment{};
     attachment.format = g_swapchainFormat;
@@ -1072,6 +1281,7 @@ bool createRenderResources(std::string& error) {
         return false;
     }
     if (!createGraphicsPipeline(error)) return false;
+    if (!createGeometryPipeline(error)) return false;
 
     for (VkImageView view : g_swapchainViews) {
         VkFramebufferCreateInfo framebufferInfo{};
@@ -1200,6 +1410,7 @@ bool presentTestFrame(std::string& error, bool allowSwapchainRecovery) {
         error = "vkWaitForFences falhou: " + std::to_string(status);
         return false;
     }
+    if (!uploadGoldenEyeGeometryLocked(error)) return false;
     uint32_t imageIndex = 0;
     status = vkAcquireNextImageKHR(g_device, g_swapchain, UINT64_MAX,
                                    g_imageAvailable, VK_NULL_HANDLE, &imageIndex);
@@ -1221,6 +1432,10 @@ bool presentTestFrame(std::string& error, bool allowSwapchainRecovery) {
     if (imageIndex >= g_commandBuffers.size()) {
         g_rendererFaulted = true;
         error = "Índice de imagem Vulkan fora do intervalo; renderer pausado até reinicialização.";
+        return false;
+    }
+    if (!recordFrameCommandBuffer(imageIndex, error)) {
+        g_rendererFaulted = true;
         return false;
     }
     status = vkResetFences(g_device, 1, &g_frameFence);
