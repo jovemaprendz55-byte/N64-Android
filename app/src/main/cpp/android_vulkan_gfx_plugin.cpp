@@ -136,20 +136,65 @@ std::vector<uint8_t> g_rgba;
 // Temporary first-light path: projected F3D triangles become an RGBA frame.
 std::vector<std::array<float,  9>> g_goldenEyeDebugTriangles;
 std::vector<float> g_goldenEyeRenderVertices;
+void getGoldenEyeVertexColor(const GoldenEyeVertex& vertex,
+                              const GoldenEyeMatrixState& state,
+                              float color[4]) {
+    color[3] = static_cast<float>(vertex.colorOrNormal[3]) / 255.0f;
+    if (!vertex.lightingEnabled) {
+        color[0] = static_cast<float>(vertex.colorOrNormal[0]) / 255.0f;
+        color[1] = static_cast<float>(vertex.colorOrNormal[1]) / 255.0f;
+        color[2] = static_cast<float>(vertex.colorOrNormal[2]) / 255.0f;
+        return;
+    }
+
+    // F3D lit vertices carry signed normal XYZ in the final four bytes.
+    // Evaluate ambient + Lambert directional lights instead of forcing white.
+    float normal[3] = {
+        static_cast<float>(static_cast<int8_t>(vertex.colorOrNormal[0])) / 127.0f,
+        static_cast<float>(static_cast<int8_t>(vertex.colorOrNormal[1])) / 127.0f,
+        static_cast<float>(static_cast<int8_t>(vertex.colorOrNormal[2])) / 127.0f
+    };
+    float normalLength = std::sqrt(normal[0]*normal[0] +
+                                   normal[1]*normal[1] +
+                                   normal[2]*normal[2]);
+    if (normalLength > 0.0001f) {
+        for (float& component : normal) component /= normalLength;
+    }
+
+    color[0] = color[1] = color[2] = 0.0f;
+    bool foundLight = false;
+    const unsigned directionalCount = std::min(state.numLights, 8u);
+    for (unsigned i = 0; i < directionalCount; ++i) {
+        const GoldenEyeLightState& light = state.lights[i];
+        if (!light.valid) continue;
+        foundLight = true;
+        const float diffuse = std::max(0.0f,
+            -(normal[0]*light.direction[0] +
+              normal[1]*light.direction[1] +
+              normal[2]*light.direction[2]));
+        for (unsigned channel = 0; channel < 3u; ++channel)
+            color[channel] += light.color[channel] * diffuse;
+    }
+    // In F3D the ambient light follows the directional lights.
+    if (directionalCount < state.lights.size() &&
+        state.lights[directionalCount].valid) {
+        const GoldenEyeLightState& ambient = state.lights[directionalCount];
+        foundLight = true;
+        for (unsigned channel = 0; channel < 3u; ++channel)
+            color[channel] += ambient.color[channel];
+    }
+    if (!foundLight) color[0] = color[1] = color[2] = 1.0f;
+    for (unsigned channel = 0; channel < 3u; ++channel)
+        color[channel] = std::clamp(color[channel], 0.0f, 1.0f);
+}
+
 void appendGoldenEyeRenderVertex(float x, float y, float z,
-                                  const GoldenEyeVertex& vertex) {
-    // First restore native vertex RGBA for unlit F3DGOLDEN geometry.
-    // When lighting is enabled, Vtx RGB contains a signed normal, not color;
-    // keep that path neutral white until directional lighting is implemented.
-    const float r = vertex.lightingEnabled ? 1.0f :
-        static_cast<float>(vertex.colorOrNormal[0]) / 255.0f;
-    const float g = vertex.lightingEnabled ? 1.0f :
-        static_cast<float>(vertex.colorOrNormal[1]) / 255.0f;
-    const float b = vertex.lightingEnabled ? 1.0f :
-        static_cast<float>(vertex.colorOrNormal[2]) / 255.0f;
-    const float a = static_cast<float>(vertex.colorOrNormal[3]) / 255.0f;
+                                  const GoldenEyeVertex& vertex,
+                                  const GoldenEyeMatrixState& state) {
+    float color[4] = {};
+    getGoldenEyeVertexColor(vertex, state, color);
     g_goldenEyeRenderVertices.insert(g_goldenEyeRenderVertices.end(),
-        {x, y, z, r, g, b, a});
+        {x, y, z, color[0], color[1], color[2], color[3]});
 }
 
 void logGoldenEyeTriangleColors(const char* source, unsigned triangleIndex,
@@ -157,18 +202,16 @@ void logGoldenEyeTriangleColors(const char* source, unsigned triangleIndex,
                                 const GoldenEyeVertex& a,
                                 const GoldenEyeVertex& b,
                                 const GoldenEyeVertex& c,
-                                uint32_t geometryMode) {
+                                uint32_t geometryMode,
+                                const GoldenEyeMatrixState& currentColorState) {
     if (triangleIndex >= 12u) return;
     const GoldenEyeVertex* vertices[3] = {&a, &b, &c};
     float output[3][4] = {};
     for (unsigned i = 0; i < 3u; ++i) {
-        output[i][0] = vertices[i]->lightingEnabled ? 1.0f :
-            static_cast<float>(vertices[i]->colorOrNormal[0]) / 255.0f;
-        output[i][1] = vertices[i]->lightingEnabled ? 1.0f :
-            static_cast<float>(vertices[i]->colorOrNormal[1]) / 255.0f;
-        output[i][2] = vertices[i]->lightingEnabled ? 1.0f :
-            static_cast<float>(vertices[i]->colorOrNormal[2]) / 255.0f;
-        output[i][3] = static_cast<float>(vertices[i]->colorOrNormal[3]) / 255.0f;
+        float color[4] = {};
+        getGoldenEyeVertexColor(*vertices[i], currentColorState, color);
+        for (unsigned channel = 0; channel < 4u; ++channel)
+            output[i][channel] = color[channel];
     }
     __android_log_print(ANDROID_LOG_INFO, TAG,
         "F3DGOLDEN TRI_COLOR[%u] src=%s idx=(%u,%u,%u) geom=%08x "
@@ -819,7 +862,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     const GoldenEyeVertex& c = vertexCache[v2];
                     if (verbose)
                         logGoldenEyeTriangleColors("G_TRI1", decodedGoldenTriangles,
-                            v0, v1, v2, a, b, c, matrixState.geometryMode);
+                            v0, v1, v2, a, b, c, matrixState.geometryMode, matrixState);
 
                     if (matrixState.modelViewValid && matrixState.projectionValid) {
                         logGoldenEyeActiveMatrixState(matrixState, decodedGoldenTriangles, pc);
@@ -837,9 +880,9 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                             const float bx=clip[1][0]/clip[1][3], by=clip[1][1]/clip[1][3], bz=clip[1][2]/clip[1][3];
                             const float cx=clip[2][0]/clip[2][3], cy=clip[2][1]/clip[2][3], cz=clip[2][2]/clip[2][3];
                             g_goldenEyeDebugTriangles.push_back({ax,ay,az,bx,by,bz,cx,cy,cz});
-                            appendGoldenEyeRenderVertex(ax,ay,az,a);
-                            appendGoldenEyeRenderVertex(bx,by,bz,b);
-                            appendGoldenEyeRenderVertex(cx,cy,cz,c);
+                            appendGoldenEyeRenderVertex(ax,ay,az,a,matrixState);
+                            appendGoldenEyeRenderVertex(bx,by,bz,b,matrixState);
+                            appendGoldenEyeRenderVertex(cx,cy,cz,c,matrixState);
                         }
                     }
                     if (decodedGoldenTriangles < 32u) {
@@ -965,9 +1008,9 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                                 ndc[0][0], ndc[0][1], ndc[0][2],
                                 ndc[1][0], ndc[1][1], ndc[1][2],
                                 ndc[2][0], ndc[2][1], ndc[2][2]});
-                            appendGoldenEyeRenderVertex(ndc[0][0],ndc[0][1],ndc[0][2],a);
-                            appendGoldenEyeRenderVertex(ndc[1][0],ndc[1][1],ndc[1][2],b);
-                            appendGoldenEyeRenderVertex(ndc[2][0],ndc[2][1],ndc[2][2],c);
+                            appendGoldenEyeRenderVertex(ndc[0][0],ndc[0][1],ndc[0][2],a,matrixState);
+                            appendGoldenEyeRenderVertex(ndc[1][0],ndc[1][1],ndc[1][2],b,matrixState);
+                            appendGoldenEyeRenderVertex(ndc[2][0],ndc[2][1],ndc[2][2],c,matrixState);
                         }
                     }
                     if (decodedGoldenTriangles < 12u &&
