@@ -1257,14 +1257,9 @@ bool recordFrameCommandBuffer(uint32_t imageIndex, std::string& error) {
     vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS,
         g_pipelineLayout, 0, 1, &g_videoDescriptorSet, 0, nullptr);
     vkCmdDraw(command, 6, 1, 0, 0);
-    // DEBUG GoldenEye: manter a geometria visível enquanto o caminho RDP/texturas
-    // ainda está em desenvolvimento. Próximo passo: corrigir iluminação e texturas. 
-    if (g_geometryVertexCount != 0 && g_geometryVertexBuffer != VK_NULL_HANDLE) {
-        const VkDeviceSize offset = 0;
-        vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, g_geometryPipeline);
-        vkCmdBindVertexBuffers(command, 0, 1, &g_geometryVertexBuffer, &offset);
-        vkCmdDraw(command, g_geometryVertexCount, 1, 0, 0);
-    }
+    // GoldenEye diagnostic geometry is collected for logs only. Do not draw it
+    // over the paraLLEl-RDP frame: its vertex colors are placeholders (often white)
+    // and would hide the actual textured RDP output being debugged.
 
     vkCmdEndRenderPass(command);
     status = vkEndCommandBuffer(command);
