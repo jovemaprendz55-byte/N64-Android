@@ -126,6 +126,15 @@ uint64_t g_viRejected = 0;
 std::vector<uint8_t> g_rgba;
 // Temporary first-light path: projected F3D triangles become an RGBA frame.
 std::vector<std::array<float,  9>> g_goldenEyeDebugTriangles;
+std::vector<float> g_goldenEyeRenderVertices;
+void appendGoldenEyeRenderVertex(float x,float y,float z,const GoldenEyeVertex& vertex) {
+    g_goldenEyeRenderVertices.insert(g_goldenEyeRenderVertices.end(),
+        {x,y,z,
+         static_cast<float>(vertex.colorOrNormal[0])/255.0f,
+         static_cast<float>(vertex.colorOrNormal[1])/255.0f,
+         static_cast<float>(vertex.colorOrNormal[2])/255.0f,
+         static_cast<float>(vertex.colorOrNormal[3])/255.0f});
+}
 std::vector<uint8_t> g_goldenEyeDebugPixels;
 bool g_hasGoldenEyeDebugFrame = false;
 Vulkan::ContextHandle g_rdpContext;
@@ -683,10 +692,15 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                             transformGoldenEyeVector4(matrixState.projection,mv,clip[vi]);
                             if (clip[vi][3] <= 0.00001f) valid=false;
                         }
-                        if (valid) g_goldenEyeDebugTriangles.push_back({
-                            clip[0][0]/clip[0][3],clip[0][1]/clip[0][3],clip[0][2]/clip[0][3],
-                            clip[1][0]/clip[1][3],clip[1][1]/clip[1][3],clip[1][2]/clip[1][3],
-                            clip[2][0]/clip[2][3],clip[2][1]/clip[2][3],clip[2][2]/clip[2][3]});
+                        if (valid) {
+                            const float ax=clip[0][0]/clip[0][3], ay=clip[0][1]/clip[0][3], az=clip[0][2]/clip[0][3];
+                            const float bx=clip[1][0]/clip[1][3], by=clip[1][1]/clip[1][3], bz=clip[1][2]/clip[1][3];
+                            const float cx=clip[2][0]/clip[2][3], cy=clip[2][1]/clip[2][3], cz=clip[2][2]/clip[2][3];
+                            g_goldenEyeDebugTriangles.push_back({ax,ay,az,bx,by,bz,cx,cy,cz});
+                            appendGoldenEyeRenderVertex(ax,ay,az,a);
+                            appendGoldenEyeRenderVertex(bx,by,bz,b);
+                            appendGoldenEyeRenderVertex(cx,cy,cz,c);
+                        }
                     }
                     if (decodedGoldenTriangles < 32u) {
                         if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
@@ -808,6 +822,9 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                                 ndc[0][0], ndc[0][1], ndc[0][2],
                                 ndc[1][0], ndc[1][1], ndc[1][2],
                                 ndc[2][0], ndc[2][1], ndc[2][2]});
+                            appendGoldenEyeRenderVertex(ndc[0][0],ndc[0][1],ndc[0][2],a);
+                            appendGoldenEyeRenderVertex(ndc[1][0],ndc[1][1],ndc[1][2],b);
+                            appendGoldenEyeRenderVertex(ndc[2][0],ndc[2][1],ndc[2][2],c);
                         }
                     }
                     if (decodedGoldenTriangles < 12u &&
@@ -1011,6 +1028,7 @@ void processF3DDisplayList(bool verbose) {
     // but a new graphics task starts with a fresh GBI state.
     GoldenEyeGbiState taskState{};
     g_goldenEyeDebugTriangles.clear();
+    g_goldenEyeRenderVertices.clear();
     uint32_t budget = 0;
     uint32_t calls = 0;
     uint32_t rawRdpCommands = 0;
@@ -1057,15 +1075,11 @@ void processF3DDisplayList(bool verbose) {
         "F3DGOLDEN OPCODE_KEY: BF_G_TRI1=%u B1_G_TRIX=%u 04_G_VTX=%u 06_G_DL=%u 01_G_MTX=%u BA=%u B8_ENDDL=%u",
         opcodeCounts[0xbfu], opcodeCounts[0xb1u], opcodeCounts[0x04u], opcodeCounts[0x06u],
         opcodeCounts[0x01u], opcodeCounts[0xbau], opcodeCounts[0xb8u]);
-    // Transfer projected GBI triangles to the Vulkan module through a copied
-    // CPU-side packet. Positions are NDC; the dedicated 3D draw path comes next.
-    std::vector<float> geometryPositions;
-    geometryPositions.reserve(g_goldenEyeDebugTriangles.size() * 9u);
-    for (const auto& triangle : g_goldenEyeDebugTriangles)
-        geometryPositions.insert(geometryPositions.end(), triangle.begin(), triangle.end());
-    const uint32_t geometryVertexCount = static_cast<uint32_t>(geometryPositions.size() / 3u);
+    // Transfer NDC positions and decoded per-vertex RGBA attributes.
+    const uint32_t geometryVertexCount =
+        static_cast<uint32_t>(g_goldenEyeRenderVertices.size() / 7u);
     if (!n64VulkanSubmitGoldenEyeGeometry(
-            geometryPositions.empty() ? nullptr : geometryPositions.data(),
+            g_goldenEyeRenderVertices.empty() ? nullptr : g_goldenEyeRenderVertices.data(),
             geometryVertexCount, g_processDListCalls)) {
         if (verbose) __android_log_print(ANDROID_LOG_WARN, TAG,
             "F3DGOLDEN: falha ao transferir geometria para o modulo Vulkan");
