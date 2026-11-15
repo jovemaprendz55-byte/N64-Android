@@ -2080,6 +2080,12 @@ extern "C" bool n64VulkanSubmitVideoFrame(const N64VideoFrame* frame) {
             "Quadro enviado, mas apresentação Vulkan falhou: %s", error.c_str());
         return false;
     }
+    if (frame->frame_number <= 10u || (frame->frame_number % 120u) == 0u) {
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "Vulkan frame OK: frame=%llu size=%ux%u stride=%u upload=OK present=OK",
+            static_cast<unsigned long long>(frame->frame_number),
+            frame->width, frame->height, frame->stride_bytes);
+    }
     return true;
 }
 
