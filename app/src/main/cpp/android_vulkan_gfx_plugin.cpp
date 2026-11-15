@@ -640,9 +640,10 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     vertexCacheMask |= (1u << (firstVertex + i));
                     if (i < 4u && loggedGbiCommands < 100u) {
                         if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
-                            "F3DGOLDEN VTX_SAMPLE[%u]: slot=%u XYZ=(%d,%d,%d) ST=(%d,%d) flag=%04x attr=%02x,%02x,%02x,%02x",
+                            "F3DGOLDEN VTX_SAMPLE[%u]: slot=%u XYZ=(%d,%d,%d) ST=(%d,%d) flag=%04x lighting=%u attr=%02x,%02x,%02x,%02x",
                             i, firstVertex + i, vertex.x, vertex.y, vertex.z,
                             vertex.s, vertex.t, vertex.flag,
+                            vertex.lightingEnabled ? 1u : 0u,
                             vertex.colorOrNormal[0], vertex.colorOrNormal[1],
                             vertex.colorOrNormal[2], vertex.colorOrNormal[3]);
                         ++loggedGbiCommands;
@@ -660,12 +661,13 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                 }
                 const GoldenEyeVertex& firstForLog = vertexCache[firstVertex];
                 if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
-                    "F3DGOLDEN G_VTX: seg=%u offset=%06x endereco=%06x count=%u v0=%u cache=0x%08x V0=(%d,%d,%d) ST=(%d,%d) flag=%04x attr=%02x,%02x,%02x,%02x",
+                    "F3DGOLDEN G_VTX: seg=%u offset=%06x endereco=%06x count=%u v0=%u cache=0x%08x V0=(%d,%d,%d) ST=(%d,%d) flag=%04x lighting=%u attr=%02x,%02x,%02x,%02x",
                     segment, offset, vertexAddress, vertexCount, firstVertex,
                     vertexCacheMask, firstForLog.x, firstForLog.y, firstForLog.z,
                     firstForLog.s, firstForLog.t, firstForLog.flag,
+                    firstForLog.lightingEnabled ? 1u : 0u,
                     firstForLog.colorOrNormal[0], firstForLog.colorOrNormal[1],
-                    first.colorOrNormal[2], first.colorOrNormal[3]);
+                    firstForLog.colorOrNormal[2], firstForLog.colorOrNormal[3]);
             } else {
                 if (verbose) __android_log_print(ANDROID_LOG_WARN, TAG,
                     "F3DGOLDEN G_VTX invalido: seg=%u offset=%06x count=%u v0=%u",
