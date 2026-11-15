@@ -9,7 +9,9 @@ on:
       - vulkan
   workflow_dispatch:
 
-# Do not cancel builds: every pushed commit gets its own APK build.\n\njobs:
+# Do not cancel builds: every pushed commit gets its own APK build.
+
+jobs:
   assemble-vulkan:
     runs-on: ubuntu-latest
     steps:
