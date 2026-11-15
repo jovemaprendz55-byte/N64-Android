@@ -509,7 +509,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                                         depth + 1u, budget, calls, rawRdpCommands,
                                         opcodeCounts, loggedGbiCommands,
                                         vertexCacheMask, decodedGoldenTriangles, vertexCache,
-                                        matrixState))
+                                        matrixState, verbose))
                     return false;
             } else if (mode == 1u) { // G_DL_NOPUSH: branch without return
                 pc = target;
