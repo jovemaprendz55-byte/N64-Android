@@ -229,6 +229,10 @@ jobs:
       - name: Build Vulkan renderer and Mupen64Plus Core APK
         run: gradle --no-daemon assembleDebug
 
+      - name: Report compiler cache statistics
+        if: always()
+        run: ccache --show-stats || true
+
       - name: Verify APK contains Vulkan renderer and N64 Core
         shell: bash
         run: |
