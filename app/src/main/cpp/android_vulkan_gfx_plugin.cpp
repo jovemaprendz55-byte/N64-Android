@@ -1056,7 +1056,8 @@ void logF3DDisplayListTraversal() {
         "F3DGOLDEN OPCODE_KEY: BF_G_TRI1=%u B1_G_TRIX=%u 04_G_VTX=%u 06_G_DL=%u 01_G_MTX=%u BA=%u B8_ENDDL=%u",
         opcodeCounts[0xbfu], opcodeCounts[0xb1u], opcodeCounts[0x04u], opcodeCounts[0x06u],
         opcodeCounts[0x01u], opcodeCounts[0xbau], opcodeCounts[0xb8u]);
-    presentGoldenEyeDebugGeometry();
+    // Keep collecting diagnostic triangles, but do not present the CPU debug
+    // rasterizer: its white fill is not a real GoldenEye frame and can mask RDP output.
 }
 
 unsigned rdpCommandWordCount(uint32_t opcode) {
@@ -1475,7 +1476,8 @@ EXPORT void CALL ProcessDList(void) {
     // DPC_START/END can therefore be zero even though the OSTask contains
     // valid embedded RDP commands. Forward those commands before the DPC path.
     const bool rendered = processGoldenEyeEmbeddedRdp() || processRdpCommandList();
-    if (!rendered) replayGoldenEyeDebugFrame();
+    // No diagnostic-frame fallback here. If RDP has no valid frame, keep the
+    // previous real output rather than replaying a synthetic white debug image.
     if (!rendered && g_processDListCalls <= 10) {
         __android_log_print(ANDROID_LOG_WARN, TAG,
             "ProcessDList #%llu: nenhuma imagem RDP valida; aguardando lista real (sem apresentar VI bruto)",
