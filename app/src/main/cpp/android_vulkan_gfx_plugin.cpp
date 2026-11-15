@@ -1556,7 +1556,7 @@ bool processGoldenEyeEmbeddedRdp() {
     }
 
     setRdpViRegisters();
-    if (g_processDListCalls <= 5u) {
+    if (g_processDListCalls <= 12u || (g_processDListCalls % 120u) == 0u) {
         __android_log_print(ANDROID_LOG_INFO, TAG,
             "GoldenEye embedded VI: status=%08x origin=%08x width=%08x "
             "h_start=%08x v_start=%08x x_scale=%08x y_scale=%08x data=%06x+%04x",
