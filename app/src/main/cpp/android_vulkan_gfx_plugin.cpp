@@ -698,7 +698,13 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                                         matrixState, verbose))
                     return false;
             } else if (mode == 1u) { // G_DL_NOPUSH: branch without return
+                // A branch replaces the current display-list stream. Its target
+                // is not required to remain inside the root OSTask data range.
                 pc = target;
+                limit = rdramLimit;
+                if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
+                    "F3DGOLDEN GBI: G_DL_NOPUSH mudou o limite para RDRAM; alvo=%06x",
+                    target);
                 continue;
             } else {
                 if (verbose) __android_log_print(ANDROID_LOG_WARN, TAG,
@@ -1337,7 +1343,10 @@ bool collectGoldenEyeRdpCommands(
                         budget, commands))
                     return false;
             } else if (mode == 1u) {
+                // G_DL_NOPUSH is a tail branch: continue at the target even
+                // when it lives outside the root OSTask payload range.
                 pc = target;
+                limit = rdramLimit;
                 continue;
             } else {
                 return false;
