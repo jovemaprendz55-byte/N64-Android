@@ -126,7 +126,6 @@ uint64_t g_viRejected = 0;
 std::vector<uint8_t> g_rgba;
 // Temporary first-light path: projected F3D triangles become an RGBA frame.
 std::vector<std::array<float,  9>> g_goldenEyeDebugTriangles;
-GoldenEyeGbiState g_goldenEyeGbiState{};
 std::vector<uint8_t> g_goldenEyeDebugPixels;
 bool g_hasGoldenEyeDebugFrame = false;
 Vulkan::ContextHandle g_rdpContext;
@@ -433,10 +432,10 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                         uint32_t opcodeCounts[256], uint32_t& loggedGbiCommands,
                         uint32_t& vertexCacheMask, uint32_t& decodedGoldenTriangles,
                         GoldenEyeVertex vertexCache[32],
-                        GoldenEyeMatrixState& matrixState) {
+                        GoldenEyeMatrixState& matrixState, bool verbose) {
     constexpr uint32_t rdramLimit = 8u * 1024u * 1024u;
     if (depth > 10u || start >= rdramLimit || (start & 7u) != 0u) {
-        __android_log_print(ANDROID_LOG_WARN, TAG,
+        if (verbose) __android_log_print(ANDROID_LOG_WARN, TAG,
             "F3DGOLDEN GBI: endereco/profundidade invalida start=%06x depth=%u",
             start, depth);
         return false;
@@ -446,7 +445,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
     uint32_t localCommands = 0;
     while (budget < 8192u && localCommands < 2048u) {
         if (pc > rdramLimit - 8u || pc > limit - (limit >= 8u ? 8u : limit)) {
-            __android_log_print(ANDROID_LOG_WARN, TAG,
+            if (verbose) __android_log_print(ANDROID_LOG_WARN, TAG,
                 "F3DGOLDEN GBI: lista saiu dos limites pc=%06x limit=%06x",
                 pc, limit);
             return false;
@@ -462,7 +461,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
 
         // Compact command trace across recursive display-list calls.
         if (calls <= 128u) {
-            __android_log_print(ANDROID_LOG_INFO, TAG,
+            if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
                 "F3DGOLDEN CMD_TRACE[%u]: opcode=%02x w0=%08x w1=%08x pc=%06x depth=%u",
                 calls, opcode, w0, w1, pc, depth);
         }
@@ -479,7 +478,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
             if (moveWordType == 0x06u) { // G_MW_SEGMENT
                 const unsigned segment = (w0 >> 10) & 0x0fu;
                 segments[segment] = w1 & 0x00ffffffu;
-                __android_log_print(ANDROID_LOG_INFO, TAG,
+                if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
                     "F3DGOLDEN MOVEWORD: opcode=%02x segment[%u]=%06x cmd=%08x/%08x @%06x",
                     opcode, segment, segments[segment], w0, w1, pc);
             }
@@ -488,20 +487,20 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
             const unsigned segment = (w1 >> 24) & 0xffu;
             const uint32_t offset = w1 & 0x00ffffffu;
             if (segment >= 16u) {
-                __android_log_print(ANDROID_LOG_WARN, TAG,
+                if (verbose) __android_log_print(ANDROID_LOG_WARN, TAG,
                     "F3DGOLDEN GBI: segmento invalido %u em G_DL @%06x",
                     segment, pc);
                 return false;
             }
             const uint64_t resolved64 = static_cast<uint64_t>(segments[segment]) + offset;
             if (resolved64 >= rdramLimit || (resolved64 & 7u) != 0u) {
-                __android_log_print(ANDROID_LOG_WARN, TAG,
+                if (verbose) __android_log_print(ANDROID_LOG_WARN, TAG,
                     "F3DGOLDEN GBI: G_DL fora da RDRAM seg=%u base=%06x offset=%06x",
                     segment, segments[segment], offset);
                 return false;
             }
             const uint32_t target = static_cast<uint32_t>(resolved64);
-            __android_log_print(ANDROID_LOG_INFO, TAG,
+            if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
                 "F3DGOLDEN GBI: G_DL mode=%u alvo=%06x depth=%u",
                 mode, target, depth);
 
@@ -516,13 +515,13 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                 pc = target;
                 continue;
             } else {
-                __android_log_print(ANDROID_LOG_WARN, TAG,
+                if (verbose) __android_log_print(ANDROID_LOG_WARN, TAG,
                     "F3DGOLDEN GBI: modo G_DL desconhecido %u", mode);
                 return false;
             }
         } else if (opcode == 0x01u) { // F3D G_MTX
             const unsigned param = (w0 >> 16) & 0xffu;
-            __android_log_print(ANDROID_LOG_INFO, TAG,
+            if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
                 "F3DGOLDEN G_MTX_CMD: w0=%08x w1=%08x param=%02x depth=%u pc=%06x",
                 w0, w1, param, depth, pc);
             const unsigned segment = (w1 >> 24) & 0xffu;
@@ -532,7 +531,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                 : 8u * 1024u * 1024u;
             if ((w0 & 0xffffu) != 0x0040u || segment >= 16u ||
                 matrixAddress64 > 8u * 1024u * 1024u - 64u) {
-                __android_log_print(ANDROID_LOG_WARN, TAG,
+                if (verbose) __android_log_print(ANDROID_LOG_WARN, TAG,
                     "F3DGOLDEN G_MTX range/length invalido: w0=%08x w1=%08x seg=%u @%06x",
                     w0, w1, segment, pc);
             } else {
@@ -554,7 +553,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                                 matrixState.modelView, sizeof(matrixState.modelView));
                             ++matrixState.modelViewStackDepth;
                         } else {
-                            __android_log_print(ANDROID_LOG_WARN, TAG,
+                            if (verbose) __android_log_print(ANDROID_LOG_WARN, TAG,
                                 "F3DGOLDEN G_MTX stack cheia; push ignorado @%06x", pc);
                         }
                     }
@@ -566,7 +565,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                         std::memcpy(destination, combined, sizeof(combined));
                     }
                     destinationValid = true;
-                    __android_log_print(ANDROID_LOG_INFO, TAG,
+                    if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
                         "F3DGOLDEN MATRIX_STATE: %s %s push=%u",
                         isProjection ? "PROJECTION" : "MODELVIEW",
                         isLoad ? "LOAD" : "MUL", (param & 0x04u) ? 1u : 0u);
@@ -607,7 +606,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     vertex.valid = true;
                     vertexCacheMask |= (1u << (firstVertex + i));
                     if (i < 4u && loggedGbiCommands < 100u) {
-                        __android_log_print(ANDROID_LOG_INFO, TAG,
+                        if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
                             "F3DGOLDEN VTX_SAMPLE[%u]: slot=%u XYZ=(%d,%d,%d) ST=(%d,%d) flag=%04x attr=%02x,%02x,%02x,%02x",
                             i, firstVertex + i, vertex.x, vertex.y, vertex.z,
                             vertex.s, vertex.t, vertex.flag,
@@ -620,14 +619,14 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                 if (matrixState.modelViewValid && loggedGbiCommands < 120u) {
                     float transformed[4] = {};
                     transformGoldenEyeVertex(matrixState.modelView, first, transformed);
-                    __android_log_print(ANDROID_LOG_INFO, TAG,
+                    if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
                         "F3DGOLDEN VTX_MODELVIEW: slot=%u XYZ=(%d,%d,%d) -> (%.2f,%.2f,%.2f,%.2f)",
                         firstVertex, first.x, first.y, first.z,
                         transformed[0], transformed[1], transformed[2], transformed[3]);
                     ++loggedGbiCommands;
                 }
                 const GoldenEyeVertex& firstForLog = vertexCache[firstVertex];
-                __android_log_print(ANDROID_LOG_INFO, TAG,
+                if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
                     "F3DGOLDEN G_VTX: seg=%u offset=%06x endereco=%06x count=%u v0=%u cache=0x%08x V0=(%d,%d,%d) ST=(%d,%d) flag=%04x attr=%02x,%02x,%02x,%02x",
                     segment, offset, vertexAddress, vertexCount, firstVertex,
                     vertexCacheMask, firstForLog.x, firstForLog.y, firstForLog.z,
@@ -635,12 +634,12 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     firstForLog.colorOrNormal[0], firstForLog.colorOrNormal[1],
                     first.colorOrNormal[2], first.colorOrNormal[3]);
             } else {
-                __android_log_print(ANDROID_LOG_WARN, TAG,
+                if (verbose) __android_log_print(ANDROID_LOG_WARN, TAG,
                     "F3DGOLDEN G_VTX invalido: seg=%u offset=%06x count=%u v0=%u",
                     segment, offset, vertexCount, firstVertex);
             }
             if (loggedGbiCommands < 100u) {
-                __android_log_print(ANDROID_LOG_INFO, TAG,
+                if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
                     "F3DGOLDEN GBI: G_VTX raw w0=%08x w1=%08x @%06x", w0, w1, pc);
                 ++loggedGbiCommands;
             }
@@ -655,7 +654,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
             const unsigned v1 = rawV1 / 10u;
             const unsigned v2 = rawV2 / 10u;
             if (!packedIndicesValid || v0 >= 32u || v1 >= 32u || v2 >= 32u) {
-                __android_log_print(ANDROID_LOG_WARN, TAG,
+                if (verbose) __android_log_print(ANDROID_LOG_WARN, TAG,
                     "F3DGOLDEN G_TRI1 indices invalidos: raw=%02x,%02x,%02x decoded=%u,%u,%u @%06x",
                     rawV0, rawV1, rawV2, v0, v1, v2, pc);
             } else {
@@ -665,7 +664,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     vertexCache[v1].valid && vertexCache[v2].valid &&
                     (vertexCacheMask & triangleMask) == triangleMask;
                 if (!verticesReady) {
-                    __android_log_print(ANDROID_LOG_WARN, TAG,
+                    if (verbose) __android_log_print(ANDROID_LOG_WARN, TAG,
                         "F3DGOLDEN G_TRI1[%u]: idx=(%u,%u,%u) vertices_loaded=NO cache=0x%08x",
                         decodedGoldenTriangles, v0, v1, v2, vertexCacheMask);
                 } else {
@@ -690,7 +689,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                             clip[2][0]/clip[2][3],clip[2][1]/clip[2][3],clip[2][2]/clip[2][3]});
                     }
                     if (decodedGoldenTriangles < 32u) {
-                        __android_log_print(ANDROID_LOG_INFO, TAG,
+                        if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
                             "F3DGOLDEN G_TRI1[%u]: raw=(%02x,%02x,%02x) idx=(%u,%u,%u) "
                             "A=(%d,%d,%d) B=(%d,%d,%d) C=(%d,%d,%d)",
                             decodedGoldenTriangles, rawV0, rawV1, rawV2,
@@ -707,7 +706,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                             transformGoldenEyeVector4(
                                 matrixState.projection, mv[vertex], clip[vertex]);
                         }
-                        __android_log_print(ANDROID_LOG_INFO, TAG,
+                        if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
                             "F3DGOLDEN TRI1_PROJECTED[%u]: "
                             "Aclip=(%.2f,%.2f,%.2f,%.2f) "
                             "Bclip=(%.2f,%.2f,%.2f,%.2f) "
@@ -719,7 +718,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                         if (std::abs(clip[0][3]) > 0.00001f &&
                             std::abs(clip[1][3]) > 0.00001f &&
                             std::abs(clip[2][3]) > 0.00001f) {
-                            __android_log_print(ANDROID_LOG_INFO, TAG,
+                            if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
                                 "F3DGOLDEN TRI1_NDC[%u]: "
                                 "A=(%.5f,%.5f,%.5f) "
                                 "B=(%.5f,%.5f,%.5f) "
@@ -735,7 +734,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                                 clip[2][1] / clip[2][3],
                                 clip[2][2] / clip[2][3]);
                         } else {
-                            __android_log_print(ANDROID_LOG_WARN, TAG,
+                            if (verbose) __android_log_print(ANDROID_LOG_WARN, TAG,
                                 "F3DGOLDEN TRI1_NDC[%u]: W invalido A=%.6f B=%.6f C=%.6f",
                                 decodedGoldenTriangles,
                                 clip[0][3], clip[1][3], clip[2][3]);
@@ -743,7 +742,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     } else if (decodedGoldenTriangles < 12u &&
                                matrixState.modelViewValid &&
                                !matrixState.projectionValid) {
-                        __android_log_print(ANDROID_LOG_INFO, TAG,
+                        if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
                             "F3DGOLDEN TRI1_MODELVIEW[%u]: projection=NOT_LOADED",
                             decodedGoldenTriangles);
                     }
@@ -772,7 +771,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     vertexCache[v1].valid && vertexCache[v2].valid &&
                     (vertexCacheMask & triangleMask) == triangleMask;
                 if (!verticesReady) {
-                    __android_log_print(ANDROID_LOG_WARN, TAG,
+                    if (verbose) __android_log_print(ANDROID_LOG_WARN, TAG,
                         "F3DGOLDEN G_TRIX[%u]: (%u,%u,%u) vertices_loaded=NO cache=0x%08x",
                         triangleInCommand, v0, v1, v2, vertexCacheMask);
                 } else {
@@ -780,7 +779,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     const GoldenEyeVertex& b = vertexCache[v1];
                     const GoldenEyeVertex& c = vertexCache[v2];
                     if (decodedGoldenTriangles < 32u) {
-                        __android_log_print(ANDROID_LOG_INFO, TAG,
+                        if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
                             "F3DGOLDEN TRIANGLE[%u]: idx=(%u,%u,%u) A=(%d,%d,%d) B=(%d,%d,%d) C=(%d,%d,%d)",
                             decodedGoldenTriangles, v0, v1, v2,
                             a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
@@ -825,7 +824,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                             }
                         }
                         if (matrixState.projectionValid) {
-                            __android_log_print(ANDROID_LOG_INFO, TAG,
+                            if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
                                 "F3DGOLDEN TRI_PROJECTED[%u]: "
                                 "Aclip=(%.2f,%.2f,%.2f,%.2f) "
                                 "Bclip=(%.2f,%.2f,%.2f,%.2f) "
@@ -837,7 +836,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                             if (std::abs(clip[0][3]) > 0.00001f &&
                                 std::abs(clip[1][3]) > 0.00001f &&
                                 std::abs(clip[2][3]) > 0.00001f) {
-                                __android_log_print(ANDROID_LOG_INFO, TAG,
+                                if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
                                     "F3DGOLDEN TRI_NDC[%u]: "
                                     "A=(%.5f,%.5f,%.5f) "
                                     "B=(%.5f,%.5f,%.5f) "
@@ -853,13 +852,13 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                                     clip[2][1] / clip[2][3],
                                     clip[2][2] / clip[2][3]);
                             } else {
-                                __android_log_print(ANDROID_LOG_WARN, TAG,
+                                if (verbose) __android_log_print(ANDROID_LOG_WARN, TAG,
                                     "F3DGOLDEN TRI_NDC[%u]: W invalido A=%.6f B=%.6f C=%.6f",
                                     decodedGoldenTriangles,
                                     clip[0][3], clip[1][3], clip[2][3]);
                             }
                         } else {
-                            __android_log_print(ANDROID_LOG_INFO, TAG,
+                            if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
                                 "F3DGOLDEN TRI_MODELVIEW[%u]: "
                                 "A=(%.2f,%.2f,%.2f,%.2f) "
                                 "B=(%.2f,%.2f,%.2f,%.2f) "
@@ -874,7 +873,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                 ++decodedGoldenTriangles;
                 ++triangleInCommand;
             }
-            __android_log_print(ANDROID_LOG_INFO, TAG,
+            if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
                 "F3DGOLDEN G_TRIX_CMD: w0=%08x w1=%08x triangles=%u remaining_w1=%08x @%06x",
                 w0, w1, triangleInCommand, triW1, pc);
         } else if (opcode >= 0xC8u) {
@@ -882,14 +881,14 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
             // but do not enqueue them until the RSP geometry path is implemented.
             ++rawRdpCommands;
             if (rawRdpCommands <= 12u) {
-                __android_log_print(ANDROID_LOG_INFO, TAG,
+                if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
                     "F3DGOLDEN GBI: comando RDP bruto opcode=%02x @%06x",
                     opcode, pc);
             }
         } else if (loggedGbiCommands < 100u) {
             // Capture unknown/non-RDP F3D commands (matrix, vertex, triangles,
             // texture and GoldenEye extensions) to map the real geometry path.
-            __android_log_print(ANDROID_LOG_INFO, TAG,
+            if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
                 "F3DGOLDEN GBI: GBI opcode=%02x w0=%08x w1=%08x @%06x depth=%u",
                 opcode, w0, w1, pc, depth);
             ++loggedGbiCommands;
@@ -898,7 +897,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
         pc += 8u;
     }
 
-    __android_log_print(ANDROID_LOG_WARN, TAG,
+    if (verbose) __android_log_print(ANDROID_LOG_WARN, TAG,
         "F3DGOLDEN GBI: limite de comandos atingido start=%06x depth=%u",
         start, depth);
     return false;
@@ -981,7 +980,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
     n64VulkanVideoFrameCallback(&frame, nullptr);
 }
 
-void logF3DDisplayListTraversal() {
+void processF3DDisplayList(bool verbose) {
     if (!g_info.DMEM || !g_info.RDRAM) return;
     uint32_t task[16] = {};
     for (unsigned i = 0; i < 16; ++i)
@@ -999,13 +998,13 @@ void logF3DDisplayListTraversal() {
     if (dataSize < 8u || dataSize > 0x100000u ||
         dataPtr >= 8u * 1024u * 1024u ||
         dataSize > 8u * 1024u * 1024u - dataPtr) {
-        __android_log_print(ANDROID_LOG_WARN, TAG,
+        if (verbose) __android_log_print(ANDROID_LOG_WARN, TAG,
             "F3DGOLDEN GBI: payload raiz invalido ptr=%06x size=%08x",
             dataPtr, dataSize);
         return;
     }
 
-    g_goldenEyeDebugTriangles.clear();
+    GoldenEyeGbiState taskState{};
     uint32_t budget = 0;
     uint32_t calls = 0;
     uint32_t rawRdpCommands = 0;
@@ -1013,15 +1012,15 @@ void logF3DDisplayListTraversal() {
     uint32_t loggedGbiCommands = 0;
     uint32_t decodedGoldenTriangles = 0;
     const bool complete = walkF3DDisplayList(
-        dataPtr, dataPtr + dataSize, g_goldenEyeGbiState.segments.data(), 0u,
+        dataPtr, dataPtr + dataSize, taskState.segments.data(), 0u,
         budget, calls, rawRdpCommands, opcodeCounts, loggedGbiCommands,
-        g_goldenEyeGbiState.vertexCacheMask, decodedGoldenTriangles,
-        g_goldenEyeGbiState.vertexCache.data(), g_goldenEyeGbiState.matrices);
-    __android_log_print(ANDROID_LOG_INFO, TAG,
+        taskState.vertexCacheMask, decodedGoldenTriangles,
+        taskState.vertexCache.data(), taskState.matrices, verbose);
+    if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
         "F3DGOLDEN GBI traversal: %s comandos=%u listas/chamadas=%u RDP_brutos=%u GBI_detalhados=%u G_TRIX_triangulos=%u vertex_cache=0x%08x",
         complete ? "fim/retorno alcancado" : "incompleto/limite",
         budget, calls, rawRdpCommands, loggedGbiCommands,
-        decodedGoldenTriangles, vertexCacheMask);
+        decodedGoldenTriangles, taskState.vertexCacheMask);
     // Emit the complete opcode histogram in compact chunks so logcat
     // cannot make a multi-line summary look as if only one opcode existed.
     char histogram[768] = {};
@@ -1032,7 +1031,7 @@ void logF3DDisplayListTraversal() {
             "%s%02x:%u", used == 0u ? "" : " ", opcode, opcodeCounts[opcode]);
         if (written < 0) break;
         if (static_cast<size_t>(written) >= sizeof(histogram) - used) {
-            __android_log_print(ANDROID_LOG_INFO, TAG,
+            if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
                 "F3DGOLDEN OPCODE_HIST: %s", histogram);
             used = 0;
             histogram[0] = '\0';
@@ -1045,10 +1044,10 @@ void logF3DDisplayListTraversal() {
         }
     }
     if (used != 0u) {
-        __android_log_print(ANDROID_LOG_INFO, TAG,
+        if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
             "F3DGOLDEN OPCODE_HIST: %s", histogram);
     }
-    __android_log_print(ANDROID_LOG_INFO, TAG,
+    if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
         "F3DGOLDEN OPCODE_KEY: BF_G_TRI1=%u B1_G_TRIX=%u 04_G_VTX=%u 06_G_DL=%u 01_G_MTX=%u BA=%u B8_ENDDL=%u",
         opcodeCounts[0xbfu], opcodeCounts[0xb1u], opcodeCounts[0x04u], opcodeCounts[0x06u],
         opcodeCounts[0x01u], opcodeCounts[0xbau], opcodeCounts[0xb8u]);
@@ -1464,10 +1463,10 @@ EXPORT void CALL ProcessDList(void) {
     // appear later in gameplay are not missed by the initial diagnostic window.
     const bool traceTask = g_processDListCalls <= 12u ||
                           (g_processDListCalls % 120u) == 0u;
-    if (traceTask) {
-        logRspTaskSnapshot();
-        logF3DDisplayListTraversal();
-    }
+    if (traceTask) logRspTaskSnapshot();
+    // Execute the GoldenEye GBI interpreter on every graphics task; verbose
+    // command logging remains sampled to avoid flooding logcat.
+    processF3DDisplayList(traceTask);
     // GoldenEye stores hardware RDP commands inside its F3D display lists.
     // DPC_START/END can therefore be zero even though the OSTask contains
     // valid embedded RDP commands. Forward those commands before the DPC path.
@@ -1519,8 +1518,6 @@ EXPORT int CALL RomOpen(void) {
             "ROM aberta, mas backend RDP indisponivel; framebuffer VI permanece como fallback");
     }
     g_frameNumber = 0;
-    g_goldenEyeGbiState = {};
-    g_goldenEyeDebugTriangles.clear();
     g_processDListCalls = 0;
     g_processRdpCalls = 0;
     g_viAttempts = 0;
