@@ -46,6 +46,10 @@ VkFormat g_swapchainFormat = VK_FORMAT_UNDEFINED;
 std::vector<VkImage> g_swapchainImages;
 std::vector<VkImageView> g_swapchainViews;
 VkRenderPass g_renderPass = VK_NULL_HANDLE;
+VkFormat g_depthFormat = VK_FORMAT_UNDEFINED;
+VkImage g_depthImage = VK_NULL_HANDLE;
+VkDeviceMemory g_depthMemory = VK_NULL_HANDLE;
+VkImageView g_depthView = VK_NULL_HANDLE;
 VkPipelineLayout g_pipelineLayout = VK_NULL_HANDLE;
 VkPipeline g_graphicsPipeline = VK_NULL_HANDLE;
 VkPipelineLayout g_geometryPipelineLayout = VK_NULL_HANDLE;
@@ -90,6 +94,17 @@ void destroySwapchainLocked() {
         for (VkFramebuffer framebuffer : g_framebuffers)
             if (framebuffer != VK_NULL_HANDLE) vkDestroyFramebuffer(g_device, framebuffer, nullptr);
         g_framebuffers.clear();
+
+        if (g_depthView != VK_NULL_HANDLE)
+            vkDestroyImageView(g_device, g_depthView, nullptr);
+        if (g_depthImage != VK_NULL_HANDLE)
+            vkDestroyImage(g_device, g_depthImage, nullptr);
+        if (g_depthMemory != VK_NULL_HANDLE)
+            vkFreeMemory(g_device, g_depthMemory, nullptr);
+        g_depthView = VK_NULL_HANDLE;
+        g_depthImage = VK_NULL_HANDLE;
+        g_depthMemory = VK_NULL_HANDLE;
+        g_depthFormat = VK_FORMAT_UNDEFINED;
 
         if (g_commandPool != VK_NULL_HANDLE)
             vkDestroyCommandPool(g_device, g_commandPool, nullptr);
@@ -1115,6 +1130,13 @@ bool createGeometryPipeline(std::string& error) {
     blend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
     blend.attachmentCount = 1;
     blend.pAttachments = &blendAttachment;
+    VkPipelineDepthStencilStateCreateInfo depth{};
+    depth.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depth.depthTestEnable = VK_TRUE;
+    depth.depthWriteEnable = VK_TRUE;
+    depth.depthCompareOp = VK_COMPARE_OP_LESS;
+    depth.depthBoundsTestEnable = VK_FALSE;
+    depth.stencilTestEnable = VK_FALSE;
     const VkDynamicState states[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
     VkPipelineDynamicStateCreateInfo dynamic{};
     dynamic.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
@@ -1135,6 +1157,7 @@ bool createGeometryPipeline(std::string& error) {
         info.pRasterizationState = &raster;
         info.pMultisampleState = &samples;
         info.pColorBlendState = &blend;
+        info.pDepthStencilState = &depth;
         info.pDynamicState = &dynamic;
         info.layout = g_geometryPipelineLayout;
         info.renderPass = g_renderPass;
@@ -1194,19 +1217,21 @@ bool recordFrameCommandBuffer(uint32_t imageIndex, std::string& error) {
         error = "Início do command buffer Vulkan falhou: " + std::to_string(status);
         return false;
     }
-    VkClearValue clear{};
-    clear.color.float32[0] = 0.035f;
-    clear.color.float32[1] = 0.10f;
-    clear.color.float32[2] = 0.22f;
-    clear.color.float32[3] = 1.0f;
+    VkClearValue clears[2]{};
+    clears[0].color.float32[0] = 0.035f;
+    clears[0].color.float32[1] = 0.10f;
+    clears[0].color.float32[2] = 0.22f;
+    clears[0].color.float32[3] = 1.0f;
+    clears[1].depthStencil.depth = 1.0f;
+    clears[1].depthStencil.stencil = 0;
     VkRenderPassBeginInfo pass{};
     pass.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     pass.renderPass = g_renderPass;
     pass.framebuffer = g_framebuffers[imageIndex];
     pass.renderArea.extent.width = ANativeWindow_getWidth(g_window);
     pass.renderArea.extent.height = ANativeWindow_getHeight(g_window);
-    pass.clearValueCount = 1;
-    pass.pClearValues = &clear;
+    pass.clearValueCount = 2;
+    pass.pClearValues = clears;
     vkCmdBeginRenderPass(command, &pass, VK_SUBPASS_CONTENTS_INLINE);
     VkViewport viewport{};
     viewport.width = static_cast<float>(ANativeWindow_getWidth(g_window));
@@ -1236,8 +1261,93 @@ bool recordFrameCommandBuffer(uint32_t imageIndex, std::string& error) {
     return true;
 }
 
+bool createDepthResources(std::string& error) {
+    const VkFormat candidates[] = {
+        VK_FORMAT_D32_SFLOAT,
+        VK_FORMAT_D24_UNORM_S8_UINT,
+        VK_FORMAT_D16_UNORM
+    };
+    g_depthFormat = VK_FORMAT_UNDEFINED;
+    for (VkFormat candidate : candidates) {
+        VkFormatProperties properties{};
+        vkGetPhysicalDeviceFormatProperties(g_physicalDevice, candidate, &properties);
+        if ((properties.optimalTilingFeatures &
+             VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0) {
+            g_depthFormat = candidate;
+            break;
+        }
+    }
+    if (g_depthFormat == VK_FORMAT_UNDEFINED) {
+        error = "GPU não oferece formato de depth buffer compatível.";
+        return false;
+    }
+
+    VkImageCreateInfo image{};
+    image.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    image.imageType = VK_IMAGE_TYPE_2D;
+    image.format = g_depthFormat;
+    image.extent.width = static_cast<uint32_t>(ANativeWindow_getWidth(g_window));
+    image.extent.height = static_cast<uint32_t>(ANativeWindow_getHeight(g_window));
+    image.extent.depth = 1;
+    image.mipLevels = 1;
+    image.arrayLayers = 1;
+    image.samples = VK_SAMPLE_COUNT_1_BIT;
+    image.tiling = VK_IMAGE_TILING_OPTIMAL;
+    image.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    image.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    image.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    VkResult status = vkCreateImage(g_device, &image, nullptr, &g_depthImage);
+    if (status != VK_SUCCESS) {
+        error = "Criação da imagem de profundidade falhou: " + std::to_string(status);
+        return false;
+    }
+
+    VkMemoryRequirements requirements{};
+    vkGetImageMemoryRequirements(g_device, g_depthImage, &requirements);
+    const uint32_t memoryType = findMemoryType(
+        requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    if (memoryType == UINT32_MAX) {
+        error = "Memória local da GPU não encontrada para depth buffer.";
+        return false;
+    }
+    VkMemoryAllocateInfo allocation{};
+    allocation.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocation.allocationSize = requirements.size;
+    allocation.memoryTypeIndex = memoryType;
+    status = vkAllocateMemory(g_device, &allocation, nullptr, &g_depthMemory);
+    if (status == VK_SUCCESS)
+        status = vkBindImageMemory(g_device, g_depthImage, g_depthMemory, 0);
+    if (status != VK_SUCCESS) {
+        error = "Alocação/vínculo do depth buffer falhou: " + std::to_string(status);
+        return false;
+    }
+
+    VkImageViewCreateInfo view{};
+    view.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    view.image = g_depthImage;
+    view.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    view.format = g_depthFormat;
+    view.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    view.subresourceRange.baseMipLevel = 0;
+    view.subresourceRange.levelCount = 1;
+    view.subresourceRange.baseArrayLayer = 0;
+    view.subresourceRange.layerCount = 1;
+    status = vkCreateImageView(g_device, &view, nullptr, &g_depthView);
+    if (status != VK_SUCCESS) {
+        error = "Criação da view de profundidade falhou: " + std::to_string(status);
+        return false;
+    }
+    __android_log_print(ANDROID_LOG_INFO, TAG,
+        "Depth buffer criado: formato=%d tamanho=%ux%u",
+        static_cast<int>(g_depthFormat), image.extent.width, image.extent.height);
+    return true;
+}
+
 bool createRenderResources(std::string& error) {
-    VkAttachmentDescription attachment{};
+    if (!createDepthResources(error)) return false;
+
+    VkAttachmentDescription attachments[2]{};
+    VkAttachmentDescription& attachment = attachments[0];
     attachment.format = g_swapchainFormat;
     attachment.samples = VK_SAMPLE_COUNT_1_BIT;
     attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -1247,25 +1357,41 @@ bool createRenderResources(std::string& error) {
     attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
+    attachments[1].format = g_depthFormat;
+    attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
+    attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    attachments[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
     VkAttachmentReference colorReference{};
     colorReference.attachment = 0;
     colorReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    VkAttachmentReference depthReference{};
+    depthReference.attachment = 1;
+    depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     VkSubpassDescription subpass{};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &colorReference;
+    subpass.pDepthStencilAttachment = &depthReference;
 
     VkSubpassDependency dependency{};
     dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
     dependency.dstSubpass = 0;
-    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+                              VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+                              VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                               VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
     VkRenderPassCreateInfo renderInfo{};
     renderInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderInfo.attachmentCount = 1;
-    renderInfo.pAttachments = &attachment;
+    renderInfo.attachmentCount = 2;
+    renderInfo.pAttachments = attachments;
     renderInfo.subpassCount = 1;
     renderInfo.pSubpasses = &subpass;
     renderInfo.dependencyCount = 1;
@@ -1287,11 +1413,12 @@ bool createRenderResources(std::string& error) {
     if (!createGeometryPipeline(error)) return false;
 
     for (VkImageView view : g_swapchainViews) {
+        const VkImageView framebufferAttachments[] = {view, g_depthView};
         VkFramebufferCreateInfo framebufferInfo{};
         framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         framebufferInfo.renderPass = g_renderPass;
-        framebufferInfo.attachmentCount = 1;
-        framebufferInfo.pAttachments = &view;
+        framebufferInfo.attachmentCount = 2;
+        framebufferInfo.pAttachments = framebufferAttachments;
         framebufferInfo.width = ANativeWindow_getWidth(g_window);
         framebufferInfo.height = ANativeWindow_getHeight(g_window);
         framebufferInfo.layers = 1;
@@ -1334,19 +1461,21 @@ bool createRenderResources(std::string& error) {
             error = "vkBeginCommandBuffer falhou: " + std::to_string(status);
             return false;
         }
-        VkClearValue clear{};
-        clear.color.float32[0] = 0.035f;
-        clear.color.float32[1] = 0.10f;
-        clear.color.float32[2] = 0.22f;
-        clear.color.float32[3] = 1.0f;
+        VkClearValue clears[2]{};
+        clears[0].color.float32[0] = 0.035f;
+        clears[0].color.float32[1] = 0.10f;
+        clears[0].color.float32[2] = 0.22f;
+        clears[0].color.float32[3] = 1.0f;
+        clears[1].depthStencil.depth = 1.0f;
+        clears[1].depthStencil.stencil = 0;
         VkRenderPassBeginInfo passInfo{};
         passInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         passInfo.renderPass = g_renderPass;
         passInfo.framebuffer = g_framebuffers[i];
         passInfo.renderArea.extent.width = ANativeWindow_getWidth(g_window);
         passInfo.renderArea.extent.height = ANativeWindow_getHeight(g_window);
-        passInfo.clearValueCount = 1;
-        passInfo.pClearValues = &clear;
+        passInfo.clearValueCount = 2;
+        passInfo.pClearValues = clears;
         vkCmdBeginRenderPass(g_commandBuffers[i], &passInfo, VK_SUBPASS_CONTENTS_INLINE);
         VkViewport vp{}; vp.width = static_cast<float>(ANativeWindow_getWidth(g_window)); vp.height = static_cast<float>(ANativeWindow_getHeight(g_window)); vp.maxDepth = 1.0f;
         VkRect2D sc{}; sc.extent.width = static_cast<uint32_t>(ANativeWindow_getWidth(g_window)); sc.extent.height = static_cast<uint32_t>(ANativeWindow_getHeight(g_window));
