@@ -1257,9 +1257,19 @@ bool recordFrameCommandBuffer(uint32_t imageIndex, std::string& error) {
     vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS,
         g_pipelineLayout, 0, 1, &g_videoDescriptorSet, 0, nullptr);
     vkCmdDraw(command, 6, 1, 0, 0);
-    // GoldenEye diagnostic geometry is collected for logs only. Do not draw it
-    // over the paraLLEl-RDP frame: its vertex colors are placeholders (often white)
-    // and would hide the actual textured RDP output being debugged.
+    // Draw Fast3D geometry after the RDP video quad. The geometry pipeline
+    // uses the cleared depth attachment and per-vertex colors; this is an
+    // initial untextured path while the full GBI/RDP material bridge is built.
+    if (g_geometryPipeline != VK_NULL_HANDLE &&
+        g_geometryVertexBuffer != VK_NULL_HANDLE &&
+        g_geometryVertexCount >= 3u) {
+        const VkDeviceSize vertexOffset = 0;
+        vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          g_geometryPipeline);
+        vkCmdBindVertexBuffers(command, 0, 1, &g_geometryVertexBuffer,
+                               &vertexOffset);
+        vkCmdDraw(command, g_geometryVertexCount, 1, 0, 0);
+    }
 
     vkCmdEndRenderPass(command);
     status = vkEndCommandBuffer(command);
@@ -2074,6 +2084,14 @@ extern "C" bool n64VulkanSubmitVideoFrame(const N64VideoFrame* frame) {
     if (!uploaded) {
         __android_log_print(ANDROID_LOG_ERROR, TAG, "%s", error.c_str());
         return false;
+    }
+    // Fast3D geometry is submitted by the GFX plugin immediately before its
+    // RDP frame callback. Copy that packet into a Vulkan vertex buffer before
+    // recording the swapchain command buffer.
+    if (!uploadGoldenEyeGeometryLocked(error)) {
+        __android_log_print(ANDROID_LOG_WARN, TAG,
+            "Geometria GoldenEye ignorada neste quadro: %s", error.c_str());
+        g_geometryVertexCount = 0;
     }
     if (!presentTestFrame(error)) {
         __android_log_print(ANDROID_LOG_ERROR, TAG,
