@@ -460,34 +460,17 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
             return true;
         }
 
-        if (opcode == 0xBCu) { // F3D G_MOVEWORD
-            if ((w0 & 0xffu) == 0x06u) { // G_MW_SEGMENT
+        // GLideN64 F3DGOLDEN_Init maps BOTH 0xBC (G_MOVEWORD) and
+        // 0xBD (G_GOLDEN_MOVEWORD) to F3D_MoveWord. In this microcode,
+        // 0xBD is NOT G_POPMTX; treating it as a matrix pop corrupts state.
+        if (opcode == 0xBCu || opcode == 0xBDu) {
+            const unsigned moveWordType = w0 & 0xffu;
+            if (moveWordType == 0x06u) { // G_MW_SEGMENT
                 const unsigned segment = (w0 >> 10) & 0x0fu;
                 segments[segment] = w1 & 0x00ffffffu;
                 __android_log_print(ANDROID_LOG_INFO, TAG,
-                    "F3DGOLDEN GBI: segmento[%u]=%06x (cmd @%06x)",
-                    segment, segments[segment], pc);
-            }
-        } else if (opcode == 0xBDu) { // Fast3D G_POPMTX
-            // The game's gspFast3DNoN.fifo (2.0G) uses classic Fast3D:
-            // G_POPMTX pops exactly one model-view matrix. The w1/64
-            // byte-count encoding belongs to the F3DEX variant.
-            constexpr unsigned popCount = 1u;
-            if (popCount > matrixState.modelViewStackDepth) {
-                __android_log_print(ANDROID_LOG_WARN, TAG,
-                    "F3DGOLDEN G_POPMTX underflow: w0=%08x w1=%08x requested=%u depth=%u @%06x",
-                    w0, w1, popCount, matrixState.modelViewStackDepth, pc);
-                matrixState.modelViewStackDepth = 0u;
-                matrixState.modelViewValid = false;
-            } else {
-                matrixState.modelViewStackDepth -= popCount;
-                std::memcpy(matrixState.modelView,
-                    matrixState.modelViewStack[matrixState.modelViewStackDepth].data(),
-                    sizeof(matrixState.modelView));
-                matrixState.modelViewValid = true;
-                __android_log_print(ANDROID_LOG_INFO, TAG,
-                    "F3DGOLDEN G_POPMTX: w0=%08x w1=%08x count=%u depth=%u @%06x",
-                    w0, w1, popCount, matrixState.modelViewStackDepth, pc);
+                    "F3DGOLDEN MOVEWORD: opcode=%02x segment[%u]=%06x cmd=%08x/%08x @%06x",
+                    opcode, segment, segments[segment], w0, w1, pc);
             }
         } else if (opcode == 0x06u) { // F3D G_DL
             const unsigned mode = (w0 >> 16) & 0xffu;
