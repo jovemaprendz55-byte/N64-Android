@@ -906,7 +906,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
 }
 
 
-void presentGoldenEyeDebugGeometry() {
+[[maybe_unused]] void presentGoldenEyeDebugGeometry() {
     constexpr uint32_t width = 320u, height = 240u;
     if (g_goldenEyeDebugTriangles.empty()) return;
     g_goldenEyeDebugPixels.assign(static_cast<size_t>(width) * height * 4u, 0u);
@@ -967,7 +967,7 @@ void presentGoldenEyeDebugGeometry() {
 // Re-submit the last valid diagnostic image on every display-list callback.
 // The GBI walker is intentionally sampled for logging, but presentation must
 // not be sampled: otherwise a single frame flashes and is replaced by blank.
-void replayGoldenEyeDebugFrame() {
+[[maybe_unused]] void replayGoldenEyeDebugFrame() {
     constexpr uint32_t width = 320u, height = 240u;
     if (!g_hasGoldenEyeDebugFrame ||
         g_goldenEyeDebugPixels.size() != static_cast<size_t>(width) * height * 4u)
