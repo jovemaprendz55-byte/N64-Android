@@ -136,6 +136,41 @@ void appendGoldenEyeRenderVertex(float x,float y,float z,const GoldenEyeVertex& 
          (vertex.lightingEnabled ? 1.0f : static_cast<float>(vertex.colorOrNormal[2])/255.0f),
          static_cast<float>(vertex.colorOrNormal[3])/255.0f});
 }
+
+void logGoldenEyeTriangleColors(const char* source, unsigned triangleIndex,
+                                unsigned v0, unsigned v1, unsigned v2,
+                                const GoldenEyeVertex& a,
+                                const GoldenEyeVertex& b,
+                                const GoldenEyeVertex& c,
+                                uint32_t geometryMode) {
+    if (triangleIndex >= 12u) return;
+    const GoldenEyeVertex* vertices[3] = {&a, &b, &c};
+    float output[3][4] = {};
+    for (unsigned i = 0; i < 3u; ++i) {
+        output[i][0] = vertices[i]->lightingEnabled ? 1.0f :
+            static_cast<float>(vertices[i]->colorOrNormal[0]) / 255.0f;
+        output[i][1] = vertices[i]->lightingEnabled ? 1.0f :
+            static_cast<float>(vertices[i]->colorOrNormal[1]) / 255.0f;
+        output[i][2] = vertices[i]->lightingEnabled ? 1.0f :
+            static_cast<float>(vertices[i]->colorOrNormal[2]) / 255.0f;
+        output[i][3] = static_cast<float>(vertices[i]->colorOrNormal[3]) / 255.0f;
+    }
+    __android_log_print(ANDROID_LOG_INFO, TAG,
+        "F3DGOLDEN TRI_COLOR[%u] src=%s idx=(%u,%u,%u) geom=%08x "
+        "A{L=%u raw=%02x,%02x,%02x,%02x out=%.2f,%.2f,%.2f,%.2f} "
+        "B{L=%u raw=%02x,%02x,%02x,%02x out=%.2f,%.2f,%.2f,%.2f} "
+        "C{L=%u raw=%02x,%02x,%02x,%02x out=%.2f,%.2f,%.2f,%.2f}",
+        triangleIndex, source, v0, v1, v2, geometryMode,
+        a.lightingEnabled ? 1u : 0u,
+        a.colorOrNormal[0], a.colorOrNormal[1], a.colorOrNormal[2], a.colorOrNormal[3],
+        output[0][0], output[0][1], output[0][2], output[0][3],
+        b.lightingEnabled ? 1u : 0u,
+        b.colorOrNormal[0], b.colorOrNormal[1], b.colorOrNormal[2], b.colorOrNormal[3],
+        output[1][0], output[1][1], output[1][2], output[1][3],
+        c.lightingEnabled ? 1u : 0u,
+        c.colorOrNormal[0], c.colorOrNormal[1], c.colorOrNormal[2], c.colorOrNormal[3],
+        output[2][0], output[2][1], output[2][2], output[2][3]);
+}
 std::vector<uint8_t> g_goldenEyeDebugPixels;
 bool g_hasGoldenEyeDebugFrame = false;
 Vulkan::ContextHandle g_rdpContext;
@@ -706,6 +741,9 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     const GoldenEyeVertex& a = vertexCache[v0];
                     const GoldenEyeVertex& b = vertexCache[v1];
                     const GoldenEyeVertex& c = vertexCache[v2];
+                    if (verbose)
+                        logGoldenEyeTriangleColors("G_TRI1", decodedGoldenTriangles,
+                            v0, v1, v2, a, b, c, matrixState.geometryMode);
 
                     if (matrixState.modelViewValid && matrixState.projectionValid) {
                         logGoldenEyeActiveMatrixState(matrixState, decodedGoldenTriangles, pc);
@@ -818,6 +856,9 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     const GoldenEyeVertex& a = vertexCache[v0];
                     const GoldenEyeVertex& b = vertexCache[v1];
                     const GoldenEyeVertex& c = vertexCache[v2];
+                    if (verbose)
+                        logGoldenEyeTriangleColors("G_TRIX", decodedGoldenTriangles,
+                            v0, v1, v2, a, b, c, matrixState.geometryMode);
                     if (decodedGoldenTriangles < 32u) {
                         if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
                             "F3DGOLDEN TRIANGLE[%u]: idx=(%u,%u,%u) A=(%d,%d,%d) B=(%d,%d,%d) C=(%d,%d,%d)",
