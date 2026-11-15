@@ -1530,7 +1530,11 @@ bool processGoldenEyeEmbeddedRdp() {
         dataSize > 8u * 1024u * 1024u - dataPtr)
         return false;
 
-    uint32_t segments[16] = {};
+    // The diagnostic F3D walker runs immediately before this collector and
+    // resolves G_MW_SEGMENT commands into the persistent GoldenEye state.
+    // Reuse that segment table here so nested display lists and texture data
+    // referenced through non-zero segments are not silently resolved from 0.
+    uint32_t* segments = g_goldenEyeGbiState.segments.data();
     uint32_t budget = 0;
     std::vector<std::vector<uint32_t>> commands;
     const bool collectionOk = collectGoldenEyeRdpCommands(
