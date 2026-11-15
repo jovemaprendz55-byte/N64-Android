@@ -1054,6 +1054,19 @@ void processF3DDisplayList(bool verbose) {
         "F3DGOLDEN OPCODE_KEY: BF_G_TRI1=%u B1_G_TRIX=%u 04_G_VTX=%u 06_G_DL=%u 01_G_MTX=%u BA=%u B8_ENDDL=%u",
         opcodeCounts[0xbfu], opcodeCounts[0xb1u], opcodeCounts[0x04u], opcodeCounts[0x06u],
         opcodeCounts[0x01u], opcodeCounts[0xbau], opcodeCounts[0xb8u]);
+    // Transfer projected GBI triangles to the Vulkan module through a copied
+    // CPU-side packet. Positions are NDC; the dedicated 3D draw path comes next.
+    std::vector<float> geometryPositions;
+    geometryPositions.reserve(g_goldenEyeDebugTriangles.size() * 9u);
+    for (const auto& triangle : g_goldenEyeDebugTriangles)
+        geometryPositions.insert(geometryPositions.end(), triangle.begin(), triangle.end());
+    const uint32_t geometryVertexCount = static_cast<uint32_t>(geometryPositions.size() / 3u);
+    if (!n64VulkanSubmitGoldenEyeGeometry(
+            geometryPositions.empty() ? nullptr : geometryPositions.data(),
+            geometryVertexCount, g_processDListCalls)) {
+        if (verbose) __android_log_print(ANDROID_LOG_WARN, TAG,
+            "F3DGOLDEN: falha ao transferir geometria para o modulo Vulkan");
+    }
     // Keep collecting diagnostic triangles, but do not present the CPU debug
     // rasterizer: its white fill is not a real GoldenEye frame and can mask RDP output.
 }
