@@ -1353,6 +1353,37 @@ bool collectGoldenEyeRdpCommands(
             } else {
                 return false;
             }
+        } else if (opcode == 0xE4u || opcode == 0xE5u) {
+            // GoldenEye sends texture-rectangle attributes through the
+            // following G_RDPHALF_1 (B4) and G_RDPHALF_2 (B3) GBI commands.
+            // paraLLEl-RDP expects a four-word RDP packet:
+            //   E4/E5.w0, E4/E5.w1, B4.w1, B3.w1
+            // Do not copy the B4/B3 opcode headers into the RDP payload.
+            constexpr unsigned halfCommandBytes = 8u;
+            constexpr unsigned packetBytes = 3u * halfCommandBytes;
+            if (static_cast<uint64_t>(pc) + packetBytes > rdramLimit ||
+                static_cast<uint64_t>(pc) + packetBytes > limit)
+                return false;
+
+            const uint32_t half1w0 = readRdpWord(pc + 8u);
+            const uint32_t half1w1 = readRdpWord(pc + 12u);
+            const uint32_t half2w0 = readRdpWord(pc + 16u);
+            const uint32_t half2w1 = readRdpWord(pc + 20u);
+            if ((half1w0 >> 24) != 0xB4u || (half2w0 >> 24) != 0xB3u) {
+                __android_log_print(ANDROID_LOG_WARN, TAG,
+                    "GoldenEye TEXRECT sem RDPHALF esperado: pc=%06x "
+                    "next=%08x/%08x", pc, half1w0, half2w0);
+                return false;
+            }
+
+            std::vector<uint32_t> command(4u);
+            command[0] = w0;
+            command[1] = w1;
+            command[2] = half1w1;
+            command[3] = half2w1;
+            commands.emplace_back(std::move(command));
+            pc += packetBytes;
+            continue;
         } else if (opcode >= 0xC8u) {
             // RDP triangle commands (0xC8-0xCF) carry extra payload words.
             // Capture them as complete commands instead of stepping 8 bytes.
