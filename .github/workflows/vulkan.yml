@@ -32,10 +32,31 @@ jobs:
       - name: Install NDK and CMake
         run: sdkmanager "ndk;27.0.12077973" "cmake;3.22.1"
 
+      # Reuse Gradle, CMake/Ninja, SDL2 and compiler outputs between workflow runs.
+      # Restore this BEFORE any native compilation; a run-specific key lets updated
+      # ccache/object files be saved while the prefix restores the previous cache.
+      - name: Cache Gradle and native build outputs
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.gradle/native
+            ~/.cache/ccache
+            app/.cxx
+            app/build
+            build/sdl2-arm64
+          key: ${{ runner.os }}-android-vulkan-ndk27-cmake322-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-android-vulkan-ndk27-cmake322-
+
+      - name: Configure compiler cache
+        run: ccache --max-size=1G
+
       - name: Install GLSL shader compiler
         run: |
           sudo apt-get update
-          sudo apt-get install -y glslang-tools
+          sudo apt-get install -y glslang-tools ccache
 
       - name: Fetch pinned Mupen64Plus HLE RSP source
         run: |
@@ -182,6 +203,8 @@ jobs:
             -DSDL_TEST=OFF \
             -DSDL_TESTS=OFF \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DCMAKE_SHARED_LINKER_FLAGS="-landroid -llog" \
             -DCMAKE_LIBRARY_OUTPUT_DIRECTORY="$GITHUB_WORKSPACE/build/sdl2-arm64"
           cmake --build build/sdl2-arm64 --config Release --parallel 2
@@ -196,21 +219,6 @@ jobs:
           cp "$SDL_JAVA_DIR"/*.java app/src/main/java/org/libsdl/app/
           test -s app/src/main/java/org/libsdl/app/SDLActivity.java
 
-      # Reuse Gradle, CMake/Ninja and SDL2 outputs between workflow runs.
-      # The restore prefix allows a changed C++ file to reuse unchanged objects.
-      - name: Cache Gradle and native build outputs
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            ~/.gradle/native
-            app/.cxx
-            app/build
-            build/sdl2-arm64
-          key: ${{ runner.os }}-android-vulkan-ndk27-cmake322-${{ hashFiles('.github/workflows/vulkan.yml', 'app/build.gradle.kts', 'app/src/main/cpp/CMakeLists.txt', 'app/src/main/cpp/**/*.cpp', 'app/src/main/cpp/**/*.h', 'app/src/main/cpp/**/*.hpp') }}
-          restore-keys: |
-            ${{ runner.os }}-android-vulkan-ndk27-cmake322-
 
       - name: Build Vulkan renderer and Mupen64Plus Core APK
         run: gradle --no-daemon assembleDebug
