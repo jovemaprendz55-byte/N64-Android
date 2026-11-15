@@ -1645,11 +1645,27 @@ bool processGoldenEyeEmbeddedRdp() {
     }
 
     g_rgba.resize(static_cast<size_t>(width) * height * 4u);
+    uint64_t nonBlackPixels = 0;
+    uint8_t minChannel = 255u;
+    uint8_t maxChannel = 0u;
+    uint64_t pixelChecksum = 1469598103934665603ull;
     for (size_t i = 0; i < static_cast<size_t>(width) * height; ++i) {
-        g_rgba[i * 4u + 0u] = colors[i].r;
-        g_rgba[i * 4u + 1u] = colors[i].g;
-        g_rgba[i * 4u + 2u] = colors[i].b;
-        g_rgba[i * 4u + 3u] = colors[i].a;
+        const uint8_t r = colors[i].r;
+        const uint8_t g = colors[i].g;
+        const uint8_t b = colors[i].b;
+        const uint8_t a = colors[i].a;
+        g_rgba[i * 4u + 0u] = r;
+        g_rgba[i * 4u + 1u] = g;
+        g_rgba[i * 4u + 2u] = b;
+        g_rgba[i * 4u + 3u] = a;
+        if (r != 0u || g != 0u || b != 0u) ++nonBlackPixels;
+        minChannel = std::min(minChannel, std::min(r, std::min(g, b)));
+        maxChannel = std::max(maxChannel, std::max(r, std::max(g, b)));
+        pixelChecksum ^= static_cast<uint64_t>(r) |
+                         (static_cast<uint64_t>(g) << 8u) |
+                         (static_cast<uint64_t>(b) << 16u) |
+                         (static_cast<uint64_t>(a) << 24u);
+        pixelChecksum *= 1099511628211ull;
     }
 
     N64VideoFrame frame{};
@@ -1659,6 +1675,16 @@ bool processGoldenEyeEmbeddedRdp() {
     frame.stride_bytes = width * 4u;
     frame.pixel_format = N64_VIDEO_PIXEL_FORMAT_RGBA8888;
     frame.frame_number = ++g_frameNumber;
+    if (g_processDListCalls <= 10u || (g_processDListCalls % 120u) == 0u) {
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "GoldenEye RDP pixels: frame=%llu size=%ux%u total=%llu nonBlack=%llu "
+            "minRGB=%u maxRGB=%u checksum=%016llx",
+            static_cast<unsigned long long>(frame.frame_number), width, height,
+            static_cast<unsigned long long>(static_cast<uint64_t>(width) * height),
+            static_cast<unsigned long long>(nonBlackPixels),
+            static_cast<unsigned>(minChannel), static_cast<unsigned>(maxChannel),
+            static_cast<unsigned long long>(pixelChecksum));
+    }
     n64VulkanVideoFrameCallback(&frame, nullptr);
 
     if (g_processDListCalls <= 10u)
