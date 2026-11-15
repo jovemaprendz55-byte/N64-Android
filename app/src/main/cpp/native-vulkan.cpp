@@ -64,6 +64,10 @@ VkDescriptorSet g_videoDescriptorSet = VK_NULL_HANDLE;
 uint32_t g_videoWidth = 0;
 uint32_t g_videoHeight = 0;
 bool g_rendererFaulted = false;
+// CPU-side handoff buffer for projected GoldenEye geometry. A dedicated 3D
+// Vulkan pipeline will consume this data in a later stage.
+std::vector<float> g_goldenEyePositionsNdc;
+uint64_t g_goldenEyeGeometryTask = 0;
 
 PFN_vkDestroySurfaceKHR pDestroySurface = nullptr;
 PFN_vkGetPhysicalDeviceSurfaceSupportKHR pGetSurfaceSupport = nullptr;
@@ -1723,6 +1727,31 @@ extern "C" bool n64VulkanSubmitVideoFrame(const N64VideoFrame* frame) {
 
 // Adapter can be registered directly as an N64VideoFrameCallback.
 // user_data is reserved for future per-core/per-instance renderer contexts.
+extern "C" bool n64VulkanSubmitGoldenEyeGeometry(
+    const float* positions_xyz, uint32_t vertex_count, uint64_t task_number) {
+    if ((vertex_count % 3u) != 0u || vertex_count > 3u * 1024u * 1024u ||
+        (vertex_count != 0u && positions_xyz == nullptr)) {
+        __android_log_print(ANDROID_LOG_WARN, TAG,
+            "GoldenEye geometry rejeitada: vertex_count=%u", vertex_count);
+        return false;
+    }
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (vertex_count == 0u) {
+        g_goldenEyePositionsNdc.clear();
+    } else {
+        g_goldenEyePositionsNdc.assign(
+            positions_xyz, positions_xyz + static_cast<size_t>(vertex_count) * 3u);
+    }
+    g_goldenEyeGeometryTask = task_number;
+    if (task_number <= 12u || (task_number % 120u) == 0u) {
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "GoldenEye geometry recebida: task=%llu vertices=%u triangulos=%u (NDC; ainda sem draw)",
+            static_cast<unsigned long long>(task_number), vertex_count,
+            vertex_count / 3u);
+    }
+    return true;
+}
+
 extern "C" void n64VulkanVideoFrameCallback(
     const N64VideoFrame* frame, void* /* user_data */) {
     if (!n64VulkanSubmitVideoFrame(frame)) {
