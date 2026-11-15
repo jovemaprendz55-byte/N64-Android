@@ -9,13 +9,17 @@ find_package(Python3 COMPONENTS Interpreter REQUIRED)
 set(SHADER_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated-shaders")
 set(VERTEX_SPV "${SHADER_OUTPUT_DIR}/triangle.vert.spv")
 set(FRAGMENT_SPV "${SHADER_OUTPUT_DIR}/triangle.frag.spv")
+set(GEOMETRY_VERTEX_SPV "${SHADER_OUTPUT_DIR}/geometry.vert.spv")
+set(GEOMETRY_FRAGMENT_SPV "${SHADER_OUTPUT_DIR}/geometry.frag.spv")
 set(SHADER_HEADER "${SHADER_OUTPUT_DIR}/triangle_shaders.h")
 add_custom_command(OUTPUT "${SHADER_HEADER}"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${SHADER_OUTPUT_DIR}"
     COMMAND ${GLSLANG_VALIDATOR} -V "${CMAKE_CURRENT_SOURCE_DIR}/shaders/triangle.vert" -o "${VERTEX_SPV}"
     COMMAND ${GLSLANG_VALIDATOR} -V "${CMAKE_CURRENT_SOURCE_DIR}/shaders/triangle.frag" -o "${FRAGMENT_SPV}"
-    COMMAND ${Python3_EXECUTABLE} "${N64_PROJECT_ROOT}/tools/embed_spirv.py" "${VERTEX_SPV}" "${FRAGMENT_SPV}" "${SHADER_HEADER}"
-    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/shaders/triangle.vert" "${CMAKE_CURRENT_SOURCE_DIR}/shaders/triangle.frag" "${N64_PROJECT_ROOT}/tools/embed_spirv.py"
+    COMMAND ${GLSLANG_VALIDATOR} -V "${CMAKE_CURRENT_SOURCE_DIR}/shaders/geometry.vert" -o "${GEOMETRY_VERTEX_SPV}"
+    COMMAND ${GLSLANG_VALIDATOR} -V "${CMAKE_CURRENT_SOURCE_DIR}/shaders/geometry.frag" -o "${GEOMETRY_FRAGMENT_SPV}"
+    COMMAND ${Python3_EXECUTABLE} "${N64_PROJECT_ROOT}/tools/embed_spirv.py" "${VERTEX_SPV}" "${FRAGMENT_SPV}" "${GEOMETRY_VERTEX_SPV}" "${GEOMETRY_FRAGMENT_SPV}" "${SHADER_HEADER}"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/shaders/triangle.vert" "${CMAKE_CURRENT_SOURCE_DIR}/shaders/triangle.frag" "${CMAKE_CURRENT_SOURCE_DIR}/shaders/geometry.vert" "${CMAKE_CURRENT_SOURCE_DIR}/shaders/geometry.frag" "${N64_PROJECT_ROOT}/tools/embed_spirv.py"
     VERBATIM)
 add_custom_target(n64vulkan_shaders DEPENDS "${SHADER_HEADER}")
 add_library(n64vulkan SHARED native-vulkan.cpp "${SHADER_HEADER}")
