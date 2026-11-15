@@ -1297,7 +1297,7 @@ unsigned rdpCommandWordCount(uint32_t opcode) {
     case 0x0e: return 40;  // Shade + texture
     case 0x0f: return 44;  // Shade + texture + Z
     case 0x24:
-    case 0x25: return 4;   // Texture rectangle / flipped
+    case 0x25: return 6;   // Texture rectangle + RDPHALF_1 + RDPHALF_2
     default: return 2;
     }
 }
