@@ -9,6 +9,11 @@ on:
       - vulkan
   workflow_dispatch:
 
+# Keep only the newest build for this branch; older queued/running builds are obsolete.
+concurrency:
+  group: android-vulkan-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   assemble-vulkan:
     runs-on: ubuntu-latest
