@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cmath>
+#include <chrono>
 #include <cstring>
 #include <mutex>
 #include <vector>
@@ -1581,6 +1582,14 @@ bool processGoldenEyeEmbeddedRdp() {
     if (!collectionOk || commands.empty())
         return false;
 
+    const bool traceRdp = g_processDListCalls <= 10u ||
+                          (g_processDListCalls % 120u) == 0u;
+    if (traceRdp) {
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "GoldenEye RDP enqueue BEGIN: task=%llu commands=%zu",
+            static_cast<unsigned long long>(g_processDListCalls),
+            commands.size());
+    }
     unsigned submitted = 0;
     for (const auto& command : commands) {
         if (command.size() < 2u || command.size() > 44u)
@@ -1588,6 +1597,11 @@ bool processGoldenEyeEmbeddedRdp() {
         g_rdp->enqueue_command(
             static_cast<unsigned>(command.size()), command.data());
         ++submitted;
+    }
+    if (traceRdp) {
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "GoldenEye RDP enqueue END: task=%llu submitted=%u",
+            static_cast<unsigned long long>(g_processDListCalls), submitted);
     }
 
     setRdpViRegisters();
@@ -1611,7 +1625,21 @@ bool processGoldenEyeEmbeddedRdp() {
                 c.size() > 1u ? c[1] : 0u, c.size());
         }
     }
+    const auto flushStart = std::chrono::steady_clock::now();
+    if (traceRdp) {
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "GoldenEye RDP flush BEGIN: task=%llu",
+            static_cast<unsigned long long>(g_processDListCalls));
+    }
     g_rdp->flush();
+    const auto flushUs = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - flushStart).count();
+    if (traceRdp) {
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "GoldenEye RDP flush END: task=%llu elapsed_us=%lld",
+            static_cast<unsigned long long>(g_processDListCalls),
+            static_cast<long long>(flushUs));
+    }
 
     // This GoldenEye path is entered through RSP HLE's ProcessDList callback,
     // not the core's DPC_END write path. Therefore the core will not generate
@@ -1635,7 +1663,21 @@ bool processGoldenEyeEmbeddedRdp() {
     unsigned width = 0;
     unsigned height = 0;
     RDP::ScanoutOptions options = {};
+    const auto scanoutStart = std::chrono::steady_clock::now();
+    if (traceRdp) {
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "GoldenEye RDP scanout BEGIN: task=%llu",
+            static_cast<unsigned long long>(g_processDListCalls));
+    }
     g_rdp->scanout_sync(colors, width, height, options);
+    const auto scanoutUs = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - scanoutStart).count();
+    if (traceRdp) {
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "GoldenEye RDP scanout END: task=%llu elapsed_us=%lld size=%ux%u pixels=%zu",
+            static_cast<unsigned long long>(g_processDListCalls),
+            static_cast<long long>(scanoutUs), width, height, colors.size());
+    }
     if (width == 0 || height == 0 ||
         colors.size() < static_cast<size_t>(width) * height) {
         __android_log_print(ANDROID_LOG_WARN, TAG,
