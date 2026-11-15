@@ -31,6 +31,7 @@ struct GoldenEyeVertex {
     uint16_t flag = 0;
     int16_t s = 0, t = 0;
     uint8_t colorOrNormal[4] = {};
+    bool lightingEnabled = false;
     bool valid = false;
 };
 
@@ -52,6 +53,7 @@ struct GoldenEyeGbiState {
     std::array<GoldenEyeVertex, 32> vertexCache{};
     GoldenEyeMatrixState matrices{};
     uint32_t vertexCacheMask = 0;
+    uint32_t geometryMode = 0;
 };
 
 void multiplyMatrix4x4(const float a[16], const float b[16], float out[16]) {
@@ -129,9 +131,9 @@ std::vector<float> g_goldenEyeRenderVertices;
 void appendGoldenEyeRenderVertex(float x,float y,float z,const GoldenEyeVertex& vertex) {
     g_goldenEyeRenderVertices.insert(g_goldenEyeRenderVertices.end(),
         {x,y,z,
-         static_cast<float>(vertex.colorOrNormal[0])/255.0f,
-         static_cast<float>(vertex.colorOrNormal[1])/255.0f,
-         static_cast<float>(vertex.colorOrNormal[2])/255.0f,
+         (vertex.lightingEnabled ? 1.0f : static_cast<float>(vertex.colorOrNormal[0])/255.0f),
+         (vertex.lightingEnabled ? 1.0f : static_cast<float>(vertex.colorOrNormal[1])/255.0f),
+         (vertex.lightingEnabled ? 1.0f : static_cast<float>(vertex.colorOrNormal[2])/255.0f),
          static_cast<float>(vertex.colorOrNormal[3])/255.0f});
 }
 std::vector<uint8_t> g_goldenEyeDebugPixels;
@@ -477,6 +479,16 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
             return true;
         }
 
+        // F3D geometry-mode commands. In a lit vertex, the final four bytes
+        // are signed normal XYZ plus alpha, not an RGBA color. The temporary
+        // Vulkan path has no N64 lighting implementation yet, so render lit
+        // vertices neutral white instead of incorrectly treating normals as RGB.
+        if (opcode == 0xB7u) { // G_SETGEOMETRYMODE
+            matrixState.geometryMode |= w1;
+        } else if (opcode == 0xB6u) { // G_CLEARGEOMETRYMODE
+            matrixState.geometryMode &= ~w1;
+        }
+
         // GLideN64 F3DGOLDEN_Init maps BOTH 0xBC (G_MOVEWORD) and
         // 0xBD (G_GOLDEN_MOVEWORD) to F3D_MoveWord. In this microcode,
         // 0xBD is NOT G_POPMTX; treating it as a matrix pop corrupts state.
@@ -610,6 +622,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                     vertex.colorOrNormal[1] = static_cast<uint8_t>(rgba >> 16);
                     vertex.colorOrNormal[2] = static_cast<uint8_t>(rgba >> 8);
                     vertex.colorOrNormal[3] = static_cast<uint8_t>(rgba);
+                    vertex.lightingEnabled = (matrixState.geometryMode & 0x00020000u) != 0u;
                     vertex.valid = true;
                     vertexCacheMask |= (1u << (firstVertex + i));
                     if (i < 4u && loggedGbiCommands < 100u) {
