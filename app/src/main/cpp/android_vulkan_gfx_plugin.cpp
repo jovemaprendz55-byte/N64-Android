@@ -1788,6 +1788,10 @@ EXPORT int CALL InitiateGFX(GFX_INFO info) {
 EXPORT void CALL MoveScreen(int, int) {}
 EXPORT void CALL ProcessDList(void) {
     std::lock_guard<std::mutex> lock(g_mutex);
+    // Advance paraLLEl-RDP's Granite frame context before recording this
+    // graphics task. This flushes/drains the previous task before recycling
+    // per-frame Vulkan resources.
+    if (g_rdp) g_rdp->begin_frame_context();
     ++g_processDListCalls;
     // RSP HLE signals a graphics task to the GFX plugin. It does not guarantee
     // that the OSTask display-list data has already become raw RDP commands.
@@ -1815,6 +1819,9 @@ EXPORT void CALL ProcessDList(void) {
 }
 EXPORT void CALL ProcessRDPList(void) {
     std::lock_guard<std::mutex> lock(g_mutex);
+    // DPC-driven RDP tasks can arrive without ProcessDList; give that path
+    // the same frame-context lifetime handling.
+    if (g_rdp) g_rdp->begin_frame_context();
     ++g_processRdpCalls;
     if (!processRdpCommandList() && g_processRdpCalls <= 10) {
         __android_log_print(ANDROID_LOG_WARN, TAG,
