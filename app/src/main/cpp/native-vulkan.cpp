@@ -2416,14 +2416,16 @@ Java_com_jsr_n64android_VulkanNative_nativeInitialize(
         shutdownLocked();
         return result(env, message);
     }
-    if (!createLogicalDevice(error) || !createSwapchain(error)) {
+    if (!createLogicalDevice(error) || !createSwapchain(error, true)) {
         const std::string message = error.empty()
             ? "Falha ao inicializar dispositivo Vulkan." : error;
         shutdownLocked();
         return result(env, message);
     }
     const std::string message = "Superfície Vulkan Android criada. GPU: " + gpuName +
-        ". Teste de apresentação: " + error;
+        ". Teste de apresentação inicial: " + error;
+    __android_log_print(ANDROID_LOG_INFO, TAG,
+        "VULKAN_STARTUP_PRESENT_TEST: imagem de diagnóstico apresentada durante a inicialização.");
     __android_log_print(ANDROID_LOG_INFO, TAG, "%s", message.c_str());
     return result(env, message);
 }
