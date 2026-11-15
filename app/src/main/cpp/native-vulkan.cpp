@@ -1552,8 +1552,8 @@ bool presentTestFrame(std::string& error, bool allowSwapchainRecovery) {
         error = "vkWaitForFences falhou: " + std::to_string(status);
         return false;
     }
-    // Upload da geometria de diagnóstico pausado junto com sua sobreposição.
-    // if (!uploadGoldenEyeGeometryLocked(error)) return false;
+    // Mantém o upload e a coleta ativos; somente o desenho da sobreposição está desativado.
+    if (!uploadGoldenEyeGeometryLocked(error)) return false;
     uint32_t imageIndex = 0;
     status = vkAcquireNextImageKHR(g_device, g_swapchain, UINT64_MAX,
                                    g_imageAvailable, VK_NULL_HANDLE, &imageIndex);
