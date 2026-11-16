@@ -579,7 +579,7 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
         // the Vtx attribute bytes are normals, not RGB.
         if (opcode == 0x03u) {
             const unsigned moveMemType = (w0 >> 16) & 0xffu;
-            if (moveMemType >= 0x86u && moveMemType <= 0x94u &&
+            if (moveMemType >= 0x86u && moveMemType <= 0x96u &&
                 (moveMemType & 1u) == 0u) {
                 const unsigned lightIndex = (moveMemType - 0x86u) / 2u;
                 const unsigned segment = (w1 >> 24) & 0xffu;
