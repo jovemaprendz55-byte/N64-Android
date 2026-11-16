@@ -1,303 +1,120 @@
 package com.jsr.n64android
 
 import android.app.Activity
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.SurfaceHolder
 import android.view.SurfaceView
+import android.view.View
 import android.view.ViewGroup
-import android.widget.FrameLayout
+import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import java.io.File
 
-/**
- * Vulkan-only application shell.
- * The previous graphics startup and diagnostics are removed from this Activity.
- * Vulkan is not connected yet; the Play button never starts the legacy GL path.
- */
 class MainActivity : Activity() {
     private val romPickerRequestCode = 4201
-    private lateinit var selectedRomView: TextView
-    private lateinit var playVulkanButton: Button
     private lateinit var homeLayout: LinearLayout
-    private var audioReport = "Ainda não foi feita a leitura do diagnóstico."
+    private lateinit var homeStatus: TextView
+    private lateinit var videoSpinner: Spinner
+    private lateinit var rspSpinner: Spinner
+    private lateinit var audioSpinner: Spinner
+    private lateinit var inputSpinner: Spinner
+    private var gameScreenVisible = false
+    private var launchInProgress = false
+    private var pressedButtons = 0
+    private var selectedRomBytes: ByteArray? = null
+
+    private val videoPluginId = "vulkan_android"
+    private val rspPluginId = "cxd4"
+    private val audioPluginId = "none"
+    private val inputPluginId = "android_virtual"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         buildHomeScreen()
         setContentView(homeLayout)
-        refreshSelectedRom()
     }
 
     private fun buildHomeScreen() {
-        selectedRomView = TextView(this).apply {
-            text = "Nenhuma ROM selecionada"
+        homeStatus = TextView(this).apply {
+            text = "Escolha os plugins disponíveis e toque em Selecionar ROM e jogar."
             textSize = 14f
             gravity = Gravity.CENTER
             setPadding(12, 16, 12, 16)
         }
-        playVulkanButton = Button(this).apply {
-            text = "JOGAR VULKAN"
+        videoSpinner = pluginSpinner(listOf("Vulkan Android (experimental)"))
+        rspSpinner = pluginSpinner(listOf("RSP CXD4 LLE"))
+        audioSpinner = pluginSpinner(listOf("Áudio: não disponível nesta versão")).apply {
             isEnabled = false
-            setOnClickListener {
-                if (!selectedRomFile().isFile) {
-                    selectedRomView.text = "Selecione uma ROM N64 primeiro."
-                    isEnabled = false
-                } else {
-                    showVulkanSurface()
-                }
-            }
         }
+        inputSpinner = pluginSpinner(listOf("Controle virtual Android"))
+
         homeLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(28, 28, 28, 28)
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(22), dp(24), dp(22), dp(24))
             addView(TextView(this@MainActivity).apply {
                 text = "N64 Android"
                 textSize = 30f
                 gravity = Gravity.CENTER
-                setPadding(12, 24, 12, 12)
+                setPadding(8, dp(22), 8, dp(8))
             })
             addView(TextView(this@MainActivity).apply {
-                text = "Emulador Nintendo 64 para Android"
-                textSize = 16f
+                text = "Configuração dos plugins"
+                textSize = 18f
                 gravity = Gravity.CENTER
-                setPadding(12, 8, 12, 24)
+                setPadding(8, dp(8), 8, dp(18))
             })
-            addView(selectedRomView)
-            addView(Button(this@MainActivity).apply {
-                text = "Selecionar ROM"
-                setOnClickListener { openRomPicker() }
-            })
-            addView(playVulkanButton)
-            addView(Button(this@MainActivity).apply {
-                text = "DIAGNÓSTICO DO SISTEMA"
-                setOnClickListener { showAudioDiagnostics() }
-            })
-            addView(TextView(this@MainActivity).apply {
-                text = "Renderizador Vulkan em desenvolvimento."
-                textSize = 14f
-                gravity = Gravity.CENTER
-                setPadding(16, 28, 16, 12)
-            })
-        }
-    }
-
-    private fun selectedRomFile(): File =
-        File(File(filesDir, "roms"), "selected.n64")
-
-    private fun showVulkanSurface() {
-        val status = TextView(this).apply {
-            text = "Aguardando superfície Vulkan..."
-            textSize = 14f
-            setTextColor(android.graphics.Color.WHITE)
-            setPadding(20, 20, 20, 20)
-        }
-        val surfaceView = SurfaceView(this)
-        val container = FrameLayout(this)
-        container.addView(surfaceView, FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT
-        ))
-        container.addView(status, FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            Gravity.TOP
-        ))
-
-        // In-game diagnostics overlay: inspect and copy logs without stopping
-        // the ROM or returning to the launcher screen.
-        val logText = TextView(this).apply {
-            text = "Toque em ATUALIZAR para carregar os registros desta execução."
-            textSize = 11f
-            setTextColor(android.graphics.Color.WHITE)
-            setTextIsSelectable(true)
-            setPadding(10, 8, 10, 8)
-        }
-        val logScroll = ScrollView(this).apply {
-            visibility = ViewGroup.GONE
-            isFillViewport = false
-            addView(logText)
-        }
-        val logPanel = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(8, 8, 8, 8)
-            setBackgroundColor(android.graphics.Color.argb(220, 20, 20, 20))
-            addView(LinearLayout(this@MainActivity).apply {
-                orientation = LinearLayout.HORIZONTAL
-                addView(Button(this@MainActivity).apply {
-                    text = "ATUALIZAR LOGS"
-                    setOnClickListener { loadInGameLogs(logText, false) }
-                }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-                addView(Button(this@MainActivity).apply {
-                    text = "COPIAR LOGS"
-                    setOnClickListener { loadInGameLogs(logText, true) }
-                }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-                addView(Button(this@MainActivity).apply {
-                    text = "MOSTRAR"
-                    setOnClickListener { logPanelVisibility(logScroll, this) }
-                })
-            })
-            addView(logScroll, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(190)
+            addPluginField("Vídeo / GFX", videoSpinner)
+            addPluginField("RSP", rspSpinner)
+            addPluginField("Áudio", audioSpinner)
+            addPluginField("Controle / Input", inputSpinner)
+            addView(homeStatus, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
             ))
+            addView(Button(this@MainActivity).apply {
+                text = "SELECIONAR ROM E JOGAR"
+                textSize = 16f
+                setOnClickListener { openRomPicker() }
+            }, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(58)
+            ).apply { topMargin = dp(12) })
+            addView(TextView(this@MainActivity).apply {
+                text = "Os seletores mostram somente plugins incluídos no APK. O áudio ainda não está instalado."
+                textSize = 12f
+                gravity = Gravity.CENTER
+                setPadding(8, dp(18), 8, 8)
+            })
         }
-        container.addView(logPanel, FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            Gravity.TOP
-        ).apply { topMargin = dp(58) })
+    }
 
-        container.addView(Button(this).apply {
-            text = "VOLTAR"
-            setOnClickListener {
-                try { VulkanNative.nativeCloseRom() } catch (_: Throwable) {}
-                try { VulkanNative.nativeShutdown() } catch (_: Throwable) {}
-                setContentView(homeLayout)
-                refreshSelectedRom()
-            }
-        }, FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-        ))
-
-        var initialized = false
-        var corePrepared = false
-        var initializedWidth = 0
-        var initializedHeight = 0
-
-        fun initializeVulkanSurface(holder: SurfaceHolder, width: Int, height: Int) {
-            if (width <= 0 || height <= 0 || !holder.surface.isValid) {
-                status.text = "Aguardando dimensões válidas da superfície Android..."
-                return
-            }
-            try {
-                status.text = "Inicializando Vulkan (${width}x${height})..."
-                status.text = VulkanNative.nativeInitialize(holder.surface)
-                initialized = status.text.toString().startsWith("Superfície Vulkan Android criada")
-                if (initialized) {
-                    initializedWidth = width
-                    initializedHeight = height
-                    if (!corePrepared) {
-                        status.text = "Vulkan ativa. Abrindo ROM e anexando os plugins..."
-                        val romBytes = selectedRomFile().readBytes()
-                        status.text = VulkanNative.nativePrepareRom(
-                            romBytes,
-                            File(filesDir, "n64-config").absolutePath,
-                            File(filesDir, "n64-data").absolutePath
-                        )
-                        corePrepared = status.text.toString().startsWith("ROM aberta no Mupen64Plus")
-                        if (corePrepared) {
-                            status.text = "Plugins anexados. Iniciando execução da ROM..."
-                            status.text = VulkanNative.nativeStartEmulation()
-                        }
-                    }
-                } else {
-                    initializedWidth = 0
-                    initializedHeight = 0
-                }
-            } catch (error: Throwable) {
-                initialized = false
-                initializedWidth = 0
-                initializedHeight = 0
-                status.text = "Falha ao iniciar Vulkan: ${error.message}"
-            }
+    private fun pluginSpinner(items: List<String>): Spinner {
+        return Spinner(this).apply {
+            adapter = ArrayAdapter(
+                this@MainActivity,
+                android.R.layout.simple_spinner_dropdown_item,
+                items
+            )
         }
+    }
 
-        surfaceView.holder.addCallback(object : SurfaceHolder.Callback {
-            override fun surfaceCreated(holder: SurfaceHolder) {
-                initializeVulkanSurface(holder, surfaceView.width, surfaceView.height)
-            }
-
-            override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-                if (width <= 0 || height <= 0) {
-                    status.text = "Aguardando dimensões válidas da superfície Android..."
-                    return
-                }
-
-                if (!initialized) {
-                    initializeVulkanSurface(holder, width, height)
-                } else if (width != initializedWidth || height != initializedHeight) {
-                    status.text = "Reconstruindo dispositivo e swapchain Vulkan (${width}x${height})..."
-                    initializeVulkanSurface(holder, width, height)
-                } else {
-                    status.text = if (corePrepared) "Vulkan ativa (${width}x${height}). Núcleo N64 preparado; execução iniciada ou em andamento." else "Vulkan ativa (${width}x${height}). Aguardando preparação da ROM."
-                }
-            }
-
-            override fun surfaceDestroyed(holder: SurfaceHolder) {
-                try { VulkanNative.nativeCloseRom() } catch (_: Throwable) {}
-                try { VulkanNative.nativeShutdown() } catch (_: Throwable) {}
-                corePrepared = false
-                initialized = false
-                initializedWidth = 0
-                initializedHeight = 0
-            }
+    private fun addPluginField(label: String, spinner: Spinner) {
+        homeLayout.addView(TextView(this).apply {
+            text = label
+            textSize = 14f
+            setPadding(4, dp(8), 4, 0)
         })
-        setContentView(container)
-    }
-
-
-    private fun dp(value: Int): Int =
-        (value * resources.displayMetrics.density).toInt()
-
-    private fun logPanelVisibility(scroll: ScrollView, button: Button) {
-        val show = scroll.visibility != ViewGroup.VISIBLE
-        scroll.visibility = if (show) ViewGroup.VISIBLE else ViewGroup.GONE
-        button.text = if (show) "OCULTAR" else "MOSTRAR"
-    }
-
-    private fun loadInGameLogs(target: TextView, copyToClipboard: Boolean) {
-        target.text = "Lendo registros da execução atual..."
-        Thread {
-            val result = try {
-                val process = ProcessBuilder("logcat", "-d", "-v", "time", "-t", "5000")
-                    .redirectErrorStream(true).start()
-                val lines = process.inputStream.bufferedReader().use { it.readLines() }
-                process.waitFor()
-                val markers = listOf(
-                    "N64Android", "N64ANDROID", "N64AndroidVulkan", "N64AndroidVulkanGFX",
-                    "F3DGOLDEN", "GoldenEye", "DPC ", "RDP ", "CXD4", "paraLLEl",
-                    "Vulkan frame", "AndroidRuntime", "Fatal signal", "SIGSEGV",
-                    "SIGABRT", "FATAL EXCEPTION", "crash_dump", "tombstoned"
-                )
-                lines.filter { line ->
-                    markers.any { marker -> line.contains(marker, ignoreCase = true) }
-                }.takeLast(700).joinToString("\\n").ifBlank {
-                    "Nenhum registro filtrado encontrado. Verifique se a ROM está em execução."
-                }
-            } catch (error: Exception) {
-                "Falha ao ler os registros: ${error.message}"
-            }
-            runOnUiThread {
-                target.text = result
-                if (copyToClipboard) {
-                    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("Logs N64 Android - jogo", result))
-                    Toast.makeText(this, "Logs copiados. O jogo continua aberto.", Toast.LENGTH_LONG).show()
-                }
-            }
-        }.start()
-    }
-
-    private fun refreshSelectedRom() {
-        val romFile = selectedRomFile()
-        val ready = romFile.isFile && romFile.length() >= 4096
-        selectedRomView.text = if (ready) {
-            "ROM N64 selecionada (${romFile.length()} bytes)"
-        } else {
-            "Nenhuma ROM selecionada"
-        }
-        playVulkanButton.isEnabled = ready
+        homeLayout.addView(spinner, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, dp(48)
+        ))
     }
 
     private fun openRomPicker() {
@@ -308,123 +125,216 @@ class MainActivity : Activity() {
             }
             startActivityForResult(intent, romPickerRequestCode)
         } catch (error: Exception) {
-            selectedRomView.text = "Falha ao abrir seletor de ROM: ${error.message}"
+            homeStatus.text = "Não foi possível abrir os arquivos: ${error.message}"
         }
     }
 
     @Deprecated("Compatibilidade com a Activity atual")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != romPickerRequestCode) return
-        if (resultCode != RESULT_OK) {
-            selectedRomView.text = "Seleção de ROM cancelada."
-            return
-        }
-        val uri = data?.data ?: run {
-            selectedRomView.text = "Nenhum arquivo foi selecionado."
-            return
-        }
-        selectedRomView.text = "Lendo e validando a ROM..."
+        if (requestCode != romPickerRequestCode || resultCode != RESULT_OK) return
+        val uri = data?.data ?: return
+        homeStatus.text = "Lendo e verificando a ROM..."
         Thread {
             val result = try {
                 val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() }
                     ?: throw IllegalStateException("Não foi possível abrir o arquivo.")
-                when {
-                    bytes.size < 4096 -> throw IllegalArgumentException("Arquivo menor que 4 KB.")
-                    bytes.size > 64 * 1024 * 1024 -> throw IllegalArgumentException("Arquivo maior que 64 MB.")
-                    bytes.size % 4 != 0 -> throw IllegalArgumentException("Tamanho não é múltiplo de 4 bytes.")
-                }
+                if (bytes.size < 4096 || bytes.size > 64 * 1024 * 1024 || bytes.size % 4 != 0)
+                    throw IllegalArgumentException("Tamanho de ROM inválido.")
                 val signature = bytes.take(4).joinToString(" ") {
                     "%02X".format(it.toInt() and 0xff)
                 }
-                val valid = signature == "80 37 12 40" ||
-                    signature == "37 80 40 12" ||
-                    signature == "40 12 37 80"
-                if (!valid) throw IllegalArgumentException(
-                    "Assinatura não reconhecida como ROM N64: $signature"
-                )
-                val directory = File(filesDir, "roms")
-                if (!directory.exists() && !directory.mkdirs()) {
-                    throw IllegalStateException("Não foi possível criar a pasta de ROMs.")
-                }
-                selectedRomFile().writeBytes(bytes)
-                "ROM N64 reconhecida e copiada (${bytes.size} bytes)."
+                if (signature !in setOf("80 37 12 40", "37 80 40 12", "40 12 37 80"))
+                    throw IllegalArgumentException("O arquivo não tem assinatura de ROM N64: $signature")
+                bytes
             } catch (error: Exception) {
-                "Falha ao validar ROM: ${error.message}"
+                runOnUiThread { homeStatus.text = "Falha ao abrir ROM: ${error.message}" }
+                null
             }
-            runOnUiThread {
-                selectedRomView.text = result
-                refreshSelectedRom()
-                if (result.startsWith("ROM N64 reconhecida")) selectedRomView.text = result
+            if (result != null) runOnUiThread {
+                selectedRomBytes = result
+                homeStatus.text = "ROM validada (${result.size} bytes). Preparando a tela do jogo..."
+                showGameplayScreen()
             }
         }.start()
     }
 
-    private fun showAudioDiagnostics() {
-        val reportView = TextView(this).apply {
-            text = "Lendo registros do áudio..."
+    private fun showGameplayScreen() {
+        val romBytes = selectedRomBytes ?: return
+        gameScreenVisible = true
+        launchInProgress = false
+        pressedButtons = 0
+
+        val status = TextView(this).apply {
+            text = "Aguardando superfície Vulkan..."
             textSize = 13f
-            setTextIsSelectable(true)
-            setPadding(16, 16, 16, 16)
+            setTextColor(android.graphics.Color.WHITE)
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+            setBackgroundColor(android.graphics.Color.argb(190, 0, 0, 0))
         }
-        fun refresh() {
-            reportView.text = "Consultando logcat..."
-            Thread {
-                val result = try {
-                    val process = ProcessBuilder("logcat", "-d", "-t", "2000")
-                        .redirectErrorStream(true).start()
-                    val lines = process.inputStream.bufferedReader().use { it.readLines() }
-                    process.waitFor()
-                    val markers = listOf(
-                        "N64AndroidAudio", "N64ANDROID AUDIO:", "N64AndroidCore",
-                        "N64AndroidVulkan", "N64AndroidVulkanGFX", "SDL_OpenAudio", "SDL_Init", "AiLenChanged",
-                        "AndroidRuntime", "Fatal signal", "DEBUG", "tombstoned",
-                        "crash_dump", "SIGSEGV", "SIGABRT", "FATAL EXCEPTION"
-                    )
-                    lines.filter { line ->
-                        markers.any { marker -> line.contains(marker, ignoreCase = true) }
-                    }.takeLast(250).joinToString("\n").ifBlank {
-                        "Nenhum erro ou registro do emulador encontrado no logcat."
-                    }
-                } catch (error: Exception) {
-                    "Não foi possível ler o logcat: ${error.message}"
-                }
-                runOnUiThread {
-                    audioReport = result
-                    reportView.text = result
-                }
-            }.start()
+        val surfaceView = SurfaceView(this).apply {
+            setBackgroundColor(android.graphics.Color.BLACK)
         }
-        val page = LinearLayout(this).apply {
+        val gameLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            addView(TextView(this@MainActivity).apply {
-                text = "Diagnóstico do sistema N64"
-                textSize = 22f
-                gravity = Gravity.CENTER
-                setPadding(12, 16, 12, 16)
-            })
+            setBackgroundColor(android.graphics.Color.BLACK)
+            addView(surfaceView, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
+            ))
+            addView(status, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            ))
+            addView(buildTouchControls(), LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            ))
             addView(Button(this@MainActivity).apply {
-                text = "Atualizar diagnóstico"
-                setOnClickListener { refresh() }
+                text = "FECHAR JOGO"
+                setOnClickListener { returnToHome() }
             })
-            addView(Button(this@MainActivity).apply {
-                text = "Copiar logs do erro"
-                setOnClickListener {
-                    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("Logs de diagnóstico N64", audioReport))
-                    Toast.makeText(this@MainActivity, "Diagnóstico copiado.", Toast.LENGTH_SHORT).show()
-                }
-            })
-            addView(Button(this@MainActivity).apply {
-                text = "Voltar ao início"
-                setOnClickListener { setContentView(homeLayout) }
-            })
-            addView(reportView)
         }
-        setContentView(ScrollView(this).apply {
-            isFillViewport = true
-            addView(page)
+
+        var initialized = false
+        var prepared = false
+        fun initialize(holder: SurfaceHolder, width: Int, height: Int) {
+            if (initialized || launchInProgress || width <= 0 || height <= 0 ||
+                !holder.surface.isValid) return
+            launchInProgress = true
+            try {
+                status.text = "Conectando a superfície Vulkan..."
+                val vulkan = VulkanNative.nativeInitialize(holder.surface)
+                if (!vulkan.startsWith("Superfície Vulkan Android criada")) {
+                    status.text = vulkan
+                    launchInProgress = false
+                    return
+                }
+                initialized = true
+                status.text = "Vulkan pronta. Conectando ROM, Core e plugins..."
+                val prepare = VulkanNative.nativePrepareRom(
+                    romBytes,
+                    File(filesDir, "n64-config").absolutePath,
+                    File(filesDir, "n64-data").absolutePath,
+                    videoPluginId,
+                    rspPluginId,
+                    audioPluginId,
+                    inputPluginId
+                )
+                if (!prepare.startsWith("ROM aberta no Mupen64Plus")) {
+                    status.text = prepare
+                    launchInProgress = false
+                    return
+                }
+                prepared = true
+                status.text = "Plugins conectados. Iniciando o jogo..."
+                status.text = VulkanNative.nativeStartEmulation()
+                if (status.text.toString().startsWith("Comando de execução")) {
+                    status.text = "Jogo iniciado. Use os controles na parte inferior."
+                }
+            } catch (error: Throwable) {
+                status.text = "Falha ao iniciar: ${error.message}"
+                if (prepared) try { VulkanNative.nativeCloseRom() } catch (_: Throwable) {}
+                if (initialized) try { VulkanNative.nativeShutdown() } catch (_: Throwable) {}
+                initialized = false
+                prepared = false
+            } finally {
+                launchInProgress = false
+            }
+        }
+
+        surfaceView.holder.addCallback(object : SurfaceHolder.Callback {
+            override fun surfaceCreated(holder: SurfaceHolder) {
+                surfaceView.post { initialize(holder, surfaceView.width, surfaceView.height) }
+            }
+            override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+                initialize(holder, width, height)
+            }
+            override fun surfaceDestroyed(holder: SurfaceHolder) {
+                try { VulkanNative.nativeCloseRom() } catch (_: Throwable) {}
+                try { VulkanNative.nativeShutdown() } catch (_: Throwable) {}
+                initialized = false
+                prepared = false
+                pressedButtons = 0
+            }
         })
-        refresh()
+        setContentView(gameLayout)
     }
+
+    private fun buildTouchControls(): View {
+        val controls = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(8), dp(4), dp(8), dp(4))
+            setBackgroundColor(android.graphics.Color.rgb(28, 28, 28))
+        }
+        val row1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        addTouchButton(row1, "←", 1 shl 1)
+        addTouchButton(row1, "↑", 1 shl 3)
+        addTouchButton(row1, "↓", 1 shl 2)
+        addTouchButton(row1, "→", 1 shl 0)
+        controls.addView(row1)
+        val row2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        addTouchButton(row2, "START", 1 shl 4)
+        addTouchButton(row2, "Z", 1 shl 5)
+        addTouchButton(row2, "B", 1 shl 6)
+        addTouchButton(row2, "A", 1 shl 7)
+        controls.addView(row2)
+        val row3 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        addTouchButton(row3, "L", 1 shl 13)
+        addTouchButton(row3, "C ←", 1 shl 9)
+        addTouchButton(row3, "C ↑", 1 shl 11)
+        addTouchButton(row3, "C ↓", 1 shl 10)
+        addTouchButton(row3, "C →", 1 shl 8)
+        addTouchButton(row3, "R", 1 shl 12)
+        controls.addView(row3)
+        return controls
+    }
+
+    private fun addTouchButton(parent: LinearLayout, label: String, mask: Int) {
+        val button = Button(this).apply {
+            text = label
+            textSize = 11f
+            isAllCaps = false
+            setPadding(0, 0, 0, 0)
+        }
+        parent.addView(button, LinearLayout.LayoutParams(
+            0, dp(48), 1f
+        ).apply {
+            setMargins(dp(2), dp(2), dp(2), dp(2))
+        })
+        button.setOnTouchListener { _, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
+                    pressedButtons = pressedButtons or mask
+                    sendControllerState()
+                    button.isPressed = true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL,
+                MotionEvent.ACTION_POINTER_UP -> {
+                    pressedButtons = pressedButtons and mask.inv()
+                    sendControllerState()
+                    button.isPressed = false
+                }
+            }
+            true
+        }
+    }
+
+    private fun sendControllerState() {
+        try { VulkanNative.nativeSetControllerState(pressedButtons, 0, 0) }
+        catch (_: Throwable) {}
+    }
+
+    private fun returnToHome() {
+        gameScreenVisible = false
+        pressedButtons = 0
+        try { VulkanNative.nativeSetControllerState(0, 0, 0) } catch (_: Throwable) {}
+        try { VulkanNative.nativeCloseRom() } catch (_: Throwable) {}
+        try { VulkanNative.nativeShutdown() } catch (_: Throwable) {}
+        setContentView(homeLayout)
+    }
+
+    override fun onBackPressed() {
+        if (gameScreenVisible) returnToHome() else super.onBackPressed()
+    }
+
+    private fun dp(value: Int): Int =
+        (value * resources.displayMetrics.density).toInt()
 }
