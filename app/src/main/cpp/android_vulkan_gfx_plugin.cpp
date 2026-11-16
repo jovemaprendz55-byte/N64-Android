@@ -1889,8 +1889,13 @@ bool processRdpCommandList() {
             static_cast<unsigned long long>(pixelChecksum));
     }
 
-    if (nonBlackPixels == 0u && submitViRdramFallbackFrame())
+    if (nonBlackPixels == 0u) {
+        // Never replace the last presented image with an empty RDP scanout.
+        // If the VI fallback has usable memory, it submits that frame; if not,
+        // keep the previous Vulkan frame on screen until real pixels arrive.
+        submitViRdramFallbackFrame();
         return true;
+    }
 
     N64VideoFrame frame{};
     frame.pixels = g_rgba.data();
