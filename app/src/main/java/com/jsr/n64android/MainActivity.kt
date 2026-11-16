@@ -142,7 +142,7 @@ class MainActivity : Activity() {
                     setOnClickListener { loadInGameLogs(logText, true) }
                 }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
                 addView(Button(this@MainActivity).apply {
-                    text = "OCULTAR"
+                    text = "MOSTRAR"
                     setOnClickListener { logPanelVisibility(logScroll, this) }
                 })
             })
