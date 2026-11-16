@@ -112,6 +112,50 @@ class MainActivity : Activity() {
             ViewGroup.LayoutParams.WRAP_CONTENT,
             Gravity.TOP
         ))
+
+        // In-game diagnostics overlay: inspect and copy logs without stopping
+        // the ROM or returning to the launcher screen.
+        val logText = TextView(this).apply {
+            text = "Toque em ATUALIZAR para carregar os registros desta execução."
+            textSize = 11f
+            setTextColor(android.graphics.Color.WHITE)
+            setTextIsSelectable(true)
+            setPadding(10, 8, 10, 8)
+        }
+        val logScroll = ScrollView(this).apply {
+            visibility = ViewGroup.GONE
+            isFillViewport = false
+            addView(logText)
+        }
+        val logPanel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(8, 8, 8, 8)
+            setBackgroundColor(android.graphics.Color.argb(220, 20, 20, 20))
+            addView(LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                addView(Button(this@MainActivity).apply {
+                    text = "ATUALIZAR LOGS"
+                    setOnClickListener { loadInGameLogs(logText, false) }
+                }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+                addView(Button(this@MainActivity).apply {
+                    text = "COPIAR LOGS"
+                    setOnClickListener { loadInGameLogs(logText, true) }
+                }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+                addView(Button(this@MainActivity).apply {
+                    text = "OCULTAR"
+                    setOnClickListener { logPanelVisibility(logScroll, this) }
+                })
+            })
+            addView(logScroll, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(190)
+            ))
+        }
+        container.addView(logPanel, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            Gravity.TOP
+        ).apply { topMargin = dp(58) })
+
         container.addView(Button(this).apply {
             text = "VOLTAR"
             setOnClickListener {
@@ -202,6 +246,48 @@ class MainActivity : Activity() {
         setContentView(container)
     }
 
+
+    private fun dp(value: Int): Int =
+        (value * resources.displayMetrics.density).toInt()
+
+    private fun logPanelVisibility(scroll: ScrollView, button: Button) {
+        val show = scroll.visibility != ViewGroup.VISIBLE
+        scroll.visibility = if (show) ViewGroup.VISIBLE else ViewGroup.GONE
+        button.text = if (show) "OCULTAR" else "MOSTRAR"
+    }
+
+    private fun loadInGameLogs(target: TextView, copyToClipboard: Boolean) {
+        target.text = "Lendo registros da execução atual..."
+        Thread {
+            val result = try {
+                val process = ProcessBuilder("logcat", "-d", "-v", "time", "-t", "5000")
+                    .redirectErrorStream(true).start()
+                val lines = process.inputStream.bufferedReader().use { it.readLines() }
+                process.waitFor()
+                val markers = listOf(
+                    "N64Android", "N64ANDROID", "N64AndroidVulkan", "N64AndroidVulkanGFX",
+                    "F3DGOLDEN", "GoldenEye", "DPC ", "RDP ", "CXD4", "paraLLEl",
+                    "Vulkan frame", "AndroidRuntime", "Fatal signal", "SIGSEGV",
+                    "SIGABRT", "FATAL EXCEPTION", "crash_dump", "tombstoned"
+                )
+                lines.filter { line ->
+                    markers.any { marker -> line.contains(marker, ignoreCase = true) }
+                }.takeLast(700).joinToString("\\n").ifBlank {
+                    "Nenhum registro filtrado encontrado. Verifique se a ROM está em execução."
+                }
+            } catch (error: Exception) {
+                "Falha ao ler os registros: ${error.message}"
+            }
+            runOnUiThread {
+                target.text = result
+                if (copyToClipboard) {
+                    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("Logs N64 Android - jogo", result))
+                    Toast.makeText(this, "Logs copiados. O jogo continua aberto.", Toast.LENGTH_LONG).show()
+                }
+            }
+        }.start()
+    }
 
     private fun refreshSelectedRom() {
         val romFile = selectedRomFile()
