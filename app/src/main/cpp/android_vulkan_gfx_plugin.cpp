@@ -1841,9 +1841,15 @@ EXPORT void CALL ProcessRDPList(void) {
     // the same frame-context lifetime handling.
     if (g_rdp) g_rdp->begin_frame_context();
     ++g_processRdpCalls;
-    if (!processRdpCommandList() && g_processRdpCalls <= 10) {
+    const bool rendered = processRdpCommandList();
+    // CXD4 LLE calls this callback directly after writing DPC_END through the
+    // RSP_INFO register pointer. That bypasses the Core's MMIO DPC_END handler,
+    // which normally raises MI_INTR_DP after ProcessRDPList returns.
+    if (g_info.MI_INTR_REG)
+        *g_info.MI_INTR_REG |= 0x20u; // MI_INTR_DP
+    if (!rendered && g_processRdpCalls <= 10) {
         __android_log_print(ANDROID_LOG_WARN, TAG,
-            "ProcessRDPList #%llu sem frame RDP valido; fallback VI desativado para evitar imagem corrompida",
+            "ProcessRDPList #%llu sem frame RDP valido; MI_INTR_DP sinalizado",
             static_cast<unsigned long long>(g_processRdpCalls));
     }
 }
