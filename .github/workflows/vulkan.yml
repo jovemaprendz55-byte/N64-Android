@@ -67,6 +67,42 @@ jobs:
           git -C third_party/mupen64plus-rsp-cxd4 checkout b8e747be772b8db017bb981bff188324b919162e
           test -s third_party/mupen64plus-rsp-cxd4/module.c
           test -s third_party/mupen64plus-rsp-cxd4/su.c
+          # GoldenEye requires CXD4's real RSP interpreter, never the HLE display-list shortcut.
+          # Emit a small startup/task trace so a black frame can be localized to RSP execution
+          # versus the DPC/RDP callback without asking for an unrestricted logcat dump.
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("third_party/mupen64plus-rsp-cxd4/module.c")
+          s = p.read_text()
+          init_old = "    update_conf(CFG_FILE);\n\n    RSP_INFO_NAME = Rsp_Info;"
+          init_new = (
+              "    update_conf(CFG_FILE);\n"
+              "    CFG_HLE_GFX = 0; /* GoldenEye F3DGOLDEN must execute on the RSP. */\n"
+              "    DebugMessage(M64MSG_INFO, \"N64-CXD4: InitiateRSP; DisplayListToGraphicsPlugin forced OFF (LLE)\");\n\n"
+              "    RSP_INFO_NAME = Rsp_Info;"
+          )
+          if init_old not in s:
+              raise SystemExit("CXD4 InitiateRSP config marker not found")
+          s = s.replace(init_old, init_new, 1)
+          task_old = "    switch (task_type) {"
+          task_new = (
+              "    {\n"
+              "        static unsigned int n64_rsp_task_logs = 0;\n"
+              "        if (n64_rsp_task_logs < 24) {\n"
+              "            DebugMessage(M64MSG_INFO, \"N64-CXD4: DoRspCycles task=%08x HLE_GFX=%d SP_STATUS=%08x PC=%08x\",\n"
+              "                         (unsigned int) task_type, CFG_HLE_GFX,\n"
+              "                         (unsigned int) GET_RCP_REG(SP_STATUS_REG),\n"
+              "                         (unsigned int) GET_RCP_REG(SP_PC_REG));\n"
+              "            ++n64_rsp_task_logs;\n"
+              "        }\n"
+              "    }\n"
+              "    switch (task_type) {"
+          )
+          if task_old not in s:
+              raise SystemExit("CXD4 DoRspCycles task switch marker not found")
+          s = s.replace(task_old, task_new, 1)
+          p.write_text(s)
+          PY
 
       - name: Fetch pinned paraLLEl-RDP and its Granite dependencies
         shell: bash
