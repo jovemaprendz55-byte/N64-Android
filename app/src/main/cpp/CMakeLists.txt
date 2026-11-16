@@ -132,39 +132,37 @@ if(EXISTS "${MUPEN64PLUS_CORE_SOURCE_DIR}/src/asm_defines/asm_defines.c")
         SDL2 ${ANDROID_LIB} ${LOG_LIB} ${CMAKE_DL_LIBS} m z)
     m64p_add_arm64_asm_defines("${MUPEN64PLUS_CORE_SOURCE_DIR}" mupen64plus)
 
-    # Mupen64Plus HLE RSP plugin: interprets common RSP microcode tasks.
-    set(MUPEN64PLUS_RSP_HLE_SOURCE_DIR
-        "${N64_PROJECT_ROOT}/third_party/mupen64plus-rsp-hle")
-    if(NOT EXISTS "${MUPEN64PLUS_RSP_HLE_SOURCE_DIR}/src/plugin.c")
-        message(FATAL_ERROR "Pinned Mupen64Plus HLE RSP source tree is missing")
+    # Mupen64Plus CXD4 RSP LLE: executes the actual RSP microcode.
+    # GoldenEye's proprietary F3DGOLDEN task must run on the RSP instead of
+    # being handed to the graphics plugin as an HLE display-list shortcut.
+    set(MUPEN64PLUS_RSP_CXD4_SOURCE_DIR
+        "${N64_PROJECT_ROOT}/third_party/mupen64plus-rsp-cxd4")
+    if(NOT EXISTS "${MUPEN64PLUS_RSP_CXD4_SOURCE_DIR}/module.c" OR
+       NOT EXISTS "${MUPEN64PLUS_RSP_CXD4_SOURCE_DIR}/su.c")
+        message(FATAL_ERROR "Pinned Mupen64Plus CXD4 RSP source tree is missing")
     endif()
-    add_library(mupen64plus_rsp_hle SHARED
-        "${MUPEN64PLUS_RSP_HLE_SOURCE_DIR}/src/alist.c"
-        "${MUPEN64PLUS_RSP_HLE_SOURCE_DIR}/src/alist_audio.c"
-        "${MUPEN64PLUS_RSP_HLE_SOURCE_DIR}/src/alist_naudio.c"
-        "${MUPEN64PLUS_RSP_HLE_SOURCE_DIR}/src/alist_nead.c"
-        "${MUPEN64PLUS_RSP_HLE_SOURCE_DIR}/src/audio.c"
-        "${MUPEN64PLUS_RSP_HLE_SOURCE_DIR}/src/cicx105.c"
-        "${MUPEN64PLUS_RSP_HLE_SOURCE_DIR}/src/hle.c"
-        "${MUPEN64PLUS_RSP_HLE_SOURCE_DIR}/src/hvqm.c"
-        "${MUPEN64PLUS_RSP_HLE_SOURCE_DIR}/src/jpeg.c"
-        "${MUPEN64PLUS_RSP_HLE_SOURCE_DIR}/src/memory.c"
-        "${MUPEN64PLUS_RSP_HLE_SOURCE_DIR}/src/mp3.c"
-        "${MUPEN64PLUS_RSP_HLE_SOURCE_DIR}/src/musyx.c"
-        "${MUPEN64PLUS_RSP_HLE_SOURCE_DIR}/src/re2.c"
-        "${MUPEN64PLUS_RSP_HLE_SOURCE_DIR}/src/plugin.c"
-        "${MUPEN64PLUS_RSP_HLE_SOURCE_DIR}/src/osal_dynamiclib_unix.c")
-    target_include_directories(mupen64plus_rsp_hle PRIVATE
-        "${MUPEN64PLUS_RSP_HLE_SOURCE_DIR}/src"
+    add_library(mupen64plus_rsp_cxd4 SHARED
+        "${MUPEN64PLUS_RSP_CXD4_SOURCE_DIR}/su.c"
+        "${MUPEN64PLUS_RSP_CXD4_SOURCE_DIR}/vu/add.c"
+        "${MUPEN64PLUS_RSP_CXD4_SOURCE_DIR}/vu/divide.c"
+        "${MUPEN64PLUS_RSP_CXD4_SOURCE_DIR}/vu/logical.c"
+        "${MUPEN64PLUS_RSP_CXD4_SOURCE_DIR}/vu/multiply.c"
+        "${MUPEN64PLUS_RSP_CXD4_SOURCE_DIR}/vu/select.c"
+        "${MUPEN64PLUS_RSP_CXD4_SOURCE_DIR}/vu/vu.c"
+        "${MUPEN64PLUS_RSP_CXD4_SOURCE_DIR}/module.c"
+        "${MUPEN64PLUS_RSP_CXD4_SOURCE_DIR}/osal_dynamiclib_unix.c")
+    target_include_directories(mupen64plus_rsp_cxd4 PRIVATE
+        "${MUPEN64PLUS_RSP_CXD4_SOURCE_DIR}"
         "${MUPEN64PLUS_CORE_SOURCE_DIR}/src/api")
-    target_compile_features(mupen64plus_rsp_hle PRIVATE c_std_99)
-    target_compile_options(mupen64plus_rsp_hle PRIVATE -O2 -fvisibility=hidden -fPIC -Wall)
-    target_link_libraries(mupen64plus_rsp_hle PRIVATE ${CMAKE_DL_LIBS} ${LOG_LIB})
-    set_target_properties(mupen64plus_rsp_hle PROPERTIES OUTPUT_NAME "mupen64plus-rsp-hle")
+    target_compile_definitions(mupen64plus_rsp_cxd4 PRIVATE M64P_PLUGIN_API)
+    target_compile_features(mupen64plus_rsp_cxd4 PRIVATE c_std_99)
+    target_compile_options(mupen64plus_rsp_cxd4 PRIVATE -O2 -fvisibility=hidden -fPIC -Wall)
+    target_link_libraries(mupen64plus_rsp_cxd4 PRIVATE ${CMAKE_DL_LIBS} ${LOG_LIB} m)
+    set_target_properties(mupen64plus_rsp_cxd4 PROPERTIES OUTPUT_NAME "mupen64plus-rsp-cxd4")
 
     # Package Core and plugins as runtime dependencies of the Vulkan library.
-    add_dependencies(n64vulkan mupen64plus n64android_input mupen64plus_rsp_hle)
-    target_link_libraries(n64vulkan PRIVATE mupen64plus n64android_input mupen64plus_rsp_hle)
+    add_dependencies(n64vulkan mupen64plus n64android_input mupen64plus_rsp_cxd4)
+    target_link_libraries(n64vulkan PRIVATE mupen64plus n64android_input mupen64plus_rsp_cxd4)
 else()
     message(STATUS "Pinned Mupen64Plus Core checkout not found; building Vulkan bridge only")
 endif()
