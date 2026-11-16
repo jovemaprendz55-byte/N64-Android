@@ -1489,10 +1489,15 @@ void logRdpFramebufferState(const char* source,
     const uint32_t colorW1 = stats.lastColorW1;
     const uint32_t colorAddress = colorW1 & 0x00ffffffu;
     const uint32_t viAddress = viOrigin & 0x00ffffffu;
-    const uint32_t bytesPerPixel = 1u << ((colorW0 >> 19u) & 3u);
+    // SetColorImage size: 0=4bpp, 1=8bpp, 2=16bpp, 3=32bpp.
+    // Twice-the-byte count avoids truncating the 4bpp case.
+    const uint32_t colorSize = (colorW0 >> 19u) & 3u;
+    const uint32_t bytesPerPixelTimesTwo = 1u << colorSize;
     const uint32_t colorWidth = (colorW0 & 1023u) + 1u;
+    const uint32_t exactFramebufferBytes =
+        (colorWidth * 240u * bytesPerPixelTimesTwo) / 2u;
     const uint32_t probeBytes = std::min<uint32_t>(
-        colorWidth * 240u * bytesPerPixel, 256u * 1024u);
+        exactFramebufferBytes, 256u * 1024u);
     auto logMemoryWindow = [&](const char* label, uint32_t address) {
         if (address >= 8u * 1024u * 1024u ||
             probeBytes > 8u * 1024u * 1024u - address) {
@@ -1502,22 +1507,29 @@ void logRdpFramebufferState(const char* source,
             return;
         }
         uint32_t nonZero = 0;
+        uint32_t firstNonZero = probeBytes;
+        uint32_t lastNonZero = 0;
         uint8_t minByte = 255u;
         uint8_t maxByte = 0u;
         uint32_t hash = 2166136261u;
         for (uint32_t i = 0; i < probeBytes; ++i) {
             const uint8_t value = rdramByte(address + i);
-            if (value != 0u) ++nonZero;
+            if (value != 0u) {
+                if (firstNonZero == probeBytes) firstNonZero = i;
+                lastNonZero = i;
+                ++nonZero;
+            }
             minByte = std::min(minByte, value);
             maxByte = std::max(maxByte, value);
             hash = (hash ^ value) * 16777619u;
         }
         __android_log_print(ANDROID_LOG_INFO, TAG,
-            "%s RDRAM probe: addr=%06x bytes=%u nonZero=%u min=%u max=%u "
-            "hash=%08x first=%08x/%08x/%08x/%08x",
-            label, address, probeBytes, nonZero, minByte, maxByte, hash,
-            readRdpWord(address), readRdpWord(address + 4u),
-            readRdpWord(address + 8u), readRdpWord(address + 12u));
+            "%s RDRAM probe: addr=%06x bytes=%u nonZero=%u firstNZ=%u "
+            "lastNZ=%u min=%u max=%u hash=%08x first=%08x/%08x/%08x/%08x",
+            label, address, probeBytes, nonZero, firstNonZero, lastNonZero,
+            minByte, maxByte, hash, readRdpWord(address),
+            readRdpWord(address + 4u), readRdpWord(address + 8u),
+            readRdpWord(address + 12u));
     };
     logMemoryWindow("RDP_COLOR", colorAddress);
     if (viAddress != colorAddress)
