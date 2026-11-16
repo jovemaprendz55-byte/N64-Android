@@ -1487,6 +1487,41 @@ void logRdpFramebufferState(const char* source,
     const uint32_t viWidth = g_info.VI_WIDTH_REG ? *g_info.VI_WIDTH_REG : 0u;
     const uint32_t colorW0 = stats.lastColorW0;
     const uint32_t colorW1 = stats.lastColorW1;
+    const uint32_t colorAddress = colorW1 & 0x00ffffffu;
+    const uint32_t viAddress = viOrigin & 0x00ffffffu;
+    const uint32_t bytesPerPixel = 1u << ((colorW0 >> 19u) & 3u);
+    const uint32_t colorWidth = (colorW0 & 1023u) + 1u;
+    const uint32_t probeBytes = std::min<uint32_t>(
+        colorWidth * 240u * bytesPerPixel, 256u * 1024u);
+    auto logMemoryWindow = [&](const char* label, uint32_t address) {
+        if (address >= 8u * 1024u * 1024u ||
+            probeBytes > 8u * 1024u * 1024u - address) {
+            __android_log_print(ANDROID_LOG_WARN, TAG,
+                "%s RDRAM probe invalido: addr=%06x bytes=%u",
+                label, address, probeBytes);
+            return;
+        }
+        uint32_t nonZero = 0;
+        uint8_t minByte = 255u;
+        uint8_t maxByte = 0u;
+        uint32_t hash = 2166136261u;
+        for (uint32_t i = 0; i < probeBytes; ++i) {
+            const uint8_t value = rdramByte(address + i);
+            if (value != 0u) ++nonZero;
+            minByte = std::min(minByte, value);
+            maxByte = std::max(maxByte, value);
+            hash = (hash ^ value) * 16777619u;
+        }
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "%s RDRAM probe: addr=%06x bytes=%u nonZero=%u min=%u max=%u "
+            "hash=%08x first=%08x/%08x/%08x/%08x",
+            label, address, probeBytes, nonZero, minByte, maxByte, hash,
+            readRdpWord(address), readRdpWord(address + 4u),
+            readRdpWord(address + 8u), readRdpWord(address + 12u));
+    };
+    logMemoryWindow("RDP_COLOR", colorAddress);
+    if (viAddress != colorAddress)
+        logMemoryWindow("VI_ORIGIN", viAddress);
     __android_log_print(ANDROID_LOG_INFO, TAG,
         "%s framebuffer cumulative: call=%llu batches=%llu commands=%llu "
         "FF=%llu FD=%llu FE=%llu F6=%llu TEXRECT=%llu TRI=%llu SYNC=%llu "
