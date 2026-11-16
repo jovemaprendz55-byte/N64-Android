@@ -134,6 +134,23 @@ uint64_t g_processDListCalls = 0;
 uint64_t g_processRdpCalls = 0;
 uint64_t g_viAttempts = 0;
 uint64_t g_viRejected = 0;
+struct RdpCommandStats {
+    uint64_t batches = 0;
+    uint64_t commands = 0;
+    uint64_t setColorImage = 0;
+    uint64_t setTextureImage = 0;
+    uint64_t setDepthImage = 0;
+    uint64_t fillRect = 0;
+    uint64_t textureRect = 0;
+    uint64_t triangles = 0;
+    uint64_t sync = 0;
+    uint32_t lastOpcode = 0;
+    uint32_t lastColorW0 = 0;
+    uint32_t lastColorW1 = 0;
+    uint32_t lastTextureW0 = 0;
+    uint32_t lastTextureW1 = 0;
+};
+RdpCommandStats g_rdpCommandStats{};
 std::vector<uint8_t> g_rgba;
 // Temporary first-light path: projected F3D triangles become an RGBA frame.
 std::vector<std::array<float,  9>> g_goldenEyeDebugTriangles;
@@ -1429,27 +1446,65 @@ bool collectGoldenEyeRdpCommands(
 void logRdpFramebufferState(const char* source,
                              const std::vector<std::vector<uint32_t>>& commands,
                              uint64_t call) {
-    unsigned colorImageCount = 0;
-    uint32_t lastW0 = 0;
-    uint32_t lastW1 = 0;
+    RdpCommandStats& stats = g_rdpCommandStats;
+    ++stats.batches;
     for (const auto& command : commands) {
-        if (!command.empty() && (command[0] >> 24) == 0xFFu) {
-            ++colorImageCount;
-            lastW0 = command[0];
-            lastW1 = command.size() > 1u ? command[1] : 0u;
+        if (command.empty()) continue;
+        const uint32_t opcode = command[0] >> 24;
+        const uint32_t w0 = command[0];
+        const uint32_t w1 = command.size() > 1u ? command[1] : 0u;
+        ++stats.commands;
+        stats.lastOpcode = opcode;
+        switch (opcode) {
+        case 0xFFu: // SetColorImage
+            ++stats.setColorImage;
+            stats.lastColorW0 = w0;
+            stats.lastColorW1 = w1;
+            break;
+        case 0xFDu: // SetTextureImage
+            ++stats.setTextureImage;
+            stats.lastTextureW0 = w0;
+            stats.lastTextureW1 = w1;
+            break;
+        case 0xFEu: ++stats.setDepthImage; break;
+        case 0xF6u: ++stats.fillRect; break;
+        case 0xE4u:
+        case 0xE5u: ++stats.textureRect; break;
+        case 0xC8u: case 0xC9u: case 0xCAu: case 0xCBu:
+        case 0xCCu: case 0xCDu: case 0xCEu: case 0xCFu:
+            ++stats.triangles;
+            break;
+        case 0xE6u: case 0xE7u: case 0xE8u: case 0xE9u:
+            ++stats.sync;
+            break;
+        default: break;
         }
     }
+
+    if (call > 12u && (call % 120u) != 0u) return;
     const uint32_t viStatus = g_info.VI_STATUS_REG ? *g_info.VI_STATUS_REG : 0u;
     const uint32_t viOrigin = g_info.VI_ORIGIN_REG ? *g_info.VI_ORIGIN_REG : 0u;
     const uint32_t viWidth = g_info.VI_WIDTH_REG ? *g_info.VI_WIDTH_REG : 0u;
+    const uint32_t colorW0 = stats.lastColorW0;
+    const uint32_t colorW1 = stats.lastColorW1;
     __android_log_print(ANDROID_LOG_INFO, TAG,
-        "%s framebuffer state: call=%llu commands=%zu setColorImage=%u "
-        "lastFF=%08x/%08x fmt=%u size=%u width=%u addr=%06x "
-        "VI_STATUS=%08x VI_ORIGIN=%06x VI_WIDTH=%u",
-        source, static_cast<unsigned long long>(call), commands.size(),
-        colorImageCount, lastW0, lastW1,
-        (lastW0 >> 21) & 7u, (lastW0 >> 19) & 3u,
-        (lastW0 & 1023u) + 1u, lastW1 & 0x00ffffffu,
+        "%s framebuffer cumulative: call=%llu batches=%llu commands=%llu "
+        "FF=%llu FD=%llu FE=%llu F6=%llu TEXRECT=%llu TRI=%llu SYNC=%llu "
+        "lastOpcode=%02x lastFF=%08x/%08x fmt=%u size=%u width=%u addr=%06x "
+        "lastFD=%08x/%08x VI_STATUS=%08x VI_ORIGIN=%06x VI_WIDTH=%u",
+        source, static_cast<unsigned long long>(call),
+        static_cast<unsigned long long>(stats.batches),
+        static_cast<unsigned long long>(stats.commands),
+        static_cast<unsigned long long>(stats.setColorImage),
+        static_cast<unsigned long long>(stats.setTextureImage),
+        static_cast<unsigned long long>(stats.setDepthImage),
+        static_cast<unsigned long long>(stats.fillRect),
+        static_cast<unsigned long long>(stats.textureRect),
+        static_cast<unsigned long long>(stats.triangles),
+        static_cast<unsigned long long>(stats.sync), stats.lastOpcode,
+        colorW0, colorW1, (colorW0 >> 21) & 7u, (colorW0 >> 19) & 3u,
+        (colorW0 & 1023u) + 1u, colorW1 & 0x00ffffffu,
+        stats.lastTextureW0, stats.lastTextureW1,
         viStatus, viOrigin & 0x00ffffffu, viWidth & 0xfffu);
 }
 
@@ -1555,8 +1610,7 @@ bool processRdpCommandList() {
             commands, cursor, end);
 
     setRdpViRegisters();
-    if (g_processRdpCalls <= 10u || (g_processRdpCalls % 120u) == 0u)
-        logRdpFramebufferState("DPC", capturedCommands, g_processRdpCalls);
+    logRdpFramebufferState("DPC", capturedCommands, g_processRdpCalls);
     if (g_processRdpCalls <= 5u || (g_processRdpCalls % 120u) == 0u) {
         const uint32_t viStatus = g_info.VI_STATUS_REG ? *g_info.VI_STATUS_REG : 0u;
         const uint32_t viOrigin = g_info.VI_ORIGIN_REG ? *g_info.VI_ORIGIN_REG : 0u;
@@ -1717,8 +1771,7 @@ bool processGoldenEyeEmbeddedRdp() {
     }
 
     setRdpViRegisters();
-    if (g_processDListCalls <= 12u || (g_processDListCalls % 120u) == 0u)
-        logRdpFramebufferState("GoldenEye embedded", commands, g_processDListCalls);
+    logRdpFramebufferState("GoldenEye embedded", commands, g_processDListCalls);
     if (g_processDListCalls <= 12u || (g_processDListCalls % 120u) == 0u) {
         __android_log_print(ANDROID_LOG_INFO, TAG,
             "GoldenEye embedded VI: status=%08x origin=%08x width=%08x "
@@ -1982,6 +2035,7 @@ EXPORT int CALL RomOpen(void) {
     g_processDListCalls = 0;
     g_goldenEyeGbiState = {};
     g_processRdpCalls = 0;
+    g_rdpCommandStats = {};
     g_viAttempts = 0;
     g_viRejected = 0;
     __android_log_print(ANDROID_LOG_INFO, TAG, "ROM aberta no plugin GFX Vulkan");
