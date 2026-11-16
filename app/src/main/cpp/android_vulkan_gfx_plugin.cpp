@@ -494,6 +494,8 @@ void logRspTaskSnapshot() {
         dpcStart, dpcEnd, spStatus);
 }
 
+bool submitViRdramFallbackFrame();
+
 void presentViFallbackIfNeeded() {
     // ShowCFB and UpdateScreen can both be called for one VI refresh. Only
     // submit the memory framebuffer when no RDP frame was produced since the
