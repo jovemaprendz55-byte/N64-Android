@@ -2144,10 +2144,32 @@ extern "C" void n64VulkanVideoFrameCallback(
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_jsr_n64android_VulkanNative_nativePrepareRom(
     JNIEnv* env, jobject /* thiz */, jbyteArray romBytes,
-    jstring configPath, jstring dataPath) {
+    jstring configPath, jstring dataPath, jstring videoPluginId,
+    jstring rspPluginId, jstring audioPluginId, jstring inputPluginId) {
     std::lock_guard<std::mutex> lock(g_coreMutex);
-    if (romBytes == nullptr || configPath == nullptr || dataPath == nullptr)
-        return result(env, "ROM ou diretórios de configuração inválidos.");
+    if (romBytes == nullptr || configPath == nullptr || dataPath == nullptr ||
+        videoPluginId == nullptr || rspPluginId == nullptr ||
+        audioPluginId == nullptr || inputPluginId == nullptr)
+        return result(env, "ROM, diretórios ou seleção de plugins inválidos.");
+
+    auto readPluginId = [&](jstring value, std::string& output) -> bool {
+        const char* chars = env->GetStringUTFChars(value, nullptr);
+        if (!chars) return false;
+        output.assign(chars);
+        env->ReleaseStringUTFChars(value, chars);
+        return true;
+    };
+    std::string videoId, rspId, audioId, inputId;
+    if (!readPluginId(videoPluginId, videoId) ||
+        !readPluginId(rspPluginId, rspId) ||
+        !readPluginId(audioPluginId, audioId) ||
+        !readPluginId(inputPluginId, inputId))
+        return result(env, "Não foi possível ler a seleção de plugins.");
+    // Only plugins actually packaged in this APK may be selected.
+    // Audio is explicitly unavailable until a real Mupen64Plus audio plugin is bundled.
+    if (videoId != "vulkan_android" || rspId != "cxd4" ||
+        audioId != "none" || inputId != "android_virtual")
+        return result(env, "Um dos plugins selecionados não está instalado nesta versão.");
     if (g_coreInitialized || g_romOpened)
         return result(env, "O núcleo já está preparado; feche a ROM atual antes de abrir outra.");
 
@@ -2215,9 +2237,12 @@ Java_com_jsr_n64android_VulkanNative_nativePrepareRom(
     g_romOpened = true;
 
     g_corePluginHandle = openPluginLibrary("libmupen64plus.so");
-    g_gfxPluginHandle = openPluginLibrary("libn64vulkan.so");
-    g_inputPluginHandle = openPluginLibrary("libmupen64plus-input-android.so");
-    g_rspPluginHandle = openPluginLibrary("libmupen64plus-rsp-cxd4.so");
+    g_gfxPluginHandle = openPluginLibrary(videoId == "vulkan_android"
+        ? "libn64vulkan.so" : "");
+    g_inputPluginHandle = openPluginLibrary(inputId == "android_virtual"
+        ? "libmupen64plus-input-android.so" : "");
+    g_rspPluginHandle = openPluginLibrary(rspId == "cxd4"
+        ? "libmupen64plus-rsp-cxd4.so" : "");
     if (!g_corePluginHandle || !g_gfxPluginHandle ||
         !g_inputPluginHandle || !g_rspPluginHandle) {
         shutdownCoreLocked();
@@ -2310,6 +2335,19 @@ Java_com_jsr_n64android_VulkanNative_nativeStartEmulation(
         return result(env, std::string("Falha ao criar thread de execução: ") + error.what());
     }
     return result(env, "Comando de execução enviado ao Core em segundo plano.");
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_jsr_n64android_VulkanNative_nativeSetControllerState(
+    JNIEnv* /* env */, jobject /* thiz */, jint buttons, jint axisX, jint axisY) {
+    std::lock_guard<std::mutex> lock(g_coreMutex);
+    if (!g_inputPluginHandle) return;
+    using SetStateFn = void (*)(unsigned int, int, int);
+    auto setState = reinterpret_cast<SetStateFn>(
+        dlsym(g_inputPluginHandle, "N64AndroidSetControllerState"));
+    if (setState)
+        setState(static_cast<unsigned int>(buttons), static_cast<int>(axisX),
+                 static_cast<int>(axisY));
 }
 
 extern "C" JNIEXPORT jstring JNICALL
