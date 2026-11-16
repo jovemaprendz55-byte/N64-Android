@@ -73,10 +73,10 @@ class MainActivity : Activity() {
                 gravity = Gravity.CENTER
                 setPadding(8, dp(8), 8, dp(18))
             })
-            addPluginField("Vídeo / GFX", videoSpinner)
-            addPluginField("RSP", rspSpinner)
-            addPluginField("Áudio", audioSpinner)
-            addPluginField("Controle / Input", inputSpinner)
+            addPluginField(this, "Vídeo / GFX", videoSpinner)
+            addPluginField(this, "RSP", rspSpinner)
+            addPluginField(this, "Áudio", audioSpinner)
+            addPluginField(this, "Controle / Input", inputSpinner)
             addView(homeStatus, LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
             ))
@@ -106,13 +106,13 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun addPluginField(label: String, spinner: Spinner) {
-        homeLayout.addView(TextView(this).apply {
+    private fun addPluginField(parent: LinearLayout, label: String, spinner: Spinner) {
+        parent.addView(TextView(this).apply {
             text = label
             textSize = 14f
             setPadding(4, dp(8), 4, 0)
         })
-        homeLayout.addView(spinner, LinearLayout.LayoutParams(
+        parent.addView(spinner, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, dp(48)
         ))
     }
