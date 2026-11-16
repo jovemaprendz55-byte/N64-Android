@@ -1398,9 +1398,14 @@ bool collectGoldenEyeRdpCommands(
             commands.emplace_back(std::move(command));
             pc += packetBytes;
             continue;
-        } else if (opcode >= 0xC8u) {
-            // RDP triangle commands (0xC8-0xCF) carry extra payload words.
-            // Capture them as complete commands instead of stepping 8 bytes.
+        } else if ((opcode >= 0xC8u && opcode <= 0xCFu) ||
+                   opcode >= 0xE6u) {
+            // Actual RDP opcodes are C8-CF (triangles) and E6-FF (state,
+            // sync, rectangles and other raster commands). The D0-DF range
+            // belongs to Fast3D/GoldenEye GBI; forwarding commands such as
+            // G_TEXTURE (D7) to paraLLEl-RDP corrupts the RDP command stream.
+            // Triangle commands carry extra payload words, so capture each
+            // accepted RDP packet at its full hardware-defined length.
             const unsigned wordCount = rdpCommandWordCount(opcode);
             const uint64_t commandEnd =
                 static_cast<uint64_t>(pc) + wordCount * sizeof(uint32_t);
