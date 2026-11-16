@@ -500,6 +500,59 @@ uint32_t readRdpWord(uint32_t address) {
            static_cast<uint32_t>(rdramByte(address + 3u));
 }
 
+void logFramebufferPixelProbe(const char* label, uint32_t address,
+                              uint32_t width, uint32_t status) {
+    if (width == 0u || width > 4096u) return;
+
+    constexpr uint32_t probeHeight = 240u;
+    const uint32_t pixelCount = std::min(width * probeHeight, 105600u);
+    const bool rgba8888 = (status & 3u) == 3u;
+    uint32_t nonBlack = 0u;
+    uint32_t firstNonBlack = pixelCount;
+    uint32_t maxComponent = 0u;
+    char samples[96] = {};
+    size_t sampleOffset = 0u;
+
+    for (uint32_t i = 0; i < pixelCount; ++i) {
+        uint32_t componentMax = 0u;
+        uint32_t raw = 0u;
+        if (rgba8888) {
+            const uint32_t pixelAddress = address + i * 4u;
+            raw = readRdpWord(pixelAddress);
+            componentMax = std::max((raw >> 24) & 0xffu,
+                std::max((raw >> 16) & 0xffu, (raw >> 8) & 0xffu));
+        } else {
+            const uint32_t pixelAddress = address + i * 2u;
+            raw = (static_cast<uint32_t>(rdramByte(pixelAddress)) << 8) |
+                  static_cast<uint32_t>(rdramByte(pixelAddress + 1u));
+            componentMax = std::max((raw >> 11) & 0x1fu,
+                std::max((raw >> 6) & 0x1fu, (raw >> 1) & 0x1fu));
+        }
+
+        if (componentMax != 0u) {
+            ++nonBlack;
+            if (firstNonBlack == pixelCount) firstNonBlack = i;
+        }
+        maxComponent = std::max(maxComponent, componentMax);
+        if (i < 8u) {
+            const int written = std::snprintf(
+                samples + sampleOffset, sizeof(samples) - sampleOffset,
+                "%s%0*x", i == 0u ? "" : ",",
+                rgba8888 ? 8 : 4, raw);
+            if (written > 0)
+                sampleOffset = std::min(sizeof(samples) - 1u,
+                    sampleOffset + static_cast<size_t>(written));
+        }
+    }
+
+    __android_log_print(ANDROID_LOG_INFO, TAG,
+        "RDP framebuffer pixels: %s addr=%06x width=%u format=%s "
+        "nonBlackRGB=%u/%u firstRGB=%u maxRGB=%u first=%s",
+        label, address & 0x00ffffffu, width,
+        rgba8888 ? "RGBA8888" : "RGBA5551", nonBlack, pixelCount,
+        firstNonBlack, maxComponent, samples);
+}
+
 int16_t readN64MatrixS16(uint32_t address) {
     const uint16_t value =
         (static_cast<uint16_t>(rdramByte(address)) << 8) |
@@ -1677,6 +1730,13 @@ bool processRdpCommandList() {
                 "DPC VI suspeito: origin=%06x width=%u x_add=%u y_add=%u",
                 viOrigin & 0x00ffffffu, viWidth & 0xfffu,
                 viXScale & 0xfffu, viYScale & 0xfffu);
+        }
+        logFramebufferPixelProbe(
+            "VI_ORIGIN", viOrigin & 0x00ffffffu, viWidth & 0xfffu, viStatus);
+        if (g_rdpCommandStats.lastColorW1 != 0u) {
+            logFramebufferPixelProbe(
+                "SET_COLOR_IMAGE", g_rdpCommandStats.lastColorW1 & 0x00ffffffu,
+                (g_rdpCommandStats.lastColorW0 & 1023u) + 1u, viStatus);
         }
         for (size_t i = 0; i < capturedCommands.size(); ++i) {
             const auto& c = capturedCommands[i];
