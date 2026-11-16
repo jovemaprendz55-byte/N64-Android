@@ -130,6 +130,7 @@ bool g_started = false;
 bool g_initialized = false;
 bool g_romOpen = false;
 uint64_t g_frameNumber = 0;
+uint64_t g_lastViUpdateFrame = 0;
 uint64_t g_processDListCalls = 0;
 uint64_t g_processRdpCalls = 0;
 uint64_t g_viAttempts = 0;
@@ -493,6 +494,16 @@ void logRspTaskSnapshot() {
         dpcStart, dpcEnd, spStatus);
 }
 
+void presentViFallbackIfNeeded() {
+    // ShowCFB and UpdateScreen can both be called for one VI refresh. Only
+    // submit the memory framebuffer when no RDP frame was produced since the
+    // previous VI refresh, and avoid replacing a real RDP image with black.
+    if (g_frameNumber == g_lastViUpdateFrame) {
+        submitViRdramFallbackFrame();
+    }
+    g_lastViUpdateFrame = g_frameNumber;
+}
+
 uint32_t readRdpWord(uint32_t address) {
     return (static_cast<uint32_t>(rdramByte(address)) << 24) |
            (static_cast<uint32_t>(rdramByte(address + 1u)) << 16) |
@@ -544,6 +555,7 @@ bool submitViRdramFallbackFrame() {
         return false;
 
     g_rgba.assign(static_cast<size_t>(outputWidth) * outputHeight * 4u, 0u);
+    uint64_t nonBlackPixels = 0;
     for (int y = activeY0; y < activeY1; ++y) {
         const uint32_t sourceY = (yStart +
             static_cast<uint32_t>(y - activeY0) * yAdd) >> 10;
@@ -579,7 +591,14 @@ bool submitViRdramFallbackFrame() {
             g_rgba[out + 1u] = green;
             g_rgba[out + 2u] = blue;
             g_rgba[out + 3u] = 255u;
+            if (red != 0u || green != 0u || blue != 0u) ++nonBlackPixels;
         }
+    }
+    if (nonBlackPixels == 0u) {
+        __android_log_print(ANDROID_LOG_WARN, TAG,
+            "VI framebuffer ignorado: nenhum pixel colorido; origin=%06x width=%u status=%08x",
+            origin, sourceWidth, status);
+        return false;
     }
 
     N64VideoFrame frame{};
@@ -2213,11 +2232,12 @@ EXPORT void CALL ProcessRDPList(void) {
     }
 }
 EXPORT void CALL ShowCFB(void) {
-    // The VI memory path is not yet validated. Do not upload arbitrary RDRAM
-    // as a framebuffer: it produces colored noise instead of a real game frame.
+    std::lock_guard<std::mutex> lock(g_mutex);
+    presentViFallbackIfNeeded();
 }
 EXPORT void CALL UpdateScreen(void) {
-    // Frames are presented only after a successful paraLLEl-RDP scanout.
+    std::lock_guard<std::mutex> lock(g_mutex);
+    presentViFallbackIfNeeded();
 }
 EXPORT void CALL ViStatusChanged(void) {}
 EXPORT void CALL ViWidthChanged(void) {}
@@ -2248,6 +2268,7 @@ EXPORT int CALL RomOpen(void) {
     g_rdpCommandStats = {};
     g_viAttempts = 0;
     g_viRejected = 0;
+    g_lastViUpdateFrame = g_frameNumber;
     __android_log_print(ANDROID_LOG_INFO, TAG, "ROM aberta no plugin GFX Vulkan");
     return 1;
 }
