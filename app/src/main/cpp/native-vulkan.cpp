@@ -2217,7 +2217,7 @@ Java_com_jsr_n64android_VulkanNative_nativePrepareRom(
     g_corePluginHandle = openPluginLibrary("libmupen64plus.so");
     g_gfxPluginHandle = openPluginLibrary("libn64vulkan.so");
     g_inputPluginHandle = openPluginLibrary("libmupen64plus-input-android.so");
-    g_rspPluginHandle = openPluginLibrary("libmupen64plus-rsp-hle.so");
+    g_rspPluginHandle = openPluginLibrary("libmupen64plus-rsp-cxd4.so");
     if (!g_corePluginHandle || !g_gfxPluginHandle ||
         !g_inputPluginHandle || !g_rspPluginHandle) {
         shutdownCoreLocked();
@@ -2241,7 +2241,7 @@ Java_com_jsr_n64android_VulkanNative_nativePrepareRom(
             "Inicialização do plugin de controle", g_inputPluginStarted);
     if (startupFailure.empty())
         startupFailure = startPlugin(g_rspPluginHandle,
-            "Inicialização do plugin RSP HLE", g_rspPluginStarted);
+            "Inicialização do plugin RSP CXD4 LLE", g_rspPluginStarted);
     if (!startupFailure.empty()) {
         shutdownCoreLocked();
         return result(env, startupFailure);
@@ -2272,15 +2272,15 @@ Java_com_jsr_n64android_VulkanNative_nativePrepareRom(
 
     error = CoreAttachPlugin(M64PLUGIN_RSP, g_rspPluginHandle);
     if (error != M64ERR_SUCCESS) {
-        const std::string message = coreError("Anexar plugin RSP HLE", error);
+        const std::string message = coreError("Anexar plugin RSP CXD4 LLE", error);
         shutdownCoreLocked();
         return result(env, message);
     }
     g_rspAttached = true;
 
     __android_log_print(ANDROID_LOG_INFO, "N64AndroidCore",
-        "ROM aberta e plugins GFX Vulkan, Input e RSP HLE anexados. Execução ainda não iniciada.");
-    return result(env, "ROM aberta no Mupen64Plus. Plugins Vulkan, controle e RSP HLE anexados. Próxima etapa: iniciar a execução do jogo.");
+        "ROM aberta e plugins GFX Vulkan, Input e RSP CXD4 LLE anexados. Execução ainda não iniciada.");
+    return result(env, "ROM aberta no Mupen64Plus. Plugins Vulkan, controle e RSP CXD4 LLE anexados. Próxima etapa: iniciar a execução do jogo.");
 }
 
 extern "C" JNIEXPORT jstring JNICALL
