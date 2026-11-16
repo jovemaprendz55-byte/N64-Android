@@ -1426,6 +1426,33 @@ bool collectGoldenEyeRdpCommands(
     return false;
 }
 
+void logRdpFramebufferState(const char* source,
+                             const std::vector<std::vector<uint32_t>>& commands,
+                             uint64_t call) {
+    unsigned colorImageCount = 0;
+    uint32_t lastW0 = 0;
+    uint32_t lastW1 = 0;
+    for (const auto& command : commands) {
+        if (!command.empty() && (command[0] >> 24) == 0xFFu) {
+            ++colorImageCount;
+            lastW0 = command[0];
+            lastW1 = command.size() > 1u ? command[1] : 0u;
+        }
+    }
+    const uint32_t viStatus = g_info.VI_STATUS_REG ? *g_info.VI_STATUS_REG : 0u;
+    const uint32_t viOrigin = g_info.VI_ORIGIN_REG ? *g_info.VI_ORIGIN_REG : 0u;
+    const uint32_t viWidth = g_info.VI_WIDTH_REG ? *g_info.VI_WIDTH_REG : 0u;
+    __android_log_print(ANDROID_LOG_INFO, TAG,
+        "%s framebuffer state: call=%llu commands=%zu setColorImage=%u "
+        "lastFF=%08x/%08x fmt=%u size=%u width=%u addr=%06x "
+        "VI_STATUS=%08x VI_ORIGIN=%06x VI_WIDTH=%u",
+        source, static_cast<unsigned long long>(call), commands.size(),
+        colorImageCount, lastW0, lastW1,
+        (lastW0 >> 21) & 7u, (lastW0 >> 19) & 3u,
+        (lastW0 & 1023u) + 1u, lastW1 & 0x00ffffffu,
+        viStatus, viOrigin & 0x00ffffffu, viWidth & 0xfffu);
+}
+
 void setRdpViRegisters() {
     if (!g_rdp) return;
 #define SET_VI(reg, field) \
@@ -1499,6 +1526,8 @@ bool processRdpCommandList() {
     }
 
     setRdpViRegisters();
+    if (g_processRdpCalls <= 10u || (g_processRdpCalls % 120u) == 0u)
+        logRdpFramebufferState("DPC", capturedCommands, g_processRdpCalls);
     if (g_processRdpCalls <= 5u || (g_processRdpCalls % 120u) == 0u) {
         const uint32_t viStatus = g_info.VI_STATUS_REG ? *g_info.VI_STATUS_REG : 0u;
         const uint32_t viOrigin = g_info.VI_ORIGIN_REG ? *g_info.VI_ORIGIN_REG : 0u;
@@ -1659,6 +1688,8 @@ bool processGoldenEyeEmbeddedRdp() {
     }
 
     setRdpViRegisters();
+    if (g_processDListCalls <= 12u || (g_processDListCalls % 120u) == 0u)
+        logRdpFramebufferState("GoldenEye embedded", commands, g_processDListCalls);
     if (g_processDListCalls <= 12u || (g_processDListCalls % 120u) == 0u) {
         __android_log_print(ANDROID_LOG_INFO, TAG,
             "GoldenEye embedded VI: status=%08x origin=%08x width=%08x "
