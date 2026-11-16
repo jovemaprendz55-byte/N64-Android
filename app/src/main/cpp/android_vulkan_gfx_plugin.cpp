@@ -1728,9 +1728,9 @@ bool processRdpCommandList() {
         return false;
 
     // CXD4's MT_CMD_END calls ProcessRDPList repeatedly as DPC_END grows.
-    // DPC_CURRENT is the unconsumed cursor; DPC_START is advanced alongside
-    // it after each complete batch, matching established Mupen64Plus GFX
-    // plugin behavior. Reading DPC_START here would replay old commands.
+    // DPC_CURRENT is the unconsumed cursor. The Core initializes it from
+    // DPC_START when the CPU writes DPC_START; the GFX plugin must not rewrite
+    // DPC_START while consuming a batch.
     const uint32_t start = *g_info.DPC_CURRENT_REG & 0x00fffff8u;
     const uint32_t end = *g_info.DPC_END_REG & 0x00fffff8u;
     if (end <= start || end > 8u * 1024u * 1024u) {
@@ -1796,7 +1796,6 @@ bool processRdpCommandList() {
         return false;
 
     *g_info.DPC_CURRENT_REG = cursor;
-    *g_info.DPC_START_REG = cursor;
     if (incompleteTail)
         __android_log_print(ANDROID_LOG_INFO, TAG,
             "RDP progresso parcial: comandos=%u consumidos_ate=0x%06x pendente_ate=0x%06x",
