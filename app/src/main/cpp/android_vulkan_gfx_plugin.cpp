@@ -1499,17 +1499,26 @@ bool processRdpCommandList() {
     }
 
     setRdpViRegisters();
-    if (g_processDListCalls <= 5) {
+    if (g_processRdpCalls <= 5u || (g_processRdpCalls % 120u) == 0u) {
+        const uint32_t viStatus = g_info.VI_STATUS_REG ? *g_info.VI_STATUS_REG : 0u;
+        const uint32_t viOrigin = g_info.VI_ORIGIN_REG ? *g_info.VI_ORIGIN_REG : 0u;
+        const uint32_t viWidth = g_info.VI_WIDTH_REG ? *g_info.VI_WIDTH_REG : 0u;
+        const uint32_t viHStart = g_info.VI_H_START_REG ? *g_info.VI_H_START_REG : 0u;
+        const uint32_t viVStart = g_info.VI_V_START_REG ? *g_info.VI_V_START_REG : 0u;
+        const uint32_t viXScale = g_info.VI_X_SCALE_REG ? *g_info.VI_X_SCALE_REG : 0u;
+        const uint32_t viYScale = g_info.VI_Y_SCALE_REG ? *g_info.VI_Y_SCALE_REG : 0u;
         __android_log_print(ANDROID_LOG_INFO, TAG,
-            "GoldenEye VI: status=%08x origin=%08x width=%08x "
+            "DPC VI input: call=%llu status=%08x origin=%08x width=%08x "
             "h_start=%08x v_start=%08x x_scale=%08x y_scale=%08x",
-            g_info.VI_STATUS_REG ? *g_info.VI_STATUS_REG : 0u,
-            g_info.VI_ORIGIN_REG ? *g_info.VI_ORIGIN_REG : 0u,
-            g_info.VI_WIDTH_REG ? *g_info.VI_WIDTH_REG : 0u,
-            g_info.VI_H_START_REG ? *g_info.VI_H_START_REG : 0u,
-            g_info.VI_V_START_REG ? *g_info.VI_V_START_REG : 0u,
-            g_info.VI_X_SCALE_REG ? *g_info.VI_X_SCALE_REG : 0u,
-            g_info.VI_Y_SCALE_REG ? *g_info.VI_Y_SCALE_REG : 0u);
+            static_cast<unsigned long long>(g_processRdpCalls),
+            viStatus, viOrigin, viWidth, viHStart, viVStart, viXScale, viYScale);
+        if (viOrigin == 0u || (viWidth & 0xfffu) == 0u ||
+            (viXScale & 0xfffu) == 0u || (viYScale & 0xfffu) == 0u) {
+            __android_log_print(ANDROID_LOG_WARN, TAG,
+                "DPC VI suspeito: origin=%06x width=%u x_add=%u y_add=%u",
+                viOrigin & 0x00ffffffu, viWidth & 0xfffu,
+                viXScale & 0xfffu, viYScale & 0xfffu);
+        }
         for (size_t i = 0; i < capturedCommands.size(); ++i) {
             const auto& c = capturedCommands[i];
             __android_log_print(ANDROID_LOG_INFO, TAG,
@@ -1534,11 +1543,38 @@ bool processRdpCommandList() {
     }
 
     g_rgba.resize(static_cast<size_t>(width) * height * 4u);
+    uint64_t nonBlackPixels = 0;
+    uint8_t minChannel = 255u;
+    uint8_t maxChannel = 0u;
+    uint64_t pixelChecksum = 1469598103934665603ull;
     for (size_t i = 0; i < static_cast<size_t>(width) * height; ++i) {
-        g_rgba[i * 4u + 0u] = colors[i].r;
-        g_rgba[i * 4u + 1u] = colors[i].g;
-        g_rgba[i * 4u + 2u] = colors[i].b;
-        g_rgba[i * 4u + 3u] = colors[i].a;
+        const uint8_t r = colors[i].r;
+        const uint8_t g = colors[i].g;
+        const uint8_t b = colors[i].b;
+        const uint8_t a = colors[i].a;
+        g_rgba[i * 4u + 0u] = r;
+        g_rgba[i * 4u + 1u] = g;
+        g_rgba[i * 4u + 2u] = b;
+        g_rgba[i * 4u + 3u] = a;
+        if (r != 0u || g != 0u || b != 0u) ++nonBlackPixels;
+        minChannel = std::min(minChannel, std::min(r, std::min(g, b)));
+        maxChannel = std::max(maxChannel, std::max(r, std::max(g, b)));
+        pixelChecksum ^= static_cast<uint64_t>(r) |
+                         (static_cast<uint64_t>(g) << 8u) |
+                         (static_cast<uint64_t>(b) << 16u) |
+                         (static_cast<uint64_t>(a) << 24u);
+        pixelChecksum *= 1099511628211ull;
+    }
+    if (g_processRdpCalls <= 10u || (g_processRdpCalls % 120u) == 0u) {
+        const uint64_t totalPixels = static_cast<uint64_t>(width) * height;
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "DPC RDP pixels: call=%llu size=%ux%u total=%llu nonBlack=%llu "
+            "minRGB=%u maxRGB=%u checksum=%016llx",
+            static_cast<unsigned long long>(g_processRdpCalls), width, height,
+            static_cast<unsigned long long>(totalPixels),
+            static_cast<unsigned long long>(nonBlackPixels),
+            static_cast<unsigned>(minChannel), static_cast<unsigned>(maxChannel),
+            static_cast<unsigned long long>(pixelChecksum));
     }
 
     N64VideoFrame frame{};
