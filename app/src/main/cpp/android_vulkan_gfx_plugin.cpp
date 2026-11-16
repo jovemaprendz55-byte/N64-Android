@@ -574,9 +574,9 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
             return true;
         }
 
-        // F3D G_MOVEMEM loads directional lights into the RSP light state.
-        // Keep the data separate from vertex colors: with G_LIGHTING enabled,
-        // the Vtx attribute bytes are normals, not RGB.
+        // F3D G_MOVEMEM stores directional lights first and the ambient
+        // light immediately after them. AmbientLight is only 8 bytes: it has
+        // RGB color/copy fields and no direction vector.
         if (opcode == 0x03u) {
             const unsigned moveMemType = (w0 >> 16) & 0xffu;
             if (moveMemType >= 0x86u && moveMemType <= 0x96u &&
@@ -587,30 +587,43 @@ bool walkF3DDisplayList(uint32_t start, uint32_t limit, uint32_t segments[16],
                 const uint64_t address64 = segment < 16u
                     ? static_cast<uint64_t>(segments[segment]) + offset
                     : 8u * 1024u * 1024u;
+                const bool ambient = matrixState.numLights > 0u &&
+                    lightIndex == std::min(matrixState.numLights, 8u);
+                const uint64_t requiredBytes = ambient ? 8u : 16u;
                 if (lightIndex < matrixState.lights.size() &&
-                    address64 <= 8u * 1024u * 1024u - 24u) {
+                    address64 <= 8u * 1024u * 1024u - requiredBytes) {
                     const uint32_t address = static_cast<uint32_t>(address64);
                     GoldenEyeLightState& light = matrixState.lights[lightIndex];
                     for (unsigned channel = 0; channel < 3u; ++channel) {
                         light.color[channel] =
                             static_cast<float>(rdramByte(address + channel)) / 255.0f;
-                        const int8_t direction =
-                            static_cast<int8_t>(rdramByte(address + 8u + channel));
-                        light.direction[channel] = static_cast<float>(direction) / 127.0f;
                     }
-                    const float length = std::sqrt(
-                        light.direction[0] * light.direction[0] +
-                        light.direction[1] * light.direction[1] +
-                        light.direction[2] * light.direction[2]);
-                    if (length > 0.0001f) {
-                        for (float& component : light.direction) component /= length;
+                    if (ambient) {
+                        // AmbientLight has no direction. Its color alone makes
+                        // this slot valid for getGoldenEyeVertexColor().
+                        light.direction[0] = light.direction[1] = light.direction[2] = 0.0f;
                         light.valid = true;
                     } else {
-                        light.valid = false;
+                        for (unsigned channel = 0; channel < 3u; ++channel) {
+                            const int8_t direction =
+                                static_cast<int8_t>(rdramByte(address + 8u + channel));
+                            light.direction[channel] = static_cast<float>(direction) / 127.0f;
+                        }
+                        const float length = std::sqrt(
+                            light.direction[0] * light.direction[0] +
+                            light.direction[1] * light.direction[1] +
+                            light.direction[2] * light.direction[2]);
+                        if (length > 0.0001f) {
+                            for (float& component : light.direction) component /= length;
+                            light.valid = true;
+                        } else {
+                            light.valid = false;
+                        }
                     }
                     if (verbose) __android_log_print(ANDROID_LOG_INFO, TAG,
-                        "F3DGOLDEN LIGHT_LOAD[%u]: addr=%06x rgb=%.3f,%.3f,%.3f dir=%.3f,%.3f,%.3f valid=%u",
-                        lightIndex, address, light.color[0], light.color[1], light.color[2],
+                        "F3DGOLDEN %sLIGHT_LOAD[%u]: addr=%06x rgb=%.3f,%.3f,%.3f dir=%.3f,%.3f,%.3f valid=%u",
+                        ambient ? "AMBIENT_" : "", lightIndex, address,
+                        light.color[0], light.color[1], light.color[2],
                         light.direction[0], light.direction[1], light.direction[2],
                         light.valid ? 1u : 0u);
                 } else if (verbose) {
