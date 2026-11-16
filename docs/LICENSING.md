@@ -39,17 +39,22 @@ O código do frontend Android não deve ser presumido como GPL-2.0 apenas por us
 Este documento é um registro técnico do projeto, não aconselhamento jurídico.
 
 
-## Mupen64Plus RSP-HLE
+## Mupen64Plus RSP CXD4 (LLE)
 
-Repositório: https://github.com/mupen64plus/mupen64plus-rsp-hle
+Repositório: https://github.com/mupen64plus/mupen64plus-rsp-cxd4
 
-O plugin oficial RSP-HLE declara GNU GPL versão 2 ou, a critério do usuário,
-qualquer versão posterior. A revisão fixada para a primeira build Android é
-`dd09c7dcdc6d2cff584aacb9d519600d47d61039`. O workflow faz checkout do
-código upstream sem remover seus cabeçalhos e compila a biblioteca ARM64;
-o arquivo upstream `LICENSES` deve ser preservado junto à distribuição.
+A integração Vulkan seleciona o interpretador RSP CXD4 para executar o
+microcódigo gráfico no próprio RSP e entregar a lista de comandos ao callback
+ProcessRDPList. A revisão fixada para Android ARM64 é
+`b8e747be772b8db017bb981bff188324b919162e`. Os arquivos-fonte do plugin
+contêm avisos GNU GPL versão 2 ou posterior; preservar seus cabeçalhos e
+arquivos de licença junto à distribuição.
 
-A integração atual é somente compilação e empacotamento. Antes de distribuir
-o APK, manter o código-fonte correspondente e os scripts de build acessíveis,
-conforme as obrigações da GPL-2.0-or-later. Verificar novamente os avisos e
-licenças dos arquivos individuais antes de qualquer redistribuição.
+O plugin é compilado como biblioteca compartilhada ARM64 e carregado pelo
+Core Mupen64Plus. Antes de distribuir o APK, manter o código-fonte
+correspondente e os scripts de build acessíveis, conforme as obrigações da
+GPL-2.0-or-later. Verificar novamente os avisos e licenças dos arquivos
+individuais antes de qualquer redistribuição.
+
+O RSP-HLE deixa de ser o plugin selecionado nesta branch; não remover seus
+avisos ou fontes de versões anteriores do projeto sem uma auditoria separada.
