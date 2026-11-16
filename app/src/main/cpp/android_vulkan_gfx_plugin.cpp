@@ -1475,27 +1475,35 @@ void setRdpViRegisters() {
 }
 
 bool processRdpCommandList() {
-    if (!g_rdp || !g_info.RDRAM || !g_info.DPC_START_REG || !g_info.DPC_END_REG)
+    if (!g_rdp || !g_info.RDRAM || !g_info.DPC_START_REG ||
+        !g_info.DPC_CURRENT_REG || !g_info.DPC_END_REG)
         return false;
 
-    const uint32_t start = *g_info.DPC_START_REG & 0x00fffff8u;
+    // CXD4's MT_CMD_END calls ProcessRDPList repeatedly as DPC_END grows.
+    // DPC_CURRENT is the unconsumed cursor; DPC_START is advanced alongside
+    // it after each complete batch, matching established Mupen64Plus GFX
+    // plugin behavior. Reading DPC_START here would replay old commands.
+    const uint32_t start = *g_info.DPC_CURRENT_REG & 0x00fffff8u;
     const uint32_t end = *g_info.DPC_END_REG & 0x00fffff8u;
     if (end <= start || end > 8u * 1024u * 1024u) {
         if (g_processRdpCalls <= 5)
             __android_log_print(ANDROID_LOG_WARN, TAG,
-                "RDP lista vazia/invalida: START=0x%06x END=0x%06x",
+                "RDP lista vazia/invalida: CURRENT=0x%06x END=0x%06x",
                 start, end);
         return false;
     }
 
     uint32_t cursor = start;
     unsigned commands = 0;
+    bool incompleteTail = false;
     std::vector<std::vector<uint32_t>> capturedCommands;
     while (cursor < end && commands < 65536u) {
-        if (cursor > end - 8u) {
+        if (end - cursor < 8u) {
+            incompleteTail = true;
             __android_log_print(ANDROID_LOG_WARN, TAG,
-                "RDP lista truncada no endereco 0x%06x", cursor);
-            return false;
+                "RDP aguardando palavras do comando: endereco=0x%06x bytes=%u END=0x%06x",
+                cursor, end - cursor, end);
+            break;
         }
 
         uint32_t words[44] = {};
@@ -1503,11 +1511,19 @@ bool processRdpCommandList() {
         const unsigned count = rdpCommandWordCount(words[0] >> 24);
         const uint64_t commandEnd = static_cast<uint64_t>(cursor) +
                                     static_cast<uint64_t>(count) * 4u;
-        if (commandEnd > end || commandEnd > 8u * 1024u * 1024u) {
+        if (commandEnd > end) {
+            incompleteTail = true;
             __android_log_print(ANDROID_LOG_WARN, TAG,
-                "RDP comando truncado: opcode=0x%02x endereco=0x%06x palavras=%u END=0x%06x",
-                (words[0] >> 24) & 0x3fu, cursor, count, end);
-            return false;
+                "RDP comando parcial: opcode=0x%02x endereco=0x%06x palavras=%u disponiveis=%u END=0x%06x; aguardando proxima chamada",
+                (words[0] >> 24) & 0x3fu, cursor, count,
+                (end - cursor) / 4u, end);
+            break;
+        }
+        if (commandEnd > 8u * 1024u * 1024u) {
+            __android_log_print(ANDROID_LOG_ERROR, TAG,
+                "RDP comando fora da RDRAM: endereco=0x%06x palavras=%u",
+                cursor, count);
+            break;
         }
         for (unsigned i = 1; i < count; ++i)
             words[i] = readRdpWord(cursor + i * 4u);
@@ -1518,12 +1534,25 @@ bool processRdpCommandList() {
         ++commands;
     }
 
-    if (cursor != end) {
+    if (commands == 65536u && cursor < end) {
+        incompleteTail = true;
         __android_log_print(ANDROID_LOG_WARN, TAG,
-            "RDP lista excedeu limite de comandos: cursor=0x%06x END=0x%06x",
+            "RDP lote limitado: cursor=0x%06x END=0x%06x; restante sera processado na proxima chamada",
             cursor, end);
-        return false;
     }
+
+    // Do not consume an incomplete command. The next CXD4 callback will
+    // resume from this exact address after DPC_END exposes more RDRAM bytes.
+    // Complete commands before it are safe to commit and will not be replayed.
+    if (commands == 0u)
+        return false;
+
+    *g_info.DPC_CURRENT_REG = cursor;
+    *g_info.DPC_START_REG = cursor;
+    if (incompleteTail)
+        __android_log_print(ANDROID_LOG_INFO, TAG,
+            "RDP progresso parcial: comandos=%u consumidos_ate=0x%06x pendente_ate=0x%06x",
+            commands, cursor, end);
 
     setRdpViRegisters();
     if (g_processRdpCalls <= 10u || (g_processRdpCalls % 120u) == 0u)
