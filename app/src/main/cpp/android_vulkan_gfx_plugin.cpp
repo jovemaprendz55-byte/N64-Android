@@ -500,6 +500,99 @@ uint32_t readRdpWord(uint32_t address) {
            static_cast<uint32_t>(rdramByte(address + 3u));
 }
 
+bool submitViRdramFallbackFrame() {
+    if (!g_info.RDRAM || !g_info.VI_STATUS_REG || !g_info.VI_ORIGIN_REG ||
+        !g_info.VI_WIDTH_REG || !g_info.VI_H_START_REG || !g_info.VI_V_START_REG ||
+        !g_info.VI_X_SCALE_REG || !g_info.VI_Y_SCALE_REG)
+        return false;
+
+    constexpr uint32_t outputWidth = 640u;
+    constexpr uint32_t outputHeight = 240u;
+    constexpr uint32_t rdramSize = 8u * 1024u * 1024u;
+    const uint32_t status = *g_info.VI_STATUS_REG;
+    const uint32_t origin = *g_info.VI_ORIGIN_REG & 0x00ffffffu;
+    const uint32_t sourceWidth = *g_info.VI_WIDTH_REG & 0x0fffu;
+    const uint32_t hStartReg = *g_info.VI_H_START_REG;
+    const uint32_t vStartReg = *g_info.VI_V_START_REG;
+    const uint32_t xScale = *g_info.VI_X_SCALE_REG;
+    const uint32_t yScale = *g_info.VI_Y_SCALE_REG;
+
+    const uint32_t xStart = (xScale >> 16) & 0x0fffu;
+    const uint32_t xAdd = xScale & 0x0fffu;
+    const uint32_t yStart = (yScale >> 16) & 0x0fffu;
+    const uint32_t yAdd = yScale & 0x0fffu;
+    const uint32_t hStart = (hStartReg >> 16) & 0x03ffu;
+    const uint32_t hEnd = hStartReg & 0x03ffu;
+    const uint32_t vStart = (vStartReg >> 16) & 0x03ffu;
+    const uint32_t vEnd = vStartReg & 0x03ffu;
+
+    const bool pal = g_info.VI_V_SYNC_REG &&
+                     ((*g_info.VI_V_SYNC_REG & 0x03ffu) > 550u);
+    const int hOffset = pal ? 128 : 108;
+    const int vOffset = pal ? 44 : 34;
+    const int activeX0 = std::max(0, static_cast<int>(hStart) - hOffset);
+    const int activeX1 = std::min(static_cast<int>(outputWidth),
+                                  static_cast<int>(hEnd) - hOffset);
+    const int activeY0 = std::max(0, (static_cast<int>(vStart) - vOffset) / 2);
+    const int activeY1 = std::min(static_cast<int>(outputHeight),
+                                  (static_cast<int>(vEnd) - vOffset) / 2);
+    const uint32_t pixelBytes = ((status & 3u) == 3u) ? 4u : 2u;
+
+    if (origin == 0u || sourceWidth == 0u || xAdd == 0u || yAdd == 0u ||
+        activeX1 <= activeX0 || activeY1 <= activeY0 ||
+        (pixelBytes == 2u && (status & 3u) != 2u))
+        return false;
+
+    g_rgba.assign(static_cast<size_t>(outputWidth) * outputHeight * 4u, 0u);
+    for (int y = activeY0; y < activeY1; ++y) {
+        const uint32_t sourceY = (yStart +
+            static_cast<uint32_t>(y - activeY0) * yAdd) >> 10;
+        for (int x = activeX0; x < activeX1; ++x) {
+            const uint32_t sourceX = (xStart +
+                static_cast<uint32_t>(x - activeX0) * xAdd) >> 10;
+            if (sourceX >= sourceWidth) continue;
+
+            const uint64_t address64 = static_cast<uint64_t>(origin) +
+                (static_cast<uint64_t>(sourceY) * sourceWidth + sourceX) * pixelBytes;
+            if (address64 + pixelBytes > rdramSize) continue;
+            const uint32_t address = static_cast<uint32_t>(address64);
+            uint8_t red, green, blue;
+            if (pixelBytes == 2u) {
+                const uint16_t pixel = static_cast<uint16_t>(
+                    (static_cast<uint16_t>(rdramByte(address)) << 8) |
+                    rdramByte(address + 1u));
+                const uint8_t r5 = static_cast<uint8_t>((pixel >> 11) & 31u);
+                const uint8_t g5 = static_cast<uint8_t>((pixel >> 6) & 31u);
+                const uint8_t b5 = static_cast<uint8_t>((pixel >> 1) & 31u);
+                red = static_cast<uint8_t>((r5 << 3) | (r5 >> 2));
+                green = static_cast<uint8_t>((g5 << 3) | (g5 >> 2));
+                blue = static_cast<uint8_t>((b5 << 3) | (b5 >> 2));
+            } else {
+                red = rdramByte(address);
+                green = rdramByte(address + 1u);
+                blue = rdramByte(address + 2u);
+            }
+
+            const size_t out = (static_cast<size_t>(y) * outputWidth +
+                                static_cast<uint32_t>(x)) * 4u;
+            g_rgba[out + 0u] = red;
+            g_rgba[out + 1u] = green;
+            g_rgba[out + 2u] = blue;
+            g_rgba[out + 3u] = 255u;
+        }
+    }
+
+    N64VideoFrame frame{};
+    frame.pixels = g_rgba.data();
+    frame.width = outputWidth;
+    frame.height = outputHeight;
+    frame.stride_bytes = outputWidth * 4u;
+    frame.pixel_format = N64_VIDEO_PIXEL_FORMAT_RGBA8888;
+    frame.frame_number = ++g_frameNumber;
+    n64VulkanVideoFrameCallback(&frame, nullptr);
+    return true;
+}
+
 void logFramebufferPixelProbe(const char* label, uint32_t address,
                               uint32_t width, uint32_t status) {
     if (width == 0u || width > 4096u) return;
@@ -1796,6 +1889,9 @@ bool processRdpCommandList() {
             static_cast<unsigned long long>(pixelChecksum));
     }
 
+    if (nonBlackPixels == 0u && submitViRdramFallbackFrame())
+        return true;
+
     N64VideoFrame frame{};
     frame.pixels = g_rgba.data();
     frame.width = width;
@@ -1983,6 +2079,9 @@ bool processGoldenEyeEmbeddedRdp() {
                          (static_cast<uint64_t>(a) << 24u);
         pixelChecksum *= 1099511628211ull;
     }
+
+    if (nonBlackPixels == 0u && submitViRdramFallbackFrame())
+        return true;
 
     N64VideoFrame frame{};
     frame.pixels = g_rgba.data();
