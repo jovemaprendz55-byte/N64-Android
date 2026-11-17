@@ -513,6 +513,84 @@ uint32_t readRdpWord(uint32_t address) {
            static_cast<uint32_t>(rdramByte(address + 3u));
 }
 
+// Diagnostic-only fallback: when paraLLEl-RDP scanout is empty because VI_ORIGIN
+// points at a different/empty RDRAM region, try presenting the most recent
+// RDP SET_COLOR_IMAGE directly. This does not change emulated VI registers.
+bool submitRdpColorImageFallbackFrame() {
+    if (!g_info.RDRAM || g_rdpCommandStats.lastColorW1 == 0u)
+        return false;
+
+    constexpr uint32_t rdramSize = 8u * 1024u * 1024u;
+    const uint32_t w0 = g_rdpCommandStats.lastColorW0;
+    const uint32_t address = g_rdpCommandStats.lastColorW1 & 0x00ffffffu;
+    const uint32_t format = (w0 >> 21u) & 7u;
+    const uint32_t size = (w0 >> 19u) & 3u;
+    const uint32_t width = (w0 & 1023u) + 1u;
+    constexpr uint32_t height = 240u;
+    const uint32_t bytesPerPixel = size == 2u ? 2u : (size == 3u ? 4u : 0u);
+    if (format != 0u || bytesPerPixel == 0u || width == 0u ||
+        width > 4096u || address >= rdramSize ||
+        static_cast<uint64_t>(width) * height * bytesPerPixel >
+            rdramSize - address) {
+        __android_log_print(ANDROID_LOG_WARN, TAG,
+            "RDP color-image fallback ignorado: addr=%06x fmt=%u size=%u width=%u",
+            address, format, size, width);
+        return false;
+    }
+
+    g_rgba.assign(static_cast<size_t>(width) * height * 4u, 0u);
+    uint64_t nonBlackPixels = 0u;
+    for (uint32_t y = 0; y < height; ++y) {
+        for (uint32_t x = 0; x < width; ++x) {
+            const uint32_t source = address +
+                (y * width + x) * bytesPerPixel;
+            uint8_t red = 0u, green = 0u, blue = 0u;
+            if (size == 2u) {
+                const uint16_t pixel = static_cast<uint16_t>(
+                    (static_cast<uint16_t>(rdramByte(source)) << 8u) |
+                    rdramByte(source + 1u));
+                const uint8_t r5 = static_cast<uint8_t>((pixel >> 11u) & 31u);
+                const uint8_t g5 = static_cast<uint8_t>((pixel >> 6u) & 31u);
+                const uint8_t b5 = static_cast<uint8_t>((pixel >> 1u) & 31u);
+                red = static_cast<uint8_t>((r5 << 3u) | (r5 >> 2u));
+                green = static_cast<uint8_t>((g5 << 3u) | (g5 >> 2u));
+                blue = static_cast<uint8_t>((b5 << 3u) | (b5 >> 2u));
+            } else {
+                red = rdramByte(source);
+                green = rdramByte(source + 1u);
+                blue = rdramByte(source + 2u);
+            }
+            const size_t out = (static_cast<size_t>(y) * width + x) * 4u;
+            g_rgba[out + 0u] = red;
+            g_rgba[out + 1u] = green;
+            g_rgba[out + 2u] = blue;
+            g_rgba[out + 3u] = 255u;
+            if (red != 0u || green != 0u || blue != 0u)
+                ++nonBlackPixels;
+        }
+    }
+    if (nonBlackPixels == 0u) {
+        __android_log_print(ANDROID_LOG_WARN, TAG,
+            "RDP color-image fallback sem pixels: addr=%06x size=%ux%u",
+            address, width, height);
+        return false;
+    }
+
+    N64VideoFrame frame{};
+    frame.pixels = g_rgba.data();
+    frame.width = width;
+    frame.height = height;
+    frame.stride_bytes = width * 4u;
+    frame.pixel_format = N64_VIDEO_PIXEL_FORMAT_RGBA8888;
+    frame.frame_number = ++g_frameNumber;
+    n64VulkanVideoFrameCallback(&frame, nullptr);
+    __android_log_print(ANDROID_LOG_WARN, TAG,
+        "RDP color-image fallback apresentado: addr=%06x size=%ux%u pixels=%llu",
+        address, width, height,
+        static_cast<unsigned long long>(nonBlackPixels));
+    return true;
+}
+
 bool submitViRdramFallbackFrame() {
     if (!g_info.RDRAM || !g_info.VI_STATUS_REG || !g_info.VI_ORIGIN_REG ||
         !g_info.VI_WIDTH_REG || !g_info.VI_H_START_REG || !g_info.VI_V_START_REG ||
@@ -1910,10 +1988,11 @@ bool processRdpCommandList() {
     }
 
     if (nonBlackPixels == 0u) {
-        // Never replace the last presented image with an empty RDP scanout.
-        // If the VI fallback has usable memory, it submits that frame; if not,
-        // keep the previous Vulkan frame on screen until real pixels arrive.
-        submitViRdramFallbackFrame();
+        // The VI scanout can be empty while the RDP's current color image
+        // already contains rendered pixels. Present it as a diagnostic fallback
+        // before trying VI_ORIGIN; the emulated registers remain untouched.
+        if (!submitRdpColorImageFallbackFrame())
+            submitViRdramFallbackFrame();
         return true;
     }
 
