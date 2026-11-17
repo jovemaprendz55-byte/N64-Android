@@ -184,6 +184,13 @@ class MainActivity : Activity() {
             addView(status, LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
             ))
+            addView(Button(this@MainActivity).apply {
+                text = "COPIAR LOGS DE DIAGNÓSTICO"
+                textSize = 14f
+                setOnClickListener { copyDiagnosticLogs(status) }
+            }, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(48)
+            ).apply { setMargins(dp(8), dp(6), dp(8), dp(6)) })
             addView(buildTouchControls(), LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
             ))
@@ -256,6 +263,56 @@ class MainActivity : Activity() {
             }
         })
         setContentView(gameLayout)
+    }
+
+    private fun copyDiagnosticLogs(status: TextView) {
+        status.text = "Coletando logs do RDP e Vulkan..."
+        Thread {
+            val result = try {
+                val process = ProcessBuilder(
+                    "logcat", "-d", "-v", "threadtime", "-t", "2500"
+                ).redirectErrorStream(true).start()
+                val output = process.inputStream.bufferedReader().use { it.readText() }
+                val exitCode = process.waitFor()
+                if (exitCode != 0) throw IllegalStateException("logcat retornou código $exitCode")
+
+                val relevant = output.lineSequence().filter { line ->
+                    line.contains("N64AndroidVulkanGFX") ||
+                    line.contains("N64AndroidVulkan") ||
+                    line.contains("N64AndroidCore") ||
+                    line.contains("DPC RDP pixels") ||
+                    line.contains("RDP real processado") ||
+                    line.contains("Vulkan frame OK") ||
+                    line.contains("RDP scanout") ||
+                    line.contains("DPC VI input") ||
+                    line.contains("DPC RDP[") ||
+                    line.contains("ProcessRDPList") ||
+                    line.contains("RDP progresso parcial") ||
+                    line.contains("RDP comando parcial") ||
+                    line.contains("Quadro Vulkan") ||
+                    line.contains("Quadro do núcleo N64")
+                }.toList().takeLast(600).joinToString("\n")
+
+                if (relevant.isBlank()) {
+                    "N64 ANDROID - LOGS DE DIAGNÓSTICO\n" +
+                    "Nenhuma mensagem dos componentes N64 foi encontrada.\n" +
+                    "Abra o jogo, aguarde alguns segundos com a tela preta e tente copiar novamente."
+                } else {
+                    "N64 ANDROID - LOGS DE DIAGNÓSTICO\n" +
+                    "Inclui Core, RSP/CXD4, DPC/RDP, scanout e apresentação Vulkan.\n\n" +
+                    relevant
+                }
+            } catch (error: Throwable) {
+                "Falha ao coletar Logcat: ${error.message}\n" +
+                "Mantenha o jogo aberto e tente novamente."
+            }
+            runOnUiThread {
+                val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("N64 Android logs", result))
+                status.text = "Logs copiados. Cole o conteúdo aqui na conversa."
+                Toast.makeText(this, "Logs copiados para a área de transferência.", Toast.LENGTH_LONG).show()
+            }
+        }.start()
     }
 
     private fun buildTouchControls(): View {
