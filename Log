@@ -1,654 +1,584 @@
-2026-11-17 15:39:26.475 I/N64Diagnostics: ========== NOVA SESSÃO ==========
-2026-11-17 15:39:26.489 I/N64Diagnostics: App iniciado. PID=17761 Android=16
-2026-11-17 15:39:26.493 I/N64Diagnostics: MainActivity.onCreate
+2026-11-17 15:55:00.059 I/N64Diagnostics: ========== NOVA SESSÃO ==========
+2026-11-17 15:55:00.070 I/N64Diagnostics: App iniciado. PID=20800 Android=16
+2026-11-17 15:55:00.075 I/N64Diagnostics: MainActivity.onCreate
 --------- beginning of main
-11-17 15:39:25.495 17761 17761 I .jsr.n64android: Late-enabling -Xcheck:jni
-11-17 15:39:25.641 17761 17761 I .jsr.n64android: Using generational CollectorTypeCMC GC.
-11-17 15:39:25.724 17761 17761 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+11-17 15:54:59.115 20800 20800 I .jsr.n64android: Late-enabling -Xcheck:jni
+11-17 15:54:59.245 20800 20800 I .jsr.n64android: Using generational CollectorTypeCMC GC.
+11-17 15:54:59.418 20800 20800 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
 --------- beginning of system
-11-17 15:39:25.918 17761 17761 I ActivityThread: Current dynamic renderEngine type=0
-11-17 15:39:26.015 17761 17774 D MiuiDownscaleImpl: set override inverted scale : 1.0
-11-17 15:39:26.020 17761 17761 I RENDER_TURBO: onActivityThreadCreate not in white list, pkg=com.jsr.n64android, type=dew
-11-17 15:39:26.029 17761 17774 D AppScoutStateMachine: 17761-ScoutStateMachinecreated
-11-17 15:39:26.108 17761 17761 D ActivityThread: setEmbeddedParam packageName=com.jsr.n64android processName=com.jsr.n64android isEmbedded=false isIsolated=false
-11-17 15:39:26.160 17761 17761 D nativeloader: Configuring clns-10 for other apk /data/app/~~TdoytC6YuC9MuX3XKHYxMQ==/com.jsr.n64android-lvY6JpBkF64APZ40TRU-Qg==/base.apk. target_sdk_version=35, uses_libraries=, library_path=/data/app/~~TdoytC6YuC9MuX3XKHYxMQ==/com.jsr.n64android-lvY6JpBkF64APZ40TRU-Qg==/lib/arm64:/data/app/~~TdoytC6YuC9MuX3XKHYxMQ==/com.jsr.n64android-lvY6JpBkF64APZ40TRU-Qg==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.jsr.n64android
-11-17 15:39:26.164 17761 17761 D CompatChangeReporter: Compat change id reported: 202956589; UID 11016; state: ENABLED
-11-17 15:39:26.169 17761 17761 I .jsr.n64android: AssetManager2(0xb40000702f2cc0b8) locale list changing from [] to [pt-BR]
-11-17 15:39:26.179 17761 17761 E MiuiPreloadClassImpl: invoke error.
-11-17 15:39:26.180 17761 17761 D MiuiMonitorThread: Shared singleton Thread for stability monitor start
-11-17 15:39:26.195 17761 17761 D HWUI    : [HWUI] Flag vulkan_enhance_pipeline_cache enabled
-11-17 15:39:26.195 17761 17761 D HWUI    : [HWUI] EnhanceVkPipelineCache is disabled
-11-17 15:39:26.195 17761 17761 D HWUI    : [HWUI] Flag ddre enabled
-11-17 15:39:26.202 17761 17761 V GraphicsEnvironment: Currently set values for:
-11-17 15:39:26.203 17761 17761 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
-11-17 15:39:26.203 17761 17761 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
-11-17 15:39:26.203 17761 17761 V GraphicsEnvironment: com.jsr.n64android is not listed in per-application setting
-11-17 15:39:26.204 17761 17761 V GraphicsEnvironment: ANGLE allowlist from config: 
-11-17 15:39:26.204 17761 17761 V GraphicsEnvironment: com.jsr.n64android is not listed in ANGLE allowlist or settings, returning default
-11-17 15:39:26.204 17761 17761 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
-11-17 15:39:26.209 17761 17761 I ActivityThread: TrafficStats init done
-11-17 15:39:26.223 17761 17761 I ForceDarkHelperStubImpl: initialize for com.jsr.n64android , ForceDarkAppConfig: null
-11-17 15:39:26.225 17761 17761 D nativeloader: Load libforcedarkimpl.so using system ns (caller=/system_ext/framework/miui-framework.jar): ok
-11-17 15:39:26.225 17761 17761 D HWUI    : JNI_OnLoad success
-11-17 15:39:26.226 17761 17761 I MiuiForceDarkConfig: setConfig density:2.000000, mainRule:0, secondaryRule:0, tertiaryRule:0
-11-17 15:39:26.285 17761 17761 E ashmem  : Pinning is deprecated since Android Q. Please use trim or other methods.
-11-17 15:39:26.290 17761 17761 I ActivityThread: Miui Feature Init done
-11-17 15:39:26.305 17761 17761 D ResMonitorStub: The current process type is: third_party_app, process name is: com.jsr.n64android
-11-17 15:39:26.376 17761 17761 D HWUI    : [HWUI] Flag vulkan_enhance_pipeline_cache enabled
-11-17 15:39:26.376 17761 17761 D HWUI    : [HWUI] EnhanceVkPipelineCache is disabled
-11-17 15:39:26.376 17761 17761 D HWUI    : [HWUI] Flag ddre enabled
-11-17 15:39:26.376 17761 17761 D .jsr.n64android: blurUtils, initBackgroundBlurMinInterval processName(com.jsr.n64android), inWhiteLists(0)
-11-17 15:39:26.376 17761 17761 I ActivityThread: HardwareRenderer preload  done
-11-17 15:39:26.383 17761 17795 I DisplayManager: Choreographer implicitly registered for the refresh rate.
-11-17 15:39:26.396 17761 17761 I .jsr.n64android: AssetManager2(0xb40000702f2d6018) locale list changing from [] to [pt-BR]
-11-17 15:39:26.435 17761 17795 W libc    : Access denied finding property "vendor.mivk.log.debug"
-11-17 15:39:26.435 17761 17795 D vulkan  : searching for layers in '/data/app/~~TdoytC6YuC9MuX3XKHYxMQ==/com.jsr.n64android-lvY6JpBkF64APZ40TRU-Qg==/lib/arm64'
-11-17 15:39:26.436 17761 17795 D vulkan  : searching for layers in '/data/app/~~TdoytC6YuC9MuX3XKHYxMQ==/com.jsr.n64android-lvY6JpBkF64APZ40TRU-Qg==/base.apk!/lib/arm64-v8a'
-11-17 15:39:26.458 17761 17795 D MMUD    : mtk_memory_debug_init com.jsr.n64android 0xb4000071dda805d0
-11-17 15:39:26.466 17761 17813 E .jsr.n64android: setpriority success to 100 : mali-cmar-backend
-11-17 15:39:26.477 17761 17795 D HWUI    : [HWUI] Flag vulkan_enhance_pipeline_cache enabled
-11-17 15:39:26.477 17761 17795 D HWUI    : [HWUI] EnhanceVkPipelineCache is disabled
-11-17 15:39:26.477 17761 17795 D HWUI    : [HWUI] Flag ddre enabled
-11-17 15:39:26.478 17761 17795 D SKIA    : [Skia] Flag vulkan_enhance_pipeline_cache enabled
-11-17 15:39:26.478 17761 17795 D SKIA    : [Skia] EnhanceVkPipelineCache is false
-11-17 15:39:26.488 17761 17761 I N64Diagnostics: ========== NOVA SESSÃO ==========
-11-17 15:39:26.492 17761 17761 I N64Diagnostics: App iniciado. PID=17761 Android=16
-11-17 15:39:26.497 17761 17761 I N64Diagnostics: MainActivity.onCreate
-11-17 15:39:26.529 17761 17761 D CompatChangeReporter: Compat change id reported: 279646685; UID 11016; state: ENABLED
-11-17 15:39:26.535 17761 17761 D CompatChangeReporter: Compat change id reported: 63938206; UID 11016; state: ENABLED
-11-17 15:39:26.561 17761 17803 D MMUD    : get_leak_baseline 3246391296
-11-17 15:39:26.641 17761 17761 D CompatChangeReporter: Compat change id reported: 309578419; UID 11016; state: ENABLED
-11-17 15:39:26.644 17761 17761 D DesktopModeFlags: Toggle override initialized to: OVERRIDE_UNSET
-11-17 15:39:26.655 17761 17761 D DecorView: updateFreeformOutlineFromActivity, inFreeform=false,inFreeformWindowMode=false
-11-17 15:39:26.663 17761 17761 D Activity: Activity = ActivityInfo{e31df6d com.jsr.n64android.MainActivity}, Resume onConfigurationChanged = {1.1 724mcc5mnc [pt_BR] ldltr sw360dp w360dp h800dp 320dpi nrml long port night finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 720, 1600) mAppBounds=Rect(0, 0 - 720, 1600) mMaxBounds=Rect(0, 0 - 720, 1600) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0 mInSplitScreen=false letterBoxed=false foScaled=false isSpecificEmbedded=false embeddingScale=1.0} as.3 s.2 fontWeightAdjustment=0/d/0 themeChanged=5 themeChangedFlags=16384 display=0 extraData = Bundle[{key_var_font_scale=50}] screenType=0/0}
-11-17 15:39:26.690 17761 17761 D nativeloader: Load libpowerhalwrap_jni.so using system ns (caller=/system_ext/framework/mediatek-framework.jar): ok
-11-17 15:39:26.691 17761 17761 I PowerHalWrapper: PowerHalWrapper.getInstance 
-11-17 15:39:26.691 17761 17761 I PowerHalWrapper: PowerHalWrapper.getInstance 
-11-17 15:39:26.692 17761 17761 I M-ProMotion: M-ProMotion is disabled
-11-17 15:39:26.694 17761 17819 I PowerHalWrapper: PowerHalWrapper.getInstance 
-11-17 15:39:26.699 17761 17761 D CompatChangeReporter: Compat change id reported: 352594277; UID 11016; state: ENABLED
-11-17 15:39:26.704 17761 17761 I SurfaceFactory: [static] sSurfaceFactory = com.mediatek.view.impl.SurfaceFactoryImpl@7448f25
-11-17 15:39:26.718 17761 17761 D CompatChangeReporter: Compat change id reported: 349153669; UID 11016; state: ENABLED
-11-17 15:39:26.720 17761 17761 D FramePredict: FramePredict init: false
-11-17 15:39:26.722 17761 17761 D FramePredict: init success
-11-17 15:39:26.726 17761 17761 W libc    : Access denied finding property "ro.vendor.perf.scroll_opt"
-11-17 15:39:26.729 17761 17761 D .jsr.n64android: MiuiProcessManagerServiceStub setSchedFifo
-11-17 15:39:26.730 17761 17761 I MiuiProcessManagerImpl: setSchedFifo pid:17761, mode:3
-11-17 15:39:26.733 17761 17823 E FramePredict: registerContentObserver fail
-11-17 15:39:26.735 17761 17761 W HWUI    : Unknown dataspace 0
-11-17 15:39:26.736 17761 17795 W libc    : Access denied finding property "ro.vendor.display.iris_x7.support"
-11-17 15:39:26.736 17761 17795 I pwIrisCR: isCnVersion = 0, isSupportIris = 0
-11-17 15:39:26.732 17761 17761 W RenderThread: type=1400 audit(0.0:586797): avc:  denied  { read } for  name="u:object_r:vendor_displayfeature_prop:s0" dev="tmpfs" ino=562 scontext=u:r:untrusted_app:s0:c248,c259,c512,c768 tcontext=u:object_r:vendor_displayfeature_prop:s0 tclass=file permissive=0 app=com.jsr.n64android
-11-17 15:39:26.741 17761 17795 D HWUI    : TAG_DDRE, CanvasContext::setDdreActivities: 
-11-17 15:39:26.742 17761 17761 I ForceDarkHelperStubImpl: setViewRootImplForceDark: false for com.jsr.n64android.MainActivity@1a8171c, reason: AppDarkModeEnable
-11-17 15:39:26.744 17761 17761 D FirstFrameSpeedUp: bls: [com.xcj.hm.kangfuyixue]
-11-17 15:39:26.744 17761 17761 I ViewRootImpl: com.jsr.n64android/com.jsr.n64android.MainActivity use first frame acceleration
-11-17 15:39:26.760 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:26.761 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:26.761 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:26.761 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:26.763 17761 17761 D InputEventReceiver: Input log is disabled in InputEventReceiver.
-11-17 15:39:26.771 17761 17761 D DecorViewImmersiveImpl: onAttachedToWindow. pkg: com.jsr.n64android
-11-17 15:39:26.771 17761 17761 I ComputilityLevel: getComputilityLevel(): 1
-11-17 15:39:26.780 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:26.780 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:26.780 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:26.780 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:26.865 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:26.865 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:26.868 17761 17761 E .jsr.n64android: [perfctl] 17761 17761 FPSGO ver:7
-11-17 15:39:26.868 17761 17761 E .jsr.n64android: [perfctl] 1 1 1 0
-11-17 15:39:26.869 17761 17761 D BufferQueueConsumer: [](id:456100000000,api:0,p:-1,c:17761) connect: controlledByApp=false
-11-17 15:39:26.871 17761 17761 D BLASTBufferQueue: [VRI[MainActivity]#0](f:0,a:0) constructor()
-11-17 15:39:26.871 17761 17761 D BLASTBufferQueue: [VRI[MainActivity]#0](f:0,a:0) update width=720 height=1600 format=-1 mTransformHint=0
-11-17 15:39:26.905 17761 17761 D VRI[MainActivity]: vri.Setup new sync=wmsSync-VRI[MainActivity]#0
-11-17 15:39:26.987 17761 17795 I GrallocExtra: gralloc_extra_query:is_SW3D 0
-11-17 15:39:27.050 17761 17795 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 21.58 ms.
-11-17 15:39:27.067 17761 17795 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 16.02 ms.
-11-17 15:39:27.086 17761 17795 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 16.85 ms.
-11-17 15:39:27.101 17761 17795 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 14.08 ms.
-11-17 15:39:27.116 17761 17795 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 14.55 ms.
-11-17 15:39:27.123 17761 17795 I GrallocExtra: gralloc_extra_query:is_SW3D 0
-11-17 15:39:27.120 17761 17761 W RenderThread: type=1400 audit(0.0:586798): avc:  denied  { read } for  name="u:object_r:vendor_displayfeature_prop:s0" dev="tmpfs" ino=562 scontext=u:r:untrusted_app:s0:c248,c259,c512,c768 tcontext=u:object_r:vendor_displayfeature_prop:s0 tclass=file permissive=0 app=com.jsr.n64android
-11-17 15:39:27.126 17761 17795 W libc    : Access denied finding property "ro.vendor.display.iris_x7.support"
-11-17 15:39:27.126 17761 17795 D BLASTBufferQueue: [VRI[MainActivity]#0](f:0,a:1) acquireNextBufferLocked size=720x1600 mFrameNumber=1 applyTransaction=true mTimestamp=471518730111334(auto) mPendingTransactions.size=0 graphicBufferId=76282914144262 transform=0
-11-17 15:39:27.128 17761 17761 D VRI[MainActivity]: vri.reportDrawFinished 0 0 Rect(0, 0 - 720, 1600)
-11-17 15:39:27.130 17761 17761 I Choreographer: first vsync insert message into MessageQueue Head
-11-17 15:39:27.143 17761 17795 D HWUI    : [HWUI] Flag vulkan_enhance_pipeline_cache enabled
-11-17 15:39:27.143 17761 17795 D HWUI    : [HWUI] EnhanceVkPipelineCache is disabled
-11-17 15:39:27.143 17761 17795 D HWUI    : [HWUI] Flag ddre enabled
-11-17 15:39:27.151 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:27.151 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:27.151 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:27.155 17761 17761 D VRI[MainActivity]: vri.Setup new sync=wmsSync-VRI[MainActivity]#2
-11-17 15:39:27.166 17761 17761 D VRI[MainActivity]: vri.reportDrawFinished 0 0 Rect(0, 0 - 720, 1600)
-11-17 15:39:27.207 17761 17761 I HandWritingStubImpl: refreshLastKeyboardType: 1
-11-17 15:39:27.209 17761 17761 I HandWritingStubImpl: getCurrentKeyboardType: 1
-11-17 15:39:27.243 17761 17761 D InsetsController: hide(ime(), fromIme=false)
-11-17 15:39:27.244 17761 17761 I ImeTracker: com.jsr.n64android:ac6fe43f: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
-11-17 15:39:27.266 17761 17761 I HandWritingStubImpl: getCurrentKeyboardType: 1
-11-17 15:39:27.301 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:27.301 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:27.301 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:27.443 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:27.444 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:27.444 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:30.107 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:30.107 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:30.107 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:30.150 17761 17761 I HandWritingStubImpl: refreshLastKeyboardType: 1
-11-17 15:39:30.150 17761 17761 I HandWritingStubImpl: getCurrentKeyboardType: 1
-11-17 15:39:30.169 17761 17761 D InsetsController: hide(ime(), fromIme=false)
-11-17 15:39:30.169 17761 17761 I ImeTracker: com.jsr.n64android:fa4673c1: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
-11-17 15:39:30.171 17761 17795 E .jsr.n64android: DynamicFPS DF open fail: No such file or directory
-11-17 15:39:31.036 17761 17830 D libEGL  : Post task 1
-11-17 15:39:31.036 17761 17864 D libEGL  : Worker thread start 473691231168
-11-17 15:39:31.036 17761 17864 D libEGL  : Run task 1
-11-17 15:39:31.236 17761 17761 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=471522836, downTime=471522836, phoneEventTime=1794940771229 } moveCount:0
-11-17 15:39:31.244 17761 17761 W MirrorManager: this model don't Support
-11-17 15:39:31.244 17761 17761 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
-11-17 15:39:31.351 17761 17795 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 71.93 ms.
-11-17 15:39:31.356 17761 17761 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=471522919, downTime=471522836, phoneEventTime=1794940771312 } moveCount:2
-11-17 15:39:31.363 17761 17795 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 0.31 ms.
-11-17 15:39:31.406 17761 17761 I PowerHalMgrImpl: perfLockAcq is supported. 
-11-17 15:39:31.646 17761 17766 I .jsr.n64android: Compiler allocated 6810KB to compile void android.view.ViewRootImpl.performTraversals()
-11-17 15:39:31.761 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:31.761 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:31.761 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:31.855 17761 17795 E LB      : fail to open file: No such file or directory
-11-17 15:39:31.855 17761 17795 E LB      : fail to open node: No such file or directory
-11-17 15:39:31.855 17761 17795 E LB      : fail to open node: No such file or directory
-11-17 15:39:32.180 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:32.180 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:32.180 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:32.316 17761 17761 D VRI[MainActivity]: visibilityChanged oldVisibility=true newVisibility=false
-11-17 15:39:32.345 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:32.345 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:32.345 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:32.350 17761 17761 W .jsr.n64android: Binder 0xb40000704f2e6760 destroyed after setInheritRt before being parceled.
-11-17 15:39:32.351 17761 17761 D BLASTBufferQueue: [VRI[MainActivity]#0](f:0,a:2) destructor()
-11-17 15:39:32.351 17761 17761 D BufferQueueConsumer: [VRI[MainActivity]#0(BLAST Consumer)0](id:456100000000,api:0,p:-1,c:17761) disconnect: caller 17761
-11-17 15:39:32.925 17761 17761 I ForceDarkHelperStubImpl: setViewRootImplForceDark: false for com.jsr.n64android.MainActivity@1a8171c, reason: AppDarkModeEnable
-11-17 15:39:32.951 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:32.951 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:32.951 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:32.962 17761 17761 E ActivityThread:  fail in deliverResultsIfNeeded java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.String android.os.Bundle.getString(java.lang.String)' on a null object reference
-2026-11-17 15:39:32.974 I/N64Diagnostics: Usuário selecionou ROM: content://com.android.externalstorage.documents/document/primary%3AN64%2FGoldenEye.z64
-11-17 15:39:32.978 17761 17761 I N64Diagnostics: Usuário selecionou ROM: content://com.android.externalstorage.documents/document/primary%3AN64%2FGoldenEye.z64
-11-17 15:39:32.980 17761 17761 D Activity: Activity = ActivityInfo{e31df6d com.jsr.n64android.MainActivity}, Resume onConfigurationChanged = {1.1 724mcc5mnc [pt_BR] ldltr sw360dp w360dp h800dp 320dpi nrml long port night finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 720, 1600) mAppBounds=Rect(0, 0 - 720, 1600) mMaxBounds=Rect(0, 0 - 720, 1600) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0 mInSplitScreen=false letterBoxed=false foScaled=false isSpecificEmbedded=false embeddingScale=1.0} as.3 s.2 fontWeightAdjustment=0/d/0 themeChanged=5 themeChangedFlags=16384 display=0 extraData = Bundle[{key_var_font_scale=50}] screenType=0/0}
-11-17 15:39:32.999 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:32.999 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:32.999 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:32.999 17761 17761 D BufferQueueConsumer: [](id:456100000001,api:0,p:-1,c:17761) connect: controlledByApp=false
-11-17 15:39:33.000 17761 17761 D BLASTBufferQueue: [VRI[MainActivity]#1](f:0,a:0) constructor()
-11-17 15:39:33.000 17761 17761 D BLASTBufferQueue: [VRI[MainActivity]#1](f:0,a:0) update width=720 height=1600 format=-1 mTransformHint=0
-11-17 15:39:33.002 17761 17761 D VRI[MainActivity]: vri.Setup new sync=wmsSync-VRI[MainActivity]#4
-11-17 15:39:33.014 17761 17795 E .jsr.n64android: FrameInsert open fail: No such file or directory
-11-17 15:39:33.014 17761 17795 D BLASTBufferQueue: [VRI[MainActivity]#1](f:0,a:1) acquireNextBufferLocked size=720x1600 mFrameNumber=1 applyTransaction=true mTimestamp=471524620274104(auto) mPendingTransactions.size=0 graphicBufferId=76282914144263 transform=0
-11-17 15:39:33.015 17761 17761 D VRI[MainActivity]: vri.reportDrawFinished 0 0 Rect(0, 0 - 720, 1600)
-11-17 15:39:33.035 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:33.035 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:33.035 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:33.078 17761 17761 I HandWritingStubImpl: refreshLastKeyboardType: 1
-11-17 15:39:33.078 17761 17761 I HandWritingStubImpl: getCurrentKeyboardType: 1
-11-17 15:39:33.104 17761 17761 D InsetsController: hide(ime(), fromIme=false)
-11-17 15:39:33.104 17761 17761 I ImeTracker: com.jsr.n64android:99fd66f5: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
-11-17 15:39:33.171 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:33.171 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:33.171 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:33.339 17761 17878 W BpBinder: PerfMonitor binderTransact: time=354ms interface=android.content.IContentProvider code=23
-11-17 15:39:33.416 17761 17767 I .jsr.n64android: Background young concurrent mark compact GC freed 756KB AllocSpace bytes, 29(580KB) LOS objects, 0% free, 14MB/14MB, paused 562us,19.572ms total 72.753ms
-11-17 15:39:33.469 17761 17767 I .jsr.n64android: Background concurrent mark compact GC freed 96KB AllocSpace bytes, 1(20KB) LOS objects, 50% free, 14MB/28MB, paused 1.575ms,12.411ms total 42.390ms
-2026-11-17 15:39:33.491 I/N64Diagnostics: ROM lida: GoldenEye.z64; tamanho=12582912 bytes
-11-17 15:39:33.494 17761 17878 I N64Diagnostics: ROM lida: GoldenEye.z64; tamanho=12582912 bytes
-2026-11-17 15:39:33.497 I/N64Diagnostics: Abrindo tela de emulação para GoldenEye.z64
-11-17 15:39:33.502 17761 17761 I N64Diagnostics: Abrindo tela de emulação para GoldenEye.z64
-11-17 15:39:33.510 17761 17761 D MiuiMultiWindowUtils: freeform resolution args raw data:{  "wide_default":{    "freeform_args": {        "vertical_portrait":{"aspect_ratio":0.626, "original_ratio":0.5643,"original_scale":0.74,"top_margin":0.168,"left_margin":0.484},        "horizontal_portrait":{"aspect_ratio":0.626, "original_ratio":0.5643,"original_scale":0.74,"top_margin":0.1222,"left_margin":0.59745},        "vertical_landscape":{"aspect_ratio":1.6, "original_ratio":0.6992,"original_scale":0.604,"top_margin":0.2596,"left_margin":0.2624},        "horizontal_landscape":{"aspect_ratio":1.6, "original_ratio":0.6992,"original_scale":0.604,"top_margin":0.213,"left_margin":0.3758}    },    "mini_freeform_args":{        "vertical_portrait":{"original_ratio":0.147},        "horizontal_portrait":{"original_ratio":0.147},        "vertical_landscape":{"original_ratio":0.165},        "horizontal_landscape":{"original_ratio":0.165}    }  },  "narrow_default": {    "freeform_args": {        "vertical_portrait":{"aspect_ratio":0.626, "original_ratio":1,"original_scale":0.74,"top_margin":0.0753,"left_margin":-1},        "horizontal_portrait":{"aspect_ratio":0.626, "original_ratio":1,"original_scale":0.5756,"top_margin":-1,"left_margin":0.0753},        "vertical_landscape":{"aspect_ratio":1.6, "original_ratio":1,"original_scale":0.587,"top_margin":0.0753,"left_margin":-1},        "horizontal_landscape":{"aspect_ratio":1.6, "original_ratio":1,"original_scale":0.587,"top_margin":-1,"left_margin":0.0753}    },    "mini_freeform_args":{        "vertical_portrait":{"original_ratio":0.26},        "horizontal_portrait":{"original_ratio":0.26},        "vertical_landscape":{"original_ratio":0.293},        "horizontal_landscape":{"original_ratio":0.293}    }  },  "regular_default": {    "freeform_args": {      "vertical_portrait":{"aspect_ratio":0.625, "original_ratio":1,"original_scale":0.7,"top_margin":0.109,"left_margin":-1},      "horizontal_portrait":{"aspect_ratio":0.6667, "original_ratio":1,"original_scale":0.6102,"top_margin":-1,"left_margin":0.026},      "vertical_landscape":{"aspect_ratio":1.6, "original_ratio":1,"original_scale":0.5899,"top_margin":0.109,"left_margin":-1},      "horizontal_landscape":{"aspect_ratio":1.6, "original_ratio":1,"original_scale":0.5899,"top_margin":-1,"left_margin":0.026}    },    "mini_freeform_args":{      "vertical_portrait":{"original_ratio":0.25},      "horizontal_portrait":{"original_ratio":0.25},      "vertical_landscape":{"original_ratio":0.25},      "horizontal_landscape":{"original_ratio":0.25}    }  },  "pad_default": {    "freeform_args": {      "vertical_portrait":{"aspect_ratio":0.5625, "original_ratio":0.375,"original_scale":0.835,"top_margin":0.049,"left_margin":0.2775},      "horizontal_portrait":{"aspect_ratio":0.5625, "original_ratio":0.375,"original_scale":0.835,"top_margin":-1,"left_margin":0.6525},      "vertical_landscape":{"aspect_ratio":-1, "original_ratio":1,"original_scale":0.468,"top_margin":0.049,"left_margin":-1},      "horizontal_landscape":{"aspect_ratio":-1, "original_ratio":1,"original_scale":0.468,"top_margin":-1,"left_margin":0.4976}    },    "mini_freeform_args":{      "vertical_portrait":{"original_ratio":0.144},      "horizontal_portrait":{"original_ratio":0.144},      "vertical_landscape":{"original_ratio":0.2},      "horizontal_landscape":{"original_ratio":0.2}    }  }}
-11-17 15:39:33.516 17761 17761 D MiuiMultiWindowUtils: initFreeFormResolutionArgs failed, device is dew
-11-17 15:39:33.531 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:33.531 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:33.531 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:33.531 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:39:33.537 17761 17761 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
-11-17 15:39:33.539 17761 17761 D SurfaceView: UPDATE null, mIsCastMode = false
-11-17 15:39:33.544 17761 17761 D ViewRootImplStubImpl: onSurfaceViewAttached:
-11-17 15:39:33.544 17761 17761 D ViewRootImplStubImpl: , vri:android.view.ViewRootImpl@1069d8d, com.jsr.n64android/com.jsr.n64android.MainActivity
-11-17 15:39:33.544 17761 17761 D ViewRootImplStubImpl: , vri size:720x1600
-11-17 15:39:33.544 17761 17761 D ViewRootImplStubImpl: , surfaceView:com.jsr.n64android.EmulationSurfaceView{33b71ae V.E...... ......ID 0,268-720,1600}, SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]
-11-17 15:39:33.544 17761 17761 D ViewRootImplStubImpl: , surfaceView size:720x1332
-11-17 15:39:33.544 17761 17761 D ViewRootImplStubImpl: , surfaceControl:Surface(name=33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity](BLAST)#154085)/@0x97d4fe5
-11-17 15:39:33.547 17761 17761 D BufferQueueConsumer: [](id:456100000002,api:0,p:-1,c:17761) connect: controlledByApp=false
-11-17 15:39:33.548 17761 17761 D BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:0,a:0) constructor()
-11-17 15:39:33.548 17761 17761 D BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:0,a:0) update width=720 height=1332 format=4 mTransformHint=0
-11-17 15:39:33.550 17761 17761 I N64VideoSurface: surfaceCreated: válida=true
-11-17 15:39:33.574 17761 17761 D nativeloader: Load /data/app/~~TdoytC6YuC9MuX3XKHYxMQ==/com.jsr.n64android-lvY6JpBkF64APZ40TRU-Qg==/base.apk!/lib/arm64-v8a/libae-bridge.so using class loader ns clns-10 (caller=/data/app/~~TdoytC6YuC9MuX3XKHYxMQ==/com.jsr.n64android-lvY6JpBkF64APZ40TRU-Qg==/base.apk!classes4.dex): ok
-11-17 15:39:33.588 17761 17761 D nativeloader: Load /data/app/~~TdoytC6YuC9MuX3XKHYxMQ==/com.jsr.n64android-lvY6JpBkF64APZ40TRU-Qg==/base.apk!/lib/arm64-v8a/libjnidispatch.so using class loader ns clns-10 (caller=/data/app/~~TdoytC6YuC9MuX3XKHYxMQ==/com.jsr.n64android-lvY6JpBkF64APZ40TRU-Qg==/base.apk): ok
-11-17 15:39:33.616 17761 17761 I ae-bridge: setNativeWindow: New surface has been set
-11-17 15:39:33.616 17761 17761 I N64VideoSurface: Surface Android entregue ao ae-bridge
-2026-11-17 15:39:33.625 I/N64Diagnostics: ENGINE: Carregando bibliotecas nativas...
-11-17 15:39:33.624 17761 17761 I N64VideoSurface: Surface alterada: 720x1332; válida=true; attached=true
-11-17 15:39:33.626 17761 17884 I N64Diagnostics: ENGINE: Carregando bibliotecas nativas...
-11-17 15:39:33.626 17761 17884 I Mupen64PlusEngine: Carregando bibliotecas nativas...
-11-17 15:39:33.633 17761 17761 D SurfaceView: UPDATE Surface(name=33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#154084)/@0x1455f0e, mIsProjectionMode = false
-11-17 15:39:33.635 17761 17761 D BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:0,a:0) update width=720 height=1305 format=4 mTransformHint=0
-11-17 15:39:33.635 17761 17761 I N64VideoSurface: Surface alterada: 720x1305; válida=true; attached=true
-11-17 15:39:33.650 17761 17884 D nativeloader: Load /data/app/~~TdoytC6YuC9MuX3XKHYxMQ==/com.jsr.n64android-lvY6JpBkF64APZ40TRU-Qg==/base.apk!/lib/arm64-v8a/libmupen64plus-core.so using class loader ns clns-10 (caller=/data/app/~~TdoytC6YuC9MuX3XKHYxMQ==/com.jsr.n64android-lvY6JpBkF64APZ40TRU-Qg==/base.apk!classes4.dex): ok
-11-17 15:39:33.654 17761 17795 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 19.77 ms.
-11-17 15:39:33.663 17761 17884 D nativeloader: Load /data/app/~~TdoytC6YuC9MuX3XKHYxMQ==/com.jsr.n64android-lvY6JpBkF64APZ40TRU-Qg==/base.apk!/lib/arm64-v8a/libmupen64plus-rsp-parallel.so using class loader ns clns-10 (caller=/data/app/~~TdoytC6YuC9MuX3XKHYxMQ==/com.jsr.n64android-lvY6JpBkF64APZ40TRU-Qg==/base.apk!classes4.dex): ok
-11-17 15:39:33.671 17761 17884 D nativeloader: Load /data/app/~~TdoytC6YuC9MuX3XKHYxMQ==/com.jsr.n64android-lvY6JpBkF64APZ40TRU-Qg==/base.apk!/lib/arm64-v8a/libmupen64plus-video-parallel.so using class loader ns clns-10 (caller=/data/app/~~TdoytC6YuC9MuX3XKHYxMQ==/com.jsr.n64android-lvY6JpBkF64APZ40TRU-Qg==/base.apk!classes4.dex): ok
-11-17 15:39:33.672 17761 17795 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 12.12 ms.
-11-17 15:39:33.678 17761 17761 D BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:0,a:0) update width=720 height=1332 format=4 mTransformHint=0
-11-17 15:39:33.678 17761 17761 I N64VideoSurface: Surface alterada: 720x1332; válida=true; attached=true
-11-17 15:39:33.682 17761 17884 D CompatChangeReporter: Compat change id reported: 312399441; UID 11016; state: ENABLED
-2026-11-17 15:39:33.716 I/N64Diagnostics: ENGINE: Inicializando Mupen64Plus Core...
-11-17 15:39:33.718 17761 17884 I N64Diagnostics: ENGINE: Inicializando Mupen64Plus Core...
-11-17 15:39:33.718 17761 17884 I Mupen64PlusEngine: Inicializando Mupen64Plus Core...
-11-17 15:39:33.731 17761 17884 E Mupen64PlusEngine: Core: Couldn't open configuration file '/data/user/0/com.jsr.n64android/files/mupen64plus/config/mupen64plus.cfg'.  Using defaults.
-11-17 15:39:33.731 17761 17884 I Mupen64PlusEngine: Core: No version number in 'Core' config section. Setting defaults.
-11-17 15:39:33.731 17761 17884 I Mupen64PlusEngine: Core: No version number in 'CoreEvents' config section. Setting defaults.
-11-17 15:39:33.734 17761 17884 E Mupen64PlusEngine: Core: Using full mem base
-11-17 15:39:33.734 17761 17884 I Mupen64PlusEngine: Core: Unable to open rom database file '(null)'.
-11-17 15:39:33.734 17761 17884 I Mupen64PlusEngine: CoreStartup concluído
-11-17 15:39:33.736 17761 17884 E ae-bridge: mupen64plus-core: undefined symbol: Java_com_sun_jna_Native_invokePointer__Lcom_sun_jna_Function_2JI_3Ljava_lang_Object_2
-2026-11-17 15:39:33.737 I/N64Diagnostics: ENGINE: Enviando ROM ao Core...
-11-17 15:39:33.738 17761 17884 I N64Diagnostics: ENGINE: Enviando ROM ao Core...
-11-17 15:39:33.738 17761 17884 I Mupen64PlusEngine: Enviando ROM ao Core...
-2026-11-17 15:39:33.808 I/N64Diagnostics: ENGINE: Anexando plugin mupen64plus-video-parallel...
-11-17 15:39:33.807 17761 17884 E Mupen64PlusEngine: Core: Goodname: GOLDENEYE (unknown rom)
-11-17 15:39:33.807 17761 17884 E Mupen64PlusEngine: Core: Name: GOLDENEYE           
-11-17 15:39:33.807 17761 17884 E Mupen64PlusEngine: Core: MD5: 70C525880240C1E838B8B1BE35666C3B
-11-17 15:39:33.807 17761 17884 E Mupen64PlusEngine: Core: CRC: DCBC50D1 09FD1AA3
-11-17 15:39:33.807 17761 17884 E Mupen64PlusEngine: Core: Imagetype: .z64 (native)
-11-17 15:39:33.807 17761 17884 E Mupen64PlusEngine: Core: Rom size: 12582912 bytes (or 12 Mb or 96 Megabits)
-11-17 15:39:33.807 17761 17884 E Mupen64PlusEngine: Core: ClockRate = F
-11-17 15:39:33.807 17761 17884 E Mupen64PlusEngine: Core: Version: 1447
-11-17 15:39:33.807 17761 17884 E Mupen64PlusEngine: Core: Manufacturer: Nintendo
-11-17 15:39:33.807 17761 17884 E Mupen64PlusEngine: Core: Cartridge_ID: 4547
-2026-11-17 15:39:33.818 I/N64Diagnostics: ENGINE: Anexando plugin mupen64plus-rsp-parallel...
-11-17 15:39:33.807 17761 17884 E Mupen64PlusEngine: Core: Country: USA
-11-17 15:39:33.807 17761 17884 E Mupen64PlusEngine: Core: PC = 80000400
-11-17 15:39:33.808 17761 17884 E Mupen64PlusEngine: Core: Save type: 0
-11-17 15:39:33.808 17761 17884 I Mupen64PlusEngine: ROM_OPEN concluído: 12582912 bytes
-11-17 15:39:33.810 17761 17884 I N64Diagnostics: ENGINE: Anexando plugin mupen64plus-video-parallel...
-11-17 15:39:33.810 17761 17884 I Mupen64PlusEngine: Anexando plugin mupen64plus-video-parallel...
-11-17 15:39:33.818 17761 17884 I Mupen64PlusEngine: mupen64plus-video-parallel anexado com sucesso
-11-17 15:39:33.822 17761 17884 I N64Diagnostics: ENGINE: Anexando plugin mupen64plus-rsp-parallel...
-11-17 15:39:33.823 17761 17884 I Mupen64PlusEngine: Anexando plugin mupen64plus-rsp-parallel...
-11-17 15:39:33.833 17761 17884 I Mupen64PlusEngine: Plugin: PluginStartup
-11-17 15:39:33.839 17761 17884 I Mupen64PlusEngine: Plugin: InitiateRSP
-11-17 15:39:33.839 17761 17884 I Mupen64PlusEngine: mupen64plus-rsp-parallel anexado com sucesso
-2026-11-17 15:39:33.842 I/N64Diagnostics: ENGINE: Plugins anexados. Iniciando execução do emulador...
-11-17 15:39:33.843 17761 17884 I N64Diagnostics: ENGINE: Plugins anexados. Iniciando execução do emulador...
-11-17 15:39:33.844 17761 17884 I Mupen64PlusEngine: Plugins anexados. Iniciando execução do emulador...
-11-17 15:39:33.844 17761 17884 I Mupen64PlusEngine: Chamando M64CMD_EXECUTE
-11-17 15:39:33.844 17761 17884 I Mupen64PlusEngine: Core: No audio plugin attached.  There will be no sound output.
-11-17 15:39:33.844 17761 17884 I Mupen64PlusEngine: Core: No input plugin attached.  You won't be able to control the game.
-11-17 15:39:33.849 17761 17884 E Mupen64PlusEngine: Core: Using video capture backend: dummy
-11-17 15:39:33.849 17761 17761 D BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:0,a:0) update width=720 height=1305 format=4 mTransformHint=0
-11-17 15:39:33.850 17761 17761 I N64VideoSurface: Surface alterada: 720x1305; válida=true; attached=true
-11-17 15:39:33.852 17761 17884 E Mupen64PlusEngine: Core: Game controller 0 (Standard controller) has a Memory pak plugged in
-11-17 15:39:33.852 17761 17884 E Mupen64PlusEngine: Core: Game controller 1 (Standard controller) has a Memory pak plugged in
-11-17 15:39:33.852 17761 17884 E Mupen64PlusEngine: Core: Game controller 2 (Standard controller) has a Memory pak plugged in
-11-17 15:39:33.852 17761 17884 E Mupen64PlusEngine: Core: Game controller 3 (Standard controller) has a Memory pak plugged in
-11-17 15:39:33.856 17761 17884 E Mupen64PlusEngine: Core: Using CIC type X102
-11-17 15:39:33.858 17761 17795 W RenderInspector: DequeueBuffer time out on com.jsr.n64android/com.jsr.n64android.MainActivity, count=1, avg=15 ms, max=15 ms.
-11-17 15:39:33.863 17761 17884 W libc    : Access denied finding property "vendor.migl.debug"
-11-17 15:39:33.864 17761 17884 I libMiGL : EnableDR: 0
-11-17 15:39:33.864 17761 17884 D libMiGL : mDFIInterval: -1
-11-17 15:39:33.864 17761 17884 D libMEOW : meow new tls: 0xb400006fdf4a91f0
-11-17 15:39:33.864 17761 17884 D libMEOW : meow reload base cfg path: na
-11-17 15:39:33.864 17761 17884 D libMEOW : meow reload overlay cfg path: na
-11-17 15:39:33.867 17761 17884 E QT      : [QT]file does not exist
-11-17 15:39:33.868 17761 17884 D libMEOW : applied 1 plugins for [com.jsr.n64android]:
-11-17 15:39:33.868 17761 17884 D libMEOW :   plugin 1: [libMEOW_gift.so]:
-11-17 15:39:33.869 17761 17884 D MMUD    : mtk_memory_debug_init com.jsr.n64android 0xb4000071d7b165d0
-11-17 15:39:33.881 17761 17884 W HidlServiceManagement: hwservicemanager is not supported on the device.
-11-17 15:39:33.881 17761 17884 I HidlServiceManagement: Trying to get transport of android.hardware.configstore@1.0::ISurfaceFlingerConfigs/default without hwservicemanager
-11-17 15:39:33.882 17761 17897 E .jsr.n64android: setpriority success to 100 : mali-cmar-backend
-11-17 15:39:33.884 17761 17884 I ae-bridge: VidExtFuncSetMode: Initializing surface
-11-17 15:39:33.904 17761 17884 D Mupen64PlusEngine: Core state callback: type=2 value=2
-11-17 15:39:33.904 17761 17884 D Mupen64PlusEngine: Core state callback: type=6 value=41943520
-11-17 15:39:34.230 17761 17884 I Granite : Layer count: 0
-11-17 15:39:34.230 17761 17884 I Granite : Enabling instance extension: VK_KHR_get_physical_device_properties2.
-11-17 15:39:34.230 17761 17884 I Granite : Enabling instance extension: VK_KHR_external_memory_capabilities.
-11-17 15:39:34.230 17761 17884 I Granite : Enabling instance extension: VK_KHR_external_semaphore_capabilities.
-11-17 15:39:34.230 17761 17884 I Granite : Enabling instance extension: VK_EXT_debug_utils.
-11-17 15:39:34.233 17761 17884 I Granite : Found Vulkan GPU: Mali-G52 MC2
-11-17 15:39:34.233 17761 17884 I Granite :     API: 1.3.278
-11-17 15:39:34.233 17761 17884 I Granite :     Driver: 49.1.0
-11-17 15:39:34.234 17761 17884 I Granite : Selected Vulkan GPU: Mali-G52 MC2
-11-17 15:39:34.234 17761 17884 I Granite : GPU supports Vulkan 1.1.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_KHR_get_memory_requirements2.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_KHR_dedicated_allocation.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_KHR_image_format_list.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_KHR_sampler_mirror_clamp_to_edge.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_GOOGLE_display_timing.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_KHR_external_semaphore.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_KHR_external_memory.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_KHR_external_semaphore_fd.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_KHR_external_memory_fd.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_KHR_descriptor_update_template.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_KHR_maintenance1.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_KHR_maintenance2.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_KHR_maintenance3.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_KHR_bind_memory2.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_KHR_shader_draw_parameters.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_EXT_calibrated_timestamps.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_KHR_storage_buffer_storage_class.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_KHR_8bit_storage.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_KHR_16bit_storage.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_KHR_shader_float16_int8.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_KHR_multiview.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_EXT_subgroup_size_control.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_EXT_host_query_reset.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_EXT_shader_demote_to_helper_invocation.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_EXT_scalar_block_layout.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_KHR_uniform_buffer_standard_layout.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_KHR_timeline_semaphore.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_KHR_sampler_ycbcr_conversion.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_EXT_astc_decode_mode.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_EXT_texture_compression_astc_hdr.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_KHR_synchronization2.
-11-17 15:39:34.234 17761 17884 I Granite : Enabling device extension: VK_KHR_driver_properties.
-11-17 15:39:34.236 17761 17884 D MMUD    : mtk_memory_debug_init com.jsr.n64android 0xb4000071d4c7f5d0
-11-17 15:39:34.242 17761 17910 E .jsr.n64android: setpriority success to 100 : mali-cmar-backend
-11-17 15:39:34.246 17761 17884 W Granite : Workaround applied: Emulating events as pipeline barriers.
-11-17 15:39:34.246 17761 17884 W Granite : Workaround applied: Optimize ALL_GRAPHICS_BIT barriers.
-11-17 15:39:34.246 17761 17884 W Granite : Workaround applied: Split binary timeline semaphores.
-11-17 15:39:34.247 17761 17884 W Granite : VK_EXT_external_memory_host not supported or failed, falling back to a slower path.
-11-17 15:39:34.764 17761 17884 I Granite : Enabling 8 and 16-bit integer arithmetic support for more efficient shaders!
-11-17 15:39:34.770 17761 17884 D Mupen64PlusEngine: Core state callback: type=1 value=2
-11-17 15:39:34.793 17761 17884 E Mupen64PlusEngine: Core: Initializing 4 RDRAM modules for a total of 8 MB
-11-17 15:39:34.804 17761 17884 E Mupen64PlusEngine: Core: Starting R4300 emulator: Dynamic Recompiler
-11-17 15:39:34.815 17761 17884 E Mupen64PlusEngine: Core: Init new dynarec
-11-17 15:39:34.851 17761 17884 E Mupen64PlusEngine: Core: Enabled TLB
-11-17 15:39:34.961 17761 17884 D BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:0,a:1) acquireNextBufferLocked size=720x1305 mFrameNumber=1 applyTransaction=true mTimestamp=471526567721411(auto) mPendingTransactions.size=0 graphicBufferId=76282914144270 transform=0
-11-17 15:39:35.281 17761 17868 D libEGL  : Post task 2
-11-17 15:39:35.281 17761 17864 D libEGL  : Run task 2
-11-17 15:39:35.449 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.588 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.594 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.612 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.632 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.646 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.663 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.683 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.695 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.712 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.729 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.745 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.762 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.779 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.798 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.813 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.830 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.845 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.862 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.880 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.895 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.917 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.928 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.947 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.962 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.979 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:35.998 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:36.012 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:36.033 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:36.046 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:36.063 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:36.079 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:36.095 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:36.113 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:36.131 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:36.181 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:36.313 17761 17774 D ActivityThread: invoke error.
-11-17 15:39:40.250 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.264 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.279 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.291 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.313 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.322 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.352 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.368 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.385 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.402 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.418 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.434 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.454 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.470 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.486 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.501 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.518 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.534 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.552 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.568 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.585 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.601 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.619 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.636 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.653 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.669 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.687 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.704 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.719 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.736 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.753 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.768 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.786 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.803 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.819 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.837 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.854 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.868 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.886 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.903 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.919 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.935 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.952 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.968 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:40.987 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.005 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.020 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.035 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.053 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.068 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.087 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.103 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.120 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.137 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.155 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.167 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.184 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.201 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.217 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.233 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.268 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.284 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.300 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.317 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.334 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.351 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.367 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.384 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.400 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.417 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.433 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.467 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.520 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.536 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.553 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.569 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.585 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.602 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.619 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.636 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.652 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.668 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.687 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.702 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.718 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.735 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.752 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.768 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.785 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.802 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.818 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.835 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.853 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.866 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.887 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.902 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.919 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.934 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.968 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:41.986 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.004 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.018 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.035 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.053 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.067 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.102 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.119 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.135 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.153 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.169 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.185 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.202 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.218 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.237 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.252 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.268 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.287 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.303 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.319 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.336 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.353 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.368 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.385 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.402 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.418 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.435 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.468 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.487 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.503 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.518 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.536 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.552 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.568 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.585 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.602 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.619 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.635 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.652 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.669 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.718 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:39:42.784 17761 17884 E BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
-11-17 15:40:01.636 17761 17761 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=471553237, downTime=471553237, phoneEventTime=1794940801631 } moveCount:0
-11-17 15:40:01.637 17761 17761 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
-11-17 15:40:01.748 17761 17761 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=471553353, downTime=471553237, phoneEventTime=1794940801747 } moveCount:3
-11-17 15:40:01.832 17761 17761 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=471553437, downTime=471553437, phoneEventTime=1794940801830 } moveCount:0
-11-17 15:40:01.833 17761 17761 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
-11-17 15:40:01.915 17761 17761 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=471553520, downTime=471553437, phoneEventTime=1794940801914 } moveCount:3
-11-17 15:40:01.999 17761 17761 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=471553603, downTime=471553603, phoneEventTime=1794940801997 } moveCount:0
-11-17 15:40:01.999 17761 17761 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
-11-17 15:40:02.098 17761 17761 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=471553703, downTime=471553603, phoneEventTime=1794940802097 } moveCount:2
-11-17 15:40:02.199 17761 17761 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=471553803, downTime=471553803, phoneEventTime=1794940802196 } moveCount:0
-11-17 15:40:02.200 17761 17761 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
-11-17 15:40:02.281 17761 17761 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=471553886, downTime=471553803, phoneEventTime=1794940802280 } moveCount:3
-11-17 15:40:05.277 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:40:05.277 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:40:05.277 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:40:05.283 17761 17864 D libEGL  : Worker thread exit 473691231168
-11-17 15:40:05.456 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:40:05.457 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:40:05.457 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:40:05.461 17761 17761 I HandWritingStubImpl: refreshLastKeyboardType: 1
-11-17 15:40:05.461 17761 17761 I HandWritingStubImpl: getCurrentKeyboardType: 1
-11-17 15:40:05.469 17761 17761 D InsetsController: hide(ime(), fromIme=false)
-11-17 15:40:05.469 17761 17761 I ImeTracker: com.jsr.n64android:373677b5: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
-11-17 15:40:07.298 17761 17761 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=471558902, downTime=471558902, phoneEventTime=1794940807295 } moveCount:0
-11-17 15:40:07.299 17761 17761 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
-11-17 15:40:07.366 17761 17795 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 47.47 ms.
-2026-11-17 15:40:07.447 I/N64Diagnostics: Usuário solicitou cópia dos logs
-11-17 15:40:07.446 17761 17761 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=471559051, downTime=471558902, phoneEventTime=1794940807445 } moveCount:4
-11-17 15:40:07.448 17761 17761 I N64Diagnostics: Usuário solicitou cópia dos logs
-11-17 15:40:09.429 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:40:09.429 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:40:09.429 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:40:09.687 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:40:09.687 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:40:09.687 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:40:10.181 17761 17761 D VRI[MainActivity]: visibilityChanged oldVisibility=true newVisibility=false
-11-17 15:40:10.206 17761 17761 I ae-bridge: unsetNativeWindow: Native window has been unset
-11-17 15:40:10.262 17761 17761 I N64VideoSurface: Surface Android removida do ae-bridge
-11-17 15:40:10.266 17761 17761 E Surface : freeAllBuffers: 1 buffers were freed while being dequeued!
-11-17 15:40:10.267 17761 17761 D BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:0,a:2) destructor()
-11-17 15:40:10.267 17761 17761 D BufferQueueConsumer: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2(BLAST Consumer)2](id:456100000002,api:0,p:-1,c:17761) disconnect: caller 17761
-11-17 15:40:10.269 17761 17761 D ViewRootImplStubImpl: onSurfaceViewDetached:
-11-17 15:40:10.269 17761 17761 D ViewRootImplStubImpl: , vri:android.view.ViewRootImpl@1069d8d, com.jsr.n64android/com.jsr.n64android.MainActivity
-11-17 15:40:10.269 17761 17761 D ViewRootImplStubImpl: , vri size:720x1600
-11-17 15:40:10.269 17761 17761 D ViewRootImplStubImpl: , surfaceView:com.jsr.n64android.EmulationSurfaceView{33b71ae V.E...... ........ 0,295-720,1600}, SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]
-11-17 15:40:10.269 17761 17761 D ViewRootImplStubImpl: , surfaceView size:720x1305
-11-17 15:40:10.269 17761 17761 D ViewRootImplStubImpl: , surfaceControl:Surface(name=33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity](BLAST)#154085)/@0x97d4fe5
-11-17 15:40:10.286 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:40:10.287 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:40:10.287 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:40:10.289 17761 17761 W .jsr.n64android: Binder 0xb40000704f2f0120 destroyed after setInheritRt before being parceled.
-11-17 15:40:10.290 17761 17761 D BLASTBufferQueue: [VRI[MainActivity]#1](f:0,a:2) destructor()
-11-17 15:40:10.291 17761 17761 D BufferQueueConsumer: [VRI[MainActivity]#1(BLAST Consumer)1](id:456100000001,api:0,p:-1,c:17761) disconnect: caller 17761
-11-17 15:40:52.202 17761 18003 D libEGL  : Post task 3
-11-17 15:40:52.227 17761 18003 D libEGL  : Worker thread is still running 473691231168
-11-17 15:40:52.228 17761 18003 D libEGL  : Worker thread exit safely 0
-11-17 15:40:52.230 17761 18148 D libEGL  : Worker thread start 474094437312
-11-17 15:40:52.230 17761 18148 D libEGL  : Run task 3
-11-17 15:40:52.245 17761 17761 I ForceDarkHelperStubImpl: setViewRootImplForceDark: false for com.jsr.n64android.MainActivity@1a8171c, reason: AppDarkModeEnable
-11-17 15:40:52.292 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:40:52.292 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:40:52.292 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:40:52.300 17761 17761 D Activity: Activity = ActivityInfo{e31df6d com.jsr.n64android.MainActivity}, Resume onConfigurationChanged = {1.1 724mcc5mnc [pt_BR] ldltr sw360dp w360dp h800dp 320dpi nrml long port night finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 720, 1600) mAppBounds=Rect(0, 0 - 720, 1600) mMaxBounds=Rect(0, 0 - 720, 1600) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0 mInSplitScreen=false letterBoxed=false foScaled=false isSpecificEmbedded=false embeddingScale=1.0} as.3 s.2 fontWeightAdjustment=0/d/0 themeChanged=5 themeChangedFlags=16384 display=0 extraData = Bundle[{key_var_font_scale=50}] screenType=0/0}
-11-17 15:40:52.403 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:40:52.403 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:40:52.403 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:40:52.405 17761 17761 D BufferQueueConsumer: [](id:456100000003,api:0,p:-1,c:17761) connect: controlledByApp=false
-11-17 15:40:52.407 17761 17761 D BLASTBufferQueue: [VRI[MainActivity]#3](f:0,a:0) constructor()
-11-17 15:40:52.408 17761 17761 D BLASTBufferQueue: [VRI[MainActivity]#3](f:0,a:0) update width=720 height=1600 format=-3 mTransformHint=0
-11-17 15:40:52.418 17761 17761 D ViewRootImplStubImpl: onSurfaceViewAttached:
-11-17 15:40:52.418 17761 17761 D ViewRootImplStubImpl: , vri:android.view.ViewRootImpl@1069d8d, com.jsr.n64android/com.jsr.n64android.MainActivity
-11-17 15:40:52.418 17761 17761 D ViewRootImplStubImpl: , vri size:720x1600
-11-17 15:40:52.418 17761 17761 D ViewRootImplStubImpl: , surfaceView:com.jsr.n64android.EmulationSurfaceView{33b71ae V.E...... ......ID 0,268-720,1600}, SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]
-11-17 15:40:52.418 17761 17761 D ViewRootImplStubImpl: , surfaceView size:720x1332
-11-17 15:40:52.418 17761 17761 D ViewRootImplStubImpl: , surfaceControl:Surface(name=33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity](BLAST)#154211)/@0x607801c
-11-17 15:40:52.420 17761 17761 D BufferQueueConsumer: [](id:456100000004,api:0,p:-1,c:17761) connect: controlledByApp=false
-11-17 15:40:52.421 17761 17761 D BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#4](f:0,a:0) constructor()
-11-17 15:40:52.421 17761 17761 D BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#4](f:0,a:0) update width=720 height=1332 format=4 mTransformHint=0
-11-17 15:40:52.423 17761 17761 I N64VideoSurface: surfaceCreated: válida=true
-11-17 15:40:52.429 17761 17761 I ae-bridge: setNativeWindow: New surface has been set
-11-17 15:40:52.429 17761 17761 I N64VideoSurface: Surface Android entregue ao ae-bridge
-11-17 15:40:52.435 17761 17761 I N64VideoSurface: Surface alterada: 720x1332; válida=true; attached=true
-11-17 15:40:52.436 17761 17761 D SurfaceView: UPDATE Surface(name=33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#154210)/@0xe1a8208, mIsProjectionMode = false
-11-17 15:40:52.439 17761 17761 D VRI[MainActivity]: vri.Setup new sync=wmsSync-VRI[MainActivity]#11
-11-17 15:40:52.470 17761 17795 D BLASTBufferQueue: [VRI[MainActivity]#3](f:0,a:1) acquireNextBufferLocked size=720x1600 mFrameNumber=1 applyTransaction=true mTimestamp=471604074626416(auto) mPendingTransactions.size=0 graphicBufferId=76282914144278 transform=0
-11-17 15:40:52.471 17761 17761 D VRI[MainActivity]: vri.reportDrawFinished 0 0 Rect(0, 0 - 720, 1600)
-11-17 15:40:52.476 17761 17761 D BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#4](f:0,a:0) update width=720 height=1305 format=4 mTransformHint=0
-11-17 15:40:52.476 17761 17761 I N64VideoSurface: Surface alterada: 720x1305; válida=true; attached=true
-11-17 15:40:52.480 17761 17884 I ae-bridge: VidExtFuncGLSwapBuf: New surface has been detected
-11-17 15:40:52.548 17761 17884 D BLASTBufferQueue: [33b71ae SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#4](f:0,a:1) acquireNextBufferLocked size=720x1305 mFrameNumber=1 applyTransaction=true mTimestamp=471604153895031(auto) mPendingTransactions.size=0 graphicBufferId=76282914144281 transform=0
-11-17 15:40:52.559 17761 17761 I HandWritingStubImpl: refreshLastKeyboardType: 1
-11-17 15:40:52.559 17761 17761 I HandWritingStubImpl: getCurrentKeyboardType: 1
-11-17 15:40:52.587 17761 17761 D InsetsController: hide(ime(), fromIme=false)
-11-17 15:40:52.588 17761 17761 I ImeTracker: com.jsr.n64android:877d87cd: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
-11-17 15:40:52.707 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:40:52.707 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:40:52.707 17761 17761 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-17 15:40:54.250 17761 17761 D ViewRootImplStubImpl: onScrollToTop callback. Now is com.jsr.n64android
-11-17 15:40:54.250 17761 17761 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
-11-17 15:40:54.264 17761 17761 E ViewRootImplStubImpl: No scrollable view found.
-11-17 15:40:55.833 17761 17761 D ViewRootImplStubImpl: onScrollToTop callback. Now is com.jsr.n64android
-11-17 15:40:55.833 17761 17761 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
-11-17 15:40:55.836 17761 17761 E ViewRootImplStubImpl: No scrollable view found.
-11-17 15:40:56.564 17761 17761 D ViewRootImplStubImpl: onScrollToTop callback. Now is com.jsr.n64android
-11-17 15:40:56.565 17761 17761 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
-11-17 15:40:56.570 17761 17761 E ViewRootImplStubImpl: No scrollable view found.
-11-17 15:40:57.542 17761 17761 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=471609146, downTime=471609146, phoneEventTime=1794940857539 } moveCount:0
-11-17 15:40:57.544 17761 17761 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
-2026-11-17 15:40:57.692 I/N64Diagnostics: Usuário solicitou cópia dos logs
+11-17 15:54:59.486 20800 20800 I ActivityThread: Current dynamic renderEngine type=0
+11-17 15:54:59.614 20800 20823 D MiuiDownscaleImpl: set override inverted scale : 1.0
+11-17 15:54:59.631 20800 20823 D AppScoutStateMachine: 20800-ScoutStateMachinecreated
+11-17 15:54:59.649 20800 20800 I RENDER_TURBO: onActivityThreadCreate not in white list, pkg=com.jsr.n64android, type=dew
+11-17 15:54:59.734 20800 20800 D ActivityThread: setEmbeddedParam packageName=com.jsr.n64android processName=com.jsr.n64android isEmbedded=false isIsolated=false
+11-17 15:54:59.785 20800 20800 D nativeloader: Configuring clns-10 for other apk /data/app/~~jr0T5RTJ9m5tbdgB2VDBSQ==/com.jsr.n64android-_ctj_mc18ZPghjD19OuRKA==/base.apk. target_sdk_version=35, uses_libraries=, library_path=/data/app/~~jr0T5RTJ9m5tbdgB2VDBSQ==/com.jsr.n64android-_ctj_mc18ZPghjD19OuRKA==/lib/arm64:/data/app/~~jr0T5RTJ9m5tbdgB2VDBSQ==/com.jsr.n64android-_ctj_mc18ZPghjD19OuRKA==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.jsr.n64android
+11-17 15:54:59.788 20800 20800 D CompatChangeReporter: Compat change id reported: 202956589; UID 11017; state: ENABLED
+11-17 15:54:59.794 20800 20800 I .jsr.n64android: AssetManager2(0xb40000702f2d9b78) locale list changing from [] to [pt-BR]
+11-17 15:54:59.799 20800 20800 E MiuiPreloadClassImpl: invoke error.
+11-17 15:54:59.799 20800 20800 D MiuiMonitorThread: Shared singleton Thread for stability monitor start
+11-17 15:54:59.807 20800 20800 D HWUI    : [HWUI] Flag vulkan_enhance_pipeline_cache enabled
+11-17 15:54:59.807 20800 20800 D HWUI    : [HWUI] EnhanceVkPipelineCache is disabled
+11-17 15:54:59.807 20800 20800 D HWUI    : [HWUI] Flag ddre enabled
+11-17 15:54:59.817 20800 20800 V GraphicsEnvironment: Currently set values for:
+11-17 15:54:59.817 20800 20800 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
+11-17 15:54:59.817 20800 20800 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
+11-17 15:54:59.821 20800 20800 V GraphicsEnvironment: com.jsr.n64android is not listed in per-application setting
+11-17 15:54:59.822 20800 20800 V GraphicsEnvironment: ANGLE allowlist from config: 
+11-17 15:54:59.822 20800 20800 V GraphicsEnvironment: com.jsr.n64android is not listed in ANGLE allowlist or settings, returning default
+11-17 15:54:59.822 20800 20800 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+11-17 15:54:59.825 20800 20800 I ActivityThread: TrafficStats init done
+11-17 15:54:59.840 20800 20800 I ForceDarkHelperStubImpl: initialize for com.jsr.n64android , ForceDarkAppConfig: null
+11-17 15:54:59.842 20800 20800 D nativeloader: Load libforcedarkimpl.so using system ns (caller=/system_ext/framework/miui-framework.jar): ok
+11-17 15:54:59.843 20800 20800 D HWUI    : JNI_OnLoad success
+11-17 15:54:59.843 20800 20800 I MiuiForceDarkConfig: setConfig density:2.000000, mainRule:0, secondaryRule:0, tertiaryRule:0
+11-17 15:54:59.872 20800 20800 E ashmem  : Pinning is deprecated since Android Q. Please use trim or other methods.
+11-17 15:54:59.877 20800 20800 I ActivityThread: Miui Feature Init done
+11-17 15:54:59.894 20800 20800 D ResMonitorStub: The current process type is: third_party_app, process name is: com.jsr.n64android
+11-17 15:54:59.964 20800 20800 D HWUI    : [HWUI] Flag vulkan_enhance_pipeline_cache enabled
+11-17 15:54:59.964 20800 20800 D HWUI    : [HWUI] EnhanceVkPipelineCache is disabled
+11-17 15:54:59.964 20800 20800 D HWUI    : [HWUI] Flag ddre enabled
+11-17 15:54:59.964 20800 20800 D .jsr.n64android: blurUtils, initBackgroundBlurMinInterval processName(com.jsr.n64android), inWhiteLists(0)
+11-17 15:54:59.965 20800 20800 I ActivityThread: HardwareRenderer preload  done
+11-17 15:54:59.972 20800 20840 I DisplayManager: Choreographer implicitly registered for the refresh rate.
+11-17 15:54:59.993 20800 20800 I .jsr.n64android: AssetManager2(0xb40000702f2d6018) locale list changing from [] to [pt-BR]
+11-17 15:55:00.011 20800 20840 W libc    : Access denied finding property "vendor.mivk.log.debug"
+11-17 15:55:00.011 20800 20840 D vulkan  : searching for layers in '/data/app/~~jr0T5RTJ9m5tbdgB2VDBSQ==/com.jsr.n64android-_ctj_mc18ZPghjD19OuRKA==/lib/arm64'
+11-17 15:55:00.011 20800 20840 D vulkan  : searching for layers in '/data/app/~~jr0T5RTJ9m5tbdgB2VDBSQ==/com.jsr.n64android-_ctj_mc18ZPghjD19OuRKA==/base.apk!/lib/arm64-v8a'
+11-17 15:55:00.019 20800 20840 D MMUD    : mtk_memory_debug_init com.jsr.n64android 0xb4000071e1e015d0
+11-17 15:55:00.029 20800 20856 E .jsr.n64android: setpriority success to 100 : mali-cmar-backend
+11-17 15:55:00.035 20800 20840 D HWUI    : [HWUI] Flag vulkan_enhance_pipeline_cache enabled
+11-17 15:55:00.035 20800 20840 D HWUI    : [HWUI] EnhanceVkPipelineCache is disabled
+11-17 15:55:00.035 20800 20840 D HWUI    : [HWUI] Flag ddre enabled
+11-17 15:55:00.036 20800 20840 D SKIA    : [Skia] Flag vulkan_enhance_pipeline_cache enabled
+11-17 15:55:00.036 20800 20840 D SKIA    : [Skia] EnhanceVkPipelineCache is false
+11-17 15:55:00.069 20800 20800 I N64Diagnostics: ========== NOVA SESSÃO ==========
+11-17 15:55:00.074 20800 20800 I N64Diagnostics: App iniciado. PID=20800 Android=16
+11-17 15:55:00.079 20800 20800 I N64Diagnostics: MainActivity.onCreate
+11-17 15:55:00.114 20800 20800 D CompatChangeReporter: Compat change id reported: 279646685; UID 11017; state: ENABLED
+11-17 15:55:00.120 20800 20800 D CompatChangeReporter: Compat change id reported: 63938206; UID 11017; state: ENABLED
+11-17 15:55:00.133 20800 20845 D MMUD    : get_leak_baseline 3246391296
+11-17 15:55:00.219 20800 20800 D CompatChangeReporter: Compat change id reported: 309578419; UID 11017; state: ENABLED
+11-17 15:55:00.226 20800 20800 D DesktopModeFlags: Toggle override initialized to: OVERRIDE_UNSET
+11-17 15:55:00.235 20800 20800 D DecorView: updateFreeformOutlineFromActivity, inFreeform=false,inFreeformWindowMode=false
+11-17 15:55:00.244 20800 20800 D Activity: Activity = ActivityInfo{e31df6d com.jsr.n64android.MainActivity}, Resume onConfigurationChanged = {1.1 724mcc5mnc [pt_BR] ldltr sw360dp w360dp h800dp 320dpi nrml long port night finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 720, 1600) mAppBounds=Rect(0, 0 - 720, 1600) mMaxBounds=Rect(0, 0 - 720, 1600) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0 mInSplitScreen=false letterBoxed=false foScaled=false isSpecificEmbedded=false embeddingScale=1.0} as.3 s.2 fontWeightAdjustment=0/d/0 themeChanged=5 themeChangedFlags=16384 display=0 extraData = Bundle[{key_var_font_scale=50}] screenType=0/0}
+11-17 15:55:00.274 20800 20800 D nativeloader: Load libpowerhalwrap_jni.so using system ns (caller=/system_ext/framework/mediatek-framework.jar): ok
+11-17 15:55:00.275 20800 20800 I PowerHalWrapper: PowerHalWrapper.getInstance 
+11-17 15:55:00.275 20800 20800 I PowerHalWrapper: PowerHalWrapper.getInstance 
+11-17 15:55:00.275 20800 20800 I M-ProMotion: M-ProMotion is disabled
+11-17 15:55:00.279 20800 20800 D CompatChangeReporter: Compat change id reported: 352594277; UID 11017; state: ENABLED
+11-17 15:55:00.280 20800 20869 I PowerHalWrapper: PowerHalWrapper.getInstance 
+11-17 15:55:00.284 20800 20800 I SurfaceFactory: [static] sSurfaceFactory = com.mediatek.view.impl.SurfaceFactoryImpl@75b1d52
+11-17 15:55:00.304 20800 20800 D CompatChangeReporter: Compat change id reported: 349153669; UID 11017; state: ENABLED
+11-17 15:55:00.306 20800 20800 D FramePredict: FramePredict init: false
+11-17 15:55:00.307 20800 20800 D FramePredict: init success
+11-17 15:55:00.310 20800 20800 W libc    : Access denied finding property "ro.vendor.perf.scroll_opt"
+11-17 15:55:00.313 20800 20872 E FramePredict: registerContentObserver fail
+11-17 15:55:00.313 20800 20800 D .jsr.n64android: MiuiProcessManagerServiceStub setSchedFifo
+11-17 15:55:00.313 20800 20800 I MiuiProcessManagerImpl: setSchedFifo pid:20800, mode:3
+11-17 15:55:00.317 20800 20800 W HWUI    : Unknown dataspace 0
+11-17 15:55:00.318 20800 20840 W libc    : Access denied finding property "ro.vendor.display.iris_x7.support"
+11-17 15:55:00.318 20800 20840 I pwIrisCR: isCnVersion = 0, isSupportIris = 0
+11-17 15:55:00.316 20800 20800 W RenderThread: type=1400 audit(0.0:587412): avc:  denied  { read } for  name="u:object_r:vendor_displayfeature_prop:s0" dev="tmpfs" ino=562 scontext=u:r:untrusted_app:s0:c249,c259,c512,c768 tcontext=u:object_r:vendor_displayfeature_prop:s0 tclass=file permissive=0 app=com.jsr.n64android
+11-17 15:55:00.329 20800 20840 D HWUI    : TAG_DDRE, CanvasContext::setDdreActivities: 
+11-17 15:55:00.330 20800 20800 I ForceDarkHelperStubImpl: setViewRootImplForceDark: false for com.jsr.n64android.MainActivity@7162db4, reason: AppDarkModeEnable
+11-17 15:55:00.334 20800 20800 D FirstFrameSpeedUp: bls: [com.xcj.hm.kangfuyixue]
+11-17 15:55:00.335 20800 20800 I ViewRootImpl: com.jsr.n64android/com.jsr.n64android.MainActivity use first frame acceleration
+11-17 15:55:00.343 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:00.343 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:00.343 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:00.346 20800 20800 D InputEventReceiver: Input log is disabled in InputEventReceiver.
+11-17 15:55:00.352 20800 20800 D DecorViewImmersiveImpl: onAttachedToWindow. pkg: com.jsr.n64android
+11-17 15:55:00.352 20800 20800 I ComputilityLevel: getComputilityLevel(): 1
+11-17 15:55:00.361 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:00.361 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:00.361 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:00.361 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:00.425 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:00.425 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:00.425 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:00.428 20800 20800 E .jsr.n64android: [perfctl] 20800 20800 FPSGO ver:7
+11-17 15:55:00.428 20800 20800 E .jsr.n64android: [perfctl] 1 1 1 0
+11-17 15:55:00.429 20800 20800 D BufferQueueConsumer: [](id:514000000000,api:0,p:-1,c:20800) connect: controlledByApp=false
+11-17 15:55:00.430 20800 20800 D BLASTBufferQueue: [VRI[MainActivity]#0](f:0,a:0) constructor()
+11-17 15:55:00.431 20800 20800 D BLASTBufferQueue: [VRI[MainActivity]#0](f:0,a:0) update width=720 height=1600 format=-1 mTransformHint=0
+11-17 15:55:00.459 20800 20800 D VRI[MainActivity]: vri.Setup new sync=wmsSync-VRI[MainActivity]#0
+11-17 15:55:00.513 20800 20840 I GrallocExtra: gralloc_extra_query:is_SW3D 0
+11-17 15:55:00.633 20800 20840 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 77.67 ms.
+11-17 15:55:00.663 20800 20840 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 28.35 ms.
+11-17 15:55:00.678 20800 20840 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 14.15 ms.
+11-17 15:55:00.692 20800 20840 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 13.71 ms.
+11-17 15:55:00.704 20800 20840 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 11.28 ms.
+11-17 15:55:00.709 20800 20840 I GrallocExtra: gralloc_extra_query:is_SW3D 0
+11-17 15:55:00.709 20800 20840 W libc    : Access denied finding property "ro.vendor.display.iris_x7.support"
+11-17 15:55:00.708 20800 20800 W RenderThread: type=1400 audit(0.0:587413): avc:  denied  { read } for  name="u:object_r:vendor_displayfeature_prop:s0" dev="tmpfs" ino=562 scontext=u:r:untrusted_app:s0:c249,c259,c512,c768 tcontext=u:object_r:vendor_displayfeature_prop:s0 tclass=file permissive=0 app=com.jsr.n64android
+11-17 15:55:00.710 20800 20840 D BLASTBufferQueue: [VRI[MainActivity]#0](f:0,a:1) acquireNextBufferLocked size=720x1600 mFrameNumber=1 applyTransaction=true mTimestamp=472452315495082(auto) mPendingTransactions.size=0 graphicBufferId=89335319756806 transform=0
+11-17 15:55:00.712 20800 20800 D VRI[MainActivity]: vri.reportDrawFinished 0 0 Rect(0, 0 - 720, 1600)
+11-17 15:55:00.713 20800 20800 I Choreographer: first vsync insert message into MessageQueue Head
+11-17 15:55:00.725 20800 20840 D HWUI    : [HWUI] Flag vulkan_enhance_pipeline_cache enabled
+11-17 15:55:00.725 20800 20840 D HWUI    : [HWUI] EnhanceVkPipelineCache is disabled
+11-17 15:55:00.725 20800 20840 D HWUI    : [HWUI] Flag ddre enabled
+11-17 15:55:00.728 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:00.729 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:00.729 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:00.788 20800 20800 I HandWritingStubImpl: refreshLastKeyboardType: 1
+11-17 15:55:00.791 20800 20800 I HandWritingStubImpl: getCurrentKeyboardType: 1
+11-17 15:55:00.835 20800 20800 D InsetsController: hide(ime(), fromIme=false)
+11-17 15:55:00.836 20800 20800 I ImeTracker: com.jsr.n64android:f5b700fc: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+11-17 15:55:00.850 20800 20800 I HandWritingStubImpl: getCurrentKeyboardType: 1
+11-17 15:55:00.878 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:00.879 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:00.880 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:02.634 20800 20811 I .jsr.n64android: Compiler allocated 6810KB to compile void android.view.ViewRootImpl.performTraversals()
+11-17 15:55:02.802 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=472454402, downTime=472454402, phoneEventTime=1794941702796 } moveCount:0
+11-17 15:55:02.816 20800 20800 W MirrorManager: this model don't Support
+11-17 15:55:02.816 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:55:02.914 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=472454519, downTime=472454402, phoneEventTime=1794941702913 } moveCount:2
+11-17 15:55:03.349 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=472454952, downTime=472454952, phoneEventTime=1794941703345 } moveCount:0
+11-17 15:55:03.350 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:55:03.466 20800 20840 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 86.53 ms.
+11-17 15:55:03.472 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=472455019, downTime=472454952, phoneEventTime=1794941703413 } moveCount:1
+11-17 15:55:03.483 20800 20840 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 0.31 ms.
+11-17 15:55:03.538 20800 20800 I PowerHalMgrImpl: perfLockAcq is supported. 
+11-17 15:55:03.716 20800 20840 E .jsr.n64android: DynamicFPS DF open fail: No such file or directory
+11-17 15:55:04.005 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:04.005 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:04.005 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:04.481 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:04.482 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:04.482 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:04.557 20800 20883 D libEGL  : Post task 1
+11-17 15:55:04.557 20800 21003 D libEGL  : Worker thread start 473555162048
+11-17 15:55:04.557 20800 21003 D libEGL  : Run task 1
+11-17 15:55:04.587 20800 20800 D VRI[MainActivity]: visibilityChanged oldVisibility=true newVisibility=false
+11-17 15:55:04.631 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:04.631 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:04.631 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:04.633 20800 20800 W .jsr.n64android: Binder 0xb40000704f2e5800 destroyed after setInheritRt before being parceled.
+11-17 15:55:04.634 20800 20800 D BLASTBufferQueue: [VRI[MainActivity]#0](f:0,a:2) destructor()
+11-17 15:55:04.634 20800 20800 D BufferQueueConsumer: [VRI[MainActivity]#0(BLAST Consumer)0](id:514000000000,api:0,p:-1,c:20800) disconnect: caller 20800
+11-17 15:55:05.373 20800 20800 I ForceDarkHelperStubImpl: setViewRootImplForceDark: false for com.jsr.n64android.MainActivity@7162db4, reason: AppDarkModeEnable
+2026-11-17 15:55:05.416 I/N64Diagnostics: Usuário selecionou ROM: content://com.android.externalstorage.documents/document/primary%3AN64%2FGoldenEye.z64
+11-17 15:55:05.403 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:05.403 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:05.403 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:05.411 20800 20800 E ActivityThread:  fail in deliverResultsIfNeeded java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.String android.os.Bundle.getString(java.lang.String)' on a null object reference
+11-17 15:55:05.418 20800 20800 I N64Diagnostics: Usuário selecionou ROM: content://com.android.externalstorage.documents/document/primary%3AN64%2FGoldenEye.z64
+11-17 15:55:05.420 20800 20800 D Activity: Activity = ActivityInfo{e31df6d com.jsr.n64android.MainActivity}, Resume onConfigurationChanged = {1.1 724mcc5mnc [pt_BR] ldltr sw360dp w360dp h800dp 320dpi nrml long port night finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 720, 1600) mAppBounds=Rect(0, 0 - 720, 1600) mMaxBounds=Rect(0, 0 - 720, 1600) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0 mInSplitScreen=false letterBoxed=false foScaled=false isSpecificEmbedded=false embeddingScale=1.0} as.3 s.2 fontWeightAdjustment=0/d/0 themeChanged=5 themeChangedFlags=16384 display=0 extraData = Bundle[{key_var_font_scale=50}] screenType=0/0}
+11-17 15:55:05.442 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:05.442 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:05.442 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:05.443 20800 20800 D BufferQueueConsumer: [](id:514000000001,api:0,p:-1,c:20800) connect: controlledByApp=false
+11-17 15:55:05.444 20800 20800 D BLASTBufferQueue: [VRI[MainActivity]#1](f:0,a:0) constructor()
+11-17 15:55:05.445 20800 20800 D BLASTBufferQueue: [VRI[MainActivity]#1](f:0,a:0) update width=720 height=1600 format=-1 mTransformHint=0
+11-17 15:55:05.448 20800 20800 D VRI[MainActivity]: vri.Setup new sync=wmsSync-VRI[MainActivity]#2
+11-17 15:55:05.460 20800 20840 E LB      : fail to open file: No such file or directory
+11-17 15:55:05.460 20800 20840 E LB      : fail to open node: No such file or directory
+11-17 15:55:05.460 20800 20840 E LB      : fail to open node: No such file or directory
+11-17 15:55:05.461 20800 20840 D BLASTBufferQueue: [VRI[MainActivity]#1](f:0,a:1) acquireNextBufferLocked size=720x1600 mFrameNumber=1 applyTransaction=true mTimestamp=472457065103005(auto) mPendingTransactions.size=0 graphicBufferId=89335319756808 transform=0
+11-17 15:55:05.463 20800 20800 D VRI[MainActivity]: vri.reportDrawFinished 0 0 Rect(0, 0 - 720, 1600)
+11-17 15:55:05.485 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:05.485 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:05.486 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:05.518 20800 20800 I HandWritingStubImpl: refreshLastKeyboardType: 1
+11-17 15:55:05.519 20800 20800 I HandWritingStubImpl: getCurrentKeyboardType: 1
+11-17 15:55:05.529 20800 20800 D InsetsController: hide(ime(), fromIme=false)
+11-17 15:55:05.537 20800 20800 I ImeTracker: com.jsr.n64android:db9ba4b5: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+11-17 15:55:05.594 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:05.595 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:05.595 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:06.095 20800 21015 W BpBinder: PerfMonitor binderTransact: time=670ms interface=android.content.IContentProvider code=23
+2026-11-17 15:55:06.186 I/N64Diagnostics: ROM lida: GoldenEye.z64; tamanho=12582912 bytes
+11-17 15:55:06.187 20800 21015 I N64Diagnostics: ROM lida: GoldenEye.z64; tamanho=12582912 bytes
+2026-11-17 15:55:06.194 I/N64Diagnostics: Abrindo tela de emulação para GoldenEye.z64
+11-17 15:55:06.198 20800 20800 I N64Diagnostics: Abrindo tela de emulação para GoldenEye.z64
+11-17 15:55:06.207 20800 20800 D MiuiMultiWindowUtils: freeform resolution args raw data:{  "wide_default":{    "freeform_args": {        "vertical_portrait":{"aspect_ratio":0.626, "original_ratio":0.5643,"original_scale":0.74,"top_margin":0.168,"left_margin":0.484},        "horizontal_portrait":{"aspect_ratio":0.626, "original_ratio":0.5643,"original_scale":0.74,"top_margin":0.1222,"left_margin":0.59745},        "vertical_landscape":{"aspect_ratio":1.6, "original_ratio":0.6992,"original_scale":0.604,"top_margin":0.2596,"left_margin":0.2624},        "horizontal_landscape":{"aspect_ratio":1.6, "original_ratio":0.6992,"original_scale":0.604,"top_margin":0.213,"left_margin":0.3758}    },    "mini_freeform_args":{        "vertical_portrait":{"original_ratio":0.147},        "horizontal_portrait":{"original_ratio":0.147},        "vertical_landscape":{"original_ratio":0.165},        "horizontal_landscape":{"original_ratio":0.165}    }  },  "narrow_default": {    "freeform_args": {        "vertical_portrait":{"aspect_ratio":0.626, "original_ratio":1,"original_scale":0.74,"top_margin":0.0753,"left_margin":-1},        "horizontal_portrait":{"aspect_ratio":0.626, "original_ratio":1,"original_scale":0.5756,"top_margin":-1,"left_margin":0.0753},        "vertical_landscape":{"aspect_ratio":1.6, "original_ratio":1,"original_scale":0.587,"top_margin":0.0753,"left_margin":-1},        "horizontal_landscape":{"aspect_ratio":1.6, "original_ratio":1,"original_scale":0.587,"top_margin":-1,"left_margin":0.0753}    },    "mini_freeform_args":{        "vertical_portrait":{"original_ratio":0.26},        "horizontal_portrait":{"original_ratio":0.26},        "vertical_landscape":{"original_ratio":0.293},        "horizontal_landscape":{"original_ratio":0.293}    }  },  "regular_default": {    "freeform_args": {      "vertical_portrait":{"aspect_ratio":0.625, "original_ratio":1,"original_scale":0.7,"top_margin":0.109,"left_margin":-1},      "horizontal_portrait":{"aspect_ratio":0.6667, "original_ratio":1,"original_scale":0.6102,"top_margin":-1,"left_margin":0.026},      "vertical_landscape":{"aspect_ratio":1.6, "original_ratio":1,"original_scale":0.5899,"top_margin":0.109,"left_margin":-1},      "horizontal_landscape":{"aspect_ratio":1.6, "original_ratio":1,"original_scale":0.5899,"top_margin":-1,"left_margin":0.026}    },    "mini_freeform_args":{      "vertical_portrait":{"original_ratio":0.25},      "horizontal_portrait":{"original_ratio":0.25},      "vertical_landscape":{"original_ratio":0.25},      "horizontal_landscape":{"original_ratio":0.25}    }  },  "pad_default": {    "freeform_args": {      "vertical_portrait":{"aspect_ratio":0.5625, "original_ratio":0.375,"original_scale":0.835,"top_margin":0.049,"left_margin":0.2775},      "horizontal_portrait":{"aspect_ratio":0.5625, "original_ratio":0.375,"original_scale":0.835,"top_margin":-1,"left_margin":0.6525},      "vertical_landscape":{"aspect_ratio":-1, "original_ratio":1,"original_scale":0.468,"top_margin":0.049,"left_margin":-1},      "horizontal_landscape":{"aspect_ratio":-1, "original_ratio":1,"original_scale":0.468,"top_margin":-1,"left_margin":0.4976}    },    "mini_freeform_args":{      "vertical_portrait":{"original_ratio":0.144},      "horizontal_portrait":{"original_ratio":0.144},      "vertical_landscape":{"original_ratio":0.2},      "horizontal_landscape":{"original_ratio":0.2}    }  }}
+11-17 15:55:06.210 20800 20800 D MiuiMultiWindowUtils: initFreeFormResolutionArgs failed, device is dew
+11-17 15:55:06.224 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:06.224 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:06.224 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:06.224 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:06.226 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:55:06.232 20800 20800 D SurfaceView: UPDATE null, mIsCastMode = false
+11-17 15:55:06.239 20800 20800 D ViewRootImplStubImpl: onSurfaceViewAttached:
+11-17 15:55:06.239 20800 20800 D ViewRootImplStubImpl: , vri:android.view.ViewRootImpl@98f5373, com.jsr.n64android/com.jsr.n64android.MainActivity
+11-17 15:55:06.239 20800 20800 D ViewRootImplStubImpl: , vri size:720x1600
+11-17 15:55:06.239 20800 20800 D ViewRootImplStubImpl: , surfaceView:com.jsr.n64android.EmulationSurfaceView{b82c75a V.E...... ......ID 0,268-720,1600}, SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]
+11-17 15:55:06.239 20800 20800 D ViewRootImplStubImpl: , surfaceView size:720x1332
+11-17 15:55:06.239 20800 20800 D ViewRootImplStubImpl: , surfaceControl:Surface(name=b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity](BLAST)#154801)/@0x2911303
+11-17 15:55:06.243 20800 20800 D BufferQueueConsumer: [](id:514000000002,api:0,p:-1,c:20800) connect: controlledByApp=false
+11-17 15:55:06.244 20800 20800 D BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:0,a:0) constructor()
+11-17 15:55:06.245 20800 20800 D BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:0,a:0) update width=720 height=1332 format=4 mTransformHint=0
+11-17 15:55:06.246 20800 20800 I N64VideoSurface: surfaceCreated: válida=true
+11-17 15:55:06.266 20800 20800 D nativeloader: Load /data/app/~~jr0T5RTJ9m5tbdgB2VDBSQ==/com.jsr.n64android-_ctj_mc18ZPghjD19OuRKA==/base.apk!/lib/arm64-v8a/libae-bridge.so using class loader ns clns-10 (caller=/data/app/~~jr0T5RTJ9m5tbdgB2VDBSQ==/com.jsr.n64android-_ctj_mc18ZPghjD19OuRKA==/base.apk!classes4.dex): ok
+11-17 15:55:06.279 20800 20800 D nativeloader: Load /data/app/~~jr0T5RTJ9m5tbdgB2VDBSQ==/com.jsr.n64android-_ctj_mc18ZPghjD19OuRKA==/base.apk!/lib/arm64-v8a/libjnidispatch.so using class loader ns clns-10 (caller=/data/app/~~jr0T5RTJ9m5tbdgB2VDBSQ==/com.jsr.n64android-_ctj_mc18ZPghjD19OuRKA==/base.apk): ok
+11-17 15:55:06.300 20800 20800 I ae-bridge: setNativeWindow: New surface has been set
+11-17 15:55:06.300 20800 20800 I N64VideoSurface: Surface Android entregue ao ae-bridge
+11-17 15:55:06.308 20800 20800 I N64VideoSurface: Surface alterada: 720x1332; válida=true; attached=true
+2026-11-17 15:55:06.310 I/N64Diagnostics: ENGINE: Carregando bibliotecas nativas...
+11-17 15:55:06.313 20800 21026 I N64Diagnostics: ENGINE: Carregando bibliotecas nativas...
+11-17 15:55:06.313 20800 21026 I Mupen64PlusEngine: Carregando bibliotecas nativas...
+11-17 15:55:06.320 20800 20800 D SurfaceView: UPDATE Surface(name=b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#154800)/@0x8d0faba, mIsProjectionMode = false
+11-17 15:55:06.320 20800 21026 D nativeloader: Load /data/app/~~jr0T5RTJ9m5tbdgB2VDBSQ==/com.jsr.n64android-_ctj_mc18ZPghjD19OuRKA==/base.apk!/lib/arm64-v8a/libmupen64plus-core.so using class loader ns clns-10 (caller=/data/app/~~jr0T5RTJ9m5tbdgB2VDBSQ==/com.jsr.n64android-_ctj_mc18ZPghjD19OuRKA==/base.apk!classes4.dex): ok
+11-17 15:55:06.322 20800 20800 D BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:0,a:0) update width=720 height=1305 format=4 mTransformHint=0
+11-17 15:55:06.324 20800 20800 I N64VideoSurface: Surface alterada: 720x1305; válida=true; attached=true
+11-17 15:55:06.327 20800 21026 D nativeloader: Load /data/app/~~jr0T5RTJ9m5tbdgB2VDBSQ==/com.jsr.n64android-_ctj_mc18ZPghjD19OuRKA==/base.apk!/lib/arm64-v8a/libmupen64plus-rsp-parallel.so using class loader ns clns-10 (caller=/data/app/~~jr0T5RTJ9m5tbdgB2VDBSQ==/com.jsr.n64android-_ctj_mc18ZPghjD19OuRKA==/base.apk!classes4.dex): ok
+11-17 15:55:06.337 20800 20840 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 12.75 ms.
+11-17 15:55:06.337 20800 21026 D nativeloader: Load /data/app/~~jr0T5RTJ9m5tbdgB2VDBSQ==/com.jsr.n64android-_ctj_mc18ZPghjD19OuRKA==/base.apk!/lib/arm64-v8a/libmupen64plus-video-parallel.so using class loader ns clns-10 (caller=/data/app/~~jr0T5RTJ9m5tbdgB2VDBSQ==/com.jsr.n64android-_ctj_mc18ZPghjD19OuRKA==/base.apk!classes4.dex): ok
+11-17 15:55:06.340 20800 21026 D CompatChangeReporter: Compat change id reported: 312399441; UID 11017; state: ENABLED
+2026-11-17 15:55:06.354 I/N64Diagnostics: ENGINE: Inicializando Mupen64Plus Core...
+11-17 15:55:06.356 20800 20840 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 12.39 ms.
+11-17 15:55:06.357 20800 21026 I N64Diagnostics: ENGINE: Inicializando Mupen64Plus Core...
+11-17 15:55:06.357 20800 21026 I Mupen64PlusEngine: Inicializando Mupen64Plus Core...
+11-17 15:55:06.364 20800 20840 E .jsr.n64android: FrameInsert open fail: No such file or directory
+11-17 15:55:06.371 20800 20800 D BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:0,a:0) update width=720 height=1332 format=4 mTransformHint=0
+11-17 15:55:06.371 20800 20800 I N64VideoSurface: Surface alterada: 720x1332; válida=true; attached=true
+11-17 15:55:06.371 20800 21026 E Mupen64PlusEngine: Core: Couldn't open configuration file '/data/user/0/com.jsr.n64android/files/mupen64plus/config/mupen64plus.cfg'.  Using defaults.
+11-17 15:55:06.371 20800 21026 I Mupen64PlusEngine: Core: No version number in 'Core' config section. Setting defaults.
+11-17 15:55:06.372 20800 21026 I Mupen64PlusEngine: Core: No version number in 'CoreEvents' config section. Setting defaults.
+11-17 15:55:06.372 20800 21026 E Mupen64PlusEngine: Core: Using full mem base
+11-17 15:55:06.373 20800 21026 I Mupen64PlusEngine: Core: Unable to open rom database file '(null)'.
+11-17 15:55:06.373 20800 21026 I Mupen64PlusEngine: CoreStartup concluído
+2026-11-17 15:55:06.376 I/N64Diagnostics: ENGINE: Enviando ROM ao Core...
+11-17 15:55:06.375 20800 21026 E ae-bridge: mupen64plus-core: undefined symbol: Java_com_sun_jna_Native_invokePointer__Lcom_sun_jna_Function_2JI_3Ljava_lang_Object_2
+11-17 15:55:06.379 20800 21026 I N64Diagnostics: ENGINE: Enviando ROM ao Core...
+11-17 15:55:06.379 20800 21026 I Mupen64PlusEngine: Enviando ROM ao Core...
+11-17 15:55:06.447 20800 21026 E Mupen64PlusEngine: Core: Goodname: GOLDENEYE (unknown rom)
+11-17 15:55:06.448 20800 21026 E Mupen64PlusEngine: Core: Name: GOLDENEYE           
+11-17 15:55:06.448 20800 21026 E Mupen64PlusEngine: Core: MD5: 70C525880240C1E838B8B1BE35666C3B
+2026-11-17 15:55:06.449 I/N64Diagnostics: ENGINE: Anexando plugin mupen64plus-video-parallel...
+11-17 15:55:06.448 20800 21026 E Mupen64PlusEngine: Core: CRC: DCBC50D1 09FD1AA3
+11-17 15:55:06.448 20800 21026 E Mupen64PlusEngine: Core: Imagetype: .z64 (native)
+11-17 15:55:06.448 20800 21026 E Mupen64PlusEngine: Core: Rom size: 12582912 bytes (or 12 Mb or 96 Megabits)
+11-17 15:55:06.448 20800 21026 E Mupen64PlusEngine: Core: ClockRate = F
+11-17 15:55:06.448 20800 21026 E Mupen64PlusEngine: Core: Version: 1447
+11-17 15:55:06.448 20800 21026 E Mupen64PlusEngine: Core: Manufacturer: Nintendo
+11-17 15:55:06.448 20800 21026 E Mupen64PlusEngine: Core: Cartridge_ID: 4547
+11-17 15:55:06.448 20800 21026 E Mupen64PlusEngine: Core: Country: USA
+11-17 15:55:06.448 20800 21026 E Mupen64PlusEngine: Core: PC = 80000400
+11-17 15:55:06.449 20800 21026 E Mupen64PlusEngine: Core: Save type: 0
+11-17 15:55:06.449 20800 21026 I Mupen64PlusEngine: ROM_OPEN concluído: 12582912 bytes
+11-17 15:55:06.450 20800 21026 I N64Diagnostics: ENGINE: Anexando plugin mupen64plus-video-parallel...
+11-17 15:55:06.450 20800 21026 I Mupen64PlusEngine: Anexando plugin mupen64plus-video-parallel...
+2026-11-17 15:55:06.456 I/N64Diagnostics: ENGINE: Anexando plugin mupen64plus-rsp-parallel...
+11-17 15:55:06.456 20800 21026 I Mupen64PlusEngine: mupen64plus-video-parallel anexado com sucesso
+11-17 15:55:06.457 20800 21026 I N64Diagnostics: ENGINE: Anexando plugin mupen64plus-rsp-parallel...
+11-17 15:55:06.457 20800 21026 I Mupen64PlusEngine: Anexando plugin mupen64plus-rsp-parallel...
+11-17 15:55:06.460 20800 21026 I Mupen64PlusEngine: Plugin: PluginStartup
+11-17 15:55:06.461 20800 21026 I Mupen64PlusEngine: Plugin: InitiateRSP
+11-17 15:55:06.461 20800 21026 I Mupen64PlusEngine: mupen64plus-rsp-parallel anexado com sucesso
+2026-11-17 15:55:06.462 I/N64Diagnostics: ENGINE: Plugins anexados. Iniciando execução do emulador...
+11-17 15:55:06.464 20800 21026 I N64Diagnostics: ENGINE: Plugins anexados. Iniciando execução do emulador...
+11-17 15:55:06.464 20800 21026 I Mupen64PlusEngine: Plugins anexados. Iniciando execução do emulador...
+11-17 15:55:06.464 20800 21026 I Mupen64PlusEngine: Chamando M64CMD_EXECUTE
+11-17 15:55:06.464 20800 21026 I Mupen64PlusEngine: Core: No audio plugin attached.  There will be no sound output.
+11-17 15:55:06.464 20800 21026 I Mupen64PlusEngine: Core: No input plugin attached.  You won't be able to control the game.
+11-17 15:55:06.469 20800 21026 E Mupen64PlusEngine: Core: Using video capture backend: dummy
+11-17 15:55:06.470 20800 21026 E Mupen64PlusEngine: Core: Game controller 0 (Standard controller) has a Memory pak plugged in
+11-17 15:55:06.470 20800 21026 E Mupen64PlusEngine: Core: Game controller 1 (Standard controller) has a Memory pak plugged in
+11-17 15:55:06.470 20800 21026 E Mupen64PlusEngine: Core: Game controller 2 (Standard controller) has a Memory pak plugged in
+11-17 15:55:06.470 20800 21026 E Mupen64PlusEngine: Core: Game controller 3 (Standard controller) has a Memory pak plugged in
+11-17 15:55:06.472 20800 21026 E Mupen64PlusEngine: Core: Using CIC type X102
+11-17 15:55:06.483 20800 21026 W libc    : Access denied finding property "vendor.migl.debug"
+11-17 15:55:06.484 20800 20800 D BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:0,a:0) update width=720 height=1305 format=4 mTransformHint=0
+11-17 15:55:06.485 20800 20800 I N64VideoSurface: Surface alterada: 720x1305; válida=true; attached=true
+11-17 15:55:06.488 20800 21026 I libMiGL : EnableDR: 0
+11-17 15:55:06.489 20800 21026 D libMiGL : mDFIInterval: -1
+11-17 15:55:06.491 20800 21026 D libMEOW : meow new tls: 0xb400006fdf4791c0
+11-17 15:55:06.496 20800 21026 D libMEOW : meow reload base cfg path: na
+11-17 15:55:06.496 20800 21026 D libMEOW : meow reload overlay cfg path: na
+11-17 15:55:06.512 20800 21026 E QT      : [QT]file does not exist
+11-17 15:55:06.515 20800 21026 D libMEOW : applied 1 plugins for [com.jsr.n64android]:
+11-17 15:55:06.515 20800 21026 D libMEOW :   plugin 1: [libMEOW_gift.so]:
+11-17 15:55:06.518 20800 21026 D MMUD    : mtk_memory_debug_init com.jsr.n64android 0xb4000071d7b165d0
+11-17 15:55:06.522 20800 21038 E .jsr.n64android: setpriority success to 100 : mali-cmar-backend
+11-17 15:55:06.530 20800 21026 W HidlServiceManagement: hwservicemanager is not supported on the device.
+11-17 15:55:06.532 20800 21026 I HidlServiceManagement: Trying to get transport of android.hardware.configstore@1.0::ISurfaceFlingerConfigs/default without hwservicemanager
+11-17 15:55:06.541 20800 21026 I ae-bridge: VidExtFuncSetMode: Initializing surface
+11-17 15:55:06.559 20800 21026 D Mupen64PlusEngine: Core state callback: type=2 value=2
+11-17 15:55:06.559 20800 21026 D Mupen64PlusEngine: Core state callback: type=6 value=41943520
+11-17 15:55:06.928 20800 21026 I Granite : Layer count: 0
+11-17 15:55:06.928 20800 21026 I Granite : Enabling instance extension: VK_KHR_get_physical_device_properties2.
+11-17 15:55:06.928 20800 21026 I Granite : Enabling instance extension: VK_KHR_external_memory_capabilities.
+11-17 15:55:06.928 20800 21026 I Granite : Enabling instance extension: VK_KHR_external_semaphore_capabilities.
+11-17 15:55:06.928 20800 21026 I Granite : Enabling instance extension: VK_EXT_debug_utils.
+11-17 15:55:06.933 20800 21026 I Granite : Found Vulkan GPU: Mali-G52 MC2
+11-17 15:55:06.933 20800 21026 I Granite :     API: 1.3.278
+11-17 15:55:06.933 20800 21026 I Granite :     Driver: 49.1.0
+11-17 15:55:06.936 20800 21026 I Granite : Selected Vulkan GPU: Mali-G52 MC2
+11-17 15:55:06.936 20800 21026 I Granite : GPU supports Vulkan 1.1.
+11-17 15:55:06.936 20800 21026 I Granite : Enabling device extension: VK_KHR_get_memory_requirements2.
+11-17 15:55:06.936 20800 21026 I Granite : Enabling device extension: VK_KHR_dedicated_allocation.
+11-17 15:55:06.936 20800 21026 I Granite : Enabling device extension: VK_KHR_image_format_list.
+11-17 15:55:06.936 20800 21026 I Granite : Enabling device extension: VK_KHR_sampler_mirror_clamp_to_edge.
+11-17 15:55:06.936 20800 21026 I Granite : Enabling device extension: VK_GOOGLE_display_timing.
+11-17 15:55:06.936 20800 21026 I Granite : Enabling device extension: VK_KHR_external_semaphore.
+11-17 15:55:06.936 20800 21026 I Granite : Enabling device extension: VK_KHR_external_memory.
+11-17 15:55:06.936 20800 21026 I Granite : Enabling device extension: VK_KHR_external_semaphore_fd.
+11-17 15:55:06.936 20800 21026 I Granite : Enabling device extension: VK_KHR_external_memory_fd.
+11-17 15:55:06.936 20800 21026 I Granite : Enabling device extension: VK_KHR_descriptor_update_template.
+11-17 15:55:06.936 20800 21026 I Granite : Enabling device extension: VK_KHR_maintenance1.
+11-17 15:55:06.936 20800 21026 I Granite : Enabling device extension: VK_KHR_maintenance2.
+11-17 15:55:06.936 20800 21026 I Granite : Enabling device extension: VK_KHR_maintenance3.
+11-17 15:55:06.936 20800 21026 I Granite : Enabling device extension: VK_KHR_bind_memory2.
+11-17 15:55:06.936 20800 21026 I Granite : Enabling device extension: VK_KHR_shader_draw_parameters.
+11-17 15:55:06.936 20800 21026 I Granite : Enabling device extension: VK_EXT_calibrated_timestamps.
+11-17 15:55:06.937 20800 21026 I Granite : Enabling device extension: VK_KHR_storage_buffer_storage_class.
+11-17 15:55:06.937 20800 21026 I Granite : Enabling device extension: VK_KHR_8bit_storage.
+11-17 15:55:06.937 20800 21026 I Granite : Enabling device extension: VK_KHR_16bit_storage.
+11-17 15:55:06.937 20800 21026 I Granite : Enabling device extension: VK_KHR_shader_float16_int8.
+11-17 15:55:06.937 20800 21026 I Granite : Enabling device extension: VK_KHR_multiview.
+11-17 15:55:06.937 20800 21026 I Granite : Enabling device extension: VK_EXT_subgroup_size_control.
+11-17 15:55:06.937 20800 21026 I Granite : Enabling device extension: VK_EXT_host_query_reset.
+11-17 15:55:06.937 20800 21026 I Granite : Enabling device extension: VK_EXT_shader_demote_to_helper_invocation.
+11-17 15:55:06.938 20800 21026 I Granite : Enabling device extension: VK_EXT_scalar_block_layout.
+11-17 15:55:06.938 20800 21026 I Granite : Enabling device extension: VK_KHR_uniform_buffer_standard_layout.
+11-17 15:55:06.938 20800 21026 I Granite : Enabling device extension: VK_KHR_timeline_semaphore.
+11-17 15:55:06.938 20800 21026 I Granite : Enabling device extension: VK_KHR_sampler_ycbcr_conversion.
+11-17 15:55:06.938 20800 21026 I Granite : Enabling device extension: VK_EXT_astc_decode_mode.
+11-17 15:55:06.938 20800 21026 I Granite : Enabling device extension: VK_EXT_texture_compression_astc_hdr.
+11-17 15:55:06.938 20800 21026 I Granite : Enabling device extension: VK_KHR_synchronization2.
+11-17 15:55:06.938 20800 21026 I Granite : Enabling device extension: VK_KHR_driver_properties.
+11-17 15:55:06.940 20800 21026 D MMUD    : mtk_memory_debug_init com.jsr.n64android 0xb4000071d4d985d0
+11-17 15:55:06.947 20800 21054 E .jsr.n64android: setpriority success to 100 : mali-cmar-backend
+11-17 15:55:06.957 20800 21026 W Granite : Workaround applied: Emulating events as pipeline barriers.
+11-17 15:55:06.957 20800 21026 W Granite : Workaround applied: Optimize ALL_GRAPHICS_BIT barriers.
+11-17 15:55:06.957 20800 21026 W Granite : Workaround applied: Split binary timeline semaphores.
+11-17 15:55:06.960 20800 21026 W Granite : VK_EXT_external_memory_host not supported or failed, falling back to a slower path.
+11-17 15:55:07.229 20800 21026 I Granite : Enabling 8 and 16-bit integer arithmetic support for more efficient shaders!
+11-17 15:55:07.235 20800 21026 D Mupen64PlusEngine: Core state callback: type=1 value=2
+11-17 15:55:07.253 20800 21026 E Mupen64PlusEngine: Core: Initializing 4 RDRAM modules for a total of 8 MB
+11-17 15:55:07.263 20800 21026 E Mupen64PlusEngine: Core: Starting R4300 emulator: Dynamic Recompiler
+11-17 15:55:07.274 20800 21026 E Mupen64PlusEngine: Core: Init new dynarec
+11-17 15:55:07.304 20800 21026 E Mupen64PlusEngine: Core: Enabled TLB
+11-17 15:55:07.399 20800 21026 D BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:0,a:1) acquireNextBufferLocked size=720x1305 mFrameNumber=1 applyTransaction=true mTimestamp=472459005063005(auto) mPendingTransactions.size=0 graphicBufferId=89335319756814 transform=0
+11-17 15:55:07.492 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:07.503 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:07.521 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:07.538 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:07.555 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:07.572 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:07.589 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:07.640 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:07.669 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:07.688 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:07.723 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:07.739 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:07.755 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:07.771 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:07.788 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:07.888 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:07.898 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.061 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.078 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.096 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.114 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.134 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.148 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.165 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.182 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.203 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.212 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.234 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.250 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.267 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.281 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.299 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.315 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.337 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.349 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.383 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.411 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.433 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.445 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.462 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.480 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.500 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.514 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.532 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.550 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.567 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.581 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:08.648 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:09.930 20800 20823 D ActivityThread: invoke error.
+11-17 15:55:10.325 20800 21027 D libEGL  : Post task 2
+11-17 15:55:10.326 20800 21003 D libEGL  : Run task 2
+11-17 15:55:13.768 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:13.782 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:13.799 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:13.814 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:13.826 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:13.842 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:13.865 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:13.880 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:13.896 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:13.908 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:13.922 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:13.940 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:13.958 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:13.971 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:13.998 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:14.010 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:14.024 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:14.048 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:14.070 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:14.084 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:14.099 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:14.116 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:14.130 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:14.148 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:14.169 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:14.183 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:14.196 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:14.211 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:14.225 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:14.249 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:14.266 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:14.279 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:14.296 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:14.308 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:14.326 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:14.350 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:14.368 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:1,a:6) acquireNextBufferLocked: Failed to acquire a buffer, err=NO_BUFFER_AVAILABLE
+11-17 15:55:19.046 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=472470648, downTime=472470648, phoneEventTime=1794941719041 } moveCount:0
+11-17 15:55:19.047 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:55:19.093 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=472470698, downTime=472470648, phoneEventTime=1794941719092 } moveCount:1
+11-17 15:55:19.210 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=472470815, downTime=472470815, phoneEventTime=1794941719208 } moveCount:0
+11-17 15:55:19.211 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:55:19.293 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=472470898, downTime=472470815, phoneEventTime=1794941719292 } moveCount:3
+11-17 15:55:19.393 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=472470998, downTime=472470998, phoneEventTime=1794941719391 } moveCount:0
+11-17 15:55:19.394 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:55:19.476 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=472471081, downTime=472470998, phoneEventTime=1794941719475 } moveCount:3
+11-17 15:55:19.527 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=472471131, downTime=472471131, phoneEventTime=1794941719525 } moveCount:0
+11-17 15:55:19.527 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:55:19.642 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=472471247, downTime=472471131, phoneEventTime=1794941719640 } moveCount:4
+11-17 15:55:19.744 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=472471348, downTime=472471348, phoneEventTime=1794941719742 } moveCount:0
+11-17 15:55:19.744 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:55:19.825 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=472471431, downTime=472471348, phoneEventTime=1794941719824 } moveCount:2
+11-17 15:55:25.408 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=472477011, downTime=472477011, phoneEventTime=1794941725405 } moveCount:0
+11-17 15:55:25.408 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:55:25.505 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=472477110, downTime=472477011, phoneEventTime=1794941725504 } moveCount:3
+11-17 15:55:25.623 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=472477227, downTime=472477227, phoneEventTime=1794941725621 } moveCount:0
+11-17 15:55:25.623 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:55:25.721 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=472477327, downTime=472477227, phoneEventTime=1794941725720 } moveCount:2
+11-17 15:55:25.806 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=472477410, downTime=472477410, phoneEventTime=1794941725804 } moveCount:0
+11-17 15:55:25.807 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:55:25.921 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=472477526, downTime=472477410, phoneEventTime=1794941725919 } moveCount:2
+11-17 15:55:25.990 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=472477594, downTime=472477594, phoneEventTime=1794941725988 } moveCount:0
+11-17 15:55:25.990 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:55:26.088 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=472477693, downTime=472477594, phoneEventTime=1794941726087 } moveCount:2
+11-17 15:55:26.206 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=472477810, downTime=472477810, phoneEventTime=1794941726204 } moveCount:0
+11-17 15:55:26.206 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:55:26.271 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=472477876, downTime=472477810, phoneEventTime=1794941726270 } moveCount:2
+11-17 15:55:26.373 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=472477976, downTime=472477976, phoneEventTime=1794941726370 } moveCount:0
+11-17 15:55:26.378 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:55:26.455 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=472478059, downTime=472477976, phoneEventTime=1794941726452 } moveCount:2
+11-17 15:55:26.572 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=472478176, downTime=472478176, phoneEventTime=1794941726570 } moveCount:0
+11-17 15:55:26.572 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:55:26.637 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=472478243, downTime=472478176, phoneEventTime=1794941726636 } moveCount:2
+11-17 15:55:26.738 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=472478343, downTime=472478343, phoneEventTime=1794941726737 } moveCount:0
+11-17 15:55:26.738 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:55:26.820 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=472478426, downTime=472478343, phoneEventTime=1794941726819 } moveCount:2
+11-17 15:55:26.938 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=472478543, downTime=472478543, phoneEventTime=1794941726936 } moveCount:0
+11-17 15:55:26.939 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:55:26.987 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=472478592, downTime=472478543, phoneEventTime=1794941726986 } moveCount:0
+11-17 15:55:27.088 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=472478692, downTime=472478692, phoneEventTime=1794941727085 } moveCount:0
+11-17 15:55:27.089 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:55:27.170 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=472478776, downTime=472478692, phoneEventTime=1794941727169 } moveCount:2
+11-17 15:55:27.288 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=472478892, downTime=472478892, phoneEventTime=1794941727286 } moveCount:0
+11-17 15:55:27.289 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:55:27.354 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=472478959, downTime=472478892, phoneEventTime=1794941727353 } moveCount:2
+11-17 15:55:27.454 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=472479059, downTime=472479059, phoneEventTime=1794941727452 } moveCount:0
+11-17 15:55:27.455 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:55:27.520 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=472479125, downTime=472479059, phoneEventTime=1794941727519 } moveCount:0
+11-17 15:55:27.622 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=472479226, downTime=472479226, phoneEventTime=1794941727620 } moveCount:0
+11-17 15:55:27.623 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:55:27.687 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=472479292, downTime=472479226, phoneEventTime=1794941727686 } moveCount:1
+11-17 15:55:27.788 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=472479392, downTime=472479392, phoneEventTime=1794941727786 } moveCount:0
+11-17 15:55:27.788 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:55:27.870 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=472479475, downTime=472479392, phoneEventTime=1794941727869 } moveCount:2
+11-17 15:55:29.906 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=472481508, downTime=472481508, phoneEventTime=1794941729902 } moveCount:0
+11-17 15:55:29.907 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:55:29.976 20800 20840 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 50.76 ms.
+2026-11-17 15:55:30.088 I/N64Diagnostics: Usuário solicitou cópia dos logs
+11-17 15:55:30.086 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=472481691, downTime=472481508, phoneEventTime=1794941730085 } moveCount:3
+11-17 15:55:30.089 20800 20800 I N64Diagnostics: Usuário solicitou cópia dos logs
+11-17 15:55:30.329 20800 20840 W RenderInspector: DequeueBuffer time out on com.jsr.n64android/com.jsr.n64android.MainActivity, count=3, avg=11 ms, max=12 ms.
+11-17 15:55:32.752 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:32.752 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:32.752 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:32.759 20800 20840 W RenderInspector: DequeueBuffer time out on com.jsr.n64android/com.jsr.n64android.MainActivity, count=1, avg=11 ms, max=11 ms.
+11-17 15:55:33.064 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:33.064 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:33.064 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:33.565 20800 20800 D VRI[MainActivity]: visibilityChanged oldVisibility=true newVisibility=false
+11-17 15:55:33.606 20800 20800 I ae-bridge: unsetNativeWindow: Native window has been unset
+11-17 15:55:33.656 20800 20800 I N64VideoSurface: Surface Android removida do ae-bridge
+11-17 15:55:33.660 20800 20800 E Surface : freeAllBuffers: 1 buffers were freed while being dequeued!
+11-17 15:55:33.661 20800 20800 D BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:0,a:3) destructor()
+11-17 15:55:33.661 20800 20800 D BufferQueueConsumer: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2(BLAST Consumer)2](id:514000000002,api:0,p:-1,c:20800) disconnect: caller 20800
+11-17 15:55:33.662 20800 20800 D ViewRootImplStubImpl: onSurfaceViewDetached:
+11-17 15:55:33.662 20800 20800 D ViewRootImplStubImpl: , vri:android.view.ViewRootImpl@98f5373, com.jsr.n64android/com.jsr.n64android.MainActivity
+11-17 15:55:33.662 20800 20800 D ViewRootImplStubImpl: , vri size:720x1600
+11-17 15:55:33.662 20800 20800 D ViewRootImplStubImpl: , surfaceView:com.jsr.n64android.EmulationSurfaceView{b82c75a V.E...... ........ 0,295-720,1600}, SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]
+11-17 15:55:33.662 20800 20800 D ViewRootImplStubImpl: , surfaceView size:720x1305
+11-17 15:55:33.662 20800 20800 D ViewRootImplStubImpl: , surfaceControl:Surface(name=b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity](BLAST)#154801)/@0x2911303
+11-17 15:55:33.678 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:33.679 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:33.679 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:55:33.683 20800 20800 W .jsr.n64android: Binder 0xb40000704f2ee1a0 destroyed after setInheritRt before being parceled.
+11-17 15:55:33.685 20800 20800 D BLASTBufferQueue: [VRI[MainActivity]#1](f:0,a:2) destructor()
+11-17 15:55:33.685 20800 20800 D BufferQueueConsumer: [VRI[MainActivity]#1(BLAST Consumer)1](id:514000000001,api:0,p:-1,c:20800) disconnect: caller 20800
+11-17 15:55:33.926 20800 21097 D libEGL  : Post task 3
+11-17 15:55:33.926 20800 21003 D libEGL  : Run task 3
+11-17 15:56:13.782 20800 21003 D libEGL  : Worker thread exit 473555162048
+11-17 15:56:13.799 20800 20815 W .jsr.n64android: Suspending all threads took: 13.829ms
+11-17 15:56:13.806 20800 20800 I ForceDarkHelperStubImpl: setViewRootImplForceDark: false for com.jsr.n64android.MainActivity@7162db4, reason: AppDarkModeEnable
+11-17 15:56:13.831 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:56:13.831 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:56:13.845 20800 20800 D Activity: Activity = ActivityInfo{e31df6d com.jsr.n64android.MainActivity}, Resume onConfigurationChanged = {1.1 724mcc5mnc [pt_BR] ldltr sw360dp w360dp h800dp 320dpi nrml long port night finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 720, 1600) mAppBounds=Rect(0, 0 - 720, 1600) mMaxBounds=Rect(0, 0 - 720, 1600) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0 mInSplitScreen=false letterBoxed=false foScaled=false isSpecificEmbedded=false embeddingScale=1.0} as.3 s.2 fontWeightAdjustment=0/d/0 themeChanged=5 themeChangedFlags=16384 display=0 extraData = Bundle[{key_var_font_scale=50}] screenType=0/0}
+11-17 15:56:13.899 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:56:13.899 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:56:13.899 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:56:13.900 20800 20800 D BufferQueueConsumer: [](id:514000000003,api:0,p:-1,c:20800) connect: controlledByApp=false
+11-17 15:56:13.901 20800 20800 D BLASTBufferQueue: [VRI[MainActivity]#3](f:0,a:0) constructor()
+11-17 15:56:13.902 20800 20800 D BLASTBufferQueue: [VRI[MainActivity]#3](f:0,a:0) update width=720 height=1600 format=-3 mTransformHint=0
+11-17 15:56:13.908 20800 20800 D ViewRootImplStubImpl: onSurfaceViewAttached:
+11-17 15:56:13.908 20800 20800 D ViewRootImplStubImpl: , vri:android.view.ViewRootImpl@98f5373, com.jsr.n64android/com.jsr.n64android.MainActivity
+11-17 15:56:13.908 20800 20800 D ViewRootImplStubImpl: , vri size:720x1600
+11-17 15:56:13.908 20800 20800 D ViewRootImplStubImpl: , surfaceView:com.jsr.n64android.EmulationSurfaceView{b82c75a V.E...... ......ID 0,268-720,1600}, SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]
+11-17 15:56:13.908 20800 20800 D ViewRootImplStubImpl: , surfaceView size:720x1332
+11-17 15:56:13.908 20800 20800 D ViewRootImplStubImpl: , surfaceControl:Surface(name=b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity](BLAST)#154932)/@0x11f3ae8
+11-17 15:56:13.910 20800 20800 D BufferQueueConsumer: [](id:514000000004,api:0,p:-1,c:20800) connect: controlledByApp=false
+11-17 15:56:13.912 20800 20800 D BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#4](f:0,a:0) constructor()
+11-17 15:56:13.913 20800 20800 D BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#4](f:0,a:0) update width=720 height=1332 format=4 mTransformHint=0
+11-17 15:56:13.915 20800 20800 I N64VideoSurface: surfaceCreated: válida=true
+11-17 15:56:13.920 20800 20800 I ae-bridge: setNativeWindow: New surface has been set
+11-17 15:56:13.920 20800 20800 I N64VideoSurface: Surface Android entregue ao ae-bridge
+11-17 15:56:13.923 20800 20800 I N64VideoSurface: Surface alterada: 720x1332; válida=true; attached=true
+11-17 15:56:13.924 20800 20800 D SurfaceView: UPDATE Surface(name=b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#154931)/@0x48df2df, mIsProjectionMode = false
+11-17 15:56:13.925 20800 20800 D VRI[MainActivity]: vri.Setup new sync=wmsSync-VRI[MainActivity]#9
+11-17 15:56:13.964 20800 20840 D BLASTBufferQueue: [VRI[MainActivity]#3](f:0,a:1) acquireNextBufferLocked size=720x1600 mFrameNumber=1 applyTransaction=true mTimestamp=472525568098086(auto) mPendingTransactions.size=0 graphicBufferId=89335319756822 transform=0
+11-17 15:56:13.966 20800 20800 D VRI[MainActivity]: vri.reportDrawFinished 0 0 Rect(0, 0 - 720, 1600)
+11-17 15:56:13.967 20800 21026 I ae-bridge: VidExtFuncGLSwapBuf: New surface has been detected
+11-17 15:56:13.969 20800 20800 D BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#4](f:0,a:0) update width=720 height=1305 format=4 mTransformHint=0
+11-17 15:56:13.970 20800 20800 I N64VideoSurface: Surface alterada: 720x1305; válida=true; attached=true
+11-17 15:56:13.992 20800 21026 E BLASTBufferQueue: [b82c75a SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#4](f:0,a:0) rejecting buffer:active_size=720x1305, requested_size=720x1305 buffer{size=720x1332 transform=0}
+11-17 15:56:14.054 20800 20800 I HandWritingStubImpl: refreshLastKeyboardType: 1
+11-17 15:56:14.055 20800 20800 I HandWritingStubImpl: getCurrentKeyboardType: 1
+11-17 15:56:14.067 20800 20800 D InsetsController: hide(ime(), fromIme=false)
+11-17 15:56:14.067 20800 20800 I ImeTracker: com.jsr.n64android:5d475a37: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+11-17 15:56:14.160 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:56:14.161 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:56:14.161 20800 20800 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+11-17 15:56:15.459 20800 20800 D ViewRootImplStubImpl: onScrollToTop callback. Now is com.jsr.n64android
+11-17 15:56:15.459 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:56:15.472 20800 20800 E ViewRootImplStubImpl: No scrollable view found.
+11-17 15:56:16.942 20800 20800 D ViewRootImplStubImpl: onScrollToTop callback. Now is com.jsr.n64android
+11-17 15:56:16.942 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:56:16.947 20800 20800 E ViewRootImplStubImpl: No scrollable view found.
+11-17 15:56:17.837 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=472529440, downTime=472529440, phoneEventTime=1794941777833 } moveCount:0
+11-17 15:56:17.838 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+11-17 15:56:18.935 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=472530539, downTime=472529440, phoneEventTime=1794941778933 } moveCount:46
+11-17 15:56:19.519 20800 20800 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=472531123, downTime=472531123, phoneEventTime=1794941779517 } moveCount:0
+11-17 15:56:19.520 20800 20800 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+2026-11-17 15:56:19.635 I/N64Diagnostics: Usuário solicitou cópia dos logs
