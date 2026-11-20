@@ -1,158 +1,617 @@
-2026-11-20 04:42:46.335 #1 session=2ba1e6f7-bf52-4c45-8878-5ac0cf5977b0 pid=17311 tid=2 thread=main uptimeMs=900077779 I/N64Diagnostics: ========== NOVA SESSÃO ==========
-2026-11-20 04:42:46.346 #2 session=2ba1e6f7-bf52-4c45-8878-5ac0cf5977b0 pid=17311 tid=2 thread=main uptimeMs=900077785 I/N64Diagnostics: SESSION_START session=2ba1e6f7-bf52-4c45-8878-5ac0cf5977b0 pid=17311 process=com.jsr.n64android
-2026-11-20 04:42:46.351 #3 session=2ba1e6f7-bf52-4c45-8878-5ac0cf5977b0 pid=17311 tid=2 thread=main uptimeMs=900077790 I/N64Diagnostics: APP versionName=0.1.59 versionCode=59
-2026-11-20 04:42:46.355 #4 session=2ba1e6f7-bf52-4c45-8878-5ac0cf5977b0 pid=17311 tid=2 thread=main uptimeMs=900077794 I/N64Diagnostics: DEVICE manufacturer=Xiaomi model=25078PC3EG brand=POCO device=dew product=dew_p_global
-2026-11-20 04:42:46.359 #5 session=2ba1e6f7-bf52-4c45-8878-5ac0cf5977b0 pid=17311 tid=2 thread=main uptimeMs=900077798 I/N64Diagnostics: ANDROID release=16 sdk=36 securityPatch=2026-09-01 fingerprint=POCO/dew_p_global/dew:16/BP2A.250605.031.A3/OS3.0.307.0.WBNMIXM:user/release-keys
-2026-11-20 04:42:46.377 #6 session=2ba1e6f7-bf52-4c45-8878-5ac0cf5977b0 pid=17311 tid=2 thread=main uptimeMs=900077816 I/N64Diagnostics: RUNTIME supportedAbis=arm64-v8a, armeabi-v7a, armeabi processors=8 maxHeapBytes=268435456
-2026-11-20 04:42:46.381 #7 session=2ba1e6f7-bf52-4c45-8878-5ac0cf5977b0 pid=17311 tid=2 thread=main uptimeMs=900077820 I/N64Diagnostics: DISPLAY density=2.0 size=720x1600
-2026-11-20 04:42:46.385 #8 session=2ba1e6f7-bf52-4c45-8878-5ac0cf5977b0 pid=17311 tid=2 thread=main uptimeMs=900077824 I/N64Diagnostics: STORAGE filesDir=/data/user/0/com.jsr.n64android/files freeBytes=9337356288
-2026-11-20 04:42:46.389 #9 session=2ba1e6f7-bf52-4c45-8878-5ac0cf5977b0 pid=17311 tid=2 thread=main uptimeMs=900077828 I/N64Diagnostics: EXCEPTION_HANDLER_INSTALLED previous=com.android.internal.os.RuntimeInit$KillApplicationHandler
-2026-11-20 04:42:46.393 #10 session=2ba1e6f7-bf52-4c45-8878-5ac0cf5977b0 pid=17311 tid=1544 thread=N64-Logcat-Capture uptimeMs=900077833 I/N64Diagnostics: LOGCAT_CAPTURE_START pid=17311 mode=process-filtered
-2026-11-20 04:42:46.395 #11 session=2ba1e6f7-bf52-4c45-8878-5ac0cf5977b0 pid=17311 tid=2 thread=main uptimeMs=900077834 I/N64Diagnostics: ACTIVITY_ON_CREATE JNI_BACKEND=true
-2026-11-20 04:42:46.583 #12 session=2ba1e6f7-bf52-4c45-8878-5ac0cf5977b0 pid=17311 tid=2 thread=main uptimeMs=900078022 I/N64Diagnostics: ACTIVITY_ON_RESUME
---------- beginning of main
-11-20 04:42:45.432 17311 17311 I .jsr.n64android: Late-enabling -Xcheck:jni
-11-20 04:42:45.552 17311 17311 I .jsr.n64android: Using generational CollectorTypeCMC GC.
-11-20 04:42:45.669 17311 17311 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
---------- beginning of system
-11-20 04:42:45.765 17311 17311 I ActivityThread: Current dynamic renderEngine type=0
-11-20 04:42:45.959 17311 17324 D MiuiDownscaleImpl: set override inverted scale : 1.0
-11-20 04:42:45.966 17311 17311 I RENDER_TURBO: onActivityThreadCreate not in white list, pkg=com.jsr.n64android, type=dew
-11-20 04:42:45.968 17311 17324 D AppScoutStateMachine: 17311-ScoutStateMachinecreated
-11-20 04:42:46.048 17311 17311 D ActivityThread: setEmbeddedParam packageName=com.jsr.n64android processName=com.jsr.n64android isEmbedded=false isIsolated=false
-11-20 04:42:46.100 17311 17311 D nativeloader: Configuring clns-10 for other apk /data/app/~~XohxNIZaFD_YB_t6Nbe6Vg==/com.jsr.n64android-4coZ904GTPrNLeiWmjcbRA==/base.apk. target_sdk_version=35, uses_libraries=, library_path=/data/app/~~XohxNIZaFD_YB_t6Nbe6Vg==/com.jsr.n64android-4coZ904GTPrNLeiWmjcbRA==/lib/arm64:/data/app/~~XohxNIZaFD_YB_t6Nbe6Vg==/com.jsr.n64android-4coZ904GTPrNLeiWmjcbRA==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.jsr.n64android
-11-20 04:42:46.103 17311 17311 D CompatChangeReporter: Compat change id reported: 202956589; UID 11066; state: ENABLED
-11-20 04:42:46.109 17311 17311 I .jsr.n64android: AssetManager2(0xb40000702f2cbd98) locale list changing from [] to [pt-BR]
-11-20 04:42:46.116 17311 17311 E MiuiPreloadClassImpl: invoke error.
-11-20 04:42:46.116 17311 17311 D MiuiMonitorThread: Shared singleton Thread for stability monitor start
-11-20 04:42:46.130 17311 17311 D HWUI    : [HWUI] Flag vulkan_enhance_pipeline_cache enabled
-11-20 04:42:46.130 17311 17311 D HWUI    : [HWUI] EnhanceVkPipelineCache is disabled
-11-20 04:42:46.130 17311 17311 D HWUI    : [HWUI] Flag ddre enabled
-11-20 04:42:46.134 17311 17311 V GraphicsEnvironment: Currently set values for:
-11-20 04:42:46.138 17311 17311 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
-11-20 04:42:46.138 17311 17311 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
-11-20 04:42:46.138 17311 17311 V GraphicsEnvironment: com.jsr.n64android is not listed in per-application setting
-11-20 04:42:46.138 17311 17311 V GraphicsEnvironment: ANGLE allowlist from config: 
-11-20 04:42:46.138 17311 17311 V GraphicsEnvironment: com.jsr.n64android is not listed in ANGLE allowlist or settings, returning default
-11-20 04:42:46.138 17311 17311 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
-11-20 04:42:46.142 17311 17311 I ActivityThread: TrafficStats init done
-11-20 04:42:46.155 17311 17311 I ForceDarkHelperStubImpl: initialize for com.jsr.n64android , ForceDarkAppConfig: null
-11-20 04:42:46.156 17311 17311 D nativeloader: Load libforcedarkimpl.so using system ns (caller=/system_ext/framework/miui-framework.jar): ok
-11-20 04:42:46.157 17311 17311 D HWUI    : JNI_OnLoad success
-11-20 04:42:46.157 17311 17311 I MiuiForceDarkConfig: setConfig density:2.000000, mainRule:0, secondaryRule:0, tertiaryRule:0
-11-20 04:42:46.183 17311 17311 E ashmem  : Pinning is deprecated since Android Q. Please use trim or other methods.
-11-20 04:42:46.189 17311 17311 I ActivityThread: Miui Feature Init done
-11-20 04:42:46.209 17311 17311 D ResMonitorStub: The current process type is: third_party_app, process name is: com.jsr.n64android
-11-20 04:42:46.263 17311 17311 D HWUI    : [HWUI] Flag vulkan_enhance_pipeline_cache enabled
-11-20 04:42:46.263 17311 17311 D HWUI    : [HWUI] EnhanceVkPipelineCache is disabled
-11-20 04:42:46.263 17311 17311 D HWUI    : [HWUI] Flag ddre enabled
-11-20 04:42:46.263 17311 17311 D .jsr.n64android: blurUtils, initBackgroundBlurMinInterval processName(com.jsr.n64android), inWhiteLists(0)
-11-20 04:42:46.264 17311 17311 I ActivityThread: HardwareRenderer preload  done
-11-20 04:42:46.270 17311 17360 I DisplayManager: Choreographer implicitly registered for the refresh rate.
-11-20 04:42:46.274 17311 17311 I .jsr.n64android: AssetManager2(0xb40000702f2cff38) locale list changing from [] to [pt-BR]
-11-20 04:42:46.303 17311 17360 W libc    : Access denied finding property "vendor.mivk.log.debug"
-11-20 04:42:46.303 17311 17360 D vulkan  : searching for layers in '/data/app/~~XohxNIZaFD_YB_t6Nbe6Vg==/com.jsr.n64android-4coZ904GTPrNLeiWmjcbRA==/lib/arm64'
-11-20 04:42:46.303 17311 17360 D vulkan  : searching for layers in '/data/app/~~XohxNIZaFD_YB_t6Nbe6Vg==/com.jsr.n64android-4coZ904GTPrNLeiWmjcbRA==/base.apk!/lib/arm64-v8a'
-11-20 04:42:46.315 17311 17360 D MMUD    : mtk_memory_debug_init com.jsr.n64android 0xb4000071dda805d0
-11-20 04:42:46.319 17311 17380 E .jsr.n64android: setpriority success to 100 : mali-cmar-backend
-11-20 04:42:46.327 17311 17360 D HWUI    : [HWUI] Flag vulkan_enhance_pipeline_cache enabled
-11-20 04:42:46.327 17311 17360 D HWUI    : [HWUI] EnhanceVkPipelineCache is disabled
-11-20 04:42:46.327 17311 17360 D HWUI    : [HWUI] Flag ddre enabled
-11-20 04:42:46.329 17311 17360 D SKIA    : [Skia] Flag vulkan_enhance_pipeline_cache enabled
-11-20 04:42:46.329 17311 17360 D SKIA    : [Skia] EnhanceVkPipelineCache is false
-11-20 04:42:46.393 17311 17311 D CompatChangeReporter: Compat change id reported: 312399441; UID 11066; state: ENABLED
-11-20 04:42:46.418 17311 17370 D MMUD    : get_leak_baseline 3246391296
-11-20 04:42:46.421 17311 17311 D CompatChangeReporter: Compat change id reported: 279646685; UID 11066; state: ENABLED
-11-20 04:42:46.431 17311 17311 D CompatChangeReporter: Compat change id reported: 63938206; UID 11066; state: ENABLED
-11-20 04:42:46.537 17311 17311 D CompatChangeReporter: Compat change id reported: 309578419; UID 11066; state: ENABLED
-11-20 04:42:46.542 17311 17311 D DesktopModeFlags: Toggle override initialized to: OVERRIDE_UNSET
-11-20 04:42:46.552 17311 17311 D DecorView: updateFreeformOutlineFromActivity, inFreeform=false,inFreeformWindowMode=false
-11-20 04:42:46.561 17311 17311 D Activity: Activity = ActivityInfo{75b1d52 com.jsr.n64android.MainActivity}, Resume onConfigurationChanged = {1.1 724mcc5mnc [pt_BR] ldltr sw360dp w360dp h800dp 320dpi nrml long port night finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 720, 1600) mAppBounds=Rect(0, 0 - 720, 1600) mMaxBounds=Rect(0, 0 - 720, 1600) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0 mInSplitScreen=false letterBoxed=false foScaled=false isSpecificEmbedded=false embeddingScale=1.0} as.3 s.2 fontWeightAdjustment=0/d/0 themeChanged=5 themeChangedFlags=16384 display=0 extraData = Bundle[{key_var_font_scale=50}] screenType=0/0}
-11-20 04:42:46.606 17311 17311 D nativeloader: Load libpowerhalwrap_jni.so using system ns (caller=/system_ext/framework/mediatek-framework.jar): ok
-11-20 04:42:46.606 17311 17311 I PowerHalWrapper: PowerHalWrapper.getInstance 
-11-20 04:42:46.607 17311 17311 I PowerHalWrapper: PowerHalWrapper.getInstance 
-11-20 04:42:46.607 17311 17311 I M-ProMotion: M-ProMotion is disabled
-11-20 04:42:46.611 17311 17311 D CompatChangeReporter: Compat change id reported: 352594277; UID 11066; state: ENABLED
-11-20 04:42:46.615 17311 17417 I PowerHalWrapper: PowerHalWrapper.getInstance 
-11-20 04:42:46.618 17311 17311 I SurfaceFactory: [static] sSurfaceFactory = com.mediatek.view.impl.SurfaceFactoryImpl@5c6f89b
-11-20 04:42:46.649 17311 17311 D CompatChangeReporter: Compat change id reported: 349153669; UID 11066; state: ENABLED
-11-20 04:42:46.653 17311 17311 D FramePredict: FramePredict init: false
-11-20 04:42:46.654 17311 17311 D FramePredict: init success
-11-20 04:42:46.657 17311 17311 W libc    : Access denied finding property "ro.vendor.perf.scroll_opt"
-11-20 04:42:46.662 17311 17311 D .jsr.n64android: MiuiProcessManagerServiceStub setSchedFifo
-11-20 04:42:46.662 17311 17311 I MiuiProcessManagerImpl: setSchedFifo pid:17311, mode:3
-11-20 04:42:46.666 17311 17311 W HWUI    : Unknown dataspace 0
-11-20 04:42:46.667 17311 17360 W libc    : Access denied finding property "ro.vendor.display.iris_x7.support"
-11-20 04:42:46.667 17311 17360 I pwIrisCR: isCnVersion = 0, isSupportIris = 0
-11-20 04:42:46.663 17311 17311 W RenderThread: type=1400 audit(0.0:772624): avc:  denied  { read } for  name="u:object_r:vendor_displayfeature_prop:s0" dev="tmpfs" ino=562 scontext=u:r:untrusted_app:s0:c42,c260,c512,c768 tcontext=u:object_r:vendor_displayfeature_prop:s0 tclass=file permissive=0 app=com.jsr.n64android
-11-20 04:42:46.672 17311 17360 D HWUI    : TAG_DDRE, CanvasContext::setDdreActivities: 
-11-20 04:42:46.673 17311 17311 I ForceDarkHelperStubImpl: setViewRootImplForceDark: false for com.jsr.n64android.MainActivity@c3104aa, reason: AppDarkModeEnable
-11-20 04:42:46.675 17311 17422 E FramePredict: registerContentObserver fail
-11-20 04:42:46.680 17311 17311 D FirstFrameSpeedUp: bls: [com.xcj.hm.kangfuyixue]
-11-20 04:42:46.680 17311 17311 I ViewRootImpl: com.jsr.n64android/com.jsr.n64android.MainActivity use first frame acceleration
-11-20 04:42:46.696 17311 17311 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-20 04:42:46.696 17311 17311 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-20 04:42:46.696 17311 17311 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-20 04:42:46.696 17311 17311 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-20 04:42:46.699 17311 17311 D InputEventReceiver: Input log is disabled in InputEventReceiver.
-11-20 04:42:46.706 17311 17311 D DecorViewImmersiveImpl: onAttachedToWindow. pkg: com.jsr.n64android
-11-20 04:42:46.706 17311 17311 I ComputilityLevel: getComputilityLevel(): 1
-11-20 04:42:46.716 17311 17311 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-20 04:42:46.716 17311 17311 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-20 04:42:46.717 17311 17311 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-20 04:42:46.717 17311 17311 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-20 04:42:46.784 17311 17311 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-20 04:42:46.784 17311 17311 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-20 04:42:46.784 17311 17311 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-20 04:42:46.787 17311 17311 E .jsr.n64android: [perfctl] 17311 17311 FPSGO ver:7
-11-20 04:42:46.787 17311 17311 E .jsr.n64android: [perfctl] 1 1 1 0
-11-20 04:42:46.788 17311 17311 D BufferQueueConsumer: [](id:439f00000000,api:0,p:-1,c:17311) connect: controlledByApp=false
-11-20 04:42:46.791 17311 17311 D BLASTBufferQueue: [VRI[MainActivity]#0](f:0,a:0) constructor()
-11-20 04:42:46.791 17311 17311 D BLASTBufferQueue: [VRI[MainActivity]#0](f:0,a:0) update width=720 height=1600 format=-1 mTransformHint=0
-11-20 04:42:46.812 17311 17311 D VRI[MainActivity]: vri.Setup new sync=wmsSync-VRI[MainActivity]#0
-11-20 04:42:46.870 17311 17360 I GrallocExtra: gralloc_extra_query:is_SW3D 0
-11-20 04:42:46.958 17311 17360 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 44.66 ms.
-11-20 04:42:46.979 17311 17360 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 19.52 ms.
-11-20 04:42:46.991 17311 17360 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 10.43 ms.
-11-20 04:42:47.004 17311 17360 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 10.10 ms.
-11-20 04:42:47.017 17311 17360 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 12.60 ms.
-11-20 04:42:47.022 17311 17360 I GrallocExtra: gralloc_extra_query:is_SW3D 0
-11-20 04:42:47.022 17311 17360 W libc    : Access denied finding property "ro.vendor.display.iris_x7.support"
-11-20 04:42:47.019 17311 17311 W RenderThread: type=1400 audit(0.0:772625): avc:  denied  { read } for  name="u:object_r:vendor_displayfeature_prop:s0" dev="tmpfs" ino=562 scontext=u:r:untrusted_app:s0:c42,c260,c512,c768 tcontext=u:object_r:vendor_displayfeature_prop:s0 tclass=file permissive=0 app=com.jsr.n64android
-11-20 04:42:47.023 17311 17360 D BLASTBufferQueue: [VRI[MainActivity]#0](f:0,a:1) acquireNextBufferLocked size=720x1600 mFrameNumber=1 applyTransaction=true mTimestamp=621736605479980(auto) mPendingTransactions.size=0 graphicBufferId=74350178861062 transform=0
-11-20 04:42:47.027 17311 17311 D VRI[MainActivity]: vri.reportDrawFinished 0 0 Rect(0, 0 - 720, 1600)
-11-20 04:42:47.029 17311 17311 I Choreographer: first vsync insert message into MessageQueue Head
-11-20 04:42:47.043 17311 17360 D HWUI    : [HWUI] Flag vulkan_enhance_pipeline_cache enabled
-11-20 04:42:47.043 17311 17360 D HWUI    : [HWUI] EnhanceVkPipelineCache is disabled
-11-20 04:42:47.043 17311 17360 D HWUI    : [HWUI] Flag ddre enabled
-11-20 04:42:47.053 17311 17311 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-20 04:42:47.053 17311 17311 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-20 04:42:47.053 17311 17311 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-20 04:42:47.063 17311 17311 D VRI[MainActivity]: vri.Setup new sync=wmsSync-VRI[MainActivity]#2
-11-20 04:42:47.087 17311 17311 D VRI[MainActivity]: vri.reportDrawFinished 0 0 Rect(0, 0 - 720, 1600)
-11-20 04:42:47.129 17311 17311 I HandWritingStubImpl: refreshLastKeyboardType: 1
-11-20 04:42:47.132 17311 17311 I HandWritingStubImpl: getCurrentKeyboardType: 1
-11-20 04:42:47.203 17311 17311 D InsetsController: hide(ime(), fromIme=false)
-11-20 04:42:47.209 17311 17311 I ImeTracker: com.jsr.n64android:ae56aeb7: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
-11-20 04:42:47.210 17311 17311 I HandWritingStubImpl: getCurrentKeyboardType: 1
-11-20 04:42:47.228 17311 17311 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-20 04:42:47.228 17311 17311 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-20 04:42:47.229 17311 17311 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-20 04:42:48.986 17311 17317 I .jsr.n64android: Compiler allocated 6810KB to compile void android.view.ViewRootImpl.performTraversals()
-11-20 04:42:50.914 17311 17446 D libEGL  : Post task 1
-11-20 04:42:50.915 17311 17560 D libEGL  : Worker thread start 471354786752
-11-20 04:42:50.915 17311 17560 D libEGL  : Run task 1
-11-20 04:42:52.040 17311 17311 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=621741618, downTime=621741618, phoneEventTime=1795160572035 } moveCount:0
-11-20 04:42:52.050 17311 17311 W MirrorManager: this model don't Support
-11-20 04:42:52.050 17311 17311 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
-11-20 04:42:52.374 17311 17360 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 285.33 ms.
-11-20 04:42:52.379 17311 17360 E .jsr.n64android: FrameInsert open fail: No such file or directory
-11-20 04:42:52.379 17311 17360 E .jsr.n64android: DynamicFPS DF open fail: No such file or directory
-11-20 04:42:52.382 17311 17311 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=621741701, downTime=621741618, phoneEventTime=1795160572118 } moveCount:1
-11-20 04:42:52.388 17311 17360 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 0.29 ms.
-2026-11-20 04:42:52.451 #13 session=2ba1e6f7-bf52-4c45-8878-5ac0cf5977b0 pid=17311 tid=2 thread=main uptimeMs=900083888 I/N64Diagnostics: ACTIVITY_ON_PAUSE
-11-20 04:42:52.453 17311 17311 I PowerHalMgrImpl: perfLockAcq is supported. 
-11-20 04:42:53.050 17311 17311 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-20 04:42:53.050 17311 17311 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-20 04:42:53.050 17311 17311 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-11-20 04:42:53.557 17311 17311 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =
+2026-11-20 05:08:46.698 #1 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=2 thread=main uptimeMs=901638143 I/N64Diagnostics: ========== NOVA SESSÃO ==========
+2026-11-20 05:08:46.709 #2 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=2 thread=main uptimeMs=901638148 I/N64Diagnostics: SESSION_START session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 process=com.jsr.n64android
+2026-11-20 05:08:46.715 #3 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=2 thread=main uptimeMs=901638154 I/N64Diagnostics: APP versionName=0.1.59 versionCode=59
+2026-11-20 05:08:46.719 #4 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=2 thread=main uptimeMs=901638158 I/N64Diagnostics: DEVICE manufacturer=Xiaomi model=25078PC3EG brand=POCO device=dew product=dew_p_global
+2026-11-20 05:08:46.723 #5 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=2 thread=main uptimeMs=901638162 I/N64Diagnostics: ANDROID release=16 sdk=36 securityPatch=2026-09-01 fingerprint=POCO/dew_p_global/dew:16/BP2A.250605.031.A3/OS3.0.307.0.WBNMIXM:user/release-keys
+2026-11-20 05:08:46.743 #6 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=2 thread=main uptimeMs=901638182 I/N64Diagnostics: RUNTIME supportedAbis=arm64-v8a, armeabi-v7a, armeabi processors=8 maxHeapBytes=268435456
+2026-11-20 05:08:46.747 #7 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=2 thread=main uptimeMs=901638186 I/N64Diagnostics: DISPLAY density=2.0 size=720x1600
+2026-11-20 05:08:46.751 #8 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=2 thread=main uptimeMs=901638190 I/N64Diagnostics: STORAGE filesDir=/data/user/0/com.jsr.n64android/files freeBytes=9231298560
+2026-11-20 05:08:46.755 #9 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=2 thread=main uptimeMs=901638195 I/N64Diagnostics: EXCEPTION_HANDLER_INSTALLED previous=com.android.internal.os.RuntimeInit$KillApplicationHandler
+2026-11-20 05:08:46.762 #10 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=2 thread=main uptimeMs=901638201 I/N64Diagnostics: ACTIVITY_ON_CREATE JNI_BACKEND=true
+2026-11-20 05:08:46.766 #11 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1542 thread=N64-Logcat-Capture uptimeMs=901638206 I/N64Diagnostics: LOGCAT_CAPTURE_START pid=27362 mode=all-buffers-local-pid-filter
+2026-11-20 05:08:46.958 #12 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=2 thread=main uptimeMs=901638397 I/N64Diagnostics: ACTIVITY_ON_RESUME
+LOGCAT 11-20 05:08:45.547 27362 27362 I .jsr.n64android: Late-enabling -Xcheck:jni
+LOGCAT 11-20 05:08:45.664 27362 27362 I .jsr.n64android: Using generational CollectorTypeCMC GC.
+LOGCAT 11-20 05:08:45.735 27362 27362 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+LOGCAT 11-20 05:08:45.820 27362 27362 I service_manager_slow: [66,MiuiForceVkService]
+LOGCAT 11-20 05:08:45.862 27362 27362 I ActivityThread: Current dynamic renderEngine type=0
+LOGCAT 11-20 05:08:46.103 27362 27378 D MiuiDownscaleImpl: set override inverted scale : 1.0
+LOGCAT 11-20 05:08:46.109 27362 27362 W BpBinder: PerfMonitor binderTransact: time=225ms interface=android.app.IActivityManager code=371
+LOGCAT 11-20 05:08:46.129 27362 27362 I RENDER_TURBO: onActivityThreadCreate not in white list, pkg=com.jsr.n64android, type=dew
+LOGCAT 11-20 05:08:46.150 27362 27378 D AppScoutStateMachine: 27362-ScoutStateMachinecreated
+LOGCAT 11-20 05:08:46.220 27362 27362 D ActivityThread: setEmbeddedParam packageName=com.jsr.n64android processName=com.jsr.n64android isEmbedded=false isIsolated=false
+LOGCAT 11-20 05:08:46.276 27362 27362 D nativeloader: Configuring clns-10 for other apk /data/app/~~_bHREXhrp_rYsoLHegYmkg==/com.jsr.n64android-4KlgBModjCR6nqCgGR_ZcA==/base.apk. target_sdk_version=35, uses_libraries=, library_path=/data/app/~~_bHREXhrp_rYsoLHegYmkg==/com.jsr.n64android-4KlgBModjCR6nqCgGR_ZcA==/lib/arm64:/data/app/~~_bHREXhrp_rYsoLHegYmkg==/com.jsr.n64android-4KlgBModjCR6nqCgGR_ZcA==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.jsr.n64android
+LOGCAT 11-20 05:08:46.279 27362 27362 D CompatChangeReporter: Compat change id reported: 202956589; UID 11067; state: ENABLED
+LOGCAT 11-20 05:08:46.289 27362 27362 I .jsr.n64android: AssetManager2(0xb40000702f2c6c58) locale list changing from [] to [pt-BR]
+LOGCAT 11-20 05:08:46.295 27362 27362 E MiuiPreloadClassImpl: invoke error.
+LOGCAT 11-20 05:08:46.296 27362 27362 D MiuiMonitorThread: Shared singleton Thread for stability monitor start
+LOGCAT 11-20 05:08:46.307 27362 27362 D HWUI    : [HWUI] Flag vulkan_enhance_pipeline_cache enabled
+LOGCAT 11-20 05:08:46.307 27362 27362 D HWUI    : [HWUI] EnhanceVkPipelineCache is disabled
+LOGCAT 11-20 05:08:46.307 27362 27362 D HWUI    : [HWUI] Flag ddre enabled
+LOGCAT 11-20 05:08:46.311 27362 27362 V GraphicsEnvironment: Currently set values for:
+LOGCAT 11-20 05:08:46.311 27362 27362 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
+LOGCAT 11-20 05:08:46.311 27362 27362 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
+LOGCAT 11-20 05:08:46.311 27362 27362 V GraphicsEnvironment: com.jsr.n64android is not listed in per-application setting
+LOGCAT 11-20 05:08:46.311 27362 27362 V GraphicsEnvironment: ANGLE allowlist from config: 
+LOGCAT 11-20 05:08:46.311 27362 27362 V GraphicsEnvironment: com.jsr.n64android is not listed in ANGLE allowlist or settings, returning default
+LOGCAT 11-20 05:08:46.311 27362 27362 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+LOGCAT 11-20 05:08:46.315 27362 27362 I ActivityThread: TrafficStats init done
+LOGCAT 11-20 05:08:46.325 27362 27362 I ForceDarkHelperStubImpl: initialize for com.jsr.n64android , ForceDarkAppConfig: null
+LOGCAT 11-20 05:08:46.326 27362 27362 D nativeloader: Load libforcedarkimpl.so using system ns (caller=/system_ext/framework/miui-framework.jar): ok
+LOGCAT 11-20 05:08:46.327 27362 27362 D HWUI    : JNI_OnLoad success
+LOGCAT 11-20 05:08:46.327 27362 27362 I MiuiForceDarkConfig: setConfig density:2.000000, mainRule:0, secondaryRule:0, tertiaryRule:0
+LOGCAT 11-20 05:08:46.349 27362 27362 E ashmem  : Pinning is deprecated since Android Q. Please use trim or other methods.
+LOGCAT 11-20 05:08:46.354 27362 27362 I ActivityThread: Miui Feature Init done
+LOGCAT 11-20 05:08:46.371 27362 27362 D ResMonitorStub: The current process type is: third_party_app, process name is: com.jsr.n64android
+LOGCAT 11-20 05:08:46.584 27362 27362 W BpBinder: PerfMonitor binderTransact: time=210ms interface=android.app.IActivityManager code=27
+LOGCAT 11-20 05:08:46.591 27362 27362 D HWUI    : [HWUI] Flag vulkan_enhance_pipeline_cache enabled
+LOGCAT 11-20 05:08:46.591 27362 27362 D HWUI    : [HWUI] EnhanceVkPipelineCache is disabled
+LOGCAT 11-20 05:08:46.591 27362 27362 D HWUI    : [HWUI] Flag ddre enabled
+LOGCAT 11-20 05:08:46.591 27362 27362 D .jsr.n64android: blurUtils, initBackgroundBlurMinInterval processName(com.jsr.n64android), inWhiteLists(0)
+LOGCAT 11-20 05:08:46.591 27362 27362 I ActivityThread: HardwareRenderer preload  done
+LOGCAT 11-20 05:08:46.596 27362 27434 I DisplayManager: Choreographer implicitly registered for the refresh rate.
+LOGCAT 11-20 05:08:46.627 27362 27362 I .jsr.n64android: AssetManager2(0xb40000702f2d9e98) locale list changing from [] to [pt-BR]
+LOGCAT 11-20 05:08:46.636 27362 27434 W libc    : Access denied finding property "vendor.mivk.log.debug"
+LOGCAT 11-20 05:08:46.636 27362 27434 D vulkan  : searching for layers in '/data/app/~~_bHREXhrp_rYsoLHegYmkg==/com.jsr.n64android-4KlgBModjCR6nqCgGR_ZcA==/lib/arm64'
+LOGCAT 11-20 05:08:46.637 27362 27434 D vulkan  : searching for layers in '/data/app/~~_bHREXhrp_rYsoLHegYmkg==/com.jsr.n64android-4KlgBModjCR6nqCgGR_ZcA==/base.apk!/lib/arm64-v8a'
+LOGCAT 11-20 05:08:46.646 27362 27434 D MMUD    : mtk_memory_debug_init com.jsr.n64android 0xb4000071e1e015d0
+LOGCAT 11-20 05:08:46.654 27362 27448 E .jsr.n64android: setpriority success to 100 : mali-cmar-backend
+LOGCAT 11-20 05:08:46.662 27362 27434 D HWUI    : [HWUI] Flag vulkan_enhance_pipeline_cache enabled
+LOGCAT 11-20 05:08:46.662 27362 27434 D HWUI    : [HWUI] EnhanceVkPipelineCache is disabled
+LOGCAT 11-20 05:08:46.662 27362 27434 D HWUI    : [HWUI] Flag ddre enabled
+LOGCAT 11-20 05:08:46.663 27362 27434 D SKIA    : [Skia] Flag vulkan_enhance_pipeline_cache enabled
+LOGCAT 11-20 05:08:46.663 27362 27434 D SKIA    : [Skia] EnhanceVkPipelineCache is false
+LOGCAT 11-20 05:08:46.754 27362 27439 D MMUD    : get_leak_baseline 3246391296
+LOGCAT 11-20 05:08:46.760 27362 27362 D CompatChangeReporter: Compat change id reported: 312399441; UID 11067; state: ENABLED
+LOGCAT 11-20 05:08:46.826 27362 27362 D CompatChangeReporter: Compat change id reported: 279646685; UID 11067; state: ENABLED
+LOGCAT 11-20 05:08:46.831 27362 27362 D CompatChangeReporter: Compat change id reported: 63938206; UID 11067; state: ENABLED
+LOGCAT 11-20 05:08:46.917 27362 27362 D CompatChangeReporter: Compat change id reported: 309578419; UID 11067; state: ENABLED
+LOGCAT 11-20 05:08:46.921 27362 27362 D DesktopModeFlags: Toggle override initialized to: OVERRIDE_UNSET
+LOGCAT 11-20 05:08:46.931 27362 27362 D DecorView: updateFreeformOutlineFromActivity, inFreeform=false,inFreeformWindowMode=false
+LOGCAT 11-20 05:08:46.936 27362 27362 I wm_on_create_called: [0,153482316,com.jsr.n64android.MainActivity,performCreate,267]
+LOGCAT 11-20 05:08:46.937 27362 27362 I wm_on_start_called: [0,153482316,com.jsr.n64android.MainActivity,handleStartActivity,0]
+LOGCAT 11-20 05:08:46.940 27362 27362 D Activity: Activity = ActivityInfo{75b1d52 com.jsr.n64android.MainActivity}, Resume onConfigurationChanged = {1.1 724mcc5mnc [pt_BR] ldltr sw360dp w360dp h800dp 320dpi nrml long port night finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 720, 1600) mAppBounds=Rect(0, 0 - 720, 1600) mMaxBounds=Rect(0, 0 - 720, 1600) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0 mInSplitScreen=false letterBoxed=false foScaled=false isSpecificEmbedded=false embeddingScale=1.0} as.3 s.2 fontWeightAdjustment=0/d/0 themeChanged=5 themeChangedFlags=16384 display=0 extraData = Bundle[{key_var_font_scale=50}] screenType=0/0}
+LOGCAT 11-20 05:08:46.962 27362 27362 I wm_on_resume_called: [0,153482316,com.jsr.n64android.MainActivity,RESUME_ACTIVITY,22]
+LOGCAT 11-20 05:08:46.972 27362 27362 D nativeloader: Load libpowerhalwrap_jni.so using system ns (caller=/system_ext/framework/mediatek-framework.jar): ok
+LOGCAT 11-20 05:08:46.972 27362 27362 I PowerHalWrapper: PowerHalWrapper.getInstance 
+LOGCAT 11-20 05:08:46.972 27362 27362 I PowerHalWrapper: PowerHalWrapper.getInstance 
+LOGCAT 11-20 05:08:46.973 27362 27362 I M-ProMotion: M-ProMotion is disabled
+LOGCAT 11-20 05:08:46.976 27362 27480 I PowerHalWrapper: PowerHalWrapper.getInstance 
+LOGCAT 11-20 05:08:46.979 27362 27362 D CompatChangeReporter: Compat change id reported: 352594277; UID 11067; state: ENABLED
+LOGCAT 11-20 05:08:46.989 27362 27362 I SurfaceFactory: [static] sSurfaceFactory = com.mediatek.view.impl.SurfaceFactoryImpl@5c6f89b
+LOGCAT 11-20 05:08:47.007 27362 27362 D CompatChangeReporter: Compat change id reported: 349153669; UID 11067; state: ENABLED
+LOGCAT 11-20 05:08:47.014 27362 27362 D FramePredict: FramePredict init: false
+LOGCAT 11-20 05:08:47.015 27362 27362 D FramePredict: init success
+LOGCAT 11-20 05:08:47.021 27362 27362 W libc    : Access denied finding property "ro.vendor.perf.scroll_opt"
+LOGCAT 11-20 05:08:47.026 27362 27362 D .jsr.n64android: MiuiProcessManagerServiceStub setSchedFifo
+LOGCAT 11-20 05:08:47.026 27362 27362 I MiuiProcessManagerImpl: setSchedFifo pid:27362, mode:3
+LOGCAT 11-20 05:08:47.032 27362 27362 W HWUI    : Unknown dataspace 0
+LOGCAT 11-20 05:08:47.033 27362 27434 W libc    : Access denied finding property "ro.vendor.display.iris_x7.support"
+LOGCAT 11-20 05:08:47.033 27362 27434 I pwIrisCR: isCnVersion = 0, isSupportIris = 0
+LOGCAT 11-20 05:08:47.041 27362 27434 D HWUI    : TAG_DDRE, CanvasContext::setDdreActivities: 
+LOGCAT 11-20 05:08:47.042 27362 27362 I ForceDarkHelperStubImpl: setViewRootImplForceDark: false for com.jsr.n64android.MainActivity@c3104aa, reason: AppDarkModeEnable
+LOGCAT 11-20 05:08:47.046 27362 27362 D FirstFrameSpeedUp: bls: [com.xcj.hm.kangfuyixue]
+LOGCAT 11-20 05:08:47.046 27362 27362 I ViewRootImpl: com.jsr.n64android/com.jsr.n64android.MainActivity use first frame acceleration
+LOGCAT 11-20 05:08:47.055 27362 27483 E FramePredict: registerContentObserver fail
+LOGCAT 11-20 05:08:47.067 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:47.067 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:47.067 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:47.070 27362 27362 D InputEventReceiver: Input log is disabled in InputEventReceiver.
+LOGCAT 11-20 05:08:47.077 27362 27362 D DecorViewImmersiveImpl: onAttachedToWindow. pkg: com.jsr.n64android
+LOGCAT 11-20 05:08:47.077 27362 27362 I ComputilityLevel: getComputilityLevel(): 1
+LOGCAT 11-20 05:08:47.087 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:47.087 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:47.087 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:47.087 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:47.152 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:47.152 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:47.152 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:47.155 27362 27362 E .jsr.n64android: [perfctl] 27362 27362 FPSGO ver:7
+LOGCAT 11-20 05:08:47.155 27362 27362 E .jsr.n64android: [perfctl] 1 1 1 0
+LOGCAT 11-20 05:08:47.156 27362 27362 D BufferQueueConsumer: [](id:6ae200000000,api:0,p:-1,c:27362) connect: controlledByApp=false
+LOGCAT 11-20 05:08:47.158 27362 27362 D BLASTBufferQueue: [VRI[MainActivity]#0](f:0,a:0) constructor()
+LOGCAT 11-20 05:08:47.158 27362 27362 D BLASTBufferQueue: [VRI[MainActivity]#0](f:0,a:0) update width=720 height=1600 format=-1 mTransformHint=0
+LOGCAT 11-20 05:08:47.178 27362 27362 D VRI[MainActivity]: vri.Setup new sync=wmsSync-VRI[MainActivity]#0
+LOGCAT 11-20 05:08:47.232 27362 27434 I GrallocExtra: gralloc_extra_query:is_SW3D 0
+LOGCAT 11-20 05:08:47.031 27362 27362 W RenderThread: type=1400 audit(0.0:773624): avc:  denied  { read } for  name="u:object_r:vendor_displayfeature_prop:s0" dev="tmpfs" ino=562 scontext=u:r:untrusted_app:s0:c43,c260,c512,c768 tcontext=u:object_r:vendor_displayfeature_prop:s0 tclass=file permissive=0 app=com.jsr.n64android
+LOGCAT 11-20 05:08:47.325 27362 27434 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 37.90 ms.
+LOGCAT 11-20 05:08:47.350 27362 27434 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 23.98 ms.
+LOGCAT 11-20 05:08:47.368 27362 27434 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 16.50 ms.
+LOGCAT 11-20 05:08:47.382 27362 27434 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 13.71 ms.
+LOGCAT 11-20 05:08:47.399 27362 27434 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 16.39 ms.
+LOGCAT 11-20 05:08:47.404 27362 27434 I GrallocExtra: gralloc_extra_query:is_SW3D 0
+LOGCAT 11-20 05:08:47.404 27362 27434 W libc    : Access denied finding property "ro.vendor.display.iris_x7.support"
+LOGCAT 11-20 05:08:47.403 27362 27362 I auditd  : type=1400 audit(0.0:773625): avc:  denied  { read } for  comm="RenderThread" name="u:object_r:vendor_displayfeature_prop:s0" dev="tmpfs" ino=562 scontext=u:r:untrusted_app:s0:c43,c260,c512,c768 tcontext=u:object_r:vendor_displayfeature_prop:s0 tclass=file permissive=0 app=com.jsr.n64android
+LOGCAT 11-20 05:08:47.403 27362 27362 W RenderThread: type=1400 audit(0.0:773625): avc:  denied  { read } for  name="u:object_r:vendor_displayfeature_prop:s0" dev="tmpfs" ino=562 scontext=u:r:untrusted_app:s0:c43,c260,c512,c768 tcontext=u:object_r:vendor_displayfeature_prop:s0 tclass=file permissive=0 app=com.jsr.n64android
+LOGCAT 11-20 05:08:47.408 27362 27362 D VRI[MainActivity]: vri.reportDrawFinished 0 0 Rect(0, 0 - 720, 1600)
+LOGCAT 11-20 05:08:47.408 27362 27362 I viewroot_draw_event: [VRI[MainActivity],reportDrawFinished seqId=0]
+LOGCAT 11-20 05:08:47.410 27362 27362 I Choreographer: first vsync insert message into MessageQueue Head
+LOGCAT 11-20 05:08:47.439 27362 27362 I wm_on_top_resumed_gained_called: [153482316,com.jsr.n64android.MainActivity,topStateChangedWhenResumed]
+LOGCAT 11-20 05:08:47.441 27362 27434 D HWUI    : [HWUI] Flag vulkan_enhance_pipeline_cache enabled
+LOGCAT 11-20 05:08:47.441 27362 27434 D HWUI    : [HWUI] EnhanceVkPipelineCache is disabled
+LOGCAT 11-20 05:08:47.441 27362 27434 D HWUI    : [HWUI] Flag ddre enabled
+LOGCAT 11-20 05:08:47.450 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:47.451 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:47.451 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:47.535 27362 27362 I input_focus: handleWindowFocusChanged:com.jsr.n64android/com.jsr.n64android.MainActivity mView:com.android.internal.policy.DecorView{8ad2235 V.E...... R....... 0,0-720,1600}[MainActivity]
+LOGCAT 11-20 05:08:47.549 27362 27362 I HandWritingStubImpl: refreshLastKeyboardType: 1
+LOGCAT 11-20 05:08:47.551 27362 27362 I HandWritingStubImpl: getCurrentKeyboardType: 1
+LOGCAT 11-20 05:08:47.599 27362 27362 D InsetsController: hide(ime(), fromIme=false)
+LOGCAT 11-20 05:08:47.600 27362 27362 I ImeTracker: com.jsr.n64android:d018a45f: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+LOGCAT 11-20 05:08:47.601 27362 27362 I HandWritingStubImpl: getCurrentKeyboardType: 1
+LOGCAT 11-20 05:08:47.646 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:47.647 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:47.647 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:47.684 27362 27362 I wm_on_idle_called: com.jsr.n64android.MainActivity
+LOGCAT 11-20 05:08:48.698 27362 27362 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=623298276, downTime=623298276, phoneEventTime=1795162128693 } moveCount:0
+LOGCAT 11-20 05:08:48.707 27362 27362 W MirrorManager: this model don't Support
+LOGCAT 11-20 05:08:48.708 27362 27362 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+LOGCAT 11-20 05:08:48.832 27362 27434 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 88.68 ms.
+LOGCAT 11-20 05:08:48.840 27362 27362 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=623298376, downTime=623298276, phoneEventTime=1795162128792 } moveCount:3
+LOGCAT 11-20 05:08:48.850 27362 27434 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 0.37 ms.
+LOGCAT 11-20 05:08:48.992 27362 27362 I wm_on_top_resumed_lost_called: [153482316,com.jsr.n64android.MainActivity,topStateChangedWhenResumed]
+2026-11-20 05:08:49.004 #13 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=2 thread=main uptimeMs=901640443 I/N64Diagnostics: ACTIVITY_ON_PAUSE
+LOGCAT 11-20 05:08:49.008 27362 27362 I PowerHalMgrImpl: perfLockAcq is supported. 
+LOGCAT 11-20 05:08:49.009 27362 27362 I wm_on_paused_called: [0,153482316,com.jsr.n64android.MainActivity,performPause,6]
+LOGCAT 11-20 05:08:49.130 27362 27362 I input_focus: handleWindowFocusChanged:com.jsr.n64android/com.jsr.n64android.MainActivity mView:com.android.internal.policy.DecorView{8ad2235 V.E...... R....... 0,0-720,1600 aid=0}[MainActivity]
+LOGCAT 11-20 05:08:49.727 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:49.727 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:49.728 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:50.336 27362 27362 D VRI[MainActivity]: visibilityChanged oldVisibility=true newVisibility=false
+LOGCAT 11-20 05:08:50.380 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:50.380 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:50.381 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:50.383 27362 27362 W .jsr.n64android: Binder 0xb40000704f2e6be0 destroyed after setInheritRt before being parceled.
+LOGCAT 11-20 05:08:50.387 27362 27362 D BLASTBufferQueue: [VRI[MainActivity]#0](f:0,a:2) destructor()
+LOGCAT 11-20 05:08:50.388 27362 27362 D BufferQueueConsumer: [VRI[MainActivity]#0(BLAST Consumer)0](id:6ae200000000,api:0,p:-1,c:27362) disconnect: caller 27362
+LOGCAT 11-20 05:08:50.391 27362 27362 I viewroot_draw_event: [VRI[MainActivity],Not drawing due to not visible. Reason=!mAppVisible && !mForceDecorViewVisibility]
+LOGCAT 11-20 05:08:50.397 27362 27362 I wm_on_stop_called: [0,153482316,com.jsr.n64android.MainActivity,STOP_ACTIVITY_ITEM,1]
+LOGCAT 11-20 05:08:50.419 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:50.419 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:50.419 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:51.289 27362 27492 D libEGL  : Post task 1
+LOGCAT 11-20 05:08:51.290 27362 27883 D libEGL  : Worker thread start 473524646848
+LOGCAT 11-20 05:08:51.290 27362 27883 D libEGL  : Run task 1
+LOGCAT 11-20 05:08:52.015 27362 27362 I ForceDarkHelperStubImpl: setViewRootImplForceDark: false for com.jsr.n64android.MainActivity@c3104aa, reason: AppDarkModeEnable
+LOGCAT 11-20 05:08:52.045 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:52.045 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:52.045 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:52.057 27362 27362 I wm_on_restart_called: [0,153482316,com.jsr.n64android.MainActivity,,0]
+2026-11-20 05:08:52.078 #15 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=2 thread=main uptimeMs=901643517 I/N64Diagnostics: ACTIVITY_ON_RESUME
+2026-11-20 05:08:52.072 #14 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1553 thread=N64-ROM-Loader uptimeMs=901643510 I/N64Diagnostics: ROM_LOAD_BEGIN scheme=content authority=com.android.externalstorage.documents
+LOGCAT 11-20 05:08:52.058 27362 27362 I wm_on_start_called: [0,153482316,com.jsr.n64android.MainActivity,handleStartActivity,0]
+2026-11-20 05:08:52.094 #16 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1553 thread=N64-ROM-Loader uptimeMs=901643533 I/N64Diagnostics: ROM_OPEN_ASSET_DESCRIPTOR_BEGIN
+LOGCAT 11-20 05:08:52.059 27362 27362 E ActivityThread:  fail in deliverResultsIfNeeded java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.String android.os.Bundle.getString(java.lang.String)' on a null object reference
+LOGCAT 11-20 05:08:52.070 27362 27362 I wm_on_activity_result_called: [0,153482316,com.jsr.n64android.MainActivity,ACTIVITY_RESULT,11]
+LOGCAT 11-20 05:08:52.071 27362 27362 D Activity: Activity = ActivityInfo{75b1d52 com.jsr.n64android.MainActivity}, Resume onConfigurationChanged = {1.1 724mcc5mnc [pt_BR] ldltr sw360dp w360dp h800dp 320dpi nrml long port night finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 720, 1600) mAppBounds=Rect(0, 0 - 720, 1600) mMaxBounds=Rect(0, 0 - 720, 1600) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0 mInSplitScreen=false letterBoxed=false foScaled=false isSpecificEmbedded=false embeddingScale=1.0} as.3 s.2 fontWeightAdjustment=0/d/0 themeChanged=5 themeChangedFlags=16384 display=0 extraData = Bundle[{key_var_font_scale=50}] screenType=0/0}
+LOGCAT 11-20 05:08:52.086 27362 27362 I wm_on_resume_called: [0,153482316,com.jsr.n64android.MainActivity,RESUME_ACTIVITY,15]
+LOGCAT 11-20 05:08:52.087 27362 27362 I wm_on_top_resumed_gained_called: [153482316,com.jsr.n64android.MainActivity,topWhenResuming]
+LOGCAT 11-20 05:08:52.120 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:52.120 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:52.120 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:52.121 27362 27362 D BufferQueueConsumer: [](id:6ae200000001,api:0,p:-1,c:27362) connect: controlledByApp=false
+LOGCAT 11-20 05:08:52.126 27362 27362 D BLASTBufferQueue: [VRI[MainActivity]#1](f:0,a:0) constructor()
+LOGCAT 11-20 05:08:52.126 27362 27362 D BLASTBufferQueue: [VRI[MainActivity]#1](f:0,a:0) update width=720 height=1600 format=-1 mTransformHint=0
+LOGCAT 11-20 05:08:52.134 27362 27362 D VRI[MainActivity]: vri.Setup new sync=wmsSync-VRI[MainActivity]#2
+LOGCAT 11-20 05:08:52.137 27362 27362 I viewroot_draw_event: [VRI[MainActivity],Start draw after previous draw not visible]
+LOGCAT 11-20 05:08:52.183 27362 27434 E .jsr.n64android: DynamicFPS DF open fail: No such file or directory
+LOGCAT 11-20 05:08:52.184 27362 27434 D BLASTBufferQueue: [VRI[MainActivity]#1](f:0,a:1) acquireNextBufferLocked size=720x1600 mFrameNumber=1 applyTransaction=true mTimestamp=623301766544304(auto) mPendingTransactions.size=0 graphicBufferId=117518895153165 transform=0
+LOGCAT 11-20 05:08:52.185 27362 27362 D VRI[MainActivity]: vri.reportDrawFinished 0 0 Rect(0, 0 - 720, 1600)
+LOGCAT 11-20 05:08:52.185 27362 27362 I viewroot_draw_event: [VRI[MainActivity],reportDrawFinished seqId=0]
+LOGCAT 11-20 05:08:52.191 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:52.191 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:52.191 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:52.192 27362 27362 I wm_on_idle_called: com.jsr.n64android.MainActivity
+LOGCAT 11-20 05:08:52.240 27362 27362 I input_focus: handleWindowFocusChanged:com.jsr.n64android/com.jsr.n64android.MainActivity mView:com.android.internal.policy.DecorView{8ad2235 V.E...... R....... 0,0-720,1600 aid=0}[MainActivity]
+2026-11-20 05:08:52.232 #17 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1553 thread=N64-ROM-Loader uptimeMs=901643677 I/N64Diagnostics: ROM_OPEN_ASSET_DESCRIPTOR_END available=true
+2026-11-20 05:08:52.243 #18 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1553 thread=N64-ROM-Loader uptimeMs=901643682 I/N64Diagnostics: ROM_DESCRIPTOR_LENGTH bytes=12582912
+LOGCAT 11-20 05:08:52.244 27362 27362 I HandWritingStubImpl: refreshLastKeyboardType: 1
+LOGCAT 11-20 05:08:52.245 27362 27362 I HandWritingStubImpl: getCurrentKeyboardType: 1
+2026-11-20 05:08:52.247 #19 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1553 thread=N64-ROM-Loader uptimeMs=901643686 I/N64Diagnostics: ROM_READ_KNOWN_LENGTH_BEGIN expectedBytes=12582912
+LOGCAT 11-20 05:08:52.274 27362 27362 D InsetsController: hide(ime(), fromIme=false)
+LOGCAT 11-20 05:08:52.275 27362 27362 I ImeTracker: com.jsr.n64android:8d3491b2: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+LOGCAT 11-20 05:08:52.336 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:52.337 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:52.337 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+2026-11-20 05:08:52.401 #20 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1553 thread=N64-ROM-Loader uptimeMs=901643840 I/N64Diagnostics: ROM_READ_PROGRESS bytes=12582912 total=12582912
+2026-11-20 05:08:52.410 #21 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1553 thread=N64-ROM-Loader uptimeMs=901643848 I/N64Diagnostics: ROM_READ_KNOWN_LENGTH_END bytes=12582912
+2026-11-20 05:08:52.420 #22 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1553 thread=N64-ROM-Loader uptimeMs=901643858 I/N64Diagnostics: ROM_BYTES_READY size=12582912 elapsedMs=342
+2026-11-20 05:08:52.423 #23 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1553 thread=N64-ROM-Loader uptimeMs=901643862 I/N64Diagnostics: ROM_HEADER_CHECK_BEGIN
+2026-11-20 05:08:52.434 #24 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1553 thread=N64-ROM-Loader uptimeMs=901643872 I/N64Diagnostics: ROM_HEADER_OK magic=0x80371240 byteOrder=Z64 / big-endian
+2026-11-20 05:08:52.438 #25 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1553 thread=N64-ROM-Loader uptimeMs=901643875 I/N64Diagnostics: ROM_DISPLAY_NAME_QUERY_BEGIN
+2026-11-20 05:08:52.465 #26 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1553 thread=N64-ROM-Loader uptimeMs=901643903 I/N64Diagnostics: ROM_DISPLAY_NAME_QUERY_END name=GoldenEye.z64
+2026-11-20 05:08:52.469 #27 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1553 thread=N64-ROM-Loader uptimeMs=901643908 I/N64Diagnostics: ROM_BYTE_ORDER_NORMALIZE_BEGIN order=Z64 / big-endian size=12582912
+2026-11-20 05:08:52.474 #28 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1553 thread=N64-ROM-Loader uptimeMs=901643912 I/N64Diagnostics: ROM_BYTE_ORDER_NORMALIZE_END order=Z64 / big-endian elapsedMs=401
+2026-11-20 05:08:52.477 #29 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1553 thread=N64-ROM-Loader uptimeMs=901643916 I/N64Diagnostics: ROM_LOAD_SUCCESS name=GoldenEye.z64 bytes=12582912 elapsedMs=405
+LOGCAT 11-20 05:08:52.489 27362 27362 D MiuiMultiWindowUtils: freeform resolution args raw data:{  "wide_default":{    "freeform_args": {        "vertical_portrait":{"aspect_ratio":0.626, "original_ratio":0.5643,"original_scale":0.74,"top_margin":0.168,"left_margin":0.484},        "horizontal_portrait":{"aspect_ratio":0.626, "original_ratio":0.5643,"original_scale":0.74,"top_margin":0.1222,"left_margin":0.59745},        "vertical_landscape":{"aspect_ratio":1.6, "original_ratio":0.6992,"original_scale":0.604,"top_margin":0.2596,"left_margin":0.2624},        "horizontal_landscape":{"aspect_ratio":1.6, "original_ratio":0.6992,"original_scale":0.604,"top_margin":0.213,"left_margin":0.3758}    },    "mini_freeform_args":{        "vertical_portrait":{"original_ratio":0.147},        "horizontal_portrait":{"original_ratio":0.147},        "vertical_landscape":{"original_ratio":0.165},        "horizontal_landscape":{"original_ratio":0.165}    }  },  "narrow_default": {    "freeform_args": {        "vertical_portrait":{"aspect_ratio":0.626, "original_ratio":1,"original_scale":0.74,"top_margin":0.0753,"left_margin":-1},        "horizontal_portrait":{"aspect_ratio":0.626, "original_ratio":1,"original_scale":0.5756,"top_margin":-1,"left_margin":0.0753},        "vertical_landscape":{"aspect_ratio":1.6, "original_ratio":1,"original_scale":0.587,"top_margin":0.0753,"left_margin":-1},        "horizontal_landscape":{"aspect_ratio":1.6, "original_ratio":1,"original_scale":0.587,"top_margin":-1,"left_margin":0.0753}    },    "mini_freeform_args":{        "vertical_portrait":{"original_ratio":0.26},        "horizontal_portrait":{"original_ratio":0.26},        "vertical_landscape":{"original_ratio":0.293},        "horizontal_landscape":{"original_ratio":0.293}    }  },  "regular_default": {    "freeform_args": {      "vertical_portrait":{"aspect_ratio":0.625, "original_ratio":1,"original_scale":0.7,"top_margin":0.109,"left_margin":-1},      "horizontal_portrait":{"aspect_ratio":0.6667, "original_ratio":1,"original_scale":0.6102,"top_margin":-1,"left_margin":0.026},      "vertical_landscape":{"aspect_ratio":1.6, "original_ratio":1,"original_scale":0.5899,"top_margin":0.109,"left_margin":-1},      "horizontal_landscape":{"aspect_ratio":1.6, "original_ratio":1,"original_scale":0.5899,"top_margin":-1,"left_margin":0.026}    },    "mini_freeform_args":{      "vertical_portrait":{"original_ratio":0.25},      "horizontal_portrait":{"original_ratio":0.25},      "vertical_landscape":{"original_ratio":0.25},      "horizontal_landscape":{"original_ratio":0.25}    }  },  "pad_default": {    "freeform_args": {      "vertical_portrait":{"aspect_ratio":0.5625, "original_ratio":0.375,"original_scale":0.835,"top_margin":0.049,"left_margin":0.2775},      "horizontal_portrait":{"aspect_ratio":0.5625, "original_ratio":0.375,"original_scale":0.835,"top_margin":-1,"left_margin":0.6525},      "vertical_landscape":{"aspect_ratio":-1, "original_ratio":1,"original_scale":0.468,"top_margin":0.049,"left_margin":-1},      "horizontal_landscape":{"aspect_ratio":-1, "original_ratio":1,"original_scale":0.468,"top_margin":-1,"left_margin":0.4976}    },    "mini_freeform_args":{      "vertical_portrait":{"original_ratio":0.144},      "horizontal_portrait":{"original_ratio":0.144},      "vertical_landscape":{"original_ratio":0.2},      "horizontal_landscape":{"original_ratio":0.2}    }  }}
+LOGCAT 11-20 05:08:52.505 27362 27362 D MiuiMultiWindowUtils: initFreeFormResolutionArgs failed, device is dew
+LOGCAT 11-20 05:08:52.596 27362 27370 I .jsr.n64android: Compiler allocated 6810KB to compile void android.view.ViewRootImpl.performTraversals()
+2026-11-20 05:08:52.977 #30 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=2 thread=main uptimeMs=901644415 I/N64Diagnostics: UI_JNI_EXECUTION_SCREEN_CREATED rom=GoldenEye.z64
+LOGCAT 11-20 05:08:52.973 27362 27362 W BpBinder: PerfMonitor binderTransact: time=454ms interface=android.app.IActivityClientController code=32
+LOGCAT 11-20 05:08:52.983 27362 27362 I .jsr.n64android: AssetManager2(0xb40000702f2f2b78) locale list changing from [] to [pt-BR]
+LOGCAT 11-20 05:08:52.984 27362 27362 D ActivityThread: Activity = com.jsr.n64android.MainActivity@c3104aa, onConfigurationChanged = {1.1 724mcc5mnc [pt_BR] ldltr sw360dp w800dp h360dp 320dpi nrml long land night finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 1600, 720) mAppBounds=Rect(0, 0 - 1600, 720) mMaxBounds=Rect(0, 0 - 1600, 720) mDisplayRotation=ROTATION_90 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_90 mInSplitScreen=false letterBoxed=false foScaled=false isSpecificEmbedded=false embeddingScale=1.0} as.3 s.3 fontWeightAdjustment=0/d/0 themeChanged=5 themeChangedFlags=16384 display=0 extraData = Bundle[{key_var_font_scale=50}] screenType=0/0}
+LOGCAT 11-20 05:08:52.985 27362 27362 D VRI[MainActivity]: updateConfiguration: {1.1 724mcc5mnc [pt_BR] ldltr sw360dp w800dp h360dp 320dpi nrml long land night finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 1600, 720) mAppBounds=Rect(0, 0 - 1600, 720) mMaxBounds=Rect(0, 0 - 1600, 720) mDisplayRotation=ROTATION_90 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_90 mInSplitScreen=false letterBoxed=false foScaled=false isSpecificEmbedded=false embeddingScale=1.0} as.3 s.3 fontWeightAdjustment=0/d/0 themeChanged=5 themeChangedFlags=16384 display=0 extraData = Bundle[{key_var_font_scale=50}] screenType=0/0}, ViewRootImpl: android.view.ViewRootImpl@e5498c, context: com.android.internal.policy.DecorContext@3082712
+LOGCAT 11-20 05:08:52.986 27362 27362 I ForceDarkHelperStubImpl: setViewRootImplForceDark: false for com.jsr.n64android.MainActivity@c3104aa, reason: AppDarkModeEnable
+LOGCAT 11-20 05:08:52.997 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:52.997 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:52.997 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:52.997 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:53.004 27362 27362 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+LOGCAT 11-20 05:08:53.006 27362 27362 D BLASTBufferQueue: [VRI[MainActivity]#1](f:0,a:2) update width=1600 height=720 format=-3 mTransformHint=4
+LOGCAT 11-20 05:08:53.013 27362 27362 D SurfaceView: UPDATE null, mIsCastMode = false
+LOGCAT 11-20 05:08:53.014 27362 27362 I surfaceview_layout: [SV[7352692 MainActivity],4,1600,544,-2,layout,1,0,1]
+LOGCAT 11-20 05:08:53.015 27362 27434 W .jsr.n64android: Binder 0xb40000704f2eca00 destroyed after setInheritRt before being parceled.
+LOGCAT 11-20 05:08:53.020 27362 27362 D ViewRootImplStubImpl: onSurfaceViewAttached:
+LOGCAT 11-20 05:08:53.020 27362 27362 D ViewRootImplStubImpl: , vri:android.view.ViewRootImpl@e5498c, com.jsr.n64android/com.jsr.n64android.MainActivity
+LOGCAT 11-20 05:08:53.020 27362 27362 D ViewRootImplStubImpl: , vri size:1600x720
+LOGCAT 11-20 05:08:53.020 27362 27362 D ViewRootImplStubImpl: , surfaceView:android.opengl.GLSurfaceView{703174 V.E...... ......ID 0,176-1600,720}, SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]
+LOGCAT 11-20 05:08:53.020 27362 27362 D ViewRootImplStubImpl: , surfaceView size:1600x544
+LOGCAT 11-20 05:08:53.020 27362 27362 D ViewRootImplStubImpl: , surfaceControl:Surface(name=703174 SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity](BLAST)#209598)/@0x64b6e37
+LOGCAT 11-20 05:08:53.030 27362 27362 D BufferQueueConsumer: [](id:6ae200000002,api:0,p:-1,c:27362) connect: controlledByApp=false
+LOGCAT 11-20 05:08:53.034 27362 27362 D BLASTBufferQueue: [703174 SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:0,a:0) constructor()
+LOGCAT 11-20 05:08:53.034 27362 27362 D BLASTBufferQueue: [703174 SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:0,a:0) update width=1600 height=544 format=4 mTransformHint=4
+LOGCAT 11-20 05:08:53.035 27362 27362 I surfaceview_callback: [SV[7352692 MainActivity],surfaceCreated]
+LOGCAT 11-20 05:08:53.036 27362 27362 I surfaceview_callback: [SV[7352692 MainActivity],surfaceChanged -- format=4 w=1600 h=544]
+LOGCAT 11-20 05:08:53.036 27362 27362 I surfaceview_callback: [SV[7352692 MainActivity],surfaceRedrawNeeded]
+LOGCAT 11-20 05:08:53.037 27362 27362 D VRI[MainActivity]: vri.Setup new sync=wmsSync-VRI[MainActivity]#5
+LOGCAT 11-20 05:08:53.046 27362 27905 W libc    : Access denied finding property "vendor.migl.debug"
+LOGCAT 11-20 05:08:53.046 27362 27905 I libMiGL : EnableDR: 0
+LOGCAT 11-20 05:08:53.046 27362 27905 D libMiGL : mDFIInterval: -1
+LOGCAT 11-20 05:08:53.046 27362 27905 D libMEOW : meow new tls: 0xb400006fdf4591a0
+LOGCAT 11-20 05:08:53.047 27362 27905 D libMEOW : meow reload base cfg path: na
+LOGCAT 11-20 05:08:53.047 27362 27905 D libMEOW : meow reload overlay cfg path: na
+LOGCAT 11-20 05:08:53.059 27362 27905 E QT      : [QT]file does not exist
+LOGCAT 11-20 05:08:53.078 27362 27905 D libMEOW : applied 1 plugins for [com.jsr.n64android]:
+LOGCAT 11-20 05:08:53.078 27362 27905 D libMEOW :   plugin 1: [libMEOW_gift.so]:
+LOGCAT 11-20 05:08:53.086 27362 27434 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 0.41 ms.
+LOGCAT 11-20 05:08:53.127 27362 27434 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 37.62 ms.
+LOGCAT 11-20 05:08:53.133 27362 27434 E .jsr.n64android: FrameInsert open fail: No such file or directory
+LOGCAT 11-20 05:08:53.133 27362 27434 D BLASTBufferQueue: [VRI[MainActivity]#1](f:0,a:3) producer disconnected before acquireNextBufferLocked
+LOGCAT 11-20 05:08:53.139 27362 27905 D MMUD    : mtk_memory_debug_init com.jsr.n64android 0xb4000071d7b165d0
+LOGCAT 11-20 05:08:53.141 27362 27362 D SurfaceView: UPDATE Surface(name=703174 SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#209597)/@0x64da7be, mIsProjectionMode = false
+LOGCAT 11-20 05:08:53.150 27362 27905 W HidlServiceManagement: hwservicemanager is not supported on the device.
+LOGCAT 11-20 05:08:53.150 27362 27905 I HidlServiceManagement: Trying to get transport of android.hardware.configstore@1.0::ISurfaceFlingerConfigs/default without hwservicemanager
+LOGCAT 11-20 05:08:53.161 27362 27920 E .jsr.n64android: setpriority success to 100 : mali-cmar-backend
+2026-11-20 05:08:53.177 #31 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1554 thread=GLThread 1554 uptimeMs=901644618 I/N64Diagnostics: JNI_EGL_SURFACE_CREATED
+2026-11-20 05:08:53.185 #32 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1554 thread=GLThread 1554 uptimeMs=901644626 I/N64Diagnostics: JNI_BACKEND_STATUS Carregando backend JNI...
+LOGCAT 11-20 05:08:53.212 27362 27905 D nativeloader: Load /data/app/~~_bHREXhrp_rYsoLHegYmkg==/com.jsr.n64android-4KlgBModjCR6nqCgGR_ZcA==/base.apk!/lib/arm64-v8a/libn64bridge.so using class loader ns clns-10 (caller=/data/app/~~_bHREXhrp_rYsoLHegYmkg==/com.jsr.n64android-4KlgBModjCR6nqCgGR_ZcA==/base.apk!classes4.dex): ok
+LOGCAT 11-20 05:08:53.214 27362 27905 I N64AndroidCore: Core Mupen64Plus carregado com sucesso.\nCoreStartup e CoreShutdown encontrados.\nVersao do Core: 2.5.9 | API Frontend: 0x020104.\nAPIs Config/Debug/Video: 0x020302 / 0x020001 / 0x030200.\nCompatibilidade verificada; inicializacao ainda nao executada.
+2026-11-20 05:08:53.214 #33 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1554 thread=GLThread 1554 uptimeMs=901644652 I/N64Diagnostics: JNI_STAGE_CORE_LOAD Core Mupen64Plus carregado com sucesso.\nCoreStartup e CoreShutdown encontrados.\nVersao do Core: 2.5.9 | API Frontend: 0x020104.\nAPIs Config/Debug/Video: 0x020302 / 0x020001 / 0x030200.\nCompatibilidade verificada; inicializacao ainda nao executada.
+2026-11-20 05:08:53.217 #34 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1554 thread=GLThread 1554 uptimeMs=901644655 I/N64Diagnostics: JNI_STAGE_CORE_START CoreStartup concluido com sucesso.
+Core inicializado, sem ROM carregada.
+Nenhum jogo foi executado.
+LOGCAT 11-20 05:08:53.217 27362 27905 I N64AndroidCore: Diretorios Android: HOME=/data/user/0/com.jsr.n64android/files | XDG_CONFIG_HOME=/data/user/0/com.jsr.n64android/files/mupen64plus/config | XDG_DATA_HOME=/data/user/0/com.jsr.n64android/files/mupen64plus/data
+LOGCAT 11-20 05:08:53.217 27362 27905 I N64AndroidCore: Couldn't open configuration file '/data/user/0/com.jsr.n64android/files/mupen64plus/config/mupen64plus.cfg'.  Using defaults.
+LOGCAT 11-20 05:08:53.217 27362 27905 I N64AndroidCore: No version number in 'Core' config section. Setting defaults.
+2026-11-20 05:08:53.231 #35 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1554 thread=GLThread 1554 uptimeMs=901644672 I/N64Diagnostics: JNI_STAGE_VIDEO Video Extension Android registrada no Core.
+Callbacks EGL/GLES ativos na thread GL.
+O callback de video apresenta os frames com eglSwapBuffers na thread GL.
+Plugin GFX e carregamento de ROM ainda nao foram iniciados.
+LOGCAT 11-20 05:08:53.217 27362 27905 I N64AndroidCore: No version number in 'CoreEvents' config section. Setting defaults.
+LOGCAT 11-20 05:08:53.217 27362 27905 I N64AndroidCore: Using full mem base
+LOGCAT 11-20 05:08:53.217 27362 27905 E N64AndroidCore: Unable to open rom database file '(null)'.
+LOGCAT 11-20 05:08:53.217 27362 27905 I N64AndroidCore: CoreStartup concluido sem ROM.
+LOGCAT 11-20 05:08:53.231 27362 27905 I N64AndroidVideo: Surface EGL informada ao backend de vídeo: 1600x544 (orientação atual).
+LOGCAT 11-20 05:08:53.231 27362 27905 I N64AndroidFlow: nativeRegisterAndroidVideo: entrada
+LOGCAT 11-20 05:08:53.231 27362 27905 I N64AndroidFlow: nativeRegisterAndroidVideo: CoreOverrideVidExt concluido
+LOGCAT 11-20 05:08:53.231 27362 27905 I N64AndroidVideo: Video Extension Android registrada na thread GL.
+LOGCAT 11-20 05:08:53.236 27362 27905 I N64AndroidFlow: nativeLoadGfxPlugin: entrada
+LOGCAT 11-20 05:08:53.283 27362 27905 I N64AndroidFlow: nativeLoadGfxPlugin: dlopen concluido; validando versao
+LOGCAT 11-20 05:08:53.283 27362 27905 I N64AndroidFlow: nativeLoadGfxPlugin: PluginGetVersion retorno=0 tipo=2 API=0x020200
+LOGCAT 11-20 05:08:53.283 27362 27905 I N64AndroidGFX: Todos os 14 simbolos VidExt_* encontrados no Core antes de PluginStartup.
+LOGCAT 11-20 05:08:53.283 27362 27905 I N64AndroidEGLTrace: event=PluginStartup_before tid=27905 context=0xb400006fff2fbab0 display=0xb400006f4f2d7cd0 surface=0xb400006fff30b980 gles=OpenGL ES 3.2 v1.r49p1-03bet0.19498e0ae1d5dac223383c39a2e58f04
+2026-11-20 05:08:53.302 #36 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1554 thread=GLThread 1554 uptimeMs=901644740 I/N64Diagnostics: JNI_STAGE_GFX Plugin GFX Android carregado e validado.
+Nome: GLideN64 rev.a04081a
+Versao: 2.0.0 | API: 0x020200
+Simbolos obrigatorios: 19/19.
+PluginStartup executado. Ainda nao anexado ao Core; nenhuma ROM foi aberta.
+LOGCAT 11-20 05:08:53.283 27362 27905 I N64AndroidFlow: nativeLoadGfxPlugin: chamando PluginStartup; EGLContext=0xb400006fff2fbab0 GLES=OpenGL ES 3.2 v1.r49p1-03bet0.19498e0ae1d5dac223383c39a2e58f04
+LOGCAT 11-20 05:08:53.286 27362 27905 I N64AndroidFlow: nativeLoadGfxPlugin: PluginStartup retornou codigo=0
+LOGCAT 11-20 05:08:53.286 27362 27905 I N64AndroidEGLTrace: event=PluginStartup_after tid=27905 context=0xb400006fff2fbab0 display=0xb400006f4f2d7cd0 surface=0xb400006fff30b980 gles=OpenGL ES 3.2 v1.r49p1-03bet0.19498e0ae1d5dac223383c39a2e58f04
+LOGCAT 11-20 05:08:53.286 27362 27905 I N64AndroidGFX: PluginStartup executado com EGL atual. GLES=OpenGL ES 3.2 v1.r49p1-03bet0.19498e0ae1d5dac223383c39a2e58f04 TID=27905 EGLContext=0xb400006fff2fbab0
+LOGCAT 11-20 05:08:53.286 27362 27905 I N64AndroidGFX: Plugin GFX Android carregado e validado.
+LOGCAT 11-20 05:08:53.286 27362 27905 I N64AndroidGFX: Nome: GLideN64 rev.a04081a
+LOGCAT 11-20 05:08:53.286 27362 27905 I N64AndroidGFX: Versao: 2.0.0 | API: 0x020200
+LOGCAT 11-20 05:08:53.286 27362 27905 I N64AndroidGFX: Simbolos obrigatorios: 19/19.
+2026-11-20 05:08:53.312 #37 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1554 thread=GLThread 1554 uptimeMs=901644762 I/N64Diagnostics: JNI_STAGE_RSP Plugin RSP-HLE carregado e inicializado.
+Nome: Hacktarux/Azimer High-Level Emulation RSP Plugin
+Versao: 2.6.0 | API: 0x020000
+Simbolos obrigatorios: 6/6.
+Ainda nao anexado ao Core; nenhuma tarefa RSP foi executada.
+LOGCAT 11-20 05:08:53.286 27362 27905 I N64AndroidGFX: PluginStartup executado. Ainda nao anexado ao Core; nenhuma ROM foi aberta.
+LOGCAT 11-20 05:08:53.312 27362 27905 I N64AndroidCore: No version number in 'Rsp-HLE' config section. Setting defaults.
+LOGCAT 11-20 05:08:53.312 27362 27905 I N64AndroidRSP: Plugin RSP-HLE carregado e inicializado.
+LOGCAT 11-20 05:08:53.312 27362 27905 I N64AndroidRSP: Nome: Hacktarux/Azimer High-Level Emulation RSP Plugin
+LOGCAT 11-20 05:08:53.312 27362 27905 I N64AndroidRSP: Versao: 2.6.0 | API: 0x020000
+LOGCAT 11-20 05:08:53.312 27362 27905 I N64AndroidRSP: Simbolos obrigatorios: 6/6.
+LOGCAT 11-20 05:08:53.312 27362 27905 I N64AndroidRSP: Ainda nao anexado ao Core; nenhuma tarefa RSP foi executada.
+LOGCAT 11-20 05:08:53.321 27362 27362 D VRI[MainActivity]: vri.Setup new sync=wmsSync-VRI[MainActivity]#7
+LOGCAT 11-20 05:08:53.329 27362 27362 D VRI[MainActivity]: vri.reportDrawFinished 0 0 Rect(0, 0 - 1600, 720)
+LOGCAT 11-20 05:08:53.329 27362 27362 I viewroot_draw_event: [VRI[MainActivity],reportDrawFinished seqId=0]
+LOGCAT 11-20 05:08:53.360 27362 27905 I N64AndroidCore: No version number in 'Audio-Android' config section. Setting defaults.
+LOGCAT 11-20 05:08:53.360 27362 27905 I N64AndroidAudio: Plugin AUDIO SDL carregado e inicializado. Nome: Mupen64Plus Android Audio Plugin | API: 0x020000. Ainda nao anexado ao Core.
+2026-11-20 05:08:53.360 #38 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1554 thread=GLThread 1554 uptimeMs=901644800 I/N64Diagnostics: JNI_STAGE_AUDIO Plugin AUDIO SDL carregado e inicializado. Nome: Mupen64Plus Android Audio Plugin | API: 0x020000. Ainda nao anexado ao Core.
+LOGCAT 11-20 05:08:53.367 27362 27905 I N64AndroidInput: Plugin INPUT Android carregado. Nome: Mupen64Plus Android Input Plugin | API: 0x020100. Controle 1 sera anunciado como conectado.
+2026-11-20 05:08:53.369 #39 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1554 thread=GLThread 1554 uptimeMs=901644806 I/N64Diagnostics: JNI_STAGE_INPUT Plugin INPUT Android carregado. Nome: Mupen64Plus Android Input Plugin | API: 0x020100. Controle 1 sera anunciado como conectado.
+2026-11-20 05:08:53.371 #40 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1554 thread=GLThread 1554 uptimeMs=901644809 I/N64Diagnostics: JNI_BACKEND_STATUS Abrindo ROM e anexando plugins...
+LOGCAT 11-20 05:08:53.375 27362 27905 I N64AndroidFlow: Abrindo ROM no Core: 12582912 bytes.
+LOGCAT 11-20 05:08:53.440 27362 27905 I N64AndroidCore: Goodname: GOLDENEYE (unknown rom)
+2026-11-20 05:08:53.442 #41 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1554 thread=GLThread 1554 uptimeMs=901644881 I/N64Diagnostics: JNI_STAGE_ROM ROM aberta com sucesso no Mupen64Plus Core.\nPlugin grafico GLideN64 anexado ao Core.\nPlugin RSP-HLE anexado ao Core.\nPlugin AUDIO SDL anexado ao Core.\nPlugin INPUT Android anexado; controle 1 conectado.\nInitiateGFX, InitiateRSP, InitiateAudio e InitiateControllers concluidos pelo Core.\nCoreAttachPlugin executado na thread GL com contexto EGL atual.\nA emulacao ainda NAO foi iniciada.
+LOGCAT 11-20 05:08:53.440 27362 27905 I N64AndroidCore: Name: GOLDENEYE           
+LOGCAT 11-20 05:08:53.440 27362 27905 I N64AndroidCore: MD5: 70C525880240C1E838B8B1BE35666C3B
+LOGCAT 11-20 05:08:53.440 27362 27905 I N64AndroidCore: CRC: DCBC50D1 09FD1AA3
+LOGCAT 11-20 05:08:53.440 27362 27905 I N64AndroidCore: Imagetype: .z64 (native)
+2026-11-20 05:08:53.449 #42 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1554 thread=GLThread 1554 uptimeMs=901644888 I/N64Diagnostics: JNI_EXECUTION_READINESS DIAGNOSTICO SEGURO — nenhuma emulacao iniciada.\nLifecycle: PluginsAttached | chamadas ativas: 0\nCore: carregado=sim iniciado=sim\nROM aberta=sim\nGFX: carregado=sim iniciado=sim anexado=sim\nRSP: carregado=sim iniciado=sim anexado=sim\nINPUT: carregado=sim iniciado=sim anexado=sim\nEGL atual nesta thread=sim | marcador R4300=nao\nEXECUTE elegivel=sim (pre-checagem)
+LOGCAT 11-20 05:08:53.440 27362 27905 I N64AndroidCore: Rom size: 12582912 bytes (or 12 Mb or 96 Megabits)
+LOGCAT 11-20 05:08:53.440 27362 27905 I N64AndroidCore: ClockRate = F
+LOGCAT 11-20 05:08:53.440 27362 27905 I N64AndroidCore: Version: 1447
+2026-11-20 05:08:53.453 #43 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=1554 thread=GLThread 1554 uptimeMs=901644892 I/N64Diagnostics: JNI_BACKEND_STATUS Plugins conectados. Iniciando emulação...
+LOGCAT 11-20 05:08:53.440 27362 27905 I N64AndroidCore: Manufacturer: Nintendo
+LOGCAT 11-20 05:08:53.440 27362 27905 I N64AndroidCore: Cartridge_ID: 4547
+LOGCAT 11-20 05:08:53.440 27362 27905 I N64AndroidCore: Country: USA
+LOGCAT 11-20 05:08:53.440 27362 27905 I N64AndroidCore: PC = 80000400
+LOGCAT 11-20 05:08:53.440 27362 27905 I N64AndroidCore: Save type: 0
+LOGCAT 11-20 05:08:53.440 27362 27905 I N64AndroidFlow: M64CMD_ROM_OPEN concluido.
+LOGCAT 11-20 05:08:53.440 27362 27905 I N64AndroidFlow: CoreAttachPlugin(GFX) retornou M64ERR_SUCCESS; InitiateGFX concluido pelo Core.
+LOGCAT 11-20 05:08:53.440 27362 27905 I N64AndroidAudio: CoreAttachPlugin(AUDIO) retornou M64ERR_SUCCESS.
+LOGCAT 11-20 05:08:53.441 27362 27905 I N64AndroidCore: Input plugin does not contain VRU support.
+LOGCAT 11-20 05:08:53.441 27362 27905 I N64AndroidInput: CoreAttachPlugin(INPUT) concluido; controle 1 conectado.
+LOGCAT 11-20 05:08:53.441 27362 27905 I N64AndroidCore: RSP Fallback disabled !
+LOGCAT 11-20 05:08:53.441 27362 27905 I N64AndroidRSP: CoreAttachPlugin(RSP) retornou M64ERR_SUCCESS; InitiateRSP concluido pelo Core.
+LOGCAT 11-20 05:08:53.457 27362 27905 I N64AndroidEGLTrace: event=M64CMD_EXECUTE_before tid=27905 context=0xb400006fff2fbab0 display=0xb400006f4f2d7cd0 surface=0xb400006fff30b980 gles=OpenGL ES 3.2 v1.r49p1-03bet0.19498e0ae1d5dac223383c39a2e58f04
+LOGCAT 11-20 05:08:53.457 27362 27905 I N64AndroidFlow: Entrando em M64CMD_EXECUTE na thread GL. TID=27905
+LOGCAT 11-20 05:08:53.463 27362 27905 I N64AndroidCore: Using video capture backend: dummy
+LOGCAT 11-20 05:08:53.467 27362 27905 I N64AndroidCore: Game controller 0 (Standard controller) has a Memory pak plugged in
+LOGCAT 11-20 05:08:53.467 27362 27905 I N64AndroidCore: Game controller 1 (Standard controller) has a Memory pak plugged in
+LOGCAT 11-20 05:08:53.467 27362 27905 I N64AndroidCore: Game controller 2 (Standard controller) has a Memory pak plugged in
+LOGCAT 11-20 05:08:53.467 27362 27905 I N64AndroidCore: Game controller 3 (Standard controller) has a Memory pak plugged in
+LOGCAT 11-20 05:08:53.471 27362 27905 I N64AndroidCore: Using CIC type X102
+LOGCAT 11-20 05:08:53.473 27362 27905 I N64AndroidEGLTrace: event=VidExt_Init tid=27905 context=0xb400006fff2fbab0 display=0xb400006f4f2d7cd0 surface=0xb400006fff30b980 gles=OpenGL ES 3.2 v1.r49p1-03bet0.19498e0ae1d5dac223383c39a2e58f04
+LOGCAT 11-20 05:08:53.474 27362 27905 I N64AndroidEGLTrace: event=VidExt_SetVideoMode tid=27905 context=0xb400006fff2fbab0 display=0xb400006f4f2d7cd0 surface=0xb400006fff30b980 gles=OpenGL ES 3.2 v1.r49p1-03bet0.19498e0ae1d5dac223383c39a2e58f04
+LOGCAT 11-20 05:08:53.474 27362 27905 I N64AndroidCore: Core state callback: parametro=2 valor=2
+LOGCAT 11-20 05:08:53.474 27362 27905 I N64AndroidCore: Core state callback: parametro=6 valor=104858144
+LOGCAT 11-20 05:08:53.509 27362 27905 I N64AndroidVideo: Callback de apresentacao #1 na thread GL. Contexto=0xb400006fff2fbab0 Surface=0xb400006fff30b980 TID=27905
+LOGCAT 11-20 05:08:53.522 27362 27905 I N64AndroidVideo: FRAME_READBACK #1 FBO=0 VP=0,0 1600x544 C=000000FF L=000000FF R=000000FF T=000000FF B=000000FF GLerr=0x0000
+LOGCAT 11-20 05:08:53.528 27362 27905 D BLASTBufferQueue: [703174 SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#2](f:0,a:1) acquireNextBufferLocked size=1600x544 mFrameNumber=1 applyTransaction=true mTimestamp=623303111220381(auto) mPendingTransactions.size=0 graphicBufferId=117518895153170 transform=7
+LOGCAT 11-20 05:08:54.043 27362 27490 E SurfaceSyncGroup: Failed to receive transaction ready in 1000ms. Marking SurfaceSyncGroup(wmsSync-VRI[MainActivity]#5) as ready
+LOGCAT 11-20 05:08:54.043 27362 27490 D VRI[MainActivity]: vri.reportDrawFinished 0 0 Rect(0, 0 - 1600, 720)
+LOGCAT 11-20 05:08:54.043 27362 27490 I viewroot_draw_event: [VRI[MainActivity],reportDrawFinished seqId=0]
+LOGCAT 11-20 05:08:54.043 27362 27490 E SurfaceSyncGroup: Failed to receive transaction ready in 1000ms. Marking SurfaceSyncGroup(VRI[MainActivity]#6) as ready
+LOGCAT 11-20 05:08:54.047 27362 27490 E SurfaceSyncGroup: Failed to receive transaction ready in 1000ms. Marking SurfaceSyncGroup(SurfaceView[com.jsr.n64android/com.jsr.n64android.MainActivity]#4) as ready
+LOGCAT 11-20 05:08:54.383 27362 27905 I OboeAudio: openStream() OUTPUT -------- OboeVersion1.6.1 --------
+LOGCAT 11-20 05:08:54.390 27362 27905 I AAudio  : AAudioStreamBuilder_openStream() called ----------------------------------------
+LOGCAT 11-20 05:08:54.390 27362 27905 I AudioStreamBuilder: rate   =  44100, channels  = 2, channelMask = 0x80000003, format   = 1, sharing = EX, dir = OUTPUT
+LOGCAT 11-20 05:08:54.391 27362 27905 I AudioStreamBuilder: device = AUDIO_PORT_HANDLE_NONE, sessionId = -1, perfMode = 12, callback: ON with frames = 0, error callback: ON
+LOGCAT 11-20 05:08:54.391 27362 27905 I AudioStreamBuilder: usage  =      1, contentType = 2, inputPreset = 6, allowedCapturePolicy = 0
+LOGCAT 11-20 05:08:54.391 27362 27905 I AudioStreamBuilder: privacy sensitive = false, opPackageName = (null), attributionTag = (null)
+LOGCAT 11-20 05:08:54.396 27362 27905 D AudioStreamBuilder: build() uid=11067 clientName=com.jsr.n64android
+LOGCAT 11-20 05:08:54.397 27362 27905 D AudioStreamBuilder: build, global mmap policy is 0
+LOGCAT 11-20 05:08:54.398 27362 27905 D AudioSystem: onNewService: media.audio_policy service obtained 0xb40000703f3236e0
+LOGCAT 11-20 05:08:54.399 27362 27905 D AudioSystem: getService: checking for service media.audio_policy: 0xb40000703f3236e0
+LOGCAT 11-20 05:08:54.401 27362 27905 D AudioStreamBuilder: build, system mmap policy is 1
+LOGCAT 11-20 05:08:54.401 27362 27905 D AudioStreamBuilder: UseAAudioApp mClientName :com.jsr.n64android()
+LOGCAT 11-20 05:08:54.401 27362 27905 D AudioStreamBuilder: build, final mmap policy is 1
+LOGCAT 11-20 05:08:54.402 27362 27905 D AudioStreamBuilder: build, system mmap exclusive policy is 1
+LOGCAT 11-20 05:08:54.402 27362 27905 D AudioStreamBuilder: build, final mmap exclusive policy is 1
+LOGCAT 11-20 05:08:54.402 27362 27905 D AudioStreamBuilder: build() EXCLUSIVE sharing mode not supported. Use SHARED.
+LOGCAT 11-20 05:08:54.406 27362 27905 D .jsr.n64android: PlayerBase::PlayerBase()
+LOGCAT 11-20 05:08:54.407 27362 27905 D AudioStreamTrack: open(), request notificationFrames = -8, frameCount = 0
+LOGCAT 11-20 05:08:54.408 27362 27905 E AudioTrack: Failed to load XML file: /odm/etc/audio/audio_lowpower_app_list.xml
+LOGCAT 11-20 05:08:54.409 27362 27905 D AudioTrack: INSP: type=audio,case=1,set=0xb400006fbf325c00,stream_type=-1,sample_rate=44100,format=0x1,channel_mask=0x3,frame_count=0,flags=0x104,notification_frames=-8,session_id=0,transfer_type=1,uid=-1,pid=-1
+LOGCAT 11-20 05:08:54.409 27362 27905 D AudioTrack: INSP: type=audio,case=1,attributes=1,content_type=2,usage=1,source=0,flags=0x100
+LOGCAT 11-20 05:08:54.429 27362 27905 I AudioTrackImpl: initAudioTrackImpl()
+LOGCAT 11-20 05:08:54.434 27362 27905 D AudioTrackImpl: binder call: getPackageName com.jsr.n64android for uid 11067
+LOGCAT 11-20 05:08:54.434 27362 27905 D AudioTrack: set(): (sessionId=0), mcallback is 1, streamType -1, sampleRate 44100, format 0x1, channelMask 0x3, frameCount 0, flags 0x104, notificationFrames -8,transferType 1, mClientAttributionSource AttributionSourceState{pid: -1, uid: -1, deviceId: 0, packageName: com.jsr.n64android, attributionTag: (null), token: (null), renouncedPermissions: (null), next: []}
+LOGCAT 11-20 05:08:54.434 27362 27905 D AudioTrack: set(): Building AudioTrack with attributes: usage = 1, content = 2, flags = 0x100, tags = []
+LOGCAT 11-20 05:08:54.435 27362 27905 D AudioTrack: set(): 0xb400006fbf325c00, Create AudioTrackThread, tid = 27928
+LOGCAT 11-20 05:08:54.438 27362 27905 D AudioSystem: onNewServiceWithAdapter: media.audio_flinger service obtained 0xb400006fcf33d6e0
+LOGCAT 11-20 05:08:54.440 27362 27905 D AudioSystem: getService: checking for service media.audio_flinger: 0xb40000703f314730
+LOGCAT 11-20 05:08:54.464 27362 27905 D AudioTrack: createTrack_l(5556): 0xb400006fbf325c00, mCblk = 0x71d7800000, mLatency = 480, mAfLatency = 256, frameCount = 9900, mSampleRate = 44100, mFlags = 0, mReqFrameCount = 9900, mNotificationFramesAct = 882
+LOGCAT 11-20 05:08:54.466 27362 27905 V xlog_client:  xlog_send  msg_id: 29
+LOGCAT 11-20 05:08:54.466 27362 27905 V xlog_client:  xlog_send 
+LOGCAT 11-20 05:08:54.466 27362 27905 V xlog_client: xlog_open fd = 219
+LOGCAT 11-20 05:08:54.466 27362 27905 D xlog_client: xlog_format_msg: send msg 29
+LOGCAT 11-20 05:08:54.466 27362 27905 W xlog_client: fail to load xml: /vendor/etc/audio_global_xlog_package_name.xml
+LOGCAT 11-20 05:08:54.466 27362 27905 D .jsr.n64android: get_app_name app_name_map.size() = 0
+LOGCAT 11-20 05:08:54.466 27362 27905 D xlog_client: _xlog_write_flat_msg: send msg {"name":"audio_track_message","audio_event":{"app_name":"audio_app_other", "scenario":"playback","data_format":"AUDIO_FORMAT_PCM_16_BIT", "frame_count":"9900", "sample_rate":"44100", "channel_Mask1":"3", "notif_frame_act":"882", "transfer_type":"1", "afframe_count":"448", "afsample_rate":"44100", "aflatency":"256", "fcnt_times":"0"},"dgt":"null","audio_ext":"null" }
+LOGCAT 11-20 05:08:54.466 27362 27905 V xlog_client: xlog_close 219
+LOGCAT 11-20 05:08:54.468 27362 27905 I AudioTrackImpl: before scaleVolumeForVideo L:1.000000 R:1.000000 and the pakage is com.jsr.n64android
+LOGCAT 11-20 05:08:54.468 27362 27905 D AudioTrack: AudioTrack::setVolume L:1.000000 R:1.000000 sessionid=36273
+LOGCAT 11-20 05:08:54.469 27362 27905 D AudioStreamTrack: open() flags changed from 0x00000104 to 0x00000000
+LOGCAT 11-20 05:08:54.469 27362 27905 D AudioStreamTrack: open() perfMode changed from 12 to 10
+LOGCAT 11-20 05:08:54.469 27362 27905 D AAudioStream: setState(s#1) from 0 to 2
+LOGCAT 11-20 05:08:54.477 27362 27905 I AAudio  : AAudioStreamBuilder_openStream() returns 0 = AAUDIO_OK for s#1 ----------------
+LOGCAT 11-20 05:08:54.483 27362 27905 D AAudio  : AAudioStream_requestStart(s#1) called --------------
+LOGCAT 11-20 05:08:54.483 27362 27905 D AAudioStream: setState(s#1) from 2 to 3
+LOGCAT 11-20 05:08:54.483 27362 27905 I AudioTrack: start(5556): prior state:STATE_STOPPED packageName: com.jsr.n64android
+LOGCAT 11-20 05:08:54.506 27362 27905 D AudioRepeatStartCheck: [AudioRepeatStartStopCheck], enter: uid = 11067, session = 36273, uidnowTime = 0
+LOGCAT 11-20 05:08:54.506 27362 27905 D AudioRepeatStartCheck: [AudioRepeatStartStopCheck] isAnomaly = 0
+LOGCAT 11-20 05:08:54.507 27362 27905 D AAudio  : AAudioStream_requestStart(s#1) returned 0 ---------
+LOGCAT 11-20 05:08:54.507 27362 27928 D AAudioStream: setState(s#1) from 3 to 4
+LOGCAT 11-20 05:08:54.507 27362 27905 I N64AndroidCore: Core state callback: parametro=1 valor=2
+LOGCAT 11-20 05:08:54.508 27362 27378 D AudioStreamTrack: onAudioDeviceUpdate() devices 5549 => 5549
+LOGCAT 11-20 05:08:54.508 27362 27378 D AudioTrack: onAudioDeviceUpdate AudioPortDebug[ID:000015AD] deviceType:AUDIO_DEVICE_OUT_BLUETOOTH_A2DP(00000080)
+LOGCAT 11-20 05:08:54.509 27362 27378 D BatteryNotifier: Batteryhandler init with status: 0
+LOGCAT 11-20 05:08:54.509 27362 27378 D BatteryNotifier: batteryHandler::send audio device update msg! 11067, 27362, 36273, 128
+LOGCAT 11-20 05:08:54.510 27362 27931 D BatteryNotifier: BatteryNotifier::update device to power insight! 11067, 27362, 36273, 128
+LOGCAT 11-20 05:08:54.530 27362 27905 I N64AndroidCore: Initializing 4 RDRAM modules for a total of 8 MB
+LOGCAT 11-20 05:08:54.538 27362 27905 I N64AndroidCore: Starting R4300 emulator: Dynamic Recompiler
+LOGCAT 11-20 05:08:54.549 27362 27905 I N64AndroidCore: Init new dynarec
+LOGCAT 11-20 05:08:54.585 27362 27905 I N64AndroidCore: Enabled TLB
+LOGCAT 11-20 05:08:54.723 27362 27905 I N64AndroidVideo: FRAME_READBACK #2 FBO=0 VP=0,0 1600x544 C=00000000 L=00000000 R=00000000 T=00000000 B=00000000 GLerr=0x0000
+LOGCAT 11-20 05:08:54.777 27362 27905 I N64AndroidVideo: FRAME_READBACK #3 FBO=0 VP=0,0 1600x544 C=00000000 L=00000000 R=00000000 T=00000000 B=00000000 GLerr=0x0000
+LOGCAT 11-20 05:08:54.836 27362 27905 E LB      : fail to open file: No such file or directory
+LOGCAT 11-20 05:08:54.836 27362 27905 E LB      : fail to open node: No such file or directory
+LOGCAT 11-20 05:08:54.836 27362 27905 E LB      : fail to open node: No such file or directory
+LOGCAT 11-20 05:08:55.204 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:55.205 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:55.205 27362 27362 W InsetsSource: Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+LOGCAT 11-20 05:08:55.420 27362 27905 D AAudio  : AAudioStream_requestStop(s#1) called
+LOGCAT 11-20 05:08:55.420 27362 27905 D AAudioStream: setState(s#1) from 4 to 9
+LOGCAT 11-20 05:08:55.421 27362 27905 D AudioTrack: stop(5556): 0xb400006fbf325c00, prior state:STATE_ACTIVE packageName: com.jsr.n64android
+LOGCAT 11-20 05:08:55.421 27362 27905 D AudioTrack: stop(5556): prior state:STATE_ACTIVE
+LOGCAT 11-20 05:08:55.421 27362 27905 D AudioTrack: stop(5556): called with 48428 frames delivered
+LOGCAT 11-20 05:08:55.421 27362 27905 D AudioTrackShared: this(0xb400006f1f312030), mCblk(0x71d7800000), front(38528), mIsOut 1, interrupt() FUTEX_WAKE
+LOGCAT 11-20 05:08:55.421 27362 27928 D AudioTrackShared: obtainBuffer() interrupted by client
+LOGCAT 11-20 05:08:55.425 27362 27905 D AudioTrack: stop(5556): 0xb400006fbf325c00 stop done
+LOGCAT 11-20 05:08:55.427 27362 27905 D AAudioStream: setState(s#1) from 9 to 10
+LOGCAT 11-20 05:08:55.427 27362 27905 D AAudio  : AAudioStream_requestStop(s#1) called
+LOGCAT 11-20 05:08:55.438 27362 27905 D AAudio  : AAudioStream_close(s#1) called ---------------
+LOGCAT 11-20 05:08:55.438 27362 27905 D AAudioStream: setState(s#1) from 10 to 11
+LOGCAT 11-20 05:08:55.438 27362 27905 D AudioTrack: stop(5556): 0xb400006fbf325c00, prior state:STATE_STOPPED packageName: com.jsr.n64android
+LOGCAT 11-20 05:08:55.438 27362 27905 D AudioTrack: stop(5556): prior state:STATE_STOPPED
+LOGCAT 11-20 05:08:55.438 27362 27905 D AudioTrackShared: this(0xb400006f1f312030), mCblk(0x71d7800000), front(39872), mIsOut 1, interrupt() FUTEX_WAKE
+LOGCAT 11-20 05:08:55.438 27362 27905 D AudioTrack: stopAndJoinCallbacks(5556) done
+LOGCAT 11-20 05:08:55.438 27362 27905 D AudioTrack: ~AudioTrack(sessionID=36273)
+LOGCAT 11-20 05:08:55.442 27362 27905 D AudioTrack: ~AudioTrack(5556): 0xb400006fbf325c00, calling stop()
+LOGCAT 11-20 05:08:55.443 27362 27905 D AudioTrack: stop(5556): 0xb400006fbf325c00, prior state:STATE_STOPPED packageName: com.jsr.n64android
+LOGCAT 11-20 05:08:55.443 27362 27905 D AudioTrack: stop(5556): prior state:STATE_STOPPED
+LOGCAT 11-20 05:08:55.443 27362 27905 D AudioTrack: stopAndJoinCallbacks(5556) done
+LOGCAT 11-20 05:08:55.444 27362 27905 D AAudioStream: setState(s#1) from 11 to 12
+LOGCAT 11-20 05:08:55.444 27362 27905 D AAudioStream: ~AudioStream(s#1) mPlayerBase strongCount = 2
+LOGCAT 11-20 05:08:55.444 27362 27905 D AAudio  : AAudioStream_close(s#1) returned 0 ---------
+LOGCAT 11-20 05:08:55.445 27362 27905 I OboeAudio: openStream() OUTPUT -------- OboeVersion1.6.1 --------
+LOGCAT 11-20 05:08:55.445 27362 27905 I AAudio  : AAudioStreamBuilder_openStream() called ----------------------------------------
+LOGCAT 11-20 05:08:55.445 27362 27905 I AudioStreamBuilder: rate   =  22050, channels  = 2, channelMask = 0x80000003, format   = 1, sharing = EX, dir = OUTPUT
+LOGCAT 11-20 05:08:55.445 27362 27905 I AudioStreamBuilder: device = AUDIO_PORT_HANDLE_NONE, sessionId = -1, perfMode = 12, callback: ON with frames = 0, error callback: ON
+LOGCAT 11-20 05:08:55.445 27362 27905 I AudioStreamBuilder: usage  =      1, contentType = 2, inputPreset = 6, allowedCapturePolicy = 0
+LOGCAT 11-20 05:08:55.445 27362 27905 I AudioStreamBuilder: privacy sensitive = false, opPackageName = (null), attributionTag = (null)
+LOGCAT 11-20 05:08:55.474 27362 27905 D AudioStreamBuilder: build() uid=11067 clientName=com.jsr.n64android
+LOGCAT 11-20 05:08:55.474 27362 27905 D AudioStreamBuilder: build, global mmap policy is 0
+LOGCAT 11-20 05:08:55.476 27362 27905 D AudioStreamBuilder: build, system mmap policy is 1
+LOGCAT 11-20 05:08:55.476 27362 27905 D AudioStreamBuilder: UseAAudioApp mClientName :com.jsr.n64android()
+LOGCAT 11-20 05:08:55.476 27362 27905 D AudioStreamBuilder: build, final mmap policy is 1
+LOGCAT 11-20 05:08:55.478 27362 27905 D AudioStreamBuilder: build, system mmap exclusive policy is 1
+LOGCAT 11-20 05:08:55.478 27362 27905 D AudioStreamBuilder: build, final mmap exclusive policy is 1
+LOGCAT 11-20 05:08:55.478 27362 27905 D AudioStreamBuilder: build() EXCLUSIVE sharing mode not supported. Use SHARED.
+LOGCAT 11-20 05:08:55.478 27362 27905 D .jsr.n64android: PlayerBase::PlayerBase()
+LOGCAT 11-20 05:08:55.478 27362 27905 D AudioStreamTrack: open(), request notificationFrames = -8, frameCount = 0
+LOGCAT 11-20 05:08:55.479 27362 27905 E AudioTrack: Failed to load XML file: /odm/etc/audio/audio_lowpower_app_list.xml
+LOGCAT 11-20 05:08:55.479 27362 27905 D AudioTrack: INSP: type=audio,case=1,set=0xb400006fbf325c00,stream_type=-1,sample_rate=22050,format=0x1,channel_mask=0x3,frame_count=0,flags=0x104,notification_frames=-8,session_id=0,transfer_type=1,uid=-1,pid=-1
+LOGCAT 11-20 05:08:55.479 27362 27905 D AudioTrack: INSP: type=audio,case=1,attributes=1,content_type=2,usage=1,source=0,flags=0x100
+LOGCAT 11-20 05:08:55.480 27362 27905 I AudioTrackImpl: initAudioTrackImpl()
+LOGCAT 11-20 05:08:55.485 27362 27905 D AudioTrackImpl: binder call: getPackageName com.jsr.n64android for uid 11067
+LOGCAT 11-20 05:08:55.485 27362 27905 D AudioTrack: set(): (sessionId=0), mcallback is 1, streamType -1, sampleRate 22050, format 0x1, channelMask 0x3, frameCount 0, flags 0x104, notificationFrames -8,transferType 1, mClientAttributionSource AttributionSourceState{pid: -1, uid: -1, deviceId: 0, packageName: com.jsr.n64android, attributionTag: (null), token: (null), renouncedPermissions: (null), next: []}
+LOGCAT 11-20 05:08:55.485 27362 27905 D AudioTrack: set(): Building AudioTrack with attributes: usage = 1, content = 2, flags = 0x100, tags = []
+LOGCAT 11-20 05:08:55.485 27362 27905 D AudioTrack: set(): 0xb400006fbf325c00, Create AudioTrackThread, tid = 27955
+LOGCAT 11-20 05:08:55.540 27362 27905 D AudioTrack: createTrack_l(5557): 0xb400006fbf325c00, mCblk = 0x71eaf72000, mLatency = 483, mAfLatency = 256, frameCount = 5016, mSampleRate = 22050, mFlags = 0, mReqFrameCount = 5016, mNotificationFramesAct = 441
+LOGCAT 11-20 05:08:55.541 27362 27905 V xlog_client:  xlog_send  msg_id: 29
+LOGCAT 11-20 05:08:55.541 27362 27905 V xlog_client:  xlog_send 
+LOGCAT 11-20 05:08:55.541 27362 27905 V xlog_client: xlog_open fd = 233
+LOGCAT 11-20 05:08:55.541 27362 27905 D xlog_client: xlog_format_msg: send msg 29
+LOGCAT 11-20 05:08:55.541 27362 27905 W xlog_client: fail to load xml: /vendor/etc/audio_global_xlog_package_name.xml
+LOGCAT 11-20 05:08:55.541 27362 27905 D .jsr.n64android: get_app_name app_name_map.size() = 0
+LOGCAT 11-20 05:08:55.541 27362 27905 D xlog_client: _xlog_write_flat_msg: send msg {"name":"audio_track_message","audio_event":{"app_name":"audio_app_other", "scenario":"playback","data_format":"AUDIO_FORMAT_PCM_16_BIT", "frame_count":"5016", "sample_rate":"22050", "channel_Mask1":"3", "notif_frame_act":"441", "transfer_type":"1", "afframe_count":"448", "afsample_rate":"44100", "aflatency":"256", "fcnt_times":"0"},"dgt":"null","audio_ext":"null" }
+LOGCAT 11-20 05:08:55.541 27362 27905 V xlog_client: xlog_close 233
+LOGCAT 11-20 05:08:55.542 27362 27905 I AudioTrackImpl: before scaleVolumeForVideo L:1.000000 R:1.000000 and the pakage is com.jsr.n64android
+LOGCAT 11-20 05:08:55.542 27362 27905 D AudioTrack: AudioTrack::setVolume L:1.000000 R:1.000000 sessionid=36281
+LOGCAT 11-20 05:08:55.543 27362 27905 D AudioStreamTrack: open() flags changed from 0x00000104 to 0x00000000
+LOGCAT 11-20 05:08:55.543 27362 27905 D AudioStreamTrack: open() perfMode changed from 12 to 10
+LOGCAT 11-20 05:08:55.543 27362 27905 D AAudioStream: setState(s#2) from 0 to 2
+LOGCAT 11-20 05:08:55.547 27362 27905 I AAudio  : AAudioStreamBuilder_openStream() returns 0 = AAUDIO_OK for s#2 ----------------
+LOGCAT 11-20 05:08:55.562 27362 27905 D AAudio  : AAudioStream_requestStart(s#2) called --------------
+LOGCAT 11-20 05:08:55.562 27362 27905 D AAudioStream: setState(s#2) from 2 to 3
+LOGCAT 11-20 05:08:55.562 27362 27905 I AudioTrack: start(5557): prior state:STATE_STOPPED packageName: com.jsr.n64android
+LOGCAT 11-20 05:08:55.589 27362 27905 D AudioRepeatStartCheck: [AudioRepeatStartStopCheck], enter: uid = 11067, session = 36281, uidnowTime = 1795162134
+LOGCAT 11-20 05:08:55.589 27362 27905 D AudioRepeatStartCheck: [AudioRepeatStartStopCheck] uid = 11067, uidbeforeTimeGap = 0, uidnowTimeGap = 1, consecutiveStartCnt = 2
+LOGCAT 11-20 05:08:55.589 27362 27905 D AudioRepeatStartCheck: [AudioRepeatStartStopCheck] isAnomaly = 0
+LOGCAT 11-20 05:08:55.590 27362 27905 D AAudio  : AAudioStream_requestStart(s#2) returned 0 ---------
+LOGCAT 11-20 05:08:55.590 27362 27955 D AAudioStream: setState(s#2) from 3 to 4
+LOGCAT 11-20 05:08:55.595 27362 27930 D AudioStreamTrack: onAudioDeviceUpdate() devices 5549 => 5549
+LOGCAT 11-20 05:08:55.595 27362 27930 D AudioTrack: onAudioDeviceUpdate AudioPortDebug[ID:000015AD] deviceType:AUDIO_DEVICE_OUT_BLUETOOTH_A2DP(00000080)
+LOGCAT 11-20 05:08:55.595 27362 27930 D BatteryNotifier: batteryHandler::send audio device update msg! 11067, 27362, 36281, 128
+LOGCAT 11-20 05:08:55.595 27362 27931 D BatteryNotifier: BatteryNotifier::update device to power insight! 11067, 27362, 36281, 128
+LOGCAT 11-20 05:08:56.202 27362 27362 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=623305780, downTime=623305780, phoneEventTime=1795162136196 } moveCount:0
+LOGCAT 11-20 05:08:56.204 27362 27362 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+LOGCAT 11-20 05:08:56.330 27362 27362 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=623305912, downTime=623305780, phoneEventTime=1795162136328 } moveCount:7
+LOGCAT 11-20 05:08:56.331 27362 27362 I ScrollIdentify: on fling
+LOGCAT 11-20 05:08:56.359 27362 27973 I PowerHalMgrImpl: hdl:342805, pid:27362 
+LOGCAT 11-20 05:08:56.377 27362 27905 I DMABUFHEAPS: Using DMA-BUF heap named: mtk_mm
+LOGCAT 11-20 05:08:56.377 27362 27905 I DMABUFHEAPS: Using DMA-BUF heap named: mtk_mm-uncached
+LOGCAT 11-20 05:08:56.377 27362 27905 I DMABUFHEAPS: Using DMA-BUF heap named: mtk_svp_region
+LOGCAT 11-20 05:08:56.377 27362 27905 I DMABUFHEAPS: Using DMA-BUF heap named: mtk_prot_region
+LOGCAT 11-20 05:08:56.377 27362 27905 I DMABUFHEAPS: Using DMA-BUF heap named: mtk_wfd_region
+LOGCAT 11-20 05:08:56.386 27362 27378 D ActivityThread: invoke error.
+LOGCAT 11-20 05:08:56.593 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 1s(f:0 m:0 s:0 k:0 z:1004) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:08:56.864 27362 27973 I PowerHalMgrImpl: hdl:342807, pid:27362 
+LOGCAT 11-20 05:08:57.090 27362 27908 D libEGL  : Post task 2
+LOGCAT 11-20 05:08:57.090 27362 27883 D libEGL  : Run task 2
+LOGCAT 11-20 05:08:57.135 27362 27905 I N64AndroidVideo: Callback de apresentacao #120 na thread GL. Contexto=0xb400006fff2fbab0 Surface=0xb400006fff30b980 TID=27905
+LOGCAT 11-20 05:08:57.610 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 2s(f:0 m:0 s:0 k:0 z:2021) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:08:58.597 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 3s(f:0 m:0 s:0 k:0 z:3007) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:08:59.138 27362 27905 I N64AndroidVideo: Callback de apresentacao #240 na thread GL. Contexto=0xb400006fff2fbab0 Surface=0xb400006fff30b980 TID=27905
+LOGCAT 11-20 05:08:59.607 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 4s(f:0 m:0 s:0 k:0 z:4017) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:09:00.601 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 5s(f:0 m:0 s:0 k:0 z:5011) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:09:01.589 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 6s(f:0 m:0 s:0 k:0 z:6000) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:09:01.650 27362 27905 I N64AndroidVideo: Callback de apresentacao #360 na thread GL. Contexto=0xb400006fff2fbab0 Surface=0xb400006fff30b980 TID=27905
+LOGCAT 11-20 05:09:02.593 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 7s(f:0 m:0 s:0 k:0 z:7003) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:09:03.496 27362 27362 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=623313077, downTime=623313077, phoneEventTime=1795162143494 } moveCount:0
+LOGCAT 11-20 05:09:03.496 27362 27362 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+LOGCAT 11-20 05:09:03.590 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 8s(f:0 m:0 s:0 k:0 z:8000) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:09:03.594 27362 27362 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=623313177, downTime=623313077, phoneEventTime=1795162143593 } moveCount:2
+LOGCAT 11-20 05:09:03.648 27362 27905 I N64AndroidVideo: Callback de apresentacao #480 na thread GL. Contexto=0xb400006fff2fbab0 Surface=0xb400006fff30b980 TID=27905
+LOGCAT 11-20 05:09:03.695 27362 27362 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=623313277, downTime=623313277, phoneEventTime=1795162143693 } moveCount:0
+LOGCAT 11-20 05:09:03.696 27362 27362 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+LOGCAT 11-20 05:09:03.811 27362 27362 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=623313393, downTime=623313277, phoneEventTime=1795162143810 } moveCount:2
+LOGCAT 11-20 05:09:03.845 27362 27362 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=623313427, downTime=623313427, phoneEventTime=1795162143843 } moveCount:0
+LOGCAT 11-20 05:09:03.846 27362 27362 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+LOGCAT 11-20 05:09:03.978 27362 27362 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=623313560, downTime=623313427, phoneEventTime=1795162143977 } moveCount:2
+LOGCAT 11-20 05:09:04.029 27362 27362 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=623313610, downTime=623313610, phoneEventTime=1795162144027 } moveCount:0
+LOGCAT 11-20 05:09:04.029 27362 27362 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+LOGCAT 11-20 05:09:04.161 27362 27362 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=623313743, downTime=623313610, phoneEventTime=1795162144160 } moveCount:3
+LOGCAT 11-20 05:09:04.179 27362 27362 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=623313760, downTime=623313760, phoneEventTime=1795162144177 } moveCount:0
+LOGCAT 11-20 05:09:04.179 27362 27362 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+LOGCAT 11-20 05:09:04.294 27362 27362 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=623313876, downTime=623313760, phoneEventTime=1795162144293 } moveCount:2
+LOGCAT 11-20 05:09:04.362 27362 27362 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=623313943, downTime=623313943, phoneEventTime=1795162144360 } moveCount:0
+LOGCAT 11-20 05:09:04.362 27362 27362 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+LOGCAT 11-20 05:09:04.460 27362 27362 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=623314043, downTime=623313943, phoneEventTime=1795162144459 } moveCount:3
+LOGCAT 11-20 05:09:04.530 27362 27362 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=623314110, downTime=623314110, phoneEventTime=1795162144527 } moveCount:0
+LOGCAT 11-20 05:09:04.531 27362 27362 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+LOGCAT 11-20 05:09:04.596 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 9s(f:0 m:0 s:0 k:0 z:9006) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:09:04.644 27362 27362 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=623314226, downTime=623314110, phoneEventTime=1795162144643 } moveCount:2
+LOGCAT 11-20 05:09:04.695 27362 27362 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=623314276, downTime=623314276, phoneEventTime=1795162144693 } moveCount:0
+LOGCAT 11-20 05:09:04.695 27362 27362 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+LOGCAT 11-20 05:09:04.811 27362 27362 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=623314393, downTime=623314276, phoneEventTime=1795162144810 } moveCount:3
+LOGCAT 11-20 05:09:04.862 27362 27362 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=623314443, downTime=623314443, phoneEventTime=1795162144859 } moveCount:0
+LOGCAT 11-20 05:09:04.862 27362 27362 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+LOGCAT 11-20 05:09:04.977 27362 27362 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=623314559, downTime=623314443, phoneEventTime=1795162144976 } moveCount:2
+LOGCAT 11-20 05:09:05.603 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 10s(f:0 m:0 s:0 k:0 z:10013) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:09:05.652 27362 27905 I N64AndroidVideo: Callback de apresentacao #600 na thread GL. Contexto=0xb400006fff2fbab0 Surface=0xb400006fff30b980 TID=27905
+LOGCAT 11-20 05:09:05.656 27362 27905 I N64AndroidVideo: FRAME_READBACK #600 FBO=0 VP=0,0 1600x544 C=000000FF L=000000FF R=000000FF T=000000FF B=000000FF GLerr=0x0000
+LOGCAT 11-20 05:09:06.599 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 11s(f:0 m:0 s:0 k:0 z:11010) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:09:07.611 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 12s(f:0 m:0 s:0 k:0 z:12022) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:09:07.651 27362 27905 I N64AndroidVideo: Callback de apresentacao #720 na thread GL. Contexto=0xb400006fff2fbab0 Surface=0xb400006fff30b980 TID=27905
+LOGCAT 11-20 05:09:08.601 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 13s(f:0 m:0 s:0 k:0 z:13012) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:09:09.592 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 14s(f:0 m:0 s:0 k:0 z:14002) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:09:09.656 27362 27905 I N64AndroidVideo: Callback de apresentacao #840 na thread GL. Contexto=0xb400006fff2fbab0 Surface=0xb400006fff30b980 TID=27905
+LOGCAT 11-20 05:09:10.603 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 15s(f:0 m:0 s:0 k:0 z:15013) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:09:11.591 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 16s(f:0 m:0 s:0 k:0 z:16001) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:09:11.653 27362 27905 I N64AndroidVideo: Callback de apresentacao #960 na thread GL. Contexto=0xb400006fff2fbab0 Surface=0xb400006fff30b980 TID=27905
+LOGCAT 11-20 05:09:12.603 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 17s(f:0 m:0 s:0 k:0 z:17013) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:09:13.596 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 18s(f:0 m:0 s:0 k:0 z:18007) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:09:13.651 27362 27905 I N64AndroidVideo: Callback de apresentacao #1080 na thread GL. Contexto=0xb400006fff2fbab0 Surface=0xb400006fff30b980 TID=27905
+LOGCAT 11-20 05:09:14.593 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 19s(f:0 m:0 s:0 k:0 z:19003) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:09:15.602 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 20s(f:0 m:0 s:0 k:0 z:20011) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:09:15.655 27362 27905 I N64AndroidVideo: Callback de apresentacao #1200 na thread GL. Contexto=0xb400006fff2fbab0 Surface=0xb400006fff30b980 TID=27905
+LOGCAT 11-20 05:09:15.659 27362 27905 I N64AndroidVideo: FRAME_READBACK #1200 FBO=0 VP=0,0 1600x544 C=000000FF L=000000FF R=000000FF T=000000FF B=000000FF GLerr=0x0000
+LOGCAT 11-20 05:09:16.591 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 21s(f:0 m:0 s:0 k:0 z:21001) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:09:17.599 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 22s(f:0 m:0 s:0 k:0 z:22009) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:09:17.652 27362 27905 I N64AndroidVideo: Callback de apresentacao #1320 na thread GL. Contexto=0xb400006fff2fbab0 Surface=0xb400006fff30b980 TID=27905
+LOGCAT 11-20 05:09:18.589 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 23s(f:0 m:0 s:0 k:0 z:23000) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:09:19.517 27362 27362 D ViewRootImplStubImpl: onScrollToTop callback. Now is com.jsr.n64android
+LOGCAT 11-20 05:09:19.517 27362 27362 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+LOGCAT 11-20 05:09:19.525 27362 27362 E ViewRootImplStubImpl: No scrollable view found.
+LOGCAT 11-20 05:09:19.598 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 24s(f:0 m:0 s:0 k:0 z:24009) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:09:19.651 27362 27905 I N64AndroidVideo: Callback de apresentacao #1440 na thread GL. Contexto=0xb400006fff2fbab0 Surface=0xb400006fff30b980 TID=27905
+LOGCAT 11-20 05:09:20.442 27362 27362 D ViewRootImplStubImpl: onScrollToTop callback. Now is com.jsr.n64android
+LOGCAT 11-20 05:09:20.442 27362 27362 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+LOGCAT 11-20 05:09:20.444 27362 27362 E ViewRootImplStubImpl: No scrollable view found.
+LOGCAT 11-20 05:09:20.604 27362 27955 D AudioTrackImpl: [audioTrackData][zero] 25s(f:0 m:0 s:0 k:0 z:25015) : pid 27362 uid 11067 sessionId 36281 sr 22050 ch 2 fmt 1
+LOGCAT 11-20 05:09:21.091 27362 27362 D ViewRootImplStubImpl: onScrollToTop callback. Now is com.jsr.n64android
+LOGCAT 11-20 05:09:21.091 27362 27362 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+LOGCAT 11-20 05:09:21.093 27362 27362 E ViewRootImplStubImpl: No scrollable view found.
+LOGCAT 11-20 05:09:21.239 27362 27362 I MIUIInput: [MotionEvent] ViewRootImpl windowName 'com.jsr.n64android/com.jsr.n64android.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=623330821, downTime=623330821, phoneEventTime=1795162161238 } moveCount:0
+LOGCAT 11-20 05:09:21.240 27362 27362 D VRI[MainActivity]: getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+LOGCAT 11-20 05:09:21.325 27362 27434 I SKIA    : CreateGraphicsPipeline pipeline cache hit. elpased time: 64.70 ms.
+2026-11-20 05:09:21.333 #44 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=2 thread=main uptimeMs=901672771 I/N64Diagnostics: Usuário solicitou cópia dos logs
+2026-11-20 05:09:21.336 #45 session=5c27c644-e1e1-4b4c-a947-a638f4ccdb54 pid=27362 tid=2 thread=main uptimeMs=901672773 I/N64Diagnostics: LOG_EXPORT_REQUEST
